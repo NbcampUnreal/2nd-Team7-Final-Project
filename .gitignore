@@ -1,0 +1,24 @@
+Binaries/
+Build/
+DerivedDataCache/
+Intermediate/
+Saved/
+
+*.sln
+*.suo
+*.xcodeproj
+*.xcworkspace
+*.VC.db
+*.VC.VC.opendb
+
+*.log
+*.tmp
+
+.DS_Store
+
+.vscode/
+.idea/
+
+# Visual Studio cache
+.vs/
+*.ipch
