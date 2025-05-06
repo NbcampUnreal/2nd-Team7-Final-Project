@@ -30,7 +30,8 @@ Unreal Engine 5를 활용 한 1인칭 멀티 호러게임 제작
 ---
 
 ## 📌사용 환경 및 툴
-OS : Windows
-Language : C++
-FrameWork : Unreal Engine 5
-Collab Tool : Notion, Discord, Zep, Figma
+- OS : Windows
+- Language : C++
+- FrameWork : Unreal Engine 5
+- Collab Tool : Notion, Discord, Zep, Figma
+
