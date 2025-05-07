@@ -17,6 +17,9 @@ private:
 	UPROPERTY()
 	ULCUIManager* LCUIManager;
 
+protected:
+	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
+
 public:
 	ULCUIManager* GetUIManager() const;
 };

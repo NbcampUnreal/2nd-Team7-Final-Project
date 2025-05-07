@@ -1,6 +1,7 @@
 #include "LastCanary/UI/UIElement/TitleMenu.h"
 #include "Components/Button.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "UI/Manager/LCUIManager.h"
 
 void UTitleMenu::NativeConstruct()
 {
