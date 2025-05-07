@@ -1,5 +1,6 @@
 #include "LastCanary/UI/UIElement/TitleMenu.h"
 #include "Components/Button.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 void UTitleMenu::NativeConstruct()
 {
@@ -69,5 +70,5 @@ void UTitleMenu::OnOptionButtonClicked()
 
 void UTitleMenu::OnExitButtonClicked()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Exit Button Clicked"));
+	UKismetSystemLibrary::QuitGame(GetWorld(), nullptr, EQuitPreference::Quit, false);
 }

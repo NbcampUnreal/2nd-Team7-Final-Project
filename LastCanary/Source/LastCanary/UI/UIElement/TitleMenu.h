@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "LastCanary/UI/LCUserWidgetBase.h"
+#include "UI/LCUserWidgetBase.h"
 #include "TitleMenu.generated.h"
 
 /**
