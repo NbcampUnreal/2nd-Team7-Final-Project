@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
+#include "UI/LCUserWidgetBase.h"
 #include "TitleMenu.generated.h"
 
 /**
@@ -9,7 +9,7 @@
  */
 class UButton;
 UCLASS()
-class LASTCANARY_API UTitleMenu : public UUserWidget
+class LASTCANARY_API UTitleMenu : public ULCUserWidgetBase
 {
 	GENERATED_BODY()
 
