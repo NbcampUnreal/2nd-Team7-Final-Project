@@ -2,6 +2,7 @@
 #include "Components/Button.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "UI/Manager/LCUIManager.h"
+#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 
 void UTitleMenu::NativeConstruct()
 {
@@ -45,7 +46,6 @@ FReply UTitleMenu::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent&
 		bHasActivated = true;
 		UE_LOG(LogTemp, Warning, TEXT("KeyDown"));
 	}
-
 	return FReply::Handled();
 }
 
@@ -61,6 +61,8 @@ FReply UTitleMenu::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FP
 
 void UTitleMenu::OnStartButtonClicked()
 {
+	ULCGameInstanceSubsystem* LCGameInstanceSubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
+	LCGameInstanceSubsystem->ChangeLevelByMapName(FName(TEXT("LobbyMenu")));
 	UE_LOG(LogTemp, Warning, TEXT("Start Button Clicked"));
 }
 

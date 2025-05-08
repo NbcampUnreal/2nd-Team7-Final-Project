@@ -80,7 +80,7 @@ void ULCUIManager::SwitchToWidget(UUserWidget* NewWidget)
 	{
 		if (CurrentWidget->IsInViewport())
 		{
-			CurrentWidget->RemoveFromViewport();
+			CurrentWidget->RemoveFromParent();
 		}
 	}
 
