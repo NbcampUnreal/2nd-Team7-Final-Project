@@ -1,14 +1,19 @@
-#include "LastCanary/UI/Manager/LCUIManager.h"
-#include "LastCanary/UI/Manager/LCUIManagerSettings.h"
+#include "UI/Manager/LCUIManager.h"
+#include "UI/Manager/LCUIManagerSettings.h"
 
-#include "LastCanary/UI/UIElement/TitleMenu.h"
-#include "LastCanary/UI/UIElement/LobbyMenu.h"
-#include "LastCanary/UI/UIElement/EnterPasswordWidget.h"
+#include "UI/UIElement/TitleMenu.h"
+#include "UI/UIElement/LobbyMenu.h"
+#include "UI/UIElement/EnterPasswordWidget.h"
+#include "UI/UIElement/OptionWidget.h"
+#include "UI/UIElement/InGameHUD.h"
 
-#include "LastCanary/Framework/PlayerController/LCLobbyPlayerController.h"
+#include "Framework/PlayerController/LCLobbyPlayerController.h"
 
-#include "LastCanary/Framework/GameInstance/LCGameInstance.h"
-#include "LastCanary/Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "Framework/GameInstance/LCGameInstance.h"
+#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+
+#include "LastCanary.h"
+
 ULCUIManager::ULCUIManager()
 {
 	CurrentWidget = nullptr;
@@ -25,6 +30,8 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			TitleMenuClass = Settings->TitleMenuClass;
 			LobbyMenuClass = Settings->LobbyMenuClass;
 			EnterPasswordWidgetClass = Settings->EnterPasswordWidgetClass;
+			OptionWidgetClass = Settings->OptionWidgetClass;
+			InGameHUDWidgetClass = Settings->InGameHUDClass;
 
 			if ((CachedTitleMenu == nullptr) && TitleMenuClass)
 			{
@@ -38,6 +45,14 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			{
 				CachedEnterPasswordWidget = CreateWidget<UEnterPasswordWidget>(PlayerController, EnterPasswordWidgetClass);
 			}
+			if ((CachedOptionWidget == nullptr) && OptionWidgetClass)
+			{
+				CachedOptionWidget = CreateWidget<UOptionWidget>(PlayerController, OptionWidgetClass);
+			}
+			if ((CachedInGameHUD == nullptr) && InGameHUDWidgetClass)
+			{
+				CachedInGameHUD = CreateWidget<UInGameHUD>(PlayerController, InGameHUDWidgetClass);
+			}
 		}
 	}
 }
@@ -49,24 +64,41 @@ void ULCUIManager::SetPlayerController(APlayerController* PlayerController)
 
 void ULCUIManager::ShowTitleMenu()
 {
-	UE_LOG(LogTemp, Warning, TEXT("ShowTitleMenu"));
+	LOG_Frame_WARNING(TEXT("ShowTitleMenu"));
 	SwitchToWidget(CachedTitleMenu);
 }
 
 void ULCUIManager::ShowLobbyMenu()
 {
-	UE_LOG(LogTemp, Warning, TEXT("ShowLobbyMenu"));
+	LOG_Frame_WARNING(TEXT("ShowLobbyMenu"));
 	SwitchToWidget(CachedLobbyMenu);
+}
+
+void ULCUIManager::ShowRoomListMenu()
+{
+	LOG_Frame_WARNING(TEXT("ShowRoomListMenu"));
 }
 
 void ULCUIManager::ShowEnterPasswordWidget(const FString& RoomID)
 {
-	UE_LOG(LogTemp, Warning, TEXT("ShowEnterPasswordWidget"));
+	LOG_Frame_WARNING(TEXT("ShowEnterPasswordWidget"));
 	if (CachedEnterPasswordWidget)
 	{
 		CachedEnterPasswordWidget->Init(RoomID);
 	}
 	SwitchToWidget(CachedEnterPasswordWidget);
+}
+
+void ULCUIManager::ShowOptionWidget()
+{
+	LOG_Frame_WARNING(TEXT("ShowOptionWidget"));
+	SwitchToWidget(CachedOptionWidget);
+}
+
+void ULCUIManager::ShowInGameHUD()
+{
+	LOG_Frame_WARNING(TEXT("ShowInGameHUD"));
+	SwitchToWidget(CachedInGameHUD);
 }
 
 void ULCUIManager::SwitchToWidget(UUserWidget* NewWidget)

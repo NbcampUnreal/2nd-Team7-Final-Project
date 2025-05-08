@@ -1,6 +1,8 @@
 #include "LastCanary/UI/LCUserWidgetBase.h"
 #include "LastCanary/Framework/GameInstance/LCGameInstanceSubsystem.h"
 
+#include "LastCanary.h"
+
 ULCUIManager* ULCUserWidgetBase::ResolveUIManager() const
 {
 	if (const UGameInstance* GameInstance = GetGameInstance())
@@ -10,6 +12,6 @@ ULCUIManager* ULCUserWidgetBase::ResolveUIManager() const
 			return Subsystem->GetUIManager();
 		}
 	}
-	UE_LOG(LogTemp, Warning, TEXT("ResolveUIManager failed: GameInstance or UI Subsystem was null"));
+	LOG_Frame_WARNING(TEXT("ResolveUIManager failed : GameInstance or UI Subsystem is null"));
 	return nullptr;
 }
