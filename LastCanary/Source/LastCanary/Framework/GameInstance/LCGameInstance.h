@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/GameInstance.h"
+#include "DataTable/MapDataRow.h"
 #include "LCGameInstance.generated.h"
 
 /**
@@ -19,5 +20,10 @@ private:
 
 public:
 	ULCUIManagerSettings* GetUIManagerSettings() const;
+
+	FMapDataRow CurrentMapInfoRow;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data")
+	UDataTable* MapDataTable;
+	void LoadMapData();
 
 };
