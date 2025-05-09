@@ -11,6 +11,8 @@ class ULCUIManagerSettings;
 class UTitleMenu;
 class ULobbyMenu;
 class UEnterPasswordWidget;
+class UOptionWidget;
+class UInGameHUD;
 UCLASS()
 class LASTCANARY_API ULCUIManager : public UObject
 {
@@ -24,7 +26,10 @@ public:
 	/* 메뉴 변경 */
 	void ShowTitleMenu();
 	void ShowLobbyMenu();
+	void ShowRoomListMenu();
 	void ShowEnterPasswordWidget(const FString& RoomID);
+	void ShowInGameHUD();
+	void ShowOptionWidget();
 
 	void SwitchToWidget(UUserWidget* Widget);
 
@@ -48,6 +53,10 @@ private:
 	TSubclassOf<ULobbyMenu> LobbyMenuClass;
 	UPROPERTY()
 	TSubclassOf<UEnterPasswordWidget> EnterPasswordWidgetClass;
+	UPROPERTY()
+	TSubclassOf<UOptionWidget> OptionWidgetClass;
+	UPROPERTY()
+	TSubclassOf<UInGameHUD> InGameHUDWidgetClass;
 
 	// 위젯 캐싱
 	UPROPERTY()
@@ -56,5 +65,9 @@ private:
 	ULobbyMenu* CachedLobbyMenu;
 	UPROPERTY()
 	UEnterPasswordWidget* CachedEnterPasswordWidget;
+	UPROPERTY()
+	UOptionWidget* CachedOptionWidget;
+	UPROPERTY()
+	UInGameHUD* CachedInGameHUD;
 
 };
