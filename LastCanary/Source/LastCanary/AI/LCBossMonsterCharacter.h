@@ -28,6 +28,29 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Eoduksuni|Scale")   float ScaleInterpSpeed = 1.5f;
 	UPROPERTY(EditDefaultsOnly, Category = "Eoduksuni|Darkness")float DarknessDuration = 10.f;
 
+	/* ─── 확률·쿨타임 설정 ─── */
+	UPROPERTY(EditDefaultsOnly, Category = "Eoduksuni|Attack")
+	float StrongAttackChance = 0.3f;           // 0.0 ~ 1.0
+
+	UPROPERTY(EditDefaultsOnly, Category = "Eoduksuni|Attack")
+	float NormalAttackCooldown = 1.2f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Eoduksuni|Attack")
+	float StrongAttackCooldown = 6.0f;
+
+	/* 몽타주 */
+	UPROPERTY(EditDefaultsOnly, Category = "Eoduksuni|Attack") UAnimMontage* NormalAttackMontage;
+	UPROPERTY(EditDefaultsOnly, Category = "Eoduksuni|Attack") UAnimMontage* StrongAttackMontage;
+
+	/* Rage 증감 */
+	UPROPERTY(EditDefaultsOnly, Category = "Eoduksuni|Attack") float RageGain_Normal = 5.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Eoduksuni|Attack") float RageLoss_Strong = 40.f;
+
+	/* BTTask에서 호출할 유일한 함수 */
+	UFUNCTION(BlueprintCallable, Category = "Eoduksuni|Attack")
+	bool RequestAttack();
+
+
 	/* ───── 실시간 상태 (Replicated) ───── */
 	UPROPERTY(ReplicatedUsing = OnRep_Rage, BlueprintReadOnly, Category = "Eoduksuni|Rage")   float Rage = 0.f;
 	UPROPERTY(ReplicatedUsing = OnRep_Scale, BlueprintReadOnly, Category = "Eoduksuni|Scale")  float CurScale = 1.f;
@@ -64,5 +87,11 @@ protected:
 	FTimerHandle DarknessTimer;
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+private:
+	float LastNormalTime = -100.f;
+	float LastStrongTime = -100.f;
+	void PlayNormal();
+	void PlayStrong();
 	
 };

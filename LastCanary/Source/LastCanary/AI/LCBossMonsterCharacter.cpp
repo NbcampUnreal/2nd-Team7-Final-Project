@@ -1,6 +1,11 @@
 ﻿#include "AI/LCBossMonsterCharacter.h"
 #include "GameFramework/PlayerController.h"
 #include "TimerManager.h"
+#include "AI/LCBossAIController.h"
+#include "BehaviorTree/BlackboardComponent.h"
+#include "Animation/AnimInstance.h"
+#include "Kismet/GameplayStatics.h"
+#include "Math/UnrealMathUtility.h"
 #include "Net/UnrealNetwork.h"
 
 ALCBossMonsterCharacter::ALCBossMonsterCharacter()
@@ -27,6 +32,16 @@ void ALCBossMonsterCharacter::Tick(float DeltaSeconds)
 	UpdateRage(DeltaSeconds, bLooked);
 	UpdateScale(DeltaSeconds, bLooked);
 	TryTriggerDarkness();
+
+	if (ALCBossAIController* AIController = Cast<ALCBossAIController>(GetController()))
+	{
+		if (UBlackboardComponent* BB = AIController->GetBlackboardComponent())
+		{
+			BB->SetValueAsFloat(TEXT("RagePercent"), Rage / MaxRage);
+			BB->SetValueAsBool(TEXT("IsDarknessActive"), bDarknessActive);
+		}
+	}
+
 }
 
 /* ───────── 시야 체크 ───────── */
@@ -69,6 +84,7 @@ void ALCBossMonsterCharacter::TryTriggerDarkness()
 	if (bDarknessActive || Rage < DarknessRage - KINDA_SMALL_NUMBER) return;
 
 	bDarknessActive = true;
+
 	Multicast_StartDarkness();
 
 	GetWorldTimerManager().SetTimer(DarknessTimer, this,
@@ -79,7 +95,60 @@ void ALCBossMonsterCharacter::EndDarkness()
 {
 	if (!bDarknessActive) return;
 	bDarknessActive = false;
+
 	Multicast_EndDarkness();
+}
+
+/*──────── RequestAttack ────────*/
+bool ALCBossMonsterCharacter::RequestAttack()
+{
+	if (!HasAuthority()) return false;
+
+	const float Now = GetWorld()->GetTimeSeconds();
+
+	/* 강한 공격 시도 → 확률 + 쿨타임 + Rage ≥ 0.7 */
+	bool bDoStrong = FMath::FRand() < StrongAttackChance &&
+		(Now - LastStrongTime) >= StrongAttackCooldown &&
+		Rage / MaxRage >= 0.7f;
+
+	if (bDoStrong && StrongAttackMontage)
+	{
+		LastStrongTime = Now;
+		PlayStrong();
+		return true;
+	}
+
+	/* 노멀 공격 조건 확인 */
+	if ((Now - LastNormalTime) >= NormalAttackCooldown && NormalAttackMontage)
+	{
+		LastNormalTime = Now;
+		PlayNormal();
+		return true;
+	}
+
+	return false;   // 둘 다 불가(쿨타임) ⇒ Task는 Failed 처리
+}
+
+/*──────── 내부 실행 함수 ────────*/
+void ALCBossMonsterCharacter::PlayNormal()
+{
+	if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
+		Anim->Montage_Play(NormalAttackMontage);
+
+	Rage = FMath::Clamp(Rage + RageGain_Normal, 0.f, MaxRage);
+}
+
+void ALCBossMonsterCharacter::PlayStrong()
+{
+	if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
+		Anim->Montage_Play(StrongAttackMontage);
+
+	/* AOE 데미지 예시 */
+	UGameplayStatics::ApplyRadialDamage(
+		this, 40.f, GetActorLocation(), 300.f,
+		nullptr, {}, this, GetController(), true);
+
+	Rage = FMath::Clamp(Rage - RageLoss_Strong, 0.f, MaxRage);
 }
 
 /* ───────── RepNotify ───────── */
