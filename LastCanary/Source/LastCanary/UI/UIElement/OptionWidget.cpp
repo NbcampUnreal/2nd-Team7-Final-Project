@@ -3,7 +3,8 @@
 #include "Components/ComboBoxString.h"
 #include "Widgets/Input/SComboBox.h"
 #include "LastCanary.h"
-#include "UI/Manager/LCOptionManager.h"
+
+#include "Framework/GameInstance/LCOptionManager.h"
 
 void UOptionWidget::NativeConstruct()
 {

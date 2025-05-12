@@ -1,4 +1,4 @@
-#include "UI/Manager/LCOptionManager.h"
+#include "LCOptionManager.h"
 #include "GameFramework/GameUserSettings.h"
 #include "LastCanary.h"
 
