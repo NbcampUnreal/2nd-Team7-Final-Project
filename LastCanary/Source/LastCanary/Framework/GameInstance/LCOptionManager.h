@@ -7,6 +7,13 @@
 /**
  * 
  */
+UENUM(BlueprintType)
+enum class EScreenMode : uint8
+{
+	FullScreen UMETA(DisplayName = "FullScreen"),
+	Window UMETA(DisplayName = "Window")
+};
+
 UCLASS()
 class LASTCANARY_API ULCOptionManager : public ULCGameInstanceSubsystem
 {
@@ -17,15 +24,26 @@ public:
 	virtual void Deinitialize() override;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Option")
-	float MasterVolume = 1.0f;
+	float MasterVolume = 0.5f;
 	UPROPERTY(BlueprintReadWrite, Category = "Option")
-	float MouseSensitivity = 1.0f;
+	float BGMVolume = 0.5f;
+	UPROPERTY(BlueprintReadWrite, Category = "Option")
+	float EffectVolume = 0.5f;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Option")
+	float MouseSensitivity = 0.5f;
 	UPROPERTY(BlueprintReadWrite, Category = "Option")
 	float Brightness = 0.5f;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Option")
+	EScreenMode ScreenMode;
 	UPROPERTY(BlueprintReadWrite, Category = "Option")
 	int32 ResolutionIndex = 2;
 	UPROPERTY(BlueprintReadWrite, Category = "Option")
 	FIntPoint ScreenResolution = FIntPoint(1920, 1080);
+
+	UFUNCTION()
+	void ChangeScreen(EScreenMode Mode);
 
 	UFUNCTION(BlueprintCallable, Category = "Option")
 	void ApplyOptions();

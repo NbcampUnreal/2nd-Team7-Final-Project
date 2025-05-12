@@ -14,6 +14,25 @@ void ULCOptionManager::Deinitialize()
 	LOG_Frame_WARNING(TEXT("ULCOptionManager Deinitialized"));
 }
 
+void ULCOptionManager::ChangeScreen(EScreenMode Mode)
+{
+	if (ScreenMode != Mode)
+	{
+		ScreenMode = Mode;
+		switch (ScreenMode)
+		{
+		case EScreenMode::FullScreen:
+			GEngine->GetGameUserSettings()->SetFullscreenMode(EWindowMode::Fullscreen);
+			break;
+		case EScreenMode::Window:
+			GEngine->GetGameUserSettings()->SetFullscreenMode(EWindowMode::Windowed);
+			break;
+		default:
+			break;
+		}
+	}
+}
+
 void ULCOptionManager::ApplyOptions()
 {
 	if (GEngine)
