@@ -1,10 +1,12 @@
 #include "UI/UIElement/OptionWidget.h"
 #include "Components/Slider.h"
 #include "Components/ComboBoxString.h"
+#include "Components/CheckBox.h"
 #include "Widgets/Input/SComboBox.h"
-#include "LastCanary.h"
 
 #include "Framework/GameInstance/LCOptionManager.h"
+
+#include "LastCanary.h"
 
 void UOptionWidget::NativeConstruct()
 {
@@ -12,18 +14,12 @@ void UOptionWidget::NativeConstruct()
 	ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>();
 	if (OptionManager)
 	{
-		if (MasterVolumeSlider)
-		{
-			MasterVolumeSlider->SetValue(OptionManager->MasterVolume);
-		}
-		if (MouseSensitivitySlider)
-		{
-			MouseSensitivitySlider->SetValue(OptionManager->MouseSensitivity);
-		}
-		if (BrightnessSlider)
-		{
-			BrightnessSlider->SetValue(OptionManager->Brightness);
-		}
+		BindSlider(MasterVolumeSlider, OptionManager->MasterVolume, this, &UOptionWidget::OnMasterVolumeChanged);
+		BindSlider(BGMVolumeSlider, OptionManager->BGMVolume, this, &UOptionWidget::OnBGMVolumeChanged);
+		BindSlider(EffectVolumeSlider, OptionManager->EffectVolume, this, &UOptionWidget::OnEffectVolumeChanged);
+		BindSlider(MouseSensitivitySlider, OptionManager->MouseSensitivity, this, &UOptionWidget::OnSensitivityChanged);
+		BindSlider(BrightnessSlider, OptionManager->Brightness, this, &UOptionWidget::OnBrightnessChanged);
+
 		if (ResolutionComboBox)
 		{
 			ResolutionComboBox->ClearOptions();
@@ -32,40 +28,26 @@ void UOptionWidget::NativeConstruct()
 			ResolutionComboBox->AddOption(TEXT("1920x1080"));
 			ResolutionComboBox->SetSelectedIndex(OptionManager->ResolutionIndex);
 		}
-	}
 
-	if (MasterVolumeSlider)
-	{
-		MasterVolumeSlider->OnValueChanged.AddUniqueDynamic(this, &UOptionWidget::OnVolumeChanged);
-	}
-	if (MouseSensitivitySlider)
-	{
-		MouseSensitivitySlider->OnValueChanged.AddUniqueDynamic(this, &UOptionWidget::OnSensitivityChanged);
-	}
-	if (BrightnessSlider)
-	{
-		BrightnessSlider->OnValueChanged.AddUniqueDynamic(this, &UOptionWidget::OnBrightnessChanged);
-	}
-	if (ResolutionComboBox)
-	{
-		ResolutionComboBox->OnSelectionChanged.AddUniqueDynamic(this, &UOptionWidget::OnResolutionChanged);
+		if (FullScreenCheckBox)
+		{
+			FullScreenCheckBox->SetIsChecked(OptionManager->ScreenMode == EScreenMode::FullScreen);
+			FullScreenCheckBox->OnCheckStateChanged.AddUniqueDynamic(this, &UOptionWidget::OnScreenModeChanged);
+		}
 	}
 }
  
 void UOptionWidget::NativeDestruct()
 {
 	Super::NativeDestruct();
-	if (MasterVolumeSlider)
+	UnbindSlider(MasterVolumeSlider, this, &UOptionWidget::OnMasterVolumeChanged);
+	UnbindSlider(BGMVolumeSlider, this, &UOptionWidget::OnBGMVolumeChanged);
+	UnbindSlider(EffectVolumeSlider, this, &UOptionWidget::OnEffectVolumeChanged);
+	UnbindSlider(MouseSensitivitySlider, this, &UOptionWidget::OnSensitivityChanged);
+	UnbindSlider(BrightnessSlider, this, &UOptionWidget::OnBrightnessChanged);
+	if (FullScreenCheckBox)
 	{
-		MasterVolumeSlider->OnValueChanged.RemoveDynamic(this, &UOptionWidget::OnVolumeChanged);
-	}
-	if (MouseSensitivitySlider)
-	{
-		MouseSensitivitySlider->OnValueChanged.RemoveDynamic(this, &UOptionWidget::OnSensitivityChanged);
-	}
-	if (BrightnessSlider)
-	{
-		BrightnessSlider->OnValueChanged.RemoveDynamic(this, &UOptionWidget::OnBrightnessChanged);
+		FullScreenCheckBox->OnCheckStateChanged.RemoveDynamic(this, &UOptionWidget::OnScreenModeChanged);
 	}
 	if (ResolutionComboBox)
 	{
@@ -73,13 +55,33 @@ void UOptionWidget::NativeDestruct()
 	}
 }
 
-void UOptionWidget::OnVolumeChanged(float Value)
+void UOptionWidget::OnMasterVolumeChanged(float Value)
 {
-	LOG_Frame_WARNING(TEXT("Volume Changed"));
+	LOG_Frame_WARNING(TEXT("Master Volume Changed"));
 
 	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
 	{
 		OptionManager->MasterVolume = Value;
+	}
+}
+
+void UOptionWidget::OnBGMVolumeChanged(float Value)
+{
+	LOG_Frame_WARNING(TEXT("BGM Volume Changed"));
+
+	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
+	{
+		OptionManager->BGMVolume = Value;
+	}
+}
+
+void UOptionWidget::OnEffectVolumeChanged(float Value)
+{
+	LOG_Frame_WARNING(TEXT("Effect Volume Changed"));
+
+	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
+	{
+		OptionManager->EffectVolume = Value;
 	}
 }
 
@@ -100,6 +102,22 @@ void UOptionWidget::OnBrightnessChanged(float Value)
 	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
 	{
 		OptionManager->Brightness = Value;
+	}
+}
+
+void UOptionWidget::OnScreenModeChanged(bool bIsFullscreen)
+{
+	LOG_Frame_WARNING(TEXT("Screen Mode Changed : %s"), bIsFullscreen ? TEXT("FullScreen") : TEXT("Windowed"));
+	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
+	{
+		if (bIsFullscreen)
+		{
+			OptionManager->ChangeScreen(EScreenMode::FullScreen);
+		}
+		else
+		{
+			OptionManager->ChangeScreen(EScreenMode::Window);
+		}
 	}
 }
 
