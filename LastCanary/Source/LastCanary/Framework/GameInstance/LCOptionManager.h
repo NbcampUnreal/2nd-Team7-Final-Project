@@ -9,6 +9,8 @@
 /**
  * 
  */
+class ULCOptionSettingAsset;
+
 UENUM(BlueprintType)
 enum class EScreenMode : uint8
 {
@@ -25,6 +27,9 @@ public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
 
+	UPROPERTY(EditAnywhere)
+	ULCOptionSettingAsset* SoundClassSettings;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	USoundMix* AudioMix;
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
@@ -33,6 +38,8 @@ public:
 	USoundClass* BGMSoundClass;
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	USoundClass* EffectSoundClass;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	USoundClass* VoiceSoundClass;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Option")
 	float MasterVolume = 0.5f;
@@ -40,6 +47,8 @@ public:
 	float BGMVolume = 0.5f;
 	UPROPERTY(BlueprintReadWrite, Category = "Option")
 	float EffectVolume = 0.5f;
+	UPROPERTY(BlueprintReadWrite, Category = "Option")
+	float VoiceVolume = 0.5f;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Option")
 	float MouseSensitivity = 0.5f;
