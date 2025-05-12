@@ -2,8 +2,6 @@
 #include "GameFramework/GameUserSettings.h"
 #include "Kismet/GameplayStatics.h"
 
-#include "Engine/GameEngine.h"
-
 #include "LastCanary.h"
 
 void ULCOptionManager::Initialize(FSubsystemCollectionBase& Collection)
@@ -68,16 +66,6 @@ void ULCOptionManager::ApplyOptions()
 		Settings->SetScreenResolution(ScreenResolution);
 		Settings->SetFullscreenMode(ScreenMode == EScreenMode::FullScreen ? EWindowMode::Fullscreen : EWindowMode::Windowed);
 		Settings->ApplySettings(false);
-		FSlateApplication::Get().Tick();
-
-		if (GEngine && GEngine->GameViewport)
-		{
-			TSharedPtr<SViewport> ViewportWidget = GEngine->GameViewport->GetGameViewportWidget();
-			if (ViewportWidget.IsValid())
-			{
-				ViewportWidget->Invalidate(EInvalidateWidget::LayoutAndVolatility);
-			}
-		}
 
 		// TODO: 마우스 감도, 밝기 적용
 		// 마우스 감도, 밝기는 별도 시스템 적용 필요

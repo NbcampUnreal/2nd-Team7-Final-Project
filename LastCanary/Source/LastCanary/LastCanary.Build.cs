@@ -8,7 +8,18 @@ public class LastCanary : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "UMG", "AIModule", "NavigationSystem", "GamePlayTags", "SlateCore" });
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", 
+            "CoreUObject", 
+            "Engine",
+            "InputCore",
+            "EnhancedInput",
+            "UMG",
+            "AIModule", 
+            "NavigationSystem",
+            "GamePlayTags", 
+            "Slate",
+            "SlateCore"
+        });
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 

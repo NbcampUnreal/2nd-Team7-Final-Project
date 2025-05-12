@@ -2,6 +2,8 @@
 
 #include "CoreMinimal.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "Sound/SoundMix.h"
+#include "Sound/SoundClass.h"
 #include "LCOptionManager.generated.h"
 
 /**
@@ -22,6 +24,15 @@ class LASTCANARY_API ULCOptionManager : public ULCGameInstanceSubsystem
 public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	USoundMix* AudioMix;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	USoundClass* MasterSoundClass;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	USoundClass* BGMSoundClass;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	USoundClass* EffectSoundClass;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Option")
 	float MasterVolume = 0.5f;
@@ -44,7 +55,8 @@ public:
 
 	UFUNCTION()
 	void ChangeScreen(EScreenMode Mode);
-
+	UFUNCTION(BlueprintCallable, Category = "Option")
+	void ApplyAudio();
 	UFUNCTION(BlueprintCallable, Category = "Option")
 	void ApplyOptions();
 
