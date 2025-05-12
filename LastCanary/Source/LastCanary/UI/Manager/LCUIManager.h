@@ -29,7 +29,7 @@ public:
 	void ShowRoomListMenu();
 	void ShowEnterPasswordWidget(const FString& RoomID);
 	void ShowInGameHUD();
-	void ShowOptionWidget();
+	void ShowOptionPopup();
 
 	void SwitchToWidget(UUserWidget* Widget);
 

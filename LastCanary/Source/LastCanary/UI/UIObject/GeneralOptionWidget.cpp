@@ -1,7 +1,9 @@
 #include "UI/UIObject/GeneralOptionWidget.h"
+
 #include "Components/Slider.h"
 #include "Components/ComboBoxString.h"
 #include "Components/CheckBox.h"
+#include "Components/TextBlock.h"
 
 #include "Framework/GameInstance/LCOptionManager.h"
 #include "Framework/Application/SlateApplication.h"
@@ -21,25 +23,46 @@ void UGeneralOptionWidget::NativeConstruct()
 		if (MasterVolumeSlider)
 		{
 			MasterVolumeSlider->SetValue(OptionManager->MasterVolume);
+			if (MasterVolumeText)
+			{
+				MasterVolumeText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), OptionManager->MasterVolume * 100.f)));
+			}
 			MasterVolumeSlider->OnValueChanged.AddUniqueDynamic(this, &UGeneralOptionWidget::OnMasterVolumeChanged);
 		}
 		if (BGMVolumeSlider)
 		{
+			BGMVolumeSlider->SetValue(OptionManager->BGMVolume);
+			if (BGMVolumeText)
+			{
+				BGMVolumeText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), OptionManager->BGMVolume * 100.f)));
+			}
 			BGMVolumeSlider->OnValueChanged.AddUniqueDynamic(this, &UGeneralOptionWidget::OnBGMVolumeChanged);
 		}
 		if (EffectVolumeSlider)
 		{
 			EffectVolumeSlider->SetValue(OptionManager->EffectVolume);
+			if (EffectVolumeText)
+			{
+				EffectVolumeText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), OptionManager->EffectVolume * 100.f)));
+			}
 			EffectVolumeSlider->OnValueChanged.AddUniqueDynamic(this, &UGeneralOptionWidget::OnEffectVolumeChanged);
 		}
 		if (MouseSensitivitySlider)
 		{
 			MouseSensitivitySlider->SetValue(OptionManager->MouseSensitivity);
+			if (MouseSensitivityText)
+			{
+				MouseSensitivityText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), OptionManager->MouseSensitivity * 100.f)));
+			}
 			MouseSensitivitySlider->OnValueChanged.AddUniqueDynamic(this, &UGeneralOptionWidget::OnSensitivityChanged);
 		}
 		if (BrightnessSlider)
 		{
 			BrightnessSlider->SetValue(OptionManager->Brightness);
+			if (BrightnessText)
+			{
+				BrightnessText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), OptionManager->Brightness * 100.f)));
+			}
 			BrightnessSlider->OnValueChanged.AddUniqueDynamic(this, &UGeneralOptionWidget::OnBrightnessChanged);
 		}
 		if (ResolutionComboBox)
@@ -92,6 +115,11 @@ void UGeneralOptionWidget::OnMasterVolumeChanged(float Value)
 {
 	LOG_Frame_WARNING(TEXT("Master Volume Changed"));
 
+	if (MasterVolumeText)
+	{
+		MasterVolumeText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), Value * 100.f)));
+	}
+
 	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
 	{
 		OptionManager->MasterVolume = Value;
@@ -102,6 +130,11 @@ void UGeneralOptionWidget::OnMasterVolumeChanged(float Value)
 void UGeneralOptionWidget::OnBGMVolumeChanged(float Value)
 {
 	LOG_Frame_WARNING(TEXT("BGM Volume Changed"));
+
+	if (BGMVolumeText)
+	{
+		BGMVolumeText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), Value * 100.f)));
+	}
 
 	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
 	{
@@ -114,6 +147,11 @@ void UGeneralOptionWidget::OnEffectVolumeChanged(float Value)
 {
 	LOG_Frame_WARNING(TEXT("Effect Volume Changed"));
 
+	if (EffectVolumeText)
+	{
+		EffectVolumeText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), Value * 100.f)));
+	}
+
 	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
 	{
 		OptionManager->EffectVolume = Value;
@@ -125,6 +163,11 @@ void UGeneralOptionWidget::OnSensitivityChanged(float Value)
 {
 	LOG_Frame_WARNING(TEXT("SenSitivity Changed"));
 
+	if (MouseSensitivityText)
+	{
+		MouseSensitivityText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), Value * 100.f)));
+	}
+
 	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
 	{
 		OptionManager->MouseSensitivity = Value;
@@ -134,6 +177,11 @@ void UGeneralOptionWidget::OnSensitivityChanged(float Value)
 void UGeneralOptionWidget::OnBrightnessChanged(float Value)
 {
 	LOG_Frame_WARNING(TEXT("Brightness Changed"));
+
+	if (BrightnessText)
+	{
+		BrightnessText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), Value * 100.f)));
+	}
 
 	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
 	{
@@ -159,7 +207,7 @@ void UGeneralOptionWidget::OnScreenModeChanged(bool bIsFullscreen)
 
 void UGeneralOptionWidget::OnResolutionChanged(FString SelectedItem, ESelectInfo::Type SelectionType)
 {
-	SelectedItem = SelectedItem.TrimStartAndEnd();  
+	SelectedItem = SelectedItem.TrimStartAndEnd();
 	LOG_Frame_WARNING(TEXT("Resolution Changed: %s"), *SelectedItem);
 
 	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())

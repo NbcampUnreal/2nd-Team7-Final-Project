@@ -15,11 +15,14 @@ void UOptionWidget::NativeConstruct()
 	{
 		ApplyButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnApplyButtonClicked);
 	}
+	if (CloseButton)
+	{
+		CloseButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnCloseButtonClicked);
+	}
 	if (GeneralTabButton)
 	{
 		GeneralTabButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnGeneralTabButtonClicked);
 	}
-
 	if (OptionSwitcher)
 	{
 		OptionSwitcher->SetActiveWidgetIndex(0);
@@ -41,6 +44,11 @@ void UOptionWidget::OnApplyButtonClicked()
 	{
 		OptionManager->ApplyOptions();
 	}
+}
+
+void UOptionWidget::OnCloseButtonClicked()
+{
+	RemoveFromParent();
 }
 
 void UOptionWidget::OnGeneralTabButtonClicked()

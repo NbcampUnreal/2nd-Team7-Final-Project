@@ -11,6 +11,7 @@
  */
 class UComboBoxString;
 class UCheckBox;
+class UTextBlock;
 UCLASS()
 class LASTCANARY_API UGeneralOptionWidget : public ULCUserWidgetBase
 {
@@ -24,13 +25,24 @@ private:
 	UPROPERTY(meta = (BindWidget))
 	USlider* MasterVolumeSlider;
 	UPROPERTY(meta = (BindWidget))
+	UTextBlock* MasterVolumeText;
+	UPROPERTY(meta = (BindWidget))
 	USlider* BGMVolumeSlider;
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* BGMVolumeText;
 	UPROPERTY(meta = (BindWidget))
 	USlider* EffectVolumeSlider;
 	UPROPERTY(meta = (BindWidget))
+	UTextBlock* EffectVolumeText;
+	UPROPERTY(meta = (BindWidget))
 	USlider* MouseSensitivitySlider;
 	UPROPERTY(meta = (BindWidget))
+	UTextBlock* MouseSensitivityText;
+	UPROPERTY(meta = (BindWidget))
 	USlider* BrightnessSlider;
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* BrightnessText;
+
 	UPROPERTY(meta = (BindWidget))
 	UCheckBox* FullScreenCheckBox;
 	UPROPERTY(meta = (BindWidget))

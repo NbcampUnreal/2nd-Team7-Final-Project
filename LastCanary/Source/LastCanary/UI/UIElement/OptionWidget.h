@@ -25,6 +25,8 @@ private:
 	UButton* KeySettingTabButton;
 	UPROPERTY(meta = (BindWidget)) 
 	UButton* ApplyButton;
+	UPROPERTY(meta = (BindWidget)) 
+	UButton* CloseButton;
 
 	UPROPERTY(meta = (BindWidget))
 	UGeneralOptionWidget* GeneralOptionWidget;
@@ -32,6 +34,8 @@ private:
 
 	UFUNCTION()
 	void OnApplyButtonClicked();
+	UFUNCTION()
+	void OnCloseButtonClicked();
 
 	UFUNCTION()
 	void OnGeneralTabButtonClicked();
