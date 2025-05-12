@@ -1,132 +1,64 @@
 #include "UI/UIElement/OptionWidget.h"
-#include "Components/Slider.h"
-#include "Components/ComboBoxString.h"
-#include "Widgets/Input/SComboBox.h"
+#include "UI/UIObject/GeneralOptionWidget.h"
+
+#include "Components/WidgetSwitcher.h"
+#include "Components/Button.h"
+
+#include "Framework/GameInstance/LCOptionManager.h"
+
 #include "LastCanary.h"
-#include "UI/Manager/LCOptionManager.h"
 
 void UOptionWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
-	ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>();
-	if (OptionManager)
+	if (ApplyButton)
 	{
-		if (MasterVolumeSlider)
-		{
-			MasterVolumeSlider->SetValue(OptionManager->MasterVolume);
-		}
-		if (MouseSensitivitySlider)
-		{
-			MouseSensitivitySlider->SetValue(OptionManager->MouseSensitivity);
-		}
-		if (BrightnessSlider)
-		{
-			BrightnessSlider->SetValue(OptionManager->Brightness);
-		}
-		if (ResolutionComboBox)
-		{
-			ResolutionComboBox->ClearOptions();
-			ResolutionComboBox->AddOption(TEXT("1280x720"));
-			ResolutionComboBox->AddOption(TEXT("1600x900"));
-			ResolutionComboBox->AddOption(TEXT("1920x1080"));
-			ResolutionComboBox->SetSelectedIndex(OptionManager->ResolutionIndex);
-		}
+		ApplyButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnApplyButtonClicked);
 	}
-
-	if (MasterVolumeSlider)
+	if (CloseButton)
 	{
-		MasterVolumeSlider->OnValueChanged.AddUniqueDynamic(this, &UOptionWidget::OnVolumeChanged);
+		CloseButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnCloseButtonClicked);
 	}
-	if (MouseSensitivitySlider)
+	if (GeneralTabButton)
 	{
-		MouseSensitivitySlider->OnValueChanged.AddUniqueDynamic(this, &UOptionWidget::OnSensitivityChanged);
+		GeneralTabButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnGeneralTabButtonClicked);
 	}
-	if (BrightnessSlider)
+	if (OptionSwitcher)
 	{
-		BrightnessSlider->OnValueChanged.AddUniqueDynamic(this, &UOptionWidget::OnBrightnessChanged);
-	}
-	if (ResolutionComboBox)
-	{
-		ResolutionComboBox->OnSelectionChanged.AddUniqueDynamic(this, &UOptionWidget::OnResolutionChanged);
+		OptionSwitcher->SetActiveWidgetIndex(0);
 	}
 }
- 
+
 void UOptionWidget::NativeDestruct()
 {
 	Super::NativeDestruct();
-	if (MasterVolumeSlider)
+	if (GeneralTabButton)
 	{
-		MasterVolumeSlider->OnValueChanged.RemoveDynamic(this, &UOptionWidget::OnVolumeChanged);
-	}
-	if (MouseSensitivitySlider)
-	{
-		MouseSensitivitySlider->OnValueChanged.RemoveDynamic(this, &UOptionWidget::OnSensitivityChanged);
-	}
-	if (BrightnessSlider)
-	{
-		BrightnessSlider->OnValueChanged.RemoveDynamic(this, &UOptionWidget::OnBrightnessChanged);
-	}
-	if (ResolutionComboBox)
-	{
-		ResolutionComboBox->OnSelectionChanged.RemoveDynamic(this, &UOptionWidget::OnResolutionChanged);
+		GeneralTabButton->OnClicked.RemoveDynamic(this, &UOptionWidget::OnGeneralTabButtonClicked);
 	}
 }
 
-void UOptionWidget::OnVolumeChanged(float Value)
+void UOptionWidget::OnApplyButtonClicked()
 {
-	LOG_Frame_WARNING(TEXT("Volume Changed"));
-
 	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
 	{
-		OptionManager->MasterVolume = Value;
+		OptionManager->ApplyOptions();
 	}
 }
 
-void UOptionWidget::OnSensitivityChanged(float Value)
+void UOptionWidget::OnCloseButtonClicked()
 {
-	LOG_Frame_WARNING(TEXT("SenSitivity Changed"));
-
-	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
-	{
-		OptionManager->MouseSensitivity = Value;
-	}
+	RemoveFromParent();
 }
 
-void UOptionWidget::OnBrightnessChanged(float Value)
+void UOptionWidget::OnGeneralTabButtonClicked()
 {
-	LOG_Frame_WARNING(TEXT("Brightness Changed"));
-
-	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
+	if (OptionSwitcher)
 	{
-		OptionManager->Brightness = Value;
+		OptionSwitcher->SetActiveWidgetIndex(0);
+	}
+	else
+	{
+		LOG_Frame_ERROR(TEXT("General Option Widget is nullptr"));
 	}
 }
-
-void UOptionWidget::OnResolutionChanged(FString SelectedItem, ESelectInfo::Type SelectionType)
-{
-	LOG_Frame_WARNING(TEXT("Resolution Changed : %s"), *SelectedItem);
-
-	if (SelectionType != ESelectInfo::Direct && SelectionType != ESelectInfo::OnKeyPress && SelectionType != ESelectInfo::OnMouseClick)
-	{
-		return;
-	}
-
-	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
-	{
-		OptionManager->ResolutionIndex = ResolutionComboBox->FindOptionIndex(SelectedItem);
-
-		if (SelectedItem == "1280x720")
-		{
-			OptionManager->ScreenResolution = FIntPoint(1280, 720);
-		}
-		else if (SelectedItem == "1600x900")
-		{
-			OptionManager->ScreenResolution = FIntPoint(1600, 900);
-		}
-		else if (SelectedItem == "1920x1080")
-		{
-			OptionManager->ScreenResolution = FIntPoint(1920, 1080);
-		}
-	}
-}
-
