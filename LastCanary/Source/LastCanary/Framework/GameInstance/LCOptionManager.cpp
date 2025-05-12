@@ -1,7 +1,7 @@
 #include "LCOptionManager.h"
 #include "GameFramework/GameUserSettings.h"
+#include "Framework/GameInstance/LCOptionSettingAsset.h"
 #include "Kismet/GameplayStatics.h"
-
 #include "Engine/GameEngine.h"
 
 #include "LastCanary.h"
@@ -10,6 +10,14 @@ void ULCOptionManager::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
 	LOG_Frame_WARNING(TEXT("ULCOptionManager Initialized"));
+	if (SoundClassSettings)
+	{
+		AudioMix = SoundClassSettings->AudioMix;
+		MasterSoundClass = SoundClassSettings->MasterSoundClass;
+		BGMSoundClass = SoundClassSettings->BGMSoundClass;
+		EffectSoundClass = SoundClassSettings->EffectSoundClass;
+		VoiceSoundClass = SoundClassSettings->VoiceSoundClass;
+	}
 }
 
 void ULCOptionManager::Deinitialize()
@@ -53,6 +61,7 @@ void ULCOptionManager::ApplyAudio()
 	UGameplayStatics::SetSoundMixClassOverride(this, AudioMix, MasterSoundClass, MasterVolume);
 	UGameplayStatics::SetSoundMixClassOverride(this, AudioMix, BGMSoundClass, BGMVolume);
 	UGameplayStatics::SetSoundMixClassOverride(this, AudioMix, EffectSoundClass, EffectVolume);
+	UGameplayStatics::SetSoundMixClassOverride(this, AudioMix, VoiceSoundClass, VoiceVolume);
 
 	UGameplayStatics::PushSoundMixModifier(this, AudioMix);
 }

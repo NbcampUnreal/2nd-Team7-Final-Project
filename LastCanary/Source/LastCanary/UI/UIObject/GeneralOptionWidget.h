@@ -35,6 +35,10 @@ private:
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* EffectVolumeText;
 	UPROPERTY(meta = (BindWidget))
+	USlider* VoiceVolumeSlider;
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* VoiceVolumeText;
+	UPROPERTY(meta = (BindWidget))
 	USlider* MouseSensitivitySlider;
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* MouseSensitivityText;
@@ -55,6 +59,8 @@ public:
 	void OnBGMVolumeChanged(float Value);
 	UFUNCTION()
 	void OnEffectVolumeChanged(float Value);
+	UFUNCTION()
+	void OnVoiceVolumeChanged(float Value);
 	UFUNCTION()
 	void OnSensitivityChanged(float Value);
 	UFUNCTION()
