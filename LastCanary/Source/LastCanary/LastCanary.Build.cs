@@ -18,7 +18,9 @@ public class LastCanary : ModuleRules
             "NavigationSystem",
             "GamePlayTags", 
             "Slate",
-            "SlateCore"
+            "SlateCore",
+            "OnlineSubsystem", 
+            "OnlineSubsystemUtils"
         });
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
