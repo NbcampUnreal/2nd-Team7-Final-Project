@@ -11,7 +11,7 @@ struct FMapDataRow : public FTableRowBase
 	GENERATED_BODY()
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
-	int32 MapID;
+	int32 MapID = 0;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FMapInfo MapInfo;
 };
