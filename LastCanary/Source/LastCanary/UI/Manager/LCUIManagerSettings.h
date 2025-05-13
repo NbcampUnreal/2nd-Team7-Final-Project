@@ -11,6 +11,8 @@ class UTitleMenu;
 class ULobbyMenu;
 class URoomListEntry;
 class UEnterPasswordWidget;
+class UOptionWidget;
+class UInGameHUD;
 UCLASS(BlueprintType)
 class LASTCANARY_API ULCUIManagerSettings : public UDataAsset
 {
@@ -25,4 +27,8 @@ public:
 	TSubclassOf<URoomListEntry> RoomListEntryClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UEnterPasswordWidget> EnterPasswordWidgetClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UOptionWidget> OptionWidgetClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UInGameHUD> InGameHUDClass;
 };
