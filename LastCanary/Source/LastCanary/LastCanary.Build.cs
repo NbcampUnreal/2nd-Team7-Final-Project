@@ -18,10 +18,11 @@ public class LastCanary : ModuleRules
             "NavigationSystem",
             "GamePlayTags", 
             "Slate",
-            "SlateCore"
+            "SlateCore", 
+            "ALSCamera"
         });
 
-		PrivateDependencyModuleNames.AddRange(new string[] {  });
+        PrivateDependencyModuleNames.AddRange(new string[] {  });
 
         PublicIncludePaths.AddRange(new string[] { "LastCanary" });
 
