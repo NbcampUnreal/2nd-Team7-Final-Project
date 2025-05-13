@@ -2,6 +2,9 @@
 #include "Components/Button.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "UI/Manager/LCUIManager.h"
+#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+
+#include "LastCanary.h"
 
 void UTitleMenu::NativeConstruct()
 {
@@ -43,9 +46,7 @@ FReply UTitleMenu::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent&
 	{
 		PlayAnimation(EnterAnimation);
 		bHasActivated = true;
-		UE_LOG(LogTemp, Warning, TEXT("KeyDown"));
 	}
-
 	return FReply::Handled();
 }
 
@@ -61,12 +62,16 @@ FReply UTitleMenu::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FP
 
 void UTitleMenu::OnStartButtonClicked()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Start Button Clicked"));
+	ULCGameInstanceSubsystem* LCGameInstanceSubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
+	int32 LevelID = GetTypeHash(FName(TEXT("LobbyMenu")));
+	LCGameInstanceSubsystem->ChangeLevelByMapID(LevelID);
 }
 
 void UTitleMenu::OnOptionButtonClicked()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Option Button Clicked"));
+	LOG_Frame_WARNING(TEXT("Option Button Clicked"));
+	ULCUIManager* UIManager = ResolveUIManager();
+	UIManager->ShowOptionPopup();
 }
 
 void UTitleMenu::OnExitButtonClicked()

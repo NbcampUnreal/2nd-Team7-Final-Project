@@ -1,68 +1,64 @@
 #include "UI/UIElement/OptionWidget.h"
-#include "Components/Slider.h"
-#include "Components/ComboBoxString.h"
-#include "Widgets/Input/SComboBox.h"
+#include "UI/UIObject/GeneralOptionWidget.h"
+
+#include "Components/WidgetSwitcher.h"
+#include "Components/Button.h"
+
+#include "Framework/GameInstance/LCOptionManager.h"
+
 #include "LastCanary.h"
 
 void UOptionWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
-	if (MasterVolumeSlider)
+	if (ApplyButton)
 	{
-		MasterVolumeSlider->OnValueChanged.AddUniqueDynamic(this, &UOptionWidget::OnVolumeChanged);
+		ApplyButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnApplyButtonClicked);
 	}
-	if (MouseSensitivitySlider)
+	if (CloseButton)
 	{
-		MouseSensitivitySlider->OnValueChanged.AddUniqueDynamic(this, &UOptionWidget::OnSensitivityChanged);
+		CloseButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnCloseButtonClicked);
 	}
-	if (BrightnessSlider)
+	if (GeneralTabButton)
 	{
-		BrightnessSlider->OnValueChanged.AddUniqueDynamic(this, &UOptionWidget::OnBrightnessChanged);
+		GeneralTabButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnGeneralTabButtonClicked);
 	}
-	if (ResolutionComboBox)
+	if (OptionSwitcher)
 	{
-		ResolutionComboBox->OnSelectionChanged.AddUniqueDynamic(this, &UOptionWidget::OnResolutionChanged);
+		OptionSwitcher->SetActiveWidgetIndex(0);
 	}
 }
 
 void UOptionWidget::NativeDestruct()
 {
 	Super::NativeDestruct();
-	if (MasterVolumeSlider)
+	if (GeneralTabButton)
 	{
-		MasterVolumeSlider->OnValueChanged.RemoveDynamic(this, &UOptionWidget::OnVolumeChanged);
-	}
-	if (MouseSensitivitySlider)
-	{
-		MouseSensitivitySlider->OnValueChanged.RemoveDynamic(this, &UOptionWidget::OnSensitivityChanged);
-	}
-	if (BrightnessSlider)
-	{
-		BrightnessSlider->OnValueChanged.RemoveDynamic(this, &UOptionWidget::OnBrightnessChanged);
-	}
-	if (ResolutionComboBox)
-	{
-		ResolutionComboBox->OnSelectionChanged.RemoveDynamic(this, &UOptionWidget::OnResolutionChanged);
+		GeneralTabButton->OnClicked.RemoveDynamic(this, &UOptionWidget::OnGeneralTabButtonClicked);
 	}
 }
 
-void UOptionWidget::OnVolumeChanged(float Value)
+void UOptionWidget::OnApplyButtonClicked()
 {
-	LOG_Frame_WARNING(TEXT("Volume Changed"));
+	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
+	{
+		OptionManager->ApplyOptions();
+	}
 }
 
-void UOptionWidget::OnSensitivityChanged(float Value)
+void UOptionWidget::OnCloseButtonClicked()
 {
-	LOG_Frame_WARNING(TEXT("SenSitivity Changed"));
+	RemoveFromParent();
 }
 
-void UOptionWidget::OnBrightnessChanged(float Value)
+void UOptionWidget::OnGeneralTabButtonClicked()
 {
-	LOG_Frame_WARNING(TEXT("Brightness Changed"));
+	if (OptionSwitcher)
+	{
+		OptionSwitcher->SetActiveWidgetIndex(0);
+	}
+	else
+	{
+		LOG_Frame_ERROR(TEXT("General Option Widget is nullptr"));
+	}
 }
-
-void UOptionWidget::OnResolutionChanged(FString SelectedItem, ESelectInfo::Type SelectionType)
-{
-	LOG_Frame_WARNING(TEXT("Resolution Changed"));
-}
-
