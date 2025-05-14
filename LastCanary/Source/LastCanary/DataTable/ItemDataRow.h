@@ -22,4 +22,8 @@ struct FItemDataRow : public FTableRowBase
 	int32 ItemPrice = 0;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FText ItemDescription = FText::FromString(TEXT(""));
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bSellInShop = true;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bCanBuy = true;
 };

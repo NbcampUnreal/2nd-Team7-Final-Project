@@ -3,36 +3,41 @@
 #include "CoreMinimal.h"
 #include "UI/LCUserWidgetBase.h"
 #include "DataTable/ItemDataRow.h"
-#include "ShopItemEntry.generated.h"
+#include "ShoppingCartEntry.generated.h"
+
 /**
  * 
  */
 class UImage;
 class UTextBlock;
-class UButton;
 UCLASS()
-class LASTCANARY_API UShopItemEntry : public ULCUserWidgetBase
+class LASTCANARY_API UShoppingCartEntry : public ULCUserWidgetBase
 {
 	GENERATED_BODY()
+
+public:
+	void InitCartEntry(const FItemDataRow& InItemData, int32 InQuantity);
+	void UpdateQuantity(int32 NewQuantity);
+	int32 GetQuantity() const { return Quantity; }
+
+	const FItemDataRow& GetItemData() const { return ItemData; }
 
 protected:
 	virtual void NativeConstruct() override;
 
-	UFUNCTION()
-	void OnSelectButtonClicked();
-
 	UPROPERTY(meta = (BindWidget))
 	UImage* ItemIcon;
+
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* ItemNameText;
+
 	UPROPERTY(meta = (BindWidget))
-	UTextBlock* ItemPriceText;
+	UTextBlock* QuantityText;
+
 	UPROPERTY(meta = (BindWidget))
-	UButton* SelectButton;
-	
-public:
-	void InitItem(const FItemDataRow& InItemData);
+	UTextBlock* TotalPriceText;
 
 private:
 	FItemDataRow ItemData;
+	int32 Quantity = 1;
 };
