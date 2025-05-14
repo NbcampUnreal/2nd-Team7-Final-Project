@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "DataTable/MapDataRow.h"
+#include "DataTable/ItemDataRow.h"
 #include "LCGameInstanceSubsystem.generated.h"
 
 /**
@@ -24,6 +25,8 @@ protected:
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Map Data")
 	TObjectPtr<UDataTable> MapDataTable;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Data")
+	TObjectPtr<UDataTable> ItemDataTable;
 
 	ULCUIManager* GetUIManager() const;
 	void ChangeLevelByMapName(const FName& MapName);

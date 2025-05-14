@@ -4,35 +4,40 @@
 #include "UI/LCUserWidgetBase.h"
 #include "OptionWidget.generated.h"
 
-class USlider;
-class UComboBoxString;
-
+class UWidgetSwitcher;
+class UButton;
+class UGeneralOptionWidget;
 UCLASS()
 class LASTCANARY_API UOptionWidget : public ULCUserWidgetBase
 {
 	GENERATED_BODY()
 	
-
 protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
 
 private:
+	UPROPERTY(meta = (BindWidget)) 
+	UWidgetSwitcher* OptionSwitcher;
+	UPROPERTY(meta = (BindWidget)) 
+	UButton* GeneralTabButton;
+	UPROPERTY(meta = (BindWidget)) 
+	UButton* KeySettingTabButton;
+	UPROPERTY(meta = (BindWidget)) 
+	UButton* ApplyButton;
+	UPROPERTY(meta = (BindWidget)) 
+	UButton* CloseButton;
+
 	UPROPERTY(meta = (BindWidget))
-	USlider* MasterVolumeSlider;
-	UPROPERTY(meta = (BindWidget))
-	USlider* MouseSensitivitySlider;
-	UPROPERTY(meta = (BindWidget))
-	USlider* BrightnessSlider;
-	UPROPERTY(meta = (BindWidget))
-	UComboBoxString* ResolutionComboBox;
+	UGeneralOptionWidget* GeneralOptionWidget;
+	
 
 	UFUNCTION()
-	void OnVolumeChanged(float Value);
+	void OnApplyButtonClicked();
 	UFUNCTION()
-	void OnSensitivityChanged(float Value);
+	void OnCloseButtonClicked();
+
 	UFUNCTION()
-	void OnBrightnessChanged(float Value);
-	UFUNCTION()
-	void OnResolutionChanged(FString SelectedItem, ESelectInfo::Type SelectionType);
+	void OnGeneralTabButtonClicked();
 };
+

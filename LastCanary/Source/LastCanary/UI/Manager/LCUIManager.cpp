@@ -89,10 +89,23 @@ void ULCUIManager::ShowEnterPasswordWidget(const FString& RoomID)
 	SwitchToWidget(CachedEnterPasswordWidget);
 }
 
-void ULCUIManager::ShowOptionWidget()
+void ULCUIManager::ShowOptionPopup()
 {
-	LOG_Frame_WARNING(TEXT("ShowOptionWidget"));
-	SwitchToWidget(CachedOptionWidget);
+	LOG_Frame_WARNING(TEXT("ShowOptionPopup"));
+
+	if (CachedOptionWidget && CachedOptionWidget->IsInViewport() == false)
+	{
+		CachedOptionWidget->AddToViewport(1); 
+	}
+
+	if (OwningPlayer)
+	{
+		FInputModeUIOnly InputMode;
+		InputMode.SetWidgetToFocus(CachedOptionWidget->TakeWidget()); 
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		OwningPlayer->SetInputMode(InputMode);
+		OwningPlayer->bShowMouseCursor = true;
+	}
 }
 
 void ULCUIManager::ShowInGameHUD()
