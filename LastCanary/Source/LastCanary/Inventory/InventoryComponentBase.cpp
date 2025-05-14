@@ -2,6 +2,8 @@
 
 
 #include "Inventory/InventoryComponentBase.h"
+#include "DataType/InventoryItemData.h"
+
 
 // Sets default values for this component's properties
 UInventoryComponentBase::UInventoryComponentBase()
