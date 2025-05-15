@@ -19,7 +19,7 @@ AShopInteractor::AShopInteractor()
 	SetRootComponent(Mesh);
 
 	ShopWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("ShopWidgetComponent"));
-	ShopWidgetComponent->SetupAttachment(Mesh);
+	ShopWidgetComponent->SetupAttachment(RootComponent);
 	ShopWidgetComponent->SetWidgetSpace(EWidgetSpace::World);
 	ShopWidgetComponent->SetDrawSize(FVector2D(800, 600));
 	ShopWidgetComponent->SetVisibility(false);
@@ -65,7 +65,6 @@ void AShopInteractor::Interact_Implementation(APlayerController* Interactor)
 						UIManager->SetLastShopInteractor(this); 
 						UIManager->ShowShopPopup();
 					}
-
 				}
 			}
 		});

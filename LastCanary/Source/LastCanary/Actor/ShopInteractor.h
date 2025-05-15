@@ -18,7 +18,7 @@ public:
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* Mesh;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UWidgetComponent* ShopWidgetComponent;
 
 	UPROPERTY(EditAnywhere)
@@ -26,11 +26,10 @@ protected:
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<UUserWidget> ShopWidgetClass;
 
-
 	virtual void BeginPlay() override;
 
 public:
 	virtual void Interact_Implementation(APlayerController* Interactor) override;
-	
+
 	UWidgetComponent* GetShopWidgetComponent() const;
 };
