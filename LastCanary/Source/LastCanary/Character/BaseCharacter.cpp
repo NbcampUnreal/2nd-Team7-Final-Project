@@ -162,3 +162,37 @@ void ABaseCharacter::Handle_SwitchShoulder()
 {
 	Camera->SetRightShoulder(!Camera->IsRightShoulder());
 }
+
+
+
+
+
+void ABaseCharacter::SetBackpackInventoryComponent(UBackpackInventoryComponent* BackpackInvenComp, bool bEquip)
+{
+	if (bEquip)
+	{
+		BackpackInventoryComponent = BackpackInvenComp;
+	}
+	else
+	{
+		BackpackInventoryComponent = nullptr;
+	}
+}
+
+// 게임 플레이 태그 관련 함수
+const FGameplayTagContainer& ABaseCharacter::GetEquippedTags() const
+{
+	return EquippedTags;
+}
+
+void ABaseCharacter::SetEquippedTags(const FGameplayTag& Tag, bool bEquip)
+{
+	if (bEquip)
+	{
+		EquippedTags.AddTag(Tag);
+	}
+	else
+	{
+		EquippedTags.RemoveTag(Tag);
+	}
+}

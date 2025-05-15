@@ -14,4 +14,14 @@ class LASTCANARY_API UBackpackInventoryComponent : public UInventoryComponentBas
 {
 	GENERATED_BODY()
 	
+public:
+	UBackpackInventoryComponent();
+
+protected:
+	bool CanAddItem(AItemBase* ItemActor) override;
+	bool TryStoreItem(AItemBase* ItemActor) override;
+	void PostAddProcess() override;
+
+
+
 };

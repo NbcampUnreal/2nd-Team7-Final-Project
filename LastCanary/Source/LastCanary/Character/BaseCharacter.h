@@ -12,6 +12,8 @@ class UAlsCameraComponent;
 class UInputMappingContext;
 class UInputAction;
 
+class UToolbarInventoryComponent;
+class UBackpackInventoryComponent;
 
 UCLASS()
 class LASTCANARY_API ABaseCharacter : public AAlsCharacter
@@ -85,4 +87,30 @@ public:
 
 	virtual void Handle_SwitchShoulder();
 
+
+	// 인벤토리 컴포넌트
+private:
+	UPROPERTY(VisibleAnywhere, Category = "Inventory")
+	UToolbarInventoryComponent* ToolbarInventoryComponent;
+
+	UPROPERTY(VisibleAnywhere, Category = "Inventory")
+	UBackpackInventoryComponent* BackpackInventoryComponent;
+
+public:
+	// TODO : 인벤토리 컴포넌트와 상호작용하는 함수 추가 필요
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	void SetBackpackInventoryComponent(UBackpackInventoryComponent* BackpackInvenComp, bool bEquip);
+
+	// 게임 플레이 태그통한 장비 장비/해제 상태 부여 및 확인을 위해 추가한 부분입니다.
+private:
+	UPROPERTY()
+	FGameplayTagContainer EquippedTags;
+
+public:
+	UFUNCTION(BlueprintPure, Category = "Equipment")
+	const FGameplayTagContainer& GetEquippedTags() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Equipment")
+	void SetEquippedTags(const FGameplayTag& Tag, bool bEquip);
+	
 };

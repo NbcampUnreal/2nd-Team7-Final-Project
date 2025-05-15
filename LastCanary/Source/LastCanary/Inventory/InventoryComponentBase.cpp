@@ -47,7 +47,7 @@ void UInventoryComponentBase::BeginPlay()
 	ItemSlots.Reserve(MaxSlots);
 }
 
-bool UInventoryComponentBase::AddItem(FName ItemRowName, int32 Amount)
+bool UInventoryComponentBase::TryAddItemSlot(FName ItemRowName, int32 Amount)
 {
 	if (Amount <= 0)
 	{
@@ -111,11 +111,12 @@ bool UInventoryComponentBase::AddItem(FName ItemRowName, int32 Amount)
 	{
 		LOG_Item_WARNING(TEXT("[InventoryComponentBase::AddItem] 인벤토리 공간이 부족합니다."));
 		// TODO : 인벤토리가 가득 찼다는 내용의 UI 혹은 메시지를 넣어야할지도
+		// 함수 실행이전에 수량 판단이 존재하므로 해당 부분까지 온다면 그냥 오류라고 봐야할 것 같다.
 		return false;
 	}
 }
 
-bool UInventoryComponentBase::DecreaseItem(FName ItemRowName, int32 Amount)
+bool UInventoryComponentBase::TryDecreaseItem(FName ItemRowName, int32 Amount)
 {
 	if (Amount <= 0)
 	{
@@ -166,7 +167,7 @@ int32 UInventoryComponentBase::GetItemCount(FName ItemRowName) const
 	return TotalCount;
 }
 
-bool UInventoryComponentBase::SwapItemSlots(int32 FromIndex, int32 ToIndex)
+bool UInventoryComponentBase::TrySwapItemSlots(int32 FromIndex, int32 ToIndex)
 {
 	if (!ItemSlots.IsValidIndex(FromIndex) || !ItemSlots.IsValidIndex(ToIndex))
 	{
@@ -180,7 +181,7 @@ bool UInventoryComponentBase::SwapItemSlots(int32 FromIndex, int32 ToIndex)
 	return true;
 }
 
-bool UInventoryComponentBase::RemoveItemAtSlot(int32 SlotIndex)
+bool UInventoryComponentBase::TryRemoveItemAtSlot(int32 SlotIndex)
 {
 	if (!ItemSlots.IsValidIndex(SlotIndex))
 	{
@@ -198,17 +199,17 @@ bool UInventoryComponentBase::RemoveItemAtSlot(int32 SlotIndex)
 
 bool UInventoryComponentBase::TryAddItem(AItemBase* ItemActor)
 {
-	if (!PreAddCheck(ItemActor))
+	if (!CanAddItem(ItemActor))
 	{
 		return false;
 	}
 
-	if (!StoreItem(ItemActor))
+	if (!TryStoreItem(ItemActor))
 	{
 		return false;
 	}
 
-	PostAddProcess(ItemActor);
+	PostAddProcess();
 
 	return true;
 }

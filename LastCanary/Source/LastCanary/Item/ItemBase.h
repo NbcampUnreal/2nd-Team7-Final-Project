@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "DataTable/ItemDataRow.h"
 #include "ItemBase.generated.h"
 
 UCLASS()
@@ -22,5 +23,23 @@ protected:
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Item)
+    FName ItemRowName;
+
+    UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = Item, meta = (ShowOnlyInnerProperties))
+    FItemDataRow ItemData;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UDataTable* ItemDataTable;
+
+    UPROPERTY(VisibleAnywhere)
+    UStaticMeshComponent* MeshComponent;
+
+    UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+    class USphereComponent* SphereComponent;
+
+    UPROPERTY(BlueprintReadWrite)
+    bool bIsEquipped;
 
 };

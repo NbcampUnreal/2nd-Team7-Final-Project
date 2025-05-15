@@ -37,19 +37,19 @@ public:
     UDataTable* ItemDataTable;
 
     UFUNCTION(BlueprintCallable, Category = Inventory)
-    virtual bool AddItem(FName ItemRowName, int32 Amount);
+    virtual bool TryAddItemSlot(FName ItemRowName, int32 Amount);
 
     UFUNCTION(Blueprintcallable, Category = Inventory)
-    virtual bool DecreaseItem(FName ItemRowName, int32 Amount);
+    virtual bool TryDecreaseItem(FName ItemRowName, int32 Amount);
 
     UFUNCTION(Blueprintcallable, Category = Inventory)
     virtual int32 GetItemCount(FName ItemRowName) const;
 
     UFUNCTION(BlueprintCallable, Category = Inventory)
-    bool SwapItemSlots(int32 FromIndex, int32 ToIndex);
+    bool TrySwapItemSlots(int32 FromIndex, int32 ToIndex);
 
     UFUNCTION(Blueprintcallable, Category = Inventory)
-    bool RemoveItemAtSlot(int32 SlotIndex);
+    bool TryRemoveItemAtSlot(int32 SlotIndex);
 
     UFUNCTION(BlueprintCallable, Category = Inventory)
     bool TryAddItem(AItemBase* ItemActor);
@@ -60,7 +60,7 @@ public:
     void HideTooltip();
 
 protected:
-    virtual bool PreAddCheck(AItemBase* ItemActot) PURE_VIRTUAL(UInventoryComponentBase::PreAddCheck, return false;);
-    virtual bool StoreItem(AItemBase* ItemActor) PURE_VIRTUAL(UInventoryCompontnentBase::StoreItem, return false;);
-    virtual void PostAddProcess(AItemBase* ItemActor) PURE_VIRTUAL(UInventoryComponentBase::PostAddProcess, return;);
+    virtual bool CanAddItem(AItemBase* ItemActot) PURE_VIRTUAL(UInventoryComponentBase::PreAddCheck, return false;);
+    virtual bool TryStoreItem(AItemBase* ItemActor) PURE_VIRTUAL(UInventoryCompontnentBase::StoreItem, return false;);
+    virtual void PostAddProcess() PURE_VIRTUAL(UInventoryComponentBase::PostAddProcess, return;);
 };
