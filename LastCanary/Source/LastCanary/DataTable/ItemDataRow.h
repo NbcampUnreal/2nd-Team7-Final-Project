@@ -38,9 +38,6 @@ struct FItemDataRow : public FTableRowBase
 	bool bUsable;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UTexture2D* Icon;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FName AttachSocketName;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
