@@ -102,3 +102,18 @@ bool UInventorySlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FDrag
 
 	return false;
 }
+
+void UInventorySlotWidget::ShowTooltip()
+{
+	// TODO : UI 매니저에서 출력 지시
+}
+
+void UInventorySlotWidget::HideTooltip()
+{
+	// TODO : UI 매니저에서 종료 지시
+}
+
+void UInventorySlotWidget::OnUseButtonClicked()
+{
+	// TODO : 슬롯을 클릭했을 때 사용, 버리기, 취소 버튼 등이 나오도록 작동
+}

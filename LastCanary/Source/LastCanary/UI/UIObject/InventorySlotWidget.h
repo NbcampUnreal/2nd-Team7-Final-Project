@@ -50,6 +50,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	void HideTooltip();
 
+	UFUNCTION()
+	void OnUseButtonClicked();
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<UItemTooltipWidget> TooltipWidgetClass;
 
