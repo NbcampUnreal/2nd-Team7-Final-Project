@@ -1,5 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -21,22 +19,36 @@ private:
 	APawn* CachedPawn;  // Pawn을 저장할 멤버 변수
 
 	UEnhancedInputComponent* EnhancedInput;
-
+	UInputMappingContext* CurrentIMC;
 public:
 protected:
-	void ApplyInputMappingContext();
+	void ApplyInputMappingContext(UInputMappingContext* IMC);
 
-	void RemoveInputMappingContext();
+	void RemoveInputMappingContext(UInputMappingContext* IMC);
 
+	UFUNCTION(BlueprintCallable)
 	void OnPossess(APawn* InPawn);
 
+	UFUNCTION(BlueprintCallable)
 	void OnUnPossess();
+
+	UFUNCTION(BlueprintCallable)
+	APawn* GetMyPawn();
+
+	UFUNCTION(BlueprintCallable)
+	void SetMyPawn(APawn* NewPawn);
+
+	UFUNCTION(BlueprintCallable)
+	void ChangeInputMappingContext(UInputMappingContext* IMC);
 
 	virtual void BeginPlay() override;
 	void InitInputComponent();
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
 	TObjectPtr<UInputMappingContext> InputMappingContext;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
+	TObjectPtr<UInputMappingContext> DroneInputMappingContext;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
 	TObjectPtr<UInputAction> LookMouseAction;
@@ -77,6 +89,8 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
 	TObjectPtr<UInputAction> SwitchShoulderAction;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
+	TObjectPtr<UInputAction> InteractAction;
 
 	// ... 필요한 입력들 추가
 
@@ -106,4 +120,10 @@ private:
 	virtual void Input_OnViewMode();
 
 	virtual void Input_OnSwitchShoulder();
+
+	virtual void Input_OnInteract();
+
+public:
+	// 상호작용 가능한 액터 감지
+	AActor* TraceInteractable(float TraceDistance = 300.f);
 };
