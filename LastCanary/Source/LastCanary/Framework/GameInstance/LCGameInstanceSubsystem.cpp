@@ -9,7 +9,7 @@ void ULCGameInstanceSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
 
-	LCUIManager = NewObject<ULCUIManager>(GetGameInstance());
+	LCUIManager = NewObject<ULCUIManager>(this, ULCUIManager::StaticClass());
 	ULCGameInstance* GI = Cast<ULCGameInstance>(GetGameInstance());
 	if (GI)
 	{
