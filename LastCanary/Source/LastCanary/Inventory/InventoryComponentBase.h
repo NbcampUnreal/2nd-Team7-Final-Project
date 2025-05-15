@@ -1,16 +1,16 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "DataType/ItemSlot.h"
+#include "UI/UIObject/ItemTooltipWidget.h"
 #include "InventoryComponentBase.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInventoryUpdated);
 
-class FInventoryItemData;
+struct FInventoryItemData;
 class ULCUserWidgetBase;
+class UItemTooltipWidget;
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class LASTCANARY_API UInventoryComponentBase : public UActorComponent
@@ -18,11 +18,9 @@ class LASTCANARY_API UInventoryComponentBase : public UActorComponent
     GENERATED_BODY()
 
 public:
-    // Sets default values for this component's properties
     UInventoryComponentBase();
 
 protected:
-    // Called when the game starts
     virtual void BeginPlay() override;
 
 public:
@@ -38,46 +36,31 @@ public:
     UPROPERTY()
     UDataTable* ItemDataTable;
 
-    // 아이템 추가(수량 지정)
     UFUNCTION(BlueprintCallable, Category = Inventory)
     virtual bool AddItem(FName ItemRowName, int32 Amount);
 
-    // 아이템 제거(수량 지정)
-    UFUNCTION(BlueprintCallable, Category = Inventory)
-    virtual bool RemoveItem(FName ItemRowName, int32 Amount);
+    UFUNCTION(Blueprintcallable, Category = Inventory)
+    virtual bool DecreaseItem(FName ItemRowName, int32 Amount);
 
-    // 아이템 보유량 조회
-    UFUNCTION(BlueprintCallable, Category = Inventory)
+    UFUNCTION(Blueprintcallable, Category = Inventory)
     virtual int32 GetItemCount(FName ItemRowName) const;
 
-    // 인벤토리 슬롯끼리 아이템 스왑
     UFUNCTION(BlueprintCallable, Category = Inventory)
     bool SwapItemSlots(int32 FromIndex, int32 ToIndex);
 
-    // 아이템 제거
-    UFUNCTION(BlueprintCallable, Category = Inventory)
+    UFUNCTION(Blueprintcallable, Category = Inventory)
     bool RemoveItemAtSlot(int32 SlotIndex);
-
-    // 툴팁 위젯 관련
-    void ShowTooltipForItem(const FInventoryItemData& ItemData, ULCUserWidgetBase* TargetWidget);
-
-    void HideTooltip();
 
     UFUNCTION(BlueprintCallable, Category = Inventory)
     bool TryAddItem(AItemBase* ItemActor);
 
+    // 툴팁 함수들은 UI매니저에서 관리할 듯?(아마도 지워야할지도, 보류중)
+    void ShowTooltipForItem(const FInventoryItemData& ItemData, UWidget* TargetWidget);
+
+    void HideTooltip();
+
 protected:
-    virtual bool PreAddCheck(AItemBase* ItemActor) PURE_VIRTUAL(UBaseInventoryComponent::PreAddCheck, return false;);
-    virtual bool StoreItem(AItemBase * ItemActor) PURE_VIRTUAL(UBaseInventoryComponent::StoreItem, return false;);
-    virtual void PostAddProcess(AItemBase * ItemActor) PURE_VIRTUAL(UBaseInventoryComponent::PostAddProcess, return;);
-
-
-
-
-private:
-    UPROPERTY()
-    UItemTooltipWidget* TooltipWidget;
-
-    UPROPERTY(EditDefaultsOnly)
-    TSubclassOf<UItemTooltipWidget> TooltipWidgetClass;
+    virtual bool PreAddCheck(AItemBase* ItemActot) PURE_VIRTUAL(UInventoryComponentBase::PreAddCheck, return false;);
+    virtual bool StoreItem(AItemBase* ItemActor) PURE_VIRTUAL(UInventoryCompontnentBase::StoreItem, return false;);
+    virtual void PostAddProcess(AItemBase* ItemActor) PURE_VIRTUAL(UInventoryComponentBase::PostAddProcess, return;);
 };

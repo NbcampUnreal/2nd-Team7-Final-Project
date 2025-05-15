@@ -22,4 +22,8 @@ struct FItemDataRow : public FTableRowBase
 	int32 ItemPrice = 0;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FText ItemDescription = FText::FromString(TEXT(""));
+
+	// 추가로 넣은 부분(황주영)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 MaxStack;
 };
