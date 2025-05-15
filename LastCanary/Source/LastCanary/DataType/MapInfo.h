@@ -14,7 +14,7 @@ struct FMapInfo
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FName MapName;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FString MapPath;
+	FString MapPath = TEXT("");
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TSoftObjectPtr<UTexture2D> MapThumbnail;
+	TSoftObjectPtr<UTexture2D> MapThumbnail = nullptr;
 };
