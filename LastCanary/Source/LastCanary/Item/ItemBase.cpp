@@ -74,7 +74,6 @@ void AItemBase::BeginPlay()
 	ApplyItemDataFromTable();
 }
 
-#if WITH_EDITOR
 void AItemBase::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	ABaseCharacter* Player = Cast<ABaseCharacter>(OtherActor);
@@ -84,6 +83,7 @@ void AItemBase::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* Othe
 		// ShowPickUpPrompt(ture);
 	}
 }
+
 void AItemBase::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
 	ABaseCharacter* Player = Cast<ABaseCharacter>(OtherActor);
@@ -93,6 +93,7 @@ void AItemBase::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherA
 		// ShowPickUpPrompt(false);
 	}
 }
+
 void AItemBase::ApplyItemDataFromTable()
 {
 	if (!ItemDataTable)
@@ -102,9 +103,10 @@ void AItemBase::ApplyItemDataFromTable()
 	}
 
 	FItemDataRow* Found = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("ApplyItemDataFromTable"));
-	if (Found)
+	if (!Found)
 	{
 		LOG_Item_WARNING(TEXT("[InventoryComponentBase::ApplyItemDataFromTable] ItemData is null!"));
+		return;
 	}
 
 	ItemData = *Found;
@@ -127,6 +129,7 @@ bool AItemBase::IsCollectible() const
 	return false;
 }
 
+#if WITH_EDITOR
 void AItemBase::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);

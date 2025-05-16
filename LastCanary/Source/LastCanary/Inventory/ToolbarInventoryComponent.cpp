@@ -90,6 +90,23 @@ bool UToolbarInventoryComponent::TryStoreItem(AItemBase* ItemActor)
     }
 
     const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(ItemActor->ItemRowName, TEXT("TryStoreItem"));
+    UE_LOG(LogTemp, Warning, TEXT("[ToolbarInventoryComponent::TryStoreItem] ItemRowName: %s"), *ItemActor->ItemRowName.ToString());
+    TArray<FName> RowNames = ItemDataTable->GetRowNames();
+    for (const FName& Name : RowNames)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[ToolbarInventoryComponent] DataTable Row: %s"), *Name.ToString());
+    }
+    for (const FName& Name : ItemDataTable->GetRowNames())
+    {
+        if (Name == ItemActor->ItemRowName)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("직접 비교: 일치! RowName: [%s]"), *Name.ToString());
+        }
+        else
+        {
+            UE_LOG(LogTemp, Warning, TEXT("직접 비교: 불일치. [%s] vs [%s]"), *Name.ToString(), *ItemActor->ItemRowName.ToString());
+        }
+    }
     if (!ItemData)
     {
         LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::TryStoreItem] ItemData is null!"));
@@ -111,7 +128,7 @@ bool UToolbarInventoryComponent::TryStoreItem(AItemBase* ItemActor)
     FName Socket = ItemData->AttachSocketName;
     if (Socket.IsNone())
     {
-        LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::TryStoreItem] ItemData is null!"));
+        LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::TryStoreItem] Socket is null!"));
         return false;
     }
 
