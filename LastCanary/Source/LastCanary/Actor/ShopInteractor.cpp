@@ -22,7 +22,7 @@ AShopInteractor::AShopInteractor()
 	ShopWidgetComponent->SetupAttachment(RootComponent);
 	ShopWidgetComponent->SetWidgetSpace(EWidgetSpace::World);
 	ShopWidgetComponent->SetDrawSize(FVector2D(800, 600));
-	ShopWidgetComponent->SetVisibility(false);
+	ShopWidgetComponent->SetVisibility(true);
 }
 
 void AShopInteractor::BeginPlay()
@@ -50,7 +50,7 @@ void AShopInteractor::Interact_Implementation(APlayerController* Interactor)
 		return;
 	}
 
-	Interactor->SetViewTargetWithBlend(ShopCamera, 1.2f);
+	Interactor->SetViewTargetWithBlend(ShopCamera, 0.5f);
 
 	FTimerHandle TimerHandle;
 	FTimerDelegate TimerDel;
@@ -64,6 +64,8 @@ void AShopInteractor::Interact_Implementation(APlayerController* Interactor)
 					{
 						UIManager->SetLastShopInteractor(this); 
 						UIManager->ShowShopPopup();
+
+						ShopWidgetComponent->SetVisibility(false);
 					}
 				}
 			}
@@ -72,7 +74,7 @@ void AShopInteractor::Interact_Implementation(APlayerController* Interactor)
 	GetWorld()->GetTimerManager().SetTimer(
 		TimerHandle, 
 		TimerDel,
-		1.2f, 
+		0.5f, 
 		false);
 }
 

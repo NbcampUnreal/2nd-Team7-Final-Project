@@ -120,22 +120,27 @@ void ULCUIManager::ShowShopPopup()
 {
 	LOG_Frame_WARNING(TEXT("ShowShopPopup"));
 
-	if (LastShopInteractor && LastShopInteractor->IsValidLowLevel())
+	if (!ShopWidgetClass)
 	{
-		LastShopInteractor->GetShopWidgetComponent()->SetVisibility(true);
+		UE_LOG(LogTemp, Warning, TEXT("ShopWidgetClass is null"));
+		return;
+	}
 
-		if (OwningPlayer)
+	if (!CachedShopWidget)
+	{
+		CachedShopWidget = CreateWidget<UShopWidget>(OwningPlayer, ShopWidgetClass);
+	}
+
+	if (CachedShopWidget && !CachedShopWidget->IsInViewport())
+	{
+		CachedShopWidget->AddToViewport();
+
+		OwningPlayer->SetInputMode(FInputModeUIOnly());
+		OwningPlayer->bShowMouseCursor = true;
+
+		if (LastShopInteractor && LastShopInteractor->GetShopWidgetComponent())
 		{
-			// 필요시 캐릭터 입력 차단
-			if (APawn* Pawn = OwningPlayer->GetPawn())
-			{
-				Pawn->DisableInput(OwningPlayer);
-			}
-
-			FInputModeUIOnly InputMode;
-			InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-			OwningPlayer->SetInputMode(InputMode);
-			OwningPlayer->bShowMouseCursor = true;
+			LastShopInteractor->GetShopWidgetComponent()->SetVisibility(false);
 		}
 	}
 }
@@ -144,21 +149,25 @@ void ULCUIManager::HideShopPopup()
 {
 	LOG_Frame_WARNING(TEXT("HideShopPopup"));
 
-	if (LastShopInteractor && LastShopInteractor->GetShopWidgetComponent())
+	if (CachedShopWidget && CachedShopWidget->IsInViewport())
 	{
-		LastShopInteractor->GetShopWidgetComponent()->SetVisibility(false);
+		CachedShopWidget->RemoveFromParent();
 	}
 
-	if (OwningPlayer)
-	{
-		if (APawn* Pawn = OwningPlayer->GetPawn())
-		{
-			Pawn->EnableInput(OwningPlayer);
-		}
+	OwningPlayer->SetInputMode(FInputModeGameOnly());
+	OwningPlayer->bShowMouseCursor = false;
 
-		OwningPlayer->SetViewTargetWithBlend(OwningPlayer->GetPawn(), 1.0f);
-		OwningPlayer->SetInputMode(FInputModeGameOnly());
-		OwningPlayer->bShowMouseCursor = false;
+	if (APawn* ControlledPawn = OwningPlayer->GetPawn())
+	{
+		OwningPlayer->SetViewTargetWithBlend(ControlledPawn, 0.5f);
+	}
+
+	if (LastShopInteractor)
+	{
+		if (LastShopInteractor->GetShopWidgetComponent())
+		{
+			LastShopInteractor->GetShopWidgetComponent()->SetVisibility(true);
+		}
 	}
 }
 

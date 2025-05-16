@@ -3,6 +3,8 @@
 #include "Components/ScrollBox.h"
 #include "Components/Button.h"
 
+#include "UI/Manager/LCUIManager.h"
+
 #include "LastCanary.h"
 
 void UShopWidget::NativeConstruct()
@@ -12,7 +14,14 @@ void UShopWidget::NativeConstruct()
 	{
 		PurchaseButton->OnClicked.AddUniqueDynamic(this, &UShopWidget::OnPurchaseButtonClicked);
 	}
-
+	if (ExitButton)
+	{
+		ExitButton->OnClicked.AddUniqueDynamic(this, &UShopWidget::OnExitButtonClicked);
+	}
+	if (ShopFadeAnim)
+	{
+		PlayAnimation(ShopFadeAnim, 0.0f, 1);  
+	}
 	PopulateShopItems();
 }
 
@@ -53,4 +62,14 @@ void UShopWidget::HandleItemClicked(const FItemDataRow& ClickedItem)
 void UShopWidget::OnPurchaseButtonClicked()
 {
 	LOG_Frame_WARNING(TEXT("OnPurchaseButtonClicked"));
+}
+
+void UShopWidget::OnExitButtonClicked()
+{
+	LOG_Frame_WARNING(TEXT("OnExitButtonClicked"));
+	ULCUIManager* UIManager = ResolveUIManager();
+	if (UIManager)
+	{
+		UIManager->HideShopPopup();
+	}
 }

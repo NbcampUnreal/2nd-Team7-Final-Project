@@ -26,8 +26,12 @@ protected:
 	UDataTable* ItemDataTable;
 	UPROPERTY(EditDefaultsOnly, Category = "Shop")
 	TSubclassOf<UShopItemEntry> ShopItemEntryClass;
-	UPROPERTY(EditDefaultsOnly, Category = "Shop")
+	UPROPERTY(meta = (BindWidget))
 	UButton* PurchaseButton;
+	UPROPERTY(meta = (BindWidget))
+	UButton* ExitButton;
+	UPROPERTY(meta = (BindWidgetAnim), Transient)
+	UWidgetAnimation* ShopFadeAnim;
 
 	void PopulateShopItems();
 
@@ -35,4 +39,7 @@ protected:
 	void HandleItemClicked(const FItemDataRow& ClickedItem);
 	UFUNCTION()
 	void OnPurchaseButtonClicked();
+	UFUNCTION()
+	void OnExitButtonClicked();
+
 };
