@@ -116,7 +116,7 @@ void ULCUIManager::ShowOptionPopup()
 	}
 }
 
-void ULCUIManager::ShowShopPopup()
+void ULCUIManager::ShowShopPopup() 
 {
 	LOG_Frame_WARNING(TEXT("ShowShopPopup"));
 

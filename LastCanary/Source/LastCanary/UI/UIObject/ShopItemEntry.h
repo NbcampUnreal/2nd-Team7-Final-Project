@@ -10,6 +10,9 @@
 class UImage;
 class UTextBlock;
 class UButton;
+
+DECLARE_DELEGATE_OneParam(FOnShopItemClicked, const FItemDataRow&)
+
 UCLASS()
 class LASTCANARY_API UShopItemEntry : public ULCUserWidgetBase
 {
@@ -33,6 +36,9 @@ protected:
 public:
 	void InitItem(const FItemDataRow& InItemData);
 
+	FOnShopItemClicked OnItemClicked;
+
 private:
+	UPROPERTY()
 	FItemDataRow ItemData;
 };

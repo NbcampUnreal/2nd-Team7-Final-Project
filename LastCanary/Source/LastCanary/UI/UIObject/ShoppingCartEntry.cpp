@@ -38,3 +38,13 @@ void UShoppingCartEntry::UpdateQuantity(int32 NewQuantity)
 		TotalPriceText->SetText(FText::AsNumber(Total));
 	}
 }
+
+int32 UShoppingCartEntry::GetQuantity() const
+{
+	return Quantity;
+}
+
+int32 UShoppingCartEntry::GetItemPrice() const
+{
+	return ItemData.ItemPrice;
+}

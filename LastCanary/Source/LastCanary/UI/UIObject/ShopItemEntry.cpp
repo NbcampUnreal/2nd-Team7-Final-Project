@@ -36,5 +36,10 @@ void UShopItemEntry::NativeConstruct()
 
 void UShopItemEntry::OnSelectButtonClicked()
 {
-	LOG_Frame_WARNING(TEXT("TODO : ShopItemInfoWidget에정보출력"));
+	LOG_Frame_WARNING(TEXT("ShopItemEntry Clicked: %s"), *ItemData.ItemName.ToString());
+
+	if (OnItemClicked.IsBound())
+	{
+		OnItemClicked.Execute(ItemData);
+	}
 }

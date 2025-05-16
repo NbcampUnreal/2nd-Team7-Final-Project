@@ -2,10 +2,16 @@
 #include "UI/UIObject/ShoppingCartEntry.h"
 
 #include "Components/ScrollBox.h"
+#include "Components/TextBlock.h"
 
 void UShoppingCartWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+}
+
+void UShoppingCartWidget::NativeDestruct()
+{
+	Super::NativeDestruct();
 }
 
 void UShoppingCartWidget::AddItemToCart(const FItemDataRow& ItemData, int32 Quantity)
@@ -33,5 +39,26 @@ void UShoppingCartWidget::AddItemToCart(const FItemDataRow& ItemData, int32 Quan
 		NewEntry->InitCartEntry(ItemData, Quantity);
 		CartItemBox->AddChild(NewEntry);
 		CartEntries.Add(ItemData.ItemID, NewEntry);
+	}
+
+	RecalculateTotalPrice();
+}
+
+void UShoppingCartWidget::RecalculateTotalPrice()
+{
+	int32 Total = 0;
+
+	for (const auto& Entry : CartEntries)
+	{
+		if (Entry.Value)
+		{
+			Total += Entry.Value->GetQuantity() * Entry.Value->GetItemPrice(); 
+		}
+	}
+
+	if (TotalPriceText)
+	{
+		FString TotalText = FString::Printf(TEXT("총 가격: %d"), Total);
+		TotalPriceText->SetText(FText::FromString(TotalText));
 	}
 }

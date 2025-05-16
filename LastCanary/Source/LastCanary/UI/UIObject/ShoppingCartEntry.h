@@ -18,7 +18,9 @@ class LASTCANARY_API UShoppingCartEntry : public ULCUserWidgetBase
 public:
 	void InitCartEntry(const FItemDataRow& InItemData, int32 InQuantity);
 	void UpdateQuantity(int32 NewQuantity);
-	int32 GetQuantity() const { return Quantity; }
+
+	int32 GetQuantity() const;
+	int32 GetItemPrice() const;
 
 	const FItemDataRow& GetItemData() const { return ItemData; }
 

@@ -1,9 +1,10 @@
 #include "UI/UIElement/ShopWidget.h"
 #include "UI/UIObject/ShopItemEntry.h"
+#include "UI/UIObject/ShopItemInfoWidget.h"
+#include "UI/Manager/LCUIManager.h"
+
 #include "Components/ScrollBox.h"
 #include "Components/Button.h"
-
-#include "UI/Manager/LCUIManager.h"
 
 #include "LastCanary.h"
 
@@ -18,11 +19,32 @@ void UShopWidget::NativeConstruct()
 	{
 		ExitButton->OnClicked.AddUniqueDynamic(this, &UShopWidget::OnExitButtonClicked);
 	}
+	if (ItemInfoWidget && ShoppingCartWidget)
+	{
+		ItemInfoWidget->SetShoppingCartWidget(ShoppingCartWidget);
+	}
 	if (ShopFadeAnim)
 	{
-		PlayAnimation(ShopFadeAnim, 0.0f, 1);  
+		PlayAnimation(ShopFadeAnim, 0.0f, 1);
 	}
 	PopulateShopItems();
+}
+
+void UShopWidget::NativeDestruct()
+{
+	Super::NativeDestruct();
+	if (PurchaseButton)
+	{
+		PurchaseButton->OnClicked.RemoveDynamic(this, &UShopWidget::OnPurchaseButtonClicked);
+	}
+	if (ExitButton)
+	{
+		ExitButton->OnClicked.RemoveDynamic(this, &UShopWidget::OnExitButtonClicked);
+	}
+	if (ShopFadeAnim)
+	{
+		PlayAnimation(ShopFadeAnim, 0.0f, 1);
+	}
 }
 
 void UShopWidget::PopulateShopItems()
@@ -48,7 +70,10 @@ void UShopWidget::PopulateShopItems()
 			if (ItemEntry)
 			{
 				ItemEntry->InitItem(*ItemData);
+				ItemEntry->OnItemClicked.BindUObject(this, &UShopWidget::HandleItemClicked);
 				ItemListBox->AddChild(ItemEntry);
+
+				LOG_Frame_WARNING(TEXT("Shop item bound: %s"), *ItemData->ItemName.ToString());
 			}
 		}
 	}
@@ -56,7 +81,21 @@ void UShopWidget::PopulateShopItems()
 
 void UShopWidget::HandleItemClicked(const FItemDataRow& ClickedItem)
 {
-	LOG_Frame_WARNING(TEXT("Clicked Item: %s"), *ClickedItem.ItemName.ToString());
+	LOG_Frame_WARNING(TEXT("HandleItemClicked called: %s"), *ClickedItem.ItemName.ToString());
+
+	if (ItemInfoWidget == nullptr)
+	{
+		LOG_Frame_WARNING(TEXT("ItemInfoWidget is null"));
+		return;
+	}
+	if (ItemDataTable== nullptr)
+	{
+		LOG_Frame_WARNING(TEXT("ItemDataTable is null"));
+		return;
+	}
+
+	ItemInfoWidget->ItemDataTable = ItemDataTable;
+	ItemInfoWidget->LoadItemFromDataTable(ClickedItem.ItemID);
 }
 
 void UShopWidget::OnPurchaseButtonClicked()
