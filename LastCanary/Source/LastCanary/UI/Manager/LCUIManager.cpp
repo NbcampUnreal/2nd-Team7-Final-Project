@@ -6,6 +6,7 @@
 #include "UI/UIElement/EnterPasswordWidget.h"
 #include "UI/UIElement/OptionWidget.h"
 #include "UI/UIElement/InGameHUD.h"
+#include "UI/UIObject/ConfirmPopup.h"
 
 #include "Framework/PlayerController/LCLobbyPlayerController.h"
 
@@ -105,6 +106,44 @@ void ULCUIManager::ShowOptionPopup()
 		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 		OwningPlayer->SetInputMode(InputMode);
 		OwningPlayer->bShowMouseCursor = true;
+	}
+}
+
+void ULCUIManager::ShowPauseMenu()
+{
+	LOG_Frame_WARNING(TEXT("ShowPauseMenu"));
+	if (CachedOptionWidget)
+	{
+		CachedOptionWidget->AddToViewport(1);
+	}
+	if (OwningPlayer)
+	{
+		FInputModeUIOnly InputMode;
+		InputMode.SetWidgetToFocus(CachedOptionWidget->TakeWidget());
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		OwningPlayer->SetInputMode(InputMode);
+		OwningPlayer->bShowMouseCursor = true;
+	}
+}
+
+void ULCUIManager::HidePauseMenu()
+{
+	//TODO: InputMode GameOnly로 변경 후 마우스 커서 숨기기
+}
+
+void ULCUIManager::ShowConfirmPopup(TFunction<void()> OnConfirm)
+{
+	LOG_Frame_WARNING(TEXT("ShowConfirmPopup"));
+	if (!ConfirmPopupClass)
+	{
+		return;
+	}
+
+	UConfirmPopup* ConfirmPopup = CreateWidget<UConfirmPopup>(OwningPlayer, ConfirmPopupClass);
+	if (ConfirmPopup)
+	{
+		ConfirmPopup->Init(MoveTemp(OnConfirm));
+		ConfirmPopup->AddToViewport(10);
 	}
 }
 
