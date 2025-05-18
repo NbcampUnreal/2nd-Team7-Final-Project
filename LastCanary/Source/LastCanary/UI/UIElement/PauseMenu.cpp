@@ -55,9 +55,16 @@ void UPauseMenu::OnResumeButtonClicked()
 void UPauseMenu::OnLobbyButtonClicked()
 {
 	LOG_Frame_WARNING(TEXT("Lobby Button Clicked"));
-	if (ULCUIManager* LCUIManager = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>()->GetUIManager())
+	ULCUIManager* LCUIManager = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>()->GetUIManager();
+	if (LCUIManager)
 	{
-		LCUIManager->ShowLobbyMenu();
+		// 확인 팝업을 띄우고, 예를 눌렀을 경우에만 로비 메뉴로 전환)
+		LCUIManager->ShowConfirmPopup(
+			[]()
+			{
+				//TODO : 로비 메뉴로 전환
+			}
+		);
 	}
 }
 
@@ -74,9 +81,16 @@ void UPauseMenu::OnOptionButtonClicked()
 void UPauseMenu::OnExitButtonClicked()
 {
 	LOG_Frame_WARNING(TEXT("Exit Button Clicked"));
+	// UI 매니저 획득
 	ULCUIManager* LCUIManager = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>()->GetUIManager();
 	if (LCUIManager)
 	{
-		LCUIManager->ShowTitleMenu();
+		// 확인 팝업을 띄우고, 예를 눌렀을 경우에만 타이틀 메뉴로 전환
+		LCUIManager->ShowConfirmPopup(
+			[]()
+			{
+				//TODO : 타이틀 메뉴로 전환
+			}
+		);
 	}
 }
