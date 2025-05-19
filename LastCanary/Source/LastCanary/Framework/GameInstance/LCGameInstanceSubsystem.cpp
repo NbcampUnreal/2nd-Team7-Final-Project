@@ -3,16 +3,20 @@
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "Kismet/GameplayStatics.h"
 
+#include "LastCanary.h"
+
 void ULCGameInstanceSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
 
-	LCUIManager = NewObject<ULCUIManager>(GetGameInstance());
+	LCUIManager = NewObject<ULCUIManager>(this, ULCUIManager::StaticClass());
 	ULCGameInstance* GI = Cast<ULCGameInstance>(GetGameInstance());
 	if (GI)
 	{
 		MapDataTable = GI->MapDataTable;
+		ItemDataTable = GI->ItemDataTable;
 		GI->LoadMapData();
+		GI->LoadItemData();
 	}
 }
 
@@ -31,7 +35,7 @@ void ULCGameInstanceSubsystem::ChangeLevelByMapID(int32 MapID)
 {
 	if (MapDataTable == nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("MapDataTable is not assigned."));
+		LOG_Frame_WARNING(TEXT("MapDataTable is not assigned."));
 		return;
 	}
 
@@ -44,10 +48,10 @@ void ULCGameInstanceSubsystem::ChangeLevelByMapID(int32 MapID)
 		if (MapRow && MapRow->MapID == MapID)
 		{
 			UGameplayStatics::OpenLevel(GetWorld(), MapRow->MapInfo.MapName);
-			UE_LOG(LogTemp, Warning, TEXT("Trying to open level: %s"), *MapRow->MapInfo.MapName.ToString());
+			LOG_Frame_WARNING(TEXT("Trying to open level: %s"), *MapRow->MapInfo.MapName.ToString());
 			return;
 		}
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("Map not found for ID: %d"), MapID);
+	LOG_Frame_WARNING(TEXT("Map not found for ID: %d"), MapID);
 }

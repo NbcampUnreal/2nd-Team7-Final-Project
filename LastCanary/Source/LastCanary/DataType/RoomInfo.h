@@ -13,20 +13,20 @@ struct FRoomInfo
 
 public:
     UPROPERTY(BlueprintReadWrite, Category = "Room")
-    FString RoomID;  // 고유 방 식별자
+    FString RoomID = TEXT("");  // 고유 방 식별자
 
     UPROPERTY(BlueprintReadWrite, Category = "Room")
-    FString RoomName;
+    FString RoomName = TEXT("");
 
     UPROPERTY(BlueprintReadWrite, Category = "Room")
-    int32 CurrentPlayers;
+    int32 CurrentPlayers = 0;
 
     UPROPERTY(BlueprintReadWrite, Category = "Room")
-    int32 MaxPlayers;
+    int32 MaxPlayers = 4;
 
     UPROPERTY(BlueprintReadWrite, Category = "Room")
-    bool bIsPrivate;
+    bool bIsPrivate = false;
 
     UPROPERTY(BlueprintReadWrite, Category = "Room")
-    FString HostPlayerName;
+    FString HostPlayerName = TEXT("");
 };

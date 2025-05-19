@@ -21,9 +21,11 @@ public class LastCanary : ModuleRules
             "SlateCore",
             "OnlineSubsystem", 
             "OnlineSubsystemUtils"
+            "SlateCore", 
+            "ALSCamera"
         });
 
-		PrivateDependencyModuleNames.AddRange(new string[] {  });
+        PrivateDependencyModuleNames.AddRange(new string[] {  });
 
         PublicIncludePaths.AddRange(new string[] { "LastCanary" });
 
