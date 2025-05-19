@@ -20,7 +20,8 @@ public class LastCanary : ModuleRules
             "Slate",
             "SlateCore",
             "OnlineSubsystem", 
-            "OnlineSubsystemUtils"
+            "OnlineSubsystemUtils",
+            "AdvancedSessions",
             "SlateCore", 
             "ALSCamera"
         });
