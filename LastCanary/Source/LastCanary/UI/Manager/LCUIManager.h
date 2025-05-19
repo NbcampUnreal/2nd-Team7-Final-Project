@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
+#include "Actor/ShopInteractor.h"
 #include "LCUIManager.generated.h"
 
 /**
@@ -13,6 +14,7 @@ class ULobbyMenu;
 class UEnterPasswordWidget;
 class UOptionWidget;
 class UInGameHUD;
+class UShopWidget;
 UCLASS()
 class LASTCANARY_API ULCUIManager : public UObject
 {
@@ -33,6 +35,8 @@ public:
 	void ShowPauseMenu();
 	void HidePauseMenu();
 	void ShowConfirmPopup(TFunction<void()> OnConfirm);
+	void ShowShopPopup();
+	void HideShopPopup();
 
 	void SwitchToWidget(UUserWidget* Widget);
 
@@ -41,7 +45,11 @@ public:
 	ULobbyMenu* GetLobbyMenu() const { return CachedLobbyMenu; }
 	UEnterPasswordWidget* GetEnterPasswordWidget() const { return CachedEnterPasswordWidget; }
 
+	void SetLastShopInteractor(AShopInteractor* Interactor);
+
 private:
+	UPROPERTY()
+	AShopInteractor* LastShopInteractor;
 	UPROPERTY()
 	APlayerController* OwningPlayer;
 	UPROPERTY()
@@ -62,6 +70,8 @@ private:
 	TSubclassOf<UOptionWidget> ConfirmPopupClass;
 	UPROPERTY()
 	TSubclassOf<UInGameHUD> InGameHUDWidgetClass;
+	UPROPERTY()
+	TSubclassOf<UShopWidget> ShopWidgetClass;
 
 	// 위젯 캐싱
 	UPROPERTY()
@@ -74,5 +84,7 @@ private:
 	UOptionWidget* CachedOptionWidget;
 	UPROPERTY()
 	UInGameHUD* CachedInGameHUD;
+	UPROPERTY()
+	UShopWidget* CachedShopWidget;
 
 };
