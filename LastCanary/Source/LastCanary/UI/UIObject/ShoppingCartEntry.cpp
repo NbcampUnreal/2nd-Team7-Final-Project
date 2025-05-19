@@ -2,10 +2,24 @@
 
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
+#include "Components/Button.h"
 
 void UShoppingCartEntry::NativeConstruct()
 {
 	Super::NativeConstruct();
+
+	if (RemoveButton)
+	{
+		RemoveButton->OnClicked.AddUniqueDynamic(this, &UShoppingCartEntry::OnRemoveButtonClicked);
+	}
+}
+
+void UShoppingCartEntry::OnRemoveButtonClicked()
+{
+	if (OnCartEntryRemoved.IsBound())
+	{
+		OnCartEntryRemoved.Execute(this); 
+	}
 }
 
 void UShoppingCartEntry::InitCartEntry(const FItemDataRow& InItemData, int32 InQuantity)

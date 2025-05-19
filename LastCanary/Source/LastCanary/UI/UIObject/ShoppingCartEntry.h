@@ -10,6 +10,7 @@
  */
 class UImage;
 class UTextBlock;
+class UButton;
 UCLASS()
 class LASTCANARY_API UShoppingCartEntry : public ULCUserWidgetBase
 {
@@ -24,22 +25,27 @@ public:
 
 	const FItemDataRow& GetItemData() const { return ItemData; }
 
+	DECLARE_DELEGATE_OneParam(FOnCartEntryRemoved, UShoppingCartEntry*);
+	FOnCartEntryRemoved OnCartEntryRemoved;
+
 protected:
 	virtual void NativeConstruct() override;
 
 	UPROPERTY(meta = (BindWidget))
 	UImage* ItemIcon;
-
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* ItemNameText;
-
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* QuantityText;
-
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* TotalPriceText;
+	UPROPERTY(meta = (BindWidget))
+	UButton* RemoveButton;
 
 private:
+	UFUNCTION()
+	void OnRemoveButtonClicked();
+
 	FItemDataRow ItemData;
 	int32 Quantity = 1;
 };

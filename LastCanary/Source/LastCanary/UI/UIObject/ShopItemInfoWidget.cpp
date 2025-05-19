@@ -148,6 +148,9 @@ void UShopItemInfoWidget::LoadItemFromDataTable(int32 InItemID)
 	{
 		if (ItemRow && ItemRow->ItemID == InItemID)
 		{
+			SelectedCount = 1;
+			UpdateCountDisplay();
+
 			SetItemInfo(ItemRow->ItemIcon, ItemRow->ItemName, ItemRow->ItemDescription);
 			ItemID = InItemID;
 			ItemPrice = ItemRow->ItemPrice;

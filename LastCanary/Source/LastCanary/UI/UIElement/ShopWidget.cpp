@@ -70,7 +70,7 @@ void UShopWidget::PopulateShopItems()
 			if (ItemEntry)
 			{
 				ItemEntry->InitItem(*ItemData);
-				ItemEntry->OnItemClicked.BindUObject(this, &UShopWidget::HandleItemClicked);
+				ItemEntry->OnItemClicked.BindUObject(this, &UShopWidget::OnShopItemClicked);
 				ItemListBox->AddChild(ItemEntry);
 
 				LOG_Frame_WARNING(TEXT("Shop item bound: %s"), *ItemData->ItemName.ToString());
@@ -79,23 +79,27 @@ void UShopWidget::PopulateShopItems()
 	}
 }
 
-void UShopWidget::HandleItemClicked(const FItemDataRow& ClickedItem)
+void UShopWidget::OnShopItemClicked(UShopItemEntry* ClickedEntry)
 {
-	LOG_Frame_WARNING(TEXT("HandleItemClicked called: %s"), *ClickedItem.ItemName.ToString());
-
-	if (ItemInfoWidget == nullptr)
+	LOG_Frame_WARNING(TEXT("OnShopItemClicked"));
+	if (ClickedEntry == nullptr)
 	{
-		LOG_Frame_WARNING(TEXT("ItemInfoWidget is null"));
-		return;
-	}
-	if (ItemDataTable== nullptr)
-	{
-		LOG_Frame_WARNING(TEXT("ItemDataTable is null"));
 		return;
 	}
 
-	ItemInfoWidget->ItemDataTable = ItemDataTable;
-	ItemInfoWidget->LoadItemFromDataTable(ClickedItem.ItemID);
+	if (CurrentlySelectedEntry)
+	{
+		CurrentlySelectedEntry->SetSelected(false);
+	}
+
+	CurrentlySelectedEntry = ClickedEntry;
+	ClickedEntry->SetSelected(true);
+
+	if (ItemInfoWidget)
+	{
+		ItemInfoWidget->ItemDataTable = ItemDataTable;
+		ItemInfoWidget->LoadItemFromDataTable(ClickedEntry->GetItemID());
+	}
 }
 
 void UShopWidget::OnPurchaseButtonClicked()

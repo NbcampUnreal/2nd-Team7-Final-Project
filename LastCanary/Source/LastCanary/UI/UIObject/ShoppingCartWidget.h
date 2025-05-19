@@ -21,6 +21,10 @@ public:
 	virtual void NativeDestruct() override;
 
 	void AddItemToCart(const FItemDataRow& ItemData, int32 Quantity);
+	
+	UFUNCTION()
+	void HandleRemoveCartEntry(UShoppingCartEntry* EntryToRemove);
+	
 	void RecalculateTotalPrice();
 
 protected:

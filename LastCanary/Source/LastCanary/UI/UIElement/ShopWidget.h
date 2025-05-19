@@ -43,13 +43,17 @@ protected:
 	virtual void NativeDestruct() override;
 
 	UFUNCTION()
-	void HandleItemClicked(const FItemDataRow& ClickedItem);
+	void OnShopItemClicked(UShopItemEntry* ClickedEntry);
 	UFUNCTION()
 	void OnPurchaseButtonClicked();
 	UFUNCTION()
 	void OnExitButtonClicked();
 
 	void PopulateShopItems();
+
+private:
+	UPROPERTY()
+	UShopItemEntry* CurrentlySelectedEntry = nullptr;
 
 public:
 	UShoppingCartWidget* GetShoppingCartWidget() const { return ShoppingCartWidget; }
