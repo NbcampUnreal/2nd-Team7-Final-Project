@@ -96,6 +96,12 @@ void AItemBase::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherA
 
 void AItemBase::ApplyItemDataFromTable()
 {
+	if (ItemRowName.IsNone())
+	{
+		LOG_Item_WARNING(TEXT("[AItemBase::ApplyItemDataFromTable] ItemRowName이 설정되지 않았습니다!"));
+		return;
+	}
+
 	if (!ItemDataTable)
 	{
 		LOG_Item_WARNING(TEXT("[InventoryComponentBase::ApplyItemDataFromTable] ItemDataTable is null!"));

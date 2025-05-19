@@ -1,12 +1,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameplayTagContainer.h"
-#include "Engine/Texture2D.h"
-#include "InventoryItemData.generated.h"
+#include "Item/ItemBase.h"
+#include "BaseItemSlotData.generated.h"
 
 USTRUCT(BlueprintType)
-struct FInventoryItemData
+struct FBaseItemSlotData
 {
     GENERATED_BODY()
 
@@ -17,5 +16,12 @@ struct FInventoryItemData
     int32 Quantity;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float Durability;
+    int32 Durability;
+
+    FBaseItemSlotData()
+        : ItemRowName(NAME_None)
+        , Quantity(1)
+        , Durability(100)
+    {
+    }
 };

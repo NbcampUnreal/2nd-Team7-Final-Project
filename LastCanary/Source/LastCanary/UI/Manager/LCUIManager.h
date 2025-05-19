@@ -15,6 +15,8 @@ class UEnterPasswordWidget;
 class UOptionWidget;
 class UInGameHUD;
 class UShopWidget;
+
+class UInventoryMainWidget;
 UCLASS()
 class LASTCANARY_API ULCUIManager : public UObject
 {
@@ -33,6 +35,10 @@ public:
 	void ShowInGameHUD();
 	void ShowOptionPopup();
 	void ShowShopPopup();
+	// 인벤토리로 추가
+	//void ShowInventoryPopup(); // 사용하지 않게 될 것 같음
+	void ToggleInventoryPopup();
+	// ---------------
 
 	void HideShopPopup();
 
@@ -69,6 +75,11 @@ private:
 	UPROPERTY()
 	TSubclassOf<UShopWidget> ShopWidgetClass;
 
+	// 인벤토리로 추가
+	UPROPERTY()
+	TSubclassOf<UInventoryMainWidget> InventoryMainWidgetClass;
+	// ---------------
+
 	// 위젯 캐싱
 	UPROPERTY()
 	UTitleMenu* CachedTitleMenu;
@@ -83,4 +94,8 @@ private:
 	UPROPERTY()
 	UShopWidget* CachedShopWidget;
 
+	// 인벤토리로 추가
+	UPROPERTY()
+	UInventoryMainWidget* CachedInventoryMainWidget;
+	// ---------------
 };

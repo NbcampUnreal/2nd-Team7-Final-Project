@@ -4,11 +4,23 @@
 #include "Components/Image.h"
 #include "LastCanary.h"
 
-void UInventorySlotWidget::SetItemData(const FInventoryItemData& InItemData, UDataTable* InDataTable)
+void UInventorySlotWidget::SetItemData(const FBaseItemSlotData& InItemData, UDataTable* InItemDataTable)
 {
+	//ItemSlot = InItemSlot;
 	ItemData = InItemData;
-	ItemDataTable = InDataTable;
+	ItemDataTable = InItemDataTable;
 	UpdateSlotUI();
+}
+
+void UInventorySlotWidget::SetInventoryComponent(UInventoryComponentBase* InInventoryComponent)
+{
+	if (!InInventoryComponent)
+	{
+		LOG_Item_WARNING(TEXT("[InventorySlotWidget::SetInventoryComponent] InInventoryComponent is null!"));
+		return;
+	}
+
+	InventoryComponent = InInventoryComponent;
 }
 
 void UInventorySlotWidget::UpdateSlotUI()
@@ -105,7 +117,15 @@ bool UInventorySlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FDrag
 
 void UInventorySlotWidget::ShowTooltip()
 {
-	// TODO : UI 매니저에서 출력 지시
+	if (TooltipWidgetClass && !ItemTooltipWidget)
+	{
+		ItemTooltipWidget = CreateWidget<UItemTooltipWidget>(GetWorld(), TooltipWidgetClass);
+	}
+	if (ItemTooltipWidget)
+	{
+		//ItemTooltipWidget->SetTooltipData(ItemData, );
+		ItemTooltipWidget->AddToViewport();
+	}
 }
 
 void UInventorySlotWidget::HideTooltip()

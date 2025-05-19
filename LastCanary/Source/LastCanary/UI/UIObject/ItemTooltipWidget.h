@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "UI/LCUserWidgetBase.h"
 #include "DataTable/ItemDataRow.h"
-#include "DataType/InventoryItemData.h"
+#include "DataType/BaseItemSlotData.h"
 #include "ItemTooltipWidget.generated.h"
 
 UCLASS()
@@ -25,5 +25,5 @@ public:
     class UTextBlock* DurabilityText;
 
     UFUNCTION(BlueprintCallable, Category = "Tooltip")
-    virtual void SetTooltipData(const FItemDataRow& BaseData, const FInventoryItemData& InstanceData);
+    virtual void SetTooltipData(const FItemDataRow& InItemData, const FBaseItemSlotData& InItemSlotData);
 };

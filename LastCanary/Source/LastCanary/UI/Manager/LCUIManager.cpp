@@ -7,6 +7,7 @@
 #include "UI/UIElement/OptionWidget.h"
 #include "UI/UIElement/InGameHUD.h"
 #include "UI/UIElement/ShopWidget.h"
+#include "UI/UIElement/InventoryMainWidget.h"
 
 #include "Framework/PlayerController/LCLobbyPlayerController.h"
 #include "Framework/GameInstance/LCGameInstance.h"
@@ -35,6 +36,7 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			OptionWidgetClass = Settings->FromBPOptionWidgetClass;
 			InGameHUDWidgetClass = Settings->FromBPInGameHUDClass;
 			ShopWidgetClass = Settings->FromBPShopWidgetClass;
+			InventoryMainWidgetClass = Settings->FromBPShopWidgetClass;
 
 			if ((CachedTitleMenu == nullptr) && TitleMenuClass)
 			{
@@ -60,6 +62,11 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			{
 				CachedShopWidget = CreateWidget<UShopWidget>(PlayerController, ShopWidgetClass);
 				LOG_Frame_WARNING(TEXT("CachedShopWidget Created"));
+			}
+
+			if ((CachedInventoryMainWidget == nullptr) && InventoryMainWidgetClass)
+			{
+				CachedInventoryMainWidget = CreateWidget<UInventoryMainWidget>(PlayerController, InventoryMainWidgetClass);
 			}
 		}
 	}
@@ -126,7 +133,6 @@ void ULCUIManager::ShowShopPopup()
 
 		if (OwningPlayer)
 		{
-			// ÇÊ¿ä½Ã Ä³¸¯ÅÍ ÀÔ·Â Â÷´Ü
 			if (APawn* Pawn = OwningPlayer->GetPawn())
 			{
 				Pawn->DisableInput(OwningPlayer);
@@ -136,6 +142,78 @@ void ULCUIManager::ShowShopPopup()
 			InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 			OwningPlayer->SetInputMode(InputMode);
 			OwningPlayer->bShowMouseCursor = true;
+		}
+	}
+}
+
+// ì‚¬ìš©í•˜ì§€ ì•Šê²Œ ë  í™•ë¥ ì´ ë†’ìŒ
+//void ULCUIManager::ShowInventoryPopup()
+//{
+//	if (!CachedInventoryMainWidget && InventoryMainWidgetClass)
+//	{
+//		CachedInventoryMainWidget = CreateWidget<UInventoryMainWidget>(OwningPlayer, InventoryMainWidgetClass);
+//	}
+//
+//	if (CachedInventoryMainWidget)
+//	{
+//		if (!CachedInventoryMainWidget->IsInViewport())
+//		{
+//			CachedInventoryMainWidget->AddToViewport();
+//		}
+//		else
+//		{
+//			CachedInventoryMainWidget->SetVisibility(ESlateVisibility::Visible);
+//		}
+//
+//		if (OwningPlayer)
+//		{
+//			FInputModeGameAndUI InputMode;
+//			InputMode.SetWidgetToFocus(CachedInventoryMainWidget->TakeWidget());
+//			InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+//			OwningPlayer->SetInputMode(InputMode);
+//			OwningPlayer->bShowMouseCursor = true;
+//		}
+//	}
+//
+//}
+
+void ULCUIManager::ToggleInventoryPopup()
+{
+	if (!CachedInventoryMainWidget && InventoryMainWidgetClass)
+	{
+		CachedInventoryMainWidget = CreateWidget<UInventoryMainWidget>(OwningPlayer, InventoryMainWidgetClass);
+	}
+
+	if (CachedInventoryMainWidget)
+	{
+		if (CachedInventoryMainWidget->IsInViewport() && CachedInventoryMainWidget->GetVisibility() == ESlateVisibility::Visible)
+		{
+			CachedInventoryMainWidget->SetVisibility(ESlateVisibility::Collapsed);
+
+			if (OwningPlayer)
+			{
+				OwningPlayer->SetInputMode(FInputModeGameOnly());
+				OwningPlayer->bShowMouseCursor = false;
+			}
+		}
+		else
+		{
+			if (!CachedInventoryMainWidget->IsInViewport())
+			{
+				CachedInventoryMainWidget->AddToViewport();
+			}
+
+			CachedInventoryMainWidget->SetVisibility(ESlateVisibility::Visible);
+
+			if (OwningPlayer)
+			{
+				FInputModeGameAndUI InputMode;
+				InputMode.SetWidgetToFocus(CachedInventoryMainWidget->TakeWidget());
+
+				InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+				OwningPlayer->SetInputMode(InputMode);
+				OwningPlayer->bShowMouseCursor = true;
+			}
 		}
 	}
 }

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Inventory/InventoryComponentBase.h"
+#include "DataType/ToolbarItemSlotData.h"
 #include "ToolbarInventoryComponent.generated.h"
 
 class ABaseCharacter;
@@ -16,6 +17,31 @@ class LASTCANARY_API UToolbarInventoryComponent : public UInventoryComponentBase
 	
 public:
 	UToolbarInventoryComponent();
+
+	UFUNCTION(BlueprintCallable, Category = Inventory)
+	virtual bool TryAddItemSlot(FName ItemRowName, int32 Amount);
+
+	UFUNCTION(Blueprintcallable, Category = Inventory)
+	virtual bool TryDecreaseItem(FName ItemRowName, int32 Amount);
+
+	UFUNCTION(Blueprintcallable, Category = Inventory)
+	virtual int32 GetItemCount(FName ItemRowName) const;
+
+	UFUNCTION(BlueprintCallable, Category = Inventory)
+	bool TrySwapItemSlots(int32 FromIndex, int32 ToIndex);
+
+	UFUNCTION(Blueprintcallable, Category = Inventory)
+	bool TryRemoveItemAtSlot(int32 SlotIndex);
+
+	UFUNCTION(BlueprintCallable, Category = Inventory)
+	bool TryAddItem(AItemBase * ItemActor);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_AttachItem(FName InItemRowName, FName SocketName);
+
+	void OnRepItemSlots();
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 private:
 	UPROPERTY()

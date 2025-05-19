@@ -1,7 +1,7 @@
 #include "UI/UIObject/ItemTooltipWidget.h"
 #include "Components/TextBlock.h"
 
-void UItemTooltipWidget::SetTooltipData(const FItemDataRow& BaseData, const FInventoryItemData& InstanceData)
+void UItemTooltipWidget::SetTooltipData(const FItemDataRow& BaseData, const FBaseItemSlotData& InstanceData)
 {
     if (NameText)
         NameText->SetText(FText::FromName(BaseData.ItemName));

@@ -139,11 +139,11 @@ private:
 	FGameplayTagContainer EquippedTags;
 
 public:
-	UFUNCTION(BlueprintPure, Category = "Equipment")
-	const FGameplayTagContainer& GetEquippedTags() const;
+	UFUNCTION(BlueprintCallable, Category = "Equipment")
+	bool IsEquipped() const;
 
 	UFUNCTION(BlueprintCallable, Category = "Equipment")
-	void SetEquippedTags(const FGameplayTag& Tag, bool bEquip);
+	void SetEquipped(bool bEquip);
 	
 	// 임의적으로 만든 캐릭터의 상호작용 함수
 	bool TryPickupItem(AItemBase* HitItem);

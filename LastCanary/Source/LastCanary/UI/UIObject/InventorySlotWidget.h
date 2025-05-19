@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "UI/LCUserWidgetBase.h"
 #include "UI/UIObject/ItemTooltipWidget.h"
-#include "DataType/InventoryItemData.h"
+#include "DataType/BaseItemSlotData.h"
 #include "Inventory/InventoryComponentBase.h"
 #include "InventorySlotWidget.generated.h"
 
@@ -14,13 +14,16 @@ class LASTCANARY_API UInventorySlotWidget : public ULCUserWidgetBase
 	
 public:
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory")
-	FInventoryItemData ItemData;
+	FBaseItemSlotData ItemData;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory")
 	UDataTable* ItemDataTable;
 
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
-	void SetItemData(const FInventoryItemData& InItemData, UDataTable* InDataTable);
+	void SetItemData(const FBaseItemSlotData& InItemSlotData, UDataTable* InItemDataTable);
+
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	void SetInventoryComponent(UInventoryComponentBase* InInventoryComponent);
 
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	virtual void UpdateSlotUI();

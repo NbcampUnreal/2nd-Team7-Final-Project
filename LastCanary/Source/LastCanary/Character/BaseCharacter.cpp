@@ -13,6 +13,7 @@
 
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "Inventory/BackpackInventoryComponent.h"
+#include "Item/ItemBase.h"
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -201,8 +202,6 @@ void ABaseCharacter::Handle_Interact(AActor* HitActor)
 		PickupItem(Hit);
 	*/	
 
-	UE_LOG(LogTemp, Log, TEXT("0"));
-
 	// 임시 추가 코드
 	AItemBase* HitItem = Cast<AItemBase>(HitActor);
 	if (!HitItem)
@@ -210,14 +209,11 @@ void ABaseCharacter::Handle_Interact(AActor* HitActor)
 		return;
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("1"));
-
 	const FItemDataRow* ItemData = HitItem->ItemDataTable->FindRow<FItemDataRow>(HitItem->ItemRowName, TEXT("Handle_Interact"));
 	if (!ItemData)
 	{
 		return;
 	}
-	UE_LOG(LogTemp, Log, TEXT("2"));
 
 	const FGameplayTag ItemTypeTag = FGameplayTag::RequestGameplayTag(FName("ItemType"));
 	if (!ItemData->ItemType.MatchesTag(ItemTypeTag))
@@ -225,7 +221,7 @@ void ABaseCharacter::Handle_Interact(AActor* HitActor)
 		UE_LOG(LogTemp, Warning, TEXT("Handle_Interact: HitItem에 ItemType 태그가 없음!"));
 		return;
 	}
-	UE_LOG(LogTemp, Log, TEXT("3"));
+
 	TryPickupItem(HitItem);
 }
 
@@ -332,20 +328,22 @@ void ABaseCharacter::SetBackpackInventoryComponent(UBackpackInventoryComponent* 
 }
 
 // 게임 플레이 태그 관련 함수
-const FGameplayTagContainer& ABaseCharacter::GetEquippedTags() const
+bool ABaseCharacter::IsEquipped() const
 {
-	return EquippedTags;
+	static FGameplayTag EquippedTag = FGameplayTag::RequestGameplayTag(TEXT("Character.Player.Equipped"));
+	return EquippedTags.HasTag(EquippedTag);
 }
 
-void ABaseCharacter::SetEquippedTags(const FGameplayTag& Tag, bool bEquip)
+void ABaseCharacter::SetEquipped(bool bEquip)
 {
+	static FGameplayTag EquippedTag = FGameplayTag::RequestGameplayTag(TEXT("Charater.Player.Equipped"));
 	if (bEquip)
 	{
-		EquippedTags.AddTag(Tag);
+		EquippedTags.AddTag(EquippedTag);
 	}
 	else
 	{
-		EquippedTags.RemoveTag(Tag);
+		EquippedTags.RemoveTag(EquippedTag);
 	}
 }
 

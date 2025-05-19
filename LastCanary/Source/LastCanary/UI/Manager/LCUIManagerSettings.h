@@ -35,6 +35,8 @@ public:
 	TSubclassOf<UInGameHUD> FromBPInGameHUDClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UShopWidget> FromBPShopWidgetClass;
+
+	// 인벤토리 위젯
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
-	TSubclassOf<UInventoryMainWidget> InventoryMainUIClass;
+	TSubclassOf<UInventoryMainWidget> FromBPInventoryMainUIClass;
 };
