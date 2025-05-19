@@ -8,6 +8,8 @@
 #include "UI/UIElement/InGameHUD.h"
 #include "UI/UIElement/ShopWidget.h"
 
+#include "UI/UIObject/ConfirmPopup.h"
+
 #include "Framework/PlayerController/LCLobbyPlayerController.h"
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
@@ -116,6 +118,44 @@ void ULCUIManager::ShowOptionPopup()
 	}
 }
 
+void ULCUIManager::ShowPauseMenu()
+{
+	LOG_Frame_WARNING(TEXT("ShowPauseMenu"));
+	if (CachedOptionWidget)
+	{
+		CachedOptionWidget->AddToViewport(1);
+	}
+	if (OwningPlayer)
+	{
+		FInputModeUIOnly InputMode;
+		InputMode.SetWidgetToFocus(CachedOptionWidget->TakeWidget());
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		OwningPlayer->SetInputMode(InputMode);
+		OwningPlayer->bShowMouseCursor = true;
+	}
+}
+
+void ULCUIManager::HidePauseMenu()
+{
+	//TODO: InputMode GameOnlyë¡œ ë³€ê²½ í›„ ë§ˆìš°ìŠ¤ ì»¤ì„œ ìˆ¨ê¸°ê¸°
+}
+
+void ULCUIManager::ShowConfirmPopup(TFunction<void()> OnConfirm)
+{
+	LOG_Frame_WARNING(TEXT("ShowConfirmPopup"));
+	if (!ConfirmPopupClass)
+	{
+		return;
+	}
+
+	UConfirmPopup* ConfirmPopup = CreateWidget<UConfirmPopup>(OwningPlayer, ConfirmPopupClass);
+	if (ConfirmPopup)
+	{
+		ConfirmPopup->Init(MoveTemp(OnConfirm));
+		ConfirmPopup->AddToViewport(10);
+	}
+}
+
 void ULCUIManager::ShowShopPopup()
 {
 	LOG_Frame_WARNING(TEXT("ShowShopPopup"));
@@ -126,7 +166,6 @@ void ULCUIManager::ShowShopPopup()
 
 		if (OwningPlayer)
 		{
-			// ÇÊ¿ä½Ã Ä³¸¯ÅÍ ÀÔ·Â Â÷´Ü
 			if (APawn* Pawn = OwningPlayer->GetPawn())
 			{
 				Pawn->DisableInput(OwningPlayer);
