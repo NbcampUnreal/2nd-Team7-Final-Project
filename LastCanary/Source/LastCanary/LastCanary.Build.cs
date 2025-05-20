@@ -24,7 +24,8 @@ public class LastCanary : ModuleRules
             "OnlineSubsystemUtils",
             "AdvancedSessions",
             "AdvancedSteamSessions",
-            "ALSCamera"
+            "ALSCamera",
+            "Niagara"
         });
 
         PrivateDependencyModuleNames.AddRange(new string[] {  });
