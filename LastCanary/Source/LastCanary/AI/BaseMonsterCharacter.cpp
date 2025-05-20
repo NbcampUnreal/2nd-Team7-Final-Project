@@ -28,7 +28,7 @@ ABaseMonsterCharacter::ABaseMonsterCharacter()
     AttackCollider = CreateDefaultSubobject<USphereComponent>(TEXT("AttackCollider"));
     AttackCollider->SetupAttachment(GetMesh(), FName("foot_r"));
     AttackCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-    AttackCollider->OnComponentBeginOverlap.AddDynamic(this, &ABaseMonsterCharacter::OnAttackHit);
+    //AttackCollider->OnComponentBeginOverlap.AddDynamic(this, &ABaseMonsterCharacter::OnAttackHit);
 
     //Ãæµ¹x
     UCapsuleComponent* CapsuleComp = GetCapsuleComponent();
@@ -49,10 +49,10 @@ ABaseMonsterCharacter::ABaseMonsterCharacter()
     NavInvoker->SetGenerationRadii(NavGenerationradius, NavRemovalradius);
 }
 
-void ABaseMonsterCharacter::OnAttackHit(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{
-    UE_LOG(LogTemp, Warning, TEXT("Damage: %s"), *OtherActor->GetName());
-}
+//void ABaseMonsterCharacter::OnAttackHit(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+//{
+//    UE_LOG(LogTemp, Warning, TEXT("Damage: %s"), *OtherActor->GetName());
+//}
 
 float ABaseMonsterCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
     class AController* EventInstigator, AActor* DamageCauser)
@@ -124,7 +124,7 @@ void ABaseMonsterCharacter::MulticastStartAttack_Implementation()
     if (IsValid(StartAttack))
     {
         PlayAnimMontage(StartAttack);
-        
+
     }
 }
 
@@ -143,7 +143,7 @@ void ABaseMonsterCharacter::MulticastAIDeath_Implementation()
     if (IsValid(AIDeath))
     {
         PlayAnimMontage(AIDeath);
-        
+
         if (HasAuthority())
         {
             Destroy();

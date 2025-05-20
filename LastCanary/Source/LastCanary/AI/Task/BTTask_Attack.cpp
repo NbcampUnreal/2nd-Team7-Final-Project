@@ -9,7 +9,6 @@ UBTTask_Attack::UBTTask_Attack()
 {
     NodeName = TEXT("Attack");
 
-    //다른 태스크 실행 방지
     bCreateNodeInstance = true;
 }
 

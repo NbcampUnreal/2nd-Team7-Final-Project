@@ -98,7 +98,7 @@ protected:
     float AttackDuration = 1.5f;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Monster|Combat")
-    float AttackCooldown = 2.f;
+    float AttackCooldown = 1.f;
 
     /*UPROPERTY(BlueprintReadOnly, Category = "Monster|Combat")
     bool bIsAttacking;*/
@@ -108,7 +108,7 @@ protected:
     UFUNCTION()
     void OnAttackFinished();
 
-    void OnAttackHit(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+    //void OnAttackHit(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 private:
     float LastAttackTime = 0.f;
