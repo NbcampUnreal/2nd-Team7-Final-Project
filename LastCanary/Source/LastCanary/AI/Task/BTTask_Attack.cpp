@@ -29,6 +29,13 @@ EBTNodeResult::Type UBTTask_Attack::ExecuteTask(UBehaviorTreeComponent& OwnerCom
 
     Monster->PerformAttack();
 
+    ABaseAIController* BaseAIController = Cast<ABaseAIController>(OwnerComp.GetAIOwner());
+    if (BaseAIController)
+    {
+        AActor* Target = Cast<AActor>(OwnerComp.GetBlackboardComponent()->GetValueAsObject("TargetActor"));
+        BaseAIController->SetChasing(Target);
+    }
+
     return EBTNodeResult::Succeeded;
 
 }

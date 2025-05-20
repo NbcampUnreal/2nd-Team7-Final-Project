@@ -13,17 +13,9 @@ public:
     UBTTask_Move();
 
     virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
+    virtual void TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds) override;
 
 protected:
-    UPROPERTY(EditAnywhere, Category = "Move")
-    bool bMoveToTarget = true;
-
-    UPROPERTY(EditAnywhere, Category = "Move", meta = (EditCondition = "!bMoveToTarget"))
-    FBlackboardKeySelector LocationKey;
-
-    UPROPERTY(EditAnywhere, Category = "Move")
+    UPROPERTY(EditAnywhere, Category = "Movement")
     float MyAcceptableRadius = 50.0f;
-
-    UPROPERTY(EditAnywhere, Category = "Move", meta = (EditCondition = "bMoveToTarget"))
-    float TargetApproachRadius = 100.0f;
 };

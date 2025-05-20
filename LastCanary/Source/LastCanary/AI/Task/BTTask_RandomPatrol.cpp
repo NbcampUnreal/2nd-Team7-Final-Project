@@ -4,69 +4,93 @@
 #include "NavigationSystem.h"
 #include "AIController.h"
 #include "GameFramework/Character.h"
+#include "Navigation/PathFollowingComponent.h"
+#include "AI/BaseMonsterCharacter.h"
 
 UBTTask_RandomPatrol::UBTTask_RandomPatrol()
 {
-    NodeName = TEXT("Random Patrol");
-    PatrolRadius = 1000.0f;
-    bPatrolAroundSpawnPoint = true;
-    bPatrolAroundCurrentLocation = false;
+	NodeName = TEXT("Random Patrol");
+
+	bNotifyTick = true;
 }
 
 EBTNodeResult::Type UBTTask_RandomPatrol::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
 {
-    /*ABaseAIController* AIController = Cast<ABaseAIController>(OwnerComp.GetAIOwner());
+	AAIController* AIController = OwnerComp.GetAIOwner();
+	if (!AIController) return EBTNodeResult::Failed;
+
+	APawn* AIPawn = AIController->GetPawn();
+	if (!AIPawn) return EBTNodeResult::Failed;
+
+	UBlackboardComponent* BlackboardComp = OwnerComp.GetBlackboardComponent();
+	if (!BlackboardComp) return EBTNodeResult::Failed;
+
+	FVector CurrentLocation = AIPawn->GetActorLocation();
+
+	float RandomAngle = FMath::RandRange(0.0f, 2.0f * PI);
+	FVector Direction(FMath::Cos(RandomAngle), FMath::Sin(RandomAngle), 0.0f);
+	Direction.Normalize();
+
+	float Distance = FMath::RandRange(MinDistance, MaxDistance);
+
+	FVector TargetLocation = CurrentLocation + Direction * Distance;
+
+	ABaseMonsterCharacter* Monster = Cast<ABaseMonsterCharacter>(AIController->GetPawn());
+	if (Monster)
+	{
+		Monster->MulticastAIMove();
+		AIController->MoveToLocation(TargetLocation, AcceptableRadius);
+	}
+
+	EndTime = AIController->GetWorld()->GetTimeSeconds() + Delay;
+
+	return EBTNodeResult::InProgress;
+}
+
+void UBTTask_RandomPatrol::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds)
+{
+    AAIController* AIController = OwnerComp.GetAIOwner();
     if (!AIController)
     {
-        return EBTNodeResult::Failed;
+        FinishLatentTask(OwnerComp, EBTNodeResult::Failed);
+        return;
     }
 
-    ACharacter* Character = Cast<ACharacter>(AIController->GetPawn());
-    if (!Character)
+    UBlackboardComponent* BlackboardComp = OwnerComp.GetBlackboardComponent();
+    if (!BlackboardComp)
     {
-        return EBTNodeResult::Failed;
+        FinishLatentTask(OwnerComp, EBTNodeResult::Failed);
+        return;
     }
 
-    UNavigationSystemV1* NavSystem = UNavigationSystemV1::GetCurrent(GetWorld());
-    if (!NavSystem)
+    AActor* TargetActor = Cast<AActor>(BlackboardComp->GetValueAsObject("TargetActor"));
+    if (TargetActor)
     {
-        return EBTNodeResult::Failed;
-    }
-
-    FVector Origin = Character->GetActorLocation();
-
-    if (bPatrolAroundSpawnPoint)
-    {
-        Origin = Character->GetActorLocation();
-    }
-    else if (bPatrolAroundCurrentLocation)
-    {
-        Origin = Character->GetActorLocation();
-    }
-    else
-    {
-        UBlackboardComponent* BlackboardComp = AIController->GetBlackboard();
-        if (BlackboardComp && BlackboardComp->IsVectorValueSet(PatrolLocationKey.SelectedKeyName))
+        //Chase 모드로
+        ABaseAIController* BaseAIController = Cast<ABaseAIController>(AIController);
+        if (BaseAIController)
         {
-            Origin = BlackboardComp->GetValueAsVector(PatrolLocationKey.SelectedKeyName);
+            AIController->StopMovement();
+
+            BaseAIController->SetChasing(TargetActor);
+
+            //UE_LOG(LogTemp, Warning, TEXT("Target detected"));
+
+            FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
+            return;
         }
     }
 
-    FNavLocation RandomLocation;
-    bool bFound = NavSystem->GetRandomReachablePointInRadius(Origin, PatrolRadius, RandomLocation);
-
-    if (!bFound)
+    if (AIController->GetWorld()->GetTimeSeconds() >= EndTime)
     {
-        return EBTNodeResult::Failed;
+        AIController->StopMovement();
+
+        ABaseMonsterCharacter* Monster = Cast<ABaseMonsterCharacter>(AIController->GetPawn());
+        if (Monster)
+        {
+            Monster->MulticastAIDeath(); // 임시, idle 추가할 것
+        }
+
+        FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
     }
-
-    UBlackboardComponent* BlackboardComp = AIController->GetBlackboard();
-    if (BlackboardComp)
-    {
-        BlackboardComp->SetValueAsVector(ABaseAIController::PatrolLocationKey, RandomLocation.Location);
-    }*/
-
-    UE_LOG(LogTemp, Warning, TEXT("Patrol"));
-
-    return EBTNodeResult::Succeeded;
 }

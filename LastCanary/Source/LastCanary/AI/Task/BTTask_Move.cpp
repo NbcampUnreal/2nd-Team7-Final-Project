@@ -9,55 +9,87 @@
 UBTTask_Move::UBTTask_Move()
 {
     NodeName = TEXT("Move to Target");
-
-    MyAcceptableRadius = 50.0f;
-    bMoveToTarget = true;
-    TargetApproachRadius = 100.0f;
+    bNotifyTick = true; 
 }
 
 EBTNodeResult::Type UBTTask_Move::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
 {
-    ABaseAIController* AIController = Cast<ABaseAIController>(OwnerComp.GetAIOwner());
+    AAIController* AIController = OwnerComp.GetAIOwner();
     if (!AIController)
-        return EBTNodeResult::Failed;
-
-    FVector MoveLocation;
-
-    if (bMoveToTarget)
     {
-        ABaseMonsterCharacter* Monster = Cast<ABaseMonsterCharacter>(AIController->GetPawn());
-        if (Monster)
+        return EBTNodeResult::Failed;
+    }
+    
+    UBlackboardComponent* BlackboardComp = OwnerComp.GetBlackboardComponent();
+    if (!BlackboardComp)
+    {
+        return EBTNodeResult::Failed;
+    }
+    
+    AActor* TargetActor = Cast<AActor>(BlackboardComp->GetValueAsObject("TargetActor"));
+    if (!TargetActor)
+    {
+        return EBTNodeResult::Failed;
+    }
+
+    ABaseMonsterCharacter* Monster = Cast<ABaseMonsterCharacter>(AIController->GetPawn());
+    if (Monster)
+        Monster->MulticastAIMove();
+
+    AIController->MoveToActor(TargetActor, MyAcceptableRadius);
+
+    return EBTNodeResult::InProgress;
+}
+
+void UBTTask_Move::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds)
+{
+    AAIController* AIController = OwnerComp.GetAIOwner();
+    UBlackboardComponent* BlackboardComp = OwnerComp.GetBlackboardComponent();
+
+    if (!AIController || !BlackboardComp)
+    {
+        FinishLatentTask(OwnerComp, EBTNodeResult::Failed);
+        return;
+    }
+
+    AActor* TargetActor = Cast<AActor>(BlackboardComp->GetValueAsObject("TargetActor"));
+    if (!TargetActor)
+    {
+        ABaseAIController* BaseAIController = Cast<ABaseAIController>(AIController);
+        if (BaseAIController)
         {
-            Monster->MulticastAIMove();
+            AIController->StopMovement();
 
-            float AttackRange = 1.5f;// Monster->GetAttackRange();
-            float MoveToDistance = FMath::Max(AttackRange * 0.8f, TargetApproachRadius);
+            BaseAIController->SetPatrolling();
 
-            FVector Direction = (AIController->GetPawn()->GetActorLocation() - MoveLocation).GetSafeNormal();
+            //UE_LOG(LogTemp, Warning, TEXT("Miss Target"));
 
-            MoveLocation += Direction * MoveToDistance;
+            FinishLatentTask(OwnerComp, EBTNodeResult::Failed);
+            return;
         }
     }
 
-    // 이동 명령 수행
-    EPathFollowingRequestResult::Type Result = AIController->MoveToLocation(
-        MoveLocation,
-        MyAcceptableRadius,
-        true,  // 기존 이동 중지
-        true,  // 가능한 부분까지 이동
-        false, // 프로젝션 사용 안함
-        true   // 경로 탐색 허용
-    );
+    //이동중인가?
+    EPathFollowingStatus::Type MoveStatus = AIController->GetMoveStatus();
 
-    if (Result == EPathFollowingRequestResult::Failed)
+    if (MoveStatus == EPathFollowingStatus::Idle)
     {
-        return EBTNodeResult::Failed;
-    }
-    else if (Result == EPathFollowingRequestResult::AlreadyAtGoal)
-    {
-
-        return EBTNodeResult::Succeeded;
+        //다시 추적
+        AIController->MoveToActor(TargetActor, MyAcceptableRadius);
     }
 
-    return EBTNodeResult::InProgress;
+    APawn* ControlledPawn = AIController->GetPawn();
+    if (ControlledPawn)
+    {
+        float DistanceToTarget = FVector::Distance(ControlledPawn->GetActorLocation(), TargetActor->GetActorLocation());
+        if (DistanceToTarget <= MyAcceptableRadius+50)
+        {
+            ABaseAIController* BaseAIController = Cast<ABaseAIController>(OwnerComp.GetAIOwner());
+            if (BaseAIController)
+            {
+                BaseAIController->SetAttacking();
+            }
+            FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
+        }
+    }
 }

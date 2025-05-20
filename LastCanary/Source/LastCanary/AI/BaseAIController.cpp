@@ -3,88 +3,95 @@
 #include "BehaviorTree/BehaviorTree.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "BehaviorTree/BehaviorTreeComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 ABaseAIController::ABaseAIController()
 {
-    BehaviorTreeComponent = CreateDefaultSubobject<UBehaviorTreeComponent>(TEXT("BehaviorTreeComponent"));
-    BlackboardComponent = CreateDefaultSubobject<UBlackboardComponent>(TEXT("BlackboardComponent"));
+	BehaviorTreeComponent = CreateDefaultSubobject<UBehaviorTreeComponent>(TEXT("BehaviorTreeComponent"));
+	BlackboardComponent = CreateDefaultSubobject<UBlackboardComponent>(TEXT("BlackboardComponent"));
 }
+//navmesh ë‘˜ëŸ¬ì£¼ê¸°
 
 void ABaseAIController::BeginPlay()
 {
-    Super::BeginPlay();
+	Super::BeginPlay();
 }
 
 void ABaseAIController::OnPossess(APawn* InPawn)
 {
-    Super::OnPossess(InPawn);
+	Super::OnPossess(InPawn);
 
-    // ¸ó½ºÅÍ Ä³¸¯ÅÍ ÂüÁ¶ È¹µæ
-    MonsterCharacter = Cast<ABaseMonsterCharacter>(InPawn);
-    UE_LOG(LogTemp, Warning, TEXT("1"));
-    // ºí·¢º¸µå ¹× ºñÇìÀÌºñ¾î Æ®¸® ½ÃÀÛ
-    if (BlackboardData && BlackboardComponent)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("2"));
-        BlackboardComponent->InitializeBlackboard(*(BlackboardData));
-    }
+	MonsterCharacter = Cast<ABaseMonsterCharacter>(InPawn);
 
-    if (BehaviorTree && BlackboardComponent)
-    {
-        // ÃÊ±â »óÅÂ¸¦ ¼øÂû·Î ¼³Á¤
-        SetPatrolling();
-        UE_LOG(LogTemp, Warning, TEXT("3"));
-        // ºñÇìÀÌºñ¾î Æ®¸® ½ÇÇà
-        RunBehaviorTree(BehaviorTree);
-    }
+	if (BlackboardData && BlackboardComponent)
+	{
+		BlackboardComponent->InitializeBlackboard(*(BlackboardData));
+	}
+
+	if (BehaviorTree && BlackboardComponent)
+	{
+		SetPatrolling();
+
+		RunBehaviorTree(BehaviorTree);
+	}
 }
 
 void ABaseAIController::OnUnPossess()
 {
-    Super::OnUnPossess();
+	Super::OnUnPossess();
 
-    if (BehaviorTreeComponent)
-    {
-        BehaviorTreeComponent->StopTree();
-    }
+	if (BehaviorTreeComponent)
+	{
+		BehaviorTreeComponent->StopTree();
+	}
 }
 
 void ABaseAIController::SetPatrolling()
 {
-    if (BlackboardComponent)
-    {
-        // »óÅÂ¸¦ ¼øÂû·Î ¼³Á¤ (0 = ¼øÂû)
-        BlackboardComponent->SetValueAsInt(StateKeyName, 0);
-    }
+	ACharacter* MyCharacter = Cast<ACharacter>(GetPawn());
+	//ìˆœì°°
+	if (BlackboardComponent && MyCharacter)
+	{
+		UCharacterMovementComponent* MovementComp = MyCharacter->GetCharacterMovement();
+		if (MovementComp)
+		{
+			MovementComp->MaxWalkSpeed = 300.f;
+		}
+		BlackboardComponent->SetValueAsInt(StateKeyName, 0);
+	}
 }
 
 void ABaseAIController::SetChasing(AActor* Target)
 {
-    if (BlackboardComponent)
-    {
-        // ´ë»ó ¼³Á¤
-        BlackboardComponent->SetValueAsObject(TargetActorKeyName, Target);
+	ACharacter* MyCharacter = Cast<ACharacter>(GetPawn());
+	//ì¶”ê²©
+	if (BlackboardComponent&& MyCharacter)
+	{
+		UCharacterMovementComponent* MovementComp = MyCharacter->GetCharacterMovement();
+		if (MovementComp)
+		{
+			MovementComp->MaxWalkSpeed = 500.f;
+		}
 
-        // »óÅÂ¸¦ ÃßÀûÀ¸·Î ¼³Á¤ (1 = ÃßÀû)
-        BlackboardComponent->SetValueAsInt(StateKeyName, 1);
+		BlackboardComponent->SetValueAsObject(TargetActorKeyName, Target);
+		
+		BlackboardComponent->SetValueAsInt(StateKeyName, 1);
 
-        // ÀÌµ¿ ¾Ö´Ï¸ÞÀÌ¼Ç Àç»ý
-        if (MonsterCharacter)
-        {
-            MonsterCharacter->MulticastAIMove();
-        }
-    }
+		if (MonsterCharacter)
+		{
+			MonsterCharacter->MulticastAIMove();
+		}
+	}
 }
 
 void ABaseAIController::SetAttacking()
 {
-    if (BlackboardComponent && MonsterCharacter)
-    {
-        // »óÅÂ¸¦ °ø°ÝÀ¸·Î ¼³Á¤ (2 = °ø°Ý)
-        BlackboardComponent->SetValueAsInt(StateKeyName, 2);
+	if (BlackboardComponent && MonsterCharacter)
+	{
+		//UE_LOG(LogTemp, Warning, TEXT("Attack"));
+		//ê³µê²©
+		BlackboardComponent->SetValueAsInt(StateKeyName, 2);
 
-        // °ø°Ý ¼öÇà
-        MonsterCharacter->PerformAttack();
-    }
+		MonsterCharacter->PerformAttack();
+	}
 }
-

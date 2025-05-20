@@ -7,6 +7,8 @@
 #include "Net/UnrealNetwork.h"
 #include "BaseMonsterCharacter.generated.h"
 
+class USphereComponent;
+
 UCLASS()
 class LASTCANARY_API ABaseMonsterCharacter : public ACharacter
 {
@@ -17,6 +19,9 @@ class LASTCANARY_API ABaseMonsterCharacter : public ACharacter
 
 public:
     ABaseMonsterCharacter();
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Attack")
+    USphereComponent* AttackCollider;
 
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
@@ -43,6 +48,12 @@ public:
     UPROPERTY(EditDefaultsOnly, Category = "Animation")
     UAnimMontage* AIDeath;
     
+    UFUNCTION(BlueprintCallable, Category = "Attack")
+    void EnableAttackCollider();
+
+    UFUNCTION(BlueprintCallable, Category = "Attack")
+    void DisableAttackCollider();
+
     /*UFUNCTION(NetMulticast, Reliable)
     void MulticastIdle();*/
 
@@ -96,6 +107,8 @@ protected:
 
     UFUNCTION()
     void OnAttackFinished();
+
+    void OnAttackHit(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 private:
     float LastAttackTime = 0.f;
