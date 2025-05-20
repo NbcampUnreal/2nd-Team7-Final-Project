@@ -35,6 +35,10 @@ public:
 	void ShowConfirmPopup(TFunction<void()> OnConfirm);
 
 	void SwitchToWidget(UUserWidget* Widget);
+	
+	/* 입력 모드 제어 */
+	void SetInputModeUIOnly(UUserWidget* FocusWidget = nullptr);
+	void SetInputModeGameOnly();
 
 	/* 위젯 게터 */
 	UTitleMenu* GetTitleMenu() const { return CachedTitleMenu; }
