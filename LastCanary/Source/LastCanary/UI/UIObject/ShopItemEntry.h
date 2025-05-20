@@ -10,6 +10,9 @@
 class UImage;
 class UTextBlock;
 class UButton;
+
+DECLARE_DELEGATE_OneParam(FOnShopItemClicked, UShopItemEntry*)
+
 UCLASS()
 class LASTCANARY_API UShopItemEntry : public ULCUserWidgetBase
 {
@@ -17,6 +20,7 @@ class LASTCANARY_API UShopItemEntry : public ULCUserWidgetBase
 
 protected:
 	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
 
 	UFUNCTION()
 	void OnSelectButtonClicked();
@@ -31,8 +35,20 @@ protected:
 	UButton* SelectButton;
 	
 public:
+	void SetSelected(bool bInSelected);
 	void InitItem(const FItemDataRow& InItemData);
 
+	FOnShopItemClicked OnItemClicked;
+
+	const FItemDataRow& GetItemData() const;
+	
+	int32 GetItemID() const;
+
 private:
+	UPROPERTY()
+	bool bIsSelected = false;
+	UPROPERTY()
 	FItemDataRow ItemData;
+	
+	FButtonStyle DefaultButtonStyle;
 };

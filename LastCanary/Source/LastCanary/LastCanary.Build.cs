@@ -18,6 +18,10 @@ public class LastCanary : ModuleRules
             "NavigationSystem",
             "GamePlayTags", 
             "Slate",
+            "SlateCore",
+            "OnlineSubsystem", 
+            "OnlineSubsystemUtils",
+            "AdvancedSessions",
             "SlateCore", 
             "ALSCamera"
         });
