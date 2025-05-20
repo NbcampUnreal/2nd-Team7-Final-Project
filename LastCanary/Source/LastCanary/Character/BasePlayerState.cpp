@@ -126,7 +126,8 @@ void ABasePlayerState::DrainStamina()
         SetPlayerMovementState(ECharacterMovementState::Exhausted);
         StartStaminaRecovery();
         // Notify exhausted
-        // 예: OnStaminaDepleted.Broadcast();
+        UE_LOG(LogTemp, Warning, TEXT("Notify Exhausted"));
+        OnExhausted.Broadcast();
     }
 }
 

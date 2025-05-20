@@ -17,6 +17,7 @@ void ABasePlayerController::BeginPlay()
 	{
 		PS->OnDamaged.AddDynamic(this, &ABasePlayerController::OnCharacterDamaged);
 		PS->OnDied.AddDynamic(this, &ABasePlayerController::OnCharacterDied);
+		PS->OnExhausted.AddDynamic(this, &ABasePlayerController::Complete_OnSprint);
 	}
 }
 
@@ -317,6 +318,7 @@ void ABasePlayerController::Input_OnSprint(const FInputActionValue& ActionValue)
 
 void ABasePlayerController::Complete_OnSprint()
 {
+	UE_LOG(LogTemp, Warning, TEXT("Sprint Complete"));
 	if (!IsValid(CachedPawn))
 	{
 		return;
@@ -327,6 +329,8 @@ void ABasePlayerController::Complete_OnSprint()
 		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CachedPawn);
 		if (IsValid(PlayerCharacter))
 		{
+			PlayerCharacter->SetDesiredGait(AlsGaitTags::Running);
+			UE_LOG(LogTemp, Warning, TEXT("go Walking"));
 			if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
 			{
 				PS->SetPlayerMovementState(ECharacterMovementState::Walking);

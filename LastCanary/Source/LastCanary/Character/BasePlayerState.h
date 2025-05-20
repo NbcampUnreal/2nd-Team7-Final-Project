@@ -9,6 +9,7 @@
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPlayerDamaged);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPlayerDeath);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPlayerExhausted);
 
 
 UCLASS()
@@ -83,6 +84,9 @@ public:
 
     UPROPERTY(BlueprintAssignable, Category = "Events")
     FOnPlayerDeath OnDied;
+
+    UPROPERTY(BlueprintAssignable, Category = "Events")
+    FOnPlayerExhausted OnExhausted;
 
     UFUNCTION(NetMulticast, Reliable)
     void Multicast_OnDamaged();

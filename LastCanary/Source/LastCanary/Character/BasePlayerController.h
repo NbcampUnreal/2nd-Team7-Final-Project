@@ -119,7 +119,9 @@ private:
 	virtual void Input_OnMove(const FInputActionValue& ActionValue);
 
 	virtual void Input_OnSprint(const FInputActionValue& ActionValue);
-	virtual void Complete_OnSprint();
+	
+	UFUNCTION()
+	void Complete_OnSprint();
 
 	virtual void Input_OnWalk();
 

@@ -309,7 +309,6 @@ void ABaseCharacter::OnInteractBoxEndOverlap(UPrimitiveComponent* OverlappedComp
 void ABaseCharacter::OverlapCheckFunction()
 {
 	// 오버랩 중일 때 해야 할 반복 작업 수행
-	UE_LOG(LogTemp, Log, TEXT("Overlap 상태"));
 	if (!bIsPossessed)
 	{
 		return;
@@ -332,7 +331,6 @@ void ABaseCharacter::OverlapCheckFunction()
 			//TO DO...
 			//GetGameInstance->GetUIManager->적당한 UI 띄우는 함수...();
 		*/
-		UE_LOG(LogTemp, Warning, TEXT("There is Interactive Object"));
 	}
 	// 필요하면 조건에 따라 타이머를 멈출 수도 있음
 }
