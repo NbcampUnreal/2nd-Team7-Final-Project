@@ -8,6 +8,8 @@
 #include "UI/UIElement/InGameHUD.h"
 #include "UI/UIElement/ShopWidget.h"
 
+#include "UI/UIObject/ConfirmPopup.h"
+
 #include "Framework/PlayerController/LCLobbyPlayerController.h"
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
@@ -116,31 +118,63 @@ void ULCUIManager::ShowOptionPopup()
 	}
 }
 
-void ULCUIManager::ShowShopPopup() 
+void ULCUIManager::ShowPauseMenu()
 {
-	LOG_Frame_WARNING(TEXT("ShowShopPopup"));
-
-	if (!ShopWidgetClass)
+	LOG_Frame_WARNING(TEXT("ShowPauseMenu"));
+	if (CachedOptionWidget)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ShopWidgetClass is null"));
+		CachedOptionWidget->AddToViewport(1);
+	}
+	if (OwningPlayer)
+	{
+		FInputModeUIOnly InputMode;
+		InputMode.SetWidgetToFocus(CachedOptionWidget->TakeWidget());
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		OwningPlayer->SetInputMode(InputMode);
+		OwningPlayer->bShowMouseCursor = true;
+	}
+}
+
+void ULCUIManager::HidePauseMenu()
+{
+	//TODO: InputMode GameOnly로 변경 후 마우스 커서 숨기기
+}
+
+void ULCUIManager::ShowConfirmPopup(TFunction<void()> OnConfirm)
+{
+	LOG_Frame_WARNING(TEXT("ShowConfirmPopup"));
+	if (!ConfirmPopupClass)
+	{
 		return;
 	}
 
-	if (!CachedShopWidget)
+	UConfirmPopup* ConfirmPopup = CreateWidget<UConfirmPopup>(OwningPlayer, ConfirmPopupClass);
+	if (ConfirmPopup)
 	{
-		CachedShopWidget = CreateWidget<UShopWidget>(OwningPlayer, ShopWidgetClass);
+		ConfirmPopup->Init(MoveTemp(OnConfirm));
+		ConfirmPopup->AddToViewport(10);
 	}
+}
 
-	if (CachedShopWidget && !CachedShopWidget->IsInViewport())
+void ULCUIManager::ShowShopPopup()
+{
+	LOG_Frame_WARNING(TEXT("ShowShopPopup"));
+
+	if (LastShopInteractor && LastShopInteractor->IsValidLowLevel())
 	{
-		CachedShopWidget->AddToViewport();
+		LastShopInteractor->GetShopWidgetComponent()->SetVisibility(true);
 
-		OwningPlayer->SetInputMode(FInputModeUIOnly());
-		OwningPlayer->bShowMouseCursor = true;
-
-		if (LastShopInteractor && LastShopInteractor->GetShopWidgetComponent())
+		if (OwningPlayer)
 		{
-			LastShopInteractor->GetShopWidgetComponent()->SetVisibility(false);
+			if (APawn* Pawn = OwningPlayer->GetPawn())
+			{
+				Pawn->DisableInput(OwningPlayer);
+			}
+
+			FInputModeUIOnly InputMode;
+			InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+			OwningPlayer->SetInputMode(InputMode);
+			OwningPlayer->bShowMouseCursor = true;
 		}
 	}
 }
@@ -149,25 +183,21 @@ void ULCUIManager::HideShopPopup()
 {
 	LOG_Frame_WARNING(TEXT("HideShopPopup"));
 
-	if (CachedShopWidget && CachedShopWidget->IsInViewport())
+	if (LastShopInteractor && LastShopInteractor->GetShopWidgetComponent())
 	{
-		CachedShopWidget->RemoveFromParent();
+		LastShopInteractor->GetShopWidgetComponent()->SetVisibility(false);
 	}
 
-	OwningPlayer->SetInputMode(FInputModeGameOnly());
-	OwningPlayer->bShowMouseCursor = false;
-
-	if (APawn* ControlledPawn = OwningPlayer->GetPawn())
+	if (OwningPlayer)
 	{
-		OwningPlayer->SetViewTargetWithBlend(ControlledPawn, 0.5f);
-	}
-
-	if (LastShopInteractor)
-	{
-		if (LastShopInteractor->GetShopWidgetComponent())
+		if (APawn* Pawn = OwningPlayer->GetPawn())
 		{
-			LastShopInteractor->GetShopWidgetComponent()->SetVisibility(true);
+			Pawn->EnableInput(OwningPlayer);
 		}
+
+		OwningPlayer->SetViewTargetWithBlend(OwningPlayer->GetPawn(), 1.0f);
+		OwningPlayer->SetInputMode(FInputModeGameOnly());
+		OwningPlayer->bShowMouseCursor = false;
 	}
 }
 

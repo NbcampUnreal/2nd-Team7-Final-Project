@@ -32,8 +32,10 @@ public:
 	void ShowEnterPasswordWidget(const FString& RoomID);
 	void ShowInGameHUD();
 	void ShowOptionPopup();
+	void ShowPauseMenu();
+	void HidePauseMenu();
+	void ShowConfirmPopup(TFunction<void()> OnConfirm);
 	void ShowShopPopup();
-
 	void HideShopPopup();
 
 	void SwitchToWidget(UUserWidget* Widget);
@@ -63,7 +65,9 @@ private:
 	UPROPERTY()
 	TSubclassOf<UEnterPasswordWidget> EnterPasswordWidgetClass;
 	UPROPERTY()
-	TSubclassOf<UOptionWidget> OptionWidgetClass;
+	TSubclassOf<UOptionWidget> OptionWidgetClass;	
+	UPROPERTY()
+	TSubclassOf<UOptionWidget> ConfirmPopupClass;
 	UPROPERTY()
 	TSubclassOf<UInGameHUD> InGameHUDWidgetClass;
 	UPROPERTY()
