@@ -11,6 +11,8 @@
 #include "../Plugins/ALS-Refactored-4.15/Source/ALS/Public/Utility/AlsVector.h"
 //innclude "ALSCamera/Public/AlsCameraComponent.h"
 
+#include "BasePlayerState.h"
+
 ABaseCharacter::ABaseCharacter()
 {
 	bIsPossessed = false;
@@ -30,6 +32,7 @@ ABaseCharacter::ABaseCharacter()
 	InteractDetectionBox->SetCollisionResponseToAllChannels(ECR_Ignore);
 	InteractDetectionBox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 	InteractDetectionBox->SetGenerateOverlapEvents(true);
+	SetViewMode(AlsViewModeTags::FirstPerson);
 }
 
 void ABaseCharacter::BeginPlay()
@@ -68,14 +71,38 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 }
 
 
-/////////////////////////////
 
 void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue)
 {
+	/*
 	const FVector2f Value{ ActionValue.Get<FVector2D>() };
 
 	AddControllerPitchInput(Value.Y * LookUpMouseSensitivity);
 	AddControllerYawInput(Value.X * LookRightMouseSensitivity);
+	*/
+
+	const FVector2f Value{ ActionValue.Get<FVector2D>() };
+
+	if (!Controller) return;
+
+	// 현재 컨트롤러 회전
+	FRotator CurrentRotation = Controller->GetControlRotation();
+	float CurrentPitch = CurrentRotation.GetNormalized().Pitch;
+
+	// 입력값 계산
+	const float NewPitchInput = Value.Y * LookUpMouseSensitivity;
+
+	// Pitch 제한 적용
+	float NewPitch = FMath::Clamp(CurrentPitch + NewPitchInput, -50.f, 50.f);
+
+	// Yaw는 그대로
+	float NewYaw = CurrentRotation.Yaw + Value.X * LookRightMouseSensitivity;
+
+	// 새 회전값 적용
+	FRotator NewRotation = FRotator(NewPitch, NewYaw, 0.f);
+	Controller->SetControlRotation(NewRotation);
+
+
 }
 
 void ABaseCharacter::Handle_Look(const FInputActionValue& ActionValue)
@@ -92,17 +119,31 @@ void ABaseCharacter::Handle_Move(const FInputActionValue& ActionValue)
 
 	const auto ForwardDirection{ UAlsVector::AngleToDirectionXY(UE_REAL_TO_FLOAT(GetViewState().Rotation.Yaw)) };
 	const auto RightDirection{ UAlsVector::PerpendicularCounterClockwiseXY(ForwardDirection) };
-
+	if (bIsInHardLandingState)
+	{
+		// 착지 중에는 이동 금지
+		return;
+	}
 	AddMovementInput(ForwardDirection * Value.Y + RightDirection * Value.X);
 }
 
 void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 {
+	if (bIsInHardLandingState)
+	{
+		// 착지 중에는 조작 금지
+		return;
+	}
 	SetDesiredGait(ActionValue.Get<bool>() ? AlsGaitTags::Sprinting : AlsGaitTags::Running);
 }
 
 void ABaseCharacter::Handle_Walk()
 {
+	if (bIsInHardLandingState)
+	{
+		// 착지 중에는 조작 금지
+		return;
+	}
 	if (GetDesiredGait() == AlsGaitTags::Walking)
 	{
 		SetDesiredGait(AlsGaitTags::Running);
@@ -115,6 +156,11 @@ void ABaseCharacter::Handle_Walk()
 
 void ABaseCharacter::Handle_Crouch()
 {
+	if (bIsInHardLandingState)
+	{
+		// 착지 중에는 조작 금지
+		return;
+	}
 	if (GetDesiredStance() == AlsStanceTags::Standing)
 	{
 		SetDesiredStance(AlsStanceTags::Crouching);
@@ -127,6 +173,11 @@ void ABaseCharacter::Handle_Crouch()
 
 void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
 {
+	if (bIsInHardLandingState)
+	{
+		// 착지 중에는 조작 금지
+		return;
+	}
 	if (ActionValue.Get<bool>())
 	{
 		if (StopRagdolling())
@@ -150,29 +201,12 @@ void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 {
-	SetDesiredAiming(ActionValue.Get<bool>());
-}
-
-void ABaseCharacter::Handle_Ragdoll()
-{
-	if (!StopRagdolling())
+	if (bIsInHardLandingState)
 	{
-		StartRagdolling();
+		// 착지 중에는 조작 금지
+		return;
 	}
-}
-
-void ABaseCharacter::Handle_Roll()
-{
-	static constexpr auto PlayRate{ 1.3f };
-
-	StartRolling(PlayRate);
-}
-
-void ABaseCharacter::Handle_RotationMode()
-{
-	SetDesiredRotationMode(GetDesiredRotationMode() == AlsRotationModeTags::VelocityDirection
-		? AlsRotationModeTags::ViewDirection
-		: AlsRotationModeTags::VelocityDirection);
+	SetDesiredAiming(ActionValue.Get<bool>());
 }
 
 void ABaseCharacter::Handle_ViewMode()
@@ -180,10 +214,12 @@ void ABaseCharacter::Handle_ViewMode()
 	SetViewMode(GetViewMode() == AlsViewModeTags::ThirdPerson ? AlsViewModeTags::FirstPerson : AlsViewModeTags::ThirdPerson);
 }
 
-// ReSharper disable once CppMemberFunctionMayBeConst
-void ABaseCharacter::Handle_SwitchShoulder()
+
+void ABaseCharacter::Handle_Strafe(const FInputActionValue& ActionValue)
 {
-	Camera->SetRightShoulder(!Camera->IsRightShoulder());
+	const auto Value{ UAlsVector::ClampMagnitude012D(ActionValue.Get<FVector2D>()) };
+
+
 }
 
 void ABaseCharacter::Handle_Interact(AActor* HitActor)
@@ -279,4 +315,77 @@ void ABaseCharacter::OverlapCheckFunction()
 void ABaseCharacter::SetPossess(bool IsPossessed)
 {
 	bIsPossessed = IsPossessed;
+}
+
+
+
+void ABaseCharacter::EquipItemFromCurrentQuickSlot(int QuickSlotIndex)
+{
+	UE_LOG(LogTemp, Warning, TEXT("Change Equip Item"));
+
+	TestEquipFunction(QuickSlotIndex);
+	/* // 지금은 아이템 없어서 임시 비활성화.
+	if (!QuickSlots.IsValidIndex(QuickSlotIndex))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Invalid quick slot index: %d"), QuickSlotIndex);
+		return;
+	}
+	
+	if (QuickSlotIndex >= QuickSlots.Num())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Invalid quick slot index : %d (Out of Range)"), QuickSlotIndex);
+		return;
+	}
+	UObject* Item = QuickSlots[QuickSlotIndex];
+	if (Item)
+	{
+		EquipItem(Item); // 실제 장착 로직 호출
+	}
+	else
+	{
+		UnequipCurrentItem(); // 슬롯이 비어있으면 장착 해제
+	}
+	*/
+}
+
+void ABaseCharacter::EquipItem(UObject* Item)
+{
+	HeldItem = Item;
+	//메시 부착, 무기 생성, 이펙트 적용 등 추가 로직 필요
+	UE_LOG(LogTemp, Log, TEXT("Equipped item: %s"), *GetNameSafe(Item));
+	//ALS의 attach Component 함수를 참고 혹은 불러오기... 혹은 Overlay모드 변화
+}
+
+void ABaseCharacter::UnequipCurrentItem()
+{
+	HeldItem = nullptr;
+	// 손에서 제거, 메시 해제, 이펙트 제거 등 처리
+	UE_LOG(LogTemp, Log, TEXT("Unequipped current item"));
+}
+
+
+float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+
+	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
+	if (MyPlayerState)
+	{
+		MyPlayerState->ApplyDamage(DamageAmount);
+	}
+
+	return DamageAmount;
+}
+
+void ABaseCharacter::HandlePlayerDeath()
+{
+	//플레이어 사망 처리 로직 적용 후 관전 상태 진입
+	UE_LOG(LogTemp, Warning, TEXT("Character is dead"));
+
+	// 입력 막기 등 처리
+	AController* MyController = GetController();
+	if (MyController)
+	{
+		MyController->UnPossess();
+	}
 }
