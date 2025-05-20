@@ -2,7 +2,6 @@
 
 
 #include "UI/UIElement/ToolbarInventoryWidget.h"
-#include "DataType/ToolbarItemSlotData.h"
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "UI/UIObject/ToolbarSlotWidget.h"
 #include "Components/HorizontalBox.h"

@@ -27,6 +27,8 @@ public:
 	TObjectPtr<UDataTable> MapDataTable;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Data")
 	TObjectPtr<UDataTable> ItemDataTable;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Data")
+	TObjectPtr<UDataTable> GunDataTable;
 
 	ULCUIManager* GetUIManager() const;
 	void ChangeLevelByMapName(const FName& MapName);

@@ -60,8 +60,12 @@ public:
     int32 Quantity;
 
     /** 아이템 내구도/배터리량 (소모성 장비용) */
-    UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Item|State")
+    UPROPERTY(ReplicatedUsing = OnRepDurability, EditAnywhere, BlueprintReadWrite, Category = "Item|State")
     float Durability;
+
+    /** Durability가 복제될 때 호출되는 함수 */
+    UFUNCTION()
+    virtual void OnRepDurability();
 
     //-----------------------------------------------------
     // 이벤트 및 델리게이트

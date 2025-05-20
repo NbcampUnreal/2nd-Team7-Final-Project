@@ -4,6 +4,7 @@
 #include "Engine/GameInstance.h"
 #include "DataTable/MapDataRow.h"
 #include "DataTable/ItemDataRow.h"
+#include "DataTable/GunDataRow.h"
 #include "LCGameInstance.generated.h"
 
 /**
@@ -31,4 +32,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data")
 	UDataTable* ItemDataTable;
 	void LoadItemData();
+
+	FItemDataRow CurrentGunInfoRow;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data")
+	UDataTable* GunDataTable;
+	void LoadGunData();
 };

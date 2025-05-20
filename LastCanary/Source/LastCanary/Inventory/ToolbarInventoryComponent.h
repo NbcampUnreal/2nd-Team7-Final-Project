@@ -2,7 +2,6 @@
 
 #include "CoreMinimal.h"
 #include "Inventory/InventoryComponentBase.h"
-#include "DataType/ToolbarItemSlotData.h"
 #include "ToolbarInventoryComponent.generated.h"
 
 class ABaseCharacter;

@@ -15,8 +15,10 @@ void ULCGameInstanceSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	{
 		MapDataTable = GI->MapDataTable;
 		ItemDataTable = GI->ItemDataTable;
+		GunDataTable = GI->GunDataTable;
 		GI->LoadMapData();
 		GI->LoadItemData();
+		GI->LoadGunData();
 	}
 }
 

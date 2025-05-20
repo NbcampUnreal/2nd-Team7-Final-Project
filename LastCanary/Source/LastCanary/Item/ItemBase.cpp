@@ -75,6 +75,20 @@ void AItemBase::BeginPlay()
 	ApplyItemDataFromTable();
 }
 
+void AItemBase::OnRepDurability()
+{
+	if (FMath::IsNearlyZero(Durability) || Durability <= 0.0f)
+	{
+		Durability = 0.0f;
+	}
+	else if (Durability > 100.0f)
+	{
+		Durability = 100.0f;
+	}
+
+	OnItemStateChanged.Broadcast();
+}
+
 void AItemBase::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	ABaseCharacter* Player = Cast<ABaseCharacter>(OtherActor);
@@ -171,5 +185,5 @@ void AItemBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetim
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AItemBase, bIsEquipped);
-	DOREPLIFETIME(AItemBase, Durability);
+	DOREPLIFETIME_CONDITION_NOTIFY(AItemBase, Durability, COND_None, REPNOTIFY_Always);
 }

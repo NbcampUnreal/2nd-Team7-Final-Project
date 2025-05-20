@@ -255,6 +255,20 @@ bool UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
     if (CachedOwnerCharacter)
     {
         CachedOwnerCharacter->SetEquipped(true);
+
+        // 중요: 장착된 아이템 액터를 찾아 상태 업데이트
+        TArray<AActor*> AttachedActors;
+        CachedOwnerCharacter->GetAttachedActors(AttachedActors);
+
+        for (AActor* Actor : AttachedActors)
+        {
+            AItemBase* Item = Cast<AItemBase>(Actor);
+            if (Item && Item->ItemRowName == ItemSlots[SlotIndex].ItemRowName)
+            {
+                Item->bIsEquipped = true;
+                break;
+            }
+        }
     }
 
     OnInventoryUpdated.Broadcast();
@@ -297,6 +311,15 @@ void UToolbarInventoryComponent::Multicast_HandleItemPickup_Implementation(AItem
         NewItem->SetActorEnableCollision(false);
         NewItem->ItemRowName = ItemRowName;
         NewItem->ApplyItemDataFromTable();
+
+        for (const FBaseItemSlotData& Slot : ItemSlots)
+        {
+            if (Slot.ItemRowName == ItemRowName && Slot.bIsEquipped)
+            {
+                NewItem->bIsEquipped = true;
+                break;
+            }
+        }
 
         NewItem->AttachToComponent(CachedOwnerCharacter->GetMesh(),
             FAttachmentTransformRules::SnapToTargetNotIncludingScale,

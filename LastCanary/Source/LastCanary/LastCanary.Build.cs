@@ -19,7 +19,8 @@ public class LastCanary : ModuleRules
             "GamePlayTags", 
             "Slate",
             "SlateCore", 
-            "ALSCamera"
+            "ALSCamera",
+            "Niagara"
         });
 
         PrivateDependencyModuleNames.AddRange(new string[] {  });
