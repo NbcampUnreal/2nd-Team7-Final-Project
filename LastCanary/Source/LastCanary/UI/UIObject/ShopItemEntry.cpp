@@ -6,6 +6,52 @@
 
 #include "LastCanary.h"
 
+void UShopItemEntry::NativeConstruct()
+{
+	Super::NativeConstruct();
+
+	if (SelectButton)
+	{
+		DefaultButtonStyle = SelectButton->WidgetStyle;
+		SelectButton->OnClicked.AddUniqueDynamic(this, &UShopItemEntry::OnSelectButtonClicked);
+	}
+}
+
+void UShopItemEntry::NativeDestruct()
+{
+	Super::NativeDestruct();
+
+	if (SelectButton)
+	{
+		SelectButton->OnClicked.RemoveDynamic(this, &UShopItemEntry::OnSelectButtonClicked);
+	}
+}
+
+void UShopItemEntry::SetSelected(bool bInSelected)
+{
+	bIsSelected = bInSelected;
+
+	if (SelectButton)
+	{
+		FButtonStyle NewStyle = DefaultButtonStyle;
+
+		if (bIsSelected)
+		{
+			FSlateColor LockedColor = FSlateColor(FLinearColor::FromSRGBColor(FColor::FromHex("282828")));
+
+			NewStyle.Normal.TintColor = LockedColor;
+
+			SelectButton->SetStyle(NewStyle);
+			SelectButton->SetIsEnabled(false);
+		}
+		else
+		{
+			SelectButton->SetStyle(DefaultButtonStyle); 
+			SelectButton->SetIsEnabled(true);
+		}
+	}
+}
+
 void UShopItemEntry::InitItem(const FItemDataRow& InItemData)
 {
 	ItemData = InItemData;
@@ -24,17 +70,22 @@ void UShopItemEntry::InitItem(const FItemDataRow& InItemData)
 	}
 }
 
-void UShopItemEntry::NativeConstruct()
+void UShopItemEntry::OnSelectButtonClicked()
 {
-	Super::NativeConstruct();
+	LOG_Frame_WARNING(TEXT("ShopItemEntry Clicked: %s"), *ItemData.ItemName.ToString());
 
-	if (SelectButton)
+	if (OnItemClicked.IsBound())
 	{
-		SelectButton->OnClicked.AddUniqueDynamic(this, &UShopItemEntry::OnSelectButtonClicked);
+		OnItemClicked.Execute(this);
 	}
 }
 
-void UShopItemEntry::OnSelectButtonClicked()
+const FItemDataRow& UShopItemEntry::GetItemData() const
 {
-	LOG_Frame_WARNING(TEXT("TODO : ShopItemInfoWidget에정보출력"));
+	return ItemData;
+}
+
+int32 UShopItemEntry::GetItemID() const
+{
+	return ItemData.ItemID;
 }

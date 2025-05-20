@@ -2,8 +2,11 @@
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
 #include "Components/Button.h"
+
 #include "Engine/DataTable.h"
 #include "DataTable/ItemDataRow.h"
+#include "UI/UIObject/ShoppingCartWidget.h"
+#include "UI/UIElement/ShopWidget.h"
 
 #include "LastCanary.h"
 
@@ -11,6 +14,18 @@
 void UShopItemInfoWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+
+	if (ShoppingCartWidget == nullptr)
+	{
+		if (UShopWidget* ParentShopWidget = Cast<UShopWidget>(GetOuter()))
+		{
+			ShoppingCartWidget = ParentShopWidget->GetShoppingCartWidget();
+			if (!ShoppingCartWidget)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("ShoppingCartWidget is null in NativeConstruct"));
+			}
+		}
+	}
 
 	if (IncreaseButton)
 	{
@@ -72,9 +87,52 @@ void UShopItemInfoWidget::OnAddToCartButtonClicked()
 {
 	// 장바구니에 항목 추가 로직
 	LOG_Frame_WARNING(TEXT("AddToCart: Count = %d, Price = %d, Total = %d"), SelectedCount, ItemPrice, SelectedCount * ItemPrice);
+
+	if (ItemDataTable == nullptr)
+	{
+		LOG_Frame_WARNING(TEXT("ItemDataTable is null"));
+		return;
+	}
+	if (ShoppingCartWidget == nullptr)
+	{
+		LOG_Frame_WARNING(TEXT("ShoppingCartWidget is null"));
+		return;
+	}
+
+	const FString ContextString(TEXT("ShopItem Lookup"));
+	TArray<FItemDataRow*> AllItems;
+	ItemDataTable->GetAllRows(ContextString, AllItems);
+
+	for (const FItemDataRow* ItemRow : AllItems)
+	{
+		if (ItemRow && ItemRow->ItemID == ItemID) // ItemID는 LoadItemFromDataTable 시점에 저장해둬야 함
+		{
+			ShoppingCartWidget->AddItemToCart(*ItemRow, SelectedCount);
+			return;
+		}
+	}
 }
 
-void UShopItemInfoWidget::LoadItemFromDataTable(int32 ItemID)
+int32 UShopItemInfoWidget::GetSelectedCount() const
+{
+	return SelectedCount;
+}
+
+void UShopItemInfoWidget::SetShoppingCartWidget(UShoppingCartWidget* InCartWidget)
+{
+	ShoppingCartWidget = InCartWidget;
+
+	if (ShoppingCartWidget)
+	{
+		LOG_Frame_WARNING(TEXT("SetShoppingCartWidget: SUCCESS"));
+	}
+	else
+	{
+		LOG_Frame_WARNING(TEXT("SetShoppingCartWidget: FAILED"));
+	}
+}
+
+void UShopItemInfoWidget::LoadItemFromDataTable(int32 InItemID)
 {
 	if (!ItemDataTable)
 	{
@@ -88,15 +146,19 @@ void UShopItemInfoWidget::LoadItemFromDataTable(int32 ItemID)
 
 	for (const FItemDataRow* ItemRow : AllItems)
 	{
-		if (ItemRow && ItemRow->ItemID == ItemID)
+		if (ItemRow && ItemRow->ItemID == InItemID)
 		{
+			SelectedCount = 1;
+			UpdateCountDisplay();
+
 			SetItemInfo(ItemRow->ItemIcon, ItemRow->ItemName, ItemRow->ItemDescription);
+			ItemID = InItemID;
 			ItemPrice = ItemRow->ItemPrice;
 			return;
 		}
 	}
 
-	LOG_Frame_WARNING(TEXT("Item with ID %d not found in ItemDataTable"), ItemID);
+	LOG_Frame_WARNING(TEXT("Item with ID %d not found in ItemDataTable"), InItemID);
 }
 
 void UShopItemInfoWidget::SetItemInfo(UTexture2D* ItemIconImage, const FName& ItemNameText, const FText& ItemDescriptionText)
@@ -109,7 +171,6 @@ void UShopItemInfoWidget::SetItemInfo(UTexture2D* ItemIconImage, const FName& It
 	{
 		ItemName->SetText(FText::FromName(ItemNameText));
 	}
-
 	if (ItemDescription)
 	{
 		ItemDescription->SetText(ItemDescriptionText);
