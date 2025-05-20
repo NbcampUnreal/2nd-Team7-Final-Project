@@ -108,14 +108,7 @@ void ULCUIManager::ShowOptionPopup()
 		CachedOptionWidget->AddToViewport(1);
 	}
 
-	if (OwningPlayer)
-	{
-		FInputModeUIOnly InputMode;
-		InputMode.SetWidgetToFocus(CachedOptionWidget->TakeWidget());
-		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-		OwningPlayer->SetInputMode(InputMode);
-		OwningPlayer->bShowMouseCursor = true;
-	}
+	SetInputModeUIOnly(CachedOptionWidget);
 }
 
 void ULCUIManager::ShowPauseMenu()
@@ -125,19 +118,16 @@ void ULCUIManager::ShowPauseMenu()
 	{
 		CachedOptionWidget->AddToViewport(1);
 	}
+
 	if (OwningPlayer)
 	{
-		FInputModeUIOnly InputMode;
-		InputMode.SetWidgetToFocus(CachedOptionWidget->TakeWidget());
-		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-		OwningPlayer->SetInputMode(InputMode);
-		OwningPlayer->bShowMouseCursor = true;
+		SetInputModeUIOnly(CachedOptionWidget);
 	}
 }
 
 void ULCUIManager::HidePauseMenu()
 {
-	//TODO: InputMode GameOnly로 변경 후 마우스 커서 숨기기
+	SetInputModeGameOnly();
 }
 
 void ULCUIManager::ShowConfirmPopup(TFunction<void()> OnConfirm)
@@ -160,22 +150,27 @@ void ULCUIManager::ShowShopPopup()
 {
 	LOG_Frame_WARNING(TEXT("ShowShopPopup"));
 
-	if (LastShopInteractor && LastShopInteractor->IsValidLowLevel())
+	if (LastShopInteractor && LastShopInteractor->GetShopWidgetComponent())
 	{
-		LastShopInteractor->GetShopWidgetComponent()->SetVisibility(true);
+		LastShopInteractor->GetShopWidgetComponent()->SetVisibility(false);
+	}
 
-		if (OwningPlayer)
+	if (CachedShopWidget)
+	{
+		CachedShopWidget->AddToViewport(1);
+	}
+
+	if (OwningPlayer)
+	{
+		if (APawn* Pawn = OwningPlayer->GetPawn())
 		{
-			if (APawn* Pawn = OwningPlayer->GetPawn())
-			{
-				Pawn->DisableInput(OwningPlayer);
-			}
-
-			FInputModeUIOnly InputMode;
-			InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-			OwningPlayer->SetInputMode(InputMode);
-			OwningPlayer->bShowMouseCursor = true;
+			Pawn->DisableInput(OwningPlayer);
 		}
+
+		FInputModeUIOnly InputMode;
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		OwningPlayer->SetInputMode(InputMode);
+		OwningPlayer->bShowMouseCursor = true;
 	}
 }
 
@@ -185,7 +180,12 @@ void ULCUIManager::HideShopPopup()
 
 	if (LastShopInteractor && LastShopInteractor->GetShopWidgetComponent())
 	{
-		LastShopInteractor->GetShopWidgetComponent()->SetVisibility(false);
+		LastShopInteractor->GetShopWidgetComponent()->SetVisibility(true);
+	}
+
+	if (CachedShopWidget)
+	{
+		CachedShopWidget->RemoveFromParent();
 	}
 
 	if (OwningPlayer)
@@ -232,13 +232,37 @@ void ULCUIManager::SwitchToWidget(UUserWidget* NewWidget)
 	}
 
 	CurrentWidget = NewWidget;
+	SetInputModeUIOnly(CurrentWidget);
+}
 
+void ULCUIManager::SetInputModeUIOnly(UUserWidget* FocusWidget)
+{
 	if (OwningPlayer)
 	{
 		FInputModeUIOnly InputMode;
+		if (FocusWidget)
+		{
+			InputMode.SetWidgetToFocus(FocusWidget->TakeWidget());
+		}
+		else if (CurrentWidget)
+		{
+			InputMode.SetWidgetToFocus(CurrentWidget->TakeWidget());
+		}
 		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 		OwningPlayer->SetInputMode(InputMode);
 		OwningPlayer->bShowMouseCursor = true;
+	}
+
+	LOG_Frame_WARNING(TEXT("SetInputModeUIOnly: %s"), *GetNameSafe(FocusWidget ? FocusWidget : CurrentWidget));
+}
+
+void ULCUIManager::SetInputModeGameOnly()
+{
+	if (OwningPlayer)
+	{
+		FInputModeGameOnly InputMode;
+		OwningPlayer->SetInputMode(InputMode);
+		OwningPlayer->bShowMouseCursor = false;
 	}
 }
 
