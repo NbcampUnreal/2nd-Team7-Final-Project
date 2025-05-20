@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
+#include "Actor/ShopInteractor.h"
 #include "LCUIManager.generated.h"
 
 /**
@@ -13,6 +14,8 @@ class ULobbyMenu;
 class UEnterPasswordWidget;
 class UOptionWidget;
 class UInGameHUD;
+class UShopWidget;
+class UUIElementCreateSession;
 UCLASS()
 class LASTCANARY_API ULCUIManager : public UObject
 {
@@ -30,15 +33,33 @@ public:
 	void ShowEnterPasswordWidget(const FString& RoomID);
 	void ShowInGameHUD();
 	void ShowOptionPopup();
+	void ShowPauseMenu();
+	void HidePauseMenu();
+	void ShowConfirmPopup(TFunction<void()> OnConfirm);
+	void ShowShopPopup();
+	void HideShopPopup();
+	void ShowCreateSession();
+
+	// TO DO : 로딩 팝업 표시
+	void ShowPopUpLoading();
+	void HidePopUpLoading();
 
 	void SwitchToWidget(UUserWidget* Widget);
+	
+	/* 입력 모드 제어 */
+	void SetInputModeUIOnly(UUserWidget* FocusWidget = nullptr);
+	void SetInputModeGameOnly();
 
 	/* 위젯 게터 */
 	UTitleMenu* GetTitleMenu() const { return CachedTitleMenu; }
 	ULobbyMenu* GetLobbyMenu() const { return CachedLobbyMenu; }
 	UEnterPasswordWidget* GetEnterPasswordWidget() const { return CachedEnterPasswordWidget; }
 
+	void SetLastShopInteractor(AShopInteractor* Interactor);
+
 private:
+	UPROPERTY()
+	AShopInteractor* LastShopInteractor;
 	UPROPERTY()
 	APlayerController* OwningPlayer;
 	UPROPERTY()
@@ -54,9 +75,16 @@ private:
 	UPROPERTY()
 	TSubclassOf<UEnterPasswordWidget> EnterPasswordWidgetClass;
 	UPROPERTY()
-	TSubclassOf<UOptionWidget> OptionWidgetClass;
+	TSubclassOf<UOptionWidget> OptionWidgetClass;	
+	UPROPERTY()
+	TSubclassOf<UOptionWidget> ConfirmPopupClass;
 	UPROPERTY()
 	TSubclassOf<UInGameHUD> InGameHUDWidgetClass;
+	UPROPERTY()
+	TSubclassOf<UShopWidget> ShopWidgetClass;
+
+	UPROPERTY()
+	TSubclassOf<UUIElementCreateSession> CreateSessionClass;
 
 	// 위젯 캐싱
 	UPROPERTY()
@@ -69,5 +97,9 @@ private:
 	UOptionWidget* CachedOptionWidget;
 	UPROPERTY()
 	UInGameHUD* CachedInGameHUD;
+	UPROPERTY()
+	UShopWidget* CachedShopWidget;
 
+	UPROPERTY()
+	UUIElementCreateSession* CachedCreateSession;
 };

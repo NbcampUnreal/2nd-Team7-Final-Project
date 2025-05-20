@@ -19,16 +19,26 @@ class LASTCANARY_API URoomListEntry : public ULCUserWidgetBase
 protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
+
+public:
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Session")
+	void SetRoomListInfo();
+
+	virtual void SetRoomListInfo_Implementation();
+
+public:
+	UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
+	UTextBlock* RoomID;
+	UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
+	UTextBlock* RoomNameText;
+	UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
+	UTextBlock* PlayerCountText;
+	UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
+	UTextBlock* PingText;
 	
 private:
-	UPROPERTY(meta = (BindWidget))
-	UTextBlock* RoomNameText;
-	UPROPERTY(meta = (BindWidget))
-	UTextBlock* RoomID;
-	UPROPERTY(meta = (BindWidget))
-	UTextBlock* PlayerCountText;
-	UPROPERTY(meta = (BindWidget))
-	UImage* PrivateIcon;
+	//UPROPERTY(meta = (BindWidget))
+	//UImage* PrivateIcon;
 	UPROPERTY(meta = (BindWidget))
 	UButton* JoinButton;
 

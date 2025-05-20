@@ -300,7 +300,7 @@ void AAlsCharacter::Tick(const float DeltaTime)
 	RefreshGroundedRotation(DeltaTime);
 	RefreshInAirRotation(DeltaTime);
 
-	StartMantlingInAir();
+	//StartMantlingInAir();
 	RefreshMantling();
 	RefreshRagdolling(DeltaTime);
 	RefreshRolling(DeltaTime);
@@ -519,6 +519,11 @@ void AAlsCharacter::NotifyLocomotionModeChanged(const FGameplayTag& PreviousLoco
 	if (LocomotionMode == AlsLocomotionModeTags::Grounded &&
 	    PreviousLocomotionMode == AlsLocomotionModeTags::InAir)
 	{
+		if (LocomotionState.Velocity.Z <= -500.0f) // 적절히 튜닝
+		{
+			TriggerHardLanding(-LocomotionState.Velocity.Z / 1000.0f); // 속도에 비례하여 몇초간은 움직임 차단
+		}
+
 		if (Settings->Ragdolling.bStartRagdollingOnLand &&
 		    LocomotionState.Velocity.Z <= -Settings->Ragdolling.RagdollingOnLandSpeedThreshold)
 		{
@@ -568,6 +573,19 @@ void AAlsCharacter::NotifyLocomotionModeChanged(const FGameplayTag& PreviousLoco
 	}
 
 	OnLocomotionModeChanged(PreviousLocomotionMode);
+}
+
+void AAlsCharacter::TriggerHardLanding(float DisableDuration)
+{
+	bIsInHardLandingState = true;
+
+	// 일정 시간 후 상태 초기화
+	GetWorldTimerManager().SetTimer(HardLandingTimerHandle, this, &AAlsCharacter::EndHardLanding, DisableDuration, false);
+}
+
+void AAlsCharacter::EndHardLanding()
+{
+	bIsInHardLandingState = false;
 }
 
 void AAlsCharacter::SetDesiredAiming(const bool bNewDesiredAiming)

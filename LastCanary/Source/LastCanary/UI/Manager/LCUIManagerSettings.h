@@ -13,6 +13,8 @@ class URoomListEntry;
 class UEnterPasswordWidget;
 class UOptionWidget;
 class UInGameHUD;
+class UShopWidget;
+class UUIElementCreateSession;
 UCLASS(BlueprintType)
 class LASTCANARY_API ULCUIManagerSettings : public UDataAsset
 {
@@ -20,15 +22,19 @@ class LASTCANARY_API ULCUIManagerSettings : public UDataAsset
 	
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
-	TSubclassOf<UTitleMenu> TitleMenuClass;
+	TSubclassOf<UTitleMenu> FromBPTitleMenuClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
-	TSubclassOf<ULobbyMenu> LobbyMenuClass;
+	TSubclassOf<ULobbyMenu> FromBPLobbyMenuClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
-	TSubclassOf<URoomListEntry> RoomListEntryClass;
+	TSubclassOf<URoomListEntry> FromBPRoomListEntryClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
-	TSubclassOf<UEnterPasswordWidget> EnterPasswordWidgetClass;
+	TSubclassOf<UEnterPasswordWidget> FromBPEnterPasswordWidgetClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
-	TSubclassOf<UOptionWidget> OptionWidgetClass;
+	TSubclassOf<UOptionWidget> FromBPOptionWidgetClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
-	TSubclassOf<UInGameHUD> InGameHUDClass;
+	TSubclassOf<UInGameHUD> FromBPInGameHUDClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UShopWidget> FromBPShopWidgetClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UUIElementCreateSession> FromBPCreateSessionWidgetClass;
 };
