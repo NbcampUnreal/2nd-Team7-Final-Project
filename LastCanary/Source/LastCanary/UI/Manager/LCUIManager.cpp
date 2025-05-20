@@ -150,22 +150,27 @@ void ULCUIManager::ShowShopPopup()
 {
 	LOG_Frame_WARNING(TEXT("ShowShopPopup"));
 
-	if (LastShopInteractor && LastShopInteractor->IsValidLowLevel())
+	if (LastShopInteractor && LastShopInteractor->GetShopWidgetComponent())
 	{
-		LastShopInteractor->GetShopWidgetComponent()->SetVisibility(true);
+		LastShopInteractor->GetShopWidgetComponent()->SetVisibility(false);
+	}
 
-		if (OwningPlayer)
+	if (CachedShopWidget)
+	{
+		CachedShopWidget->AddToViewport(1);
+	}
+
+	if (OwningPlayer)
+	{
+		if (APawn* Pawn = OwningPlayer->GetPawn())
 		{
-			if (APawn* Pawn = OwningPlayer->GetPawn())
-			{
-				Pawn->DisableInput(OwningPlayer);
-			}
-
-			FInputModeUIOnly InputMode;
-			InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-			OwningPlayer->SetInputMode(InputMode);
-			OwningPlayer->bShowMouseCursor = true;
+			Pawn->DisableInput(OwningPlayer);
 		}
+
+		FInputModeUIOnly InputMode;
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		OwningPlayer->SetInputMode(InputMode);
+		OwningPlayer->bShowMouseCursor = true;
 	}
 }
 
@@ -175,7 +180,12 @@ void ULCUIManager::HideShopPopup()
 
 	if (LastShopInteractor && LastShopInteractor->GetShopWidgetComponent())
 	{
-		LastShopInteractor->GetShopWidgetComponent()->SetVisibility(false);
+		LastShopInteractor->GetShopWidgetComponent()->SetVisibility(true);
+	}
+
+	if (CachedShopWidget)
+	{
+		CachedShopWidget->RemoveFromParent();
 	}
 
 	if (OwningPlayer)
