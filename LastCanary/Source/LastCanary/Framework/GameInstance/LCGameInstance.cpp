@@ -74,5 +74,5 @@ void ULCGameInstance::CreateSession_Implementation(const FString& ServerName, in
 
 void ULCGameInstance::Shutdown()
 {
-
+    Super::Shutdown();
 }
