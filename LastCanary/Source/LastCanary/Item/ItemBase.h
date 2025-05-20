@@ -1,5 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -12,79 +10,125 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnItemStateChanged);
 UCLASS()
 class LASTCANARY_API AItemBase : public AActor
 {
-	GENERATED_BODY()
-	
-public:	
-	AItemBase();
+    GENERATED_BODY()
+
+public:
+    AItemBase();
 
 protected:
-	virtual void BeginPlay() override;
+    virtual void BeginPlay() override;
 
-public:	
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Item)
-    FName ItemRowName;
+public:
+    //-----------------------------------------------------
+    // 컴포넌트
+    //-----------------------------------------------------
 
-    UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = Item, meta = (ShowOnlyInnerProperties))
-    FItemDataRow ItemData;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
-    UDataTable* ItemDataTable;
-
+    /** 아이템의 기본 메시 컴포넌트 */
     UPROPERTY(VisibleAnywhere)
     UStaticMeshComponent* MeshComponent;
 
+    /** 아이템 상호작용 감지용 구체 컴포넌트 */
     UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
     class USphereComponent* SphereComponent;
 
-    UPROPERTY(BlueprintReadWrite)
+    //-----------------------------------------------------
+    // 아이템 데이터
+    //-----------------------------------------------------
+
+    /** 아이템 데이터 테이블에서의 행 이름 */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Item)
+    FName ItemRowName;
+
+    /** 아이템 데이터 테이블 참조 */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Item)
+    UDataTable* ItemDataTable;
+
+    /** 아이템의 실제 데이터 (데이터 테이블에서 로드됨) */
+    UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = Item, meta = (ShowOnlyInnerProperties))
+    FItemDataRow ItemData;
+
+    //-----------------------------------------------------
+    // 아이템 상태
+    //-----------------------------------------------------
+
+    /** 아이템이 장착되어 있는지 여부 */
+    UPROPERTY(Replicated, BlueprintReadWrite, Category = "Item|State")
     bool bIsEquipped;
 
-    // UI는 아마도 UI매니저에서 실행되지 않을까 생각됨
-    //UPROPERTY(EditAnywhere, Category = "Widget")
-    //TSubclassOf<class UUserWidget> PickupWidgetClass;
+    /** 아이템의 현재 수량 (스택 가능 아이템용) */
+    UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Item|State")
+    int32 Quantity;
 
-    //UPROPERTY()
-    //UUserWidget* PickupWidget;
+    /** 아이템 내구도/배터리량 (소모성 장비용) */
+    UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Item|State")
+    float Durability;
 
-    //UPROPERTY(VisibleAnywhere, Category = "Widget")
-    //UWidgetComponent* PickupWidgetComponent;
+    //-----------------------------------------------------
+    // 이벤트 및 델리게이트
+    //-----------------------------------------------------
 
-    //UFUNCTION()
-    //void ShowPickupPrompt(bool bShow);
+    /** 아이템 상태 변경 시 호출되는 델리게이트 */
+    UPROPERTY(BlueprintAssignable, Category = "Item|Events")
+    FOnItemStateChanged OnItemStateChanged;
 
+    //-----------------------------------------------------
+    // 아이템 상호작용 함수
+    //-----------------------------------------------------
+
+    /** 아이템 사용 함수 - 하위 클래스에서 반드시 구현 */
+    UFUNCTION(BlueprintCallable, Category = "Item|Interaction")
+    virtual void UseItem() PURE_VIRTUAL(AItemBase::UseItem, return;);
+
+    /** 아이템이 수집 가능한지 확인 */
+    UFUNCTION(BlueprintPure, Category = "Item|Interaction")
+    bool IsCollectible() const;
+
+    //-----------------------------------------------------
+    // 충돌 이벤트 핸들러
+    //-----------------------------------------------------
+
+    /** 아이템과 다른 액터 간의 오버랩 시작 시 호출 */
     UFUNCTION()
     void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
         UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
+    /** 아이템과 다른 액터 간의 오버랩 종료 시 호출 */
     UFUNCTION()
     void OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
         UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
-    // 데이터테이블로 부터 받아온 값을 적용시키는 함수
-    UFUNCTION()
+    //-----------------------------------------------------
+    // 유틸리티 함수
+    //-----------------------------------------------------
+
+    /** 데이터 테이블에서 아이템 데이터를 로드하여 적용 */
+    UFUNCTION(BlueprintCallable, Category = "Item|Initialization")
     void ApplyItemDataFromTable();
 
-    // 툴바에 장비된 아이템 사용 시 알림용
-    UPROPERTY(BlueprintAssignable)
-    FOnItemStateChanged OnItemStateChanged;
+    //-----------------------------------------------------
+    // 네트워크 & 에디터 기능
+    //-----------------------------------------------------
 
-    UFUNCTION()
-    void UseItem();
-
-    UFUNCTION()
-    bool IsCollectible() const;
-
-    // 변동이 있는 변수들은 아이템이 직접 보유하고 있는 것이 좋다고 한다
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    int32 Quantity;     // 수량(아이템 하나에 겹쳐져 있는 수량)
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float Durability;   // 사용량(장비 같은 아이템에서 배터리와 같은 사용량 int32로 해도 괜찮을 지도 고민 필요)
-
-
+    /** 리플리케이션 속성 설정 */
+    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 #if WITH_EDITOR
+    /** 에디터에서 속성 변경 시 호출 */
     virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-    /*virtual void OnConstruction(const FTransform& Transform) override;*/
+    // virtual void OnConstruction(const FTransform& Transform) override;
 #endif
+
+    /* UI 관련 코드 - 현재 사용하지 않음
+    UPROPERTY(EditAnywhere, Category = "Widget")
+    TSubclassOf<class UUserWidget> PickupWidgetClass;
+
+    UPROPERTY()
+    UUserWidget* PickupWidget;
+
+    UPROPERTY(VisibleAnywhere, Category = "Widget")
+    UWidgetComponent* PickupWidgetComponent;
+
+    UFUNCTION()
+    void ShowPickupPrompt(bool bShow);
+    */
 };

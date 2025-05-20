@@ -7,73 +7,127 @@
 #include "Inventory/InventoryComponentBase.h"
 #include "InventorySlotWidget.generated.h"
 
+/**
+ * 인벤토리 슬롯 UI 위젯 클래스
+ * 개별 인벤토리 슬롯을 표시하고 상호작용을 처리합니다.
+ */
 UCLASS()
 class LASTCANARY_API UInventorySlotWidget : public ULCUserWidgetBase
 {
-	GENERATED_BODY()
-	
+    GENERATED_BODY()
+
 public:
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory")
-	FBaseItemSlotData ItemData;
+    //-----------------------------------------------------
+    // 바인딩된 UI 컴포넌트
+    //-----------------------------------------------------
 
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory")
-	UDataTable* ItemDataTable;
+    /** 아이템 이름 텍스트 */
+    UPROPERTY(meta = (BindWidget))
+    class UTextBlock* ItemNameText;
 
-	UFUNCTION(BlueprintCallable, Category = "Inventory")
-	void SetItemData(const FBaseItemSlotData& InItemSlotData, UDataTable* InItemDataTable);
+    /** 아이템 아이콘 이미지 */
+    UPROPERTY(meta = (BindWidget))
+    class UImage* ItemIconImage;
 
-	UFUNCTION(BlueprintCallable, Category = "Inventory")
-	void SetInventoryComponent(UInventoryComponentBase* InInventoryComponent);
+    /** 아이템 수량 텍스트 */
+    UPROPERTY(meta = (BindWidget))
+    class UTextBlock* ItemQuantityText;
 
-	UFUNCTION(BlueprintCallable, Category = "Inventory")
-	virtual void UpdateSlotUI();
+    //-----------------------------------------------------
+    // 슬롯 데이터
+    //-----------------------------------------------------
 
-	// 해당 함수는 블루프린트로 효과를 추가하고 싶을 때 사용 현재는 사용 안함
-	//UFUNCTION(BlueprintImplementableEvent, Category = "Inventory")
-	//void OnSlotHovered();
+    /** 슬롯에 표시할 아이템 데이터 */
+    UPROPERTY(BlueprintReadOnly, Category = "Inventory|Data")
+    FBaseItemSlotData ItemData;
 
-	//UFUNCTION(BlueprintImplementableEvent, Category = "Inventory")
-	//void OnSlotUnhovered();
+    /** 아이템 정보를 가져올 데이터 테이블 */
+    UPROPERTY(BlueprintReadOnly, Category = "Inventory|Data")
+    UDataTable* ItemDataTable;
 
-	//UFUNCTION(BlueprintImplementableEvent, Category = "Inventory")
-	//void OnSlotSelected();
+    /** 슬롯의 인덱스 번호 */
+    UPROPERTY(BlueprintReadOnly, Category = "Inventory|Data")
+    int32 SlotIndex = -1;
 
-	//UFUNCTION(BlueprintImplementableEvent, Category = "inventory")
-	//void OnSlotDragStarted();
+    /** 연결된 인벤토리 컴포넌트 참조 */
+    UPROPERTY(BlueprintReadOnly, Category = "Inventory|Data")
+    UInventoryComponentBase* InventoryComponent;
 
-	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
-	virtual void NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
-	virtual void NativeOnMouseLeave(const FPointerEvent& InMouseEvent) override;
-	virtual void NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation) override;
-	virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
+    //-----------------------------------------------------
+    // 툴팁 관련
+    //-----------------------------------------------------
 
-	UFUNCTION(BlueprintCallable, Category = "Inventory")
-	void ShowTooltip();
+    /** 툴팁 위젯 클래스 */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory|Tooltip")
+    TSubclassOf<UItemTooltipWidget> TooltipWidgetClass;
 
-	UFUNCTION(BlueprintCallable, Category = "Inventory")
-	void HideTooltip();
+    /** 툴팁 위젯 인스턴스 */
+    UPROPERTY()
+    UItemTooltipWidget* ItemTooltipWidget;
 
-	UFUNCTION()
-	void OnUseButtonClicked();
+    //-----------------------------------------------------
+    // 데이터 설정 함수
+    //-----------------------------------------------------
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TSubclassOf<UItemTooltipWidget> TooltipWidgetClass;
+    /** 슬롯의 아이템 데이터 설정 */
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Setup")
+    void SetItemData(const FBaseItemSlotData& InItemSlotData, UDataTable* InItemDataTable);
 
-	UPROPERTY()
-	UItemTooltipWidget* ItemTooltipWidget;
+    /** 연결된 인벤토리 컴포넌트 설정 */
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Setup")
+    void SetInventoryComponent(UInventoryComponentBase* InInventoryComponent);
 
-	UPROPERTY(meta = (BindWidget))
-	class UTextBlock* ItemNameText;
+    //-----------------------------------------------------
+    // UI 업데이트 및 상호작용
+    //-----------------------------------------------------
 
-	UPROPERTY(meta = (BindWidget))
-	class UImage* ItemIconImage;
+    /** 슬롯 UI 업데이트 */
+    UFUNCTION(BlueprintCallable, Category = "Inventory|UI")
+    virtual void UpdateSlotUI();
 
-	UPROPERTY(meta = (BindWidget))
-	class UTextBlock* ItemQuantityText;
+    /** 아이템 사용 버튼 클릭 처리 */
+    UFUNCTION()
+    void OnUseButtonClicked();
 
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory")
-	int32 SlotIndex = -1;
-	
-	UPROPERTY(BlueprintReadOnly, Category = "inventory")
-	UInventoryComponentBase* InventoryComponent;
+    /** 툴팁 표시 */
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Tooltip")
+    void ShowTooltip();
+
+    /** 툴팁 숨김 */
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Tooltip")
+    void HideTooltip();
+
+    //-----------------------------------------------------
+    // 마우스 상호작용 오버라이드
+    //-----------------------------------------------------
+
+    /** 마우스 버튼 클릭 처리 */
+    virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+
+    /** 마우스 진입 처리 */
+    virtual void NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+
+    /** 마우스 이탈 처리 */
+    virtual void NativeOnMouseLeave(const FPointerEvent& InMouseEvent) override;
+
+    /** 드래그 시작 처리 */
+    virtual void NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation) override;
+
+    /** 드롭 처리 */
+    virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
+
+    // TODO : 추후 구현 예정인 블루프린트 이벤트 (현재 미사용)
+    /*
+    UFUNCTION(BlueprintImplementableEvent, Category = "Inventory|Events")
+    void OnSlotHovered();
+
+    UFUNCTION(BlueprintImplementableEvent, Category = "Inventory|Events")
+    void OnSlotUnhovered();
+
+    UFUNCTION(BlueprintImplementableEvent, Category = "Inventory|Events")
+    void OnSlotSelected();
+
+    UFUNCTION(BlueprintImplementableEvent, Category = "Inventory|Events")
+    void OnSlotDragStarted();
+    */
 };

@@ -147,4 +147,7 @@ public:
 	
 	// 임의적으로 만든 캐릭터의 상호작용 함수
 	bool TryPickupItem(AItemBase* HitItem);
+
+	UFUNCTION(BlueprintCallable, Category = "Equipment")
+	bool UseEquippedItem();
 };

@@ -14,6 +14,7 @@
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "Inventory/BackpackInventoryComponent.h"
 #include "Item/ItemBase.h"
+#include "LastCanary.h"
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -130,6 +131,8 @@ void ABaseCharacter::Handle_Crouch()
 	{
 		SetDesiredStance(AlsStanceTags::Standing);
 	}
+	// 임시로 넣은 부분 꼭 삭제할것!
+	UseEquippedItem();
 }
 
 void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
@@ -336,7 +339,7 @@ bool ABaseCharacter::IsEquipped() const
 
 void ABaseCharacter::SetEquipped(bool bEquip)
 {
-	static FGameplayTag EquippedTag = FGameplayTag::RequestGameplayTag(TEXT("Charater.Player.Equipped"));
+	static FGameplayTag EquippedTag = FGameplayTag::RequestGameplayTag(TEXT("Character.Player.Equipped"));
 	if (bEquip)
 	{
 		EquippedTags.AddTag(EquippedTag);
@@ -376,4 +379,58 @@ bool ABaseCharacter::TryPickupItem(AItemBase* HitItem)
 	// 3. 모두 실패
 	UE_LOG(LogTemp, Warning, TEXT("아이템 습득 실패!"));
 	return false;
+}
+
+bool ABaseCharacter::UseEquippedItem()
+{
+	{
+		if (!IsEquipped() || !ToolbarInventoryComponent)
+		{
+			LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 장비 상태가 아니거나 툴바 컴포넌트가 없습니다."));
+			return false;
+		}
+
+		// 장비된 슬롯 검색
+		for (int32 i = 0; i < ToolbarInventoryComponent->ItemSlots.Num(); ++i)
+		{
+			FBaseItemSlotData& Slot = ToolbarInventoryComponent->ItemSlots[i];
+			if (Slot.bIsEquipped)
+			{
+				// 아이템 데이터 테이블 조회
+				const FItemDataRow* ItemData = ToolbarInventoryComponent->GetItemDataTable()->FindRow<FItemDataRow>(
+					Slot.ItemRowName, TEXT("UseEquippedItem"));
+
+				if (!ItemData || !ItemData->ItemActorClass)
+				{
+					LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 아이템 데이터가 유효하지 않습니다."));
+					return false;
+				}
+
+				// 메시에 부착된 액터 검색
+				TArray<AActor*> AttachedActors;
+				GetAttachedActors(AttachedActors);
+
+				for (AActor* Actor : AttachedActors)
+				{
+					AItemBase* Item = Cast<AItemBase>(Actor);
+					if (Item && Item->ItemRowName == Slot.ItemRowName)
+					{
+						// 서버에서만 실행되도록 처리
+						if (GetLocalRole() == ROLE_Authority)
+						{
+							Item->UseItem();
+							LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] %s 아이템 사용 성공"), *ItemData->ItemName.ToString());
+						}
+						return true;
+					}
+				}
+
+				LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 부착된 아이템 액터를 찾을 수 없습니다."));
+				return false;
+			}
+		}
+
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 장비된 아이템이 없습니다."));
+		return false;
+	}
 }

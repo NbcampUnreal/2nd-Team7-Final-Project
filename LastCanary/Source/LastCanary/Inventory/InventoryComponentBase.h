@@ -11,7 +11,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInventoryUpdated);
 class ULCUserWidgetBase;
 class UItemTooltipWidget;
 
-UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
+UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class LASTCANARY_API UInventoryComponentBase : public UActorComponent
 {
     GENERATED_BODY()
@@ -22,38 +22,93 @@ public:
 protected:
     virtual void BeginPlay() override;
 
+    //-----------------------------------------------------
+    // 인벤토리 데이터
+    //-----------------------------------------------------
+
 public:
-    UPROPERTY(ReplicatedUsing = OnRep_ItemSlots, VisibleAnywhere, BlueprintReadOnly, Category = Inventory)
+    /** 인벤토리 내 아이템 슬롯 데이터 배열 */
+    UPROPERTY(ReplicatedUsing = OnRep_ItemSlots, VisibleAnywhere, BlueprintReadOnly, Category = "Inventory|Data")
     TArray<FBaseItemSlotData> ItemSlots;
 
-    UPROPERTY(BlueprintAssignable, Category = "Inventory")
-    FOnInventoryUpdated OnInventoryUpdated;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Inventory)
+    /** 인벤토리의 최대 슬롯 수 */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory|Data")
     int32 MaxSlots;
 
-    UPROPERTY()
+    /** 아이템 정보 참조용 데이터 테이블 */
+    UPROPERTY(BlueprintReadOnly, Category = "Inventory|Data")
     UDataTable* ItemDataTable;
 
-    virtual bool TryAddItemSlot(FName ItemRowName, int32 Amount) PURE_VIRTUAL(UInventoryComponentBase::TryAddItemSlot, return false;);
-    virtual bool TryDecreaseItem(FName ItemRowName, int32 Amount) PURE_VIRTUAL(UInventoryComponentBase::TryDecreaseItem, return false;);
-    virtual int32 GetItemCount(FName ItemRowName) const PURE_VIRTUAL(UInventoryComponentBase::GetItemCount, return 0;);
-    bool TrySwapItemSlots(int32 FromIndex, int32 ToIndex) PURE_VIRTUAL(UInventoryComponentBase::TrySwapItemSlots, return false;);
-    bool TryRemoveItemAtSlot(int32 SlotIndex) PURE_VIRTUAL(UInventoryComponentBase::TryRemoveItemAtSlot, return false;);
-    bool TryAddItem(AItemBase* ItemActor) PURE_VIRTUAL(UInventoryComponentBase::TryAddItem, return false;);
+    //-----------------------------------------------------
+    // 이벤트 및 델리게이트
+    //-----------------------------------------------------
 
-    // 툴팁 함수들은 UI매니저에서 관리할 듯?(아마도 지워야할지도, 보류중)
-    void ShowTooltipForItem(const FBaseItemSlotData& ItemData, UWidget* TargetWidget);
+    /** 인벤토리 상태가 변경될 때 호출되는 델리게이트 */
+    UPROPERTY(BlueprintAssignable, Category = "Inventory|Events")
+    FOnInventoryUpdated OnInventoryUpdated;
 
-    void HideTooltip();
-
+    /** 아이템 슬롯 데이터가 복제될 때 호출 */
     UFUNCTION()
     void OnRep_ItemSlots();
 
+    //-----------------------------------------------------
+    // 외부 인터페이스 함수 (공개 API)
+    //-----------------------------------------------------
+
+    /** 아이템 데이터를 기반으로 인벤토리에 아이템 추가 시도 */
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Operations")
+    virtual bool TryAddItemSlot(FName ItemRowName, int32 Amount) PURE_VIRTUAL(UInventoryComponentBase::TryAddItemSlot, return false;);
+
+    /** 특정 아이템의 수량 감소 시도 */
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Operations")
+    virtual bool TryDecreaseItem(FName ItemRowName, int32 Amount) PURE_VIRTUAL(UInventoryComponentBase::TryDecreaseItem, return false;);
+
+    /** 특정 아이템의 현재 보유 수량 확인 */
+    UFUNCTION(BlueprintPure, Category = "Inventory|Query")
+    virtual int32 GetItemCount(FName ItemRowName) const PURE_VIRTUAL(UInventoryComponentBase::GetItemCount, return 0;);
+
+    /** 두 슬롯 간 아이템 교환 시도 */
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Operations")
+    virtual bool TrySwapItemSlots(int32 FromIndex, int32 ToIndex) PURE_VIRTUAL(UInventoryComponentBase::TrySwapItemSlots, return false;);
+
+    /** 특정 슬롯의 아이템 제거 시도 */
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Operations")
+    virtual bool TryRemoveItemAtSlot(int32 SlotIndex) PURE_VIRTUAL(UInventoryComponentBase::TryRemoveItemAtSlot, return false;);
+
+    /** 실제 아이템 액터를 인벤토리에 추가 시도 */
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Operations")
+    virtual bool TryAddItem(AItemBase* ItemActor) PURE_VIRTUAL(UInventoryComponentBase::TryAddItem, return false;);
+
+    //-----------------------------------------------------
+    // UI 관련 함수 (임시, UI 매니저로 이동 예정)
+    //-----------------------------------------------------
+
+    /** 아이템 데이터에 대한 툴팁 표시 */
+    UFUNCTION(BlueprintCallable, Category = "Inventory|UI")
+    void ShowTooltipForItem(const FBaseItemSlotData& ItemData, UWidget* TargetWidget);
+
+    /** 툴팁 숨김 */
+    UFUNCTION(BlueprintCallable, Category = "Inventory|UI")
+    void HideTooltip();
+
+    //-----------------------------------------------------
+    // 네트워크 기능
+    //-----------------------------------------------------
+
+    /** 리플리케이션 속성 설정 */
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 protected:
-    virtual bool CanAddItem(AItemBase* ItemActot) PURE_VIRTUAL(UInventoryComponentBase::PreAddCheck, return false;);
-    virtual bool TryStoreItem(AItemBase* ItemActor) PURE_VIRTUAL(UInventoryCompontnentBase::StoreItem, return false;);
+    //-----------------------------------------------------
+    // 내부 동작 함수 (하위 클래스 구현)
+    //-----------------------------------------------------
+
+    /** 아이템 추가 가능 여부 확인 */
+    virtual bool CanAddItem(AItemBase* ItemActor) PURE_VIRTUAL(UInventoryComponentBase::CanAddItem, return false;);
+
+    /** 아이템 저장 처리 */
+    virtual bool TryStoreItem(AItemBase* ItemActor) PURE_VIRTUAL(UInventoryComponentBase::TryStoreItem, return false;);
+
+    /** 아이템 추가 후 처리 */
     virtual void PostAddProcess() PURE_VIRTUAL(UInventoryComponentBase::PostAddProcess, return;);
 };

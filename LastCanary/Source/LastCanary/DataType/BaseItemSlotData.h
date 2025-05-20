@@ -18,10 +18,14 @@ struct FBaseItemSlotData
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     int32 Durability;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    bool bIsEquipped;
+
     FBaseItemSlotData()
         : ItemRowName(NAME_None)
         , Quantity(1)
         , Durability(100)
+        , bIsEquipped(false)
     {
     }
 };

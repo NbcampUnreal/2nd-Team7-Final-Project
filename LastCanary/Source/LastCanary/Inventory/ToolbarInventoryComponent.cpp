@@ -15,6 +15,11 @@ UToolbarInventoryComponent::UToolbarInventoryComponent()
     MaxSlots = 4;
 }
 
+//void UToolbarInventoryComponent::OnRepEquippedSlotIndex()
+//{
+//    OnInventoryUpdated.Broadcast();
+//}
+
 void UToolbarInventoryComponent::BeginPlay()
 {
     Super::BeginPlay();
@@ -191,14 +196,33 @@ bool UToolbarInventoryComponent::TryAddItem(AItemBase* ItemActor)
         return false;
     }
 
+    // 자동 장착 로직 추가 ---------------------------------
+    if (GetOwner()->HasAuthority()) // 서버에서만 실행
+    {
+        bool bHasEquipped = false;
+
+        // 기존 장착 아이템 확인
+        for (const FBaseItemSlotData& Slot : ItemSlots)
+        {
+            if (Slot.bIsEquipped)
+            {
+                bHasEquipped = true;
+                break;
+            }
+        }
+
+        // 장착된 아이템 없을 경우 마지막 슬롯 장착
+        if (!bHasEquipped && ItemSlots.Num() > 0)
+        {
+            const int32 LastIndex = ItemSlots.Num() - 1;
+            EquipItemAtSlot(LastIndex);
+        }
+    }
+    // -----------------------------------------------
+
     PostAddProcess();
 
     return true;
-}
-
-void UToolbarInventoryComponent::OnRepItemSlots()
-{
-    OnInventoryUpdated.Broadcast();
 }
 
 void UToolbarInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -206,6 +230,84 @@ void UToolbarInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProp
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
     DOREPLIFETIME(UToolbarInventoryComponent, ItemSlots);
 }
+
+bool UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
+{
+    if (!ItemSlots.IsValidIndex(SlotIndex))
+    {
+        return false;
+    }
+
+    // 기존에 장비된 아이템 해제
+    for (int32 i = 0; i < ItemSlots.Num(); ++i)
+    {
+        if (ItemSlots[i].bIsEquipped)
+        {
+            ItemSlots[i].bIsEquipped = false;
+            // 필요한 경우 시각적 변경 처리
+        }
+    }
+
+    // 새 아이템 장비
+    ItemSlots[SlotIndex].bIsEquipped = true;
+
+    // 캐릭터 상태 업데이트
+    if (CachedOwnerCharacter)
+    {
+        CachedOwnerCharacter->SetEquipped(true);
+    }
+
+    OnInventoryUpdated.Broadcast();
+    return true;
+}
+
+UDataTable* UToolbarInventoryComponent::GetItemDataTable() const
+{
+    return ItemDataTable;
+}
+
+void UToolbarInventoryComponent::Multicast_HandleItemPickup_Implementation(AItemBase* ItemToDestroy, FName ItemRowName, FName SocketName)
+{
+    // 1. 기존 아이템 처리
+    if (ItemToDestroy)
+    {
+        ItemToDestroy->SetActorHiddenInGame(true);
+        ItemToDestroy->SetActorEnableCollision(false);
+
+        // 서버에서만 실제로 파괴
+        if (GetOwner() && GetOwner()->HasAuthority())
+        {
+            ItemToDestroy->Destroy();
+        }
+    }
+
+    // 2. 새 아이템 부착
+    if (!CachedOwnerCharacter || !ItemDataTable) return;
+
+    const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("HandleItemPickup"));
+    if (!ItemData) return;
+
+    // 새 액터 스폰 및 소켓 부착
+    FActorSpawnParameters Params;
+    Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+    AItemBase* NewItem = GetWorld()->SpawnActor<AItemBase>(ItemData->ItemActorClass, FTransform::Identity, Params);
+
+    if (NewItem)
+    {
+        NewItem->SetActorEnableCollision(false);
+        NewItem->ItemRowName = ItemRowName;
+        NewItem->ApplyItemDataFromTable();
+
+        NewItem->AttachToComponent(CachedOwnerCharacter->GetMesh(),
+            FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+            SocketName);
+    }
+}
+
+//bool UToolbarInventoryComponent::EquipItem(int32 SlotIndex)
+//{
+//    return false;
+//}
 
 bool UToolbarInventoryComponent::CanAddItem(AItemBase* ItemActor)
 {
@@ -326,52 +428,9 @@ bool UToolbarInventoryComponent::TryStoreItem(AItemBase* ItemActor)
 
     ItemSlots.Add(NewSlot);
 
-    ItemActor->Destroy();
+    Multicast_HandleItemPickup(ItemActor, NewSlot.ItemRowName, Socket);
 
-    // 아이템 장착 시각적 효과 멀티캐스트
-    Multicast_AttachItem(NewSlot.ItemRowName, Socket);
     return true;
-
-    //FBaseItemSlotData NewSlot;
-    //NewSlot.ItemRowName = ItemActor->ItemRowName;
-    //NewSlot.Quantity = 1;
-    //ItemSlots.Add(NewSlot);
-
-    //ItemActor->AttachToComponent(CachedOwnerCharacter->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, Socket);
-    //ItemActor->SetActorEnableCollision(false);
-
-    //RegisterEquippedItem(ItemActor, Socket);
-
-    //return true;
-}
-
-void UToolbarInventoryComponent::Multicast_AttachItem_Implementation(FName InItemRowName, FName SocketName)
-{
-    if (!CachedOwnerCharacter || !ItemDataTable)
-    {
-        LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::Multicast_AttachItem] CachedOwnerCharacter or ItemDataTable is null!"));
-        return;
-    }
-
-    const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(InItemRowName, TEXT("AttachItem"));
-    if (!ItemData) return;
-
-    // 5. 새 액터 스폰 및 소켓 부착
-    FActorSpawnParameters Params;
-    Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-    AItemBase* NewItem = GetWorld()->SpawnActor<AItemBase>(ItemData->ItemActorClass, FTransform::Identity, Params);
-
-    if (NewItem)
-    {
-        NewItem->SetActorEnableCollision(false);
-        NewItem->ItemRowName = InItemRowName;
-        NewItem->ApplyItemDataFromTable();
-
-
-        NewItem->AttachToComponent(CachedOwnerCharacter->GetMesh(),
-            FAttachmentTransformRules::SnapToTargetNotIncludingScale,
-            SocketName);
-    }
 }
 
 void UToolbarInventoryComponent::PostAddProcess()

@@ -5,6 +5,7 @@
 #include "Character/BaseCharacter.h"
 #include "Components/SphereComponent.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "Net/UnrealNetwork.h"
 #include "LastCanary.h"
 
 AItemBase::AItemBase()
@@ -123,11 +124,11 @@ void AItemBase::ApplyItemDataFromTable()
 	}
 }
 
-void AItemBase::UseItem()
-{
-	// TODO : 조건에 따라 아이템 타입에 따른 사용함수를 구현하거나 혹은 상속받은 곳에서 구현이 필요할 것으로 예상
-	OnItemStateChanged.Broadcast();
-}
+//void AItemBase::UseItem()
+//{
+//	// TODO : 조건에 따라 아이템 타입에 따른 사용함수를 구현하거나 혹은 상속받은 곳에서 구현이 필요할 것으로 예상
+//	OnItemStateChanged.Broadcast();
+//}
 
 bool AItemBase::IsCollectible() const
 {
@@ -165,3 +166,10 @@ void AItemBase::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEve
 	}
 }
 #endif
+
+void AItemBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(AItemBase, bIsEquipped);
+	DOREPLIFETIME(AItemBase, Durability);
+}
