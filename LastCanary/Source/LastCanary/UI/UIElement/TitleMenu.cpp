@@ -62,9 +62,12 @@ FReply UTitleMenu::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FP
 
 void UTitleMenu::OnStartButtonClicked()
 {
-	ULCGameInstanceSubsystem* LCGameInstanceSubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
-	int32 LevelID = GetTypeHash(FName(TEXT("LobbyMenu")));
-	LCGameInstanceSubsystem->ChangeLevelByMapID(LevelID);
+	LOG_Frame_WARNING(TEXT("Start Button Clicked"));
+	ULCUIManager* UIManager = ResolveUIManager();
+	UIManager->ShowLobbyMenu();
+	//ULCGameInstanceSubsystem* LCGameInstanceSubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
+	//int32 LevelID = GetTypeHash(FName(TEXT("LobbyMenu")));
+	//LCGameInstanceSubsystem->ChangeLevelByMapID(LevelID);
 }
 
 void UTitleMenu::OnOptionButtonClicked()

@@ -7,6 +7,7 @@
 #include "UI/UIElement/OptionWidget.h"
 #include "UI/UIElement/InGameHUD.h"
 #include "UI/UIElement/ShopWidget.h"
+#include "UI/UIElement/UIElementCreateSession.h"
 
 #include "UI/UIObject/ConfirmPopup.h"
 
@@ -37,6 +38,7 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			OptionWidgetClass = Settings->FromBPOptionWidgetClass;
 			InGameHUDWidgetClass = Settings->FromBPInGameHUDClass;
 			ShopWidgetClass = Settings->FromBPShopWidgetClass;
+			CreateSessionClass = Settings->FromBPCreateSessionWidgetClass;
 
 			if ((CachedTitleMenu == nullptr) && TitleMenuClass)
 			{
@@ -62,6 +64,11 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			{
 				CachedShopWidget = CreateWidget<UShopWidget>(PlayerController, ShopWidgetClass);
 				LOG_Frame_WARNING(TEXT("CachedShopWidget Created"));
+			}
+
+			if ((CachedCreateSession == nullptr) && CreateSessionClass)
+			{
+				CachedCreateSession = CreateWidget<UUIElementCreateSession>(PlayerController, CreateSessionClass);
 			}
 		}
 	}
@@ -199,6 +206,20 @@ void ULCUIManager::HideShopPopup()
 		OwningPlayer->SetInputMode(FInputModeGameOnly());
 		OwningPlayer->bShowMouseCursor = false;
 	}
+}
+
+void ULCUIManager::ShowCreateSession()
+{
+	LOG_Frame_WARNING(TEXT("Show Create Session"));
+	SwitchToWidget(CachedCreateSession);
+}
+
+void ULCUIManager::ShowPopUpLoading()
+{
+}
+
+void ULCUIManager::HidePopUpLoading()
+{
 }
 
 void ULCUIManager::ShowInGameHUD()

@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "UI/Manager/LCUIManager.h"
 #include "LCUserWidgetBase.generated.h"
 
 /**
