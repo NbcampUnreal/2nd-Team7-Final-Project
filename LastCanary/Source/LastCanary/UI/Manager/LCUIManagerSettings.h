@@ -14,6 +14,7 @@ class UEnterPasswordWidget;
 class UOptionWidget;
 class UInGameHUD;
 class UShopWidget;
+class UUIElementCreateSession;
 class UInventoryMainWidget;
 UCLASS(BlueprintType)
 class LASTCANARY_API ULCUIManagerSettings : public UDataAsset
@@ -35,6 +36,8 @@ public:
 	TSubclassOf<UInGameHUD> FromBPInGameHUDClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UShopWidget> FromBPShopWidgetClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UUIElementCreateSession> FromBPCreateSessionWidgetClass;
 
 	// 인벤토리 위젯
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")

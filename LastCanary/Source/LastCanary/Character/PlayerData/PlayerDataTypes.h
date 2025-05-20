@@ -13,6 +13,16 @@ enum class EPlayerState : uint8
     // 필요한 상태 더 추가
 };
 
+// 상태 열거형
+UENUM(BlueprintType)
+enum class ECharacterMovementState : uint8
+{
+    Idle,
+    Walking,
+    Running,
+    Exhausted
+};
+
 // ------------------------------
 // 플레이어 능력치 Struct
 // ------------------------------
@@ -24,10 +34,6 @@ struct FPlayerStats
 public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
     float MaxHP = 100.f;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
-    float CurrentHP = 100.f;
-
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
     float WalkSpeed = 200.f;
 
@@ -40,9 +46,35 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
     float JumpPower = 420.f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
-    float RollSpeed = 500.f;
 
-    // 필요하면 함수도 추가 가능
-    void ResetHP() { CurrentHP = MaxHP; }
+    //스태미나 관련 추가
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stamina")
+    float MaxStamina = 100.f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stamina")
+    float StaminaDrainRate = 15.f; // 초당 15 소모
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stamina")
+    float StaminaRecoveryRate = 10.f; // 초당 10 회복
+
+    // 필요 시 탈진 상태 확인용 변수도 추가 가능
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Stamina")
+    bool bIsExhausted = false;
+};
+
+
+// ------------------------------
+// 게임 끝나고 얻을 Struct
+// ------------------------------
+USTRUCT(BlueprintType)
+struct FMatchReward
+{
+    GENERATED_BODY()
+
+public:
+    UPROPERTY(BlueprintReadWrite)
+    int32 EarnedGold;
+
+    UPROPERTY(BlueprintReadWrite)
+    int32 EarnedExp;
 };

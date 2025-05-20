@@ -15,6 +15,7 @@ class UEnterPasswordWidget;
 class UOptionWidget;
 class UInGameHUD;
 class UShopWidget;
+class UUIElementCreateSession;
 
 class UInventoryMainWidget;
 UCLASS()
@@ -34,6 +35,9 @@ public:
 	void ShowEnterPasswordWidget(const FString& RoomID);
 	void ShowInGameHUD();
 	void ShowOptionPopup();
+	void ShowPauseMenu();
+	void HidePauseMenu();
+	void ShowConfirmPopup(TFunction<void()> OnConfirm);
 	void ShowShopPopup();
 	// 인벤토리로 추가
 	//void ShowInventoryPopup(); // 사용하지 않게 될 것 같음
@@ -41,8 +45,17 @@ public:
 	// ---------------
 
 	void HideShopPopup();
+	void ShowCreateSession();
+
+	// TO DO : 로딩 팝업 표시
+	void ShowPopUpLoading();
+	void HidePopUpLoading();
 
 	void SwitchToWidget(UUserWidget* Widget);
+	
+	/* 입력 모드 제어 */
+	void SetInputModeUIOnly(UUserWidget* FocusWidget = nullptr);
+	void SetInputModeGameOnly();
 
 	/* 위젯 게터 */
 	UTitleMenu* GetTitleMenu() const { return CachedTitleMenu; }
@@ -69,12 +82,16 @@ private:
 	UPROPERTY()
 	TSubclassOf<UEnterPasswordWidget> EnterPasswordWidgetClass;
 	UPROPERTY()
-	TSubclassOf<UOptionWidget> OptionWidgetClass;
+	TSubclassOf<UOptionWidget> OptionWidgetClass;	
+	UPROPERTY()
+	TSubclassOf<UOptionWidget> ConfirmPopupClass;
 	UPROPERTY()
 	TSubclassOf<UInGameHUD> InGameHUDWidgetClass;
 	UPROPERTY()
 	TSubclassOf<UShopWidget> ShopWidgetClass;
 
+	UPROPERTY()
+	TSubclassOf<UUIElementCreateSession> CreateSessionClass;
 	// 인벤토리로 추가
 	UPROPERTY()
 	TSubclassOf<UInventoryMainWidget> InventoryMainWidgetClass;
@@ -94,6 +111,8 @@ private:
 	UPROPERTY()
 	UShopWidget* CachedShopWidget;
 
+	UPROPERTY()
+	UUIElementCreateSession* CachedCreateSession;
 	// 인벤토리로 추가
 	UPROPERTY()
 	UInventoryMainWidget* CachedInventoryMainWidget;

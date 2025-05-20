@@ -67,6 +67,17 @@ void ULCGameInstance::LoadItemData()
    // LOG_Frame_WARNING(TEXT("총 %d개의 상점 아이템을 로딩했습니다."), AllItems.Num());
 }
 
+void ULCGameInstance::CreateSession_Implementation(const FString& ServerName, int AmountOfSlots)
+{
+    UE_LOG(LogTemp, Warning, TEXT("CreateSession called in C++"));
+}
+
+void ULCGameInstance::Shutdown()
+{
+    Super::Shutdown();
+}
+}
+
 void ULCGameInstance::LoadGunData()
 {
     if (GunDataTable == nullptr)

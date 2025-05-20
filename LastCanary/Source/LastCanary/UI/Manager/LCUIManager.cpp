@@ -8,6 +8,9 @@
 #include "UI/UIElement/InGameHUD.h"
 #include "UI/UIElement/ShopWidget.h"
 #include "UI/UIElement/InventoryMainWidget.h"
+#include "UI/UIElement/UIElementCreateSession.h"
+
+#include "UI/UIObject/ConfirmPopup.h"
 
 #include "Framework/PlayerController/LCLobbyPlayerController.h"
 #include "Framework/GameInstance/LCGameInstance.h"
@@ -37,6 +40,7 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			InGameHUDWidgetClass = Settings->FromBPInGameHUDClass;
 			ShopWidgetClass = Settings->FromBPShopWidgetClass;
 			InventoryMainWidgetClass = Settings->FromBPShopWidgetClass;
+			CreateSessionClass = Settings->FromBPCreateSessionWidgetClass;
 
 			if ((CachedTitleMenu == nullptr) && TitleMenuClass)
 			{
@@ -67,6 +71,9 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			if ((CachedInventoryMainWidget == nullptr) && InventoryMainWidgetClass)
 			{
 				CachedInventoryMainWidget = CreateWidget<UInventoryMainWidget>(PlayerController, InventoryMainWidgetClass);
+			if ((CachedCreateSession == nullptr) && CreateSessionClass)
+			{
+				CachedCreateSession = CreateWidget<UUIElementCreateSession>(PlayerController, CreateSessionClass);
 			}
 		}
 	}
@@ -113,13 +120,41 @@ void ULCUIManager::ShowOptionPopup()
 		CachedOptionWidget->AddToViewport(1);
 	}
 
+	SetInputModeUIOnly(CachedOptionWidget);
+}
+
+void ULCUIManager::ShowPauseMenu()
+{
+	LOG_Frame_WARNING(TEXT("ShowPauseMenu"));
+	if (CachedOptionWidget)
+	{
+		CachedOptionWidget->AddToViewport(1);
+	}
+
 	if (OwningPlayer)
 	{
-		FInputModeUIOnly InputMode;
-		InputMode.SetWidgetToFocus(CachedOptionWidget->TakeWidget());
-		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-		OwningPlayer->SetInputMode(InputMode);
-		OwningPlayer->bShowMouseCursor = true;
+		SetInputModeUIOnly(CachedOptionWidget);
+	}
+}
+
+void ULCUIManager::HidePauseMenu()
+{
+	SetInputModeGameOnly();
+}
+
+void ULCUIManager::ShowConfirmPopup(TFunction<void()> OnConfirm)
+{
+	LOG_Frame_WARNING(TEXT("ShowConfirmPopup"));
+	if (!ConfirmPopupClass)
+	{
+		return;
+	}
+
+	UConfirmPopup* ConfirmPopup = CreateWidget<UConfirmPopup>(OwningPlayer, ConfirmPopupClass);
+	if (ConfirmPopup)
+	{
+		ConfirmPopup->Init(MoveTemp(OnConfirm));
+		ConfirmPopup->AddToViewport(10);
 	}
 }
 
@@ -127,22 +162,27 @@ void ULCUIManager::ShowShopPopup()
 {
 	LOG_Frame_WARNING(TEXT("ShowShopPopup"));
 
-	if (LastShopInteractor && LastShopInteractor->IsValidLowLevel())
+	if (LastShopInteractor && LastShopInteractor->GetShopWidgetComponent())
 	{
-		LastShopInteractor->GetShopWidgetComponent()->SetVisibility(true);
+		LastShopInteractor->GetShopWidgetComponent()->SetVisibility(false);
+	}
 
-		if (OwningPlayer)
+	if (CachedShopWidget)
+	{
+		CachedShopWidget->AddToViewport(1);
+	}
+
+	if (OwningPlayer)
+	{
+		if (APawn* Pawn = OwningPlayer->GetPawn())
 		{
-			if (APawn* Pawn = OwningPlayer->GetPawn())
-			{
-				Pawn->DisableInput(OwningPlayer);
-			}
-
-			FInputModeUIOnly InputMode;
-			InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-			OwningPlayer->SetInputMode(InputMode);
-			OwningPlayer->bShowMouseCursor = true;
+			Pawn->DisableInput(OwningPlayer);
 		}
+
+		FInputModeUIOnly InputMode;
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		OwningPlayer->SetInputMode(InputMode);
+		OwningPlayer->bShowMouseCursor = true;
 	}
 }
 
@@ -224,7 +264,12 @@ void ULCUIManager::HideShopPopup()
 
 	if (LastShopInteractor && LastShopInteractor->GetShopWidgetComponent())
 	{
-		LastShopInteractor->GetShopWidgetComponent()->SetVisibility(false);
+		LastShopInteractor->GetShopWidgetComponent()->SetVisibility(true);
+	}
+
+	if (CachedShopWidget)
+	{
+		CachedShopWidget->RemoveFromParent();
 	}
 
 	if (OwningPlayer)
@@ -238,6 +283,20 @@ void ULCUIManager::HideShopPopup()
 		OwningPlayer->SetInputMode(FInputModeGameOnly());
 		OwningPlayer->bShowMouseCursor = false;
 	}
+}
+
+void ULCUIManager::ShowCreateSession()
+{
+	LOG_Frame_WARNING(TEXT("Show Create Session"));
+	SwitchToWidget(CachedCreateSession);
+}
+
+void ULCUIManager::ShowPopUpLoading()
+{
+}
+
+void ULCUIManager::HidePopUpLoading()
+{
 }
 
 void ULCUIManager::ShowInGameHUD()
@@ -271,13 +330,37 @@ void ULCUIManager::SwitchToWidget(UUserWidget* NewWidget)
 	}
 
 	CurrentWidget = NewWidget;
+	SetInputModeUIOnly(CurrentWidget);
+}
 
+void ULCUIManager::SetInputModeUIOnly(UUserWidget* FocusWidget)
+{
 	if (OwningPlayer)
 	{
 		FInputModeUIOnly InputMode;
+		if (FocusWidget)
+		{
+			InputMode.SetWidgetToFocus(FocusWidget->TakeWidget());
+		}
+		else if (CurrentWidget)
+		{
+			InputMode.SetWidgetToFocus(CurrentWidget->TakeWidget());
+		}
 		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 		OwningPlayer->SetInputMode(InputMode);
 		OwningPlayer->bShowMouseCursor = true;
+	}
+
+	LOG_Frame_WARNING(TEXT("SetInputModeUIOnly: %s"), *GetNameSafe(FocusWidget ? FocusWidget : CurrentWidget));
+}
+
+void ULCUIManager::SetInputModeGameOnly()
+{
+	if (OwningPlayer)
+	{
+		FInputModeGameOnly InputMode;
+		OwningPlayer->SetInputMode(InputMode);
+		OwningPlayer->bShowMouseCursor = false;
 	}
 }
 

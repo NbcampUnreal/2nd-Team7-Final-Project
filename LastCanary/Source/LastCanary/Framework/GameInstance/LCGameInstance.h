@@ -5,14 +5,16 @@
 #include "DataTable/MapDataRow.h"
 #include "DataTable/ItemDataRow.h"
 #include "DataTable/GunDataRow.h"
+#include "AdvancedSessions/Classes/AdvancedFriendsGameInstance.h"
 #include "LCGameInstance.generated.h"
 
 /**
  * 
  */
 class ULCUIManagerSettings;
+
 UCLASS()
-class LASTCANARY_API ULCGameInstance : public UGameInstance
+class LASTCANARY_API ULCGameInstance : public UAdvancedFriendsGameInstance
 {
 	GENERATED_BODY()
 	
@@ -37,4 +39,17 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data")
 	UDataTable* GunDataTable;
 	void LoadGunData();
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Session")
+	void CreateSession(const FString& ServerName, int AmountOfSlots);
+
+	virtual void CreateSession_Implementation(const FString& ServerName, int AmountOfSlots);
+
+protected:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Session")
+	bool bIsCreateSession;
+
+	UFUNCTION(BlueprintCallable)
+	void Shutdown() override;
+
 };
