@@ -7,6 +7,8 @@
 #include "EnhancedInputSubsystems.h"
 #include "Components/BoxComponent.h"
 
+#include "Interface/InteractableInterface.h"
+
 //#include "ALS/Public/Utility/AlsVector.h"
 #include "../Plugins/ALS-Refactored-4.15/Source/ALS/Public/Utility/AlsVector.h"
 //innclude "ALSCamera/Public/AlsCameraComponent.h"
@@ -225,6 +227,29 @@ void ABaseCharacter::Handle_Strafe(const FInputActionValue& ActionValue)
 void ABaseCharacter::Handle_Interact(AActor* HitActor)
 {
 	UE_LOG(LogTemp, Log, TEXT("Interacted!!!!"));
+	if (!HitActor)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Handle_Interact: HitActor is nullptr"));
+		return;
+	}
+
+	if (HitActor->Implements<UInteractableInterface>())
+	{
+		APlayerController* PC = Cast<APlayerController>(GetController());
+		if (PC)
+		{
+			IInteractableInterface::Execute_Interact(HitActor, PC);
+			UE_LOG(LogTemp, Log, TEXT("Handle_Interact: Called Interact on %s"), *HitActor->GetName());
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Handle_Interact: Controller is nullptr"));
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Handle_Interact: HitActor %s does not implement IInteractableInterface"), *HitActor->GetName());
+	}
 	//TO DO...
 	/*
 	if(Hit.Type == ItemClass)
