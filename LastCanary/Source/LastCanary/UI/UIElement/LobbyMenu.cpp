@@ -14,6 +14,10 @@ void ULobbyMenu::NativeConstruct()
 	{
 		RefreshButton->OnClicked.AddUniqueDynamic(this, &ULobbyMenu::OnRefreshButtonClicked);
 	}
+	if (BackButton)
+	{
+		BackButton->OnClicked.AddUniqueDynamic(this, &ULobbyMenu::OnBackButtonClicked);
+	}
 
 	RefreshServerList();
 }
@@ -46,4 +50,11 @@ void ULobbyMenu::OnRefreshButtonClicked()
 void ULobbyMenu::RefreshServerList_Implementation()
 {
 
+}
+
+void ULobbyMenu::OnBackButtonClicked()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Create Room Button Clicked"));
+	ULCUIManager* UIManager = ResolveUIManager();
+	UIManager->ShowTitleMenu();
 }
