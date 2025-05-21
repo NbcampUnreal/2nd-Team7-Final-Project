@@ -3,6 +3,11 @@
 #include "CoreMinimal.h"
 #include "AI/BaseAIController.h"
 #include "Perception/AIPerceptionTypes.h"
+#include "Perception/AISenseConfig_Sight.h"
+#include "Perception/AISenseConfig_Hearing.h"
+#include "BehaviorTree/BehaviorTree.h"
+#include "BehaviorTree/BehaviorTreeComponent.h"
+#include "BehaviorTree/BlackboardComponent.h"
 #include "LCBossAIController.generated.h"
 
 class UBehaviorTree;
@@ -18,40 +23,32 @@ class LASTCANARY_API ALCBossAIController : public ABaseAIController
 	GENERATED_BODY()
 
 public:
-	ALCBossAIController();
-
-	/*--------------  에디터 파라미터 --------------*/
-	/** 실행할 기본 BT (보스마다 BP에서 바꿔치우면 됨) */
-	UPROPERTY(EditDefaultsOnly, Category = "AI") UBehaviorTree* DefaultBT;
-
-	UPROPERTY(EditDefaultsOnly, Category = "AI|Sight") float SightRadius = 2000.f;
-	UPROPERTY(EditDefaultsOnly, Category = "AI|Sight") float LoseSightRadius = 2200.f;
-	UPROPERTY(EditDefaultsOnly, Category = "AI|Sight") float SightFOV = 70.f;
-
-	/*--------------  런타임 상태 --------------*/
-	UPROPERTY(VisibleInstanceOnly, Category = "AI") AActor* LockedTarget = nullptr;
+    ALCBossAIController();
 
 protected:
-	/* 컴포넌트 */
-	UPROPERTY(VisibleAnywhere, Category = "AI") UBehaviorTreeComponent* BTComp;
-	UPROPERTY(VisibleAnywhere, Category = "AI") UBlackboardComponent* BBComp;
-	UPROPERTY(VisibleAnywhere, Category = "AI") UAIPerceptionComponent* Perception;
+    virtual void BeginPlay() override;
 
-	UAISenseConfig_Sight* SightConfig;
+    /** Behavior Tree 에서 사용할 Blackboard Component */
+    UPROPERTY(Transient)
+    UBlackboardComponent* BlackboardComp;
 
-	/* 블랙보드 키 (FName) */
-	static const FName BBKey_TargetActor;
-	static const FName BBKey_HasLOS;
+    /** Behavior Tree 를 구동할 컴포넌트 */
+    UPROPERTY(Transient)
+    UBehaviorTreeComponent* BehaviorComp;
 
-	/* 라이프사이클 */
-	virtual void BeginPlay() override;
-	virtual void OnPossess(APawn* InPawn) override;
+    /** 사용할 Behavior Tree 자산 */
+    UPROPERTY(EditDefaultsOnly, Category = "AI")
+    UBehaviorTree* BehaviorTreeAsset;
 
-	/* Perception */
-	UFUNCTION() void OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stim);
+    /** 시각 감지 설정 */
+    UPROPERTY()
+    UAISenseConfig_Sight* SightConfig;
 
-	/* 타깃 유효성 재검사 */
-	FTimerHandle ValidateTimer;
-	void ValidateLockedTarget();
-	
+    /** 청각 감지 설정 */
+    UPROPERTY()
+    UAISenseConfig_Hearing* HearingConfig;
+
+    /** 지각 이벤트 콜백 */
+    UFUNCTION()
+    void OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus);
 };
