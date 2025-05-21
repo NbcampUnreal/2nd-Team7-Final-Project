@@ -15,4 +15,7 @@ class LASTCANARY_API ALCLobbyGameMode : public AGameModeBase
 	
 public:
 	void TryJoinRoom(ALCLobbyPlayerController* RequestingPC, const FString& RoomID, const FString& Password);
+
+	UFUNCTION(BlueprintCallable)
+	void StartGame();
 };

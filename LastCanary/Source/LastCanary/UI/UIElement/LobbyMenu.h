@@ -30,11 +30,16 @@ public:
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
 	UVerticalBox* ServerListBox;
 
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
+	UButton* BackButton;
+
 private:
 	UFUNCTION()
 	void OnCreateRoomButtonClicked();
 	UFUNCTION()
 	void OnRefreshButtonClicked();
+	UFUNCTION()
+	void OnBackButtonClicked();
 
 public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Session")

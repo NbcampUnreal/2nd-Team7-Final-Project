@@ -7,6 +7,7 @@
 class UWidgetSwitcher;
 class UButton;
 class UGeneralOptionWidget;
+class UKeySettingWidget;
 UCLASS()
 class LASTCANARY_API UOptionWidget : public ULCUserWidgetBase
 {
@@ -30,6 +31,8 @@ private:
 
 	UPROPERTY(meta = (BindWidget))
 	UGeneralOptionWidget* GeneralOptionWidget;
+	UPROPERTY(meta = (BindWidget))
+	UKeySettingWidget* KeySettingWidget;
 	
 
 	UFUNCTION()
@@ -39,5 +42,7 @@ private:
 
 	UFUNCTION()
 	void OnGeneralTabButtonClicked();
+	UFUNCTION()
+	void OnKeySettingTabButtonClicked();
 };
 
