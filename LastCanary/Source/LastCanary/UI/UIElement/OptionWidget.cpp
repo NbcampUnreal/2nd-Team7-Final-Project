@@ -23,6 +23,10 @@ void UOptionWidget::NativeConstruct()
 	{
 		GeneralTabButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnGeneralTabButtonClicked);
 	}
+	if (KeySettingTabButton)
+	{
+		KeySettingTabButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnKeySettingTabButtonClicked);
+	}
 	if (OptionSwitcher)
 	{
 		OptionSwitcher->SetActiveWidgetIndex(0);
@@ -32,9 +36,21 @@ void UOptionWidget::NativeConstruct()
 void UOptionWidget::NativeDestruct()
 {
 	Super::NativeDestruct();
+	if (ApplyButton)
+	{
+		ApplyButton->OnClicked.RemoveDynamic(this, &UOptionWidget::OnApplyButtonClicked);
+	}
+	if (CloseButton)
+	{
+		CloseButton->OnClicked.RemoveDynamic(this, &UOptionWidget::OnCloseButtonClicked);
+	}
 	if (GeneralTabButton)
 	{
 		GeneralTabButton->OnClicked.RemoveDynamic(this, &UOptionWidget::OnGeneralTabButtonClicked);
+	}
+	if (KeySettingTabButton)
+	{
+		KeySettingTabButton->OnClicked.RemoveDynamic(this, &UOptionWidget::OnKeySettingTabButtonClicked);
 	}
 }
 
@@ -60,5 +76,17 @@ void UOptionWidget::OnGeneralTabButtonClicked()
 	else
 	{
 		LOG_Frame_ERROR(TEXT("General Option Widget is nullptr"));
+	}
+}
+
+void UOptionWidget::OnKeySettingTabButtonClicked()
+{
+	if (OptionSwitcher)
+	{
+		OptionSwitcher->SetActiveWidgetIndex(1);
+	}
+	else
+	{
+		LOG_Frame_ERROR(TEXT("Key Setting Widget is nullptr"));
 	}
 }
