@@ -1,5 +1,4 @@
 #pragma once
-
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "GameFramework/Character.h"
@@ -14,6 +13,7 @@ public:
     UMonsterSpawnComponent();
 
     virtual void BeginPlay() override;
+
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
     UFUNCTION(BlueprintCallable, Category = "Monster Spawner")
@@ -48,7 +48,9 @@ protected:
     bool bIsNighttime = false;
 
 private:
-    void SpawnMonsters();
+    void SpawnMonsters();//³·
+
+    void SpawnNightMonsters(); //¹ã
 
     void DestroyAllMonsters();
 
@@ -56,6 +58,7 @@ private:
     TArray<ACharacter*> SpawnedMonsters;
 
     FTimerHandle SpawnTimerHandle;
+
     FTimerHandle DestroyTimerHandle;
 
     bool bIsSpawning;
