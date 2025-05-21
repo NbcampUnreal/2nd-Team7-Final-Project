@@ -1,6 +1,7 @@
 #include "UI/UIElement/LobbyMenu.h"
 #include "Components/Button.h"
 #include "Components/ScrollBox.h"
+#include "Components/VerticalBox.h"
 
 void ULobbyMenu::NativeConstruct()
 {
@@ -9,6 +10,12 @@ void ULobbyMenu::NativeConstruct()
 	{
 		CreateRoomButton->OnClicked.AddUniqueDynamic(this, &ULobbyMenu::OnCreateRoomButtonClicked);
 	}
+	if (RefreshButton)
+	{
+		RefreshButton->OnClicked.AddUniqueDynamic(this, &ULobbyMenu::OnRefreshButtonClicked);
+	}
+
+	RefreshServerList();
 }
 
 void ULobbyMenu::NativeDestruct()
@@ -18,9 +25,25 @@ void ULobbyMenu::NativeDestruct()
 	{
 		CreateRoomButton->OnClicked.RemoveDynamic(this, &ULobbyMenu::OnCreateRoomButtonClicked);
 	}
+	if (RefreshButton)
+	{
+		RefreshButton->OnClicked.RemoveDynamic(this, &ULobbyMenu::OnRefreshButtonClicked);
+	}
 }
 
 void ULobbyMenu::OnCreateRoomButtonClicked()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Create Room Button Clicked"));
+	ULCUIManager* UIManager = ResolveUIManager();
+	UIManager->ShowCreateSession();
+}
+
+void ULobbyMenu::OnRefreshButtonClicked()
+{
+	RefreshServerList();
+}
+
+void ULobbyMenu::RefreshServerList_Implementation()
+{
+
 }

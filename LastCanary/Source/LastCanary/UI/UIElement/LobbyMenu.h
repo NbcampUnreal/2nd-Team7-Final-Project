@@ -9,6 +9,8 @@
  */
 class UButton;
 class UScrollBox;
+class UVerticalBox;
+
 UCLASS()
 class LASTCANARY_API ULobbyMenu : public ULCUserWidgetBase
 {
@@ -18,12 +20,26 @@ protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
 
-private:
-	UPROPERTY(meta = (BindWidget))
+public:
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
 	UButton* CreateRoomButton;
-	UPROPERTY(meta = (BindWidget))
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
+	UButton* RefreshButton;
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
 	UScrollBox* RoomListBox;
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
+	UVerticalBox* ServerListBox;
 
+private:
 	UFUNCTION()
 	void OnCreateRoomButtonClicked();
+	UFUNCTION()
+	void OnRefreshButtonClicked();
+
+public:
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Session")
+	void RefreshServerList();
+
+	virtual void RefreshServerList_Implementation();
+
 };

@@ -23,6 +23,12 @@ class ALS_API AAlsCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
+public:
+	FTimerHandle HardLandingTimerHandle;
+	bool bIsInHardLandingState = false;
+	void TriggerHardLanding(float DisableDuration);
+	void EndHardLanding();
+
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Als Character")
 	TObjectPtr<UAlsCharacterMovementComponent> AlsCharacterMovement;

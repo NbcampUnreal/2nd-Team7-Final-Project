@@ -77,18 +77,11 @@ public: //Functions to process controller input.
 
 	virtual void Handle_Aim(const FInputActionValue& ActionValue);
 
-	virtual void Handle_Ragdoll();
-
-	virtual void Handle_Roll();
-
-	virtual void Handle_RotationMode();
-
 	virtual void Handle_ViewMode();
-
-	virtual void Handle_SwitchShoulder();
 
 	virtual void Handle_Interact(AActor* HitActor);
 
+	virtual void Handle_Strafe(const FInputActionValue& ActionValue);
 
 public: //Interact Function
 	void PickupItem();
@@ -109,4 +102,26 @@ public: //Interact Function
 	
 	FTimerHandle OverlapCheckTimerHandle;
 	void OverlapCheckFunction();
+
+public:
+
+	void EquipItemFromCurrentQuickSlot(int QuickSlotIndex);
+
+	// 퀵슬롯 아이템들 (타입은 아이템 구조에 따라 UObject*, AItemBase*, UItemData* 등)
+	TArray<UObject*> QuickSlots;
+
+	// 현재 장착된 아이템
+	UObject* HeldItem = nullptr;
+
+	void EquipItem(UObject* Item);
+	void UnequipCurrentItem();
+
+
+public:
+	UFUNCTION(BlueprintImplementableEvent)
+	void TestEquipFunction(int32 NewIndex);
+
+public:
+	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+	void HandlePlayerDeath();
 };

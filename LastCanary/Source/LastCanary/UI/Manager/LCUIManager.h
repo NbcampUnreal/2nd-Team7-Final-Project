@@ -15,6 +15,7 @@ class UEnterPasswordWidget;
 class UOptionWidget;
 class UInGameHUD;
 class UShopWidget;
+class UUIElementCreateSession;
 UCLASS()
 class LASTCANARY_API ULCUIManager : public UObject
 {
@@ -37,8 +38,17 @@ public:
 	void ShowConfirmPopup(TFunction<void()> OnConfirm);
 	void ShowShopPopup();
 	void HideShopPopup();
+	void ShowCreateSession();
+
+	// TO DO : 로딩 팝업 표시
+	void ShowPopUpLoading();
+	void HidePopUpLoading();
 
 	void SwitchToWidget(UUserWidget* Widget);
+	
+	/* 입력 모드 제어 */
+	void SetInputModeUIOnly(UUserWidget* FocusWidget = nullptr);
+	void SetInputModeGameOnly();
 
 	/* 위젯 게터 */
 	UTitleMenu* GetTitleMenu() const { return CachedTitleMenu; }
@@ -73,6 +83,9 @@ private:
 	UPROPERTY()
 	TSubclassOf<UShopWidget> ShopWidgetClass;
 
+	UPROPERTY()
+	TSubclassOf<UUIElementCreateSession> CreateSessionClass;
+
 	// 위젯 캐싱
 	UPROPERTY()
 	UTitleMenu* CachedTitleMenu;
@@ -87,4 +100,6 @@ private:
 	UPROPERTY()
 	UShopWidget* CachedShopWidget;
 
+	UPROPERTY()
+	UUIElementCreateSession* CachedCreateSession;
 };
