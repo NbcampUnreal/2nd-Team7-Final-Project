@@ -20,9 +20,14 @@ class LASTCANARY_API AGunBase : public AEquipmentItemBase
 public:
     AGunBase();
 
+    virtual void OnConstruction(const FTransform& Transform) override;
+
     //-----------------------------------------------------
     // 컴포넌트
     //-----------------------------------------------------
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gun|Components")
+    USkeletalMeshComponent* GunMesh;
 
     /** 총구 위치를 나타내는 씬 컴포넌트 */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gun|Components")
@@ -130,6 +135,9 @@ protected:
     // 라인트레이스 및 피격 판정
     //-----------------------------------------------------
 
+    UPROPERTY(Replicated)
+    TArray<FHitResult> RecentHits;
+
     /** 라인트레이스 기반 발사 처리 */
     UFUNCTION(Server, Reliable)
     void Server_Fire();
@@ -146,8 +154,8 @@ protected:
 
     /** 피격 지점에 데칼 생성 */
     UFUNCTION(NetMulticast, Reliable)
-    void Multicast_SpawnImpactEffects(const FHitResult& Hit);
-    void Multicast_SpawnImpactEffects_Implementation(const FHitResult& Hit);
+    void Multicast_SpawnImpactEffects(const TArray<FHitResult>& Hits);
+    void Multicast_SpawnImpactEffects_Implementation(const TArray<FHitResult>& Hits);
 
     /** 사운드 및 이펙트 재생 */
     UFUNCTION(NetMulticast, Reliable)
@@ -165,4 +173,15 @@ protected:
 
     /** Durability 변경 시 탄약 동기화 */
     virtual void OnRepDurability() override;
+
+    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Debug")
+    bool bDrawDebugLine = false;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Debug")
+    float DebugDrawDuration = 2.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Debug")
+    bool bDrawImpactDebug = false;
 };

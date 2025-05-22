@@ -20,6 +20,7 @@ public:
     // 장비 아이템 사용 함수를 가상 함수로 선언
     virtual void UseItem() override;
 
+
     // 장비 상태 확인
     UFUNCTION(BlueprintCallable, Category = "Equipment")
     bool IsEquipped() const { return bIsEquipped; }

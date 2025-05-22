@@ -196,15 +196,14 @@ bool UToolbarInventoryComponent::TryAddItem(AItemBase* ItemActor)
         return false;
     }
 
-    // 자동 장착 로직 추가 ---------------------------------
     if (GetOwner()->HasAuthority()) // 서버에서만 실행
     {
         bool bHasEquipped = false;
 
         // 기존 장착 아이템 확인
-        for (const FBaseItemSlotData& Slot : ItemSlots)
+        for (int32 i = 0; i < ItemSlots.Num(); ++i)
         {
-            if (Slot.bIsEquipped)
+            if (ItemSlots[i].bIsEquipped)
             {
                 bHasEquipped = true;
                 break;
@@ -215,10 +214,20 @@ bool UToolbarInventoryComponent::TryAddItem(AItemBase* ItemActor)
         if (!bHasEquipped && ItemSlots.Num() > 0)
         {
             const int32 LastIndex = ItemSlots.Num() - 1;
+            // 장착 함수 호출
             EquipItemAtSlot(LastIndex);
+
+            // 명시적으로 캐릭터 장착 상태 설정 (중요)
+            if (CachedOwnerCharacter)
+            {
+                CachedOwnerCharacter->SetEquipped(true);
+
+                // 디버그 로그 추가
+                UE_LOG(LogTemp, Warning, TEXT("아이템 자동 장착: 슬롯 %d, 캐릭터 장착 상태: %d"),
+                    LastIndex, CachedOwnerCharacter->IsEquipped());
+            }
         }
     }
-    // -----------------------------------------------
 
     PostAddProcess();
 
@@ -252,9 +261,11 @@ bool UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
     ItemSlots[SlotIndex].bIsEquipped = true;
 
     // 캐릭터 상태 업데이트
-    if (CachedOwnerCharacter)
+    if (CachedOwnerCharacter && GetOwner()->HasAuthority())
     {
         CachedOwnerCharacter->SetEquipped(true);
+
+        Multicast_UpdateEquippedState(true);
 
         // 중요: 장착된 아이템 액터를 찾아 상태 업데이트
         TArray<AActor*> AttachedActors;
@@ -311,6 +322,7 @@ void UToolbarInventoryComponent::Multicast_HandleItemPickup_Implementation(AItem
         NewItem->SetActorEnableCollision(false);
         NewItem->ItemRowName = ItemRowName;
         NewItem->ApplyItemDataFromTable();
+        NewItem->SetActorScale3D(FVector(0.5f, 0.5f, 0.5f));
 
         for (const FBaseItemSlotData& Slot : ItemSlots)
         {
@@ -324,6 +336,14 @@ void UToolbarInventoryComponent::Multicast_HandleItemPickup_Implementation(AItem
         NewItem->AttachToComponent(CachedOwnerCharacter->GetMesh(),
             FAttachmentTransformRules::SnapToTargetNotIncludingScale,
             SocketName);
+    }
+}
+
+void UToolbarInventoryComponent::Multicast_UpdateEquippedState_Implementation(bool bEquipped)
+{
+    if (CachedOwnerCharacter)
+    {
+        CachedOwnerCharacter->SetEquipped(bEquipped);
     }
 }
 

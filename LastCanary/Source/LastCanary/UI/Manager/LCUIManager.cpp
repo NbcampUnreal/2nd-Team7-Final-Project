@@ -71,6 +71,7 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			if ((CachedInventoryMainWidget == nullptr) && InventoryMainWidgetClass)
 			{
 				CachedInventoryMainWidget = CreateWidget<UInventoryMainWidget>(PlayerController, InventoryMainWidgetClass);
+			}
 			if ((CachedCreateSession == nullptr) && CreateSessionClass)
 			{
 				CachedCreateSession = CreateWidget<UUIElementCreateSession>(PlayerController, CreateSessionClass);

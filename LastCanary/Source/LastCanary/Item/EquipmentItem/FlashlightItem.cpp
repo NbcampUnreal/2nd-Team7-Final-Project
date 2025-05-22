@@ -13,6 +13,14 @@ AFlashlightItem::AFlashlightItem()
     SpotLightComponent = CreateDefaultSubobject<USpotLightComponent>(TEXT("SpotLight"));
     SpotLightComponent->SetupAttachment(MeshComponent);
 
+    bReplicates = true;
+    // bAlwaysRelevant = true; // 이 옵션을 제거하거나 아래 옵션으로 대체
+
+    // 대안: 소유자에게는 항상 관련 있게, 다른 플레이어에게는 관련성 기반으로 설정
+    bOnlyRelevantToOwner = false;
+    NetUpdateFrequency = 0.01f; // 업데이트 빈도 제한 (초당 5회)
+
+
     // 네트워크 복제 활성화
     SpotLightComponent->SetIsReplicated(true);
 
@@ -89,6 +97,10 @@ void AFlashlightItem::Server_ToggleLight_Implementation(bool bNewState)
 
 void AFlashlightItem::Multicast_UpdateLightState_Implementation(bool bNewState)
 {
+    UE_LOG(LogTemp, Warning, TEXT("[AFlashlightItem::Multicast_UpdateLightState] 실행 - 상태: %s, Role: %d, RemoteRole: %d"),
+        bNewState ? TEXT("켜짐") : TEXT("꺼짐"),
+        (int32)GetLocalRole(),
+        (int32)GetRemoteRole());
     // 상태 업데이트
     bIsLightOn = bNewState;
 
@@ -109,7 +121,14 @@ void AFlashlightItem::Multicast_UpdateLightState_Implementation(bool bNewState)
     }
     else
     {
+        // 모든 속성 명시적 설정 (클라이언트에서도)
         SpotLightComponent->SetIntensity(LightIntensity);
+        SpotLightComponent->SetLightColor(LightColor);
+        SpotLightComponent->SetInnerConeAngle(InnerConeAngle);
+        SpotLightComponent->SetOuterConeAngle(OuterConeAngle);
+
+        // 중요: 빛 효과 강제 업데이트
+        SpotLightComponent->UpdateColorAndBrightness();
     }
 
     // 사운드 재생
@@ -145,6 +164,13 @@ void AFlashlightItem::Multicast_UpdateLightState_Implementation(bool bNewState)
                 UE_LOG(LogTemp, Error, TEXT("[AFlashlightItem::Multicast_UpdateLightState] 타이머 해제 시 World가 유효하지 않음!"));
             }
         }
+    }
+
+    if (GetLocalRole() != ROLE_Authority)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[클라이언트] 손전등 상태 변경: %s, 컴포넌트 가시성: %d"),
+            bNewState ? TEXT("켜짐") : TEXT("꺼짐"),
+            SpotLightComponent->IsVisible());
     }
 }
 
@@ -250,7 +276,7 @@ void AFlashlightItem::BeginPlay()
     // 사운드 에셋 동적 로드
     if (!TurnOnSound)
     {
-        TurnOnSound = LoadObject<USoundBase>(nullptr, TEXT("/Game/Test/TestContents/739997__robert9157__switch-on_cut.739997__robert9157__switch-on_cut"));
+        TurnOnSound = LoadObject<USoundBase>(nullptr, TEXT("/Game/AnotherAsset/Item/Flashlight/Sounds/Flash_Switch-on_cut.Flash_Switch-on_cut"));
         if (!TurnOnSound)
         {
             UE_LOG(LogTemp, Warning, TEXT("[AFlashlightItem] 손전등 켜기 사운드 로드 실패"));
@@ -259,7 +285,7 @@ void AFlashlightItem::BeginPlay()
 
     if (!TurnOffSound)
     {
-        TurnOffSound = LoadObject<USoundBase>(nullptr, TEXT("/Game/Test/TestContents/739997__robert9157__switch-off_cut.739997__robert9157__switch-off_cut"));
+        TurnOffSound = LoadObject<USoundBase>(nullptr, TEXT("/Game/AnotherAsset/Item/Flashlight/Sounds/Flash_Switch_Off.Flash_Switch_Off"));
         if (!TurnOffSound)
         {
             UE_LOG(LogTemp, Warning, TEXT("[AFlashlightItem] 손전등 끄기 사운드 로드 실패"));
@@ -268,6 +294,12 @@ void AFlashlightItem::BeginPlay()
 
     if (!FlashlightSoundAttenuation)
     {
-        FlashlightSoundAttenuation = LoadObject<USoundAttenuation>(nullptr, TEXT("/Game/Test/ATT_FlashlightSound.ATT_FlashlightSound"));
+        FlashlightSoundAttenuation = LoadObject<USoundAttenuation>(nullptr, TEXT("/Game/AnotherAsset/Item/Flashlight/Sounds/ATT_FlashlightSound.ATT_FlashlightSound"));
+    }
+
+    if (SpotLightComponent && !SpotLightComponent->GetIsReplicated())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[AFlashlightItem::BeginPlay] SpotLightComponent 복제 활성화"));
+        SpotLightComponent->SetIsReplicated(true);
     }
 }

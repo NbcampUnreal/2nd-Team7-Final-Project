@@ -18,6 +18,8 @@
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "Inventory/BackpackInventoryComponent.h"
 #include "Item/ItemBase.h"
+#include "Item/EquipmentItem/EquipmentItemBase.h"
+#include "Net/UnrealNetwork.h"
 #include "LastCanary.h"
 
 ABaseCharacter::ABaseCharacter()
@@ -445,7 +447,6 @@ void ABaseCharacter::HandlePlayerDeath()
 		MyController->UnPossess();
 	}
 }
-}
 
 
 
@@ -475,10 +476,12 @@ void ABaseCharacter::SetEquipped(bool bEquip)
 	static FGameplayTag EquippedTag = FGameplayTag::RequestGameplayTag(TEXT("Character.Player.Equipped"));
 	if (bEquip)
 	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::SetEquipped] 태그 추가"));
 		EquippedTags.AddTag(EquippedTag);
 	}
 	else
 	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::SetEquipped] 태그 제거"));
 		EquippedTags.RemoveTag(EquippedTag);
 	}
 }
@@ -489,7 +492,13 @@ bool ABaseCharacter::TryPickupItem(AItemBase* HitItem)
 
 	UE_LOG(LogTemp, Log, TEXT("TryPickupItem 실행"));
 
-	// 1. 가방 인벤토리 컴포넌트가 있고, 아이템이 수집품이면 우선 가방에 시도
+	// 클라이언트에서 호출된 경우 서버에 요청
+	if (GetLocalRole() < ROLE_Authority)
+	{
+		Server_TryPickupItem(HitItem);
+		return true; // 요청 성공 (실제 결과는 서버에서 결정)
+	}
+
 	if (BackpackInventoryComponent)
 	{
 		if (BackpackInventoryComponent->TryAddItem(HitItem))
@@ -499,7 +508,6 @@ bool ABaseCharacter::TryPickupItem(AItemBase* HitItem)
 		}
 	}
 
-	// 2. 툴바 인벤토리 컴포넌트로 시도
 	if (ToolbarInventoryComponent)
 	{
 		if (ToolbarInventoryComponent->TryAddItem(HitItem))
@@ -509,18 +517,40 @@ bool ABaseCharacter::TryPickupItem(AItemBase* HitItem)
 		}
 	}
 
-	// 3. 모두 실패
 	UE_LOG(LogTemp, Warning, TEXT("아이템 습득 실패!"));
 	return false;
+}
+
+void ABaseCharacter::Server_TryPickupItem_Implementation(AItemBase* HitItem)
+{
+	if (!HitItem)
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::ServerTryPickupItem] HitItem이 nullptr입니다."));
+		return;
+	}
+	TryPickupItem(HitItem);
 }
 
 bool ABaseCharacter::UseEquippedItem()
 {
 	{
-		if (!IsEquipped() || !ToolbarInventoryComponent)
+		if (!IsEquipped())
 		{
-			LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 장비 상태가 아니거나 툴바 컴포넌트가 없습니다."));
+			LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 장비 상태가 아닙니다."));
 			return false;
+		}
+
+		if (!ToolbarInventoryComponent)
+		{
+			LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 툴바 컴포넌트가 없습니다."));
+			return false;
+		}
+
+		if (GetLocalRole() < ROLE_Authority)
+		{
+			LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 클라이언트에서 실행"));
+			Server_UseEquippedItem();
+			return true;
 		}
 
 		// 장비된 슬롯 검색
@@ -548,13 +578,22 @@ bool ABaseCharacter::UseEquippedItem()
 					AItemBase* Item = Cast<AItemBase>(Actor);
 					if (Item && Item->ItemRowName == Slot.ItemRowName)
 					{
-						// 서버에서만 실행되도록 처리
-						if (GetLocalRole() == ROLE_Authority)
+						// 추가: 아이템이 순수 가상 함수를 구현한 서브클래스인지 확인
+						AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(Item);
+						if (EquipmentItem) // 장비 아이템인지 확인
 						{
-							Item->UseItem();
-							LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] %s 아이템 사용 성공"), *ItemData->ItemName.ToString());
+							if (GetLocalRole() == ROLE_Authority)
+							{
+								EquipmentItem->UseItem(); // 안전하게 호출
+								LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] %s 아이템 사용 성공"), *ItemData->ItemName.ToString());
+							}
+							return true;
 						}
-						return true;
+						else
+						{
+							LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 아이템이 장비 아이템이 아닙니다."));
+							return false;
+						}
 					}
 				}
 
@@ -566,4 +605,15 @@ bool ABaseCharacter::UseEquippedItem()
 		LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 장비된 아이템이 없습니다."));
 		return false;
 	}
+}
+
+void ABaseCharacter::Server_UseEquippedItem_Implementation()
+{
+	UseEquippedItem();
+}
+
+void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(ABaseCharacter, EquippedTags);
 }

@@ -135,6 +135,7 @@ public:
 	UPROPERTY()
 	FGameplayTagContainer OwnedTags;
 
+	UChildActorComponent* ChildActorComponent;
 	// 인벤토리 컴포넌트
 private:
 	UPROPERTY(VisibleAnywhere, Category = "Inventory")
@@ -150,7 +151,7 @@ public:
 
 	// 게임 플레이 태그통한 장비 장비/해제 상태 부여 및 확인을 위해 추가한 부분입니다.
 private:
-	UPROPERTY()
+	UPROPERTY(Replicated)
 	FGameplayTagContainer EquippedTags;
 
 public:
@@ -162,7 +163,15 @@ public:
 	
 	// 임의적으로 만든 캐릭터의 상호작용 함수
 	bool TryPickupItem(AItemBase* HitItem);
+	UFUNCTION(Server, Reliable)
+	void Server_TryPickupItem(AItemBase* HitItem);
+	void Server_TryPickupItem_Implementation(AItemBase* ItemToPickup);
 
 	UFUNCTION(BlueprintCallable, Category = "Equipment")
 	bool UseEquippedItem();
+	UFUNCTION(Server, Reliable)
+	void Server_UseEquippedItem();
+	void Server_UseEquippedItem_Implementation();
+
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 };

@@ -97,6 +97,10 @@ public:
     void Multicast_HandleItemPickup(AItemBase* ItemToDestroy, FName ItemRowName, FName SocketName);
     void Multicast_HandleItemPickup_Implementation(AItemBase* ItemToDestroy, FName ItemRowName, FName SocketName);
 
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_UpdateEquippedState(bool bEquipped);
+    void Multicast_UpdateEquippedState_Implementation(bool bEquipped);
+
     //-----------------------------------------------------
     // 네트워크 기능
     //-----------------------------------------------------

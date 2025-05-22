@@ -76,7 +76,6 @@ void ULCGameInstance::Shutdown()
 {
     Super::Shutdown();
 }
-}
 
 void ULCGameInstance::LoadGunData()
 {
@@ -88,7 +87,7 @@ void ULCGameInstance::LoadGunData()
 
     static const FString ContextString(TEXT("Gun Lookup"));
     TArray<FGunDataRow*> AllGuns;
-    ItemDataTable->GetAllRows(ContextString, AllGuns);
+    GunDataTable->GetAllRows(ContextString, AllGuns);
 
     for (FGunDataRow* GunDataRow : AllGuns)
     {

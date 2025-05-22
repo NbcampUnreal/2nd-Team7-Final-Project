@@ -30,6 +30,9 @@ struct FGunDataRow : public FTableRowBase
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Basic")
     UTexture2D* IconTexture;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    USkeletalMesh* GunMesh;
+
     // 총기 성능
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Performance")
     float BaseDamage;
