@@ -11,6 +11,7 @@
 #include "UI/UIElement/UIElementCreateSession.h"
 
 #include "UI/UIObject/ConfirmPopup.h"
+#include "UI/Popup/PopupLoading.h"
 
 #include "Framework/PlayerController/LCLobbyPlayerController.h"
 #include "Framework/GameInstance/LCGameInstance.h"
@@ -41,6 +42,7 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			ShopWidgetClass = Settings->FromBPShopWidgetClass;
 			InventoryMainWidgetClass = Settings->FromBPShopWidgetClass;
 			CreateSessionClass = Settings->FromBPCreateSessionWidgetClass;
+			PopUpLoadingClass = Settings->FromBPPopupLoadingClass;
 
 			if ((CachedTitleMenu == nullptr) && TitleMenuClass)
 			{
@@ -75,6 +77,10 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			if ((CachedCreateSession == nullptr) && CreateSessionClass)
 			{
 				CachedCreateSession = CreateWidget<UUIElementCreateSession>(PlayerController, CreateSessionClass);
+			}
+			if ((CachedPopupLoading == nullptr) && PopUpLoadingClass)
+			{
+				CachedPopupLoading = CreateWidget<UPopupLoading>(PlayerController, PopUpLoadingClass);
 			}
 		}
 	}
@@ -289,15 +295,28 @@ void ULCUIManager::HideShopPopup()
 void ULCUIManager::ShowCreateSession()
 {
 	LOG_Frame_WARNING(TEXT("Show Create Session"));
-	SwitchToWidget(CachedCreateSession);
+	if (CreateSessionClass)
+	{
+		CachedCreateSession = CreateWidget<UUIElementCreateSession>(OwningPlayer, CreateSessionClass);
+		CachedCreateSession->AddToViewport(1);
+	}
+	//SwitchToWidget(CachedCreateSession);
 }
 
 void ULCUIManager::ShowPopUpLoading()
 {
+	if (CachedPopupLoading)
+	{
+		CachedPopupLoading->AddToViewport(1);
+	}
 }
 
 void ULCUIManager::HidePopUpLoading()
 {
+	if (CachedPopupLoading)
+	{
+		CachedPopupLoading->RemoveFromParent();
+	}
 }
 
 void ULCUIManager::ShowInGameHUD()

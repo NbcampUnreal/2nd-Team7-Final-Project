@@ -24,7 +24,7 @@ protected:
 	virtual void NativeDestruct() override;
 
 	UPROPERTY(meta = (BindWidget))
-	UButton* BackButton;
+	UButton* ExitButton;
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* CreateButton;
@@ -43,8 +43,8 @@ protected:
 	UPROPERTY(BlueprintReadWrite)
 	int AmountOfSlots;
 
-	UFUNCTION()
-	void OnBackButtonClicked();
+	UFUNCTION(BlueprintCallable)
+	void OnExitButtonClicked();
 	UFUNCTION()
 	void OnCreateButtonClicked();
 	UFUNCTION()

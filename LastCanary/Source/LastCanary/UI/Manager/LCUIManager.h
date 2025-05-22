@@ -16,9 +16,9 @@ class UOptionWidget;
 class UInGameHUD;
 class UShopWidget;
 class UUIElementCreateSession;
-
+class UPopupLoading;
 class UInventoryMainWidget;
-UCLASS()
+UCLASS(BlueprintType)
 class LASTCANARY_API ULCUIManager : public UObject
 {
 	GENERATED_BODY()
@@ -48,7 +48,9 @@ public:
 	void ShowCreateSession();
 
 	// TO DO : 로딩 팝업 표시
+	UFUNCTION(BlueprintCallable)
 	void ShowPopUpLoading();
+	UFUNCTION(BlueprintCallable)
 	void HidePopUpLoading();
 
 	void SwitchToWidget(UUserWidget* Widget);
@@ -92,6 +94,7 @@ private:
 
 	UPROPERTY()
 	TSubclassOf<UUIElementCreateSession> CreateSessionClass;
+	TSubclassOf<UPopupLoading> PopUpLoadingClass;
 	// 인벤토리로 추가
 	UPROPERTY()
 	TSubclassOf<UInventoryMainWidget> InventoryMainWidgetClass;
@@ -113,6 +116,8 @@ private:
 
 	UPROPERTY()
 	UUIElementCreateSession* CachedCreateSession;
+	UPROPERTY()
+	UPopupLoading* CachedPopupLoading;
 	// 인벤토리로 추가
 	UPROPERTY()
 	UInventoryMainWidget* CachedInventoryMainWidget;
