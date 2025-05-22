@@ -109,21 +109,28 @@ void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::Handle_Look(const FInputActionValue& ActionValue)
 {
+	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	{
+		return;
+	}
 	const FVector2f Value{ ActionValue.Get<FVector2D>() };
-
+	
 	AddControllerPitchInput(Value.Y * LookUpRate);
 	AddControllerYawInput(Value.X * LookRightRate);
 }
 
 void ABaseCharacter::Handle_Move(const FInputActionValue& ActionValue)
 {
+	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	{
+		return;
+	}
 	const auto Value{ UAlsVector::ClampMagnitude012D(ActionValue.Get<FVector2D>()) };
 
 	const auto ForwardDirection{ UAlsVector::AngleToDirectionXY(UE_REAL_TO_FLOAT(GetViewState().Rotation.Yaw)) };
 	const auto RightDirection{ UAlsVector::PerpendicularCounterClockwiseXY(ForwardDirection) };
-	if (bIsInHardLandingState)
+	if (CheckHardLandState())
 	{
-		// 착지 중에는 이동 금지
 		return;
 	}
 	AddMovementInput(ForwardDirection * Value.Y + RightDirection * Value.X);
@@ -131,36 +138,56 @@ void ABaseCharacter::Handle_Move(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 {
-	if (bIsInHardLandingState)
+	if (CheckPlayerCurrentState() == EPlayerState::Dead)
 	{
-		// 착지 중에는 조작 금지
 		return;
 	}
+	if (CheckHardLandState())
+	{
+		return;
+	}
+
 	SetDesiredGait(ActionValue.Get<bool>() ? AlsGaitTags::Sprinting : AlsGaitTags::Running);
+	if (GetDesiredGait() == AlsGaitTags::Sprinting)
+	{
+		ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+		if (PC)
+		{
+			PC->SetSprintingStateToPlayerState(true);
+		}
+	}
+	else
+	{
+		ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+		if (PC)
+		{
+			PC->SetSprintingStateToPlayerState(false);
+		}
+	}
+	
 }
 
-void ABaseCharacter::Handle_Walk()
+void ABaseCharacter::Handle_Walk(const FInputActionValue& ActionValue)
 {
-	if (bIsInHardLandingState)
+	if (CheckPlayerCurrentState() == EPlayerState::Dead)
 	{
-		// 착지 중에는 조작 금지
 		return;
 	}
-	if (GetDesiredGait() == AlsGaitTags::Walking)
+	if (CheckHardLandState())
 	{
-		SetDesiredGait(AlsGaitTags::Running);
+		return;
 	}
-	else if (GetDesiredGait() == AlsGaitTags::Running)
-	{
-		SetDesiredGait(AlsGaitTags::Walking);
-	}
+	SetDesiredGait(ActionValue.Get<bool>() ? AlsGaitTags::Walking : AlsGaitTags::Running);
 }
 
 void ABaseCharacter::Handle_Crouch()
 {
-	if (bIsInHardLandingState)
+	if (CheckPlayerCurrentState() == EPlayerState::Dead)
 	{
-		// 착지 중에는 조작 금지
+		return;
+	}
+	if (CheckHardLandState())
+	{
 		return;
 	}
 	if (GetDesiredStance() == AlsStanceTags::Standing)
@@ -175,9 +202,12 @@ void ABaseCharacter::Handle_Crouch()
 
 void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
 {
-	if (bIsInHardLandingState)
+	if (CheckPlayerCurrentState() == EPlayerState::Dead)
 	{
-		// 착지 중에는 조작 금지
+		return;
+	}
+	if (CheckHardLandState())
+	{
 		return;
 	}
 	if (ActionValue.Get<bool>())
@@ -203,9 +233,12 @@ void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 {
-	if (bIsInHardLandingState)
+	if (CheckPlayerCurrentState() == EPlayerState::Dead)
 	{
-		// 착지 중에는 조작 금지
+		return;
+	}
+	if (CheckHardLandState())
+	{
 		return;
 	}
 	SetDesiredAiming(ActionValue.Get<bool>());
@@ -213,12 +246,20 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::Handle_ViewMode()
 {
+	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	{
+		return;
+	}
 	SetViewMode(GetViewMode() == AlsViewModeTags::ThirdPerson ? AlsViewModeTags::FirstPerson : AlsViewModeTags::ThirdPerson);
 }
 
 
 void ABaseCharacter::Handle_Strafe(const FInputActionValue& ActionValue)
 {
+	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	{
+		return;
+	}
 	const auto Value{ UAlsVector::ClampMagnitude012D(ActionValue.Get<FVector2D>()) };
 
 
@@ -226,6 +267,10 @@ void ABaseCharacter::Handle_Strafe(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::Handle_Interact(AActor* HitActor)
 {
+	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	{
+		return;
+	}
 	UE_LOG(LogTemp, Log, TEXT("Interacted!!!!"));
 	if (!HitActor)
 	{
@@ -259,6 +304,10 @@ void ABaseCharacter::Handle_Interact(AActor* HitActor)
 
 void ABaseCharacter::PickupItem()
 {
+	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	{
+		return;
+	}
 	//TO DO...
 	//interact
 	/*
@@ -298,7 +347,7 @@ void ABaseCharacter::OnInteractBoxEndOverlap(UPrimitiveComponent* OverlappedComp
 {
 	if (OtherActor && OtherActor == CurrentFocusedActor)
 	{
-		//HideInteractUI();
+		//TODO: HideInteractUI();
 		CurrentFocusedActor = nullptr;
 	}
 
@@ -328,7 +377,7 @@ void ABaseCharacter::OverlapCheckFunction()
 	{
 		// 감지 성공 → UI 표시
 		/*
-			//TO DO...
+			//TODO: UI띄우기
 			//GetGameInstance->GetUIManager->적당한 UI 띄우는 함수...();
 		*/
 	}
@@ -347,6 +396,7 @@ void ABaseCharacter::EquipItemFromCurrentQuickSlot(int QuickSlotIndex)
 	UE_LOG(LogTemp, Warning, TEXT("Change Equip Item"));
 
 	TestEquipFunction(QuickSlotIndex);
+	//TODO: 아이템 교체 로직 추가
 	/* // 지금은 아이템 없어서 임시 비활성화.
 	if (!QuickSlots.IsValidIndex(QuickSlotIndex))
 	{
@@ -374,41 +424,98 @@ void ABaseCharacter::EquipItemFromCurrentQuickSlot(int QuickSlotIndex)
 void ABaseCharacter::EquipItem(UObject* Item)
 {
 	HeldItem = Item;
-	//메시 부착, 무기 생성, 이펙트 적용 등 추가 로직 필요
+	//TODO: 메시 부착, 무기 생성, 이펙트 적용 등 추가 로직 필요
 	UE_LOG(LogTemp, Log, TEXT("Equipped item: %s"), *GetNameSafe(Item));
-	//ALS의 attach Component 함수를 참고 혹은 불러오기... 혹은 Overlay모드 변화
+	//TODO: ALS의 attach Component 함수를 참고 혹은 불러오기... 혹은 Overlay모드 변화
 }
 
 void ABaseCharacter::UnequipCurrentItem()
 {
 	HeldItem = nullptr;
-	// 손에서 제거, 메시 해제, 이펙트 제거 등 처리
+	//TODO: 손에서 제거, 메시 해제, 이펙트 제거 등 처리
 	UE_LOG(LogTemp, Log, TEXT("Unequipped current item"));
 }
 
 
 float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
-{
-	Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+{	
 
-	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
-	if (MyPlayerState)
+	UE_LOG(LogTemp, Log, TEXT("Character Take Damage"));
+
+	ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+	if (PC)
 	{
-		MyPlayerState->ApplyDamage(DamageAmount);
+		UE_LOG(LogTemp, Log, TEXT("Controller Existed"));
+		ABasePlayerState* MyPlayerState = PC->GetPlayerState<ABasePlayerState>();
+		if (MyPlayerState)
+		{
+			UE_LOG(LogTemp, Log, TEXT("State Existed"));
+			MyPlayerState->ApplyDamage(DamageAmount);
+		}
 	}
-
+	UE_LOG(LogTemp, Log, TEXT("Character Take Damage End"));
 	return DamageAmount;
+}
+
+float ABaseCharacter::GetFallDamage(float Amount)
+{
+	Super::GetFallDamage(Amount);
+	UE_LOG(LogTemp, Log, TEXT("player Take Fall Damage : %f"), Amount);
+	ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+	if (PC)
+	{
+		UE_LOG(LogTemp, Log, TEXT("Controller Existed"));
+		ABasePlayerState* MyPlayerState = PC->GetPlayerState<ABasePlayerState>();
+		if (MyPlayerState)
+		{
+			UE_LOG(LogTemp, Log, TEXT("State Existed"));
+			MyPlayerState->ApplyDamage(Amount);
+		}
+	}
+	return Amount;
 }
 
 void ABaseCharacter::HandlePlayerDeath()
 {
-	//플레이어 사망 처리 로직 적용 후 관전 상태 진입
 	UE_LOG(LogTemp, Warning, TEXT("Character is dead"));
+	Camera->SetRelativeRotation_Direct({ 0.0f, 90.0f, 0.0f });
+	StartRagdolling();
+}
 
-	// 입력 막기 등 처리
-	AController* MyController = GetController();
-	if (MyController)
+bool ABaseCharacter::CheckHardLandState()
+{
+	if (bIsInHardLandingState)
 	{
-		MyController->UnPossess();
+		ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+		if (PC)
+		{
+			PC->SetHardLandStateToPlayerState(true);
+		}
+		return true;
 	}
+	else
+	{
+		ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+		if (PC)
+		{
+			PC->SetHardLandStateToPlayerState(false);
+		}
+		return false;
+	}
+}
+
+
+EPlayerState ABaseCharacter::CheckPlayerCurrentState()
+{
+	ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+	if (PC)
+	{
+		ABasePlayerState* MyPlayerState = PC->GetPlayerState<ABasePlayerState>();
+		if (MyPlayerState)
+		{
+			return MyPlayerState->CurrentState;
+			
+		}
+	}
+	return EPlayerState::None;
 }

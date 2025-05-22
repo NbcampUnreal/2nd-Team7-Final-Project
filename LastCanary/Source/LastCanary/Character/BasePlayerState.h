@@ -7,9 +7,10 @@
 #include "Character/PlayerData/PlayerDataTypes.h"
 #include "BasePlayerState.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPlayerDamaged);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPlayerDamaged, float, CurrentHP);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPlayerDeath);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPlayerExhausted);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStaminaChanged, float, CurrentStamina);
 
 
 UCLASS()
@@ -46,6 +47,9 @@ public:
     UPROPERTY(ReplicatedUsing = OnRep_CurrentStamina)
     float CurrentStamina;
 
+    UPROPERTY(BlueprintAssignable)
+    FOnStaminaChanged OnStaminaChanged;
+
 public:
     void StartStaminaDrain();
     void StopStaminaDrain();
@@ -63,10 +67,16 @@ public:
 private:
     FTimerHandle StaminaDrainHandle;
     FTimerHandle StaminaRecoveryHandle;
+    FTimerHandle StaminaRecoveryDelayHandle;
 
     void DrainStamina();
     void RecoverStamina();
+public:
+    void StartStaminaRecoverAfterDelay();
+    void StopStaminaRecoverAfterDelay();
 
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stats")
+    float RecoverDelayTime = 3.0f;
 
 public:
     UFUNCTION()
@@ -98,7 +108,8 @@ public:
     /** 서버 전용: 스탯 초기화 */
     void InitializeStats();
 
-
+    bool bIsCharacterInHardLandingState = false;
+    bool bIsCharacterInSprintingState = false;
 
 
     /* 게임 계정 전용 스탯 */
@@ -109,5 +120,12 @@ public:
     UPROPERTY(Replicated, BlueprintReadOnly)
     int32 TotalExp;
 
+    void AddTotalGold(int32 Amount);
 
+    void AddTotalExp(int32 Amount);
+
+    int32 GetTotalGold();
+    
+    int32 GetTotalExp();
+    
 };

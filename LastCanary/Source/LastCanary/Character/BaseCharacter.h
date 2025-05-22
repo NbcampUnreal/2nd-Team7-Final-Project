@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "../Plugins/ALS-Refactored-4.15/Source/ALS/Public/AlsCharacter.h"
+#include "Character/PlayerData/PlayerDataTypes.h"
 #include "BaseCharacter.generated.h"
 
 struct FInputActionValue;
@@ -69,7 +70,7 @@ public: //Functions to process controller input.
 
 	virtual void Handle_Sprint(const FInputActionValue& ActionValue);
 
-	virtual void Handle_Walk();
+	virtual void Handle_Walk(const FInputActionValue& ActionValue);
 
 	virtual void Handle_Crouch();
 
@@ -124,4 +125,10 @@ public:
 public:
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	void HandlePlayerDeath();
+	virtual float GetFallDamage(float Amount) override;
+
+public:
+	bool CheckHardLandState();
+
+	EPlayerState CheckPlayerCurrentState();
 };
