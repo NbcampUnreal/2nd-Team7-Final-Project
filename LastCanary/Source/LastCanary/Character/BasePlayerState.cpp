@@ -29,7 +29,8 @@ void ABasePlayerState::OnRep_CurrentHP()
 
 void ABasePlayerState::OnRep_CurrentStamina()
 {
-    // UI 등 업데이트 가능
+    // 컨트롤러에게 알림
+    OnStaminaChanged.Broadcast(CurrentStamina);
 }
 
 void ABasePlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -47,24 +48,25 @@ void ABasePlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 void ABasePlayerState::ApplyDamage(float Damage)
 {
     CurrentHP = FMath::Clamp(CurrentHP  - Damage, 0.f, InitialStats.MaxHP);
-    
+    UE_LOG(LogTemp, Warning, TEXT("Player State HP update."));
+    //OnDamaged.Broadcast(CurrentHP);
     // 서버에서 호출
     Multicast_OnDamaged();
     if (CurrentHP <= 0.f)
     {
         // 체력이 0이 되었을 때 처리 (죽음)
-        
+        CurrentState = EPlayerState::Dead;
         UE_LOG(LogTemp, Warning, TEXT("Player has died."));
         
         // 죽었을 때 캐릭터 처리:
         Multicast_OnDied();
-        
+        //OnDied.Broadcast();
     }
 }
 
 void ABasePlayerState::Multicast_OnDamaged_Implementation()
 {
-    OnDamaged.Broadcast(); // 모든 클라이언트에서 브로드캐스트됨
+    OnDamaged.Broadcast(CurrentHP); // 모든 클라이언트에서 브로드캐스트됨
 }
 
 void ABasePlayerState::Multicast_OnDied_Implementation()
@@ -133,7 +135,6 @@ void ABasePlayerState::DrainStamina()
 
 void ABasePlayerState::RecoverStamina()
 {
-    UE_LOG(LogTemp, Warning, TEXT("Stamina : %f"), GetStamina());
     if (IsStaminaFull())
     {
         StopStaminaRecovery();
@@ -143,14 +144,30 @@ void ABasePlayerState::RecoverStamina()
     RecoverStamina(InitialStats.StaminaRecoveryRate * 0.1f);
 }
 
+void ABasePlayerState::StartStaminaRecoverAfterDelay()
+{
+    GetWorldTimerManager().SetTimer(StaminaRecoveryDelayHandle, this, &ABasePlayerState::StartStaminaRecovery, RecoverDelayTime, false);
+}
+
+void ABasePlayerState::StopStaminaRecoverAfterDelay()
+{
+    GetWorldTimerManager().ClearTimer(StaminaRecoveryDelayHandle);
+}
+
 void ABasePlayerState::ConsumeStamina(float Amount)
 {
+    if (bIsCharacterInHardLandingState || !bIsCharacterInSprintingState)
+    {
+        return;
+    }
     CurrentStamina = FMath::Clamp(CurrentStamina - Amount, 0.f, InitialStats.MaxStamina);
+    OnStaminaChanged.Broadcast(CurrentStamina);
 }
 
 void ABasePlayerState::RecoverStamina(float Amount)
 {
     CurrentStamina = FMath::Clamp(CurrentStamina + Amount, 0.f, InitialStats.MaxStamina);
+    OnStaminaChanged.Broadcast(CurrentStamina);
 }
 
 bool ABasePlayerState::HasStamina() const
@@ -161,4 +178,26 @@ bool ABasePlayerState::HasStamina() const
 bool ABasePlayerState::IsStaminaFull() const
 {
     return CurrentStamina >= InitialStats.MaxStamina;
+}
+
+
+int32 ABasePlayerState::GetTotalGold()
+{
+    return TotalGold;
+}
+
+int32 ABasePlayerState::GetTotalExp()
+{
+    return TotalExp;
+}
+
+void ABasePlayerState::AddTotalGold(int32 Amount)
+{
+    TotalGold += Amount;
+}
+
+
+void ABasePlayerState::AddTotalExp(int32 Amount)
+{
+    TotalExp += Amount;
 }

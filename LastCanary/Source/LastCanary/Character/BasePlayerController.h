@@ -120,10 +120,12 @@ private:
 
 	virtual void Input_OnSprint(const FInputActionValue& ActionValue);
 	
+	virtual void End_OnSprint(const FInputActionValue& ActionValue);
+
 	UFUNCTION()
 	void Complete_OnSprint();
 
-	virtual void Input_OnWalk();
+	virtual void Input_OnWalk(const FInputActionValue& ActionValue);
 
 	virtual void Input_OnCrouch();
 
@@ -177,8 +179,30 @@ public:
 
 public:
 	UFUNCTION()
-	void OnCharacterDamaged();
+	void OnCharacterDamaged(float CurrentHP);
 
 	UFUNCTION()
 	void OnCharacterDied();
+
+public:
+	bool bIsSprinting = false;
+
+public:
+	UPROPERTY(BlueprintReadWrite, Category = "Test")
+	float TestStamina = 100.0f;
+
+	UFUNCTION()
+	void OnStaminaUpdated(float NewStamina);
+
+	UPROPERTY(BlueprintReadWrite, Category = "Test")
+	float TestHP = 100.0f;
+
+
+public:
+	void SetHardLandStateToPlayerState(bool flag);
+	void SetSprintingStateToPlayerState(bool flag);
+
+public:
+	void CameraShake();
+
 };
