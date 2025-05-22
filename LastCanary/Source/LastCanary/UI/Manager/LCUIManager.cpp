@@ -7,8 +7,10 @@
 #include "UI/UIElement/OptionWidget.h"
 #include "UI/UIElement/InGameHUD.h"
 #include "UI/UIElement/ShopWidget.h"
+#include "UI/UIElement/UIElementCreateSession.h"
 
 #include "UI/UIObject/ConfirmPopup.h"
+#include "UI/Popup/PopupLoading.h"
 
 #include "Framework/PlayerController/LCLobbyPlayerController.h"
 #include "Framework/GameInstance/LCGameInstance.h"
@@ -37,6 +39,8 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			OptionWidgetClass = Settings->FromBPOptionWidgetClass;
 			InGameHUDWidgetClass = Settings->FromBPInGameHUDClass;
 			ShopWidgetClass = Settings->FromBPShopWidgetClass;
+			CreateSessionClass = Settings->FromBPCreateSessionWidgetClass;
+			PopUpLoadingClass = Settings->FromBPPopupLoadingClass;
 
 			if ((CachedTitleMenu == nullptr) && TitleMenuClass)
 			{
@@ -62,6 +66,15 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			{
 				CachedShopWidget = CreateWidget<UShopWidget>(PlayerController, ShopWidgetClass);
 				LOG_Frame_WARNING(TEXT("CachedShopWidget Created"));
+			}
+
+			if ((CachedCreateSession == nullptr) && CreateSessionClass)
+			{
+				CachedCreateSession = CreateWidget<UUIElementCreateSession>(PlayerController, CreateSessionClass);
+			}
+			if ((CachedPopupLoading == nullptr) && PopUpLoadingClass)
+			{
+				CachedPopupLoading = CreateWidget<UPopupLoading>(PlayerController, PopUpLoadingClass);
 			}
 		}
 	}
@@ -198,6 +211,33 @@ void ULCUIManager::HideShopPopup()
 		OwningPlayer->SetViewTargetWithBlend(OwningPlayer->GetPawn(), 1.0f);
 		OwningPlayer->SetInputMode(FInputModeGameOnly());
 		OwningPlayer->bShowMouseCursor = false;
+	}
+}
+
+void ULCUIManager::ShowCreateSession()
+{
+	LOG_Frame_WARNING(TEXT("Show Create Session"));
+	if (CreateSessionClass)
+	{
+		CachedCreateSession = CreateWidget<UUIElementCreateSession>(OwningPlayer, CreateSessionClass);
+		CachedCreateSession->AddToViewport(1);
+	}
+	//SwitchToWidget(CachedCreateSession);
+}
+
+void ULCUIManager::ShowPopUpLoading()
+{
+	if (CachedPopupLoading)
+	{
+		CachedPopupLoading->AddToViewport(1);
+	}
+}
+
+void ULCUIManager::HidePopUpLoading()
+{
+	if (CachedPopupLoading)
+	{
+		CachedPopupLoading->RemoveFromParent();
 	}
 }
 

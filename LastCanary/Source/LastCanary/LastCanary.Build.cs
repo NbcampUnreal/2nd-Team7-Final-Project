@@ -19,11 +19,13 @@ public class LastCanary : ModuleRules
             "GamePlayTags", 
             "Slate",
             "SlateCore",
-            "OnlineSubsystem", 
+            "OnlineSubsystem",
+            "OnlineSubsystemSteam",
             "OnlineSubsystemUtils",
             "AdvancedSessions",
-            "SlateCore", 
-            "ALSCamera"
+            "AdvancedSteamSessions",
+            "ALSCamera",
+            "Niagara"
         });
 
         PrivateDependencyModuleNames.AddRange(new string[] {  });

@@ -15,7 +15,9 @@ class UEnterPasswordWidget;
 class UOptionWidget;
 class UInGameHUD;
 class UShopWidget;
-UCLASS()
+class UUIElementCreateSession;
+class UPopupLoading;
+UCLASS(BlueprintType)
 class LASTCANARY_API ULCUIManager : public UObject
 {
 	GENERATED_BODY()
@@ -37,6 +39,13 @@ public:
 	void ShowConfirmPopup(TFunction<void()> OnConfirm);
 	void ShowShopPopup();
 	void HideShopPopup();
+	void ShowCreateSession();
+
+	// TO DO : 로딩 팝업 표시
+	UFUNCTION(BlueprintCallable)
+	void ShowPopUpLoading();
+	UFUNCTION(BlueprintCallable)
+	void HidePopUpLoading();
 
 	void SwitchToWidget(UUserWidget* Widget);
 	
@@ -77,6 +86,10 @@ private:
 	UPROPERTY()
 	TSubclassOf<UShopWidget> ShopWidgetClass;
 
+	UPROPERTY()
+	TSubclassOf<UUIElementCreateSession> CreateSessionClass;
+	TSubclassOf<UPopupLoading> PopUpLoadingClass;
+
 	// 위젯 캐싱
 	UPROPERTY()
 	UTitleMenu* CachedTitleMenu;
@@ -91,4 +104,8 @@ private:
 	UPROPERTY()
 	UShopWidget* CachedShopWidget;
 
+	UPROPERTY()
+	UUIElementCreateSession* CachedCreateSession;
+	UPROPERTY()
+	UPopupLoading* CachedPopupLoading;
 };

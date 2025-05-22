@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "UI/Manager/LCUIManager.h"
 #include "LCUserWidgetBase.generated.h"
 
 /**
@@ -14,5 +15,6 @@ class LASTCANARY_API ULCUserWidgetBase : public UUserWidget
 	GENERATED_BODY()
 	
 public:
+	UFUNCTION(BlueprintCallable)
 	ULCUIManager* ResolveUIManager() const;
 };
