@@ -127,7 +127,6 @@ void UMonsterSpawnComponent::SpawnMonsters()
         FCollisionQueryParams QueryParams;
         QueryParams.AddIgnoredActor(Owner);
 
-        //바닥 찾기 -> 라인트레이스 - 충돌 감지 방법
         bool bHit = World->LineTraceSingleByChannel(
             HitResult,
             TraceStart,
@@ -146,7 +145,6 @@ void UMonsterSpawnComponent::SpawnMonsters()
             SpawnLocation.Z = OwnerZ;
         }
 
-        //랜덤 스폰
         int32 MonsterIndex = FMath::RandRange(0, MonsterClasses.Num() - 1);
         TSubclassOf<ACharacter> MonsterClass = MonsterClasses[MonsterIndex];
 
@@ -159,10 +157,8 @@ void UMonsterSpawnComponent::SpawnMonsters()
         DirectionToCenter.Z = 0;
         FRotator Rotation = DirectionToCenter.Rotation();
 
-        //랜덤 회전
         Rotation.Yaw += FMath::FRandRange(-45.0f, 45.0f);
 
-        //스폰
         FActorSpawnParameters SpawnParams;
         SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
@@ -181,7 +177,6 @@ void UMonsterSpawnComponent::SpawnMonsters()
         }
     }
 
-    //몬스터 삭제
     World->GetTimerManager().SetTimer(
         DestroyTimerHandle,
         this,
@@ -189,7 +184,6 @@ void UMonsterSpawnComponent::SpawnMonsters()
         MonsterLifeTime,
         false);
 
-    //리스폰
     if (bIsSpawning)
     {
         World->GetTimerManager().SetTimer(
@@ -224,7 +218,6 @@ void UMonsterSpawnComponent::SpawnNightMonsters()
 
     TArray<FVector> UsedLocations;
 
-    //밤 - MaxMonsterCount * 1.5 몬스터 증가
     int32 NightMaxMonsterCount = FMath::RoundToInt(MaxMonsterCount * 1.5f);
 
     for (int32 i = ReSpawnCount; i < NightMaxMonsterCount * 5 && ReSpawnCount < NightMaxMonsterCount; i++)
@@ -273,7 +266,6 @@ void UMonsterSpawnComponent::SpawnNightMonsters()
         FCollisionQueryParams QueryParams;
         QueryParams.AddIgnoredActor(Owner);
 
-        //바닥 찾기 -> 라인트레이스 - 충돌 감지 방법
         bool bHit = World->LineTraceSingleByChannel(
             HitResult,
             TraceStart,
@@ -292,7 +284,6 @@ void UMonsterSpawnComponent::SpawnNightMonsters()
             SpawnLocation.Z = OwnerZ;
         }
 
-        //랜덤 스폰
         int32 MonsterIndex = FMath::RandRange(0, MonsterClasses.Num() - 1);
         TSubclassOf<ACharacter> MonsterClass = MonsterClasses[MonsterIndex];
 
@@ -305,10 +296,8 @@ void UMonsterSpawnComponent::SpawnNightMonsters()
         DirectionToCenter.Z = 0;
         FRotator Rotation = DirectionToCenter.Rotation();
 
-        //랜덤 회전
         Rotation.Yaw += FMath::FRandRange(-45.0f, 45.0f);
 
-        //스폰
         FActorSpawnParameters SpawnParams;
         SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
@@ -334,7 +323,6 @@ void UMonsterSpawnComponent::SpawnNightMonsters()
         MonsterLifeTime,
         false);
 
-    //밤에는 SpawnCooldown * 0.5
     if (bIsSpawning)
     {
         World->GetTimerManager().SetTimer(
@@ -346,7 +334,7 @@ void UMonsterSpawnComponent::SpawnNightMonsters()
     }
 }
 
-void UMonsterSpawnComponent::DestroyAllMonsters()//이름 바꾸기
+void UMonsterSpawnComponent::DestroyAllMonsters()
 {
     for (ACharacter* Monster : SpawnedMonsters)
     {

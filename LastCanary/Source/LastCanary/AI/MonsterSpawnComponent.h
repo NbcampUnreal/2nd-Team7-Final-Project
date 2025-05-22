@@ -42,15 +42,15 @@ protected:
     float SpawnCooldown = 110.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Spawner")
-    bool bAutoStart = false;//½£¸Ê°¡¸é true·Î ÄÑ±â
+    bool bAutoStart = false;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Spawner")
     bool bIsNighttime = false;
 
 private:
-    void SpawnMonsters();//³·
+    void SpawnMonsters();
 
-    void SpawnNightMonsters(); //¹ã
+    void SpawnNightMonsters();
 
     void DestroyAllMonsters();
 
