@@ -11,9 +11,9 @@
 void UUIElementCreateSession::NativeConstruct()
 {
 	Super::NativeConstruct();
-	if (BackButton)
+	if (ExitButton)
 	{
-		BackButton->OnClicked.AddUniqueDynamic(this, &UUIElementCreateSession::OnBackButtonClicked);
+		ExitButton->OnClicked.AddUniqueDynamic(this, &UUIElementCreateSession::OnExitButtonClicked);
 	}
 	if (CreateButton)
 	{
@@ -35,9 +35,9 @@ void UUIElementCreateSession::NativeDestruct()
 {
 	Super::NativeDestruct();
 
-	if (BackButton)
+	if (ExitButton)
 	{
-		BackButton->OnClicked.AddUniqueDynamic(this, &UUIElementCreateSession::OnBackButtonClicked);
+		ExitButton->OnClicked.AddUniqueDynamic(this, &UUIElementCreateSession::OnExitButtonClicked);
 	}
 	if (CreateButton)
 	{
@@ -54,15 +54,10 @@ void UUIElementCreateSession::NativeDestruct()
 }
 
 
-void UUIElementCreateSession::OnBackButtonClicked()
+void UUIElementCreateSession::OnExitButtonClicked()
 {
-	ULCUIManager* UIManager = ResolveUIManager();
-	if (UIManager)
-	{
-		UIManager->ShowLobbyMenu();
-	}
-
-	this->RemoveFromParent();
+	RemoveFromParent();
+	Destruct();
 }
 
 void UUIElementCreateSession::OnCreateButtonClicked()

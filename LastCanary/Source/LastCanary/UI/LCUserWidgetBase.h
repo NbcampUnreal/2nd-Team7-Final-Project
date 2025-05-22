@@ -15,5 +15,6 @@ class LASTCANARY_API ULCUserWidgetBase : public UUserWidget
 	GENERATED_BODY()
 	
 public:
+	UFUNCTION(BlueprintCallable)
 	ULCUIManager* ResolveUIManager() const;
 };
