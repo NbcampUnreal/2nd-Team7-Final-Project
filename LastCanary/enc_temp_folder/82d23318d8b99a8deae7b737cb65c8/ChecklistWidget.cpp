@@ -96,7 +96,7 @@ void UChecklistWidget::SubmitChecklist()
     }
     else
     {
-        OnRevealAnimationFinished(); 
+        OnRevealAnimationFinished(); // 애니메이션이 없을 경우 바로 호출
     }
 }
 

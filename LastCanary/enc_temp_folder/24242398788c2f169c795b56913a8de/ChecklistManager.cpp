@@ -1,15 +1,11 @@
 #include "Framework/Manager/ChecklistManager.h"
 #include "Framework/Manager/ResultEvaluator.h"
-
 #include "UI/UIElement/ChecklistWidget.h"
 #include "UI/UIElement/ResultMenu.h"
-
 #include "Blueprint/UserWidget.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/DataTable.h"
 #include "DataType/GameResultData.h"
-
-#include "LastCanary.h"
 
 AChecklistManager::AChecklistManager()
 {
@@ -63,7 +59,7 @@ void AChecklistManager::StartChecklist()
 		if (Widget)
 		{
 			Widget->AddToViewport();
-			Widget->InitWithQuestions(Questions, this); 
+			Widget->InitWithQuestions(Questions, this); // 위젯에 질문 리스트 + Submit 콜백 전달
 		}
 	}
 }
@@ -75,23 +71,25 @@ void AChecklistManager::OnChecklistSubmitted(const TArray<FChecklistQuestion>& P
 		Evaluator = NewObject<UResultEvaluator>(this);
 	}
 
-	int32 Surviving = 3; 
-	int32 Resource = 120;
+	int32 Surviving = 3; // 실제 생존자 수 로직으로 대체 예정
+	int32 Resource = 120; // 실제 자원 수치로 대체 예정
 
+	// 평가
 	FGameResultData ResultData = Evaluator->EvaluateResult(PlayerAnswers, CorrectAnswers, Surviving, Resource);
 
-	if (ResultMenuClass)
-	{
-		UResultMenu* ResultWidget = CreateWidget<UResultMenu>(GetWorld(), ResultMenuClass);
-		if (ResultWidget)
-		{
-			// 예시 보상 데이터 (실제로는 Rank 기반으로 보상 계산 가능)
-			TArray<FResultRewardEntry> RewardList;
-			RewardList.Add({ FText::FromString(TEXT("Gold")), FText::FromString(TEXT("Rank Bonus")), ResultData.FinalScore });
+	// 결과 UI 띄우기
+	//if (ResultMenuClass)
+	//{
+	//	UResultMenu* ResultWidget = CreateWidget<UResultMenu>(GetWorld(), ResultMenuClass);
+	//	if (ResultWidget)
+	//	{
+	//		// 예시 보상 데이터 (실제로는 Rank 기반으로 보상 계산 가능)
+	//		TArray<FResultRewardEntry> RewardList;
+	//		RewardList.Add({ FText::FromString(TEXT("Gold")), FText::FromString(TEXT("Rank Bonus")), ResultData.FinalScore });
 
-			ResultWidget->AddToViewport();
-			ResultWidget->SetRewardEntries(RewardList);
-			ResultWidget->SetTotalGold(ResultData.FinalScore);
-		}
-	}
+	//		ResultWidget->AddToViewport();
+	//		ResultWidget->SetRewardEntries(RewardList);
+	//		ResultWidget->SetTotalGold(ResultData.FinalScore);
+	//	}
+	//}
 }

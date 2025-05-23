@@ -19,9 +19,11 @@ public:
 
 	virtual void BeginPlay() override;
 
+	/** 체크리스트 UI 시작 */
 	UFUNCTION(BlueprintCallable)
 	void StartChecklist();
 
+	/** 위젯에서 Submit 시 호출 */
 	UFUNCTION(BlueprintCallable)
 	void OnChecklistSubmitted(const TArray<FChecklistQuestion>& PlayerAnswers);
 

@@ -17,6 +17,31 @@ UCLASS()
 class LASTCANARY_API UChecklistWidget : public ULCUserWidgetBase
 {
 	GENERATED_BODY()
+
+protected:
+    virtual void NativeConstruct() override;
+    virtual void NativeDestruct() override;
+
+    UPROPERTY(meta = (BindWidget))
+    UButton* SubmitButton;
+    UPROPERTY(meta = (BindWidget))
+    UScrollBox* QuestionScrollBox;
+    UPROPERTY(meta = (BindWidgetAnim), Transient)
+    UWidgetAnimation* RevealSignatureAnim;
+
+    FTimerHandle SubmitDelayTimerHandle;
+
+    UPROPERTY()
+    TArray<FChecklistQuestion> Questions;
+    UPROPERTY()
+    AChecklistManager* ChecklistManager;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Checklist")
+    TSubclassOf<UChecklistQuestionEntryWidget> QuestionEntryClass;
+
+    UFUNCTION()
+    void OnRevealAnimationFinished();
+
+    void FinalizeSubmitChecklist();
 	
 public:
     UFUNCTION(BlueprintCallable)
@@ -25,15 +50,4 @@ public:
     void SubmitChecklist();
     UFUNCTION(BlueprintCallable)
     void UpdateAnswer(int32 QuestionIndex, bool bAnswer);
-
-protected:
-    UPROPERTY(meta = (BindWidget))
-    UScrollBox* QuestionScrollBox;
-    UPROPERTY()
-    TArray<FChecklistQuestion> Questions;
-    
-    UPROPERTY()
-    AChecklistManager* ChecklistManager;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Checklist")
-    TSubclassOf<UChecklistQuestionEntryWidget> QuestionEntryClass;
 };
