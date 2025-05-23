@@ -66,15 +66,12 @@ void UBTTask_RandomPatrol::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* No
     AActor* TargetActor = Cast<AActor>(BlackboardComp->GetValueAsObject("TargetActor"));
     if (TargetActor)
     {
-        //Chase 모드로
         ABaseAIController* BaseAIController = Cast<ABaseAIController>(AIController);
         if (BaseAIController)
         {
             AIController->StopMovement();
 
             BaseAIController->SetChasing(TargetActor);
-
-            //UE_LOG(LogTemp, Warning, TEXT("Target detected"));
 
             FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
             return;
@@ -88,7 +85,7 @@ void UBTTask_RandomPatrol::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* No
         ABaseMonsterCharacter* Monster = Cast<ABaseMonsterCharacter>(AIController->GetPawn());
         if (Monster)
         {
-            Monster->MulticastAIDeath(); // 임시, idle 추가할 것
+            Monster->MulticastAIDeath();
         }
 
         FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
