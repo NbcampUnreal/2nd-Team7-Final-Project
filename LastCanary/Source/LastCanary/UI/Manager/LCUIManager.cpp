@@ -12,7 +12,7 @@
 #include "UI/UIObject/ConfirmPopup.h"
 #include "UI/Popup/PopupLoading.h"
 
-#include "Framework/PlayerController/LCLobbyPlayerController.h"
+//#include "Framework/PlayerController/LCLobbyPlayerController.h"
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 

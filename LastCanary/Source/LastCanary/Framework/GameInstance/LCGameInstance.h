@@ -16,6 +16,11 @@ UCLASS()
 class LASTCANARY_API ULCGameInstance : public UAdvancedFriendsGameInstance
 {
 	GENERATED_BODY()
+
+public:
+	void Login();
+	void HandleLoginCompleted(int32 LocalUserNum, bool bWasSuccessful, const FUniqueNetId& UserId, const FString& Error);
+	FDelegateHandle LoginDelegateHandle;
 	
 private:
 	UPROPERTY(EditAnywhere, Category = "UI")
@@ -38,6 +43,15 @@ public:
 	void CreateSession(const FString& ServerName, int AmountOfSlots);
 
 	virtual void CreateSession_Implementation(const FString& ServerName, int AmountOfSlots);
+
+	UFUNCTION(BlueprintCallable, Category = "Session")
+	FString GetPlayerName() const;
+
+	//UFUNCTION(BlueprintCallable, Category = "Session")
+	//FString GetPlayerName(APlayerController* PC) const;
+
+	UFUNCTION(BlueprintCallable, Category = "Session")
+	bool IsPlayerLoggedIn() const;
 
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Session")
