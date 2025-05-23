@@ -7,7 +7,6 @@
 class UTextBlock;
 class UButton;
 class UScrollBox;
-class URewardEntry;
 
 USTRUCT(BlueprintType)
 struct FResultRewardEntry
@@ -31,10 +30,13 @@ public:
     virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
 
+    /** 정산 항목 데이터를 UI에 표시 */
     void SetRewardEntries(const TArray<FResultRewardEntry>& InEntries);
 
+    /** 총 골드 설정 함수 */
     void SetTotalGold(int32 InTotalGold);
 
+    /** 카메라 뷰 관련 함수 (필요 시 외부 호출) */
     void ActivateResultCamera();
 
 protected:
@@ -46,9 +48,6 @@ protected:
 
     UPROPERTY(meta = (BindWidget))
     UButton* AcceptButton;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Result")
-    TSubclassOf<URewardEntry> RewardEntryClass;
 
     UFUNCTION()
     void OnAcceptClicked();

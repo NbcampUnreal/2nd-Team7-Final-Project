@@ -19,22 +19,10 @@ FGameResultData UResultEvaluator::EvaluateResult(const TArray<FChecklistQuestion
     int32 Score = CorrectCount * 100 + SurvivingPlayers * 50 + ResourcePoints;
 
     FString Rank;
-    if (Score >= 400)
-    {
-        Rank = "S";
-    }
-    else if (Score >= 300)
-    {
-        Rank = "A";
-    }
-    else if (Score >= 200)
-    {
-        Rank = "B";
-    }
-    else
-    {
-        Rank = "C";
-    }
+    if (Score >= 400) Rank = "S";
+    else if (Score >= 300) Rank = "A";
+    else if (Score >= 200) Rank = "B";
+    else Rank = "C";
 
     FGameResultData Result;
     Result.CorrectChecklistCount = CorrectCount;

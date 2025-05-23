@@ -87,7 +87,27 @@ void AChecklistManager::OnChecklistSubmitted(const TArray<FChecklistQuestion>& P
 		{
 			// 예시 보상 데이터 (실제로는 Rank 기반으로 보상 계산 가능)
 			TArray<FResultRewardEntry> RewardList;
-			RewardList.Add({ FText::FromString(TEXT("Gold")), FText::FromString(TEXT("Rank Bonus")), ResultData.FinalScore });
+
+			RewardList.Add({ FText::FromString("Checklist"),
+				FText::Format(FText::FromString("Report Accuracy : {0}/{1}"),
+				FText::AsNumber(ResultData.CorrectChecklistCount),
+				FText::AsNumber(ResultData.TotalChecklistCount)),
+				ResultData.CorrectChecklistCount * 100 });
+
+			RewardList.Add({ FText::FromString("Survivors"),
+				FText::Format(FText::FromString("Survivors Alived : {0}"),
+				FText::AsNumber(ResultData.SurvivingPlayerCount)),
+				ResultData.SurvivingPlayerCount * 50 });
+
+			RewardList.Add({ FText::FromString("Resources"),
+				FText::Format(FText::FromString("Resources Score : {0}"),
+				FText::AsNumber(ResultData.CollectedResourcePoints)),
+				ResultData.CollectedResourcePoints });
+
+			RewardList.Add({ FText::FromString("Rank"),
+				FText::Format(FText::FromString("Rank : {0}"),
+				FText::FromString(ResultData.Rank)),
+				0 });
 
 			ResultWidget->AddToViewport();
 			ResultWidget->SetRewardEntries(RewardList);

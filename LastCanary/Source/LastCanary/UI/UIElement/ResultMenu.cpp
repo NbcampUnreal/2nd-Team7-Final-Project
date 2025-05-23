@@ -1,9 +1,12 @@
 #include "UI/UIElement/ResultMenu.h"
+#include "UI/UIObject/RewardEntry.h"
+
 #include "Components/TextBlock.h"
 #include "Components/Button.h"
 #include "Components/ScrollBox.h"
 #include "Kismet/GameplayStatics.h"
 
+#include "LastCanary.h"
 
 void UResultMenu::NativeConstruct()
 {
@@ -35,25 +38,19 @@ void UResultMenu::SetRewardEntries(const TArray<FResultRewardEntry>& InEntries)
 
     for (const FResultRewardEntry& Entry : CachedEntries)
     {
-        // 보상 항목 위젯 생성 (ResultEntry는 따로 만들어야 함)
-        //UResultEntryWidget* EntryWidget = CreateWidget<UResultEntryWidget>(this, UResultEntryWidget::StaticClass());
-        //if (EntryWidget)
-        //{
-        //    EntryWidget->InitWithEntry(Entry); // 커스텀 Init 함수 필요
-        //    RewardScrollBox->AddChild(EntryWidget);
-        //}
-        UTextBlock* EntryText = NewObject<UTextBlock>(RewardScrollBox);
-        if (EntryText)
+        if (!RewardEntryClass)
         {
-            FString Text = FString::Printf(TEXT("[%s] %s: %dG"),
-                *Entry.RewardType.ToString(),
-                *Entry.Description.ToString(),
-                Entry.RewardGold);
-
-            EntryText->SetText(FText::FromString(Text));
-            RewardScrollBox->AddChild(EntryText);
+            continue;
+        }
+        URewardEntry* EntryWidget = CreateWidget<URewardEntry>(this, RewardEntryClass);
+        if (EntryWidget)
+        {
+            EntryWidget->InitWithEntry(Entry);
+            RewardScrollBox->AddChild(EntryWidget);
         }
     }
+
+    LOG_Frame_WARNING(TEXT("ResultMenu - Reward Entries Displayed: %d"), CachedEntries.Num());
 }
 
 void UResultMenu::SetTotalGold(int32 InTotalGold)
@@ -66,14 +63,15 @@ void UResultMenu::SetTotalGold(int32 InTotalGold)
 
 void UResultMenu::OnAcceptClicked()
 {
-    // 여기서 결과 화면 닫기, 서버에 결과 전송 등 처리
     RemoveFromParent();
-    // 예: UGameplayStatics::OpenLevel(...)로 로비 이동 등도 가능
+
+    LOG_Frame_WARNING(TEXT("ResultMenu - AcceptClicked → Returning to BaseCamp"));
+
+    // TODO : 레벨 전환
+    // UGameplayStatics::OpenLevel(this, FName("L_BaseCamp"));
 }
 
 void UResultMenu::ActivateResultCamera()
 {
-    // 예시: Result 전용 카메라를 활성화할 때 사용하는 로직 (선택 사항)
-    // 이 기능이 필요하면 PlayerController에서 ViewTarget 전환하거나
-    // SceneCapture2D를 사용해서 UI에서 카메라 결과를 보여주면 됨
+    // 선택 사항: 카메라 ViewTarget 변경 또는 SceneCapture 등
 }
