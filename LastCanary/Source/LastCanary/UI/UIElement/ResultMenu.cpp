@@ -27,7 +27,10 @@ void UResultMenu::SetRewardEntries(const TArray<FResultRewardEntry>& InEntries)
 {
     CachedEntries = InEntries;
 
-    if (!RewardScrollBox) return;
+    if (!RewardScrollBox)
+    {
+        return;
+    }
     RewardScrollBox->ClearChildren();
 
     for (const FResultRewardEntry& Entry : CachedEntries)
@@ -39,6 +42,17 @@ void UResultMenu::SetRewardEntries(const TArray<FResultRewardEntry>& InEntries)
         //    EntryWidget->InitWithEntry(Entry); // 커스텀 Init 함수 필요
         //    RewardScrollBox->AddChild(EntryWidget);
         //}
+        UTextBlock* EntryText = NewObject<UTextBlock>(RewardScrollBox);
+        if (EntryText)
+        {
+            FString Text = FString::Printf(TEXT("[%s] %s: %dG"),
+                *Entry.RewardType.ToString(),
+                *Entry.Description.ToString(),
+                Entry.RewardGold);
+
+            EntryText->SetText(FText::FromString(Text));
+            RewardScrollBox->AddChild(EntryText);
+        }
     }
 }
 
