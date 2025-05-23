@@ -30,7 +30,6 @@ ABaseMonsterCharacter::ABaseMonsterCharacter()
     AttackCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     //AttackCollider->OnComponentBeginOverlap.AddDynamic(this, &ABaseMonsterCharacter::OnAttackHit);
 
-    //Ãæµ¹x
     UCapsuleComponent* CapsuleComp = GetCapsuleComponent();
     if (CapsuleComp)
     {

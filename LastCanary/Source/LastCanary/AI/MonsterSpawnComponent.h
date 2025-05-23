@@ -1,5 +1,4 @@
 #pragma once
-
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "GameFramework/Character.h"
@@ -14,6 +13,7 @@ public:
     UMonsterSpawnComponent();
 
     virtual void BeginPlay() override;
+
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
     UFUNCTION(BlueprintCallable, Category = "Monster Spawner")
@@ -42,7 +42,7 @@ protected:
     float SpawnCooldown = 110.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Spawner")
-    bool bAutoStart = false;//½£¸Ê°¡¸é true·Î ÄÑ±â
+    bool bAutoStart = false;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Spawner")
     bool bIsNighttime = false;
@@ -50,12 +50,15 @@ protected:
 private:
     void SpawnMonsters();
 
+    void SpawnNightMonsters();
+
     void DestroyAllMonsters();
 
     UPROPERTY()
     TArray<ACharacter*> SpawnedMonsters;
 
     FTimerHandle SpawnTimerHandle;
+
     FTimerHandle DestroyTimerHandle;
 
     bool bIsSpawning;
