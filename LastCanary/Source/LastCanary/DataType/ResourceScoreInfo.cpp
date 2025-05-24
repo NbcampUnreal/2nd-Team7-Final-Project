@@ -1,0 +1,1 @@
+#include "DataType/ResourceScoreInfo.h"

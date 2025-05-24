@@ -14,14 +14,18 @@ UCLASS()
 class LASTCANARY_API URewardEntry : public ULCUserWidgetBase
 {
 	GENERATED_BODY()
-	
-public:
-	void InitWithEntry(const FResultRewardEntry& Entry);
 
 protected:
-	UPROPERTY(meta = (BindWidget))
-	UTextBlock* DescriptionText;
+	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
 
 	UPROPERTY(meta = (BindWidget))
+	UTextBlock* DescriptionText;
+	UPROPERTY(meta = (BindWidget))
 	UTextBlock* GoldText;
+	UPROPERTY(Transient, meta = (BindWidgetAnim))
+	UWidgetAnimation* RevealEntryAnim;
+
+public:
+	void InitWithEntry(const FResultRewardEntry& Entry);
 };

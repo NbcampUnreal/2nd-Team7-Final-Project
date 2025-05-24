@@ -1,9 +1,13 @@
 #include "UI/UIElement/ResultMenu.h"
+#include "UI/UIObject/RewardEntry.h"
+#include "UI/UIObject/ResourceScoreEntry.h"
+
 #include "Components/TextBlock.h"
 #include "Components/Button.h"
 #include "Components/ScrollBox.h"
 #include "Kismet/GameplayStatics.h"
 
+#include "LastCanary.h"
 
 void UResultMenu::NativeConstruct()
 {
@@ -12,6 +16,10 @@ void UResultMenu::NativeConstruct()
 	{
 		AcceptButton->OnClicked.AddUniqueDynamic(this, &UResultMenu::OnAcceptClicked);
 	}
+    if (RankText)
+    {
+        RankText->SetRenderOpacity(0.0f); 
+    }
 }
 
 void UResultMenu::NativeDestruct()
@@ -26,20 +34,101 @@ void UResultMenu::NativeDestruct()
 void UResultMenu::SetRewardEntries(const TArray<FResultRewardEntry>& InEntries)
 {
     CachedEntries = InEntries;
+    CurrentEntryIndex = 0;
+    CurrentResourceIndex = 0;
+    bIsAddingResources = false;
 
-    if (!RewardScrollBox) return;
+    if (RewardScrollBox == nullptr)
+    {
+        return;
+    }
+    if (RewardEntryClass == nullptr)
+    {
+        return;
+    }
+
     RewardScrollBox->ClearChildren();
 
-    for (const FResultRewardEntry& Entry : CachedEntries)
+    GetWorld()->GetTimerManager().SetTimer(
+        EntryAddTimerHandle,
+        this,
+        &UResultMenu::AddNextEntry, // 이름 통일
+        0.3f,
+        true
+    );
+}
+
+void UResultMenu::AddNextEntry()
+{
+    if (!RewardScrollBox)
     {
-        // 보상 항목 위젯 생성 (ResultEntry는 따로 만들어야 함)
-        //UResultEntryWidget* EntryWidget = CreateWidget<UResultEntryWidget>(this, UResultEntryWidget::StaticClass());
-        //if (EntryWidget)
-        //{
-        //    EntryWidget->InitWithEntry(Entry); // 커스텀 Init 함수 필요
-        //    RewardScrollBox->AddChild(EntryWidget);
-        //}
+        GetWorld()->GetTimerManager().ClearTimer(EntryAddTimerHandle);
+        return;
     }
+
+    if (bIsAddingResources==false) 
+    {
+        if (CachedEntries.IsValidIndex(CurrentEntryIndex))
+        {
+            const FResultRewardEntry& EntryData = CachedEntries[CurrentEntryIndex];
+            URewardEntry* EntryWidget = CreateWidget<URewardEntry>(this, RewardEntryClass);
+            if (EntryWidget)
+            {
+                EntryWidget->InitWithEntry(EntryData);
+                RewardScrollBox->AddChild(EntryWidget);
+            }
+
+            CurrentEntryIndex++;
+            return;
+        }
+
+        // 보상 항목이 끝난 후 → 자원 점수 단계로 전환
+        bIsAddingResources = true;
+        CurrentResourceIndex = 0;
+        return;
+    }
+
+    // 자원 점수 항목 추가 단계
+    if (CachedResourceDetails.IsValidIndex(CurrentResourceIndex))
+    {
+        if (ResourceScoreEntryClass)
+        {
+            const FResourceScoreInfo& Info = CachedResourceDetails[CurrentResourceIndex];
+
+            UResourceScoreEntry* Entry = CreateWidget<UResourceScoreEntry>(this, ResourceScoreEntryClass);
+            if (Entry)
+            {
+                const FString Breakdown = FString::Printf(
+                    TEXT("%d × %.2f × %d = %d"),
+                    Info.BaseScore,
+                    Info.Multiplier,
+                    Info.Amount,
+                    Info.TotalScore);
+
+                Entry->InitResourceScoreEntry(FText::FromName(Info.ResourceID), FText::FromString(Breakdown));
+                RewardScrollBox->AddChild(Entry);
+            }
+        }
+
+        CurrentResourceIndex++;
+        return;
+    }
+
+    // 모든 출력 완료 → 타이머 종료
+    GetWorld()->GetTimerManager().ClearTimer(EntryAddTimerHandle);
+
+    LOG_Frame_WARNING(TEXT("ResultMenu - ResourceScore Entries Displayed: %d"), CachedResourceDetails.Num());
+
+    if (FadeInRankAnim && RankText)
+    {
+        PlayAnimation(FadeInRankAnim);
+        LOG_Frame_WARNING(TEXT("ResultMenu - RankText FadeIn 애니메이션 실행"));
+    }
+}
+
+void UResultMenu::SetResourceScoreDetails(const TArray<FResourceScoreInfo>& InDetails)
+{
+    CachedResourceDetails = InDetails;
 }
 
 void UResultMenu::SetTotalGold(int32 InTotalGold)
@@ -50,16 +139,25 @@ void UResultMenu::SetTotalGold(int32 InTotalGold)
     }
 }
 
+void UResultMenu::SetRankText(const FString& InRank)
+{
+    if (RankText)
+    {
+        RankText->SetText(FText::FromString(InRank));
+    }
+}
+
 void UResultMenu::OnAcceptClicked()
 {
-    // 여기서 결과 화면 닫기, 서버에 결과 전송 등 처리
     RemoveFromParent();
-    // 예: UGameplayStatics::OpenLevel(...)로 로비 이동 등도 가능
+
+    LOG_Frame_WARNING(TEXT("ResultMenu - AcceptClicked → Returning to BaseCamp"));
+
+    // TODO : 레벨 전환
+    // UGameplayStatics::OpenLevel(this, FName("L_BaseCamp"));
 }
 
 void UResultMenu::ActivateResultCamera()
 {
-    // 예시: Result 전용 카메라를 활성화할 때 사용하는 로직 (선택 사항)
-    // 이 기능이 필요하면 PlayerController에서 ViewTarget 전환하거나
-    // SceneCapture2D를 사용해서 UI에서 카메라 결과를 보여주면 됨
+    // 선택 사항: 카메라 ViewTarget 변경 또는 SceneCapture 등
 }
