@@ -28,6 +28,8 @@ protected:
     UScrollBox* QuestionScrollBox;
     UPROPERTY(meta = (BindWidgetAnim), Transient)
     UWidgetAnimation* RevealSignatureAnim;
+    UPROPERTY(Transient, meta = (BindWidgetAnim), BlueprintReadOnly)
+    UWidgetAnimation* FadeInSubmitAnim;
 
     FTimerHandle SubmitDelayTimerHandle;
 
@@ -42,7 +44,9 @@ protected:
     void OnRevealAnimationFinished();
 
     void FinalizeSubmitChecklist();
-	
+
+    void UpdateSubmitButtonVisibility();
+
 public:
     UFUNCTION(BlueprintCallable)
     void InitWithQuestions(const TArray<FChecklistQuestion>& InQuestions, AChecklistManager* InManager);
@@ -50,4 +54,10 @@ public:
     void SubmitChecklist();
     UFUNCTION(BlueprintCallable)
     void UpdateAnswer(int32 QuestionIndex, bool bAnswer);
+    
+    void AddNextEntry();
+private:
+    TArray<FChecklistQuestion> QueuedQuestions;
+    int32 CurrentRevealIndex = 0;
+    FTimerHandle EntryAddTimerHandle;
 };

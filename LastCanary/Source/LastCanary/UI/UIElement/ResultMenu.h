@@ -2,12 +2,14 @@
 
 #include "CoreMinimal.h"
 #include "UI/LCUserWidgetBase.h"
+#include "DataType/ResourceScoreInfo.h"
 #include "ResultMenu.generated.h"
 
 class UTextBlock;
 class UButton;
 class UScrollBox;
 class URewardEntry;
+class UResourceScoreEntry;
 
 USTRUCT(BlueprintType)
 struct FResultRewardEntry
@@ -39,18 +41,31 @@ protected:
     UTextBlock* RankText;
     UPROPERTY(meta = (BindWidget))
     UButton* AcceptButton;
+    UPROPERTY(Transient, meta = (BindWidgetAnim), BlueprintReadOnly)
+    UWidgetAnimation* FadeInRankAnim;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Result")
     TSubclassOf<URewardEntry> RewardEntryClass;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Result")
+    TSubclassOf<UResourceScoreEntry> ResourceScoreEntryClass;
 
     UFUNCTION()
     void OnAcceptClicked();
 
 private:
+    int32 CurrentResourceIndex = 0;
+    bool bIsAddingResources = false;
+
     TArray<FResultRewardEntry> CachedEntries;
+    TArray<FResourceScoreInfo> CachedResourceDetails;
+    int32 CurrentEntryIndex = 0;
+    FTimerHandle EntryAddTimerHandle;
+
+    void AddNextEntry();
 
 public:
     void SetRewardEntries(const TArray<FResultRewardEntry>& InEntries);
+    void SetResourceScoreDetails(const TArray<FResourceScoreInfo>& InDetails);
     void SetTotalGold(int32 InTotalGold);
     void SetRankText(const FString& InRank);
     void ActivateResultCamera();

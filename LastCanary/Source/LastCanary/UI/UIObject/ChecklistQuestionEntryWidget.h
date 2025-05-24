@@ -17,10 +17,15 @@ public:
     void InitChecklistQuestionEntry(FText InQuestionText, int32 InIndex, UChecklistWidget* InOwnerWidget);
 
 protected:
+    virtual void NativeConstruct() override;
+    virtual void NativeDestruct() override;
+
     UPROPERTY(meta = (BindWidget))
     class UTextBlock* QuestionText;
     UPROPERTY(meta = (BindWidget))
     class UCheckBox* AnswerCheckBox;
+    UPROPERTY(Transient, meta = (BindWidgetAnim))
+    UWidgetAnimation* RevealEntryAnim;
 
     UFUNCTION()
     void OnAnswerChanged(bool bIsChecked);

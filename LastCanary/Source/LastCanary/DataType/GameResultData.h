@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "DataType/ResourceScoreInfo.h"
 #include "GameResultData.generated.h"
 
 /**
@@ -22,6 +23,9 @@ struct FGameResultData
 
     UPROPERTY(BlueprintReadOnly)
     int32 CollectedResourcePoints;
+
+    UPROPERTY(BlueprintReadOnly)
+    TArray<FResourceScoreInfo> ResourceScoreDetails;
 
     UPROPERTY(BlueprintReadOnly)
     int32 FinalScore;

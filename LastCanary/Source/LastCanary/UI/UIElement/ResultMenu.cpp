@@ -1,5 +1,6 @@
 #include "UI/UIElement/ResultMenu.h"
 #include "UI/UIObject/RewardEntry.h"
+#include "UI/UIObject/ResourceScoreEntry.h"
 
 #include "Components/TextBlock.h"
 #include "Components/Button.h"
@@ -15,6 +16,10 @@ void UResultMenu::NativeConstruct()
 	{
 		AcceptButton->OnClicked.AddUniqueDynamic(this, &UResultMenu::OnAcceptClicked);
 	}
+    if (RankText)
+    {
+        RankText->SetRenderOpacity(0.0f); 
+    }
 }
 
 void UResultMenu::NativeDestruct()
@@ -29,28 +34,101 @@ void UResultMenu::NativeDestruct()
 void UResultMenu::SetRewardEntries(const TArray<FResultRewardEntry>& InEntries)
 {
     CachedEntries = InEntries;
+    CurrentEntryIndex = 0;
+    CurrentResourceIndex = 0;
+    bIsAddingResources = false;
 
-    if (!RewardScrollBox)
+    if (RewardScrollBox == nullptr)
     {
         return;
     }
-    RewardScrollBox->ClearChildren();
-
-    for (const FResultRewardEntry& Entry : CachedEntries)
+    if (RewardEntryClass == nullptr)
     {
-        if (!RewardEntryClass)
-        {
-            continue;
-        }
-        URewardEntry* EntryWidget = CreateWidget<URewardEntry>(this, RewardEntryClass);
-        if (EntryWidget)
-        {
-            EntryWidget->InitWithEntry(Entry);
-            RewardScrollBox->AddChild(EntryWidget);
-        }
+        return;
     }
 
-    LOG_Frame_WARNING(TEXT("ResultMenu - Reward Entries Displayed: %d"), CachedEntries.Num());
+    RewardScrollBox->ClearChildren();
+
+    GetWorld()->GetTimerManager().SetTimer(
+        EntryAddTimerHandle,
+        this,
+        &UResultMenu::AddNextEntry, // 이름 통일
+        0.3f,
+        true
+    );
+}
+
+void UResultMenu::AddNextEntry()
+{
+    if (!RewardScrollBox)
+    {
+        GetWorld()->GetTimerManager().ClearTimer(EntryAddTimerHandle);
+        return;
+    }
+
+    if (bIsAddingResources==false) 
+    {
+        if (CachedEntries.IsValidIndex(CurrentEntryIndex))
+        {
+            const FResultRewardEntry& EntryData = CachedEntries[CurrentEntryIndex];
+            URewardEntry* EntryWidget = CreateWidget<URewardEntry>(this, RewardEntryClass);
+            if (EntryWidget)
+            {
+                EntryWidget->InitWithEntry(EntryData);
+                RewardScrollBox->AddChild(EntryWidget);
+            }
+
+            CurrentEntryIndex++;
+            return;
+        }
+
+        // 보상 항목이 끝난 후 → 자원 점수 단계로 전환
+        bIsAddingResources = true;
+        CurrentResourceIndex = 0;
+        return;
+    }
+
+    // 자원 점수 항목 추가 단계
+    if (CachedResourceDetails.IsValidIndex(CurrentResourceIndex))
+    {
+        if (ResourceScoreEntryClass)
+        {
+            const FResourceScoreInfo& Info = CachedResourceDetails[CurrentResourceIndex];
+
+            UResourceScoreEntry* Entry = CreateWidget<UResourceScoreEntry>(this, ResourceScoreEntryClass);
+            if (Entry)
+            {
+                const FString Breakdown = FString::Printf(
+                    TEXT("%d × %.2f × %d = %d"),
+                    Info.BaseScore,
+                    Info.Multiplier,
+                    Info.Amount,
+                    Info.TotalScore);
+
+                Entry->InitResourceScoreEntry(FText::FromName(Info.ResourceID), FText::FromString(Breakdown));
+                RewardScrollBox->AddChild(Entry);
+            }
+        }
+
+        CurrentResourceIndex++;
+        return;
+    }
+
+    // 모든 출력 완료 → 타이머 종료
+    GetWorld()->GetTimerManager().ClearTimer(EntryAddTimerHandle);
+
+    LOG_Frame_WARNING(TEXT("ResultMenu - ResourceScore Entries Displayed: %d"), CachedResourceDetails.Num());
+
+    if (FadeInRankAnim && RankText)
+    {
+        PlayAnimation(FadeInRankAnim);
+        LOG_Frame_WARNING(TEXT("ResultMenu - RankText FadeIn 애니메이션 실행"));
+    }
+}
+
+void UResultMenu::SetResourceScoreDetails(const TArray<FResourceScoreInfo>& InDetails)
+{
+    CachedResourceDetails = InDetails;
 }
 
 void UResultMenu::SetTotalGold(int32 InTotalGold)

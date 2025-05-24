@@ -36,10 +36,15 @@ FGameResultData UResultEvaluator::EvaluateResult(
 
     // 4. 자원 점수 (혼합형 계산)
     int32 ResourceScoreSum = 0;
+
+    TArray<FResourceScoreInfo> ResourceScoreDetails;
+    LOG_Frame_WARNING(TEXT("CollectedResources.Num(): %d"), CollectedResources.Num());
+
     for (const auto& Pair : CollectedResources)
     {
         const FName& ResourceID = Pair.Key;
         int32 Amount = Pair.Value;
+        LOG_Frame_WARNING(TEXT("Checking resource: %s × %d"), *ResourceID.ToString(), Amount);
 
         const FResourceItemRow* ItemRow = ResourceItemTable
             ? ResourceItemTable->FindRow<FResourceItemRow>(ResourceID, Context)
@@ -71,6 +76,14 @@ FGameResultData UResultEvaluator::EvaluateResult(
             Amount,
             FinalItemScore
         );
+
+        FResourceScoreInfo ResourceScoreInfo;
+        ResourceScoreInfo.ResourceID = ResourceID;
+        ResourceScoreInfo.BaseScore = ItemRow->BaseScore;
+        ResourceScoreInfo.Multiplier = Multiplier;
+        ResourceScoreInfo.Amount = Amount;
+        ResourceScoreInfo.TotalScore = FinalItemScore;
+        ResourceScoreDetails.Add(ResourceScoreInfo);
     }
 
     Score += ResourceScoreSum;
@@ -111,6 +124,7 @@ FGameResultData UResultEvaluator::EvaluateResult(
     Result.TotalChecklistCount = Total;
     Result.SurvivingPlayerCount = SurvivingPlayers;
     Result.CollectedResourcePoints = ResourceScoreSum;
+    Result.ResourceScoreDetails = ResourceScoreDetails;
     Result.FinalScore = Score;
     Result.Rank = Rank;
 

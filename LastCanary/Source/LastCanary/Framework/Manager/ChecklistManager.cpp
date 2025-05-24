@@ -124,6 +124,7 @@ void AChecklistManager::OnChecklistSubmitted(const TArray<FChecklistQuestion>& P
 
 			ResultWidget->AddToViewport();
 			ResultWidget->SetRewardEntries(RewardList);
+			ResultWidget->SetResourceScoreDetails(ResultData.ResourceScoreDetails);
 			ResultWidget->SetTotalGold(ResultData.FinalScore);
 			ResultWidget->SetRankText(ResultData.Rank); 
 		}
