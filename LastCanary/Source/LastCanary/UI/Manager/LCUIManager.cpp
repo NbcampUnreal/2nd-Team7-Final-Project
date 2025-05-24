@@ -116,12 +116,20 @@ void ULCUIManager::ShowOptionPopup()
 {
 	LOG_Frame_WARNING(TEXT("ShowOptionPopup"));
 
+	if (!IsValid(CachedOptionWidget))
+	{
+		CachedOptionWidget = CreateWidget<UOptionWidget>(GetWorld(), OptionWidgetClass);
+	}
+
 	if (CachedOptionWidget && CachedOptionWidget->IsInViewport() == false)
 	{
 		CachedOptionWidget->AddToViewport(1);
 	}
 
-	SetInputModeUIOnly(CachedOptionWidget);
+	if (CachedOptionWidget)
+	{
+		SetInputModeUIOnly(CachedOptionWidget);
+	}
 }
 
 void ULCUIManager::ShowPauseMenu()
