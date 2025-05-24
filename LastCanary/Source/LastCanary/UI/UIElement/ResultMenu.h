@@ -27,23 +27,16 @@ class LASTCANARY_API UResultMenu : public ULCUserWidgetBase
 {
     GENERATED_BODY()
 
-public:
+protected:
     virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
 
-    void SetRewardEntries(const TArray<FResultRewardEntry>& InEntries);
-
-    void SetTotalGold(int32 InTotalGold);
-
-    void ActivateResultCamera();
-
-protected:
     UPROPERTY(meta = (BindWidget))
     UScrollBox* RewardScrollBox;
-
     UPROPERTY(meta = (BindWidget))
     UTextBlock* TotalGoldText;
-
+    UPROPERTY(meta = (BindWidget))
+    UTextBlock* RankText;
     UPROPERTY(meta = (BindWidget))
     UButton* AcceptButton;
 
@@ -55,4 +48,10 @@ protected:
 
 private:
     TArray<FResultRewardEntry> CachedEntries;
+
+public:
+    void SetRewardEntries(const TArray<FResultRewardEntry>& InEntries);
+    void SetTotalGold(int32 InTotalGold);
+    void SetRankText(const FString& InRank);
+    void ActivateResultCamera();
 };

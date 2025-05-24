@@ -101,7 +101,7 @@ void AChecklistManager::OnChecklistSubmitted(const TArray<FChecklistQuestion>& P
 			TArray<FResultRewardEntry> RewardList;
 			// TODO : 데이터테이블을 통해 질문마다 점수 다르게 확장
 			RewardList.Add({ FText::FromString("Checklist"),
-				FText::Format(FText::FromString("Report Accuracy : {0} / {1}"),
+				FText::Format(FText::FromString("Report Accuracy : {0}/{1}"),
 				FText::AsNumber(ResultData.CorrectChecklistCount),
 				FText::AsNumber(ResultData.TotalChecklistCount)),
 				ResultData.CorrectChecklistCount * 100 });
@@ -116,16 +116,15 @@ void AChecklistManager::OnChecklistSubmitted(const TArray<FChecklistQuestion>& P
 				FText::AsNumber(ResultData.CollectedResourcePoints)),
 				ResultData.CollectedResourcePoints });
 			// TODO : 랭크 기준 변경 
-			/*RewardList.Add({ FText::FromString("Rank"),
+			RewardList.Add({ FText::FromString("Rank"),
 				FText::Format(FText::FromString("Rank : {0}"),
 				FText::FromString(ResultData.Rank)),
-				0 });*/
+				0 });
 			// TODO : UIManager로 중앙집중화
 
 			ResultWidget->AddToViewport();
 			ResultWidget->SetRewardEntries(RewardList);
 			ResultWidget->SetTotalGold(ResultData.FinalScore);
-			ResultWidget->SetRankText(ResultData.Rank); 
 		}
 	}
 }

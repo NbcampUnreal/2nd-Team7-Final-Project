@@ -46,6 +46,15 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Checklist")
 	TSubclassOf<UChecklistWidget> ChecklistWidgetClass;
 
+	UPROPERTY(EditAnywhere, Category = "Checklist|Evaluation")
+	UDataTable* ResourceItemTable;
+
+	UPROPERTY(EditAnywhere, Category = "Checklist|Evaluation")
+	UDataTable* ResourceCategoryTable;
+
+	UPROPERTY(EditAnywhere, Category = "Checklist|Evaluation")
+	UDataTable* RankThresholdTable;
+
 	/** 결과 UI 위젯 */
 	UPROPERTY(EditAnywhere, Category = "Checklist")
 	TSubclassOf<UResultMenu> ResultMenuClass;

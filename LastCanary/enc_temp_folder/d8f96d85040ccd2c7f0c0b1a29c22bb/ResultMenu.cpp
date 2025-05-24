@@ -61,14 +61,6 @@ void UResultMenu::SetTotalGold(int32 InTotalGold)
     }
 }
 
-void UResultMenu::SetRankText(const FString& InRank)
-{
-    if (RankText)
-    {
-        RankText->SetText(FText::FromString(InRank));
-    }
-}
-
 void UResultMenu::OnAcceptClicked()
 {
     RemoveFromParent();
