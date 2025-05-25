@@ -41,6 +41,9 @@ public:
     float RunSpeed = 600.f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+    float SptintSpeed = 650.f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
     float CrouchSpeed = 150.f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")

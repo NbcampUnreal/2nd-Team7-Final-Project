@@ -13,11 +13,15 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPlayerExhausted);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStaminaChanged, float, CurrentStamina);
 
 
+class UAlsCharacterMovementComponent;
+
 UCLASS()
 class LASTCANARY_API ABasePlayerState : public APlayerState
 {
 	GENERATED_BODY()
 	
+public:
+    
 protected:
     ABasePlayerState();
 
@@ -27,6 +31,21 @@ public:
     /** 초기 스탯 (디자인용) */
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stats")
     FPlayerStats InitialStats;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
+    float WalkForwardSpeed{ 175.0f };
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
+    float WalkBackwardSpeed{ 175.0f };
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
+    float RunForwardSpeed{ 375.0f };
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
+    float RunBackwardSpeed{ 375.0f };
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
+    float SprintSpeed{ 650.0f };
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State")
 	EPlayerState CurrentState = EPlayerState::Idle;
@@ -127,5 +146,9 @@ public:
     int32 GetTotalGold();
     
     int32 GetTotalExp();
+
+
+    UFUNCTION(BlueprintCallable)
+    void SetPlayerMovementSetting(float _WalkForwardSpeed, float _WalkBackwardSpeed, float _RunForwardSpeed, float _RunBackwardSpeed, float _SprintSpeed);
     
 };

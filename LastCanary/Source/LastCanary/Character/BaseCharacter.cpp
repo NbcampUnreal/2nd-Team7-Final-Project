@@ -13,6 +13,7 @@
 #include "../Plugins/ALS-Refactored-4.15/Source/ALS/Public/Utility/AlsVector.h"
 //innclude "ALSCamera/Public/AlsCameraComponent.h"
 
+#include "ALS/Public/AlsCharacterMovementComponent.h"
 #include "BasePlayerState.h"
 
 ABaseCharacter::ABaseCharacter()
@@ -41,6 +42,14 @@ void ABaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	if (HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("캐릭터 BeginPlay - 생성 완료  서버입니다."));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("캐릭터 BeginPlay - 생성 완료  클라이언트입니다."));
+	}
 	if (InteractDetectionBox && GetMesh())
 	{
 		InteractDetectionBox->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("head"));
@@ -50,6 +59,8 @@ void ABaseCharacter::BeginPlay()
 
 	InteractDetectionBox->OnComponentBeginOverlap.AddDynamic(this, &ABaseCharacter::OnInteractBoxBeginOverlap);
 	InteractDetectionBox->OnComponentEndOverlap.AddDynamic(this, &ABaseCharacter::OnInteractBoxEndOverlap);
+
+	CurrentQuickSlotIndex = 0;
 }
 
 
@@ -76,12 +87,6 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 
 void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue)
 {
-	/*
-	const FVector2f Value{ ActionValue.Get<FVector2D>() };
-
-	AddControllerPitchInput(Value.Y * LookUpMouseSensitivity);
-	AddControllerYawInput(Value.X * LookRightMouseSensitivity);
-	*/
 
 	const FVector2f Value{ ActionValue.Get<FVector2D>() };
 
@@ -163,8 +168,38 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 		{
 			PC->SetSprintingStateToPlayerState(false);
 		}
+	}	
+}
+
+void ABaseCharacter::Handle_SprintOnPlayerState(const FInputActionValue& ActionValue, float multiplier)
+{
+	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	{
+		return;
 	}
-	
+	if (CheckHardLandState())
+	{
+		return;
+	}
+
+	SetDesiredGait(ActionValue.Get<bool>() ? AlsGaitTags::Sprinting : AlsGaitTags::Running);
+	if (GetDesiredGait() == AlsGaitTags::Sprinting)
+	{
+		ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+		if (PC)
+		{
+			PC->SetSprintingStateToPlayerState(true);
+		}
+	}
+	else
+	{
+		ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+		if (PC)
+		{
+			PC->SetSprintingStateToPlayerState(false);
+		}
+	}
+
 }
 
 void ABaseCharacter::Handle_Walk(const FInputActionValue& ActionValue)
@@ -390,6 +425,30 @@ void ABaseCharacter::SetPossess(bool IsPossessed)
 }
 
 
+void ABaseCharacter::GetHeldItem()
+{
+	//TODO: 아이템 반환
+	return;
+}
+
+int32 ABaseCharacter::GetCurrentQuickSlotIndex()
+{
+	return CurrentQuickSlotIndex;
+}
+void ABaseCharacter::SetCurrentQuickSlotIndex(int32 NewIndex)
+{
+	CurrentQuickSlotIndex = NewIndex;
+	if (CurrentQuickSlotIndex > MaxQuickSlotIndex)
+	{
+		CurrentQuickSlotIndex = 0;
+	}
+	if (CurrentQuickSlotIndex < 0)
+	{
+		CurrentQuickSlotIndex = MaxQuickSlotIndex;
+	}
+	EquipItemFromCurrentQuickSlot(GetCurrentQuickSlotIndex());
+	//update Item()
+}
 
 void ABaseCharacter::EquipItemFromCurrentQuickSlot(int QuickSlotIndex)
 {
@@ -518,4 +577,15 @@ EPlayerState ABaseCharacter::CheckPlayerCurrentState()
 		}
 	}
 	return EPlayerState::None;
+}
+
+
+void ABaseCharacter::SetMovementSetting(float _WalkForwardSpeed, float _WalkBackwardSpeed, float _RunForwardSpeed, float _RunBackwardSpeed, float _SprintSpeed)
+{
+	AlsCharacterMovement->SetGaitSettings(_WalkForwardSpeed, _WalkBackwardSpeed, _RunForwardSpeed, _RunBackwardSpeed, _SprintSpeed);
+}
+
+void ABaseCharacter::ResetMovementSetting()
+{
+	AlsCharacterMovement->ResetGaitSettings();
 }

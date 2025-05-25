@@ -4,6 +4,8 @@
 #include "Character/BasePlayerState.h"
 #include "BaseCharacter.h"
 #include "Net/UnrealNetwork.h"
+#include "ALS/Public/Settings/AlsMovementSettings.h"
+#include "ALS/Public/AlsCharacterMovementComponent.h"
 
 ABasePlayerState::ABasePlayerState()
 {
@@ -24,6 +26,7 @@ void ABasePlayerState::InitializeStats()
 
 void ABasePlayerState::OnRep_CurrentHP()
 {
+    //TODO: 멀티플레이에 필요한지 판단 후 로직 구현 필요...
     // UI 등 업데이트 가능
 }
 
@@ -49,7 +52,6 @@ void ABasePlayerState::ApplyDamage(float Damage)
 {
     CurrentHP = FMath::Clamp(CurrentHP  - Damage, 0.f, InitialStats.MaxHP);
     UE_LOG(LogTemp, Warning, TEXT("Player State HP update."));
-    //OnDamaged.Broadcast(CurrentHP);
     // 서버에서 호출
     Multicast_OnDamaged();
     if (CurrentHP <= 0.f)
@@ -60,7 +62,6 @@ void ABasePlayerState::ApplyDamage(float Damage)
         
         // 죽었을 때 캐릭터 처리:
         Multicast_OnDied();
-        //OnDied.Broadcast();
     }
 }
 
@@ -200,4 +201,15 @@ void ABasePlayerState::AddTotalGold(int32 Amount)
 void ABasePlayerState::AddTotalExp(int32 Amount)
 {
     TotalExp += Amount;
+}
+
+void ABasePlayerState::SetPlayerMovementSetting(float _WalkForwardSpeed, float _WalkBackwardSpeed, float _RunForwardSpeed, float _RunBackwardSpeed, float _SprintSpeed)
+{
+    UE_LOG(LogTemp, Warning, TEXT("SetPlayerMovementSetting"));
+    ABaseCharacter* MyCharacter = Cast<ABaseCharacter>(GetPawn());
+    if (MyCharacter)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Success"));
+        MyCharacter->AlsCharacterMovement->SetGaitSettings(_WalkForwardSpeed, _WalkBackwardSpeed, _RunForwardSpeed, _RunBackwardSpeed, _SprintSpeed);
+    }
 }

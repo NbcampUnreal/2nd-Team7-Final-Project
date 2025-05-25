@@ -19,37 +19,47 @@ void ABaseDrone::BeginPlay()
 }
 
 
-void ABaseDrone::Handle_LookMouse(const FInputActionValue& ActionValue)
+/*
+void ABaseDrone::Handle_DroneLookMouse(const FInputActionValue& ActionValue)
 {
 	
 }
 
-void ABaseDrone::Handle_MoveUp(const FInputActionValue& ActionValue)
+void ABaseDrone::Handle_DroneMoveUp(const FInputActionValue& ActionValue)
 {
 
 }
 
-void ABaseDrone::Handle_MoveRight(const FInputActionValue& ActionValue)
+void ABaseDrone::Handle_DroneMoveRight(const FInputActionValue& ActionValue)
 {
 
 }
 
-void ABaseDrone::Handle_ThrustFront(const FInputActionValue& ActionValue)
+void ABaseDrone::Handle_DroneThrustFront(const FInputActionValue& ActionValue)
 {
 
 }
 
-void ABaseDrone::Handle_ThrustBack(const FInputActionValue& ActionValue)
+void ABaseDrone::Handle_DroneThrustBack(const FInputActionValue& ActionValue)
 {
 
 }
 
-void ABaseDrone::Handle_Interact(AActor* HitActor)
+void ABaseDrone::Handle_DroneInteract(AActor* HitActor)
 {
 
 }
 
-void ABaseDrone::Handle_Strafe(const FInputActionValue& ActionValue)
+void ABaseDrone::Handle_DroneStrafe(const FInputActionValue& ActionValue)
 {
 
+}
+*/
+
+void ABaseDrone::ReturnAsItem()
+{
+
+	UE_LOG(LogTemp, Warning, TEXT("Drone return to Item"));
+	//TODO: Spawn Drone Item Class
+	Destroy();
 }

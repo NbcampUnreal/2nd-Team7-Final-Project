@@ -23,17 +23,29 @@ protected:
 
 
 public: //Functions to process controller input.
-	virtual void Handle_LookMouse(const FInputActionValue& ActionValue);
+	UFUNCTION(BlueprintImplementableEvent)
+	void Handle_DroneLookMouse(const FInputActionValue& ActionValue);
 
-	virtual void Handle_MoveUp(const FInputActionValue& ActionValue);
+	UFUNCTION(BlueprintImplementableEvent)
+	void Handle_DroneMoveUp(const FInputActionValue& ActionValue);
 
-	virtual void Handle_MoveRight(const FInputActionValue& ActionValue);
+	UFUNCTION(BlueprintImplementableEvent)
+	void Handle_DroneMoveRight(const FInputActionValue& ActionValue);
 
-	virtual void Handle_ThrustFront(const FInputActionValue& ActionValue);
+	UFUNCTION(BlueprintImplementableEvent)
+	void Handle_DroneThrustFront(const FInputActionValue& ActionValue);
 
-	virtual void Handle_ThrustBack(const FInputActionValue& ActionValue);
+	UFUNCTION(BlueprintImplementableEvent)
+	void Handle_DroneThrustBack(const FInputActionValue& ActionValue);
 
-	virtual void Handle_Interact(AActor* HitActor);
+	UFUNCTION(BlueprintImplementableEvent)
+	void Handle_DroneInteract(AActor* HitActor);
 
-	virtual void Handle_Strafe(const FInputActionValue& ActionValue);
+	UFUNCTION(BlueprintImplementableEvent)
+	void Handle_DroneStrafe(const FInputActionValue& ActionValue);
+
+
+public:
+	UFUNCTION()
+	void ReturnAsItem();
 };

@@ -15,11 +15,30 @@ UCLASS()
 class LASTCANARY_API ABaseCharacter : public AAlsCharacter
 {
 	GENERATED_BODY()
-	
+	/*IsCharacterPossess?*/
 public:
 	void SetPossess(bool IsPossessed);
 private:
 	bool bIsPossessed;
+
+	void PossessedBy(AController* NewController)
+	{
+		Super::PossessedBy(NewController);
+
+		if (HasAuthority())
+		{
+			UE_LOG(LogTemp, Warning, TEXT("서버에서 빙의됨! 컨트롤러: %s"), *NewController->GetName());
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("클라이언트에서 빙의됨! 컨트롤러: %s"), *NewController->GetName());
+		}
+		
+
+		// 여기서 컨트롤러 빙의 직후 초기화나 상태 변경 처리 가능
+	}
+
+	/*Character Default Settings*/
 protected:
 	virtual void BeginPlay() override;
 
@@ -52,15 +71,10 @@ public:
 
 protected:
 	virtual void CalcCamera(float DeltaTime, FMinimalViewInfo& ViewInfo) override;
-
-	//emigrated to controller//
-	/*
-
-	*/
 public:
 	//virtual void DisplayDebug(UCanvas* Canvas, const FDebugDisplayInfo& DisplayInfo, float& Unused, float& VerticalLocation) override;
 
-	
+	/*Character Action Function*/
 public: //Functions to process controller input.
 	virtual void Handle_LookMouse(const FInputActionValue& ActionValue);
 
@@ -105,7 +119,7 @@ public: //Interact Function
 	void OverlapCheckFunction();
 
 public:
-
+	/*Equip Item*/
 	void EquipItemFromCurrentQuickSlot(int QuickSlotIndex);
 
 	// 퀵슬롯 아이템들 (타입은 아이템 구조에 따라 UObject*, AItemBase*, UItemData* 등)
@@ -113,22 +127,38 @@ public:
 
 	// 현재 장착된 아이템
 	UObject* HeldItem = nullptr;
+	
+	//TODO: 아이템 클래스 들어오면 반환 값 바꾸기
+	void GetHeldItem();
 
 	void EquipItem(UObject* Item);
 	void UnequipCurrentItem();
 
+	//퀵슬롯 칸 최대 칸 수
+	int32 MaxQuickSlotIndex = 3;
+	//현재 퀵슬롯 인덱스
+	int32 CurrentQuickSlotIndex = 0;
+	int32 GetCurrentQuickSlotIndex();
+	void SetCurrentQuickSlotIndex(int32 NewIndex);
 
 public:
 	UFUNCTION(BlueprintImplementableEvent)
 	void TestEquipFunction(int32 NewIndex);
-
+	/*Player Damage, Death*/
 public:
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	void HandlePlayerDeath();
 	virtual float GetFallDamage(float Amount) override;
-
+	//Character Movement
 public:
 	bool CheckHardLandState();
 
 	EPlayerState CheckPlayerCurrentState();
+
+	void SetMovementSetting(float _WalkForwardSpeed, float _WalkBackwardSpeed, float _RunForwardSpeed, float _RunBackwardSpeed, float _SprintSpeed);
+
+	void ResetMovementSetting();
+
+	//test Function
+	void Handle_SprintOnPlayerState(const FInputActionValue& ActionValue, float multiplier);
 };
