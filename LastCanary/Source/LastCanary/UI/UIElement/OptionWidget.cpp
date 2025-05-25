@@ -3,6 +3,7 @@
 
 #include "Components/WidgetSwitcher.h"
 #include "Components/Button.h"
+#include "Components/TextBlock.h"
 
 #include "Framework/GameInstance/LCOptionManager.h"
 
@@ -29,7 +30,7 @@ void UOptionWidget::NativeConstruct()
 	}
 	if (OptionSwitcher)
 	{
-		OptionSwitcher->SetActiveWidgetIndex(0);
+		OnGeneralTabButtonClicked();
 	}
 }
 
@@ -77,6 +78,8 @@ void UOptionWidget::OnGeneralTabButtonClicked()
 	{
 		LOG_Frame_ERROR(TEXT("General Option Widget is nullptr"));
 	}
+	SetTabButtonStyle(GeneralTabButton, true);
+	SetTabButtonStyle(KeySettingTabButton, false);
 }
 
 void UOptionWidget::OnKeySettingTabButtonClicked()
@@ -88,5 +91,49 @@ void UOptionWidget::OnKeySettingTabButtonClicked()
 	else
 	{
 		LOG_Frame_ERROR(TEXT("Key Setting Widget is nullptr"));
+	}
+	SetTabButtonStyle(GeneralTabButton, false);
+	SetTabButtonStyle(KeySettingTabButton, true);
+}
+
+void UOptionWidget::SetTabButtonStyle(UButton* Button, bool bIsSelected)
+{
+	if (!Button)
+	{
+		return;
+	}
+
+	FButtonStyle NewStyle = Button->WidgetStyle;
+
+	if (bIsSelected)
+	{
+		NewStyle.Normal.TintColor = FSlateColor(SelectedColor);
+		NewStyle.Hovered.TintColor = FSlateColor(SelectedColor * 0.95f);
+		NewStyle.Pressed.TintColor = FSlateColor(SelectedColor * 0.85f);
+	}
+	else
+	{
+		NewStyle.Normal.TintColor = FSlateColor(UnselectedColor);
+		NewStyle.Hovered.TintColor = FSlateColor(UnselectedColor * 1.1f);
+		NewStyle.Pressed.TintColor = FSlateColor(UnselectedColor * 0.9f);
+	}
+
+	Button->SetStyle(NewStyle);
+
+	if (Button == GeneralTabButton && GeneralTabText)
+	{
+		GeneralTabText->SetColorAndOpacity(
+			bIsSelected
+			? FSlateColor(FLinearColor(0.1f, 0.1f, 0.1f)) 
+			: FSlateColor(FLinearColor(0.9f, 0.9f, 0.9f)) 
+		);
+	}
+	else if (Button == KeySettingTabButton && KeySettingTabText)
+	{
+		KeySettingTabText->SetColorAndOpacity(
+			bIsSelected
+			? FSlateColor(FLinearColor(0.1f, 0.1f, 0.1f))
+			: FSlateColor(FLinearColor(0.9f, 0.9f, 0.9f))
+		);
 	}
 }
