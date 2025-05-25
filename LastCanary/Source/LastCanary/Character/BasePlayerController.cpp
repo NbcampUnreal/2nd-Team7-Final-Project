@@ -6,6 +6,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "BasePlayerState.h"
 
+#include "Net/UnrealNetwork.h"
 
 void ABasePlayerController::BeginPlay()
 {
@@ -30,6 +31,11 @@ void ABasePlayerController::BeginPlay()
 	}
 }
 
+void ABasePlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(ABasePlayerController, SpawnedPlayerDrone);
+}
 
 
 void ABasePlayerController::SetupInputComponent()
@@ -135,14 +141,7 @@ void ABasePlayerController::OnPossess(APawn* InPawn)
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("Player Possessed"));
-	/*
-	CachedPawn = GetPawn();
-	CurrentPossessedPawn = GetPawn();
-	if (GetPawn()->IsA<ABaseCharacter>())
-	{
-		SpanwedPlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-	}
-	*/
+
 	// Pawn의 타입에 따라 MappingContext를 자동 변경
 	if (InPawn->IsA(ABaseCharacter::StaticClass()))
 	{
@@ -367,6 +366,7 @@ void ABasePlayerController::Input_OnSprint(const FInputActionValue& ActionValue)
 		ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn);
 		if (IsValid(Drone))
 		{
+			UE_LOG(LogTemp, Warning, TEXT("Drone Thrust"));
 			Drone->Handle_DroneThrustFront(ActionValue);
 		}
 	}
@@ -611,7 +611,6 @@ void ABasePlayerController::Input_OnItemUse()
 	if (PlayerCharacter->GetCurrentQuickSlotIndex() == 1)
 	{
 		SpawnDrone();
-		PossessOnDrone();
 	}
 	//만약 총기라면
 	//CameraShake();
@@ -957,19 +956,49 @@ void ABasePlayerController::SpawnDrone()
 	UE_LOG(LogTemp, Warning, TEXT("Spawn Drone"));
 	//TODO: 플레이어 인벤토리와 아이템 구현되면...
 	//	if (!IsValid(PlayerCharacter->HeldItem)) return;
+	Server_SpawnDrone();
+}
 
+void ABasePlayerController::Server_SpawnDrone_Implementation()
+{
 	FVector Location = GetPawn()->GetActorLocation() + FVector(200, 0, 100);
 	FRotator Rotation = FRotator::ZeroRotator;
 	FActorSpawnParameters Params;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 	Params.TransformScaleMethod = ESpawnActorScaleMethod::OverrideRootScale;
-
+	Params.Owner = this;
 	// ABasedrone 포인터로 받아서 타입 안전하게 캐스팅
-	SpawnedPlayerDrone = GetWorld()->SpawnActor<ABaseDrone>(DroneClass, Location, Rotation, Params);
+	ABaseDrone* Drone = GetWorld()->SpawnActor<ABaseDrone>(DroneClass, Location, Rotation, Params);
+	SpawnedPlayerDrone = Drone;
+	//SpawnedPlayerDrone->SetOwner(this);
+	if (IsLocalPlayerController())
+	{
+		PossessOnDrone();
+	}
+	
+}
+
+void ABasePlayerController::OnRep_SpawnedPlayerDrone()
+{
+	if (!IsValid(SpawnedPlayerDrone))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SpawnedPlayerDrone is invalid on client!"));
+		return;
+	}
+	//로컬 클라이언트에서는...
+	//SpawnedPlayerDrone->SetOwner(this);
+	UE_LOG(LogTemp, Warning, TEXT("Client received replicated drone"));
+	if (IsValid(SpawnedPlayerDrone))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Client received replicated drone: %s"), *SpawnedPlayerDrone->GetName());
+		// 여기서 필요한 후처리 (UI 연동 등) 가능
+	}
+	PossessOnDrone();
 }
 
 void ABasePlayerController::PossessOnDrone()
 {
+	UE_LOG(LogTemp, Warning, TEXT("Possess on drone: %s"), *SpawnedPlayerDrone->GetName());
 	//SpanwedPlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
 	CurrentPossessedPawn = SpawnedPlayerDrone;
 	UE_LOG(LogTemp, Warning, TEXT("Drone Possess"));

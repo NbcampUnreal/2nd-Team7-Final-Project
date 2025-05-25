@@ -15,12 +15,19 @@ UCLASS()
 class LASTCANARY_API ABasePlayerController : public APlayerController
 {
 	GENERATED_BODY()
-	
+private:
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
+
 private:
 	APawn* CachedPawn;  // Pawn을 저장할 멤버 변수
 	APawn* CurrentPossessedPawn;
 	ABaseCharacter* SpanwedPlayerCharacter;
+
+	UPROPERTY(ReplicatedUsing = OnRep_SpawnedPlayerDrone)
 	ABaseDrone* SpawnedPlayerDrone;
+
+	UFUNCTION()
+	void OnRep_SpawnedPlayerDrone();
 
 	UEnhancedInputComponent* EnhancedInput;
 	UInputMappingContext* CurrentIMC;
@@ -235,6 +242,8 @@ public:
 public:
 	void SpawnDrone();
 
+	UFUNCTION(Server, Reliable)
+	void Server_SpawnDrone();
 
 	//test용
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)

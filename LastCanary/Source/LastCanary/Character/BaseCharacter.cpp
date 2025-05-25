@@ -15,10 +15,21 @@
 
 #include "ALS/Public/AlsCharacterMovementComponent.h"
 #include "BasePlayerState.h"
+#include "Net/UnrealNetwork.h"
+#include "../Plugins/ALS-Refactored-4.15/Source/ALS/Public/Utility/AlsConstants.h"
 
 ABaseCharacter::ABaseCharacter()
 {
 	bIsPossessed = false;
+	bReplicates = true;
+	UseGunBoneforOverlayObjects = true;
+
+	/*Overlay Skeletal/Static Mesh for change animation bluprint and item mesh*/
+	OverlayStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("OverlayStaticMesh"));
+	OverlayStaticMesh->SetupAttachment(GetMesh());
+
+	OverlaySkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("OverlaySkeletalMesh"));
+	OverlaySkeletalMesh->SetupAttachment(GetMesh());
 
 	//Camera Settings
 	Camera = CreateDefaultSubobject<UAlsCameraComponent>(TEXT("Camera"));
@@ -38,17 +49,24 @@ ABaseCharacter::ABaseCharacter()
 	SetViewMode(AlsViewModeTags::FirstPerson);
 }
 
+void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ABaseCharacter, CurrentQuickSlotIndex);
+}
+
 void ABaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
 	if (HasAuthority())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("캐릭터 BeginPlay - 생성 완료  서버입니다."));
+		UE_LOG(LogTemp, Warning, TEXT("Character BeginPlay - Complete  This is Server."));
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("캐릭터 BeginPlay - 생성 완료  클라이언트입니다."));
+		UE_LOG(LogTemp, Warning, TEXT("Character BeginPlay - Complete  This is Client."));
 	}
 	if (InteractDetectionBox && GetMesh())
 	{
@@ -61,6 +79,9 @@ void ABaseCharacter::BeginPlay()
 	InteractDetectionBox->OnComponentEndOverlap.AddDynamic(this, &ABaseCharacter::OnInteractBoxEndOverlap);
 
 	CurrentQuickSlotIndex = 0;
+
+	//애니메이션 오버레이 활성화.
+	RefreshOverlayObject(CurrentQuickSlotIndex);
 }
 
 
@@ -100,7 +121,7 @@ void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue)
 	const float NewPitchInput = Value.Y * LookUpMouseSensitivity;
 
 	// Pitch 제한 적용
-	float NewPitch = FMath::Clamp(CurrentPitch + NewPitchInput, -50.f, 50.f);
+	float NewPitch = FMath::Clamp(CurrentPitch + NewPitchInput, MinPitchAngle, MaxPitchAngle);
 
 	// Yaw는 그대로
 	float NewYaw = CurrentRotation.Yaw + Value.X * LookRightMouseSensitivity;
@@ -108,8 +129,6 @@ void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue)
 	// 새 회전값 적용
 	FRotator NewRotation = FRotator(NewPitch, NewYaw, 0.f);
 	Controller->SetControlRotation(NewRotation);
-
-
 }
 
 void ABaseCharacter::Handle_Look(const FInputActionValue& ActionValue)
@@ -344,7 +363,9 @@ void ABaseCharacter::PickupItem()
 		return;
 	}
 	//TO DO...
-	//interact
+	//Play Animation Montage
+	//when Animation Montage ended, call NotifyFunc() to getItem
+	//add to quickslot
 	/*
 	AItemBase* HitItem = Cast<AItemBase>(Hit.GetActor());
 	if (!HitItem) return;
@@ -437,17 +458,30 @@ int32 ABaseCharacter::GetCurrentQuickSlotIndex()
 }
 void ABaseCharacter::SetCurrentQuickSlotIndex(int32 NewIndex)
 {
-	CurrentQuickSlotIndex = NewIndex;
-	if (CurrentQuickSlotIndex > MaxQuickSlotIndex)
+	Server_SetQuickSlotIndex(NewIndex);
+}
+
+void ABaseCharacter::Server_SetQuickSlotIndex_Implementation(int32 NewIndex)
+{
+	int32 AdjustedIndex = NewIndex;
+	if (AdjustedIndex > MaxQuickSlotIndex)
 	{
-		CurrentQuickSlotIndex = 0;
+		AdjustedIndex = 0;
 	}
-	if (CurrentQuickSlotIndex < 0)
+	else if (AdjustedIndex < 0)
 	{
-		CurrentQuickSlotIndex = MaxQuickSlotIndex;
+		AdjustedIndex = MaxQuickSlotIndex;
 	}
-	EquipItemFromCurrentQuickSlot(GetCurrentQuickSlotIndex());
-	//update Item()
+
+	CurrentQuickSlotIndex = AdjustedIndex;
+
+	// 동기화된 장착 요청
+	Multicast_EquipItemFromQuickSlot(AdjustedIndex);
+}
+
+void ABaseCharacter::Multicast_EquipItemFromQuickSlot_Implementation(int32 Index)
+{
+	EquipItemFromCurrentQuickSlot(Index);
 }
 
 void ABaseCharacter::EquipItemFromCurrentQuickSlot(int QuickSlotIndex)
@@ -588,4 +622,114 @@ void ABaseCharacter::SetMovementSetting(float _WalkForwardSpeed, float _WalkBack
 void ABaseCharacter::ResetMovementSetting()
 {
 	AlsCharacterMovement->ResetGaitSettings();
+}
+
+void ABaseCharacter::TestEquipFunction(int32 NewIndex)
+{
+	RefreshOverlayObject(NewIndex);
+}
+
+void ABaseCharacter::RefreshOverlayObject(int index)
+{
+	if (index == 0)
+	{
+		SetDesiredGait(AlsOverlayModeTags::Rifle);
+		SetOverlayMode(AlsOverlayModeTags::Rifle);
+		RefreshOverlayLinkedAnimationLayer(index);
+		AttachOverlayObject(NULL, SKM_Rifle, NULL, "Rifle", false);
+	}
+	else if (index == 1)
+	{
+		SetDesiredGait(AlsOverlayModeTags::PistolOneHanded);
+		SetOverlayMode(AlsOverlayModeTags::PistolOneHanded);
+		RefreshOverlayLinkedAnimationLayer(index);
+		AttachOverlayObject(NULL, SKM_Pistol, NULL, "Pistol", false);
+	}
+	else if (index == 2)
+	{
+		SetDesiredGait(AlsOverlayModeTags::Bow);
+		SetOverlayMode(AlsOverlayModeTags::Bow);
+		RefreshOverlayLinkedAnimationLayer(index);
+		AttachOverlayObject(SM_Torch, NULL, NULL, "Torch", true);
+	}
+	else if (index == 3)
+	{
+		SetDesiredGait(AlsOverlayModeTags::Default);
+		RefreshOverlayLinkedAnimationLayer(index);
+		OverlayStaticMesh->SetStaticMesh(NULL);
+		OverlaySkeletalMesh->SetSkinnedAssetAndUpdate(NULL, true);
+		OverlaySkeletalMesh->SetAnimInstanceClass(NULL);
+	}
+	
+}
+
+void ABaseCharacter::AttachOverlayObject(UStaticMesh* NewStaticMesh, USkeletalMesh* NewSkeletalMesh, TSubclassOf<UAnimInstance> NewAnimationClass, FName SocketName, bool bUseLeftGunBone)
+{
+	FName ResultSocketName;
+	FName VirtualBoneName;
+	if (bUseLeftGunBone)
+	{
+		VirtualBoneName = TEXT("VB hand_l_to_ik_hand_gun");
+	}
+	else
+	{
+		VirtualBoneName = TEXT("VB hand_r_to_ik_hand_gun");
+	}
+
+	if (UseGunBoneforOverlayObjects)
+	{
+		ResultSocketName = VirtualBoneName;
+	}
+	else
+	{
+		ResultSocketName = SocketName;
+	}
+	FAttachmentTransformRules AttachRules(
+		EAttachmentRule::SnapToTarget,  // Location
+		EAttachmentRule::SnapToTarget,  // Rotation
+		EAttachmentRule::SnapToTarget,  // Scale
+		true                            // bWeldSimulatedBodies
+	);
+	OverlayStaticMesh->SetStaticMesh(NewStaticMesh);
+	OverlayStaticMesh->AttachToComponent(GetMesh(), AttachRules, ResultSocketName);
+	
+	OverlaySkeletalMesh->SetSkinnedAssetAndUpdate(NewSkeletalMesh, true);
+	OverlaySkeletalMesh->SetAnimInstanceClass(NewAnimationClass);
+	OverlaySkeletalMesh->AttachToComponent(GetMesh(), AttachRules, ResultSocketName);	
+}
+
+void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(int index)
+{
+	TSubclassOf<UAnimInstance> OverlayAnimationInstanceClass;
+	
+	if (index == 0)
+	{
+		OverlayAnimationInstanceClass = RifleAnimationClass;
+	}
+	else if (index == 1)
+	{
+		OverlayAnimationInstanceClass = PistolAnimationClass;
+	}
+	else if (index == 2)
+	{
+		OverlayAnimationInstanceClass = TorchAnimationClass;
+	}
+	else if (index == 3)
+	{
+		OverlayAnimationInstanceClass = DefaultAnimationClass;;
+	}
+	else
+	{
+		OverlayAnimationInstanceClass = DefaultAnimationClass;
+	}
+
+
+	if (IsValid(OverlayAnimationInstanceClass))
+	{
+		GetMesh()->LinkAnimClassLayers(OverlayAnimationInstanceClass);
+	}
+	else
+	{
+		GetMesh()->LinkAnimClassLayers(DefaultAnimationClass);
+	}
 }

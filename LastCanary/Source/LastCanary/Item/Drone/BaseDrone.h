@@ -26,6 +26,7 @@ public: //Functions to process controller input.
 	UFUNCTION(BlueprintImplementableEvent)
 	void Handle_DroneLookMouse(const FInputActionValue& ActionValue);
 
+
 	UFUNCTION(BlueprintImplementableEvent)
 	void Handle_DroneMoveUp(const FInputActionValue& ActionValue);
 
