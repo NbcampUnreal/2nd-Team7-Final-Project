@@ -1013,7 +1013,7 @@ void UAlsCharacterMovementComponent::RefreshGroundedMovementSettings()
 		MaxWalkSpeed = RunForwardSpeed;
 	}
 
-	MaxWalkSpeedCrouched = MaxWalkSpeed;
+	MaxWalkSpeedCrouched = MaxWalkSpeed / 2;
 
 	// Get acceleration, deceleration and ground friction using a curve. This
 	// allows us to precisely control the movement behavior at each speed.
