@@ -522,6 +522,7 @@ void AAlsCharacter::NotifyLocomotionModeChanged(const FGameplayTag& PreviousLoco
 		if (LocomotionState.Velocity.Z <= -500.0f) // 적절히 튜닝
 		{
 			TriggerHardLanding(-LocomotionState.Velocity.Z / 1000.0f); // 속도에 비례하여 몇초간은 움직임 차단
+			GetFallDamage(-LocomotionState.Velocity.Z / 30.0f);
 		}
 
 		if (Settings->Ragdolling.bStartRagdollingOnLand &&
@@ -1959,4 +1960,12 @@ void AAlsCharacter::RefreshViewRelativeTargetYawAngle()
 {
 	LocomotionState.ViewRelativeTargetYawAngle = FMath::UnwindDegrees(UE_REAL_TO_FLOAT(
 		ViewState.Rotation.Yaw - LocomotionState.TargetYawAngle));
+}
+
+
+
+float AAlsCharacter::GetFallDamage(float Amount)
+{
+	UE_LOG(LogTemp, Log, TEXT("ALS Take Fall Damage : %f"), Amount);
+	return Amount;
 }

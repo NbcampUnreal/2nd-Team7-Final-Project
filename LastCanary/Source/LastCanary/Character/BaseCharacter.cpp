@@ -13,7 +13,10 @@
 #include "../Plugins/ALS-Refactored-4.15/Source/ALS/Public/Utility/AlsVector.h"
 //innclude "ALSCamera/Public/AlsCameraComponent.h"
 
+#include "ALS/Public/AlsCharacterMovementComponent.h"
 #include "BasePlayerState.h"
+#include "Net/UnrealNetwork.h"
+#include "../Plugins/ALS-Refactored-4.15/Source/ALS/Public/Utility/AlsConstants.h"
 
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Inventory/ToolbarInventoryComponent.h"
@@ -26,6 +29,15 @@
 ABaseCharacter::ABaseCharacter()
 {
 	bIsPossessed = false;
+	bReplicates = true;
+	UseGunBoneforOverlayObjects = true;
+
+	/*Overlay Skeletal/Static Mesh for change animation bluprint and item mesh*/
+	OverlayStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("OverlayStaticMesh"));
+	OverlayStaticMesh->SetupAttachment(GetMesh());
+
+	OverlaySkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("OverlaySkeletalMesh"));
+	OverlaySkeletalMesh->SetupAttachment(GetMesh());
 
 	//Camera Settings
 	Camera = CreateDefaultSubobject<UAlsCameraComponent>(TEXT("Camera"));
@@ -48,10 +60,25 @@ ABaseCharacter::ABaseCharacter()
 	BackpackInventoryComponent = nullptr;
 }
 
+void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ABaseCharacter, CurrentQuickSlotIndex);
+}
+
 void ABaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	if (HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Character BeginPlay - Complete  This is Server."));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Character BeginPlay - Complete  This is Client."));
+	}
 	if (InteractDetectionBox && GetMesh())
 	{
 		InteractDetectionBox->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("head"));
@@ -61,6 +88,11 @@ void ABaseCharacter::BeginPlay()
 
 	InteractDetectionBox->OnComponentBeginOverlap.AddDynamic(this, &ABaseCharacter::OnInteractBoxBeginOverlap);
 	InteractDetectionBox->OnComponentEndOverlap.AddDynamic(this, &ABaseCharacter::OnInteractBoxEndOverlap);
+
+	CurrentQuickSlotIndex = 0;
+
+	//애니메이션 오버레이 활성화.
+	RefreshOverlayObject(CurrentQuickSlotIndex);
 }
 
 
@@ -87,12 +119,6 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 
 void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue)
 {
-	/*
-	const FVector2f Value{ ActionValue.Get<FVector2D>() };
-
-	AddControllerPitchInput(Value.Y * LookUpMouseSensitivity);
-	AddControllerYawInput(Value.X * LookRightMouseSensitivity);
-	*/
 
 	const FVector2f Value{ ActionValue.Get<FVector2D>() };
 
@@ -106,7 +132,7 @@ void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue)
 	const float NewPitchInput = Value.Y * LookUpMouseSensitivity;
 
 	// Pitch 제한 적용
-	float NewPitch = FMath::Clamp(CurrentPitch + NewPitchInput, -50.f, 50.f);
+	float NewPitch = FMath::Clamp(CurrentPitch + NewPitchInput, MinPitchAngle, MaxPitchAngle);
 
 	// Yaw는 그대로
 	float NewYaw = CurrentRotation.Yaw + Value.X * LookRightMouseSensitivity;
@@ -114,27 +140,32 @@ void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue)
 	// 새 회전값 적용
 	FRotator NewRotation = FRotator(NewPitch, NewYaw, 0.f);
 	Controller->SetControlRotation(NewRotation);
-
-
 }
 
 void ABaseCharacter::Handle_Look(const FInputActionValue& ActionValue)
 {
+	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	{
+		return;
+	}
 	const FVector2f Value{ ActionValue.Get<FVector2D>() };
-
+	
 	AddControllerPitchInput(Value.Y * LookUpRate);
 	AddControllerYawInput(Value.X * LookRightRate);
 }
 
 void ABaseCharacter::Handle_Move(const FInputActionValue& ActionValue)
 {
+	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	{
+		return;
+	}
 	const auto Value{ UAlsVector::ClampMagnitude012D(ActionValue.Get<FVector2D>()) };
 
 	const auto ForwardDirection{ UAlsVector::AngleToDirectionXY(UE_REAL_TO_FLOAT(GetViewState().Rotation.Yaw)) };
 	const auto RightDirection{ UAlsVector::PerpendicularCounterClockwiseXY(ForwardDirection) };
-	if (bIsInHardLandingState)
+	if (CheckHardLandState())
 	{
-		// 착지 중에는 이동 금지
 		return;
 	}
 	AddMovementInput(ForwardDirection * Value.Y + RightDirection * Value.X);
@@ -142,38 +173,86 @@ void ABaseCharacter::Handle_Move(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 {
-	if (bIsInHardLandingState)
+	if (CheckPlayerCurrentState() == EPlayerState::Dead)
 	{
-		// 착지 중에는 조작 금지
 		return;
 	}
+	if (CheckHardLandState())
+	{
+		return;
+	}
+
 	SetDesiredGait(ActionValue.Get<bool>() ? AlsGaitTags::Sprinting : AlsGaitTags::Running);
-	// 임시 코드 꼭 제거할 것!
-	UnequipCurrentItem();
+	if (GetDesiredGait() == AlsGaitTags::Sprinting)
+	{
+		ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+		if (PC)
+		{
+			PC->SetSprintingStateToPlayerState(true);
+		}
+	}
+	else
+	{
+		ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+		if (PC)
+		{
+			PC->SetSprintingStateToPlayerState(false);
+		}
+	}	
 }
 
-void ABaseCharacter::Handle_Walk()
+void ABaseCharacter::Handle_SprintOnPlayerState(const FInputActionValue& ActionValue, float multiplier)
 {
-	if (bIsInHardLandingState)
+	if (CheckPlayerCurrentState() == EPlayerState::Dead)
 	{
-		// 착지 중에는 조작 금지
 		return;
 	}
-	if (GetDesiredGait() == AlsGaitTags::Walking)
+	if (CheckHardLandState())
 	{
-		SetDesiredGait(AlsGaitTags::Running);
+		return;
 	}
-	else if (GetDesiredGait() == AlsGaitTags::Running)
+
+	SetDesiredGait(ActionValue.Get<bool>() ? AlsGaitTags::Sprinting : AlsGaitTags::Running);
+	if (GetDesiredGait() == AlsGaitTags::Sprinting)
 	{
-		SetDesiredGait(AlsGaitTags::Walking);
+		ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+		if (PC)
+		{
+			PC->SetSprintingStateToPlayerState(true);
+		}
 	}
+	else
+	{
+		ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+		if (PC)
+		{
+			PC->SetSprintingStateToPlayerState(false);
+		}
+	}
+
+}
+
+void ABaseCharacter::Handle_Walk(const FInputActionValue& ActionValue)
+{
+	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	{
+		return;
+	}
+	if (CheckHardLandState())
+	{
+		return;
+	}
+	SetDesiredGait(ActionValue.Get<bool>() ? AlsGaitTags::Walking : AlsGaitTags::Running);
 }
 
 void ABaseCharacter::Handle_Crouch()
 {
-	if (bIsInHardLandingState)
+	if (CheckPlayerCurrentState() == EPlayerState::Dead)
 	{
-		// 착지 중에는 조작 금지
+		return;
+	}
+	if (CheckHardLandState())
+	{
 		return;
 	}
 	if (GetDesiredStance() == AlsStanceTags::Standing)
@@ -190,9 +269,12 @@ void ABaseCharacter::Handle_Crouch()
 
 void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
 {
-	if (bIsInHardLandingState)
+	if (CheckPlayerCurrentState() == EPlayerState::Dead)
 	{
-		// 착지 중에는 조작 금지
+		return;
+	}
+	if (CheckHardLandState())
+	{
 		return;
 	}
 	if (ActionValue.Get<bool>())
@@ -218,9 +300,12 @@ void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 {
-	if (bIsInHardLandingState)
+	if (CheckPlayerCurrentState() == EPlayerState::Dead)
 	{
-		// 착지 중에는 조작 금지
+		return;
+	}
+	if (CheckHardLandState())
+	{
 		return;
 	}
 	SetDesiredAiming(ActionValue.Get<bool>());
@@ -230,12 +315,20 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::Handle_ViewMode()
 {
+	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	{
+		return;
+	}
 	SetViewMode(GetViewMode() == AlsViewModeTags::ThirdPerson ? AlsViewModeTags::FirstPerson : AlsViewModeTags::ThirdPerson);
 }
 
 
 void ABaseCharacter::Handle_Strafe(const FInputActionValue& ActionValue)
 {
+	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	{
+		return;
+	}
 	const auto Value{ UAlsVector::ClampMagnitude012D(ActionValue.Get<FVector2D>()) };
 
 	// 임시로 넣은 부분 꼭 삭제할것!
@@ -244,6 +337,10 @@ void ABaseCharacter::Handle_Strafe(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::Handle_Interact(AActor* HitActor)
 {
+	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	{
+		return;
+	}
 	UE_LOG(LogTemp, Log, TEXT("Interacted!!!!"));
 	if (!HitActor)
 	{
@@ -299,8 +396,14 @@ void ABaseCharacter::Handle_Interact(AActor* HitActor)
 
 void ABaseCharacter::PickupItem()
 {
+	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	{
+		return;
+	}
 	//TO DO...
-	//interact
+	//Play Animation Montage
+	//when Animation Montage ended, call NotifyFunc() to getItem
+	//add to quickslot
 	/*
 	AItemBase* HitItem = Cast<AItemBase>(Hit.GetActor());
 	if (!HitItem) return;
@@ -339,7 +442,7 @@ void ABaseCharacter::OnInteractBoxEndOverlap(UPrimitiveComponent* OverlappedComp
 {
 	if (OtherActor && OtherActor == CurrentFocusedActor)
 	{
-		//HideInteractUI();
+		//TODO: HideInteractUI();
 		CurrentFocusedActor = nullptr;
 	}
 
@@ -369,7 +472,7 @@ void ABaseCharacter::OverlapCheckFunction()
 	{
 		// 감지 성공 → UI 표시
 		/*
-			//TO DO...
+			//TODO: UI띄우기
 			//GetGameInstance->GetUIManager->적당한 UI 띄우는 함수...();
 		*/
 	}
@@ -382,12 +485,50 @@ void ABaseCharacter::SetPossess(bool IsPossessed)
 }
 
 
+void ABaseCharacter::GetHeldItem()
+{
+	//TODO: 아이템 반환
+	return;
+}
+
+int32 ABaseCharacter::GetCurrentQuickSlotIndex()
+{
+	return CurrentQuickSlotIndex;
+}
+void ABaseCharacter::SetCurrentQuickSlotIndex(int32 NewIndex)
+{
+	Server_SetQuickSlotIndex(NewIndex);
+}
+
+void ABaseCharacter::Server_SetQuickSlotIndex_Implementation(int32 NewIndex)
+{
+	int32 AdjustedIndex = NewIndex;
+	if (AdjustedIndex > MaxQuickSlotIndex)
+	{
+		AdjustedIndex = 0;
+	}
+	else if (AdjustedIndex < 0)
+	{
+		AdjustedIndex = MaxQuickSlotIndex;
+	}
+
+	CurrentQuickSlotIndex = AdjustedIndex;
+
+	// 동기화된 장착 요청
+	Multicast_EquipItemFromQuickSlot(AdjustedIndex);
+}
+
+void ABaseCharacter::Multicast_EquipItemFromQuickSlot_Implementation(int32 Index)
+{
+	EquipItemFromCurrentQuickSlot(Index);
+}
 
 void ABaseCharacter::EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex)
 {
 	UE_LOG(LogTemp, Warning, TEXT("Change Equip Item"));
 
 	TestEquipFunction(QuickSlotIndex);
+	//TODO: 아이템 교체 로직 추가
 	/* // 지금은 아이템 없어서 임시 비활성화.
 	if (!QuickSlots.IsValidIndex(QuickSlotIndex))
 	{
@@ -446,15 +587,15 @@ void ABaseCharacter::EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex)
 void ABaseCharacter::EquipItem(UObject* Item)
 {
 	HeldItem = Item;
-	//메시 부착, 무기 생성, 이펙트 적용 등 추가 로직 필요
+	//TODO: 메시 부착, 무기 생성, 이펙트 적용 등 추가 로직 필요
 	UE_LOG(LogTemp, Log, TEXT("Equipped item: %s"), *GetNameSafe(Item));
-	//ALS의 attach Component 함수를 참고 혹은 불러오기... 혹은 Overlay모드 변화
+	//TODO: ALS의 attach Component 함수를 참고 혹은 불러오기... 혹은 Overlay모드 변화
 }
 
 void ABaseCharacter::UnequipCurrentItem()
 {
 	HeldItem = nullptr;
-	// 손에서 제거, 메시 해제, 이펙트 제거 등 처리
+	//TODO: 손에서 제거, 메시 해제, 이펙트 제거 등 처리
 	UE_LOG(LogTemp, Log, TEXT("Unequipped current item"));
 
 	if (!IsEquipped())
@@ -501,28 +642,206 @@ void ABaseCharacter::UnequipCurrentItem()
 
 
 float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
-{
-	Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+{	
 
-	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
-	if (MyPlayerState)
+	UE_LOG(LogTemp, Log, TEXT("Character Take Damage"));
+
+	ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+	if (PC)
 	{
-		MyPlayerState->ApplyDamage(DamageAmount);
+		UE_LOG(LogTemp, Log, TEXT("Controller Existed"));
+		ABasePlayerState* MyPlayerState = PC->GetPlayerState<ABasePlayerState>();
+		if (MyPlayerState)
+		{
+			UE_LOG(LogTemp, Log, TEXT("State Existed"));
+			MyPlayerState->ApplyDamage(DamageAmount);
+		}
 	}
-
+	UE_LOG(LogTemp, Log, TEXT("Character Take Damage End"));
 	return DamageAmount;
+}
+
+float ABaseCharacter::GetFallDamage(float Amount)
+{
+	Super::GetFallDamage(Amount);
+	UE_LOG(LogTemp, Log, TEXT("player Take Fall Damage : %f"), Amount);
+	ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+	if (PC)
+	{
+		UE_LOG(LogTemp, Log, TEXT("Controller Existed"));
+		ABasePlayerState* MyPlayerState = PC->GetPlayerState<ABasePlayerState>();
+		if (MyPlayerState)
+		{
+			UE_LOG(LogTemp, Log, TEXT("State Existed"));
+			MyPlayerState->ApplyDamage(Amount);
+		}
+	}
+	return Amount;
 }
 
 void ABaseCharacter::HandlePlayerDeath()
 {
-	//플레이어 사망 처리 로직 적용 후 관전 상태 진입
 	UE_LOG(LogTemp, Warning, TEXT("Character is dead"));
+	Camera->SetRelativeRotation_Direct({ 0.0f, 90.0f, 0.0f });
+	StartRagdolling();
+}
 
-	// 입력 막기 등 처리
-	AController* MyController = GetController();
-	if (MyController)
+bool ABaseCharacter::CheckHardLandState()
+{
+	if (bIsInHardLandingState)
 	{
-		MyController->UnPossess();
+		ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+		if (PC)
+		{
+			PC->SetHardLandStateToPlayerState(true);
+		}
+		return true;
+	}
+	else
+	{
+		ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+		if (PC)
+		{
+			PC->SetHardLandStateToPlayerState(false);
+		}
+		return false;
+	}
+}
+
+
+EPlayerState ABaseCharacter::CheckPlayerCurrentState()
+{
+	ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+	if (PC)
+	{
+		ABasePlayerState* MyPlayerState = PC->GetPlayerState<ABasePlayerState>();
+		if (MyPlayerState)
+		{
+			return MyPlayerState->CurrentState;
+			
+		}
+	}
+	return EPlayerState::None;
+}
+
+
+void ABaseCharacter::SetMovementSetting(float _WalkForwardSpeed, float _WalkBackwardSpeed, float _RunForwardSpeed, float _RunBackwardSpeed, float _SprintSpeed)
+{
+	AlsCharacterMovement->SetGaitSettings(_WalkForwardSpeed, _WalkBackwardSpeed, _RunForwardSpeed, _RunBackwardSpeed, _SprintSpeed);
+}
+
+void ABaseCharacter::ResetMovementSetting()
+{
+	AlsCharacterMovement->ResetGaitSettings();
+}
+
+void ABaseCharacter::TestEquipFunction(int32 NewIndex)
+{
+	RefreshOverlayObject(NewIndex);
+}
+
+void ABaseCharacter::RefreshOverlayObject(int index)
+{
+	if (index == 0)
+	{
+		SetDesiredGait(AlsOverlayModeTags::Rifle);
+		SetOverlayMode(AlsOverlayModeTags::Rifle);
+		RefreshOverlayLinkedAnimationLayer(index);
+		AttachOverlayObject(NULL, SKM_Rifle, NULL, "Rifle", false);
+	}
+	else if (index == 1)
+	{
+		SetDesiredGait(AlsOverlayModeTags::PistolOneHanded);
+		SetOverlayMode(AlsOverlayModeTags::PistolOneHanded);
+		RefreshOverlayLinkedAnimationLayer(index);
+		AttachOverlayObject(NULL, SKM_Pistol, NULL, "Pistol", false);
+	}
+	else if (index == 2)
+	{
+		SetDesiredGait(AlsOverlayModeTags::Bow);
+		SetOverlayMode(AlsOverlayModeTags::Bow);
+		RefreshOverlayLinkedAnimationLayer(index);
+		AttachOverlayObject(SM_Torch, NULL, NULL, "Torch", true);
+	}
+	else if (index == 3)
+	{
+		SetDesiredGait(AlsOverlayModeTags::Default);
+		RefreshOverlayLinkedAnimationLayer(index);
+		OverlayStaticMesh->SetStaticMesh(NULL);
+		OverlaySkeletalMesh->SetSkinnedAssetAndUpdate(NULL, true);
+		OverlaySkeletalMesh->SetAnimInstanceClass(NULL);
+	}
+	
+}
+
+void ABaseCharacter::AttachOverlayObject(UStaticMesh* NewStaticMesh, USkeletalMesh* NewSkeletalMesh, TSubclassOf<UAnimInstance> NewAnimationClass, FName SocketName, bool bUseLeftGunBone)
+{
+	FName ResultSocketName;
+	FName VirtualBoneName;
+	if (bUseLeftGunBone)
+	{
+		VirtualBoneName = TEXT("VB hand_l_to_ik_hand_gun");
+	}
+	else
+	{
+		VirtualBoneName = TEXT("VB hand_r_to_ik_hand_gun");
+	}
+
+	if (UseGunBoneforOverlayObjects)
+	{
+		ResultSocketName = VirtualBoneName;
+	}
+	else
+	{
+		ResultSocketName = SocketName;
+	}
+	FAttachmentTransformRules AttachRules(
+		EAttachmentRule::SnapToTarget,  // Location
+		EAttachmentRule::SnapToTarget,  // Rotation
+		EAttachmentRule::SnapToTarget,  // Scale
+		true                            // bWeldSimulatedBodies
+	);
+	OverlayStaticMesh->SetStaticMesh(NewStaticMesh);
+	OverlayStaticMesh->AttachToComponent(GetMesh(), AttachRules, ResultSocketName);
+	
+	OverlaySkeletalMesh->SetSkinnedAssetAndUpdate(NewSkeletalMesh, true);
+	OverlaySkeletalMesh->SetAnimInstanceClass(NewAnimationClass);
+	OverlaySkeletalMesh->AttachToComponent(GetMesh(), AttachRules, ResultSocketName);	
+}
+
+void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(int index)
+{
+	TSubclassOf<UAnimInstance> OverlayAnimationInstanceClass;
+	
+	if (index == 0)
+	{
+		OverlayAnimationInstanceClass = RifleAnimationClass;
+	}
+	else if (index == 1)
+	{
+		OverlayAnimationInstanceClass = PistolAnimationClass;
+	}
+	else if (index == 2)
+	{
+		OverlayAnimationInstanceClass = TorchAnimationClass;
+	}
+	else if (index == 3)
+	{
+		OverlayAnimationInstanceClass = DefaultAnimationClass;;
+	}
+	else
+	{
+		OverlayAnimationInstanceClass = DefaultAnimationClass;
+	}
+
+
+	if (IsValid(OverlayAnimationInstanceClass))
+	{
+		GetMesh()->LinkAnimClassLayers(OverlayAnimationInstanceClass);
+	}
+	else
+	{
+		GetMesh()->LinkAnimClassLayers(DefaultAnimationClass);
 	}
 }
 
