@@ -36,7 +36,7 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 	{
 		if (TargetMapID != 0)
 		{
-			//GISubsystem->ChangeLevelByMapID(TargetMapID);
+			GISubsystem->ChangeLevelByMapID(TargetMapID);
 			LOG_Frame_WARNING(TEXT("Gate actor %s is changing level to map ID %d."), *GetName(), TargetMapID);
 		}
 		else
