@@ -89,6 +89,8 @@ public:
 
     FItemDataRow* GetItemRowByName(FName RowName);
 
+    int32 GetMaxSlots() const;
+
     /** 두 슬롯 간 아이템 교환 시도 */
     UFUNCTION(BlueprintCallable, Category = "Inventory|Operations")
     virtual bool TrySwapItemSlots(int32 FromIndex, int32 ToIndex) PURE_VIRTUAL(UInventoryComponentBase::TrySwapItemSlots, return false;);

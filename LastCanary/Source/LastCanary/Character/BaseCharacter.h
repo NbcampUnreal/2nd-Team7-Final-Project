@@ -109,7 +109,7 @@ public: //Interact Function
 
 public:
 
-	void EquipItemFromCurrentQuickSlot(int QuickSlotIndex);
+	void EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex);
 
 	// 퀵슬롯 아이템들 (타입은 아이템 구조에 따라 UObject*, AItemBase*, UItemData* 등)
 	TArray<UObject*> QuickSlots;
@@ -167,6 +167,14 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_TryPickupItem(AItemBase* HitItem);
 	void Server_TryPickupItem_Implementation(AItemBase* ItemToPickup);
+
+	UFUNCTION(Server, Reliable)
+	void Server_UnequipCurrentItem();
+	void Server_UnequipCurrentItem_Implementation();
+
+	UFUNCTION(Server, Reliable)
+	void Server_EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex);
+	void Server_EquipItemFromCurrentQuickSlot_Implementation(int32 QuickSlotIndex);
 
 	UFUNCTION(BlueprintCallable, Category = "Equipment")
 	bool UseEquippedItem();

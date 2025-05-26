@@ -63,8 +63,8 @@ void AGunBase::UseItem()
 
     LastFireTime = CurrentTime;
 
-    // 발사 효과는 항상 로컬에서 재생
-    LOG_Item_WARNING(TEXT("UseItem: Playing fire effects"));
+    Multicast_PlayFireEffects();
+    Multicast_PlayFireAnimation();
     Multicast_PlayFireEffects();
 
     // 클라이언트에서 호출된 경우 서버에 알림
@@ -356,6 +356,74 @@ void AGunBase::Multicast_PlayFireEffects_Implementation()
     }
 }
 
+void AGunBase::Multicast_PlayFireAnimation_Implementation()
+{
+    if (GunData.FireAnimation)
+    {
+        PlayGunAnimation(GunData.FireAnimation);
+        LOG_Item_WARNING(TEXT("Playing fire animation: %s"), *GunData.FireAnimation->GetName());
+    }
+    else
+    {
+        LOG_Item_WARNING(TEXT("No fire animation assigned"));
+    }
+}
+
+void AGunBase::Multicast_PlayReloadAnimation_Implementation()
+{
+    if (GunData.ReloadAnimation)
+    {
+        PlayGunAnimation(GunData.ReloadAnimation, 1.0f);
+        LOG_Item_WARNING(TEXT("Playing reload animation: %s"), *GunData.ReloadAnimation->GetName());
+    }
+    else
+    {
+        LOG_Item_WARNING(TEXT("No reload animation assigned"));
+    }
+}
+
+void AGunBase::PlayGunAnimation(UAnimMontage* AnimMontage, float PlayRate)
+{
+    if (!AnimMontage || !GunMesh)
+    {
+        LOG_Item_WARNING(TEXT("PlayGunAnimation: AnimMontage or GunMesh is null"));
+        return;
+    }
+
+    // 애니메이션 인스턴스 가져오기
+    UAnimInstance* AnimInstance = GunMesh->GetAnimInstance();
+    if (!AnimInstance)
+    {
+        LOG_Item_WARNING(TEXT("PlayGunAnimation: No AnimInstance found on GunMesh"));
+        return;
+    }
+
+    // 현재 재생 중인 몽타주가 있다면 정지
+    if (CurrentPlayingMontage && AnimInstance->Montage_IsPlaying(CurrentPlayingMontage))
+    {
+        AnimInstance->Montage_Stop(0.2f, CurrentPlayingMontage);
+    }
+
+    // 새 애니메이션 재생
+    float Duration = AnimInstance->Montage_Play(AnimMontage, PlayRate);
+    if (Duration > 0.0f)
+    {
+        CurrentPlayingMontage = AnimMontage;
+
+        // 애니메이션 완료 콜백 바인딩
+        FOnMontageEnded EndDelegate;
+        EndDelegate.BindUObject(this, &AGunBase::OnAnimMontageEnded);
+        AnimInstance->Montage_SetEndDelegate(EndDelegate, AnimMontage);
+
+        LOG_Item_WARNING(TEXT("PlayGunAnimation: Successfully started %s (Duration: %.2f)"),
+            *AnimMontage->GetName(), Duration);
+    }
+    else
+    {
+        LOG_Item_WARNING(TEXT("PlayGunAnimation: Failed to play %s"), *AnimMontage->GetName());
+    }
+}
+
 void AGunBase::BeginPlay()
 {
     Super::BeginPlay();
@@ -414,6 +482,34 @@ void AGunBase::BeginPlay()
     ApplyItemDataFromTable();
     ApplyGunDataFromDataTable();
     UpdateAmmoState();
+
+    if (GunMesh)
+    {
+        UAnimInstance* AnimInstance = GunMesh->GetAnimInstance();
+        if (AnimInstance)
+        {
+            LOG_Item_WARNING(TEXT("GunBase: AnimInstance found on GunMesh"));
+        }
+        else
+        {
+            LOG_Item_WARNING(TEXT("GunBase: No AnimInstance on GunMesh - animations will not work"));
+        }
+    }
+}
+
+void AGunBase::OnAnimMontageEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+    LOG_Item_WARNING(TEXT("OnAnimMontageEnded: %s (Interrupted: %s)"),
+        Montage ? *Montage->GetName() : TEXT("None"),
+        bInterrupted ? TEXT("Yes") : TEXT("No"));
+
+    if (CurrentPlayingMontage == Montage)
+    {
+        CurrentPlayingMontage = nullptr;
+    }
+
+    // 델리게이트 브로드캐스트
+    OnAnimationComplete.Broadcast(Montage);
 }
 
 void AGunBase::ApplyGunDataFromDataTable()
@@ -453,9 +549,12 @@ void AGunBase::ApplyGunDataFromDataTable()
     ImpactSound = GunData.ImpactSound;
 
     // 메시 설정 (있을 경우)
-    if (GunData.GunMesh && GunMesh)
+    if (GunData.GunMesh)
     {
         GunMesh->SetSkeletalMesh(GunData.GunMesh);
+        GunMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+        GunMesh->SetCollisionObjectType(ECC_WorldDynamic);
+        GunMesh->SetCollisionResponseToAllChannels(ECR_Block);
 
         // 부모의 MeshComponent 숨기기
         if (MeshComponent)
@@ -485,8 +584,8 @@ bool AGunBase::Reload(float AmmoAmount)
         return false;
     }
 
+    Multicast_PlayReloadAnimation();
     Durability = FMath::Min(MaxAmmo, Durability + AmmoAmount);
-
     UpdateAmmoState();
     OnItemStateChanged.Broadcast();
 

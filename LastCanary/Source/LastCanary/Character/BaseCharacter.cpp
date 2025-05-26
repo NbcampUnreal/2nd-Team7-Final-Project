@@ -148,6 +148,8 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 		return;
 	}
 	SetDesiredGait(ActionValue.Get<bool>() ? AlsGaitTags::Sprinting : AlsGaitTags::Running);
+	// 임시 코드 꼭 제거할 것!
+	UnequipCurrentItem();
 }
 
 void ABaseCharacter::Handle_Walk()
@@ -381,7 +383,7 @@ void ABaseCharacter::SetPossess(bool IsPossessed)
 
 
 
-void ABaseCharacter::EquipItemFromCurrentQuickSlot(int QuickSlotIndex)
+void ABaseCharacter::EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex)
 {
 	UE_LOG(LogTemp, Warning, TEXT("Change Equip Item"));
 
@@ -408,6 +410,37 @@ void ABaseCharacter::EquipItemFromCurrentQuickSlot(int QuickSlotIndex)
 		UnequipCurrentItem(); // 슬롯이 비어있으면 장착 해제
 	}
 	*/
+
+	if (!ToolbarInventoryComponent)
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::SwitchToSlot] 툴바 컴포넌트가 없습니다."));
+		return;
+	}
+
+	if (QuickSlotIndex < 0 || QuickSlotIndex >= ToolbarInventoryComponent->GetMaxSlots())
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::SwitchToSlot] 유효하지 않은 슬롯 인덱스: %d"), QuickSlotIndex);
+		return;
+	}
+
+	// 클라이언트에서 호출된 경우 서버에 요청
+	if (GetLocalRole() < ROLE_Authority)
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::SwitchToSlot] 클라이언트에서 서버로 요청 (슬롯: %d)"), QuickSlotIndex);
+		Server_EquipItemFromCurrentQuickSlot(QuickSlotIndex);
+		return;
+	}
+
+	LOG_Item_WARNING(TEXT("[ABaseCharacter::SwitchToSlot] 서버에서 슬롯 %d로 교체 처리"), QuickSlotIndex);
+
+	int32 CurrentSlot = ToolbarInventoryComponent->GetCurrentEquippedSlotIndex();
+	if (CurrentSlot == QuickSlotIndex)
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::SwitchToSlot] 이미 슬롯 %d가 장착되어 있습니다."), QuickSlotIndex);
+		return;
+	}
+
+	ToolbarInventoryComponent->EquipItemAtSlot(QuickSlotIndex);
 }
 
 void ABaseCharacter::EquipItem(UObject* Item)
@@ -423,6 +456,47 @@ void ABaseCharacter::UnequipCurrentItem()
 	HeldItem = nullptr;
 	// 손에서 제거, 메시 해제, 이펙트 제거 등 처리
 	UE_LOG(LogTemp, Log, TEXT("Unequipped current item"));
+
+	if (!IsEquipped())
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::UnequipCurrentItem] 현재 장비 상태가 아닙니다."));
+		return;
+	}
+
+	if (!ToolbarInventoryComponent)
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::UnequipCurrentItem] 툴바 컴포넌트가 없습니다."));
+		return;
+	}
+
+	// 클라이언트에서 호출된 경우 서버에 요청
+	if (GetLocalRole() < ROLE_Authority)
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::UnequipCurrentItem] 클라이언트에서 서버로 요청"));
+		Server_UnequipCurrentItem();
+		return;
+	}
+
+	// 서버에서 실제 처리
+	LOG_Item_WARNING(TEXT("[ABaseCharacter::UnequipCurrentItem] 서버에서 장비 해제 처리"));
+
+	// 현재 장착된 아이템 정보 가져오기 (로그용)
+	AItemBase* CurrentEquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
+	FString ItemName = CurrentEquippedItem ? CurrentEquippedItem->ItemRowName.ToString() : TEXT("Unknown");
+
+	// 툴바 컴포넌트에서 실제 해제 처리
+	ToolbarInventoryComponent->UnequipCurrentItem();
+
+	// 장비 해제 후 상태 확인
+	if (!IsEquipped())
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::UnequipCurrentItem] %s 아이템 해제 성공"), *ItemName);
+	}
+	else
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::UnequipCurrentItem] 아이템 해제 실패 - 여전히 장비 상태임"));
+		return;
+	}
 }
 
 
@@ -533,6 +607,16 @@ void ABaseCharacter::Server_TryPickupItem_Implementation(AItemBase* HitItem)
 		return;
 	}
 	TryPickupItem(HitItem);
+}
+
+void ABaseCharacter::Server_UnequipCurrentItem_Implementation()
+{
+	UnequipCurrentItem();
+}
+
+void ABaseCharacter::Server_EquipItemFromCurrentQuickSlot_Implementation(int32 QuickSlotIndex)
+{
+	EquipItemFromCurrentQuickSlot(QuickSlotIndex);
 }
 
 bool ABaseCharacter::UseEquippedItem()

@@ -12,6 +12,9 @@
  * 총기 기본 클래스
  * 라인트레이스 기반 발사 시스템과 탄약 관리를 구현합니다.
  */
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAnimationComplete, UAnimMontage*, CompletedMontage);
+
 UCLASS()
 class LASTCANARY_API AGunBase : public AEquipmentItemBase
 {
@@ -159,6 +162,36 @@ public:
     UFUNCTION(NetMulticast, Reliable)
     void Multicast_PlayFireEffects();
     void Multicast_PlayFireEffects_Implementation();
+
+//-----------------------------------------------------
+// 애니메이션 관련
+//-----------------------------------------------------
+
+/** 발사 애니메이션 재생 */
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_PlayFireAnimation();
+    void Multicast_PlayFireAnimation_Implementation();
+
+    /** 재장전 애니메이션 재생 */
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_PlayReloadAnimation();
+    void Multicast_PlayReloadAnimation_Implementation();
+
+    /** 애니메이션 재생 헬퍼 함수 */
+    UFUNCTION(BlueprintCallable, Category = "Gun|Animation")
+    void PlayGunAnimation(UAnimMontage* AnimMontage, float PlayRate = 1.0f);
+
+    /** 현재 재생 중인 애니메이션 몽타주 */
+    UPROPERTY(BlueprintReadOnly, Category = "Gun|Animation")
+    UAnimMontage* CurrentPlayingMontage;
+
+    /** 애니메이션 완료 델리게이트 */
+    UPROPERTY(BlueprintAssignable, Category = "Gun|Animation")
+    FOnAnimationComplete OnAnimationComplete;
+
+    /** 애니메이션 완료 콜백 */
+    UFUNCTION()
+    void OnAnimMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 
     //-----------------------------------------------------
     // 상태 관리 및 동기화

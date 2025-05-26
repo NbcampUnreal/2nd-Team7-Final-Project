@@ -142,3 +142,8 @@ FItemDataRow* UInventoryComponentBase::GetItemRowByName(FName RowName)
 
 	return ItemData;
 }
+
+int32 UInventoryComponentBase::GetMaxSlots() const
+{
+	return MaxSlots;
+}

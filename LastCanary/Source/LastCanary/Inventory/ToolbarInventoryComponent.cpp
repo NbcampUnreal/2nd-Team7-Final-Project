@@ -49,12 +49,6 @@ void UToolbarInventoryComponent::BeginPlay()
         false  // 용접하지 않음
     );
 
-    EquippedItemComponent->AttachToComponent(
-        CachedOwnerCharacter->GetMesh(),
-        AttachRules,
-        TEXT("Flash")
-    );
-
     EquippedBackpackComponent->AttachToComponent(
         CachedOwnerCharacter->GetMesh(),
         AttachRules,
@@ -264,8 +258,6 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
         return;
     }
 
-    LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::EquipItemAtSlot] 아이템 장착 시작: %s"), *SlotData->ItemRowName.ToString());
-
     ULCGameInstanceSubsystem* GameSubsystem = GetOwner()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
     if (!GameSubsystem)
     {
@@ -282,9 +274,27 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
         return;
     }
 
-    LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::EquipItemAtSlot] ItemActorClass 설정: %s"), *ItemData->ItemActorClass->GetName());
+    FName TargetSocket = ItemData->AttachSocketName;
+    if (TargetSocket.IsNone() || !CachedOwnerCharacter->GetMesh()->DoesSocketExist(TargetSocket))
+    {
+        TargetSocket = TEXT("Rifle");
+    }
 
-    // ChildActorClass 설정
+    EquippedItemComponent->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+
+    FAttachmentTransformRules AttachRules(
+        EAttachmentRule::SnapToTarget,
+        EAttachmentRule::SnapToTarget,
+        EAttachmentRule::KeepWorld,
+        false
+    );
+
+    EquippedItemComponent->AttachToComponent(
+        CachedOwnerCharacter->GetMesh(),
+        AttachRules,
+        TargetSocket
+    );
+
     EquippedItemComponent->SetChildActorClass(ItemData->ItemActorClass);
 
     // 즉시 액터 확인 및 데이터 설정
@@ -295,17 +305,11 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
         return;
     }
 
-    LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::EquipItemAtSlot] ChildActor 생성 성공: %s"), *EquippedItem->GetClass()->GetName());
-
     EquippedItem->SetOwner(GetOwner());
     if (APawn* OwnerPawn = Cast<APawn>(GetOwner()))
     {
         EquippedItem->SetInstigator(OwnerPawn);
     }
-
-    LOG_Item_WARNING(TEXT("[EquipItemAtSlot] Owner 설정 완료: %s -> %s"),
-        EquippedItem ? *EquippedItem->GetName() : TEXT("NULL"),
-        GetOwner() ? *GetOwner()->GetName() : TEXT("NULL"));
 
     // 아이템 데이터 설정
     EquippedItem->ItemRowName = SlotData->ItemRowName;
@@ -313,34 +317,19 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
     EquippedItem->Durability = SlotData->Durability;
     EquippedItem->SetActorEnableCollision(false);
 
-    LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::EquipItemAtSlot] 기본 데이터 설정 완료"));
-
     // 명시적으로 데이터 적용
     EquippedItem->ApplyItemDataFromTable();
-    LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::EquipItemAtSlot] ApplyItemDataFromTable 실행 완료"));
 
     // 총기인 경우 추가 처리
     if (AGunBase* Gun = Cast<AGunBase>(EquippedItem))
     {
-        LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::EquipItemAtSlot] 총기 데이터 할당 실행"));
         Gun->ApplyGunDataFromDataTable();
-        LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::EquipItemAtSlot] 총기 데이터 할당 완료"));
-    }
-    else
-    {
-        LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::EquipItemAtSlot] 총기가 아닌 아이템: %s"), *EquippedItem->GetClass()->GetName());
     }
 
     // 장착 상태 설정
     if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem))
     {
         EquipmentItem->SetEquipped(true);
-        LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::EquipItemAtSlot] 장비 아이템 장착 상태 설정"));
-    }
-    else
-    {
-        EquippedItem->bIsEquipped = true;
-        LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::EquipItemAtSlot] 일반 아이템 장착 상태 설정"));
     }
 
     // 강제 네트워크 업데이트
@@ -357,8 +346,6 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
     }
 
     OnInventoryUpdated.Broadcast();
-
-    LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::EquipItemAtSlot] 아이템 장착 완료: %s"), *SlotData->ItemRowName.ToString());
 }
 
 void UToolbarInventoryComponent::UnequipCurrentItem()
@@ -369,27 +356,65 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
         return;
     }
 
-    if (CurrentEquippedSlotIndex >= 0 && ItemSlots.IsValidIndex(CurrentEquippedSlotIndex))
+    // 현재 장착된 슬롯이 없으면 종료
+    if (CurrentEquippedSlotIndex < 0 || !ItemSlots.IsValidIndex(CurrentEquippedSlotIndex))
     {
-        if (AItemBase* CurrentItem = Cast<AItemBase>(EquippedItemComponent->GetChildActor()))
-        {
-            if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(CurrentItem))
-            {
-                EquipmentItem->SetEquipped(false);
-            }
-            else
-            {
-                CurrentItem->bIsEditorOnlyActor = false;
-            }
-        }
-
-        ItemSlots[CurrentEquippedSlotIndex].bIsEquipped = false;
+        LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::UnequipCurrentItem] 장착된 아이템이 없습니다."));
+        return;
     }
 
+    // 현재 장착된 아이템 데이터 가져오기
+    FBaseItemSlotData* SlotData = GetItemDataAtSlot(CurrentEquippedSlotIndex);
+    if (!SlotData)
+    {
+        LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::UnequipCurrentItem] 슬롯 데이터를 찾을 수 없습니다."));
+        return;
+    }
 
+    // 게임 서브시스템에서 아이템 데이터 가져오기
+    ULCGameInstanceSubsystem* GISubsystem = GetOwner()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
+    if (!GISubsystem)
+    {
+        LOG_Item_ERROR(TEXT("[ToolbarInventoryComponent::UnequipCurrentItem] 게임 인스턴스 서브시스템이 없습니다."));
+        return;
+    }
+
+    FItemDataRow* ItemData = GISubsystem->GetItemDataByRowName(SlotData->ItemRowName);
+    if (!ItemData)
+    {
+        LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::UnequipCurrentItem] 아이템 데이터를 찾을 수 없습니다: %s"), *SlotData->ItemRowName.ToString());
+        return;
+    }
+
+    FName TargetSocket = ItemData->AttachSocketName;
+    if (TargetSocket.IsNone())
+    {
+        TargetSocket = TEXT("RightHandSocket");
+    }
+
+    LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::UnequipCurrentItem] 소켓에서 아이템 제거: %s"), *TargetSocket.ToString());
+
+    // 현재 장착된 아이템 처리
+    if (AItemBase* CurrentItem = Cast<AItemBase>(EquippedItemComponent->GetChildActor()))
+    {
+        if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(CurrentItem))
+        {
+            EquipmentItem->SetEquipped(false);
+        }
+        else
+        {
+            CurrentItem->bIsEquipped = false;
+        }
+    }
+
+    // 아이템 제거
     EquippedItemComponent->DestroyChildActor();
+
+    // 슬롯 상태 업데이트
+    ItemSlots[CurrentEquippedSlotIndex].bIsEquipped = false;
     CurrentEquippedSlotIndex = -1;
 
+    // 캐릭터 상태 업데이트
     if (CachedOwnerCharacter)
     {
         CachedOwnerCharacter->SetEquipped(false);
