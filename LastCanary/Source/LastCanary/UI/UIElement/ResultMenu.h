@@ -2,11 +2,14 @@
 
 #include "CoreMinimal.h"
 #include "UI/LCUserWidgetBase.h"
+#include "DataType/ResourceScoreInfo.h"
 #include "ResultMenu.generated.h"
 
 class UTextBlock;
 class UButton;
 class UScrollBox;
+class URewardEntry;
+class UResourceScoreEntry;
 
 USTRUCT(BlueprintType)
 struct FResultRewardEntry
@@ -26,32 +29,44 @@ class LASTCANARY_API UResultMenu : public ULCUserWidgetBase
 {
     GENERATED_BODY()
 
-public:
+protected:
     virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
 
-    /** 정산 항목 데이터를 UI에 표시 */
-    void SetRewardEntries(const TArray<FResultRewardEntry>& InEntries);
-
-    /** 총 골드 설정 함수 */
-    void SetTotalGold(int32 InTotalGold);
-
-    /** 카메라 뷰 관련 함수 (필요 시 외부 호출) */
-    void ActivateResultCamera();
-
-protected:
     UPROPERTY(meta = (BindWidget))
     UScrollBox* RewardScrollBox;
-
     UPROPERTY(meta = (BindWidget))
     UTextBlock* TotalGoldText;
-
+    UPROPERTY(meta = (BindWidget))
+    UTextBlock* RankText;
     UPROPERTY(meta = (BindWidget))
     UButton* AcceptButton;
+    UPROPERTY(Transient, meta = (BindWidgetAnim), BlueprintReadOnly)
+    UWidgetAnimation* FadeInRankAnim;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Result")
+    TSubclassOf<URewardEntry> RewardEntryClass;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Result")
+    TSubclassOf<UResourceScoreEntry> ResourceScoreEntryClass;
 
     UFUNCTION()
     void OnAcceptClicked();
 
 private:
+    int32 CurrentResourceIndex = 0;
+    bool bIsAddingResources = false;
+
     TArray<FResultRewardEntry> CachedEntries;
+    TArray<FResourceScoreInfo> CachedResourceDetails;
+    int32 CurrentEntryIndex = 0;
+    FTimerHandle EntryAddTimerHandle;
+
+    void AddNextEntry();
+
+public:
+    void SetRewardEntries(const TArray<FResultRewardEntry>& InEntries);
+    void SetResourceScoreDetails(const TArray<FResourceScoreInfo>& InDetails);
+    void SetTotalGold(int32 InTotalGold);
+    void SetRankText(const FString& InRank);
+    void ActivateResultCamera();
 };

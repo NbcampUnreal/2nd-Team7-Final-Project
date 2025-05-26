@@ -946,8 +946,8 @@ void UAlsCharacterMovementComponent::SetStance(const FGameplayTag& NewStance)
 
 void UAlsCharacterMovementComponent::RefreshGroundedMovementSettings()
 {
-	auto WalkSpeed{GaitSettings.WalkForwardSpeed};
-	auto RunSpeed{GaitSettings.RunForwardSpeed};
+	auto WalkSpeed{WalkForwardSpeed};
+	auto RunSpeed{RunForwardSpeed};
 
 	if (GaitSettings.bAllowDirectionDependentMovementSpeed &&
 	    Velocity.SizeSquared() > UE_KINDA_SMALL_NUMBER &&
@@ -974,8 +974,8 @@ void UAlsCharacterMovementComponent::RefreshGroundedMovementSettings()
 			                                  {1.0f, 0.0f}, FMath::Abs(VelocityAngle))
 		};
 
-		WalkSpeed = FMath::Lerp(GaitSettings.WalkBackwardSpeed, GaitSettings.WalkForwardSpeed, ForwardSpeedAmount);
-		RunSpeed = FMath::Lerp(GaitSettings.RunBackwardSpeed, GaitSettings.RunForwardSpeed, ForwardSpeedAmount);
+		WalkSpeed = FMath::Lerp(WalkBackwardSpeed, WalkForwardSpeed, ForwardSpeedAmount);
+		RunSpeed = FMath::Lerp(RunBackwardSpeed, RunForwardSpeed, ForwardSpeedAmount);
 	}
 
 	// Map the character's current speed to the to the speed ranges from the movement settings. This allows
@@ -985,7 +985,7 @@ void UAlsCharacterMovementComponent::RefreshGroundedMovementSettings()
 
 	if (Speed > RunSpeed)
 	{
-		GaitAmount = FMath::GetMappedRangeValueClamped(FVector2f{RunSpeed, GaitSettings.SprintSpeed}, {2.0f, 3.0f}, Speed);
+		GaitAmount = FMath::GetMappedRangeValueClamped(FVector2f{RunSpeed, SprintSpeed}, {2.0f, 3.0f}, Speed);
 	}
 	else if (Speed > WalkSpeed)
 	{
@@ -1006,14 +1006,14 @@ void UAlsCharacterMovementComponent::RefreshGroundedMovementSettings()
 	}
 	else if (MaxAllowedGait == AlsGaitTags::Sprinting)
 	{
-		MaxWalkSpeed = GaitSettings.SprintSpeed;
+		MaxWalkSpeed = SprintSpeed;
 	}
 	else
 	{
-		MaxWalkSpeed = GaitSettings.RunForwardSpeed;
+		MaxWalkSpeed = RunForwardSpeed;
 	}
 
-	MaxWalkSpeedCrouched = MaxWalkSpeed;
+	MaxWalkSpeedCrouched = MaxWalkSpeed / 2;
 
 	// Get acceleration, deceleration and ground friction using a curve. This
 	// allows us to precisely control the movement behavior at each speed.
@@ -1055,3 +1055,42 @@ bool UAlsCharacterMovementComponent::TryConsumePrePenetrationAdjustmentVelocity(
 
 	return true;
 }
+
+float UAlsCharacterMovementComponent::GetSprintSpeed()
+{
+	UE_LOG(LogTemp, Warning, TEXT("GaitSetting Sprint speed, %f"), SprintSpeed);
+	return SprintSpeed;
+}
+
+void UAlsCharacterMovementComponent::SetGaitSettings(float _WalkForwardSpeed, float _WalkBackwardSpeed, float _RunForwardSpeed, float _RunBackwardSpeed, float _SprintSpeed)
+{
+	UE_LOG(LogTemp, Warning, TEXT("GaitSetting has Changed, %f, %f, %f, %f, %f"), _WalkForwardSpeed, _WalkBackwardSpeed, _RunForwardSpeed, _RunBackwardSpeed, _SprintSpeed);
+	
+	WalkForwardSpeed = _WalkForwardSpeed;
+
+	WalkBackwardSpeed = _WalkBackwardSpeed;
+
+	RunForwardSpeed = _RunForwardSpeed;
+
+	GaitSettings.RunBackwardSpeed = _RunBackwardSpeed;
+
+	SprintSpeed = _SprintSpeed;
+
+}
+
+void UAlsCharacterMovementComponent::ResetGaitSettings()
+{
+	UE_LOG(LogTemp, Warning, TEXT("GaitSetting Reset"));
+
+	WalkForwardSpeed = GaitSettings.WalkForwardSpeed;
+
+	WalkBackwardSpeed = GaitSettings.WalkBackwardSpeed;
+
+	RunForwardSpeed = GaitSettings.RunForwardSpeed;
+
+	RunBackwardSpeed = GaitSettings.RunBackwardSpeed;
+
+	SprintSpeed = GaitSettings.SprintSpeed;
+}
+
+
