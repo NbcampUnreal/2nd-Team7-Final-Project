@@ -61,6 +61,7 @@ public:
 	UTitleMenu* GetTitleMenu() const { return CachedTitleMenu; }
 	ULobbyMenu* GetLobbyMenu() const { return CachedLobbyMenu; }
 	UEnterPasswordWidget* GetEnterPasswordWidget() const { return CachedEnterPasswordWidget; }
+	UOptionWidget* GetOptionWidget() const { return CachedOptionWidget; }
 
 	void SetLastShopInteractor(AShopInteractor* Interactor);
 	void SetLastMapSelectInteractor(AMapSelectInteractor* Interactor);
