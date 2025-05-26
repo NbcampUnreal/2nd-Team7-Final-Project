@@ -12,6 +12,7 @@ void ALCRoomPlayerController::BeginPlay()
 		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
 		{
 			UIManager->InitUIManager(this);
+			UIManager->ShowInGameHUD();
 		}
 	}
 }
