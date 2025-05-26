@@ -35,11 +35,11 @@ void AShopInteractor::BeginPlay()
 	}
 }
 
-void AShopInteractor::Interact_Implementation(APlayerController* Interactor)
+void AShopInteractor::Interact_Implementation(APlayerController* InteractingPlayerController)
 {
 	LOG_Frame_WARNING(TEXT("Interact_Implementation"));
 
-	if (Interactor == nullptr)
+	if (InteractingPlayerController == nullptr)
 	{
 		LOG_Frame_WARNING(TEXT("Interactor is nullptr"));
 		return;
@@ -50,13 +50,13 @@ void AShopInteractor::Interact_Implementation(APlayerController* Interactor)
 		return;
 	}
 
-	Interactor->SetViewTargetWithBlend(ShopCamera, 0.5f);
+	InteractingPlayerController->SetViewTargetWithBlend(ShopCamera, 0.5f);
 
 	FTimerHandle TimerHandle;
 	FTimerDelegate TimerDel;
-	TimerDel.BindLambda([this, Interactor]()
+	TimerDel.BindLambda([this, InteractingPlayerController]()
 		{
-			if (UGameInstance* GameInstance = Interactor->GetGameInstance())
+			if (UGameInstance* GameInstance = InteractingPlayerController->GetGameInstance())
 			{
 				if (ULCGameInstanceSubsystem* GI = GameInstance->GetSubsystem<ULCGameInstanceSubsystem>())
 				{
