@@ -210,4 +210,8 @@ public:
 
 	UFUNCTION()
 	void PlayInteractionMontage(AActor* Target);
+
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "TEST")
+	bool bIsGetFallDownDamage = false;
 };
