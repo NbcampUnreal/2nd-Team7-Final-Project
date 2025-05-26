@@ -24,7 +24,6 @@
 ULCUIManager::ULCUIManager()
 {
 	CurrentWidget = nullptr;
-	// Constructor logic here
 }
 
 void ULCUIManager::InitUIManager(APlayerController* PlayerController)
@@ -93,12 +92,14 @@ void ULCUIManager::ShowTitleMenu()
 {
 	LOG_Frame_WARNING(TEXT("ShowTitleMenu"));
 	SwitchToWidget(CachedTitleMenu);
+	SetInputModeUIOnly(CurrentWidget);
 }
 
 void ULCUIManager::ShowLobbyMenu()
 {
 	LOG_Frame_WARNING(TEXT("ShowLobbyMenu"));
 	SwitchToWidget(CachedLobbyMenu);
+	SetInputModeUIOnly(CurrentWidget);
 }
 
 void ULCUIManager::ShowRoomListMenu()
@@ -114,6 +115,7 @@ void ULCUIManager::ShowEnterPasswordWidget(const FString& RoomID)
 		CachedEnterPasswordWidget->Init(RoomID);
 	}
 	SwitchToWidget(CachedEnterPasswordWidget);
+	SetInputModeUIOnly(CurrentWidget);
 }
 
 void ULCUIManager::ShowOptionPopup()
@@ -130,10 +132,7 @@ void ULCUIManager::ShowOptionPopup()
 		CachedOptionWidget->AddToViewport(1);
 	}
 
-	if (CachedOptionWidget)
-	{
-		SetInputModeUIOnly(CachedOptionWidget);
-	}
+	SetInputModeUIOnly(CurrentWidget);
 }
 
 void ULCUIManager::ShowPauseMenu()
@@ -174,12 +173,12 @@ void ULCUIManager::ShowConfirmPopup(TFunction<void()> OnConfirm)
 void ULCUIManager::ShowShopPopup()
 {
 	LOG_Frame_WARNING(TEXT("ShowShopPopup"));
+	HideInGameHUD();
 
 	if (LastShopInteractor && LastShopInteractor->GetShopWidgetComponent())
 	{
 		LastShopInteractor->GetShopWidgetComponent()->SetVisibility(false);
 	}
-
 	if (CachedShopWidget)
 	{
 		CachedShopWidget->AddToViewport(1);
@@ -194,9 +193,8 @@ void ULCUIManager::ShowShopPopup()
 
 		FInputModeUIOnly InputMode;
 		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-		OwningPlayer->SetInputMode(InputMode);
-		OwningPlayer->bShowMouseCursor = true;
 	}
+	SetInputModeUIOnly(CurrentWidget);
 }
 
 void ULCUIManager::HideShopPopup()
@@ -221,9 +219,9 @@ void ULCUIManager::HideShopPopup()
 		}
 
 		OwningPlayer->SetViewTargetWithBlend(OwningPlayer->GetPawn(), 1.0f);
-		OwningPlayer->SetInputMode(FInputModeGameOnly());
-		OwningPlayer->bShowMouseCursor = false;
 	}
+	SetInputModeGameOnly();
+	ShowInGameHUD();
 }
 
 void ULCUIManager::ShowCreateSession()
@@ -256,6 +254,7 @@ void ULCUIManager::HidePopUpLoading()
 void ULCUIManager::ShowMapSelectPopup()
 {
 	LOG_Frame_WARNING(TEXT("ShowMapSelectPopup"));
+	HideInGameHUD();
 
 	if (LastMapSelectInteractor && LastMapSelectInteractor->GetMapSelectWidgetComponent())
 	{
@@ -268,19 +267,14 @@ void ULCUIManager::ShowMapSelectPopup()
 		CachedMapSelectWidget->GateActorInstance = LastMapSelectInteractor->TargetGateActor;
 	}
 
-
 	if (OwningPlayer)
 	{
 		if (APawn* Pawn = OwningPlayer->GetPawn())
 		{
 			Pawn->DisableInput(OwningPlayer);
 		}
-
-		FInputModeUIOnly InputMode;
-		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-		OwningPlayer->SetInputMode(InputMode);
-		OwningPlayer->bShowMouseCursor = true;
 	}
+	SetInputModeUIOnly(CurrentWidget);
 }
 
 void ULCUIManager::HideMapSelectPopup()
@@ -305,15 +299,25 @@ void ULCUIManager::HideMapSelectPopup()
 		}
 
 		OwningPlayer->SetViewTargetWithBlend(OwningPlayer->GetPawn(), 1.0f);
-		OwningPlayer->SetInputMode(FInputModeGameOnly());
-		OwningPlayer->bShowMouseCursor = false;
 	}
+	SetInputModeGameOnly();
+	ShowInGameHUD();
 }
 
 void ULCUIManager::ShowInGameHUD()
 {
 	LOG_Frame_WARNING(TEXT("ShowInGameHUD"));
 	SwitchToWidget(CachedInGameHUD);
+	SetInputModeGameOnly();
+}
+
+void ULCUIManager::HideInGameHUD()
+{
+	LOG_Frame_WARNING(TEXT("HideInGameHUD"));
+	if (CachedInGameHUD && CachedInGameHUD->IsInViewport())
+	{
+		CachedInGameHUD->RemoveFromParent();
+	}
 }
 
 void ULCUIManager::SwitchToWidget(UUserWidget* NewWidget)
@@ -341,7 +345,6 @@ void ULCUIManager::SwitchToWidget(UUserWidget* NewWidget)
 	}
 
 	CurrentWidget = NewWidget;
-	SetInputModeUIOnly(CurrentWidget);
 }
 
 void ULCUIManager::SetInputModeUIOnly(UUserWidget* FocusWidget)

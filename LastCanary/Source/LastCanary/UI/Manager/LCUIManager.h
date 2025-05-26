@@ -35,6 +35,7 @@ public:
 	void ShowRoomListMenu();
 	void ShowEnterPasswordWidget(const FString& RoomID);
 	void ShowInGameHUD();
+	void HideInGameHUD();
 	void ShowOptionPopup();
 	void ShowPauseMenu();
 	void HidePauseMenu();
