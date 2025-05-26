@@ -351,6 +351,7 @@ void ABaseCharacter::Handle_Interact(AActor* HitActor)
 	else
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Handle_Interact: HitActor %s does not implement IInteractableInterface"), *HitActor->GetName());
+		PlayInteractionMontage(HitActor);
 	}
 	//TO DO...
 	/*
@@ -556,6 +557,10 @@ float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageE
 float ABaseCharacter::GetFallDamage(float Amount)
 {
 	Super::GetFallDamage(Amount);
+	if (bIsGetFallDownDamage == false)
+	{
+		return 0;
+	}
 	UE_LOG(LogTemp, Log, TEXT("player Take Fall Damage : %f"), Amount);
 	ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
 	if (PC)
@@ -748,12 +753,13 @@ void ABaseCharacter::PlayInteractionMontage(AActor* Target)
 {
 	if (!Target || !GetMesh() || !GetMesh()->GetAnimInstance())
 		return;
-	/*
+	
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 
-	UAnimMontage* MontageToPlay = nullptr;
+	UAnimMontage* MontageToPlay = InteractMontage;
 
 	// 1. 대상 클래스별로 분기
+	/*
 	if (Target->IsA(ADoorActor::StaticClass()))
 	{
 		MontageToPlay = OpenDoorMontage;
@@ -766,11 +772,12 @@ void ABaseCharacter::PlayInteractionMontage(AActor* Target)
 	{
 		MontageToPlay = ChopTreeMontage;
 	}
-
+	*/
 	// 2. 몽타주 재생
 	if (MontageToPlay)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("Anim Montage"));
 		AnimInstance->Montage_Play(MontageToPlay);
 	}
-	*/
+	
 }

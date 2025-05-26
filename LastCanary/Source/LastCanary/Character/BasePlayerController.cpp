@@ -596,6 +596,8 @@ void ABasePlayerController::Input_OnInteract()
 		return;
 	}
 
+	
+	/**/
 	// APawn 타입에 맞는 처리를 실행
 	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
 	{
