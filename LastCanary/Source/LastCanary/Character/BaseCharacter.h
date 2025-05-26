@@ -201,4 +201,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	UStaticMesh* SM_Torch;
 
+
+public:
+	//애니메이션 몽타주
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UAnimMontage* InteractMontage;
+
+	UFUNCTION()
+	void PlayInteractionMontage(AActor* Target);
 };

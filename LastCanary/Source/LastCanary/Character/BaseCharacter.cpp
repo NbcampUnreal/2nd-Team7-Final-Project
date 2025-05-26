@@ -270,7 +270,10 @@ void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
 		{
 			return;
 		}
-
+		if (StartMantlingGrounded())
+		{
+			return;
+		}
 		if (GetStance() == AlsStanceTags::Crouching)
 		{
 			SetDesiredStance(AlsStanceTags::Standing);
@@ -732,4 +735,42 @@ void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(int index)
 	{
 		GetMesh()->LinkAnimClassLayers(DefaultAnimationClass);
 	}
+}
+
+
+
+/// <summary>
+/// 물체 별 인터렉션애니메이션 몽타주 재생 함수
+/// </summary>
+/// <param name="Target"></param>
+
+void ABaseCharacter::PlayInteractionMontage(AActor* Target)
+{
+	if (!Target || !GetMesh() || !GetMesh()->GetAnimInstance())
+		return;
+	/*
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+
+	UAnimMontage* MontageToPlay = nullptr;
+
+	// 1. 대상 클래스별로 분기
+	if (Target->IsA(ADoorActor::StaticClass()))
+	{
+		MontageToPlay = OpenDoorMontage;
+	}
+	else if (Target->IsA(AChestActor::StaticClass()))
+	{
+		MontageToPlay = OpenChestMontage;
+	}
+	else if (Target->ActorHasTag("Tree"))
+	{
+		MontageToPlay = ChopTreeMontage;
+	}
+
+	// 2. 몽타주 재생
+	if (MontageToPlay)
+	{
+		AnimInstance->Montage_Play(MontageToPlay);
+	}
+	*/
 }

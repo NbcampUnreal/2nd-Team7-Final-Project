@@ -991,6 +991,7 @@ void ABasePlayerController::Input_DroneExit()
 	if (CurrentPossessedPawn->IsA<ABaseDrone>())
 	{
 		CurrentPossessedPawn = SpanwedPlayerCharacter;
+		//Possess(SpanwedPlayerCharacter);
 		SetViewTargetWithBlend(SpanwedPlayerCharacter, 0.5f);
 		SpawnedPlayerDrone->ReturnAsItem();
 		SpawnedPlayerDrone = nullptr;
@@ -1049,6 +1050,8 @@ void ABasePlayerController::PossessOnDrone()
 	UE_LOG(LogTemp, Warning, TEXT("Possess on drone: %s"), *SpawnedPlayerDrone->GetName());
 	//SpanwedPlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
 	CurrentPossessedPawn = SpawnedPlayerDrone;
+	
 	UE_LOG(LogTemp, Warning, TEXT("Drone Possess"));
 	SetViewTargetWithBlend(SpawnedPlayerDrone, 0.5f);
+	//Possess(SpawnedPlayerDrone);
 }
