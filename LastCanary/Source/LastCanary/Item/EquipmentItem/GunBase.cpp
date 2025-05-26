@@ -1,4 +1,5 @@
 #include "Item/EquipmentItem/GunBase.h"
+#include "Item/ItemBase.h"
 #include "Character/BaseCharacter.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/DamageEvents.h"
@@ -10,7 +11,7 @@ AGunBase::AGunBase()
 {
     // 스켈레탈 메시 컴포넌트 생성 및 설정
     GunMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("GunMesh"));
-    GunMesh->SetupAttachment(RootComponent);
+    RootComponent = GunMesh;
 
     // 기본 속성 초기화
     FireRange = 10000.0f;
@@ -24,8 +25,6 @@ AGunBase::AGunBase()
     DecalSize = FVector(5.0f, 5.0f, 5.0f);
     DecalLifeSpan = 10.0f;
 
-    ItemRowName = FName(TEXT("001"));
-
     // 무기 컴포넌트 초기화
     MuzzleLocation = CreateDefaultSubobject<USceneComponent>(TEXT("MuzzleLocation"));
     MuzzleLocation->SetupAttachment(GunMesh);
@@ -34,18 +33,6 @@ AGunBase::AGunBase()
     bDrawDebugLine = true;
     bDrawImpactDebug = true;
     DebugDrawDuration = 10.0f;
-}
-
-void AGunBase::OnConstruction(const FTransform& Transform)
-{
-    Super::OnConstruction(Transform);
-
-    // OnConstruction 호출 시 ItemRowName 상태 로그
-    LOG_Item_WARNING(TEXT("GunBase OnConstruction - ItemRowName: %s"),
-        ItemRowName.IsNone() ? TEXT("None") : *ItemRowName.ToString());
-
-    // 여기서는 값을 변경하지 않고 확인만 합니다
-    // ItemRowName이 None이면 디폴트값 설정도 가능합니다
 }
 
 void AGunBase::UseItem()
@@ -134,43 +121,70 @@ bool AGunBase::PerformLineTrace(FHitResult& OutHit, FVector& StartLocation, FVec
 {
     AActor* OwnerActor = GetOwner();
 
-    if (!OwnerActor)
+    //if (!OwnerActor)
+    //{
+    //    APlayerController* PC = GetWorld()->GetFirstPlayerController();
+    //    if (PC)
+    //    {
+    //        OwnerActor = Cast<ABaseCharacter>(PC->GetPawn());
+    //    }
+    //}
+
+    //if (!OwnerActor)
+    //{
+    //    LOG_Item_WARNING(TEXT("PerformLineTrace: Owner is null, using fallback for debug"));
+
+    //    // 임시 시작점과 방향 설정 (디버그용)
+    //    StartLocation = GetActorLocation();
+    //    FVector ForwardVector = GetActorForwardVector();
+    //    EndLocation = StartLocation + ForwardVector * FireRange;
+
+    //    FCollisionQueryParams QueryParams;
+    //    QueryParams.AddIgnoredActor(this);
+    //    QueryParams.bTraceComplex = true;
+
+    //    bool bHit = GetWorld()->LineTraceSingleByChannel(OutHit, StartLocation, EndLocation, ECC_Visibility, QueryParams);
+
+    //    // 디버그 라인 그리기
+    //    if (bDrawDebugLine) {
+    //        DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Yellow, false, DebugDrawDuration, 0, 2.0f);
+    //        LOG_Item_WARNING(TEXT("PerformLineTrace: Drawing fallback debug line"));
+    //    }
+
+    //    return bHit;
+    //}
+
+    // Owner 정보 상세 로그
+    if (OwnerActor)
     {
-        APlayerController* PC = GetWorld()->GetFirstPlayerController();
-        if (PC)
-        {
-            OwnerActor = Cast<ABaseCharacter>(PC->GetPawn());
-        }
+        LOG_Item_WARNING(TEXT("PerformLineTrace: Owner exists - Name: %s, Class: %s"),
+            *OwnerActor->GetName(),
+            *OwnerActor->GetClass()->GetName());
     }
-
-    if (!OwnerActor)
+    else
     {
-        LOG_Item_WARNING(TEXT("PerformLineTrace: Owner is null, using fallback for debug"));
-
-        // 임시 시작점과 방향 설정 (디버그용)
-        StartLocation = GetActorLocation();
-        FVector ForwardVector = GetActorForwardVector();
-        EndLocation = StartLocation + ForwardVector * FireRange;
-
-        FCollisionQueryParams QueryParams;
-        QueryParams.AddIgnoredActor(this);
-        QueryParams.bTraceComplex = true;
-
-        bool bHit = GetWorld()->LineTraceSingleByChannel(OutHit, StartLocation, EndLocation, ECC_Visibility, QueryParams);
-
-        // 디버그 라인 그리기
-        if (bDrawDebugLine) {
-            DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Yellow, false, DebugDrawDuration, 0, 2.0f);
-            LOG_Item_WARNING(TEXT("PerformLineTrace: Drawing fallback debug line"));
-        }
-
-        return bHit;
+        LOG_Item_WARNING(TEXT("PerformLineTrace: Owner is NULL"));
+        return false;
     }
 
     ABaseCharacter* OwnerCharacter = Cast<ABaseCharacter>(OwnerActor);
     if (!OwnerCharacter)
     {
-        LOG_Item_WARNING(TEXT("PerformLineTrace: Owner is not a BaseCharacter"));
+        LOG_Item_WARNING(TEXT("PerformLineTrace: Owner is not a BaseCharacter - Actual class: %s"),
+            *OwnerActor->GetClass()->GetName());
+
+        // 다른 캐스팅 시도
+        APawn* OwnerPawn = Cast<APawn>(OwnerActor);
+        if (OwnerPawn)
+        {
+            LOG_Item_WARNING(TEXT("PerformLineTrace: Owner is a Pawn, trying to get controller"));
+            AController* Controller = OwnerPawn->GetController();
+            if (Controller)
+            {
+                LOG_Item_WARNING(TEXT("PerformLineTrace: Controller found: %s"), *Controller->GetClass()->GetName());
+            }
+        }
+
         return false;
     }
 
@@ -346,6 +360,13 @@ void AGunBase::BeginPlay()
 {
     Super::BeginPlay();
 
+    UE_LOG(LogTemp, Warning, TEXT("[AGunBase::BeginPlay] 네트워크 상태 확인"));
+    UE_LOG(LogTemp, Warning, TEXT("GetNetMode: %d"), (int32)GetNetMode());
+    UE_LOG(LogTemp, Warning, TEXT("GetLocalRole: %d"), (int32)GetLocalRole());
+    UE_LOG(LogTemp, Warning, TEXT("GetRemoteRole: %d"), (int32)GetRemoteRole());
+    UE_LOG(LogTemp, Warning, TEXT("bReplicates: %s"), bReplicates ? TEXT("True") : TEXT("False"));
+    UE_LOG(LogTemp, Warning, TEXT("Owner: %s"), GetOwner() ? *GetOwner()->GetName() : TEXT("None"));
+
     LOG_Item_WARNING(TEXT("GunBase BeginPlay - ItemRowName: %s"),
         ItemRowName.IsNone() ? TEXT("None") : *ItemRowName.ToString());
     
@@ -385,7 +406,12 @@ void AGunBase::BeginPlay()
         LOG_Item_WARNING(TEXT("[GunBase::BeginPlay] 게임인스턴스 서브시스템의 GunDataTable이 null입니다!"));
     }
 
+    if (Durability <= 0.0f)
+    {
+        Durability = MaxAmmo;
+    }
 
+    ApplyItemDataFromTable();
     ApplyGunDataFromDataTable();
     UpdateAmmoState();
 }
@@ -430,6 +456,13 @@ void AGunBase::ApplyGunDataFromDataTable()
     if (GunData.GunMesh && GunMesh)
     {
         GunMesh->SetSkeletalMesh(GunData.GunMesh);
+
+        // 부모의 MeshComponent 숨기기
+        if (MeshComponent)
+        {
+            MeshComponent->SetVisibility(false);
+            MeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        }
     }
 
     LOG_Item_WARNING(TEXT("[GunBase::ApplyGunDataFromDataTable] '%s' 총기 데이터 로드 완료"), *ItemRowName.ToString());

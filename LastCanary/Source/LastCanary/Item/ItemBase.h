@@ -36,7 +36,7 @@ public:
     //-----------------------------------------------------
 
     /** 아이템 데이터 테이블에서의 행 이름 */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Item)
+    UPROPERTY(ReplicatedUsing = OnRepItemRowName, EditAnywhere, BlueprintReadWrite, Category = Item)
     FName ItemRowName;
 
     /** 아이템 데이터 테이블 참조 */
@@ -109,6 +109,8 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Item|Initialization")
     void ApplyItemDataFromTable();
 
+    UStaticMeshComponent* GetMeshComponent() const;
+
     //-----------------------------------------------------
     // 네트워크 & 에디터 기능
     //-----------------------------------------------------
@@ -116,23 +118,13 @@ public:
     /** 리플리케이션 속성 설정 */
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+    /** ItemRowName이 복제될 때 호출되는 함수 */
+    UFUNCTION()
+    virtual void OnRepItemRowName();
+
 #if WITH_EDITOR
     /** 에디터에서 속성 변경 시 호출 */
     virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
     // virtual void OnConstruction(const FTransform& Transform) override;
 #endif
-
-    /* UI 관련 코드 - 현재 사용하지 않음
-    UPROPERTY(EditAnywhere, Category = "Widget")
-    TSubclassOf<class UUserWidget> PickupWidgetClass;
-
-    UPROPERTY()
-    UUserWidget* PickupWidget;
-
-    UPROPERTY(VisibleAnywhere, Category = "Widget")
-    UWidgetComponent* PickupWidgetComponent;
-
-    UFUNCTION()
-    void ShowPickupPrompt(bool bShow);
-    */
 };

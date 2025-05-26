@@ -15,6 +15,7 @@
 
 #include "BasePlayerState.h"
 
+#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "Inventory/BackpackInventoryComponent.h"
 #include "Item/ItemBase.h"
@@ -221,6 +222,8 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 		return;
 	}
 	SetDesiredAiming(ActionValue.Get<bool>());
+	// 임시로 넣은 부분 꼭 삭제할것!
+	UseEquippedItem();
 }
 
 void ABaseCharacter::Handle_ViewMode()
@@ -233,7 +236,8 @@ void ABaseCharacter::Handle_Strafe(const FInputActionValue& ActionValue)
 {
 	const auto Value{ UAlsVector::ClampMagnitude012D(ActionValue.Get<FVector2D>()) };
 
-
+	// 임시로 넣은 부분 꼭 삭제할것!
+	UseEquippedItem();
 }
 
 void ABaseCharacter::Handle_Interact(AActor* HitActor)
@@ -533,76 +537,42 @@ void ABaseCharacter::Server_TryPickupItem_Implementation(AItemBase* HitItem)
 
 bool ABaseCharacter::UseEquippedItem()
 {
+	if (!IsEquipped())
 	{
-		if (!IsEquipped())
-		{
-			LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 장비 상태가 아닙니다."));
-			return false;
-		}
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 장비 상태가 아닙니다."));
+		return false;
+	}
 
-		if (!ToolbarInventoryComponent)
-		{
-			LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 툴바 컴포넌트가 없습니다."));
-			return false;
-		}
+	if (!ToolbarInventoryComponent)
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 툴바 컴포넌트가 없습니다."));
+		return false;
+	}
 
-		if (GetLocalRole() < ROLE_Authority)
-		{
-			LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 클라이언트에서 실행"));
-			Server_UseEquippedItem();
-			return true;
-		}
+	if (GetLocalRole() < ROLE_Authority)
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 클라이언트에서 실행"));
+		Server_UseEquippedItem();
+		return true;
+	}
 
-		// 장비된 슬롯 검색
-		for (int32 i = 0; i < ToolbarInventoryComponent->ItemSlots.Num(); ++i)
-		{
-			FBaseItemSlotData& Slot = ToolbarInventoryComponent->ItemSlots[i];
-			if (Slot.bIsEquipped)
-			{
-				// 아이템 데이터 테이블 조회
-				const FItemDataRow* ItemData = ToolbarInventoryComponent->GetItemDataTable()->FindRow<FItemDataRow>(
-					Slot.ItemRowName, TEXT("UseEquippedItem"));
+	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
+	if (!EquippedItem)
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 현재 장착된 아이템이 없습니다."));
+		return false;
+	}
 
-				if (!ItemData || !ItemData->ItemActorClass)
-				{
-					LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 아이템 데이터가 유효하지 않습니다."));
-					return false;
-				}
-
-				// 메시에 부착된 액터 검색
-				TArray<AActor*> AttachedActors;
-				GetAttachedActors(AttachedActors);
-
-				for (AActor* Actor : AttachedActors)
-				{
-					AItemBase* Item = Cast<AItemBase>(Actor);
-					if (Item && Item->ItemRowName == Slot.ItemRowName)
-					{
-						// 추가: 아이템이 순수 가상 함수를 구현한 서브클래스인지 확인
-						AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(Item);
-						if (EquipmentItem) // 장비 아이템인지 확인
-						{
-							if (GetLocalRole() == ROLE_Authority)
-							{
-								EquipmentItem->UseItem(); // 안전하게 호출
-								LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] %s 아이템 사용 성공"), *ItemData->ItemName.ToString());
-							}
-							return true;
-						}
-						else
-						{
-							LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 아이템이 장비 아이템이 아닙니다."));
-							return false;
-						}
-					}
-				}
-
-				LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 부착된 아이템 액터를 찾을 수 없습니다."));
-				return false;
-			}
-		}
-
-		LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 장비된 아이템이 없습니다."));
+	if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem))
+	{
+		EquipmentItem->UseItem();
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] %s 아이템 사용 성공"),
+			*EquippedItem->ItemRowName.ToString());
+		return true;
+	}
+	else
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 아이템이 장비 아이템이 아닙니다."));
 		return false;
 	}
 }

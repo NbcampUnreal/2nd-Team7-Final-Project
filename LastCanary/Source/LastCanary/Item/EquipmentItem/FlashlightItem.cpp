@@ -13,14 +13,6 @@ AFlashlightItem::AFlashlightItem()
     SpotLightComponent = CreateDefaultSubobject<USpotLightComponent>(TEXT("SpotLight"));
     SpotLightComponent->SetupAttachment(MeshComponent);
 
-    bReplicates = true;
-    // bAlwaysRelevant = true; // 이 옵션을 제거하거나 아래 옵션으로 대체
-
-    // 대안: 소유자에게는 항상 관련 있게, 다른 플레이어에게는 관련성 기반으로 설정
-    bOnlyRelevantToOwner = false;
-    NetUpdateFrequency = 0.01f; // 업데이트 빈도 제한 (초당 5회)
-
-
     // 네트워크 복제 활성화
     SpotLightComponent->SetIsReplicated(true);
 
@@ -274,6 +266,7 @@ void AFlashlightItem::BeginPlay()
     SpotLightComponent->SetOuterConeAngle(OuterConeAngle);
 
     // 사운드 에셋 동적 로드
+    // TODO : 아이템의 사운드를 데이터테이블로 관리해야 할지 고민
     if (!TurnOnSound)
     {
         TurnOnSound = LoadObject<USoundBase>(nullptr, TEXT("/Game/AnotherAsset/Item/Flashlight/Sounds/Flash_Switch-on_cut.Flash_Switch-on_cut"));

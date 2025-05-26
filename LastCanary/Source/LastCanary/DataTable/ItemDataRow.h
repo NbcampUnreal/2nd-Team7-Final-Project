@@ -30,22 +30,25 @@ struct FItemDataRow : public FTableRowBase
 
 	// 추가로 넣은 부분
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 MaxStack;
+	int32 MaxStack = 1;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (Categories = "Item"))
 	FGameplayTag ItemType;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float Weight;
+	float Weight = 1.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	bool bUsable;
+	bool bUsable = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FName AttachSocketName;
+	FName AttachSocketName = TEXT("RightHandSocket");;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UStaticMesh* StaticMesh;
+	UStaticMesh* StaticMesh = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USkeletalMesh* SkeletalMesh = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<class AItemBase> ItemActorClass;

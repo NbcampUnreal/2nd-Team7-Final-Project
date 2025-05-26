@@ -10,6 +10,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInventoryUpdated);
 
 class ULCUserWidgetBase;
 class UItemTooltipWidget;
+class ABaseCharacter;
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class LASTCANARY_API UInventoryComponentBase : public UActorComponent
@@ -21,6 +22,25 @@ public:
 
 protected:
     virtual void BeginPlay() override;
+
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Internal")
+    void InitializeSlots();
+
+    /** 캐싱된 소유자 캐릭터 */
+    UPROPERTY(BlueprintReadOnly, Category = "Inventory|Cache")
+    ABaseCharacter* CachedOwnerCharacter;
+
+    /** 소유자 캐릭터 캐싱 */
+    void CacheOwnerCharacter();
+
+    /** 소유자 캐릭터가 유효한지 확인 */
+    UFUNCTION(BlueprintPure, Category = "Inventory|Cache")
+    bool IsOwnerCharacterValid() const;
+
+public:
+    /** 캐싱된 소유자 캐릭터 반환 */
+    UFUNCTION(BlueprintPure, Category = "Inventory|Cache")
+    ABaseCharacter* GetCachedOwnerCharacter() const;
 
     //-----------------------------------------------------
     // 인벤토리 데이터
@@ -66,6 +86,8 @@ public:
     /** 특정 아이템의 현재 보유 수량 확인 */
     UFUNCTION(BlueprintPure, Category = "Inventory|Query")
     virtual int32 GetItemCount(FName ItemRowName) const PURE_VIRTUAL(UInventoryComponentBase::GetItemCount, return 0;);
+
+    FItemDataRow* GetItemRowByName(FName RowName);
 
     /** 두 슬롯 간 아이템 교환 시도 */
     UFUNCTION(BlueprintCallable, Category = "Inventory|Operations")

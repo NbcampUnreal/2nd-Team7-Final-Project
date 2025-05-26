@@ -19,4 +19,6 @@ public:
 	// TODO : 인벤토리 컴포넌트와 상호작용하는 함수 추가 필요
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	UBackpackInventoryComponent* GetBackpackInventoryComponent() const;
+
+	void CopyInventoryData(UBackpackInventoryComponent* NewBackpackInventoryComponent);
 };

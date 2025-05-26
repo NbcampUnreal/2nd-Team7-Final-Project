@@ -136,6 +136,7 @@ public:
 	FGameplayTagContainer OwnedTags;
 
 	UChildActorComponent* ChildActorComponent;
+
 	// 인벤토리 컴포넌트
 private:
 	UPROPERTY(VisibleAnywhere, Category = "Inventory")

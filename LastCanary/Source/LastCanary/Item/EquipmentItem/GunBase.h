@@ -20,8 +20,6 @@ class LASTCANARY_API AGunBase : public AEquipmentItemBase
 public:
     AGunBase();
 
-    virtual void OnConstruction(const FTransform& Transform) override;
-
     //-----------------------------------------------------
     // 컴포넌트
     //-----------------------------------------------------
@@ -122,7 +120,7 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Gun|Actions")
     virtual bool Reload(float AmmoAmount);
 
-protected:
+public:
     virtual void BeginPlay() override;
 
     /** 마지막 발사 시간 */

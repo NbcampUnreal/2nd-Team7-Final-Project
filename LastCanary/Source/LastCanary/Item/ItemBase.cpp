@@ -26,15 +26,10 @@ AItemBase::AItemBase()
 	SphereComponent->SetCollisionObjectType(ECC_GameTraceChannel1);
 	SphereComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 
+	bReplicates = true;
+	bNetUseOwnerRelevancy = true;
+
 	bIsEquipped = false;
-
-	// UI 관리는 UI 매니저에서 할것으로 예상
-	//PickupWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("PickupWidgetComponent"));
-	//PickupWidgetComponent->SetupAttachment(MeshComponent);
-
-	//PickupWidgetComponent->SetWidgetSpace(EWidgetSpace::Screen);
-	//PickupWidgetComponent->SetDrawSize(FVector2D(200, 50));
-	//PickupWidgetComponent->SetVisibility(false);
 
 	Quantity = 1;
 	Durability = 100.f;
@@ -44,35 +39,41 @@ void AItemBase::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	UWorld* World = GetWorld();
-	if (!World)
+	if (HasAuthority())
 	{
-		LOG_Item_WARNING(TEXT("[InventoryComponentBase::BeginPlay] World is null!"));
-		return;
-	}
+		UWorld* World = GetWorld();
+		if (!World)
+		{
+			LOG_Item_WARNING(TEXT("[AItemBase::BeginPlay] World is null!"));
+			return;
+		}
 
-	UGameInstance* GI = World->GetGameInstance();
-	if (!GI)
-	{
-		LOG_Item_WARNING(TEXT("[InventoryComponentBase::BeginPlay] GameInstance is null!"));
-		return;
-	}
+		UGameInstance* GI = World->GetGameInstance();
+		if (!GI)
+		{
+			LOG_Item_WARNING(TEXT("[AItemBase::BeginPlay] GameInstance is null!"));
+			return;
+		}
 
-	ULCGameInstanceSubsystem* GISubsystem = GI->GetSubsystem<ULCGameInstanceSubsystem>();
-	if (!GISubsystem)
-	{
-		LOG_Item_WARNING(TEXT("[InventoryComponentBase::BeginPlay] LCGameInstance is null"));
-		return;
-	}
+		ULCGameInstanceSubsystem* GISubsystem = GI->GetSubsystem<ULCGameInstanceSubsystem>();
+		if (!GISubsystem)
+		{
+			LOG_Item_WARNING(TEXT("[AItemBase::BeginPlay] LCGameInstanceSubsystem is null"));
+			return;
+		}
 
-	ItemDataTable = GISubsystem->ItemDataTable;
-	if (!ItemDataTable)
-	{
-		LOG_Item_WARNING(TEXT("[InventoryComponentBase::BeginPlay] ItemDataTable is null"));
-		return;
-	}
+		ItemDataTable = GISubsystem->ItemDataTable;
+		if (!ItemDataTable)
+		{
+			LOG_Item_WARNING(TEXT("[AItemBase::BeginPlay] ItemDataTable is null"));
+			return;
+		}
 
-	ApplyItemDataFromTable();
+		if (!ItemRowName.IsNone() && GetOwner() != GetAttachParentActor())
+		{
+			ApplyItemDataFromTable();
+		}
+	}
 }
 
 void AItemBase::OnRepDurability()
@@ -117,16 +118,29 @@ void AItemBase::ApplyItemDataFromTable()
 		return;
 	}
 
+	// 🔥 클라이언트에서도 데이터 테이블 참조 확보
 	if (!ItemDataTable)
 	{
-		LOG_Item_WARNING(TEXT("[InventoryComponentBase::ApplyItemDataFromTable] ItemDataTable is null!"));
+		if (UGameInstance* GI = GetGameInstance())
+		{
+			if (ULCGameInstanceSubsystem* GISubsystem = GI->GetSubsystem<ULCGameInstanceSubsystem>())
+			{
+				ItemDataTable = GISubsystem->ItemDataTable;
+			}
+		}
+	}
+
+	if (!ItemDataTable)
+	{
+		LOG_Item_WARNING(TEXT("[AItemBase::ApplyItemDataFromTable] ItemDataTable is null!"));
 		return;
 	}
 
 	FItemDataRow* Found = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("ApplyItemDataFromTable"));
 	if (!Found)
 	{
-		LOG_Item_WARNING(TEXT("[InventoryComponentBase::ApplyItemDataFromTable] ItemData is null!"));
+		LOG_Item_WARNING(TEXT("[AItemBase::ApplyItemDataFromTable] ItemData not found for: %s"),
+			*ItemRowName.ToString());
 		return;
 	}
 
@@ -135,7 +149,12 @@ void AItemBase::ApplyItemDataFromTable()
 	if (MeshComponent && ItemData.StaticMesh)
 	{
 		MeshComponent->SetStaticMesh(ItemData.StaticMesh);
+		LOG_Item_WARNING(TEXT("[AItemBase::ApplyItemDataFromTable] 메시 적용 완료: %s"),
+			*ItemData.ItemName.ToString());
 	}
+
+	// 상태 변경 브로드캐스트
+	OnItemStateChanged.Broadcast();
 }
 
 //void AItemBase::UseItem()
@@ -184,6 +203,35 @@ void AItemBase::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEve
 void AItemBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME_CONDITION_NOTIFY(AItemBase, ItemRowName, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME(AItemBase, Quantity);
 	DOREPLIFETIME(AItemBase, bIsEquipped);
 	DOREPLIFETIME_CONDITION_NOTIFY(AItemBase, Durability, COND_None, REPNOTIFY_Always);
+}
+
+void AItemBase::OnRepItemRowName()
+{
+	// 클라이언트에서 ItemRowName이 복제되면 데이터 테이블 적용
+	if (!ItemRowName.IsNone())
+	{
+		ApplyItemDataFromTable();
+
+		if (bIsEquipped)
+		{
+			SetActorEnableCollision(false);
+		}
+
+		LOG_Item_WARNING(TEXT("[AItemBase::OnRepItemRowName] 클라이언트에서 아이템 데이터 적용: %s"),
+			*ItemRowName.ToString());
+	}
+}
+
+UStaticMeshComponent* AItemBase::GetMeshComponent() const
+{
+	if (MeshComponent)
+	{
+		return MeshComponent;
+	}
+	return nullptr;
 }
