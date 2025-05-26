@@ -122,7 +122,7 @@ void UMonsterSpawnComponent::SpawnMonsters()
         FCollisionQueryParams QueryParams;
         QueryParams.AddIgnoredActor(Owner);
 
-        //¹Ù´Ú Ã£±â -> ¶óÀÎÆ®·¹ÀÌ½º - Ãæµ¹ °¨Áö ¹æ¹ý
+        //ï¿½Ù´ï¿½ Ã£ï¿½ï¿½ -> ï¿½ï¿½ï¿½ï¿½Æ®ï¿½ï¿½ï¿½Ì½ï¿½ - ï¿½æµ¹ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
         bool bHit = World->LineTraceSingleByChannel(
             HitResult,
             TraceStart,
@@ -141,7 +141,7 @@ void UMonsterSpawnComponent::SpawnMonsters()
             SpawnLocation.Z = OwnerZ;
         }
 
-        //·£´ý ½ºÆù
+        //ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
         int32 MonsterIndex = FMath::RandRange(0, MonsterClasses.Num() - 1);
         TSubclassOf<ACharacter> MonsterClass = MonsterClasses[MonsterIndex];
 
@@ -154,10 +154,10 @@ void UMonsterSpawnComponent::SpawnMonsters()
         DirectionToCenter.Z = 0;
         FRotator Rotation = DirectionToCenter.Rotation();
 
-        //·£´ý È¸Àü
+        //ï¿½ï¿½ï¿½ï¿½ È¸ï¿½ï¿½
         Rotation.Yaw += FMath::FRandRange(-45.0f, 45.0f);
 
-        //½ºÆù
+        //ï¿½ï¿½ï¿½ï¿½
         FActorSpawnParameters SpawnParams;
         SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
@@ -176,7 +176,7 @@ void UMonsterSpawnComponent::SpawnMonsters()
         }
     }
 
-    //¸ó½ºÅÍ »èÁ¦
+    //ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
     World->GetTimerManager().SetTimer(
         DestroyTimerHandle,
         this,
@@ -184,7 +184,7 @@ void UMonsterSpawnComponent::SpawnMonsters()
         MonsterLifeTime,
         false);
 
-    //¸®½ºÆù
+    //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     if (bIsSpawning)
     {
         World->GetTimerManager().SetTimer(
@@ -208,4 +208,4 @@ void UMonsterSpawnComponent::DestroyAllMonsters()
 }
 
 
-//¾ÆÄ§ -> ¸ó½ºÅÍ µð½ºÆù ´Ù½Ã ÀûÀº¼ö·Î ¼ÒÈ¯
+//ï¿½ï¿½Ä§ -> ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ù½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È¯
