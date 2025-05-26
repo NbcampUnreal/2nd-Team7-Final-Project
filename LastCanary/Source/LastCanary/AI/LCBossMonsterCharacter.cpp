@@ -1,7 +1,7 @@
 ﻿#include "AI/LCBossMonsterCharacter.h"
 #include "GameFramework/PlayerController.h"
 #include "TimerManager.h"
-#include "AI/LCBossAIController.h"
+#include "AI/LCBaseBossAIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Animation/AnimInstance.h"
 #include "Kismet/GameplayStatics.h"
@@ -38,7 +38,7 @@ void ALCBossMonsterCharacter::Tick(float DeltaSeconds)
     UpdateScale(DeltaSeconds, bLooked);
     TryTriggerDarkness();
 
-    if (ALCBossAIController* AICon = Cast<ALCBossAIController>(GetController()))
+    if (ALCBaseBossAIController* AICon = Cast<ALCBaseBossAIController>(GetController()))
     {
         if (UBlackboardComponent* BB = AICon->GetBlackboardComponent())
         {
