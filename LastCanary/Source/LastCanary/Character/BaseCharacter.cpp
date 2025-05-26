@@ -270,7 +270,10 @@ void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
 		{
 			return;
 		}
-
+		if (StartMantlingGrounded())
+		{
+			return;
+		}
 		if (GetStance() == AlsStanceTags::Crouching)
 		{
 			SetDesiredStance(AlsStanceTags::Standing);
