@@ -28,11 +28,13 @@ public:
 	bool bIsInHardLandingState = false;
 	void TriggerHardLanding(float DisableDuration);
 	void EndHardLanding();
+	virtual float GetFallDamage(float Amount);
 
-protected:
+
+
 	UPROPERTY(BlueprintReadOnly, Category = "Als Character")
 	TObjectPtr<UAlsCharacterMovementComponent> AlsCharacterMovement;
-
+protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character")
 	TObjectPtr<UAlsCharacterSettings> Settings;
 
