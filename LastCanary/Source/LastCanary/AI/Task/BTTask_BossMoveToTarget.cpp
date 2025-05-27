@@ -22,7 +22,7 @@ EBTNodeResult::Type UBTTask_BossMoveToTarget::ExecuteTask(
 
     FVector TargetLoc = OwnerComp
         .GetBlackboardComponent()
-        ->GetValueAsVector(TEXT("TargetLocation"));
+        ->GetValueAsVector(TEXT("TargetLocationKey"));
 
     EPathFollowingRequestResult::Type MoveResult =
         AICon->MoveToLocation(

@@ -24,12 +24,12 @@ EBTNodeResult::Type UBTTask_MoveToChaseLocation::ExecuteTask(
     AICon->MoveToLocation(
         Dest,
         AcceptanceRadius,
-        true,  // bStopOnOverlap
-        true,  // bUsePathfinding
-        false, // bProjectGoalLocation
-        false, // bAllowPartialPath
-        0,     // NavFilterClass
-        true   // bAllowStrafe
+        true,
+        true,
+        false,
+        false,
+        0,
+        true
     );
 
     return EBTNodeResult::Succeeded;

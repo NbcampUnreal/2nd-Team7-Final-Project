@@ -76,8 +76,6 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Boss|Attack")
     bool RequestAttack();
 
-    virtual void PerformAttack() override;
-
     /* ───── 실시간 복제 상태 ───── */
     UPROPERTY(ReplicatedUsing = OnRep_Rage, BlueprintReadOnly, Category = "Boss|Rage")
     float Rage = 0.f;

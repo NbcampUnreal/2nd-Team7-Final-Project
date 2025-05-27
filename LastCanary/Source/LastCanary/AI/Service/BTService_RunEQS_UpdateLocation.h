@@ -1,30 +1,29 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "BehaviorTree/Services/BTService_RunEQS.h"
-#include "BTService_RunEQS_ChaseTarget.generated.h"
+#include "EnvironmentQuery/EnvQueryTypes.h"
+#include "BTService_RunEQS_UpdateLocation.generated.h"
 
 class UEnvQuery;
 class UEnvQueryInstanceBlueprintWrapper;
 
 UCLASS()
-class LASTCANARY_API UBTService_RunEQS_ChaseTarget : public UBTService_RunEQS
+class LASTCANARY_API UBTService_RunEQS_UpdateLocation : public UBTService_RunEQS
 {
 	GENERATED_BODY()
 
 public:
-    UBTService_RunEQS_ChaseTarget();
+    UBTService_RunEQS_UpdateLocation();
 
 protected:
-    /** 실행할 EQS 에셋 */
+    // 실행할 EQS Asset
     UPROPERTY(EditAnywhere, Category = "AI|EQS")
-    UEnvQuery* ChaseQuery;
+    UEnvQuery* TargetLocationQuery;
 
-    /** 결과를 저장할 블랙보드 키 */
+    // 결과를 쓸 블랙보드 키 (Vector)
     UPROPERTY(EditAnywhere, Category = "AI|Blackboard")
-    FBlackboardKeySelector ChaseLocationKey;
+    FBlackboardKeySelector TargetLocationKey;
 
     virtual void TickNode(
         UBehaviorTreeComponent& OwnerComp,
@@ -37,6 +36,5 @@ protected:
         EEnvQueryStatus::Type QueryStatus);
 
 private:
-    /** EQS 인스턴스 → Blackboard 매핑 */
-    TMap<UEnvQueryInstanceBlueprintWrapper*, UBlackboardComponent*> QueryToBB;
+    TMap<UEnvQueryInstanceBlueprintWrapper*, UBlackboardComponent*> InstanceToBB;
 };

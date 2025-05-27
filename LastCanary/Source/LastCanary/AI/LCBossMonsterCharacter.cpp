@@ -146,18 +146,6 @@ bool ALCBossMonsterCharacter::RequestAttack()
     return false;
 }
 
-void ALCBossMonsterCharacter::PerformAttack()
-{
-    if (RequestAttack())
-    {
-        // 공격 성공 시 추가 로직
-    }
-    else
-    {
-        // 공격 실패(쿨다운 등) 시
-    }
-}
-
 void ALCBossMonsterCharacter::PlayNormal()
 {
     if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
