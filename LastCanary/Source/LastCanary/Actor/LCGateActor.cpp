@@ -36,7 +36,7 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 	{
 		if (TargetMapID != 0)
 		{
-			//GISubsystem->ChangeLevelByMapID(TargetMapID);
+			GISubsystem->ChangeLevelByMapID(TargetMapID);
 			LOG_Frame_WARNING(TEXT("Gate actor %s is changing level to map ID %d."), *GetName(), TargetMapID);
 		}
 		else
@@ -44,6 +44,11 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 			LOG_Frame_WARNING(TEXT("No valid target map set on GateActor."));
 		}
 	}
+}
+
+FString ALCGateActor::GetInteractMessage_Implementation() const
+{
+	return TEXT("Press [F] to Interact");
 }
 
 void ALCGateActor::SetTargetMapID(const int32& InMapID)
