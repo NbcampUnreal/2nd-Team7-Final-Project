@@ -7,6 +7,9 @@
 #include "EnhancedInputSubsystems.h"
 #include "Components/BoxComponent.h"
 
+#include "UI/UIElement/InGameHUD.h"
+#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+
 #include "Interface/InteractableInterface.h"
 
 //#include "ALS/Public/Utility/AlsVector.h"
@@ -93,7 +96,7 @@ void ABaseCharacter::NotifyControllerChanged()
 
 void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo)
 {
-	
+
 	if (Camera->IsActive())
 	{
 		Camera->GetViewInfo(ViewInfo);
@@ -101,7 +104,7 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 	}
 
 	Super::CalcCamera(DeltaTime, ViewInfo);
-	
+
 }
 
 
@@ -138,7 +141,7 @@ void ABaseCharacter::Handle_Look(const FInputActionValue& ActionValue)
 		return;
 	}
 	const FVector2f Value{ ActionValue.Get<FVector2D>() };
-	
+
 	AddControllerPitchInput(Value.Y * LookUpRate);
 	AddControllerYawInput(Value.X * LookRightRate);
 }
@@ -187,7 +190,7 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 		{
 			PC->SetSprintingStateToPlayerState(false);
 		}
-	}	
+	}
 }
 
 void ABaseCharacter::Handle_SprintOnPlayerState(const FInputActionValue& ActionValue, float multiplier)
@@ -357,7 +360,7 @@ void ABaseCharacter::Handle_Interact(AActor* HitActor)
 	/*
 	if(Hit.Type == ItemClass)
 		PickupItem(Hit);
-	*/	
+	*/
 }
 
 void ABaseCharacter::PickupItem()
@@ -383,7 +386,9 @@ void ABaseCharacter::OnInteractBoxBeginOverlap(UPrimitiveComponent* OverlappedCo
 	bool bFromSweep, const FHitResult& SweepResult)
 {
 	if (!OtherActor || OtherActor == this)
+	{
 		return;
+	}
 
 	// Optional: 인터페이스 확인
 	/*
@@ -401,6 +406,65 @@ void ABaseCharacter::OnInteractBoxBeginOverlap(UPrimitiveComponent* OverlappedCo
 
 }
 
+void ABaseCharacter::OverlapCheckFunction()
+{
+	TArray<AActor*> OverlappingActors;
+	InteractDetectionBox->GetOverlappingActors(OverlappingActors);
+
+	AActor* ClosestInteractable = nullptr;
+	float ClosestDistance = MAX_FLT;
+
+	for (AActor* Actor : OverlappingActors)
+	{
+		if (!Actor || Actor == this)
+		{
+			continue;
+		}
+
+		if (Actor->Implements<UInteractableInterface>())
+		{
+			float Distance = FVector::Dist(Actor->GetActorLocation(), GetActorLocation());
+			if (Distance < ClosestDistance)
+			{
+				ClosestDistance = Distance;
+				ClosestInteractable = Actor;
+			}
+		}
+	}
+
+	ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+	if (PC)
+	{
+		if (ClosestInteractable)
+		{
+			FString Message = IInteractableInterface::Execute_GetInteractMessage(ClosestInteractable);
+			if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+			{
+				if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+				{
+					if (UInGameHUD* HUD = Cast<UInGameHUD>(UIManager->GetInGameHUD()))
+					{
+						HUD->SetInteractMessage(Message);
+						HUD->SetInteractMessageVisible(true);
+					}
+				}
+			}
+		}
+	}
+	else
+	{
+		if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+		{
+			if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+			{
+				if (UInGameHUD* HUD = Cast<UInGameHUD>(UIManager->GetInGameHUD()))
+				{
+					HUD->SetInteractMessageVisible(false);
+				}
+			}
+		}
+	}
+}
 
 void ABaseCharacter::OnInteractBoxEndOverlap(UPrimitiveComponent* OverlappedComp,
 	AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
@@ -412,37 +476,50 @@ void ABaseCharacter::OnInteractBoxEndOverlap(UPrimitiveComponent* OverlappedComp
 	}
 
 	GetWorld()->GetTimerManager().ClearTimer(OverlapCheckTimerHandle);
+
+	if (ABasePlayerController* PC = Cast<ABasePlayerController>(GetController()))
+	{
+		if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+		{
+			if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+			{
+					if (UInGameHUD* HUD = Cast<UInGameHUD>(UIManager->GetInGameHUD()))
+					{
+						HUD->SetInteractMessageVisible(false);
+					}
+			}
+		}
+	}
 }
 
-
-void ABaseCharacter::OverlapCheckFunction()
-{
-	// 오버랩 중일 때 해야 할 반복 작업 수행
-	if (!bIsPossessed)
-	{
-		return;
-	}
-	// 라인트레이스로 시야 안에 정확히 들어왔는지 확인
-	FVector Start = Camera->GetComponentLocation();
-	FVector End = Start + (Camera->GetForwardVector() * 200.0f);
-
-	FHitResult Hit;
-	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(this);
-
-	bool bHit = GetWorld()->LineTraceSingleByChannel(
-		Hit, Start, End, ECC_GameTraceChannel1, Params);
-
-	if (bHit)
-	{
-		// 감지 성공 → UI 표시
-		/*
-			//TODO: UI띄우기
-			//GetGameInstance->GetUIManager->적당한 UI 띄우는 함수...();
-		*/
-	}
-	// 필요하면 조건에 따라 타이머를 멈출 수도 있음
-}
+//void ABaseCharacter::OverlapCheckFunction()
+//{
+//	// 오버랩 중일 때 해야 할 반복 작업 수행
+//	if (!bIsPossessed)
+//	{
+//		return;
+//	}
+//	// 라인트레이스로 시야 안에 정확히 들어왔는지 확인
+//	FVector Start = Camera->GetComponentLocation();
+//	FVector End = Start + (Camera->GetForwardVector() * 200.0f);
+//
+//	FHitResult Hit;
+//	FCollisionQueryParams Params;
+//	Params.AddIgnoredActor(this);
+//
+//	bool bHit = GetWorld()->LineTraceSingleByChannel(
+//		Hit, Start, End, ECC_GameTraceChannel1, Params);
+//
+//	if (bHit)
+//	{
+//		// 감지 성공 → UI 표시
+//		/*
+//			//TODO: UI띄우기
+//			//GetGameInstance->GetUIManager->적당한 UI 띄우는 함수...();
+//		*/
+//	}
+//	// 필요하면 조건에 따라 타이머를 멈출 수도 있음
+//}
 
 void ABaseCharacter::SetPossess(bool IsPossessed)
 {
@@ -500,7 +577,7 @@ void ABaseCharacter::EquipItemFromCurrentQuickSlot(int QuickSlotIndex)
 		UE_LOG(LogTemp, Warning, TEXT("Invalid quick slot index: %d"), QuickSlotIndex);
 		return;
 	}
-	
+
 	if (QuickSlotIndex >= QuickSlots.Num())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Invalid quick slot index : %d (Out of Range)"), QuickSlotIndex);
@@ -535,7 +612,7 @@ void ABaseCharacter::UnequipCurrentItem()
 
 
 float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
-{	
+{
 
 	UE_LOG(LogTemp, Log, TEXT("Character Take Damage"));
 
@@ -622,7 +699,7 @@ EPlayerState ABaseCharacter::CheckPlayerCurrentState()
 		if (MyPlayerState)
 		{
 			return MyPlayerState->CurrentState;
-			
+
 		}
 	}
 	return EPlayerState::None;
@@ -675,7 +752,7 @@ void ABaseCharacter::RefreshOverlayObject(int index)
 		OverlaySkeletalMesh->SetSkinnedAssetAndUpdate(NULL, true);
 		OverlaySkeletalMesh->SetAnimInstanceClass(NULL);
 	}
-	
+
 }
 
 void ABaseCharacter::AttachOverlayObject(UStaticMesh* NewStaticMesh, USkeletalMesh* NewSkeletalMesh, TSubclassOf<UAnimInstance> NewAnimationClass, FName SocketName, bool bUseLeftGunBone)
@@ -707,16 +784,16 @@ void ABaseCharacter::AttachOverlayObject(UStaticMesh* NewStaticMesh, USkeletalMe
 	);
 	OverlayStaticMesh->SetStaticMesh(NewStaticMesh);
 	OverlayStaticMesh->AttachToComponent(GetMesh(), AttachRules, ResultSocketName);
-	
+
 	OverlaySkeletalMesh->SetSkinnedAssetAndUpdate(NewSkeletalMesh, true);
 	OverlaySkeletalMesh->SetAnimInstanceClass(NewAnimationClass);
-	OverlaySkeletalMesh->AttachToComponent(GetMesh(), AttachRules, ResultSocketName);	
+	OverlaySkeletalMesh->AttachToComponent(GetMesh(), AttachRules, ResultSocketName);
 }
 
 void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(int index)
 {
 	TSubclassOf<UAnimInstance> OverlayAnimationInstanceClass;
-	
+
 	if (index == 0)
 	{
 		OverlayAnimationInstanceClass = RifleAnimationClass;

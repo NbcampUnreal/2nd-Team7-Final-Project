@@ -33,7 +33,9 @@ void ULCGameInstance::LoadMapData()
     {
         if (MapDataRow)
         {
-            MapDataRow->MapID = GetTypeHash(MapDataRow->MapInfo.MapName);
+            MapDataRow->MapID = FCrc::StrCrc32(*MapDataRow->MapInfo.MapName.ToString());
+            //MapDataRow->MapID = GetTypeHash(MapDataRow->MapInfo.MapName);
+
            // LOG_Frame_WARNING(TEXT("Loaded map: %s"), *MapDataRow->MapInfo.MapName.ToString());
         }
     }
@@ -55,13 +57,15 @@ void ULCGameInstance::LoadItemData()
     {
         if (ItemDataRow)
         {
-            // 예: 아이디 해시화 → 캐싱 용도
-            int32 HashedID = GetTypeHash(ItemDataRow->ItemName);
-            ItemDataRow->ItemID = HashedID;
+            ItemDataRow->ItemID = FCrc::StrCrc32(*ItemDataRow->ItemName.ToString());
 
-            LOG_Frame_WARNING(TEXT("Loaded item: %s (Price: %d)"),
+            // 예: 아이디 해시화 → 캐싱 용도
+            // int32 HashedID = GetTypeHash(ItemDataRow->ItemName);
+            // ItemDataRow->ItemID = HashedID;
+
+            /*LOG_Frame_WARNING(TEXT("Loaded item: %s (Price: %d)"),
                 *ItemDataRow->ItemName.ToString(),
-                ItemDataRow->ItemPrice);
+                ItemDataRow->ItemPrice);*/
         }
     }
 
