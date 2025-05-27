@@ -36,16 +36,6 @@ ABaseCharacter::ABaseCharacter()
 	Camera->SetupAttachment(GetMesh());
 	Camera->SetRelativeRotation_Direct({ 0.0f, 90.0f, 0.0f });
 
-	//OverlapBox for Interact Settings
-	InteractDetectionBox = CreateDefaultSubobject<UBoxComponent>(TEXT("InteractDetectionBox"));
-	InteractDetectionBox->SetupAttachment(RootComponent);
-	InteractDetectionBox->SetBoxExtent(FVector(50.f, 100.f, 50.f)); // 얇고 길게
-	InteractDetectionBox->SetRelativeScale3D(FVector(1.f, 1.f, 1.f));
-	InteractDetectionBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	InteractDetectionBox->SetCollisionObjectType(ECC_WorldDynamic);
-	InteractDetectionBox->SetCollisionResponseToAllChannels(ECR_Ignore);
-	InteractDetectionBox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
-	InteractDetectionBox->SetGenerateOverlapEvents(true);
 	SetViewMode(AlsViewModeTags::FirstPerson);
 }
 
@@ -68,15 +58,6 @@ void ABaseCharacter::BeginPlay()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Character BeginPlay - Complete  This is Client."));
 	}
-	if (InteractDetectionBox && GetMesh())
-	{
-		InteractDetectionBox->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("head"));
-		InteractDetectionBox->SetRelativeLocation(FVector(0.f, 100.f, 0.f));  // 
-		InteractDetectionBox->SetRelativeRotation(FRotator(0.f, -10.f, 0.f));  // 
-	}
-
-	InteractDetectionBox->OnComponentBeginOverlap.AddDynamic(this, &ABaseCharacter::OnInteractBoxBeginOverlap);
-	InteractDetectionBox->OnComponentEndOverlap.AddDynamic(this, &ABaseCharacter::OnInteractBoxEndOverlap);
 
 	CurrentQuickSlotIndex = 0;
 
@@ -378,44 +359,19 @@ void ABaseCharacter::PickupItem()
 	*/
 }
 
-void ABaseCharacter::OnInteractBoxBeginOverlap(UPrimitiveComponent* OverlappedComp,
-	AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
-	bool bFromSweep, const FHitResult& SweepResult)
+void ABaseCharacter::StartInteractableObjectCheckFunctionTimer()
 {
-	if (!OtherActor || OtherActor == this)
-		return;
-
-	// Optional: 인터페이스 확인
-	/*
-	if (!OtherActor->Implements<UInteractable>())
-		return;
-	*/
-
-
-	// 타이머가 이미 돌아가고 있으면 다시 시작하지 않음
-	if (!GetWorld()->GetTimerManager().IsTimerActive(OverlapCheckTimerHandle))
-	{
-		// 0.1초마다 반복 실행 (주기는 필요에 따라 조절)
-		GetWorld()->GetTimerManager().SetTimer(OverlapCheckTimerHandle, this, &ABaseCharacter::OverlapCheckFunction, 0.1f, true);
-	}
-
+	// 0.1초 간격으로 InteractableObjectCheckFunction을 반복 실행
+	GetWorld()->GetTimerManager().SetTimer(
+		InteractableObjectCheckTimerHandle,                     // 타이머 핸들
+		this,                                                   // 대상 객체
+		&ABaseCharacter::InteractableObjectCheckFunction,       // 실행할 함수
+		0.5f,                                                   // 간격(초)
+		true                                                    // 반복 여부
+	);
 }
 
-
-void ABaseCharacter::OnInteractBoxEndOverlap(UPrimitiveComponent* OverlappedComp,
-	AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-{
-	if (OtherActor && OtherActor == CurrentFocusedActor)
-	{
-		//TODO: HideInteractUI();
-		CurrentFocusedActor = nullptr;
-	}
-
-	GetWorld()->GetTimerManager().ClearTimer(OverlapCheckTimerHandle);
-}
-
-
-void ABaseCharacter::OverlapCheckFunction()
+void ABaseCharacter::InteractableObjectCheckFunction()
 {
 	// 오버랩 중일 때 해야 할 반복 작업 수행
 	if (!bIsPossessed)

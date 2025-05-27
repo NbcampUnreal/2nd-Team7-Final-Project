@@ -91,25 +91,13 @@ public: //Functions to process controller input.
 public: //Interact Function
 	void PickupItem();
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interact")
-	UBoxComponent* InteractDetectionBox;
-
 	// 현재 바라보고 있는 상호작용 가능한 액터
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interact")
 	AActor* CurrentFocusedActor;
 
-	UFUNCTION()
-	void OnInteractBoxBeginOverlap(UPrimitiveComponent* OverlappedComp,
-		AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
-		bool bFromSweep, const FHitResult& SweepResult);
-
-	UFUNCTION()
-	void OnInteractBoxEndOverlap(UPrimitiveComponent* OverlappedComp,
-		AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
-	
-	FTimerHandle OverlapCheckTimerHandle;
-	void OverlapCheckFunction();
-
+	FTimerHandle InteractableObjectCheckTimerHandle;
+	void StartInteractableObjectCheckFunctionTimer();
+	void InteractableObjectCheckFunction();
 public:
 	// 아이템 퀵슬롯 및 변경 관련 로직
 	
