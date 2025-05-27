@@ -146,8 +146,11 @@ public:
 public:
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	void HandlePlayerDeath();
-	virtual float GetFallDamage(float Amount) override;
+	virtual float GetFallDamage(float Velocity) override;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dmaage")
+	float FallDamageThreshold = 1000.0f;
+
 	//Character Movement
 public:
 	bool CheckHardLandState();
@@ -201,4 +204,17 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	UStaticMesh* SM_Torch;
 
+
+public:
+	//애니메이션 몽타주
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UAnimMontage* InteractMontage;
+
+	UFUNCTION()
+	void PlayInteractionMontage(AActor* Target);
+
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "TEST")
+	bool bIsGetFallDownDamage = false;
 };

@@ -270,7 +270,10 @@ void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
 		{
 			return;
 		}
-
+		if (StartMantlingGrounded())
+		{
+			return;
+		}
 		if (GetStance() == AlsStanceTags::Crouching)
 		{
 			SetDesiredStance(AlsStanceTags::Standing);
@@ -348,6 +351,7 @@ void ABaseCharacter::Handle_Interact(AActor* HitActor)
 	else
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Handle_Interact: HitActor %s does not implement IInteractableInterface"), *HitActor->GetName());
+		PlayInteractionMontage(HitActor);
 	}
 	//TO DO...
 	/*
@@ -550,10 +554,21 @@ float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageE
 	return DamageAmount;
 }
 
-float ABaseCharacter::GetFallDamage(float Amount)
+float ABaseCharacter::GetFallDamage(float Velocity)
 {
-	Super::GetFallDamage(Amount);
-	UE_LOG(LogTemp, Log, TEXT("player Take Fall Damage : %f"), Amount);
+	Super::GetFallDamage(Velocity);
+	if (bIsGetFallDownDamage == false)
+	{
+		return 0;
+	}
+
+	if (-Velocity < FallDamageThreshold)
+	{
+		return 0;
+	}
+
+	float FallDamage = (-Velocity - FallDamageThreshold) / 10.0f;
+	UE_LOG(LogTemp, Log, TEXT("player Take Fall Damage : %f"), Velocity);
 	ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
 	if (PC)
 	{
@@ -562,10 +577,10 @@ float ABaseCharacter::GetFallDamage(float Amount)
 		if (MyPlayerState)
 		{
 			UE_LOG(LogTemp, Log, TEXT("State Existed"));
-			MyPlayerState->ApplyDamage(Amount);
+			MyPlayerState->ApplyDamage(FallDamage);
 		}
 	}
-	return Amount;
+	return FallDamage;
 }
 
 void ABaseCharacter::HandlePlayerDeath()
@@ -732,4 +747,44 @@ void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(int index)
 	{
 		GetMesh()->LinkAnimClassLayers(DefaultAnimationClass);
 	}
+}
+
+
+
+/// <summary>
+/// 물체 별 인터렉션애니메이션 몽타주 재생 함수
+/// </summary>
+/// <param name="Target"></param>
+
+void ABaseCharacter::PlayInteractionMontage(AActor* Target)
+{
+	if (!Target || !GetMesh() || !GetMesh()->GetAnimInstance())
+		return;
+	
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+
+	UAnimMontage* MontageToPlay = InteractMontage;
+
+	// 1. 대상 클래스별로 분기
+	/*
+	if (Target->IsA(ADoorActor::StaticClass()))
+	{
+		MontageToPlay = OpenDoorMontage;
+	}
+	else if (Target->IsA(AChestActor::StaticClass()))
+	{
+		MontageToPlay = OpenChestMontage;
+	}
+	else if (Target->ActorHasTag("Tree"))
+	{
+		MontageToPlay = ChopTreeMontage;
+	}
+	*/
+	// 2. 몽타주 재생
+	if (MontageToPlay)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Anim Montage"));
+		AnimInstance->Montage_Play(MontageToPlay);
+	}
+	
 }
