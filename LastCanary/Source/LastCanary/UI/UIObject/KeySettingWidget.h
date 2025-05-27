@@ -314,4 +314,9 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void UpdateMappings(FName DisplayName, FKey Key);
+
+	//TMap<FName, FKey> PendingMappings;
+
+	//void QueueMapping(FName MappingName, FKey Key);
+	//void ApplyPendingMappings();
 };
