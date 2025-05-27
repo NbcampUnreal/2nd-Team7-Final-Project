@@ -19,7 +19,7 @@ class UUIElementCreateSession;
 class UPopupLoading;
 class UInventoryMainWidget;
 class UBackpackInventoryWidget;
-class UToolbarInventoryWidget
+class UToolbarInventoryWidget;
 
 UCLASS(BlueprintType)
 class LASTCANARY_API ULCUIManagerSettings : public UDataAsset
