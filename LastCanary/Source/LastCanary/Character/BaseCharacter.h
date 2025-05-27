@@ -214,6 +214,14 @@ public:
 	UFUNCTION()
 	void PlayInteractionMontage(AActor* Target);
 
+	UFUNCTION(Server, Reliable)
+	void Server_PlayMontage(UAnimMontage* MontageToPlay);
+	void Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay);
+	
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayMontage(UAnimMontage* MontageToPlay);
+	void Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay);
+	
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "TEST")
 	bool bIsGetFallDownDamage = false;

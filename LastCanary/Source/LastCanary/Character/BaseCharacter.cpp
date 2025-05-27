@@ -760,11 +760,9 @@ void ABaseCharacter::PlayInteractionMontage(AActor* Target)
 {
 	if (!Target || !GetMesh() || !GetMesh()->GetAnimInstance())
 		return;
-	
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+
 
 	UAnimMontage* MontageToPlay = InteractMontage;
-
 	// 1. 대상 클래스별로 분기
 	/*
 	if (Target->IsA(ADoorActor::StaticClass()))
@@ -784,7 +782,19 @@ void ABaseCharacter::PlayInteractionMontage(AActor* Target)
 	if (MontageToPlay)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Anim Montage"));
-		AnimInstance->Montage_Play(MontageToPlay);
+		Server_PlayMontage(MontageToPlay);
+		
 	}
 	
+}
+
+void ABaseCharacter::Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay)
+{
+	Multicast_PlayMontage(MontageToPlay);
+}
+
+void ABaseCharacter::Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay)
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	AnimInstance->Montage_Play(MontageToPlay);
 }
