@@ -21,17 +21,17 @@ public:
     // 바인딩된 UI 컴포넌트
     //-----------------------------------------------------
 
-    /** 아이템 이름 텍스트 */
     UPROPERTY(meta = (BindWidget))
     class UTextBlock* ItemNameText;
 
-    /** 아이템 아이콘 이미지 */
     UPROPERTY(meta = (BindWidget))
     class UImage* ItemIconImage;
 
-    /** 아이템 수량 텍스트 */
     UPROPERTY(meta = (BindWidget))
     class UTextBlock* ItemQuantityText;
+
+    UPROPERTY(meta = (BindWidget))
+    class UBorder* SlotBorder;
 
     //-----------------------------------------------------
     // 슬롯 데이터
@@ -52,6 +52,15 @@ public:
     /** 연결된 인벤토리 컴포넌트 참조 */
     UPROPERTY(BlueprintReadOnly, Category = "Inventory|Data")
     UInventoryComponentBase* InventoryComponent;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual Settings")
+    FLinearColor EquippedBorderColor = FLinearColor(0.0f, 1.0f, 0.0f, 0.3f);
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual Settings")
+    FLinearColor NormalBorderColor = FLinearColor(0.2f, 0.2f, 0.2f, 0.3f);
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual Settings")
+    FLinearColor EmptyBorderColor = FLinearColor(0.5f, 0.5f, 0.5f, 0.3f);
 
     //-----------------------------------------------------
     // 툴팁 관련
@@ -122,6 +131,9 @@ private:
 
     /** 툴팁 위치 업데이트 */
     void UpdateTooltipPosition();
+
+    /** 보더 색상 업데이트 */
+    void UpdateBorderColor();
 
     // TODO : 추후 구현 예정인 블루프린트 이벤트 (현재 미사용)
     /*

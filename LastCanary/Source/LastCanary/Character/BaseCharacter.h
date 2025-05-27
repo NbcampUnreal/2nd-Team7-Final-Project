@@ -110,7 +110,7 @@ public: //Interact Function
 	UFUNCTION()
 	void OnInteractBoxEndOverlap(UPrimitiveComponent* OverlappedComp,
 		AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
-	
+
 	FTimerHandle OverlapCheckTimerHandle;
 	void OverlapCheckFunction();
 
@@ -123,7 +123,7 @@ public:
 
 	// 현재 장착된 아이템
 	UObject* HeldItem = nullptr;
-	
+
 	//TODO: 아이템 클래스 들어오면 반환 값 바꾸기
 	void GetHeldItem();
 	void EquipItem(UObject* Item);
@@ -150,7 +150,7 @@ public:
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	void HandlePlayerDeath();
 	virtual float GetFallDamage(float Velocity) override;
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dmaage")
 	float FallDamageThreshold = 1000.0f;
 
@@ -217,7 +217,7 @@ public:
 	UFUNCTION()
 	void PlayInteractionMontage(AActor* Target);
 
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "TEST")
 	bool bIsGetFallDownDamage = false;
 
@@ -252,7 +252,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Equipment")
 	void SetEquipped(bool bEquip);
-	
+
 	// 임의적으로 만든 캐릭터의 상호작용 함수
 	bool TryPickupItem(AItemBase* HitItem);
 	UFUNCTION(Server, Reliable)
@@ -275,16 +275,25 @@ public:
 
 	// 임시 인벤토리 확인용
 public:
-    /** 인벤토리 UI를 토글합니다 */
-    UFUNCTION(BlueprintCallable, Category = "Character|UI")
-    void ToggleInventory();
+	/** 인벤토리 UI를 토글합니다 */
+	UFUNCTION(BlueprintCallable, Category = "Character|UI")
+	void ToggleInventory();
 
-    /** 인벤토리가 현재 열려있는지 확인 */
-    UFUNCTION(BlueprintCallable, Category = "Character|UI")
-    bool IsInventoryOpen() const;
+	/** 인벤토리가 현재 열려있는지 확인 */
+	UFUNCTION(BlueprintCallable, Category = "Character|UI")
+	bool IsInventoryOpen() const;
 
 private:
-    /** 인벤토리 UI가 열려있는지 추적 */
-    UPROPERTY(Replicated)
-    bool bInventoryOpen = false;
+	/** 인벤토리 UI가 열려있는지 추적 */
+	UPROPERTY(Replicated)
+	bool bInventoryOpen = false;
+
+public:
+	/** 현재 장착된 아이템 드랍 */
+	UFUNCTION(BlueprintCallable, Category = "Character|Inventory")
+	void DropCurrentItem();
+
+	/** 특정 슬롯 아이템 드랍 */
+	UFUNCTION(BlueprintCallable, Category = "Character|Inventory")
+	void DropItemAtSlot(int32 SlotIndex, int32 Quantity = 1);
 };

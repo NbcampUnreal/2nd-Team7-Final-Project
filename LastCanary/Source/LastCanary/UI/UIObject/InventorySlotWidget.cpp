@@ -3,6 +3,7 @@
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
+#include "Components/Border.h"
 #include "LastCanary.h"
 
 void UInventorySlotWidget::SetItemData(const FBaseItemSlotData& InItemData, UDataTable* InItemDataTable)
@@ -49,14 +50,21 @@ void UInventorySlotWidget::UpdateSlotUI()
 	if (ItemData.ItemRowName.IsNone())
 	{
 		if (ItemNameText)
+		{
 			ItemNameText->SetText(FText::GetEmpty());
+		}
 
 		if (ItemIconImage)
+		{
 			ItemIconImage->SetVisibility(ESlateVisibility::Hidden);
+		}
 
 		if (ItemQuantityText)
+		{
 			ItemQuantityText->SetText(FText::GetEmpty());
+		}
 
+		UpdateBorderColor();
 		return;
 	}
 
@@ -99,6 +107,8 @@ void UInventorySlotWidget::UpdateSlotUI()
 			ItemQuantityText->SetVisibility(ESlateVisibility::Hidden);
 		}
 	}
+
+	UpdateBorderColor();
 
 	LOG_Item_WARNING(TEXT("[InventorySlotWidget::UpdateSlotUI] UI 업데이트 완료: %s (Q:%d)"),
 		*ItemData.ItemRowName.ToString(), ItemData.Quantity);
@@ -213,6 +223,38 @@ void UInventorySlotWidget::UpdateTooltipPosition()
 
 		ItemTooltipWidget->SetPositionInViewport(TooltipPosition);
 	}
+}
+
+void UInventorySlotWidget::UpdateBorderColor()
+{
+	if (!SlotBorder)
+	{
+		// 보더가 바인딩되지 않았다면 로그만 남기고 리턴
+		UE_LOG(LogTemp, VeryVerbose, TEXT("[UpdateBorderColor] SlotBorder가 바인딩되지 않음"));
+		return;
+	}
+
+	FLinearColor TargetColor;
+
+	if (ItemData.ItemRowName.IsNone())
+	{
+		// 빈 슬롯
+		TargetColor = EmptyBorderColor;
+	}
+	else if (ItemData.bIsEquipped)
+	{
+		// 장착된 아이템
+		TargetColor = EquippedBorderColor;
+		UE_LOG(LogTemp, Warning, TEXT("[UpdateBorderColor] 슬롯 %d 장착 상태로 색상 변경"), SlotIndex);
+	}
+	else
+	{
+		// 일반 아이템
+		TargetColor = NormalBorderColor;
+	}
+
+	// 보더 색상 설정
+	SlotBorder->SetBrushColor(TargetColor);
 }
 
 void UInventorySlotWidget::ShowTooltip()

@@ -11,6 +11,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInventoryUpdated);
 class ULCUserWidgetBase;
 class UItemTooltipWidget;
 class ABaseCharacter;
+class UItemSpawnerComponent;
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class LASTCANARY_API UInventoryComponentBase : public UActorComponent
@@ -25,6 +26,10 @@ protected:
 
     UFUNCTION(BlueprintCallable, Category = "Inventory|Internal")
     void InitializeSlots();
+
+    /** 아이템 스포너 컴포넌트 */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+    UItemSpawnerComponent* ItemSpawner;
 
     /** 캐싱된 소유자 캐릭터 */
     UPROPERTY(BlueprintReadOnly, Category = "Inventory|Cache")
@@ -115,10 +120,48 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Inventory|UI")
     void HideTooltip();
 
+public:
+    //-----------------------------------------------------
+    // 아이템 드랍 기능 (RPC 패턴 적용)
+    //-----------------------------------------------------
+
+    /** 특정 슬롯의 아이템을 캐릭터 앞에 드랍 (클라이언트용) */
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Operations")
+    virtual bool TryDropItemAtSlot(int32 SlotIndex, int32 Quantity = 1);
+
+    /** 특정 아이템을 캐릭터 앞에 드랍 (클라이언트용) */
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Operations")
+    virtual bool TryDropItem(FName ItemRowName, int32 Quantity = 1);
+
+    /** 서버에서 특정 슬롯 아이템 드랍 */
+    UFUNCTION(Server, Reliable, Category = "Inventory|Operations")
+    void Server_TryDropItemAtSlot(int32 SlotIndex, int32 Quantity);
+    void Server_TryDropItemAtSlot_Implementation(int32 SlotIndex, int32 Quantity);
+
+    /** 서버에서 특정 아이템 드랍 */
+    UFUNCTION(Server, Reliable, Category = "Inventory|Operations")
+    void Server_TryDropItem(FName ItemRowName, int32 Quantity);
+    void Server_TryDropItem_Implementation(FName ItemRowName, int32 Quantity);
+
+protected:
+    /** 실제 슬롯 드랍 로직 (서버에서만 실행) */
+    virtual bool Internal_TryDropItemAtSlot(int32 SlotIndex, int32 Quantity);
+
+    /** 실제 아이템 드랍 로직 (서버에서만 실행) */
+    virtual bool TryDropItem_Internal(FName ItemRowName, int32 Quantity);
+
+    /** 드랍 위치 계산 */
+    UFUNCTION(BlueprintPure, Category = "Inventory|Utility")
+    FVector CalculateDropLocation() const;
+
+    /** 아이템 스포너 접근자 */
+    UFUNCTION(BlueprintPure, Category = "Inventory")
+    UItemSpawnerComponent* GetItemSpawner() const { return ItemSpawner; }
+
     //-----------------------------------------------------
     // 네트워크 기능
     //-----------------------------------------------------
-
+public:
     /** 리플리케이션 속성 설정 */
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 

@@ -42,11 +42,11 @@ private:
     virtual bool TryStoreItem(AItemBase* ItemActor) override;
     virtual void PostAddProcess() override;
 
-public:
     //-----------------------------------------------------
     // 인벤토리 공개 인터페이스 (오버라이드)
     //-----------------------------------------------------
 
+public:
     virtual bool TryAddItemSlot(FName ItemRowName, int32 Amount) override;
     virtual bool TryDecreaseItem(FName ItemRowName, int32 Amount) override;
     virtual int32 GetItemCount(FName ItemRowName) const override;
@@ -74,6 +74,32 @@ public:
 
     UFUNCTION(BlueprintPure, Category = "Toolbar|Equipment")
     int32 GetCurrentEquippedSlotIndex() const;
+
+    //-----------------------------------------------------
+    // 툴바 특화 드랍 기능
+    //-----------------------------------------------------
+
+private:
+    /** 실제 드랍 로직 (서버에서만 실행) */
+    bool Internal_DropCurrentEquippedItem();
+
+public:
+    /** 현재 장착된 아이템 드랍 (클라이언트용) */
+    UFUNCTION(BlueprintCallable, Category = "Toolbar|Drop")
+    bool DropCurrentEquippedItem();
+
+    /** 서버에서 현재 장착된 아이템 드랍 */
+    UFUNCTION(Server, Reliable, Category = "Toolbar|Drop")
+    void Server_DropCurrentEquippedItem();
+    void Server_DropCurrentEquippedItem_Implementation();
+
+    /** 특정 슬롯 아이템 드랍 (클라이언트용) */
+    virtual bool TryDropItemAtSlot(int32 SlotIndex, int32 Quantity = 1) override;
+
+    /** 서버에서 특정 슬롯 아이템 드랍 */
+    UFUNCTION(Server, Reliable, Category = "Toolbar|Drop")
+    void Server_DropItemAtSlot(int32 SlotIndex, int32 Quantity);
+    void Server_DropItemAtSlot_Implementation(int32 SlotIndex, int32 Quantity);
 
     //-----------------------------------------------------
     // 네트워크 기능

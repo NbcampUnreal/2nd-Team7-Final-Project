@@ -604,3 +604,8 @@ void AGunBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetime
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
     DOREPLIFETIME(AGunBase, RecentHits);
 }
+
+USkeletalMeshComponent* AGunBase::GetGunMesh()
+{
+    return GunMesh;
+}

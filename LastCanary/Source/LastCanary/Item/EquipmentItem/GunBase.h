@@ -215,4 +215,6 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Debug")
     bool bDrawImpactDebug = false;
+
+    USkeletalMeshComponent* GetGunMesh();
 };

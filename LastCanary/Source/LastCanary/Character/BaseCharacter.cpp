@@ -204,6 +204,8 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 			PC->SetSprintingStateToPlayerState(false);
 		}
 	}
+	// 임시로 넣은 코드이니 꼭 삭제할 것!
+	DropCurrentItem();
 }
 
 void ABaseCharacter::Handle_SprintOnPlayerState(const FInputActionValue& ActionValue, float multiplier)
@@ -1128,4 +1130,32 @@ void ABaseCharacter::ToggleInventory()
 bool ABaseCharacter::IsInventoryOpen() const
 {
 	return bInventoryOpen;
+}
+
+void ABaseCharacter::DropCurrentItem()
+{
+	if (!IsLocallyControlled())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[DropCurrentItem] 로컬 컨트롤이 아님"));
+		return;
+	}
+
+	if (ToolbarInventoryComponent)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[DropCurrentItem] 아이템 드랍 시도"));
+		ToolbarInventoryComponent->DropCurrentEquippedItem();
+	}
+}
+
+void ABaseCharacter::DropItemAtSlot(int32 SlotIndex, int32 Quantity)
+{
+	if (!IsLocallyControlled())
+	{
+		return;
+	}
+
+	if (ToolbarInventoryComponent)
+	{
+		ToolbarInventoryComponent->TryDropItemAtSlot(SlotIndex, Quantity);
+	}
 }

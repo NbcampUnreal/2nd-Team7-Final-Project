@@ -8,6 +8,7 @@
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Item/EquipmentItem/BackpackItem.h"
 #include "Item/ItemBase.h"
+#include "Item/ItemSpawnerComponent.h"
 #include "Item/EquipmentItem/EquipmentItemBase.h"
 #include "Item/EquipmentItem/GunBase.h"
 #include "Net/UnrealNetwork.h"
@@ -603,4 +604,118 @@ bool UToolbarInventoryComponent::TryStoreItem(AItemBase* ItemActor)
 void UToolbarInventoryComponent::PostAddProcess()
 {
     OnInventoryUpdated.Broadcast();
+}
+
+bool UToolbarInventoryComponent::DropCurrentEquippedItem()
+{
+    if (GetOwner() && GetOwner()->HasAuthority())
+    {
+        // 서버에서 직접 실행
+        return Internal_DropCurrentEquippedItem();
+    }
+    else
+    {
+        // 클라이언트에서 서버 RPC 호출
+        UE_LOG(LogTemp, Warning, TEXT("[DropCurrentEquippedItem] 클라이언트에서 서버 RPC 호출"));
+        Server_DropCurrentEquippedItem();
+        return true; // RPC 호출 성공 (실제 결과는 서버에서 처리)
+    }
+}
+
+void UToolbarInventoryComponent::Server_DropCurrentEquippedItem_Implementation()
+{
+    UE_LOG(LogTemp, Warning, TEXT("[Server_DropCurrentEquippedItem] 서버에서 실행"));
+
+    // 서버에서 실제 드랍 로직 실행
+    Internal_DropCurrentEquippedItem();
+}
+
+bool UToolbarInventoryComponent::TryDropItemAtSlot(int32 SlotIndex, int32 Quantity)
+{
+    UE_LOG(LogTemp, Warning, TEXT("[ToolbarInventoryComponent::TryDropItemAtSlot] 슬롯 %d 드랍 시도"), SlotIndex);
+
+    // 현재 장착된 아이템을 드랍하는 경우 전용 함수 사용
+    if (SlotIndex == CurrentEquippedSlotIndex && CurrentEquippedSlotIndex >= 0)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[ToolbarInventoryComponent::TryDropItemAtSlot] 장착된 아이템 드랍"));
+        return DropCurrentEquippedItem();
+    }
+
+    return Super::TryDropItemAtSlot(SlotIndex, Quantity);
+}
+
+bool UToolbarInventoryComponent::Internal_DropCurrentEquippedItem()
+{
+    if (CurrentEquippedSlotIndex < 0 || !ItemSlots.IsValidIndex(CurrentEquippedSlotIndex))
+    {
+        LOG_Item_WARNING(TEXT("[DropCurrentEquippedItem_Internal] 현재 장착된 아이템이 없습니다."));
+        return false;
+    }
+
+    if (!GetOwner() || !GetOwner()->HasAuthority())
+    {
+        LOG_Item_WARNING(TEXT("[DropCurrentEquippedItem_Internal] Authority가 없습니다."));
+        return false;
+    }
+
+    if (!IsOwnerCharacterValid())
+    {
+        LOG_Item_WARNING(TEXT("[DropCurrentEquippedItem_Internal] CachedOwnerCharacter가 유효하지 않습니다."));
+        return false;
+    }
+
+    // 현재 장착된 슬롯의 데이터 저장
+    int32 DropSlotIndex = CurrentEquippedSlotIndex;
+    FBaseItemSlotData& SlotData = ItemSlots[DropSlotIndex];
+
+    if (SlotData.ItemRowName.IsNone() || SlotData.Quantity <= 0)
+    {
+        LOG_Item_WARNING(TEXT("[DropCurrentEquippedItem_Internal] 장착된 슬롯이 비어있습니다."));
+        return false;
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("[DropCurrentEquippedItem_Internal] 드랍 시작: 슬롯 %d, 아이템 %s"),
+        DropSlotIndex, *SlotData.ItemRowName.ToString());
+
+    // 드랍 위치 계산
+    FVector DropLocation = CalculateDropLocation();
+
+    // 드랍할 아이템 데이터 준비
+    FBaseItemSlotData DropItemData = SlotData;
+    DropItemData.Quantity = 1; // 1개만 드랍
+
+    // 먼저 장착 해제 (슬롯 데이터 수정 전에)
+    UnequipCurrentItem();
+
+    // 아이템 스폰
+    AItemBase* DroppedItem = ItemSpawner->CreateItemFromData(DropItemData, DropLocation);
+    if (!DroppedItem)
+    {
+        LOG_Item_WARNING(TEXT("[DropCurrentEquippedItem_Internal] 아이템 스폰 실패"));
+        return false;
+    }
+
+    // 인벤토리에서 아이템 제거 (장착 해제 후)
+    SlotData.Quantity -= 1;
+    if (SlotData.Quantity <= 0)
+    {
+        // 슬롯 초기화
+        SlotData = FBaseItemSlotData();
+    }
+
+    // UI 업데이트
+    OnInventoryUpdated.Broadcast();
+
+    LOG_Item_WARNING(TEXT("[DropCurrentEquippedItem_Internal] 아이템 드랍 성공: %s"),
+        *DropItemData.ItemRowName.ToString());
+
+    return true;
+}
+
+void UToolbarInventoryComponent::Server_DropItemAtSlot_Implementation(int32 SlotIndex, int32 Quantity)
+{
+    UE_LOG(LogTemp, Warning, TEXT("[Server_DropItemAtSlot] 서버에서 실행: 슬롯 %d"), SlotIndex);
+
+    // 서버에서 실제 드랍 로직 실행
+    Super::TryDropItemAtSlot(SlotIndex, Quantity);
 }
