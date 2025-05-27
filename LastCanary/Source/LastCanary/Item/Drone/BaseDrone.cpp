@@ -191,13 +191,17 @@ void ABaseDrone::OnRep_CameraPitch()
 }
 
 
+void ABaseDrone::Server_ReturnAsItem_Implementation()
+{
+	Destroy();
+}
 
 void ABaseDrone::ReturnAsItem()
 {
-
+	Server_ReturnAsItem();
 	UE_LOG(LogTemp, Warning, TEXT("Drone return to Item"));
 	//TODO: Spawn Drone Item Class
-	Destroy();
+	
 }
 
 void ABaseDrone::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const

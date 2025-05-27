@@ -140,6 +140,9 @@ protected:
 
 
 public:
-	UFUNCTION()
+	UFUNCTION(Server, Reliable)
+	void Server_ReturnAsItem();
+
+	void Server_ReturnAsItem_Implementation();
 	void ReturnAsItem();
 };
