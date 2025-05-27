@@ -147,3 +147,34 @@ void UOptionWidget::SetTabButtonStyle(UButton* Button, bool bIsSelected)
 		);
 	}
 }
+
+void UOptionWidget::SetApplyButtonEnabled(bool bEnabled)
+{
+	if (ApplyButton)
+	{
+		ApplyButton->SetIsEnabled(bEnabled);
+
+		FLinearColor TintColor = bEnabled
+			? FLinearColor(0.9f, 0.9f, 0.9f)  // 연회색
+			: FLinearColor(0.4f, 0.4f, 0.4f); // 진한 회색으로 다운
+
+		FButtonStyle Style = ApplyButton->WidgetStyle;
+		Style.Normal.TintColor = TintColor;
+		Style.Hovered.TintColor = TintColor * 0.95f;
+		Style.Pressed.TintColor = TintColor * 0.85f;
+
+		ApplyButton->SetStyle(Style);
+		
+		if (ApplyButtonText)
+		{
+			ApplyButtonText->SetColorAndOpacity(
+				bEnabled ? FSlateColor(FLinearColor::Black) : FSlateColor(FLinearColor::White)
+			);
+		}
+	}
+
+	else
+	{
+		LOG_Frame_ERROR(TEXT("Apply Button is nullptr"));
+	}
+}

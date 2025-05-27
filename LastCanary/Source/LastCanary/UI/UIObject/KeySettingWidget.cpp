@@ -10,6 +10,8 @@
 #include "InputAction.h"
 #include "InputTriggers.h"
 #include "InputCoreTypes.h"
+#include "UI/UIElement/OptionWidget.h"
+#include "GameFramework/HUD.h"
 #include "UserSettings/EnhancedInputUserSettings.h"
 
 void UKeySettingWidget::NativeConstruct()
@@ -533,6 +535,46 @@ void UKeySettingWidget::QueuePendingMapping(FName MappingName, FKey Key)
 
 void UKeySettingWidget::CheckForConflicts()
 {
+	TMap<FKey, TArray<FName>> KeyToMappingsNames;
+	TSet<FKey> DuplicateKeys;
+
+	for (const auto& Pair : PendingMappings)
+	{
+		KeyToMappingsNames.FindOrAdd(Pair.Value).Add(Pair.Key);
+	}
+
+	for (const auto& Pair : KeyToMappingsNames)
+	{
+		if (Pair.Value.Num() > 1) // 중복된 키가 있는 경우
+		{
+			DuplicateKeys.Add(Pair.Key);
+		}
+	}
+
+	//Apply 버튼 비활성화
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		UOptionWidget* OptionWidget = GetTypedOuter<UOptionWidget>();
+		if (OptionWidget)
+		{
+			OptionWidget->SetApplyButtonEnabled(DuplicateKeys.IsEmpty());
+		}
+	}
+
+	// 중복 키 시각적 표시
+	for (const auto& Pair : PendingMappings)
+	{
+		FName MappingName = Pair.Key;
+		FKey Key = Pair.Value;
+
+		UTextBlock* Label = GetKeyLabelByMappingName(MappingName);
+		if (Label)
+		{
+			Label->SetColorAndOpacity(
+				DuplicateKeys.Contains(Key) ? FSlateColor(FLinearColor::Red) : FSlateColor(FLinearColor::White)
+			);
+		}
+	}
 }
 
 void UKeySettingWidget::StoreOriginalMappings()
@@ -590,5 +632,31 @@ UInputAction* UKeySettingWidget::FindActionByName(FName MappingName)
 			return Action;
 		}
 	}
+	return nullptr;
+}
+
+UTextBlock* UKeySettingWidget::GetKeyLabelByMappingName(FName MappingName)
+{
+	if (MappingName == "MoveFront") return CurrentKeyMoveForward;
+	if (MappingName == "MoveBack") return CurrentKeyMoveBackward;
+	if (MappingName == "MoveLeft") return CurrentKeyMoveLeft;
+	if (MappingName == "MoveRight") return CurrentKeyMoveRight;
+	if (MappingName == "DroneStrafeLeft_Keyboard") return CurrentKeyStrafeLeft;
+	if (MappingName == "DroneStrafeRight_Keyboard") return CurrentKeyStrafeRight;
+	if (MappingName == "Walk_Keyboard") return CurrentKeyWalk;
+	if (MappingName == "Sprint_Keyboard") return CurrentKeySprint;
+	if (MappingName == "Jump_Keyboard") return CurrentKeyJump;
+	if (MappingName == "Crouch_Keyboard") return CurrentKeyCrouch;
+	if (MappingName == "Interact_Keyboard") return CurrentKeyInteract;
+	if (MappingName == "Aim_Keyboard") return CurrentKeyAim;
+	if (MappingName == "ThrowItem_Keyboard") return CurrentKeyThrowItem;
+	if (MappingName == "VoiceChat_Keyboard") return CurrentKeyVoice;
+	if (MappingName == "ChangeShootingMode_Keyboard") return CurrentKeyChangeShootingMode;
+	if (MappingName == "SelectQuickSlot1_Keyboard") return CurrentKeySelectQuickSlot1;
+	if (MappingName == "SelectQuickSlot2_Keyboard") return CurrentKeySelectQuickSlot2;
+	if (MappingName == "SelectQuickSlot3_Keyboard") return CurrentKeySelectQuickSlot3;
+	if (MappingName == "SelectQuickSlot4_Keyboard") return CurrentKeySelectQuickSlot4;
+	if (MappingName == "OpenPauseMenu_Keyboard") return CurrentKeyOpenPauseMenu;
+	if (MappingName == "ExitDrone_Keyboard") return CurrentKeyExitDrone;
 	return nullptr;
 }

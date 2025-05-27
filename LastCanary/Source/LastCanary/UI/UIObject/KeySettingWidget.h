@@ -4,7 +4,9 @@
 #include "UI/LCUserWidgetBase.h"
 #include "InputMappingContext.h"
 #include "InputAction.h"
+#include "LastCanary.h"
 #include "KeySettingWidget.generated.h"
+
 
 class UInputKeySelector;
 class UTextBlock;
@@ -333,4 +335,7 @@ public:
 	void RevertToOriginalMappings();
 
 	UInputAction* FindActionByName(FName MappingName);
+
+	//중복 확인 후 키 레이블 반환
+	UTextBlock* GetKeyLabelByMappingName(FName MappingName);
 };

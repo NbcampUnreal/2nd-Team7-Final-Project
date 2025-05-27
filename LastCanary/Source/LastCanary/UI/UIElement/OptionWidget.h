@@ -30,6 +30,8 @@ private:
 	UPROPERTY(meta = (BindWidget)) 
 	UButton* CloseButton;
 	UPROPERTY(meta = (BindWidget))
+	UTextBlock* ApplyButtonText;
+	UPROPERTY(meta = (BindWidget))
 	UTextBlock* GeneralTabText;
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* KeySettingTabText;
@@ -56,5 +58,6 @@ public:
 	/* 위젯 게터 */
 	UKeySettingWidget* GetKeySettingWidget() const { return KeySettingWidget; }
 	void SetTabButtonStyle(UButton* Button, bool bIsSelected);
+	void SetApplyButtonEnabled(bool bEnabled);
 };
 
