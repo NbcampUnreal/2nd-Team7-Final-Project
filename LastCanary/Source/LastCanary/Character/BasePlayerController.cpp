@@ -1065,5 +1065,8 @@ void ABasePlayerController::PossessOnDrone()
 
 
 	CurrentPossessedPawn = SpawnedPlayerDrone;
+
+	SpawnedPlayerDrone->SetCharacterLocation(SpanwedPlayerCharacter->GetActorLocation());
+	
 	SetViewTargetWithBlend(SpawnedPlayerDrone, 0.5f);
 }
