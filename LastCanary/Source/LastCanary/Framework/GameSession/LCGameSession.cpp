@@ -5,9 +5,6 @@
 #include "OnlineSubsystemUtils.h"
 #include "Interfaces/OnlineSessionInterface.h"
 
-ALCGameSession::ALCGameSession()
-{
-}
 
 void ALCGameSession::BeginPlay()
 {
@@ -19,12 +16,14 @@ void ALCGameSession::BeginPlay()
 void ALCGameSession::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	Super::EndPlay(EndPlayReason);
+
 	DestroySession();
 }
 
 bool ALCGameSession::ProcessAutoLogin()
 {
-	return true;
+    return Super::ProcessAutoLogin();
+
 }
 
 FString ALCGameSession::ApproveLogin(const FString& Options)
@@ -74,10 +73,10 @@ void ALCGameSession::UnregisterPlayer(const APlayerController* ExitingPlayer)
 
 }
 
-FName ALCGameSession::GetSessionName()
-{
-    return SessionName;
-}
+//FName ALCGameSession::GetSessionName()
+//{
+//    return SessionName;
+//}
 
 void ALCGameSession::DestroySession()
 {

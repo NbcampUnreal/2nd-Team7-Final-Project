@@ -1,8 +1,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "UI/Manager/LCUIManager.h"
 #include "GameFramework/PlayerController.h"
 #include "LCPlayerController.generated.h"
+
+class ULCUIManager;
 
 UCLASS()
 class LASTCANARY_API ALCPlayerController : public APlayerController
@@ -14,4 +17,12 @@ public:
 
 	UFUNCTION()
 	void Login();
+
+	UFUNCTION(Client, Reliable)
+	void Client_UpdatePlayers();
+
+	virtual void Client_UpdatePlayers_Implementation();
+
+protected:
+	TObjectPtr<ULCUIManager> LCUIManager;
 };

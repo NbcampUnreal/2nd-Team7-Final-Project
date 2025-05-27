@@ -41,6 +41,7 @@ public:
 
 	virtual void CreateSession_Implementation(const FString& ServerName, int AmountOfSlots);
 
+
 	UFUNCTION(BlueprintCallable, Category = "Session")
 	FString GetPlayerName() const;
 
