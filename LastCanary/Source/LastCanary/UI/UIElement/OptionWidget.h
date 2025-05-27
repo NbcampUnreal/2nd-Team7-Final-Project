@@ -51,6 +51,10 @@ private:
 	void OnGeneralTabButtonClicked();
 	UFUNCTION()
 	void OnKeySettingTabButtonClicked();
+
+public:
+	/* 위젯 게터 */
+	UKeySettingWidget* GetKeySettingWidget() const { return KeySettingWidget; }
 	void SetTabButtonStyle(UButton* Button, bool bIsSelected);
 };
 

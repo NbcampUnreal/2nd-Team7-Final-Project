@@ -23,6 +23,13 @@ enum class ECharacterMovementState : uint8
     Exhausted
 };
 
+UENUM(BlueprintType)
+enum class EInputMode : uint8
+{
+    Hold,
+    Toggle
+};
+
 // ------------------------------
 // 플레이어 능력치 Struct
 // ------------------------------
@@ -39,6 +46,9 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
     float RunSpeed = 600.f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+    float SptintSpeed = 650.f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
     float CrouchSpeed = 150.f;
