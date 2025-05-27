@@ -405,35 +405,6 @@ void ABaseCharacter::PickupItem()
 	*/
 }
 
-void ABaseCharacter::OnInteractBoxBeginOverlap(UPrimitiveComponent* OverlappedComp,
-	AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
-	bool bFromSweep, const FHitResult& SweepResult)
-{
-	if (!OtherActor || OtherActor == this)
-	{
-		return;
-	}
-
-	// Optional: 인터페이스 확인
-	/*
-	if (!OtherActor->Implements<UInteractable>())
-		return;
-	*/
-
-
-	// 타이머가 이미 돌아가고 있으면 다시 시작하지 않음
-	if (!GetWorld()->GetTimerManager().IsTimerActive(OverlapCheckTimerHandle))
-	{
-		// 0.1초마다 반복 실행 (주기는 필요에 따라 조절)
-		GetWorld()->GetTimerManager().SetTimer(OverlapCheckTimerHandle, this, &ABaseCharacter::OverlapCheckFunction, 0.1f, true);
-	}
-
-}
-
-void ABaseCharacter::Multicast_EquipItemFromQuickSlot_Implementation(int32 Index)
-{
-	EquipItemFromCurrentQuickSlot(Index);
-}
 
 void ABaseCharacter::TraceInteractableActor()
 {
@@ -502,39 +473,13 @@ void ABaseCharacter::TraceInteractableActor()
 					{
 						HUD->SetInteractMessageVisible(false);
 					}
+				}
 			}
 		}
 	}
 }
 
-//void ABaseCharacter::OverlapCheckFunction()
-//{
-//	// 오버랩 중일 때 해야 할 반복 작업 수행
-//	if (!bIsPossessed)
-//	{
-//		return;
-//	}
-//	// 라인트레이스로 시야 안에 정확히 들어왔는지 확인
-//	FVector Start = Camera->GetComponentLocation();
-//	FVector End = Start + (Camera->GetForwardVector() * 200.0f);
-//
-//	FHitResult Hit;
-//	FCollisionQueryParams Params;
-//	Params.AddIgnoredActor(this);
-//
-//	bool bHit = GetWorld()->LineTraceSingleByChannel(
-//		Hit, Start, End, ECC_GameTraceChannel1, Params);
-//
-//	if (bHit)
-//	{
-//		// 감지 성공 → UI 표시
-//		/*
-//			//TODO: UI띄우기
-//			//GetGameInstance->GetUIManager->적당한 UI 띄우는 함수...();
-//		*/
-//	}
-//	// 필요하면 조건에 따라 타이머를 멈출 수도 있음
-//}
+
 
 void ABaseCharacter::SetPossess(bool IsPossessed)
 {
