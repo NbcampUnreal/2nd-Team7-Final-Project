@@ -23,7 +23,7 @@
 #include "Inventory/BackpackInventoryComponent.h"
 #include "Item/ItemBase.h"
 #include "Item/EquipmentItem/EquipmentItemBase.h"
-#include "Net/UnrealNetwork.h"
+#include "UI/Manager/LCUIManager.h"
 #include "LastCanary.h"
 
 ABaseCharacter::ABaseCharacter()
@@ -65,6 +65,8 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& Out
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ABaseCharacter, CurrentQuickSlotIndex);
+	DOREPLIFETIME(ABaseCharacter, EquippedTags);
+	DOREPLIFETIME(ABaseCharacter, bInventoryOpen);
 }
 
 void ABaseCharacter::BeginPlay()
@@ -291,6 +293,8 @@ void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
 		}
 
 		Jump();
+
+		ToggleInventory();
 	}
 	else
 	{
@@ -985,8 +989,111 @@ void ABaseCharacter::Server_UseEquippedItem_Implementation()
 	UseEquippedItem();
 }
 
-void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+void ABaseCharacter::ToggleInventory()
 {
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(ABaseCharacter, EquippedTags);
+	UE_LOG(LogTemp, Warning, TEXT("=== [ABaseCharacter::ToggleInventory] 시작 ==="));
+	UE_LOG(LogTemp, Warning, TEXT("Character: %s"), *GetName());
+	UE_LOG(LogTemp, Warning, TEXT("IsLocallyControlled: %s"), IsLocallyControlled() ? TEXT("True") : TEXT("False"));
+	UE_LOG(LogTemp, Warning, TEXT("NetMode: %d"), (int32)GetNetMode());
+	UE_LOG(LogTemp, Warning, TEXT("LocalRole: %d"), (int32)GetLocalRole());
+
+	// 로컬 플레이어만 UI 조작 가능
+	if (!IsLocallyControlled())
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::ToggleInventory] 로컬 플레이어가 아님 - 중단"));
+		UE_LOG(LogTemp, Warning, TEXT("=== [ABaseCharacter::ToggleInventory] 종료 (로컬 플레이어 아님) ==="));
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[ABaseCharacter::ToggleInventory] 로컬 플레이어 확인 완료"));
+
+	// PlayerController 확인
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!PC)
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::ToggleInventory] PlayerController가 없습니다"));
+		UE_LOG(LogTemp, Error, TEXT("Controller: %s"), GetController() ? *GetController()->GetName() : TEXT("NULL"));
+		UE_LOG(LogTemp, Warning, TEXT("=== [ABaseCharacter::ToggleInventory] 종료 (PlayerController 없음) ==="));
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[ABaseCharacter::ToggleInventory] PlayerController 확인: %s"), *PC->GetName());
+
+	// GameInstance 확인
+	UGameInstance* GameInstance = GetGameInstance();
+	if (!GameInstance)
+	{
+		LOG_Item_ERROR(TEXT("[ABaseCharacter::ToggleInventory] GameInstance가 없습니다"));
+		UE_LOG(LogTemp, Warning, TEXT("=== [ABaseCharacter::ToggleInventory] 종료 (GameInstance 없음) ==="));
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[ABaseCharacter::ToggleInventory] GameInstance 확인: %s"), *GameInstance->GetName());
+
+	// GameInstanceSubsystem을 통해 UIManager 가져오기
+	ULCGameInstanceSubsystem* Subsystem = GameInstance->GetSubsystem<ULCGameInstanceSubsystem>();
+	if (!Subsystem)
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::ToggleInventory] GameInstanceSubsystem이 없습니다"));
+		UE_LOG(LogTemp, Error, TEXT("Available Subsystems:"));
+
+		// 사용 가능한 서브시스템들 출력
+		//if (GameInstance)
+		//{
+		//	auto SubsystemCollection = GameInstance->GetSubsystemCollection<UGameInstanceSubsystem>();
+		//	if (SubsystemCollection)
+		//	{
+		//		UE_LOG(LogTemp, Warning, TEXT("SubsystemCollection exists, checking subsystems..."));
+		//	}
+		//}
+
+		UE_LOG(LogTemp, Warning, TEXT("=== [ABaseCharacter::ToggleInventory] 종료 (Subsystem 없음) ==="));
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[ABaseCharacter::ToggleInventory] Subsystem 확인: %s"), *Subsystem->GetName());
+
+	ULCUIManager* UIManager = Subsystem->GetUIManager();
+	if (!UIManager)
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::ToggleInventory] UIManager가 없습니다"));
+		UE_LOG(LogTemp, Error, TEXT("Subsystem->GetUIManager() returned NULL"));
+		UE_LOG(LogTemp, Warning, TEXT("=== [ABaseCharacter::ToggleInventory] 종료 (UIManager 없음) ==="));
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[ABaseCharacter::ToggleInventory] UIManager 확인: %s"), *UIManager->GetName());
+
+	// 현재 인벤토리 상태 로그
+	UE_LOG(LogTemp, Warning, TEXT("[ABaseCharacter::ToggleInventory] 현재 인벤토리 상태: %s"),
+		bInventoryOpen ? TEXT("열림") : TEXT("닫힘"));
+
+	LOG_Item_WARNING(TEXT("[ABaseCharacter::ToggleInventory] 인벤토리 토글 실행"));
+
+	// UI 토글 전 상태
+	UE_LOG(LogTemp, Warning, TEXT("[ABaseCharacter::ToggleInventory] UIManager->ToggleInventoryPopup() 호출 전"));
+
+	// UI 토글
+	UIManager->ToggleInventoryPopup();
+
+	// UI 토글 후 상태
+	UE_LOG(LogTemp, Warning, TEXT("[ABaseCharacter::ToggleInventory] UIManager->ToggleInventoryPopup() 호출 완료"));
+
+	// 상태 업데이트 (로컬에서만)
+	bool bPreviousState = bInventoryOpen;
+	bInventoryOpen = !bInventoryOpen;
+
+	UE_LOG(LogTemp, Warning, TEXT("[ABaseCharacter::ToggleInventory] 인벤토리 상태 변경: %s -> %s"),
+		bPreviousState ? TEXT("열림") : TEXT("닫힘"),
+		bInventoryOpen ? TEXT("열림") : TEXT("닫힘"));
+
+	LOG_Item_WARNING(TEXT("[ABaseCharacter::ToggleInventory] 인벤토리 토글 완료 - 새 상태: %s"),
+		bInventoryOpen ? TEXT("열림") : TEXT("닫힘"));
+
+	UE_LOG(LogTemp, Warning, TEXT("=== [ABaseCharacter::ToggleInventory] 성공적으로 완료 ==="));
+}
+
+bool ABaseCharacter::IsInventoryOpen() const
+{
+	return bInventoryOpen;
 }

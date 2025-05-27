@@ -20,6 +20,19 @@ class LASTCANARY_API UInventoryMainWidget : public ULCUserWidgetBase
 	UBackpackInventoryWidget* BackpackWidget;
 
 public:
+	virtual void NativeConstruct() override;
+
+	UFUNCTION(BlueprintCallable)
+	void InitializeWithPlayer(APlayerController* PlayerController);
+
+private:
+	UPROPERTY(EditAnywhere, Category = "WidgetClasses")
+	TSubclassOf<UToolbarInventoryWidget> ToolbarWidgetClass;
+
+	UPROPERTY(EditAnywhere, Category = "WidgetClasses")
+	TSubclassOf<UBackpackInventoryWidget> BackpackWidgetClass;
+
+public:
 	void InitializeInventory(UToolbarInventoryWidget* InToolbarWidget, UBackpackInventoryWidget* InBackpackWidget);
 	void RefreshInventory();
 	void InitializeToolbarInventory(UToolbarInventoryWidget* InToolbarWidget);

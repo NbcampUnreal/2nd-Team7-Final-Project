@@ -1,8 +1,48 @@
 #include "UI/UIElement/InventoryMainWidget.h"
 #include "UI/UIElement/ToolbarInventoryWidget.h"
 #include "UI/UIElement/BackpackInventoryWidget.h"
+#include "Inventory/ToolbarInventoryComponent.h"
+#include "Inventory/BackpackInventoryComponent.h"
 
 #include "LastCanary.h"
+
+void UInventoryMainWidget::NativeConstruct()
+{
+	Super::NativeConstruct();
+
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		InitializeWithPlayer(PC);
+	}
+}
+
+void UInventoryMainWidget::InitializeWithPlayer(APlayerController* PlayerController)
+{
+	if (!PlayerController || !PlayerController->GetPawn())
+		return;
+
+	APawn* Pawn = PlayerController->GetPawn();
+
+	if (UToolbarInventoryComponent* ToolbarComp = Pawn->FindComponentByClass<UToolbarInventoryComponent>())
+	{
+		if (ToolbarWidgetClass)
+		{
+			UToolbarInventoryWidget* NewToolbarWidget = CreateWidget<UToolbarInventoryWidget>(PlayerController, ToolbarWidgetClass);
+			NewToolbarWidget->SetInventoryComponent(ToolbarComp);
+			InitializeToolbarInventory(NewToolbarWidget);
+		}
+	}
+
+	if (UBackpackInventoryComponent* BackpackComp = Pawn->FindComponentByClass<UBackpackInventoryComponent>())
+	{
+		if (BackpackWidgetClass)
+		{
+			UBackpackInventoryWidget* NewBackpackWidget = CreateWidget<UBackpackInventoryWidget>(PlayerController, BackpackWidgetClass);
+			NewBackpackWidget->SetInventoryComponent(BackpackComp);
+			InitializeBackpackInventory(NewBackpackWidget);
+		}
+	}
+}
 
 void UInventoryMainWidget::InitializeInventory(UToolbarInventoryWidget* InToolbarWidget, UBackpackInventoryWidget* InBackpackWidget)
 {

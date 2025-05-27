@@ -7,6 +7,8 @@
 #include "BasePlayerState.h"
 
 #include "Net/UnrealNetwork.h"
+#include "UI/Manager/LCUIManager.h"
+#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 
 void ABasePlayerController::BeginPlay()
 {
@@ -28,6 +30,27 @@ void ABasePlayerController::BeginPlay()
 		PS->OnDied.AddDynamic(this, &ABasePlayerController::OnCharacterDied);
 		PS->OnExhausted.AddDynamic(this, &ABasePlayerController::Complete_OnSprint);
 		PS->OnStaminaChanged.AddDynamic(this, &ABasePlayerController::OnStaminaUpdated);
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController::BeginPlay] 시작"));
+
+	// UIManager 초기화 추가
+	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+	{
+		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController::BeginPlay] UIManager 초기화 시작"));
+			UIManager->InitUIManager(this);
+			UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController::BeginPlay] UIManager 초기화 완료"));
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("[BasePlayerController::BeginPlay] UIManager가 NULL"));
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("[BasePlayerController::BeginPlay] Subsystem이 NULL"));
 	}
 }
 

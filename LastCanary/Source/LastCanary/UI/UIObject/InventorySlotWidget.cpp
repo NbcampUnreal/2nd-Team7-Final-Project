@@ -1,4 +1,5 @@
 #include "UI/UIObject/InventorySlotWidget.h"
+#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
@@ -6,9 +7,23 @@
 
 void UInventorySlotWidget::SetItemData(const FBaseItemSlotData& InItemData, UDataTable* InItemDataTable)
 {
-	//ItemSlot = InItemSlot;
 	ItemData = InItemData;
 	ItemDataTable = InItemDataTable;
+
+	if (!ItemDataTable)
+	{
+		if (UWorld* World = GetWorld())
+		{
+			if (UGameInstance* GI = World->GetGameInstance())
+			{
+				if (ULCGameInstanceSubsystem* Subsystem = GI->GetSubsystem<ULCGameInstanceSubsystem>())
+				{
+					ItemDataTable = Subsystem->GetItemDataTable();
+				}
+			}
+		}
+	}
+
 	UpdateSlotUI();
 }
 
@@ -31,21 +46,62 @@ void UInventorySlotWidget::UpdateSlotUI()
 		return;
 	}
 
-	FItemDataRow* Found = ItemDataTable->FindRow<FItemDataRow>(ItemData.ItemRowName, TEXT("UpdateSlotUI"));
-	if (ItemNameText)
+	if (ItemData.ItemRowName.IsNone())
 	{
-		ItemNameText->SetText(FText::FromName(ItemData.ItemRowName));
+		if (ItemNameText)
+			ItemNameText->SetText(FText::GetEmpty());
+
+		if (ItemIconImage)
+			ItemIconImage->SetVisibility(ESlateVisibility::Hidden);
+
+		if (ItemQuantityText)
+			ItemQuantityText->SetText(FText::GetEmpty());
+
+		return;
 	}
 
-	if (ItemIconImage && Found->ItemIcon)
+	FItemDataRow* ItemRowData = ItemDataTable->FindRow<FItemDataRow>(ItemData.ItemRowName, TEXT("UpdateSlotUI"));
+	if (!ItemRowData)
 	{
-		ItemIconImage->SetBrushFromTexture(Found->ItemIcon);
+		LOG_Item_WARNING(TEXT("[InventorySlotWidget::UpdateSlotUI] ItemData not found for: %s"),
+			*ItemData.ItemRowName.ToString());
+		return;
+	}
+
+	// UI 업데이트
+	if (ItemNameText)
+	{
+		ItemNameText->SetText(FText::FromName(ItemRowData->ItemName));
+	}
+
+	if (ItemIconImage)
+	{
+		if (ItemRowData->ItemIcon)
+		{
+			ItemIconImage->SetBrushFromTexture(ItemRowData->ItemIcon);
+			ItemIconImage->SetVisibility(ESlateVisibility::Visible);
+		}
+		else
+		{
+			ItemIconImage->SetVisibility(ESlateVisibility::Hidden);
+		}
 	}
 
 	if (ItemQuantityText)
 	{
-		ItemQuantityText->SetText(FText::AsNumber(ItemData.Quantity));
+		if (ItemData.Quantity > 1)
+		{
+			ItemQuantityText->SetText(FText::AsNumber(ItemData.Quantity));
+			ItemQuantityText->SetVisibility(ESlateVisibility::Visible);
+		}
+		else
+		{
+			ItemQuantityText->SetVisibility(ESlateVisibility::Hidden);
+		}
 	}
+
+	LOG_Item_WARNING(TEXT("[InventorySlotWidget::UpdateSlotUI] UI 업데이트 완료: %s (Q:%d)"),
+		*ItemData.ItemRowName.ToString(), ItemData.Quantity);
 }
 
 FReply UInventorySlotWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
@@ -106,13 +162,19 @@ bool UInventorySlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FDrag
 		return false;
 	}
 
-	if (InventoryComponent)
+	if (!InventoryComponent)
 	{
-		InventoryComponent->TrySwapItemSlots(SourceWidget->SlotIndex, this->SlotIndex);
-		return true;
+		LOG_Item_WARNING(TEXT("[InventorySlotWidget::NativeOnDrop] InventoryComponent is null"));
+		return false;
 	}
 
-	return false;
+	// 슬롯 교체 시도
+	bool bSuccess = InventoryComponent->TrySwapItemSlots(SourceWidget->SlotIndex, this->SlotIndex);
+
+	LOG_Item_WARNING(TEXT("[InventorySlotWidget::NativeOnDrop] 슬롯 교체 결과: %s (from %d to %d)"),
+		bSuccess ? TEXT("성공") : TEXT("실패"), SourceWidget->SlotIndex, this->SlotIndex);
+
+	return bSuccess;
 }
 
 void UInventorySlotWidget::ShowTooltip()

@@ -116,9 +116,6 @@ public: //Interact Function
 
 public:
 	// 아이템 퀵슬롯 및 변경 관련 로직
-	
-	void EquipItemFromCurrentQuickSlot(int QuickSlotIndex);
-
 	void EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex);
 
 	// 퀵슬롯 아이템들 (타입은 아이템 구조에 따라 UObject*, AItemBase*, UItemData* 등)
@@ -261,5 +258,18 @@ public:
 	void Server_UseEquippedItem();
 	void Server_UseEquippedItem_Implementation();
 
-	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	// 임시 인벤토리 확인용
+public:
+    /** 인벤토리 UI를 토글합니다 */
+    UFUNCTION(BlueprintCallable, Category = "Character|UI")
+    void ToggleInventory();
+
+    /** 인벤토리가 현재 열려있는지 확인 */
+    UFUNCTION(BlueprintCallable, Category = "Character|UI")
+    bool IsInventoryOpen() const;
+
+private:
+    /** 인벤토리 UI가 열려있는지 추적 */
+    UPROPERTY(Replicated)
+    bool bInventoryOpen = false;
 };
