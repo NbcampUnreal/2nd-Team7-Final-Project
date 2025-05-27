@@ -554,14 +554,21 @@ float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageE
 	return DamageAmount;
 }
 
-float ABaseCharacter::GetFallDamage(float Amount)
+float ABaseCharacter::GetFallDamage(float Velocity)
 {
-	Super::GetFallDamage(Amount);
+	Super::GetFallDamage(Velocity);
 	if (bIsGetFallDownDamage == false)
 	{
 		return 0;
 	}
-	UE_LOG(LogTemp, Log, TEXT("player Take Fall Damage : %f"), Amount);
+
+	if (-Velocity < FallDamageThreshold)
+	{
+		return 0;
+	}
+
+	float FallDamage = (-Velocity - FallDamageThreshold) / 10.0f;
+	UE_LOG(LogTemp, Log, TEXT("player Take Fall Damage : %f"), Velocity);
 	ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
 	if (PC)
 	{
@@ -570,10 +577,10 @@ float ABaseCharacter::GetFallDamage(float Amount)
 		if (MyPlayerState)
 		{
 			UE_LOG(LogTemp, Log, TEXT("State Existed"));
-			MyPlayerState->ApplyDamage(Amount);
+			MyPlayerState->ApplyDamage(FallDamage);
 		}
 	}
-	return Amount;
+	return FallDamage;
 }
 
 void ABaseCharacter::HandlePlayerDeath()
