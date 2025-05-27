@@ -19,9 +19,6 @@ AMapSelectInteractor::AMapSelectInteractor()
 	MapSelectWidgetComponent->SetWidgetSpace(EWidgetSpace::World);
 	MapSelectWidgetComponent->SetDrawSize(FVector2D(800, 600));
 	MapSelectWidgetComponent->SetVisibility(true);
-
-	UE_LOG(LogTemp, Error, TEXT("AMapSelectInteractor"));
-
 }
 
 void AMapSelectInteractor::BeginPlay()
@@ -74,6 +71,11 @@ void AMapSelectInteractor::Interact_Implementation(APlayerController* Interactin
 		0.5f,
 		false
 	);
+}
+
+FString AMapSelectInteractor::GetInteractMessage_Implementation() const
+{
+	return TEXT("Press [F] to Manipulate Gate");
 }
 
 UWidgetComponent* AMapSelectInteractor::GetMapSelectWidgetComponent() const

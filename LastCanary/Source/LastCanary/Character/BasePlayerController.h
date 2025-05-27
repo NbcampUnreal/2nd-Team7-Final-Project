@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/PlayerController.h"
+#include "Framework/PlayerController/LCPlayerController.h"
 #include "Character/PlayerData/PlayerDataTypes.h"
 #include "BasePlayerController.generated.h"
 
@@ -13,7 +13,7 @@ class ABaseCharacter;
 class ABaseDrone;
 
 UCLASS()
-class LASTCANARY_API ABasePlayerController : public APlayerController
+class LASTCANARY_API ABasePlayerController : public ALCPlayerController
 {
 	GENERATED_BODY()
 private:

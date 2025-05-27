@@ -612,7 +612,6 @@ void ABasePlayerController::Input_OnInteract()
 	{
 		return;
 	}
-
 	
 	/**/
 	// APawn 타입에 맞는 처리를 실행
@@ -621,7 +620,7 @@ void ABasePlayerController::Input_OnInteract()
 		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
 		if (IsValid(PlayerCharacter))
 		{
-			PlayerCharacter->Handle_Interact(HitActor);
+			PlayerCharacter->Handle_Interact();
 		}
 	}
 }
