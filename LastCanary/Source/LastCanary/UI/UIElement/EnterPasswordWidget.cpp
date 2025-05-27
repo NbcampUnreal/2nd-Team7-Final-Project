@@ -1,7 +1,7 @@
 #include "UI/UIElement/EnterPasswordWidget.h"
 #include "Components/EditableTextBox.h"
 #include "Components/Button.h"
-#include "Framework/PlayerController/LCLobbyPlayerController.h"
+//#include "Framework/PlayerController/LCLobbyPlayerController.h"
 
 void UEnterPasswordWidget::Init(const FString& InRoomID)
 {
@@ -36,10 +36,10 @@ void UEnterPasswordWidget::OnConfirmButtonClicked()
 
     FString EnteredPassword = PasswordInput->GetText().ToString();
 
-    if (ALCLobbyPlayerController* PC = Cast<ALCLobbyPlayerController>(GetOwningPlayer()))
-    {
-        PC->Server_RequestJoinRoom(RoomID, EnteredPassword);
-    }
+    //if (ALCLobbyPlayerController* PC = Cast<ALCLobbyPlayerController>(GetOwningPlayer()))
+    //{
+    //    PC->Server_RequestJoinRoom(RoomID, EnteredPassword);
+    //}
 
     SetVisibility(ESlateVisibility::Hidden);
 }

@@ -14,6 +14,7 @@ class UEnterPasswordWidget;
 class UOptionWidget;
 class UInGameHUD;
 class UShopWidget;
+class UMapSelectWidget;
 class UUIElementCreateSession;
 class UPopupLoading;
 class UInventoryMainWidget;
@@ -40,6 +41,8 @@ public:
 	TSubclassOf<UInGameHUD> FromBPInGameHUDClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UShopWidget> FromBPShopWidgetClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UMapSelectWidget> FromBPMapSelectWidgetClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UUIElementCreateSession> FromBPCreateSessionWidgetClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")

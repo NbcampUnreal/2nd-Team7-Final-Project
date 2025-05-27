@@ -81,8 +81,9 @@ public:
     void RecoverStamina(float Amount);
     bool IsStaminaFull() const;
 
-    float GetStamina() const { return CurrentStamina; }
-
+    FORCEINLINE float GetStamina() const { return CurrentStamina; }
+    FORCEINLINE float GetHP() const { return CurrentHP; }
+    
 private:
     FTimerHandle StaminaDrainHandle;
     FTimerHandle StaminaRecoveryHandle;

@@ -29,7 +29,8 @@ ULCUIManager* ULCGameInstanceSubsystem::GetUIManager() const
 
 void ULCGameInstanceSubsystem::ChangeLevelByMapName(const FName& MapName)
 {
-	const int32 MapID = GetTypeHash(MapName);
+	const int32 MapID = FCrc::StrCrc32(*MapName.ToString());
+	// const int32 MapID = GetTypeHash(MapName);
 	ChangeLevelByMapID(MapID);
 }
 

@@ -1,7 +1,8 @@
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "UI/Manager/LCUIManagerSettings.h"
-
+#include "Engine/Engine.h"
 #include "LastCanary.h"
+
 
 ULCUIManagerSettings* ULCGameInstance::GetUIManagerSettings() const
 {
@@ -32,7 +33,9 @@ void ULCGameInstance::LoadMapData()
     {
         if (MapDataRow)
         {
-            MapDataRow->MapID = GetTypeHash(MapDataRow->MapInfo.MapName);
+            MapDataRow->MapID = FCrc::StrCrc32(*MapDataRow->MapInfo.MapName.ToString());
+            //MapDataRow->MapID = GetTypeHash(MapDataRow->MapInfo.MapName);
+
            // LOG_Frame_WARNING(TEXT("Loaded map: %s"), *MapDataRow->MapInfo.MapName.ToString());
         }
     }
@@ -54,19 +57,22 @@ void ULCGameInstance::LoadItemData()
     {
         if (ItemDataRow)
         {
-            // 예: 아이디 해시화 → 캐싱 용도
-            int32 HashedID = GetTypeHash(ItemDataRow->ItemName);
-            ItemDataRow->ItemID = HashedID;
+            ItemDataRow->ItemID = FCrc::StrCrc32(*ItemDataRow->ItemName.ToString());
 
-            LOG_Frame_WARNING(TEXT("Loaded item: %s (Price: %d)"),
+            // 예: 아이디 해시화 → 캐싱 용도
+            // int32 HashedID = GetTypeHash(ItemDataRow->ItemName);
+            // ItemDataRow->ItemID = HashedID;
+
+            /*LOG_Frame_WARNING(TEXT("Loaded item: %s (Price: %d)"),
                 *ItemDataRow->ItemName.ToString(),
-                ItemDataRow->ItemPrice);
+                ItemDataRow->ItemPrice);*/
         }
     }
 
    // LOG_Frame_WARNING(TEXT("총 %d개의 상점 아이템을 로딩했습니다."), AllItems.Num());
 }
 
+// BluePrint에서 Create Session을 합니다.
 void ULCGameInstance::CreateSession_Implementation(const FString& ServerName, int AmountOfSlots)
 {
     UE_LOG(LogTemp, Warning, TEXT("CreateSession called in C++"));
@@ -75,6 +81,7 @@ void ULCGameInstance::CreateSession_Implementation(const FString& ServerName, in
 void ULCGameInstance::Shutdown()
 {
     Super::Shutdown();
+
 }
 
 void ULCGameInstance::LoadGunData()

@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
 #include "Actor/ShopInteractor.h"
+#include "Actor/MapSelectInteractor.h"
 #include "LCUIManager.generated.h"
 
 /**
@@ -15,6 +16,7 @@ class UEnterPasswordWidget;
 class UOptionWidget;
 class UInGameHUD;
 class UShopWidget;
+class UMapSelectWidget;
 class UUIElementCreateSession;
 class UPopupLoading;
 class UInventoryMainWidget;
@@ -34,6 +36,7 @@ public:
 	void ShowRoomListMenu();
 	void ShowEnterPasswordWidget(const FString& RoomID);
 	void ShowInGameHUD();
+	void HideInGameHUD();
 	void ShowOptionPopup();
 	void ShowPauseMenu();
 	void HidePauseMenu();
@@ -45,7 +48,11 @@ public:
 	// ---------------
 
 	void HideShopPopup();
+	void ShowMapSelectPopup();
+	void HideMapSelectPopup();
 	void ShowCreateSession();
+
+	void SwitchToWidget(UUserWidget* Widget);
 
 	// TO DO : 로딩 팝업 표시
 	UFUNCTION(BlueprintCallable)
@@ -53,8 +60,6 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void HidePopUpLoading();
 
-	void SwitchToWidget(UUserWidget* Widget);
-	
 	/* 입력 모드 제어 */
 	void SetInputModeUIOnly(UUserWidget* FocusWidget = nullptr);
 	void SetInputModeGameOnly();
@@ -64,12 +69,16 @@ public:
 	ULobbyMenu* GetLobbyMenu() const { return CachedLobbyMenu; }
 	UEnterPasswordWidget* GetEnterPasswordWidget() const { return CachedEnterPasswordWidget; }
 	UOptionWidget* GetOptionWidget() const { return CachedOptionWidget; }
+	UInGameHUD* GetInGameHUD() const { return CachedInGameHUD; }
 
 	void SetLastShopInteractor(AShopInteractor* Interactor);
+	void SetLastMapSelectInteractor(AMapSelectInteractor* Interactor);
 
 private:
 	UPROPERTY()
 	AShopInteractor* LastShopInteractor;
+	UPROPERTY()
+	AMapSelectInteractor* LastMapSelectInteractor;
 	UPROPERTY()
 	APlayerController* OwningPlayer;
 	UPROPERTY()
@@ -84,6 +93,7 @@ private:
 	TSubclassOf<ULobbyMenu> LobbyMenuClass;
 	UPROPERTY()
 	TSubclassOf<UEnterPasswordWidget> EnterPasswordWidgetClass;
+
 	UPROPERTY()
 	TSubclassOf<UOptionWidget> OptionWidgetClass;	
 	UPROPERTY()
@@ -92,9 +102,12 @@ private:
 	TSubclassOf<UInGameHUD> InGameHUDWidgetClass;
 	UPROPERTY()
 	TSubclassOf<UShopWidget> ShopWidgetClass;
+	UPROPERTY()
+	TSubclassOf<UMapSelectWidget> MapSelectWidgetClass;
 
 	UPROPERTY()
 	TSubclassOf<UUIElementCreateSession> CreateSessionClass;
+	UPROPERTY()
 	TSubclassOf<UPopupLoading> PopUpLoadingClass;
 	// 인벤토리로 추가
 	UPROPERTY()
@@ -114,6 +127,8 @@ private:
 	UInGameHUD* CachedInGameHUD;
 	UPROPERTY()
 	UShopWidget* CachedShopWidget;
+	UPROPERTY()
+	UMapSelectWidget* CachedMapSelectWidget;
 
 	UPROPERTY()
 	UUIElementCreateSession* CachedCreateSession;
