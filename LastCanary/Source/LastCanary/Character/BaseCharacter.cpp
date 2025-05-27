@@ -72,33 +72,42 @@ void ABaseCharacter::BeginPlay()
 void ABaseCharacter::NotifyControllerChanged()
 {
 	/*
+	UE_LOG(LogTemp, Warning, TEXT("Character NotifyControllerChanged"));
+
 	const auto* PreviousPlayer{ Cast<APlayerController>(PreviousController) };
 	if (IsValid(PreviousPlayer))
 	{
 		auto* InputSubsystem{ ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PreviousPlayer->GetLocalPlayer()) };
 		if (IsValid(InputSubsystem))
 		{
-			InputSubsystem->RemoveMappingContext(PC->InputMappingContext);
+			InputSubsystem->RemoveMappingContext(InputMappingContext);
 		}
 	}
+	
 	*/
-	auto* NewPlayer{ Cast<ABasePlayerController>(GetController()) };
-	if (IsValid(NewPlayer))
+	auto* NewPlayer{ Cast<APlayerController>(GetController()) };
+	ABasePlayerController* PC = Cast<ABasePlayerController>(NewPlayer);
+	if (IsValid(PC))
 	{
-		NewPlayer->InputYawScale_DEPRECATED = 1.0f;
-		NewPlayer->InputPitchScale_DEPRECATED = 1.0f;
-		NewPlayer->InputRollScale_DEPRECATED = 1.0f;
-
-		NewPlayer->InitInputComponent();
-		auto* InputSubsystem{ ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(NewPlayer->GetLocalPlayer()) };
+		
+		PC->InputYawScale_DEPRECATED = 1.0f;
+		PC->InputPitchScale_DEPRECATED = 1.0f;
+		PC->InputRollScale_DEPRECATED = 1.0f;
+		
+		PC->InitInputComponent();
+		auto* InputSubsystem{ ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()) };
 		if (IsValid(InputSubsystem))
 		{
 			FModifyContextOptions Options;
 			Options.bNotifyUserSettings = true;
-
-			InputSubsystem->AddMappingContext(NewPlayer->InputMappingContext, 0, Options);
+			
+			InputSubsystem->AddMappingContext(PC->InputMappingContext, 0, Options);
+			
 		}
+		PC->SetInputMode(FInputModeGameOnly());
+		PC->bShowMouseCursor = false;
 	}
+	
 	Super::NotifyControllerChanged();
 }
 

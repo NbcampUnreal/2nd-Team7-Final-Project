@@ -29,6 +29,7 @@ void ABasePlayerController::BeginPlay()
 		PS->OnExhausted.AddDynamic(this, &ABasePlayerController::Complete_OnSprint);
 		PS->OnStaminaChanged.AddDynamic(this, &ABasePlayerController::OnStaminaUpdated);
 	}
+
 }
 
 void ABasePlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -42,7 +43,7 @@ void ABasePlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
 
-	InitInputComponent();
+	//InitInputComponent();
 }
 
 void ABasePlayerController::OnCharacterDamaged(float CurrentHP)
@@ -155,7 +156,10 @@ void ABasePlayerController::OnPossess(APawn* InPawn)
 		UE_LOG(LogTemp, Warning, TEXT("Be possessed by something other than a character"));
 		//SpawnedPlayerDrone = Cast<ABaseDrone>(InPawn);
 	}
+
+	
 	ApplyInputMappingContext(CurrentIMC);
+	
 }
 
 void ABasePlayerController::OnRep_Pawn()
