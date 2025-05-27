@@ -2,7 +2,6 @@
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "GameFramework/PlayerState.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
-#include "UI/Manager/LCUIManager.h"
 
 void ALCTitlePlayerController::BeginPlay()
 {
@@ -13,23 +12,12 @@ void ALCTitlePlayerController::BeginPlay()
 	SetInputMode(InputMode);
 	bShowMouseCursor = true;
 
-	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+	if (IsValid(LCUIManager))
 	{
-		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
-		{
-			UE_LOG(LogTemp, Warning, TEXT("TitlePC"));
-			UIManager->InitUIManager(this);
-			UIManager->ShowTitleMenu();
-		}
+		UE_LOG(LogTemp, Warning, TEXT("TitlePC"));
+		LCUIManager->ShowTitleMenu();
 	}
 
-	if (UGameInstance* GI = GetGameInstance())
-	{
-		if (ULCGameInstance* LCGI = Cast<ULCGameInstance>(GI))
-		{
-			const FString PlayerName = PlayerState->GetPlayerName();
-			PlayerState->SetPlayerName(PlayerName);
-		}
-	}
-
+	const FString PlayerName = PlayerState->GetPlayerName();
+	PlayerState->SetPlayerName(PlayerName);
 }

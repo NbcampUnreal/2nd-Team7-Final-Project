@@ -21,21 +21,14 @@ void ALCRoomPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
-	{
-		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
-		{
-			UIManager->InitUIManager(this);
-		}
-	}
-
 	// TODO : Base Camp Level 에서 인터렉션 후 UI 표시
 	CreateAndShowSelecetGameUI();
 	CreateAndShowRoomUI();
 }
 
-void ALCRoomPlayerController::Client_UpdateLobbyUI_Implementation()
+void ALCRoomPlayerController::Client_UpdatePlayers_Implementation()
 {
+	Super::Client_UpdatePlayers_Implementation();
 	FTimerHandle TimerHandle;
 	FTimerDelegate TimerDel;
 	TimerDel.BindLambda([this]()
