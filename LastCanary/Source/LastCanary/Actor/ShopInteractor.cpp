@@ -78,6 +78,11 @@ void AShopInteractor::Interact_Implementation(APlayerController* InteractingPlay
 		false);
 }
 
+FString AShopInteractor::GetInteractMessage_Implementation() const
+{
+	return TEXT("Press [F] to Visit Shop");
+}
+
 UWidgetComponent* AShopInteractor::GetShopWidgetComponent() const
 {
 	return ShopWidgetComponent;

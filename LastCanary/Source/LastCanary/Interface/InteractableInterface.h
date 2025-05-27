@@ -20,4 +20,6 @@ class LASTCANARY_API IInteractableInterface
 public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interaction")
 	void Interact(APlayerController* Interactor);
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interact")
+	FString GetInteractMessage() const;
 };

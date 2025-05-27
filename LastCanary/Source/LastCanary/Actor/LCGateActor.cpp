@@ -46,6 +46,11 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 	}
 }
 
+FString ALCGateActor::GetInteractMessage_Implementation() const
+{
+	return TEXT("Press [F] to Interact");
+}
+
 void ALCGateActor::SetTargetMapID(const int32& InMapID)
 {
 	TargetMapID = InMapID;
