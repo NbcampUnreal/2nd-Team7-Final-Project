@@ -33,7 +33,6 @@ private:
 	UEnhancedInputComponent* EnhancedInput;
 	UInputMappingContext* CurrentIMC;
 public:
-protected:
 	virtual void SetupInputComponent() override;
 
 	void ApplyInputMappingContext(UInputMappingContext* IMC);

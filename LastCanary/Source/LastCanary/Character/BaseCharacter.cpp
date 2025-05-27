@@ -71,6 +71,34 @@ void ABaseCharacter::BeginPlay()
 
 void ABaseCharacter::NotifyControllerChanged()
 {
+	/*
+	const auto* PreviousPlayer{ Cast<APlayerController>(PreviousController) };
+	if (IsValid(PreviousPlayer))
+	{
+		auto* InputSubsystem{ ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PreviousPlayer->GetLocalPlayer()) };
+		if (IsValid(InputSubsystem))
+		{
+			InputSubsystem->RemoveMappingContext(PC->InputMappingContext);
+		}
+	}
+	*/
+	auto* NewPlayer{ Cast<ABasePlayerController>(GetController()) };
+	if (IsValid(NewPlayer))
+	{
+		NewPlayer->InputYawScale_DEPRECATED = 1.0f;
+		NewPlayer->InputPitchScale_DEPRECATED = 1.0f;
+		NewPlayer->InputRollScale_DEPRECATED = 1.0f;
+
+		NewPlayer->InitInputComponent();
+		auto* InputSubsystem{ ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(NewPlayer->GetLocalPlayer()) };
+		if (IsValid(InputSubsystem))
+		{
+			FModifyContextOptions Options;
+			Options.bNotifyUserSettings = true;
+
+			InputSubsystem->AddMappingContext(NewPlayer->InputMappingContext, 0, Options);
+		}
+	}
 	Super::NotifyControllerChanged();
 }
 
@@ -491,34 +519,7 @@ void ABaseCharacter::OnInteractBoxEndOverlap(UPrimitiveComponent* OverlappedComp
 	}
 }
 */
-//void ABaseCharacter::OverlapCheckFunction()
-//{
-//	// 오버랩 중일 때 해야 할 반복 작업 수행
-//	if (!bIsPossessed)
-//	{
-//		return;
-//	}
-//	// 라인트레이스로 시야 안에 정확히 들어왔는지 확인
-//	FVector Start = Camera->GetComponentLocation();
-//	FVector End = Start + (Camera->GetForwardVector() * 200.0f);
-//
-//	FHitResult Hit;
-//	FCollisionQueryParams Params;
-//	Params.AddIgnoredActor(this);
-//
-//	bool bHit = GetWorld()->LineTraceSingleByChannel(
-//		Hit, Start, End, ECC_GameTraceChannel1, Params);
-//
-//	if (bHit)
-//	{
-//		// 감지 성공 → UI 표시
-//		/*
-//			//TODO: UI띄우기
-//			//GetGameInstance->GetUIManager->적당한 UI 띄우는 함수...();
-//		*/
-//	}
-//	// 필요하면 조건에 따라 타이머를 멈출 수도 있음
-//}
+
 
 void ABaseCharacter::SetPossess(bool IsPossessed)
 {
