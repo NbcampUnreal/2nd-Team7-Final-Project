@@ -24,6 +24,15 @@ void ALCRoomPlayerController::BeginPlay()
 	// TODO : Base Camp Level 에서 인터렉션 후 UI 표시
 	CreateAndShowSelecetGameUI();
 	CreateAndShowRoomUI();
+
+	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+	{
+		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+		{
+			UIManager->InitUIManager(this);
+			UIManager->ShowInGameHUD();
+		}
+	}
 }
 
 void ALCRoomPlayerController::Client_UpdatePlayers_Implementation()

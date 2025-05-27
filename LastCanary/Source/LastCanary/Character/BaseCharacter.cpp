@@ -39,16 +39,6 @@ ABaseCharacter::ABaseCharacter()
 	Camera->SetupAttachment(GetMesh());
 	Camera->SetRelativeRotation_Direct({ 0.0f, 90.0f, 0.0f });
 
-	//OverlapBox for Interact Settings
-	InteractDetectionBox = CreateDefaultSubobject<UBoxComponent>(TEXT("InteractDetectionBox"));
-	InteractDetectionBox->SetupAttachment(RootComponent);
-	InteractDetectionBox->SetBoxExtent(FVector(50.f, 100.f, 50.f)); // 얇고 길게
-	InteractDetectionBox->SetRelativeScale3D(FVector(1.f, 1.f, 1.f));
-	InteractDetectionBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	InteractDetectionBox->SetCollisionObjectType(ECC_WorldDynamic);
-	InteractDetectionBox->SetCollisionResponseToAllChannels(ECR_Ignore);
-	InteractDetectionBox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
-	InteractDetectionBox->SetGenerateOverlapEvents(true);
 	SetViewMode(AlsViewModeTags::FirstPerson);
 }
 
@@ -71,28 +61,27 @@ void ABaseCharacter::BeginPlay()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Character BeginPlay - Complete  This is Client."));
 	}
-	if (InteractDetectionBox && GetMesh())
-	{
-		InteractDetectionBox->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("head"));
-		InteractDetectionBox->SetRelativeLocation(FVector(0.f, 100.f, 0.f));  // 
-		InteractDetectionBox->SetRelativeRotation(FRotator(0.f, -10.f, 0.f));  // 
-	}
-
-	InteractDetectionBox->OnComponentBeginOverlap.AddDynamic(this, &ABaseCharacter::OnInteractBoxBeginOverlap);
-	InteractDetectionBox->OnComponentEndOverlap.AddDynamic(this, &ABaseCharacter::OnInteractBoxEndOverlap);
-
+	
 	CurrentQuickSlotIndex = 0;
 
 	//애니메이션 오버레이 활성화.
 	RefreshOverlayObject(CurrentQuickSlotIndex);
+
+	GetWorld()->GetTimerManager().SetTimer(
+		InteractionTraceTimerHandle,
+		this,
+		&ABaseCharacter::TraceInteractableActor,
+		0.1f,
+		true 
+	);
 }
+
 
 
 void ABaseCharacter::NotifyControllerChanged()
 {
 	Super::NotifyControllerChanged();
 }
-
 
 void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo)
 {
@@ -325,26 +314,28 @@ void ABaseCharacter::Handle_Strafe(const FInputActionValue& ActionValue)
 
 }
 
-void ABaseCharacter::Handle_Interact(AActor* HitActor)
+void ABaseCharacter::Handle_Interact()
 {
 	if (CheckPlayerCurrentState() == EPlayerState::Dead)
 	{
 		return;
 	}
-	UE_LOG(LogTemp, Log, TEXT("Interacted!!!!"));
-	if (!HitActor)
+
+	if (!CurrentFocusedActor)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Handle_Interact: HitActor is nullptr"));
+		UE_LOG(LogTemp, Warning, TEXT("Handle_Interact: No focused actor."));
 		return;
 	}
 
-	if (HitActor->Implements<UInteractableInterface>())
+	UE_LOG(LogTemp, Log, TEXT("Interacted with: %s"), *CurrentFocusedActor->GetName());
+
+	if (CurrentFocusedActor->Implements<UInteractableInterface>())
 	{
 		APlayerController* PC = Cast<APlayerController>(GetController());
 		if (PC)
 		{
-			IInteractableInterface::Execute_Interact(HitActor, PC);
-			UE_LOG(LogTemp, Log, TEXT("Handle_Interact: Called Interact on %s"), *HitActor->GetName());
+			IInteractableInterface::Execute_Interact(CurrentFocusedActor, PC);
+			UE_LOG(LogTemp, Log, TEXT("Handle_Interact: Called Interact on %s"), *CurrentFocusedActor->GetName());
 		}
 		else
 		{
@@ -353,14 +344,9 @@ void ABaseCharacter::Handle_Interact(AActor* HitActor)
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Handle_Interact: HitActor %s does not implement IInteractableInterface"), *HitActor->GetName());
-		PlayInteractionMontage(HitActor);
+		UE_LOG(LogTemp, Warning, TEXT("Handle_Interact: %s does not implement IInteractableInterface"), *CurrentFocusedActor->GetName());
+		PlayInteractionMontage(CurrentFocusedActor);
 	}
-	//TO DO...
-	/*
-	if(Hit.Type == ItemClass)
-		PickupItem(Hit);
-	*/
 }
 
 void ABaseCharacter::PickupItem()
@@ -380,146 +366,6 @@ void ABaseCharacter::PickupItem()
 		AddItem(HitItem);
 	*/
 }
-
-void ABaseCharacter::OnInteractBoxBeginOverlap(UPrimitiveComponent* OverlappedComp,
-	AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
-	bool bFromSweep, const FHitResult& SweepResult)
-{
-	if (!OtherActor || OtherActor == this)
-	{
-		return;
-	}
-
-	// Optional: 인터페이스 확인
-	/*
-	if (!OtherActor->Implements<UInteractable>())
-		return;
-	*/
-
-
-	// 타이머가 이미 돌아가고 있으면 다시 시작하지 않음
-	if (!GetWorld()->GetTimerManager().IsTimerActive(OverlapCheckTimerHandle))
-	{
-		// 0.1초마다 반복 실행 (주기는 필요에 따라 조절)
-		GetWorld()->GetTimerManager().SetTimer(OverlapCheckTimerHandle, this, &ABaseCharacter::OverlapCheckFunction, 0.1f, true);
-	}
-
-}
-
-void ABaseCharacter::OverlapCheckFunction()
-{
-	TArray<AActor*> OverlappingActors;
-	InteractDetectionBox->GetOverlappingActors(OverlappingActors);
-
-	AActor* ClosestInteractable = nullptr;
-	float ClosestDistance = MAX_FLT;
-
-	for (AActor* Actor : OverlappingActors)
-	{
-		if (!Actor || Actor == this)
-		{
-			continue;
-		}
-
-		if (Actor->Implements<UInteractableInterface>())
-		{
-			float Distance = FVector::Dist(Actor->GetActorLocation(), GetActorLocation());
-			if (Distance < ClosestDistance)
-			{
-				ClosestDistance = Distance;
-				ClosestInteractable = Actor;
-			}
-		}
-	}
-
-	ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
-	if (PC)
-	{
-		if (ClosestInteractable)
-		{
-			FString Message = IInteractableInterface::Execute_GetInteractMessage(ClosestInteractable);
-			if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
-			{
-				if (ULCUIManager* UIManager = Subsystem->GetUIManager())
-				{
-					if (UInGameHUD* HUD = Cast<UInGameHUD>(UIManager->GetInGameHUD()))
-					{
-						HUD->SetInteractMessage(Message);
-						HUD->SetInteractMessageVisible(true);
-					}
-				}
-			}
-		}
-	}
-	else
-	{
-		if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
-		{
-			if (ULCUIManager* UIManager = Subsystem->GetUIManager())
-			{
-				if (UInGameHUD* HUD = Cast<UInGameHUD>(UIManager->GetInGameHUD()))
-				{
-					HUD->SetInteractMessageVisible(false);
-				}
-			}
-		}
-	}
-}
-
-void ABaseCharacter::OnInteractBoxEndOverlap(UPrimitiveComponent* OverlappedComp,
-	AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-{
-	if (OtherActor && OtherActor == CurrentFocusedActor)
-	{
-		//TODO: HideInteractUI();
-		CurrentFocusedActor = nullptr;
-	}
-
-	GetWorld()->GetTimerManager().ClearTimer(OverlapCheckTimerHandle);
-
-	if (ABasePlayerController* PC = Cast<ABasePlayerController>(GetController()))
-	{
-		if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
-		{
-			if (ULCUIManager* UIManager = Subsystem->GetUIManager())
-			{
-					if (UInGameHUD* HUD = Cast<UInGameHUD>(UIManager->GetInGameHUD()))
-					{
-						HUD->SetInteractMessageVisible(false);
-					}
-			}
-		}
-	}
-}
-
-//void ABaseCharacter::OverlapCheckFunction()
-//{
-//	// 오버랩 중일 때 해야 할 반복 작업 수행
-//	if (!bIsPossessed)
-//	{
-//		return;
-//	}
-//	// 라인트레이스로 시야 안에 정확히 들어왔는지 확인
-//	FVector Start = Camera->GetComponentLocation();
-//	FVector End = Start + (Camera->GetForwardVector() * 200.0f);
-//
-//	FHitResult Hit;
-//	FCollisionQueryParams Params;
-//	Params.AddIgnoredActor(this);
-//
-//	bool bHit = GetWorld()->LineTraceSingleByChannel(
-//		Hit, Start, End, ECC_GameTraceChannel1, Params);
-//
-//	if (bHit)
-//	{
-//		// 감지 성공 → UI 표시
-//		/*
-//			//TODO: UI띄우기
-//			//GetGameInstance->GetUIManager->적당한 UI 띄우는 함수...();
-//		*/
-//	}
-//	// 필요하면 조건에 따라 타이머를 멈출 수도 있음
-//}
 
 void ABaseCharacter::SetPossess(bool IsPossessed)
 {
@@ -563,6 +409,79 @@ void ABaseCharacter::Server_SetQuickSlotIndex_Implementation(int32 NewIndex)
 void ABaseCharacter::Multicast_EquipItemFromQuickSlot_Implementation(int32 Index)
 {
 	EquipItemFromCurrentQuickSlot(Index);
+}
+
+void ABaseCharacter::TraceInteractableActor()
+{
+	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	{
+		return;
+	}
+
+	FVector ViewLocation;
+	FRotator ViewRotation;
+
+	if (Controller)
+	{
+		Controller->GetPlayerViewPoint(ViewLocation, ViewRotation);
+	}
+	else
+	{
+		return;
+	}
+
+	FVector Start = ViewLocation;
+	FVector End = Start + (ViewRotation.Vector() * TraceDistance);
+
+	FHitResult Hit;
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(
+		Hit, Start, End, ECC_GameTraceChannel1, Params);
+
+	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 0.1f);
+
+	if (bHit && Hit.GetActor() && Hit.GetActor()->Implements<UInteractableInterface>())
+	{
+		if (CurrentFocusedActor != Hit.GetActor())
+		{
+			CurrentFocusedActor = Hit.GetActor();
+
+			FString Message = IInteractableInterface::Execute_GetInteractMessage(CurrentFocusedActor);
+
+			if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+			{
+				if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+				{
+					if (UInGameHUD* HUD = Cast<UInGameHUD>(UIManager->GetInGameHUD()))
+					{
+						UE_LOG(LogTemp, Warning, TEXT("SetInteractMessage to %s"), *Message);
+						HUD->SetInteractMessage(Message);
+						HUD->SetInteractMessageVisible(true);
+					}
+				}
+			}
+		}
+	}
+	else
+	{
+		if (CurrentFocusedActor)
+		{
+			CurrentFocusedActor = nullptr;
+
+			if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+			{
+				if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+				{
+					if (UInGameHUD* HUD = Cast<UInGameHUD>(UIManager->GetInGameHUD()))
+					{
+						HUD->SetInteractMessageVisible(false);
+					}
+				}
+			}
+		}
+	}
 }
 
 void ABaseCharacter::EquipItemFromCurrentQuickSlot(int QuickSlotIndex)

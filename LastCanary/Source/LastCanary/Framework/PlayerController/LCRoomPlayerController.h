@@ -7,7 +7,7 @@
 
 class URoomWidget;
 UCLASS()
-class LASTCANARY_API ALCRoomPlayerController : public ALCPlayerController
+class LASTCANARY_API ALCRoomPlayerController : public ABasePlayerController
 {
 	GENERATED_BODY()
 
