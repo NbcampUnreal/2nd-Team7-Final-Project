@@ -17,6 +17,8 @@ class UShopWidget;
 class UUIElementCreateSession;
 class UPopupLoading;
 class UInventoryMainWidget;
+class UBackpackInventoryWidget;
+class UToolbarInventoryWidget
 
 UCLASS(BlueprintType)
 class LASTCANARY_API ULCUIManagerSettings : public UDataAsset
@@ -46,4 +48,8 @@ public:
 	// 인벤토리 위젯
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UInventoryMainWidget> FromBPInventoryMainUIClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UBackpackInventoryWidget> FromBPToolbarWidgetClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UToolbarInventoryWidget> FromBPBackpackWidgetClass;
 };
