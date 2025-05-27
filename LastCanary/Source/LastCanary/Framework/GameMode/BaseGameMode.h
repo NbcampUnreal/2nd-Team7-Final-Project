@@ -19,4 +19,10 @@ public:
 
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 
+	virtual void Logout(AController* Exiting) override;
+
+	UFUNCTION(BlueprintCallable, Category = "Session")
+	void TravelMapBySoftPath(FString SoftPath);
+	UFUNCTION(BlueprintCallable, Category = "Session")
+	void TravelMapByPath(FString Path);
 };

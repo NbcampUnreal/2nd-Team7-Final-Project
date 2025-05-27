@@ -31,6 +31,6 @@ void UHostMenu::OnStartButtonClicked()
 {
 	if (ALCRoomGameMode* RoomGM = Cast<ALCRoomGameMode>(UGameplayStatics::GetGameMode(this)))
 	{
-		RoomGM->StartGame();
+		//RoomGM->StartGame();
 	}
 }

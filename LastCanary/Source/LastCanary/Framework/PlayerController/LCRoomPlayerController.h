@@ -26,7 +26,7 @@ public:
 	void Client_UpdatePlayers_Implementation() override;
 
 	// 서버에서만 호출
-	void StartGame();
+	//void StartGame();
 
 private:
 	void CreateAndShowSelecetGameUI();
