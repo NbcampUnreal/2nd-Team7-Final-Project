@@ -1,14 +1,9 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameSession.h"
 #include "LCGameSession.generated.h"
 
-/**
- * 
- */
 UCLASS()
 class LASTCANARY_API ALCGameSession : public AGameSession
 {
@@ -28,7 +23,13 @@ public:
 	virtual void RegisterPlayer(APlayerController* NewPlayer, const FUniqueNetIdRepl& UniqueId, bool bWasFromInvite = false) override;
 	virtual void UnregisterPlayer(const APlayerController* ExitingPlayer) override;
 
-	FName SessionName = "SessionName";
-	int MaxNumberOfPlayersInSession = 4;
+	FName GetSessionName();
+
+	int MaxNumberOfPlayersInSession = 50;
 	int NumberOfPlayersInSession;
+
+	UFUNCTION(BlueprintCallable, Category = "SteamSession")
+	void DestroySession();
+	void HandleDestroySessionCompleted(FName SessionName, bool bWasSuccessful);
+	FDelegateHandle DestroySessionDelegateHandle;
 };

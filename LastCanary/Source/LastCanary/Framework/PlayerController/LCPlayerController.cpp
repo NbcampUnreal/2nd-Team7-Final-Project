@@ -1,6 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "Framework/PlayerController/LCPlayerController.h"
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "Blueprint/UserWidget.h"

@@ -1,6 +1,5 @@
-#pragma once
-
 #include "CoreMinimal.h"
+#include "Framework/GameInstance/LCGameInstance.h"
 #include "GameFramework/GameModeBase.h"
 #include "LCRoomGameMode.generated.h"
 
@@ -21,6 +20,18 @@ class LASTCANARY_API ALCRoomGameMode : public AGameModeBase
 public:
 	ALCRoomGameMode();
 
+	virtual void BeginPlay() override;
+	virtual void PostLogin(APlayerController* NewPlayer) override;
+	virtual APlayerController* Login(UPlayer* NewPlayer, ENetRole InRemoteRole, const FString& Portal, const FString& Options, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage) override;
+	virtual void Logout(AController* Exiting) override;
+
+
+	UFUNCTION(BlueprintCallable, Category = "Instance")
+	FORCEINLINE_DEBUGGABLE ULCGameInstance* GetLCGameInstance() const
+	{
+		return Cast<ULCGameInstance>(GetGameInstance());
+	}
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Maps")
 	TArray<TSoftObjectPtr<UWorld>> MapReferences;
 	
@@ -32,5 +43,6 @@ public:
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Maps")
 	EMapType SelectedMap;
-	
+
+
 };

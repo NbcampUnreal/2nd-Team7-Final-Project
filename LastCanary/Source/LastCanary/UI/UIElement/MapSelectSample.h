@@ -1,19 +1,15 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "MapSelectSample.generated.h"
 
-/**
- * 
- */
 class UComboBoxString;
 class UButton;
 class ALCRoomGameMode;
 class ALCGameState;
 class UImage;
+class UTextBlock;
 
 UCLASS()
 class LASTCANARY_API UMapSelectSample : public UUserWidget
@@ -31,7 +27,13 @@ protected:
 	UButton* StartButton;
 
 	UPROPERTY(meta = (BindWidget))
+	UTextBlock* MapName;
+
+	UPROPERTY(meta = (BindWidget))
 	UImage* Thumnail;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* MapDesciprtion;
 
 private:
 	UFUNCTION()

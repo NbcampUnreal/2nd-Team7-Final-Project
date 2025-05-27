@@ -1,8 +1,37 @@
 ﻿#include "Framework/GameMode/LCRoomGameMode.h"
+#include "Framework/PlayerController/LCRoomPlayerController.h"
 
 ALCRoomGameMode::ALCRoomGameMode()
 {
 	SelectedMap = EMapType::LuinsMap;
+}
+
+void ALCRoomGameMode::BeginPlay()
+{
+	Super::BeginPlay();
+}
+
+void ALCRoomGameMode::PostLogin(APlayerController* NewPlayer)
+{
+	Super::PostLogin(NewPlayer);
+
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (ALCRoomPlayerController* LPC = Cast<ALCRoomPlayerController>(It->Get()))
+		{
+			LPC->Client_UpdateLobbyUI();
+		}
+	}
+}
+
+APlayerController* ALCRoomGameMode::Login(UPlayer* NewPlayer, ENetRole InRemoteRole, const FString& Portal, const FString& Options, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
+{
+	return Super::Login(NewPlayer, InRemoteRole, Portal, Options, UniqueId, ErrorMessage);
+}
+
+void ALCRoomGameMode::Logout(AController* Exiting)
+{
+	Super::Logout(Exiting);
 }
 
 

@@ -1,6 +1,6 @@
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "UI/Manager/LCUIManagerSettings.h"
-
+#include "Engine/Engine.h"
 #include "LastCanary.h"
 
 
@@ -81,7 +81,17 @@ FString ULCGameInstance::GetPlayerName() const
         {
             if (Session->GetLoginStatus(0) == ELoginStatus::LoggedIn)
             {
-                return Session->GetPlayerNickname(0);
+                FString Nickname = Session->GetPlayerNickname(0);
+                if (GEngine)
+                {
+                    GEngine->AddOnScreenDebugMessage(
+                        -1,             // 키 (-1은 자동으로 지워짐)
+                        5.0f,           // 지속 시간 (초)
+                        FColor::Green,  // 텍스트 색상
+                        FString::Printf(TEXT("NickName : %s"), *Nickname)
+                    );
+                }
+                return Nickname;
             }
         }
     }
@@ -193,4 +203,5 @@ void ULCGameInstance::CreateSession_Implementation(const FString& ServerName, in
 void ULCGameInstance::Shutdown()
 {
     Super::Shutdown();
+
 }

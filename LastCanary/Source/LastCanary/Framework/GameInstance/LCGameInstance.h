@@ -7,9 +7,6 @@
 #include "AdvancedSessions/Classes/AdvancedFriendsGameInstance.h"
 #include "LCGameInstance.generated.h"
 
-/**
- * 
- */
 class ULCUIManagerSettings;
 
 UCLASS()
@@ -46,9 +43,6 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Session")
 	FString GetPlayerName() const;
-
-	//UFUNCTION(BlueprintCallable, Category = "Session")
-	//FString GetPlayerName(APlayerController* PC) const;
 
 	UFUNCTION(BlueprintCallable, Category = "Session")
 	bool IsPlayerLoggedIn() const;

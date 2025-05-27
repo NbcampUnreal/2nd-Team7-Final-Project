@@ -1,4 +1,6 @@
 #include "Framework/PlayerController/LCTitlePlayerController.h"
+#include "Framework/GameInstance/LCGameInstance.h"
+#include "GameFramework/PlayerState.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "UI/Manager/LCUIManager.h"
 
@@ -20,4 +22,14 @@ void ALCTitlePlayerController::BeginPlay()
 			UIManager->ShowTitleMenu();
 		}
 	}
+
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (ULCGameInstance* LCGI = Cast<ULCGameInstance>(GI))
+		{
+			const FString PlayerName = PlayerState->GetPlayerName();
+			PlayerState->SetPlayerName(PlayerName);
+		}
+	}
+
 }

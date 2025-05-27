@@ -5,9 +5,6 @@
 #include "GameFramework/GameStateBase.h"
 #include "LCGameState.generated.h"
 
-/**
- * 
- */
 UCLASS()
 class LASTCANARY_API ALCGameState : public AGameStateBase
 {
@@ -16,11 +13,17 @@ class LASTCANARY_API ALCGameState : public AGameStateBase
 protected:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+	virtual void OnRep_ReplicatedHasBegunPlay() override;
+
+	virtual void PostInitializeComponents() override;
+
 public:
 	UDataTable* GetMapData();
 
 	int32 GetSelectedMapIndex();
 	void SetMapIndex(int32 Index);
+
+	void SetPlayerNum();
 
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -32,5 +35,11 @@ private:
 
 	UFUNCTION()
 	void OnRep_SelectMapChanged();
-	
+
+	UPROPERTY(ReplicatedUsing = OnRep_PlayerNumChanged)
+	int32 PlayerNum;
+
+	UFUNCTION()
+	void OnRep_PlayerNumChanged() const;
+
 };

@@ -16,13 +16,11 @@ public:
 	virtual void BeginPlay() override;
 	virtual bool HasCharacterSpawner() const;
 
-	// BattleGMInterface
 	virtual void SpawnPlayerCharacter(APlayerController* Controller);
 	virtual void HandlePlayerDeath(APlayerController* Controller, const FString& AttackerName);
 
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 
-	// Helper function to get player name from GameInstance
 	UFUNCTION(BlueprintCallable, Category = "Player")
 	FString GetPlayerNameFromGameInstance(APlayerController* Controller);
 	

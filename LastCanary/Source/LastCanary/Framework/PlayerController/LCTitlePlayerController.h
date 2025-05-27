@@ -5,9 +5,6 @@
 #include "GameFramework/PlayerController.h"
 #include "LCTitlePlayerController.generated.h"
 
-/**
- * 
- */
 UCLASS()
 class LASTCANARY_API ALCTitlePlayerController : public APlayerController
 {

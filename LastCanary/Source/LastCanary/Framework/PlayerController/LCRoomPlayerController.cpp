@@ -1,6 +1,10 @@
-#include "Framework/PlayerController/LCRoomPlayerController.h"
+﻿#include "Framework/PlayerController/LCRoomPlayerController.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "Framework/GameInstance/LCGameInstance.h"
+#include "Framework/PlayerState/LCPlayerState.h"
 #include "Framework/GameMode/LCRoomGameMode.h"
+
+#include "UI/UIElement/RoomWidget.h"
 
 #include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
@@ -8,6 +12,10 @@
 
 #include "UI/Manager/LCUIManager.h"
 #include "Blueprint/UserWidget.h"
+
+#include "OnlineSubsystem.h"
+#include "Interfaces/OnlineSessionInterface.h"
+
 
 void ALCRoomPlayerController::BeginPlay()
 {
@@ -21,31 +29,66 @@ void ALCRoomPlayerController::BeginPlay()
 		}
 	}
 
-	if (IsLocalPlayerController())
+	// TODO : Base Camp Level 에서 인터렉션 후 UI 표시
+	CreateAndShowSelecetGameUI();
+	CreateAndShowRoomUI();
+}
+
+void ALCRoomPlayerController::Client_UpdateLobbyUI_Implementation()
+{
+	FTimerHandle TimerHandle;
+	FTimerDelegate TimerDel;
+	TimerDel.BindLambda([this]()
+		{
+			if (RoomWidgetInstance)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Update Lobby UI!!"));
+				RoomWidgetInstance->UpdatePlayerNames();
+			}
+		});
+
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle, TimerDel, 1.0f, false);
+}
+
+void ALCRoomPlayerController::StartGame()
+{
+	if (!HasAuthority()) return;
+
+	if (UWorld* World = GetWorld())
 	{
-		CreateAndShowSelecetGameUI();
+		if (ALCRoomGameMode* RoomGM = Cast<ALCRoomGameMode>(World->GetAuthGameMode()))
+		{
+			RoomGM->StartGame();
+		}
 	}
 }
 
 void ALCRoomPlayerController::CreateAndShowSelecetGameUI()
 {
-	if (StartGameWidgetClass)
+	if (HasAuthority() && IsLocalPlayerController())
 	{
-		UUserWidget* StartWidget = CreateWidget<UUserWidget>(this, StartGameWidgetClass);
-		if (StartWidget)
+		if (StartGameWidgetClass)
 		{
-			StartWidget->AddToViewport();
+			UUserWidget* StartWidget = CreateWidget<UUserWidget>(this, StartGameWidgetClass);
+			if (StartWidget)
+			{
+				StartWidget->AddToViewport();
+			}
 		}
 	}
 }
 
-void ALCRoomPlayerController::Server_StartGame_Implementation()
+void ALCRoomPlayerController::CreateAndShowRoomUI()
 {
-	if (UWorld* W = GetWorld())
+	if (IsLocalPlayerController())
 	{
-		if (ALCRoomGameMode* RoomGM = Cast<ALCRoomGameMode>(W->GetAuthGameMode()))
+		if (RoomWidgetClass)
 		{
-			RoomGM->StartGame();
+			RoomWidgetInstance = CreateWidget<URoomWidget>(this, RoomWidgetClass);
+			if (RoomWidgetInstance)
+			{
+				RoomWidgetInstance->AddToViewport();
+			}
 		}
 	}
 }

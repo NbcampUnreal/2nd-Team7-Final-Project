@@ -1,4 +1,4 @@
-#include "UI/UIElement/MapSelectSample.h"
+﻿#include "UI/UIElement/MapSelectSample.h"
 #include "Framework/GameState/LCGameState.h"
 #include "DataTable/MapDataRow.h"
 
@@ -10,6 +10,7 @@
 #include "Components/ComboBoxString.h"
 #include "Components/Button.h"
 #include "Components/Image.h"
+#include "Components/TextBlock.h"
 
 void UMapSelectSample::NativeConstruct()
 {
@@ -17,7 +18,6 @@ void UMapSelectSample::NativeConstruct()
 
 	if (!MapComboBox) return;
 	MapComboBox->ClearOptions();
-
 
 	if (ALCGameState* LCGS = GetLCGameState())
 	{
@@ -27,13 +27,9 @@ void UMapSelectSample::NativeConstruct()
 
 			for (auto Map : MapDatas->GetRowNames())
 			{
-				// 3) Row 구조체로 캐스트
 				if (const FMapDataRow* Row = MapDatas->FindRow<FMapDataRow>(Map, ContextString))
 				{
-					// (a) UI에 표시할 이름
 					MapComboBox->AddOption(Row->MapInfo.MapName.ToString());
-					// (b) 선택 시 사용할 참조 저장
-					//MapReferencesFromTable.Add(Row->MapReference);
 				}
 			}
 
@@ -46,12 +42,10 @@ void UMapSelectSample::NativeConstruct()
 		}
 	}
 
-	// 시작 버튼 바인딩
 	if (StartButton)
 	{
 		StartButton->OnClicked.AddDynamic(this, &UMapSelectSample::OnStartButtonClicked);
 	}
-
 }
 
 void UMapSelectSample::OnMapSelectionChanged(FString SelectedItem, ESelectInfo::Type SelectType)
@@ -85,9 +79,8 @@ void UMapSelectSample::OnStartButtonClicked()
 	{
 		if (ALCRoomPlayerController* RoomPC = Cast<ALCRoomPlayerController>(PC))
 		{
-			RoomPC->Server_StartGame();
+			RoomPC->StartGame();
 		}
-		//PC->Server_StartGame();
 	}
 }
 
