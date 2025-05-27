@@ -7,7 +7,7 @@
 
 class URoomWidget;
 UCLASS()
-class LASTCANARY_API ALCRoomPlayerController : public APlayerController
+class LASTCANARY_API ALCRoomPlayerController : public ALCPlayerController
 {
 	GENERATED_BODY()
 
@@ -23,10 +23,7 @@ protected:
 	URoomWidget* RoomWidgetInstance;
 
 public:
-	UFUNCTION(Client, Reliable)
-	void Client_UpdateLobbyUI();
-
-	void Client_UpdateLobbyUI_Implementation();
+	void Client_UpdatePlayers_Implementation() override;
 
 	// 서버에서만 호출
 	void StartGame();

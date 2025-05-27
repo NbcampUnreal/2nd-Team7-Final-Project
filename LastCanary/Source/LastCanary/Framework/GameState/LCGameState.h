@@ -36,10 +36,4 @@ private:
 	UFUNCTION()
 	void OnRep_SelectMapChanged();
 
-	UPROPERTY(ReplicatedUsing = OnRep_PlayerNumChanged)
-	int32 PlayerNum;
-
-	UFUNCTION()
-	void OnRep_PlayerNumChanged() const;
-
 };

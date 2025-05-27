@@ -6,12 +6,70 @@
 
 void ULCGameInstance::Login()
 {
+    const IOnlineSubsystem* Subsystem = Online::GetSubsystem(GetWorld());
+    const IOnlineIdentityPtr Identity = Subsystem->GetIdentityInterface();
 
+    const FUniqueNetIdPtr NetId = Identity->GetUniquePlayerId(0);
+    if (NetId != nullptr && Identity->GetLoginStatus(0) == ELoginStatus::LoggedIn) return;
+
+    LoginDelegateHandle = Identity->AddOnLoginCompleteDelegate_Handle(
+        0,
+        FOnLoginCompleteDelegate::CreateUObject(
+            this,
+            &ThisClass::HandleLoginCompleted));
+
+    FString AuthType;
+    FParse::Value(FCommandLine::Get(), TEXT("AUTH_TYPE="), AuthType);
+
+    if (!AuthType.IsEmpty()) // 테스트용 DevAuth 계정
+    {
+        UE_LOG(LogTemp, Log, TEXT("Logging into EOS..."));
+
+        if (!Identity->AutoLogin(0))
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Failed to login... "));
+            Identity->ClearOnLoginCompleteDelegate_Handle(0, LoginDelegateHandle);
+            LoginDelegateHandle.Reset();
+        }
+    }
+    else
+    {
+        FOnlineAccountCredentials Credentials("AccountPortal", "", "");
+
+        UE_LOG(LogTemp, Log, TEXT("Logging into EOS..."));
+
+        if (!Identity->Login(0, Credentials))
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Failed to login... "));
+
+            Identity->ClearOnLoginCompleteDelegate_Handle(0, LoginDelegateHandle);
+            LoginDelegateHandle.Reset();
+        }
+    }
 }
 
 void ULCGameInstance::HandleLoginCompleted(int32 LocalUserNum, bool bWasSuccessful, const FUniqueNetId& UserId, const FString& Error)
 {
+    IOnlineSubsystem* Subsystem = Online::GetSubsystem(GetWorld());
+    IOnlineIdentityPtr Identity = Subsystem->GetIdentityInterface();
 
+    const FUniqueNetIdPtr NetId = Identity->GetUniquePlayerId(0);
+    if (bWasSuccessful)
+    {
+        UE_LOG(LogTemp, Log, TEXT("Login callback completed!"));
+        UE_LOG(LogTemp, Log, TEXT("Loading cloud data and searching for a session..."));
+
+        //OnProcessReturnValue.Broadcast(EPlayerEOSStateType::Login, ESessionResultType::Success);
+        //FindSessions();
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("EOS login failed."));
+        // 로그인 실패시 EOS 게임모드 통해 메인메뉴로 이동
+    }
+
+    Identity->ClearOnLoginCompleteDelegate_Handle(LocalUserNum, LoginDelegateHandle);
+    LoginDelegateHandle.Reset();
 }
 
 
@@ -26,12 +84,7 @@ FString ULCGameInstance::GetPlayerName() const
                 FString Nickname = Session->GetPlayerNickname(0);
                 if (GEngine)
                 {
-                    GEngine->AddOnScreenDebugMessage(
-                        -1,             // 키 (-1은 자동으로 지워짐)
-                        5.0f,           // 지속 시간 (초)
-                        FColor::Green,  // 텍스트 색상
-                        FString::Printf(TEXT("NickName : %s"), *Nickname)
-                    );
+                    GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green, FString::Printf(TEXT("NickName : %s"), *Nickname));
                 }
                 return Nickname;
             }
@@ -86,7 +139,9 @@ void ULCGameInstance::LoadMapData()
     {
         if (MapDataRow)
         {
-            MapDataRow->MapID = GetTypeHash(MapDataRow->MapInfo.MapName);
+            MapDataRow->MapID = FCrc::StrCrc32(*MapDataRow->MapInfo.MapName.ToString());
+            //MapDataRow->MapID = GetTypeHash(MapDataRow->MapInfo.MapName);
+
            // LOG_Frame_WARNING(TEXT("Loaded map: %s"), *MapDataRow->MapInfo.MapName.ToString());
         }
     }
@@ -108,19 +163,22 @@ void ULCGameInstance::LoadItemData()
     {
         if (ItemDataRow)
         {
-            // 예: 아이디 해시화 → 캐싱 용도
-            int32 HashedID = GetTypeHash(ItemDataRow->ItemName);
-            ItemDataRow->ItemID = HashedID;
+            ItemDataRow->ItemID = FCrc::StrCrc32(*ItemDataRow->ItemName.ToString());
 
-            LOG_Frame_WARNING(TEXT("Loaded item: %s (Price: %d)"),
+            // 예: 아이디 해시화 → 캐싱 용도
+            // int32 HashedID = GetTypeHash(ItemDataRow->ItemName);
+            // ItemDataRow->ItemID = HashedID;
+
+            /*LOG_Frame_WARNING(TEXT("Loaded item: %s (Price: %d)"),
                 *ItemDataRow->ItemName.ToString(),
-                ItemDataRow->ItemPrice);
+                ItemDataRow->ItemPrice);*/
         }
     }
 
    // LOG_Frame_WARNING(TEXT("총 %d개의 상점 아이템을 로딩했습니다."), AllItems.Num());
 }
 
+// BluePrint에서 Create Session을 합니다.
 void ULCGameInstance::CreateSession_Implementation(const FString& ServerName, int AmountOfSlots)
 {
     UE_LOG(LogTemp, Warning, TEXT("CreateSession called in C++"));

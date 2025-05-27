@@ -10,8 +10,6 @@ class LASTCANARY_API ALCGameSession : public AGameSession
 	GENERATED_BODY()
 	
 public:
-	ALCGameSession();
-
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual bool ProcessAutoLogin() override;
@@ -23,7 +21,7 @@ public:
 	virtual void RegisterPlayer(APlayerController* NewPlayer, const FUniqueNetIdRepl& UniqueId, bool bWasFromInvite = false) override;
 	virtual void UnregisterPlayer(const APlayerController* ExitingPlayer) override;
 
-	FName GetSessionName();
+	//FName GetSessionName();
 
 	int MaxNumberOfPlayersInSession = 50;
 	int NumberOfPlayersInSession;

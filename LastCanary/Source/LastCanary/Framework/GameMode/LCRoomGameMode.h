@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Framework/GameInstance/LCGameInstance.h"
+#include "Framework/GameMode/BaseGameMode.h"
 #include "GameFramework/GameModeBase.h"
 #include "LCRoomGameMode.generated.h"
 
@@ -15,7 +15,7 @@ enum class EMapType : uint8
 };
 
 UCLASS()
-class LASTCANARY_API ALCRoomGameMode : public AGameModeBase
+class LASTCANARY_API ALCRoomGameMode : public ABaseGameMode
 {
 	GENERATED_BODY()
 	
@@ -27,12 +27,6 @@ public:
 	virtual APlayerController* Login(UPlayer* NewPlayer, ENetRole InRemoteRole, const FString& Portal, const FString& Options, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage) override;
 	virtual void Logout(AController* Exiting) override;
 
-
-	UFUNCTION(BlueprintCallable, Category = "Instance")
-	FORCEINLINE_DEBUGGABLE ULCGameInstance* GetLCGameInstance() const
-	{
-		return Cast<ULCGameInstance>(GetGameInstance());
-	}
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Maps")
 	TArray<TSoftObjectPtr<UWorld>> MapReferences;
