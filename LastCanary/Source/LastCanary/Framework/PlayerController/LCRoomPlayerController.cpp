@@ -22,7 +22,7 @@ void ALCRoomPlayerController::BeginPlay()
 	Super::BeginPlay();
 
 	// TODO : Base Camp Level 에서 인터렉션 후 UI 표시
-	CreateAndShowSelecetGameUI();
+	//CreateAndShowSelecetGameUI();
 	CreateAndShowRoomUI();
 
 	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
@@ -38,9 +38,11 @@ void ALCRoomPlayerController::BeginPlay()
 void ALCRoomPlayerController::Client_UpdatePlayers_Implementation()
 {
 	Super::Client_UpdatePlayers_Implementation();
+
 	FTimerHandle TimerHandle;
 	FTimerDelegate TimerDel;
-	TimerDel.BindLambda([this]()
+	TimerDel.BindLambda(
+		[this]()
 		{
 			if (RoomWidgetInstance)
 			{
@@ -52,18 +54,18 @@ void ALCRoomPlayerController::Client_UpdatePlayers_Implementation()
 	GetWorld()->GetTimerManager().SetTimer(TimerHandle, TimerDel, 1.0f, false);
 }
 
-void ALCRoomPlayerController::StartGame()
-{
-	if (!HasAuthority()) return;
-
-	if (UWorld* World = GetWorld())
-	{
-		if (ALCRoomGameMode* RoomGM = Cast<ALCRoomGameMode>(World->GetAuthGameMode()))
-		{
-			RoomGM->StartGame();
-		}
-	}
-}
+//void ALCRoomPlayerController::StartGame()
+//{
+//	if (!HasAuthority()) return;
+//
+//	if (UWorld* World = GetWorld())
+//	{
+//		if (ALCRoomGameMode* RoomGM = Cast<ALCRoomGameMode>(World->GetAuthGameMode()))
+//		{
+//			//RoomGM->StartGame();
+//		}
+//	}
+//}
 
 void ALCRoomPlayerController::CreateAndShowSelecetGameUI()
 {

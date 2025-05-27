@@ -2,13 +2,14 @@
 
 #include "CoreMinimal.h"
 #include "UI/Manager/LCUIManager.h"
+#include "Character/BasePlayerController.h"
 #include "GameFramework/PlayerController.h"
 #include "LCPlayerController.generated.h"
 
 class ULCUIManager;
 
 UCLASS()
-class LASTCANARY_API ALCPlayerController : public APlayerController
+class LASTCANARY_API ALCPlayerController : public ABasePlayerController
 {
 	GENERATED_BODY()
 	
@@ -22,6 +23,8 @@ public:
 	void Client_UpdatePlayers();
 
 	virtual void Client_UpdatePlayers_Implementation();
+
+	void StartGame(FString SoftPath);
 
 protected:
 	TObjectPtr<ULCUIManager> LCUIManager;

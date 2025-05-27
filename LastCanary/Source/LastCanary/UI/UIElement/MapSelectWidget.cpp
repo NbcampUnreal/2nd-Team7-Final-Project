@@ -5,6 +5,7 @@
 #include "Components/TextBlock.h"
 #include "Components/Button.h"
 
+#include "Framework/PlayerController/LCPlayerController.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -77,6 +78,11 @@ void UMapSelectWidget::UpdateMapDisplay()
 
 	if (ThumbnailImage)
 	{
+		UTexture2D* LoadedTexture = Row->MapInfo.MapThumbnail.LoadSynchronous();
+		if (LoadedTexture && ThumbnailImage)
+		{
+			ThumbnailImage->SetBrushFromTexture(LoadedTexture, true);
+		}
 		//ThumbnailImage->SetBrushFromTexture(Row->MapInfo.PreviewImage);
 	}
 
@@ -84,6 +90,16 @@ void UMapSelectWidget::UpdateMapDisplay()
 	{
 		MapNameText->SetText(FText::FromName(Row->MapInfo.MapName));
 	}
+
+	//if (MapDifficultyText)
+	//{
+	//	MapDifficultyText->SetText(FText::FromString(Row->MapInfo.Difficulty));
+	//}
+
+	//if (MapDescriptionText)
+	//{
+	//	MapDescriptionText->SetText(FText::FromString(Row->MapInfo.Description));
+	//}
 }
 
 int32 UMapSelectWidget::GetCurrentMapID() const
@@ -137,5 +153,20 @@ void UMapSelectWidget::OnConfirmButtonClicked()
 	if (UIManager)
 	{
 		UIManager->HideMapSelectPopup();
+	}
+
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		if (ALCPlayerController* LCPC = Cast<ALCPlayerController>(PC))
+		{
+			FString SoftPath = SelectedRow->MapInfo.MapPath.ToSoftObjectPath().GetAssetPathString();
+			if (SoftPath.IsEmpty())
+			{
+				UE_LOG(LogTemp, Error, TEXT("Worng SoftPath!! Check DataTable"));
+				return;
+			}
+
+			LCPC->StartGame(SoftPath);
+		}
 	}
 }
