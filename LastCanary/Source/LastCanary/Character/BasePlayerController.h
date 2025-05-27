@@ -18,7 +18,7 @@ class LASTCANARY_API ABasePlayerController : public ALCPlayerController
 	GENERATED_BODY()
 private:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
-
+public:
 private:
 	APawn* CachedPawn;  // Pawn을 저장할 멤버 변수
 	APawn* CurrentPossessedPawn;
@@ -33,7 +33,6 @@ private:
 	UEnhancedInputComponent* EnhancedInput;
 	UInputMappingContext* CurrentIMC;
 public:
-protected:
 	virtual void SetupInputComponent() override;
 
 	void ApplyInputMappingContext(UInputMappingContext* IMC);

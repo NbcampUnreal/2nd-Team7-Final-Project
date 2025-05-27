@@ -71,6 +71,19 @@ void ABaseDrone::Tick(float DeltaTime)
 
 	// 최종 이동
 	AddActorWorldOffset(HorizontalOffset + VerticalOffset, true);
+
+
+	//check Dist to PlayCharacter
+
+	FVector MyLocation = GetActorLocation();
+	float Distance = FVector::Dist(MyLocation, CharacterLocation);
+
+
+	UE_LOG(LogTemp, Log, TEXT("Distance to CharacterLocation: %.2f"), Distance);
+
+	if (Distance > MaxDistanceToPlayer)
+	{
+	}
 }
 
 void ABaseDrone::Input_Move(const FInputActionValue& Value)
@@ -208,4 +221,10 @@ void ABaseDrone::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLife
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(ABaseDrone, CameraPitch);
+}
+
+
+void ABaseDrone::SetCharacterLocation(FVector Location)
+{
+	CharacterLocation = Location;
 }

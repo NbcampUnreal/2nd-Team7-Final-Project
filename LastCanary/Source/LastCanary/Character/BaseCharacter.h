@@ -85,6 +85,7 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interact")
 	AActor* CurrentFocusedActor;
 
+
 	void TraceInteractableActor();
 public:
 	// 아이템 퀵슬롯 및 변경 관련 로직
@@ -186,6 +187,15 @@ public:
 	UFUNCTION()
 	void PlayInteractionMontage(AActor* Target);
 
+	UFUNCTION(Server, Reliable)
+	void Server_PlayMontage(UAnimMontage* MontageToPlay);
+	void Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay);
+	
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayMontage(UAnimMontage* MontageToPlay);
+	void Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay);
+	
+	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "TEST")
 	bool bIsGetFallDownDamage = false;
 };

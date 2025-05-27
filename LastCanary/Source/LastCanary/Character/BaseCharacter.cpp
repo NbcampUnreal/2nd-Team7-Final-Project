@@ -62,6 +62,7 @@ void ABaseCharacter::BeginPlay()
 		UE_LOG(LogTemp, Warning, TEXT("Character BeginPlay - Complete  This is Client."));
 	}
 	
+
 	CurrentQuickSlotIndex = 0;
 
 	//애니메이션 오버레이 활성화.
@@ -80,6 +81,43 @@ void ABaseCharacter::BeginPlay()
 
 void ABaseCharacter::NotifyControllerChanged()
 {
+	/*
+	UE_LOG(LogTemp, Warning, TEXT("Character NotifyControllerChanged"));
+
+	const auto* PreviousPlayer{ Cast<APlayerController>(PreviousController) };
+	if (IsValid(PreviousPlayer))
+	{
+		auto* InputSubsystem{ ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PreviousPlayer->GetLocalPlayer()) };
+		if (IsValid(InputSubsystem))
+		{
+			InputSubsystem->RemoveMappingContext(InputMappingContext);
+		}
+	}
+	
+	*/
+	auto* NewPlayer{ Cast<APlayerController>(GetController()) };
+	ABasePlayerController* PC = Cast<ABasePlayerController>(NewPlayer);
+	if (IsValid(PC))
+	{
+		
+		PC->InputYawScale_DEPRECATED = 1.0f;
+		PC->InputPitchScale_DEPRECATED = 1.0f;
+		PC->InputRollScale_DEPRECATED = 1.0f;
+		
+		PC->InitInputComponent();
+		auto* InputSubsystem{ ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()) };
+		if (IsValid(InputSubsystem))
+		{
+			FModifyContextOptions Options;
+			Options.bNotifyUserSettings = true;
+			
+			InputSubsystem->AddMappingContext(PC->InputMappingContext, 0, Options);
+			
+		}
+		PC->SetInputMode(FInputModeGameOnly());
+		PC->bShowMouseCursor = false;
+	}
+	
 	Super::NotifyControllerChanged();
 }
 
@@ -367,49 +405,6 @@ void ABaseCharacter::PickupItem()
 	*/
 }
 
-void ABaseCharacter::SetPossess(bool IsPossessed)
-{
-	bIsPossessed = IsPossessed;
-}
-
-
-void ABaseCharacter::GetHeldItem()
-{
-	//TODO: 아이템 반환
-	return;
-}
-
-int32 ABaseCharacter::GetCurrentQuickSlotIndex()
-{
-	return CurrentQuickSlotIndex;
-}
-void ABaseCharacter::SetCurrentQuickSlotIndex(int32 NewIndex)
-{
-	Server_SetQuickSlotIndex(NewIndex);
-}
-
-void ABaseCharacter::Server_SetQuickSlotIndex_Implementation(int32 NewIndex)
-{
-	int32 AdjustedIndex = NewIndex;
-	if (AdjustedIndex > MaxQuickSlotIndex)
-	{
-		AdjustedIndex = 0;
-	}
-	else if (AdjustedIndex < 0)
-	{
-		AdjustedIndex = MaxQuickSlotIndex;
-	}
-
-	CurrentQuickSlotIndex = AdjustedIndex;
-
-	// 동기화된 장착 요청
-	Multicast_EquipItemFromQuickSlot(AdjustedIndex);
-}
-
-void ABaseCharacter::Multicast_EquipItemFromQuickSlot_Implementation(int32 Index)
-{
-	EquipItemFromCurrentQuickSlot(Index);
-}
 
 void ABaseCharacter::TraceInteractableActor()
 {
@@ -482,6 +477,52 @@ void ABaseCharacter::TraceInteractableActor()
 			}
 		}
 	}
+}
+
+
+
+void ABaseCharacter::SetPossess(bool IsPossessed)
+{
+	bIsPossessed = IsPossessed;
+}
+
+
+void ABaseCharacter::GetHeldItem()
+{
+	//TODO: 아이템 반환
+	return;
+}
+
+int32 ABaseCharacter::GetCurrentQuickSlotIndex()
+{
+	return CurrentQuickSlotIndex;
+}
+void ABaseCharacter::SetCurrentQuickSlotIndex(int32 NewIndex)
+{
+	Server_SetQuickSlotIndex(NewIndex);
+}
+
+void ABaseCharacter::Server_SetQuickSlotIndex_Implementation(int32 NewIndex)
+{
+	int32 AdjustedIndex = NewIndex;
+	if (AdjustedIndex > MaxQuickSlotIndex)
+	{
+		AdjustedIndex = 0;
+	}
+	else if (AdjustedIndex < 0)
+	{
+		AdjustedIndex = MaxQuickSlotIndex;
+	}
+
+	CurrentQuickSlotIndex = AdjustedIndex;
+
+	// 동기화된 장착 요청
+	Multicast_EquipItemFromQuickSlot(AdjustedIndex);
+}
+
+void ABaseCharacter::Multicast_EquipItemFromQuickSlot_Implementation(int32 Index)
+{
+	EquipItemFromCurrentQuickSlot(Index);
 }
 
 void ABaseCharacter::EquipItemFromCurrentQuickSlot(int QuickSlotIndex)
@@ -756,11 +797,9 @@ void ABaseCharacter::PlayInteractionMontage(AActor* Target)
 {
 	if (!Target || !GetMesh() || !GetMesh()->GetAnimInstance())
 		return;
-	
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+
 
 	UAnimMontage* MontageToPlay = InteractMontage;
-
 	// 1. 대상 클래스별로 분기
 	/*
 	if (Target->IsA(ADoorActor::StaticClass()))
@@ -780,7 +819,19 @@ void ABaseCharacter::PlayInteractionMontage(AActor* Target)
 	if (MontageToPlay)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Anim Montage"));
-		AnimInstance->Montage_Play(MontageToPlay);
+		Server_PlayMontage(MontageToPlay);
+		
 	}
 	
+}
+
+void ABaseCharacter::Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay)
+{
+	Multicast_PlayMontage(MontageToPlay);
+}
+
+void ABaseCharacter::Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay)
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	AnimInstance->Montage_Play(MontageToPlay);
 }
