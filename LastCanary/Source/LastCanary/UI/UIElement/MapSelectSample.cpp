@@ -79,7 +79,7 @@ void UMapSelectSample::OnStartButtonClicked()
 	{
 		if (ALCRoomPlayerController* RoomPC = Cast<ALCRoomPlayerController>(PC))
 		{
-			RoomPC->StartGame();
+			//RoomPC->StartGame();
 		}
 	}
 }
