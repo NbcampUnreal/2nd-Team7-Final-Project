@@ -17,4 +17,8 @@ struct FMapInfo
 	TSoftObjectPtr<UWorld> MapPath;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSoftObjectPtr<UTexture2D> MapThumbnail = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FString Difficulty;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FString Description;
 };
