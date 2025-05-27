@@ -113,7 +113,7 @@ void UKeySettingWidget::OnKeySelectedMoveForward(FInputChord SelectedKey)
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyMoveForward->SetText(FText::FromName(SelectedKey.Key.GetFName()));
 
-	UpdateMappings("MoveFront", PressedKey);
+	QueuePendingMapping("MoveFront", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedMoveBackward(FInputChord SelectedKey)
 {
@@ -125,7 +125,7 @@ void UKeySettingWidget::OnKeySelectedMoveBackward(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyMoveBackward->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("MoveBack", PressedKey);
+	QueuePendingMapping("MoveBack", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedMoveLeft(FInputChord SelectedKey)
 {
@@ -137,7 +137,7 @@ void UKeySettingWidget::OnKeySelectedMoveLeft(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyMoveLeft->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("MoveLeft", PressedKey);
+	QueuePendingMapping("MoveLeft", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedMoveRight(FInputChord SelectedKey)
 {
@@ -149,7 +149,7 @@ void UKeySettingWidget::OnKeySelectedMoveRight(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyMoveRight->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("MoveRight", PressedKey);
+	QueuePendingMapping("MoveRight", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedStrafeLeft(FInputChord SelectedKey)
 {
@@ -161,7 +161,7 @@ void UKeySettingWidget::OnKeySelectedStrafeLeft(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyStrafeLeft->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("DroneStrafeLeft_Keyboard", PressedKey);
+	QueuePendingMapping("DroneStrafeLeft_Keyboard", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedStrafeRight(FInputChord SelectedKey)
 {
@@ -173,7 +173,7 @@ void UKeySettingWidget::OnKeySelectedStrafeRight(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyStrafeRight->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("DroneStrafeRight_Keyboard", PressedKey);
+	QueuePendingMapping("DroneStrafeRight_Keyboard", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedWalk(FInputChord SelectedKey)
 {
@@ -185,7 +185,7 @@ void UKeySettingWidget::OnKeySelectedWalk(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyWalk->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("Walk_Keyboard", PressedKey);
+	QueuePendingMapping("Walk_Keyboard", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedSprint(FInputChord SelectedKey)
 {
@@ -197,7 +197,7 @@ void UKeySettingWidget::OnKeySelectedSprint(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeySprint->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("Sprint_Keyboard", PressedKey);
+	QueuePendingMapping("Sprint_Keyboard", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedJump(FInputChord SelectedKey)
 {
@@ -209,7 +209,7 @@ void UKeySettingWidget::OnKeySelectedJump(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyJump->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("Jump_Keyboard", PressedKey);
+	QueuePendingMapping("Jump_Keyboard", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedCrouch(FInputChord SelectedKey)
 {
@@ -221,7 +221,7 @@ void UKeySettingWidget::OnKeySelectedCrouch(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyCrouch->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("Crouch_Keyboard", PressedKey);
+	QueuePendingMapping("Crouch_Keyboard", PressedKey);
 }
 
 void UKeySettingWidget::OnKeySelectedInteract(FInputChord SelectedKey)
@@ -234,7 +234,7 @@ void UKeySettingWidget::OnKeySelectedInteract(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyInteract->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("Interact_Keyboard", PressedKey);
+	QueuePendingMapping("Interact_Keyboard", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedAim(FInputChord SelectedKey)
 {
@@ -246,7 +246,7 @@ void UKeySettingWidget::OnKeySelectedAim(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyAim->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("Aim_Keyboard", PressedKey);
+	QueuePendingMapping("Aim_Keyboard", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedThrowItem(FInputChord SelectedKey)
 {
@@ -258,7 +258,7 @@ void UKeySettingWidget::OnKeySelectedThrowItem(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyThrowItem->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("ThrowItem_Keyboard", PressedKey);
+	QueuePendingMapping("ThrowItem_Keyboard", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedVoice(FInputChord SelectedKey)
 {
@@ -270,7 +270,7 @@ void UKeySettingWidget::OnKeySelectedVoice(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyVoice->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("VoiceChat_Keyboard", PressedKey);
+	QueuePendingMapping("VoiceChat_Keyboard", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedChangeShootingMode(FInputChord SelectedKey)
 {
@@ -282,7 +282,7 @@ void UKeySettingWidget::OnKeySelectedChangeShootingMode(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyChangeShootingMode->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("ChangeShootingMode_Keyboard", PressedKey);
+	QueuePendingMapping("ChangeShootingMode_Keyboard", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedChangeQuickSlot1(FInputChord SelectedKey)
 {
@@ -294,7 +294,7 @@ void UKeySettingWidget::OnKeySelectedChangeQuickSlot1(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeySelectQuickSlot1->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("SelectQuickSlot1_Keyboard", PressedKey);
+	QueuePendingMapping("SelectQuickSlot1_Keyboard", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedChangeQuickSlot2(FInputChord SelectedKey)
 {
@@ -306,7 +306,7 @@ void UKeySettingWidget::OnKeySelectedChangeQuickSlot2(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeySelectQuickSlot2->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("SelectQuickSlot2_Keyboard", PressedKey);
+	QueuePendingMapping("SelectQuickSlot2_Keyboard", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedChangeQuickSlot3(FInputChord SelectedKey)
 {
@@ -318,7 +318,7 @@ void UKeySettingWidget::OnKeySelectedChangeQuickSlot3(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeySelectQuickSlot3->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("SelectQuickSlot3_Keyboard", PressedKey);
+	QueuePendingMapping("SelectQuickSlot3_Keyboard", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedChangeQuickSlot4(FInputChord SelectedKey)
 {
@@ -330,7 +330,7 @@ void UKeySettingWidget::OnKeySelectedChangeQuickSlot4(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeySelectQuickSlot4->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("SelectQuickSlot4_Keyboard", PressedKey);
+	QueuePendingMapping("SelectQuickSlot4_Keyboard", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedOpenPauseMenu(FInputChord SelectedKey)
 {
@@ -342,7 +342,7 @@ void UKeySettingWidget::OnKeySelectedOpenPauseMenu(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyOpenPauseMenu->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("OpenPauseMenu_Keyboard", PressedKey);
+	QueuePendingMapping("OpenPauseMenu_Keyboard", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedExitDrone(FInputChord SelectedKey)
 {
@@ -354,7 +354,7 @@ void UKeySettingWidget::OnKeySelectedExitDrone(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyExitDrone->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("ExitDrone_Keyboard", PressedKey);
+	QueuePendingMapping("ExitDrone_Keyboard", PressedKey);
 }
 
 
@@ -512,4 +512,83 @@ void UKeySettingWidget::UpdateMappings(FName DisplayName, FKey Key)
 			RefreshMappings(Mappings);
 
 		}, 0.2f, false);
+}
+
+void UKeySettingWidget::ApplyPendingMappings()
+{
+	for (const auto& Pair : PendingMappings)
+	{
+		UpdateMappings(Pair.Key, Pair.Value);
+	}
+	PendingMappings.Empty();
+
+	StoreOriginalMappings(); // 최신 상태로 백업 갱신
+}
+
+void UKeySettingWidget::QueuePendingMapping(FName MappingName, FKey Key)
+{
+	PendingMappings.FindOrAdd(MappingName) = Key;
+	CheckForConflicts();
+}
+
+void UKeySettingWidget::CheckForConflicts()
+{
+}
+
+void UKeySettingWidget::StoreOriginalMappings()
+{
+	OriginalMappings.Empty();
+	if (!MappingContext)
+	{
+		return;
+	}
+
+	for (const FEnhancedActionKeyMapping& Mapping : MappingContext->GetMappings())
+	{
+		if (Mapping.Action)
+		{
+			OriginalMappings.Add(Mapping.Action->GetFName(), Mapping.Key);
+		}
+	}
+}
+
+void UKeySettingWidget::RevertToOriginalMappings()
+{
+	if (!MappingContext) 
+	{
+		return;
+	}
+
+	MappingContext->UnmapAll();
+	for (const auto& Pair : OriginalMappings)
+	{
+		FName MappingName = Pair.Key;
+		FKey Key = Pair.Value;
+		
+		UInputAction* Action = FindActionByName(MappingName);
+		if (Action)
+		{
+			MappingContext->MapKey(Action, Key);
+		}
+	}
+}
+
+UInputAction* UKeySettingWidget::FindActionByName(FName MappingName)
+{
+	TArray<UInputAction*> AllActions = {
+		IA_MoveForward, IA_MoveBackward, IA_MoveLeft, IA_MoveRight,
+		IA_StrafeLeft, IA_StrafeRight, IA_Walk, IA_Sprint, IA_Jump, IA_Crouch,
+		IA_Interact, IA_Aim, IA_ThrowItem, IA_Voice, IA_ChangeShootingMode,
+		IA_SelectQuickSlot1, IA_SelectQuickSlot2, IA_SelectQuickSlot3, IA_SelectQuickSlot4,
+		IA_OpenPauseMenu, IA_OpenExitDrone
+	};
+
+	for (UInputAction* Action : AllActions)
+	{
+		if (Action && Action->GetName() == MappingName)
+		{
+			return Action;
+		}
+	}
+	return nullptr;
 }

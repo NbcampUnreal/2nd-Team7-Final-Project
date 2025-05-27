@@ -1,5 +1,6 @@
 #include "UI/UIElement/OptionWidget.h"
 #include "UI/UIObject/GeneralOptionWidget.h"
+#include "UI/UIObject/KeySettingWidget.h"
 
 #include "Components/WidgetSwitcher.h"
 #include "Components/Button.h"
@@ -57,6 +58,11 @@ void UOptionWidget::NativeDestruct()
 
 void UOptionWidget::OnApplyButtonClicked()
 {
+	if (KeySettingWidget)
+	{
+		KeySettingWidget->ApplyPendingMappings();
+	}
+	
 	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
 	{
 		OptionManager->ApplyOptions();
@@ -65,6 +71,10 @@ void UOptionWidget::OnApplyButtonClicked()
 
 void UOptionWidget::OnCloseButtonClicked()
 {
+	if (KeySettingWidget)
+	{
+		KeySettingWidget->RevertToOriginalMappings();
+	}
 	RemoveFromParent();
 }
 

@@ -315,8 +315,22 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void UpdateMappings(FName DisplayName, FKey Key);
 
-	//TMap<FName, FKey> PendingMappings;
+	//저장되지 않은 키 변경 사항
+	TMap<FName, FKey> PendingMappings;
 
-	//void QueueMapping(FName MappingName, FKey Key);
-	//void ApplyPendingMappings();
+	//Apply 시 저장할 함수
+	void ApplyPendingMappings();
+
+	// 키 선택 시 호출할 함수 (QueuePendingMapping 대신)
+	void QueuePendingMapping(FName MappingName, FKey Key);
+
+	// 중복 키 검사
+	void CheckForConflicts();
+
+	// 변경 전 상태 저장
+	TMap<FName, FKey> OriginalMappings;
+	void StoreOriginalMappings();
+	void RevertToOriginalMappings();
+
+	UInputAction* FindActionByName(FName MappingName);
 };
