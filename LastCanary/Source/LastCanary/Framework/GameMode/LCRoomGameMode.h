@@ -1,3 +1,5 @@
+#pragma once
+
 #include "CoreMinimal.h"
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "GameFramework/GameModeBase.h"
