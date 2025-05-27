@@ -42,15 +42,20 @@ void ABasePlayerController::BeginPlay()
 			UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController::BeginPlay] UIManager 초기화 시작"));
 			UIManager->InitUIManager(this);
 			UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController::BeginPlay] UIManager 초기화 완료"));
+
+			// ⭐ 지연된 HUD 표시 (컴포넌트들이 완전히 초기화될 때까지 기다림)
+			if (GetPawn())
+			{
+				FTimerHandle HUDTimer;
+				GetWorld()->GetTimerManager().SetTimer(HUDTimer,
+					[this, UIManager]()
+					{
+						UE_LOG(LogTemp, Warning, TEXT("[BasePlayerController::BeginPlay] 지연된 HUD 표시"));
+						UIManager->ShowInGameHUD();
+					},
+					0.2f, false); // 0.2초 후 실행
+			}
 		}
-		else
-		{
-			UE_LOG(LogTemp, Error, TEXT("[BasePlayerController::BeginPlay] UIManager가 NULL"));
-		}
-	}
-	else
-	{
-		UE_LOG(LogTemp, Error, TEXT("[BasePlayerController::BeginPlay] Subsystem이 NULL"));
 	}
 }
 

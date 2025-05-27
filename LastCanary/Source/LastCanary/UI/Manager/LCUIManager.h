@@ -42,15 +42,11 @@ public:
 	void HidePauseMenu();
 	void ShowConfirmPopup(TFunction<void()> OnConfirm);
 	void ShowShopPopup();
-	// 인벤토리로 추가
-	//void ShowInventoryPopup(); // 사용하지 않게 될 것 같음
-	void ToggleInventoryPopup();
-	// ---------------
-
 	void HideShopPopup();
 	void ShowMapSelectPopup();
 	void HideMapSelectPopup();
 	void ShowCreateSession();
+	void ToggleInventory();
 
 	void SwitchToWidget(UUserWidget* Widget);
 
@@ -109,10 +105,8 @@ private:
 	TSubclassOf<UUIElementCreateSession> CreateSessionClass;
 	UPROPERTY()
 	TSubclassOf<UPopupLoading> PopUpLoadingClass;
-	// 인벤토리로 추가
 	UPROPERTY()
 	TSubclassOf<UInventoryMainWidget> InventoryMainWidgetClass;
-	// ---------------
 
 	// 위젯 캐싱
 	UPROPERTY()
@@ -134,8 +128,6 @@ private:
 	UUIElementCreateSession* CachedCreateSession;
 	UPROPERTY()
 	UPopupLoading* CachedPopupLoading;
-	// 인벤토리로 추가
 	UPROPERTY()
 	UInventoryMainWidget* CachedInventoryMainWidget;
-	// ---------------
 };

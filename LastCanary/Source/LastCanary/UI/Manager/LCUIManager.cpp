@@ -30,6 +30,8 @@ ULCUIManager::ULCUIManager()
 void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 {
 	OwningPlayer = PlayerController;
+	UE_LOG(LogTemp, Warning, TEXT("[InitUIManager] OwningPlayer 설정: %s"),
+		OwningPlayer ? *OwningPlayer->GetName() : TEXT("NULL"));
 	if (const ULCGameInstance* GI = Cast<ULCGameInstance>(PlayerController->GetGameInstance()))
 	{
 		if (const ULCUIManagerSettings* Settings = GI->GetUIManagerSettings())
@@ -44,7 +46,8 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			InventoryMainWidgetClass = Settings->FromBPInventoryMainUIClass;
 			CreateSessionClass = Settings->FromBPCreateSessionWidgetClass;
 			PopUpLoadingClass = Settings->FromBPPopupLoadingClass;
-
+			UE_LOG(LogTemp, Warning, TEXT("[InitUIManager] InventoryMainWidgetClass: %s"),
+				InventoryMainWidgetClass ? *InventoryMainWidgetClass->GetName() : TEXT("NULL"));
 			if ((CachedTitleMenu == nullptr) && TitleMenuClass)
 			{
 				CachedTitleMenu = CreateWidget<UTitleMenu>(PlayerController, TitleMenuClass);
@@ -73,10 +76,10 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			{
 				CachedMapSelectWidget = CreateWidget<UMapSelectWidget>(PlayerController, MapSelectWidgetClass);
 			}
-			if ((CachedInventoryMainWidget == nullptr) && InventoryMainWidgetClass)
-			{
-				CachedInventoryMainWidget = CreateWidget<UInventoryMainWidget>(PlayerController, InventoryMainWidgetClass);
-			}
+			//if ((CachedInventoryMainWidget == nullptr) && InventoryMainWidgetClass)
+			//{
+			//	CachedInventoryMainWidget = CreateWidget<UInventoryMainWidget>(PlayerController, InventoryMainWidgetClass);
+			//}
 			if ((CachedCreateSession == nullptr) && CreateSessionClass)
 			{
 				CachedCreateSession = CreateWidget<UUIElementCreateSession>(PlayerController, CreateSessionClass);
@@ -85,8 +88,36 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			{
 				CachedPopupLoading = CreateWidget<UPopupLoading>(PlayerController, PopUpLoadingClass);
 			}
+			if ((CachedInventoryMainWidget == nullptr) && InventoryMainWidgetClass)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("[InitUIManager] 인벤토리 위젯 생성 시도"));
+				CachedInventoryMainWidget = CreateWidget<UInventoryMainWidget>(PlayerController, InventoryMainWidgetClass);
+
+				if (CachedInventoryMainWidget)
+				{
+					UE_LOG(LogTemp, Warning, TEXT("[InitUIManager] 인벤토리 위젯 생성 성공: %s"),
+						*CachedInventoryMainWidget->GetName());
+				}
+				else
+				{
+					UE_LOG(LogTemp, Error, TEXT("[InitUIManager] 인벤토리 위젯 생성 실패!"));
+				}
+			}
+			else
+			{
+				if (!InventoryMainWidgetClass)
+				{
+					UE_LOG(LogTemp, Error, TEXT("[InitUIManager] InventoryMainWidgetClass가 NULL"));
+				}
+				if (CachedInventoryMainWidget)
+				{
+					UE_LOG(LogTemp, Warning, TEXT("[InitUIManager] 인벤토리 위젯이 이미 존재함"));
+				}
+			}
 		}
 	}
+	UE_LOG(LogTemp, Warning, TEXT("[InitUIManager] 최종 CachedInventoryMainWidget: %s"),
+		CachedInventoryMainWidget ? *CachedInventoryMainWidget->GetName() : TEXT("NULL"));
 }
 
 void ULCUIManager::SetPlayerController(APlayerController* PlayerController)
@@ -203,159 +234,6 @@ void ULCUIManager::ShowShopPopup()
 	SetInputModeUIOnly(CurrentWidget);
 }
 
-// 사용하지 않게 될 확률이 높음
-//void ULCUIManager::ShowInventoryPopup()
-//{
-//	if (!CachedInventoryMainWidget && InventoryMainWidgetClass)
-//	{
-//		CachedInventoryMainWidget = CreateWidget<UInventoryMainWidget>(OwningPlayer, InventoryMainWidgetClass);
-//	}
-//
-//	if (CachedInventoryMainWidget)
-//	{
-//		if (!CachedInventoryMainWidget->IsInViewport())
-//		{
-//			CachedInventoryMainWidget->AddToViewport();
-//		}
-//		else
-//		{
-//			CachedInventoryMainWidget->SetVisibility(ESlateVisibility::Visible);
-//		}
-//
-//		if (OwningPlayer)
-//		{
-//			FInputModeGameAndUI InputMode;
-//			InputMode.SetWidgetToFocus(CachedInventoryMainWidget->TakeWidget());
-//			InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-//			OwningPlayer->SetInputMode(InputMode);
-//			OwningPlayer->bShowMouseCursor = true;
-//		}
-//	}
-//
-//}
-
-void ULCUIManager::ToggleInventoryPopup()
-{
-	UE_LOG(LogTemp, Warning, TEXT("=== [ULCUIManager::ToggleInventoryPopup] 함수 진입 ==="));
-
-	// 기본 상태 확인
-	UE_LOG(LogTemp, Warning, TEXT("OwningPlayer: %s"), OwningPlayer ? *OwningPlayer->GetName() : TEXT("NULL"));
-	UE_LOG(LogTemp, Warning, TEXT("InventoryMainWidgetClass: %s"), InventoryMainWidgetClass ? TEXT("Valid") : TEXT("NULL"));
-	UE_LOG(LogTemp, Warning, TEXT("CachedInventoryMainWidget: %s"), CachedInventoryMainWidget ? TEXT("Valid") : TEXT("NULL"));
-
-	if (!CachedInventoryMainWidget && InventoryMainWidgetClass)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[ULCUIManager::ToggleInventoryPopup] 인벤토리 위젯 생성 시작"));
-
-		CachedInventoryMainWidget = CreateWidget<UInventoryMainWidget>(OwningPlayer, InventoryMainWidgetClass);
-
-		if (CachedInventoryMainWidget)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("[ULCUIManager::ToggleInventoryPopup] 인벤토리 위젯 생성 성공: %s"),
-				*CachedInventoryMainWidget->GetName());
-		}
-		else
-		{
-			UE_LOG(LogTemp, Error, TEXT("[ULCUIManager::ToggleInventoryPopup] 인벤토리 위젯 생성 실패"));
-			UE_LOG(LogTemp, Warning, TEXT("=== [ULCUIManager::ToggleInventoryPopup] 종료 (위젯 생성 실패) ==="));
-			return;
-		}
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[ULCUIManager::ToggleInventoryPopup] 위젯 생성 스킵 - 이미 존재하거나 클래스 없음"));
-	}
-
-	if (CachedInventoryMainWidget)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[ULCUIManager::ToggleInventoryPopup] 위젯 상태 확인"));
-
-		bool bIsInViewport = CachedInventoryMainWidget->IsInViewport();
-		ESlateVisibility CurrentVisibility = CachedInventoryMainWidget->GetVisibility();
-		bool bIsCurrentlyVisible = bIsInViewport && (CurrentVisibility == ESlateVisibility::Visible);
-
-		UE_LOG(LogTemp, Warning, TEXT("IsInViewport: %s"), bIsInViewport ? TEXT("True") : TEXT("False"));
-		UE_LOG(LogTemp, Warning, TEXT("Visibility: %d (%s)"), (int32)CurrentVisibility,
-			CurrentVisibility == ESlateVisibility::Visible ? TEXT("Visible") :
-			CurrentVisibility == ESlateVisibility::Collapsed ? TEXT("Collapsed") : TEXT("Other"));
-		UE_LOG(LogTemp, Warning, TEXT("IsCurrentlyVisible: %s"), bIsCurrentlyVisible ? TEXT("True") : TEXT("False"));
-
-		if (bIsCurrentlyVisible)
-		{
-			// 인벤토리 숨기기
-			UE_LOG(LogTemp, Warning, TEXT("[ULCUIManager::ToggleInventoryPopup] 인벤토리 숨기기 시작"));
-
-			CachedInventoryMainWidget->SetVisibility(ESlateVisibility::Collapsed);
-			UE_LOG(LogTemp, Warning, TEXT("[ULCUIManager::ToggleInventoryPopup] SetVisibility(Collapsed) 완료"));
-
-			if (OwningPlayer)
-			{
-				OwningPlayer->SetInputMode(FInputModeGameOnly());
-				OwningPlayer->bShowMouseCursor = false;
-				UE_LOG(LogTemp, Warning, TEXT("[ULCUIManager::ToggleInventoryPopup] 입력 모드를 GameOnly로 변경"));
-			}
-			else
-			{
-				UE_LOG(LogTemp, Warning, TEXT("[ULCUIManager::ToggleInventoryPopup] OwningPlayer가 NULL"));
-			}
-
-			UE_LOG(LogTemp, Warning, TEXT("[ULCUIManager::ToggleInventoryPopup] 인벤토리 숨기기 완료"));
-		}
-		else
-		{
-			// 인벤토리 표시
-			UE_LOG(LogTemp, Warning, TEXT("[ULCUIManager::ToggleInventoryPopup] 인벤토리 표시 시작"));
-
-			if (!bIsInViewport)
-			{
-				UE_LOG(LogTemp, Warning, TEXT("[ULCUIManager::ToggleInventoryPopup] 뷰포트에 위젯 추가"));
-				CachedInventoryMainWidget->AddToViewport();
-				UE_LOG(LogTemp, Warning, TEXT("[ULCUIManager::ToggleInventoryPopup] AddToViewport() 완료"));
-			}
-
-			CachedInventoryMainWidget->SetVisibility(ESlateVisibility::Visible);
-			UE_LOG(LogTemp, Warning, TEXT("[ULCUIManager::ToggleInventoryPopup] SetVisibility(Visible) 완료"));
-
-			// RefreshInventory 호출 확인
-			UE_LOG(LogTemp, Warning, TEXT("[ULCUIManager::ToggleInventoryPopup] RefreshInventory() 호출 시작"));
-			CachedInventoryMainWidget->RefreshInventory();
-			UE_LOG(LogTemp, Warning, TEXT("[ULCUIManager::ToggleInventoryPopup] RefreshInventory() 호출 완료"));
-
-			if (OwningPlayer)
-			{
-				FInputModeGameAndUI InputMode;
-				InputMode.SetWidgetToFocus(CachedInventoryMainWidget->TakeWidget());
-				InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-				OwningPlayer->SetInputMode(InputMode);
-				OwningPlayer->bShowMouseCursor = true;
-				UE_LOG(LogTemp, Warning, TEXT("[ULCUIManager::ToggleInventoryPopup] 입력 모드를 GameAndUI로 변경"));
-			}
-			else
-			{
-				UE_LOG(LogTemp, Warning, TEXT("[ULCUIManager::ToggleInventoryPopup] OwningPlayer가 NULL"));
-			}
-
-			UE_LOG(LogTemp, Warning, TEXT("[ULCUIManager::ToggleInventoryPopup] 인벤토리 표시 완료"));
-		}
-	}
-	else
-	{
-		UE_LOG(LogTemp, Error, TEXT("[ULCUIManager::ToggleInventoryPopup] CachedInventoryMainWidget이 여전히 NULL"));
-
-		// 위젯 클래스 상태 재확인
-		if (!InventoryMainWidgetClass)
-		{
-			UE_LOG(LogTemp, Error, TEXT("[ULCUIManager::ToggleInventoryPopup] InventoryMainWidgetClass가 설정되지 않음"));
-		}
-		if (!OwningPlayer)
-		{
-			UE_LOG(LogTemp, Error, TEXT("[ULCUIManager::ToggleInventoryPopup] OwningPlayer가 NULL"));
-		}
-	}
-
-	UE_LOG(LogTemp, Warning, TEXT("=== [ULCUIManager::ToggleInventoryPopup] 함수 종료 ==="));
-}
-
 void ULCUIManager::HideShopPopup()
 {
 	LOG_Frame_WARNING(TEXT("HideShopPopup"));
@@ -392,6 +270,46 @@ void ULCUIManager::ShowCreateSession()
 		CachedCreateSession->AddToViewport(1);
 	}
 	//SwitchToWidget(CachedCreateSession);
+}
+
+void ULCUIManager::ToggleInventory()
+{
+	// ⭐ 더 이상 InitializeInventorySystem() 호출하지 않음
+	if (!CachedInventoryMainWidget)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[ToggleInventory] 인벤토리 위젯이 없습니다. InitUIManager가 제대로 호출되지 않았을 수 있습니다."));
+		return;
+	}
+
+	// 뷰포트에 없다면 추가 (첫 호출 시)
+	if (!CachedInventoryMainWidget->IsInViewport())
+	{
+		CachedInventoryMainWidget->AddToViewport(1);
+		CachedInventoryMainWidget->ShowToolbarOnly(); // 툴바는 항상 표시
+	}
+
+	// 가방 토글
+	CachedInventoryMainWidget->ToggleBackpackInventory();
+
+	// 입력 모드 변경
+	if (OwningPlayer)
+	{
+		if (CachedInventoryMainWidget->IsBackpackInventoryOpen())
+		{
+			// 가방 열림
+			FInputModeGameAndUI InputMode;
+			InputMode.SetWidgetToFocus(CachedInventoryMainWidget->TakeWidget());
+			InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+			OwningPlayer->SetInputMode(InputMode);
+			OwningPlayer->bShowMouseCursor = true;
+		}
+		else
+		{
+			// 가방 닫힘
+			OwningPlayer->SetInputMode(FInputModeGameOnly());
+			OwningPlayer->bShowMouseCursor = false;
+		}
+	}
 }
 
 void ULCUIManager::ShowPopUpLoading()
@@ -468,6 +386,24 @@ void ULCUIManager::ShowInGameHUD()
 	LOG_Frame_WARNING(TEXT("ShowInGameHUD"));
 	SwitchToWidget(CachedInGameHUD);
 	SetInputModeGameOnly();
+
+	UE_LOG(LogTemp, Warning, TEXT("[ShowInGameHUD] CachedInventoryMainWidget 상태: %s"),
+		CachedInventoryMainWidget ? *CachedInventoryMainWidget->GetName() : TEXT("NULL"));
+
+	if (CachedInventoryMainWidget)
+	{
+		if (!CachedInventoryMainWidget->IsInViewport())
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[ShowInGameHUD] 인벤토리 위젯을 뷰포트에 추가"));
+			CachedInventoryMainWidget->AddToViewport(1);
+		}
+		CachedInventoryMainWidget->ShowToolbarOnly();
+		UE_LOG(LogTemp, Warning, TEXT("[ShowInGameHUD] 툴바 표시 완료"));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[ShowInGameHUD] 인벤토리 위젯이 없음. InitUIManager가 아직 호출되지 않았을 수 있습니다."));
+	}
 }
 
 void ULCUIManager::HideInGameHUD()

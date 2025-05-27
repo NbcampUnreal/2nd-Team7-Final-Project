@@ -10,44 +10,84 @@ void UInventoryMainWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	if (APlayerController* PC = GetOwningPlayer())
-	{
-		InitializeWithPlayer(PC);
-	}
+	UE_LOG(LogTemp, Warning, TEXT("[InventoryMainWidget::NativeConstruct] 시작: %s"), *GetName());
+
+	AutoInitializeWithPlayer();
+
+	ShowToolbarOnly();
 }
 
-void UInventoryMainWidget::InitializeWithPlayer(APlayerController* PlayerController)
+void UInventoryMainWidget::AutoInitializeWithPlayer()
 {
-	if (!PlayerController || !PlayerController->GetPawn())
-		return;
+    APlayerController* PC = GetOwningPlayer();
+    if (!PC || !PC->GetPawn())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[AutoInitializeWithPlayer] PlayerController 또는 Pawn이 NULL"));
+        return;
+    }
 
-	APawn* Pawn = PlayerController->GetPawn();
+    APawn* Pawn = PC->GetPawn();
 
-	if (UToolbarInventoryComponent* ToolbarComp = Pawn->FindComponentByClass<UToolbarInventoryComponent>())
-	{
-		if (ToolbarWidgetClass)
-		{
-			UToolbarInventoryWidget* NewToolbarWidget = CreateWidget<UToolbarInventoryWidget>(PlayerController, ToolbarWidgetClass);
-			NewToolbarWidget->SetInventoryComponent(ToolbarComp);
-			InitializeToolbarInventory(NewToolbarWidget);
-		}
-	}
-
-	if (UBackpackInventoryComponent* BackpackComp = Pawn->FindComponentByClass<UBackpackInventoryComponent>())
-	{
-		if (BackpackWidgetClass)
-		{
-			UBackpackInventoryWidget* NewBackpackWidget = CreateWidget<UBackpackInventoryWidget>(PlayerController, BackpackWidgetClass);
-			NewBackpackWidget->SetInventoryComponent(BackpackComp);
-			InitializeBackpackInventory(NewBackpackWidget);
-		}
-	}
+    if (UToolbarInventoryComponent* ToolbarComp = Pawn->FindComponentByClass<UToolbarInventoryComponent>())
+    {
+        if (ToolbarWidget)
+        {
+            ToolbarWidget->SetInventoryComponent(ToolbarComp);
+            UE_LOG(LogTemp, Warning, TEXT("[AutoInitializeWithPlayer] 툴바 위젯 연결 완료"));
+        }
+    }
+    
+    if (UBackpackInventoryComponent* BackpackComp = Pawn->FindComponentByClass<UBackpackInventoryComponent>())
+    {
+        if (BackpackWidget)
+        {
+            BackpackWidget->SetInventoryComponent(BackpackComp);
+            UE_LOG(LogTemp, Warning, TEXT("[AutoInitializeWithPlayer] 백팩 위젯 연결 완료"));
+        }
+    }
 }
 
-void UInventoryMainWidget::InitializeInventory(UToolbarInventoryWidget* InToolbarWidget, UBackpackInventoryWidget* InBackpackWidget)
+void UInventoryMainWidget::ShowToolbarOnly()
 {
-	InitializeToolbarInventory(InToolbarWidget);
-	InitializeBackpackInventory(InBackpackWidget);
+    if (ToolbarWidget)
+    {
+        ToolbarWidget->SetVisibility(ESlateVisibility::Visible);
+    }
+
+    if (BackpackWidget)
+    {
+        BackpackWidget->SetVisibility(ESlateVisibility::Collapsed);
+    }
+
+    bBackpackInventoryOpen = false;
+}
+
+void UInventoryMainWidget::ToggleBackpackInventory()
+{
+    if (bBackpackInventoryOpen)
+    {
+        // 가방 숨기기
+        if (BackpackWidget)
+        {
+            BackpackWidget->SetVisibility(ESlateVisibility::Collapsed);
+        }
+        bBackpackInventoryOpen = false;
+    }
+    else
+    {
+        // 가방 표시
+        if (BackpackWidget)
+        {
+            BackpackWidget->SetVisibility(ESlateVisibility::Visible);
+            BackpackWidget->RefreshInventoryUI();
+        }
+        bBackpackInventoryOpen = true;
+    }
+}
+
+bool UInventoryMainWidget::IsBackpackInventoryOpen() const
+{
+    return bBackpackInventoryOpen;
 }
 
 void UInventoryMainWidget::RefreshInventory()
@@ -60,40 +100,5 @@ void UInventoryMainWidget::RefreshInventory()
 	if (BackpackWidget)
 	{
 		BackpackWidget->RefreshInventoryUI();
-	}
-}
-
-void UInventoryMainWidget::InitializeToolbarInventory(UToolbarInventoryWidget* InToolbarWidget)
-{
-	if (!InToolbarWidget)
-	{
-		LOG_Item_WARNING(TEXT("[InventoryMainWidget::InitializeToolbarInventory] InToolbarWidget is null!"));
-		return;
-	}
-
-	if (!ToolbarWidget)
-	{
-		LOG_Item_WARNING(TEXT("[InventoryMainWidget::InitializeToolbarInventory] ToolbarWidget is null!"));
-		return;
-	}
-
-	ToolbarWidget->SetInventoryComponent(InToolbarWidget->GetInventoryComponent());
-	ToolbarWidget->SetVisibility(ESlateVisibility::Visible);
-}
-
-void UInventoryMainWidget::InitializeBackpackInventory(UBackpackInventoryWidget* InBackpackWidget)
-{
-	if (BackpackWidget)
-	{
-		if (InBackpackWidget)
-		{
-			BackpackWidget->SetInventoryComponent(InBackpackWidget->GetInventoryComponent());
-			BackpackWidget->SetVisibility(ESlateVisibility::Visible);
-		}
-		else
-		{
-			BackpackWidget->SetInventoryComponent(nullptr);
-			BackpackWidget->SetVisibility(ESlateVisibility::Hidden);
-		}
 	}
 }

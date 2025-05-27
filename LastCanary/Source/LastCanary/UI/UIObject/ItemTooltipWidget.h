@@ -21,6 +21,9 @@ public:
     UPROPERTY(meta = (BindWidget))
     class UTextBlock* QuantityText;
 
+    UPROPERTY(meta = (BindWidget))
+    class UImage* IconImage;
+
     UPROPERTY(meta = (BindWidgetOptional))
     class UTextBlock* DurabilityText;
 

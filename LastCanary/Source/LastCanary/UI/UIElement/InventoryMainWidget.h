@@ -23,9 +23,19 @@ public:
 	virtual void NativeConstruct() override;
 
 	UFUNCTION(BlueprintCallable)
-	void InitializeWithPlayer(APlayerController* PlayerController);
+	void ShowToolbarOnly();
+
+	UFUNCTION(BlueprintCallable)
+	void ToggleBackpackInventory();
+
+	UFUNCTION(BlueprintCallable)
+	bool IsBackpackInventoryOpen() const;
 
 private:
+	bool bBackpackInventoryOpen = false;
+
+	void AutoInitializeWithPlayer();
+
 	UPROPERTY(EditAnywhere, Category = "WidgetClasses")
 	TSubclassOf<UToolbarInventoryWidget> ToolbarWidgetClass;
 
@@ -33,8 +43,5 @@ private:
 	TSubclassOf<UBackpackInventoryWidget> BackpackWidgetClass;
 
 public:
-	void InitializeInventory(UToolbarInventoryWidget* InToolbarWidget, UBackpackInventoryWidget* InBackpackWidget);
 	void RefreshInventory();
-	void InitializeToolbarInventory(UToolbarInventoryWidget* InToolbarWidget);
-	void InitializeBackpackInventory(UBackpackInventoryWidget* InBackpackWidget);
 };

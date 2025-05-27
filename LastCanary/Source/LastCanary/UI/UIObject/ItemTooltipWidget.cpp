@@ -1,5 +1,6 @@
 #include "UI/UIObject/ItemTooltipWidget.h"
 #include "Components/TextBlock.h"
+#include "Components/Image.h"
 
 void UItemTooltipWidget::SetTooltipData(const FItemDataRow& BaseData, const FBaseItemSlotData& InstanceData)
 {
@@ -11,6 +12,9 @@ void UItemTooltipWidget::SetTooltipData(const FItemDataRow& BaseData, const FBas
 
     if (QuantityText)
         QuantityText->SetText(FText::AsNumber(InstanceData.Quantity));
+
+    if (IconImage)
+        IconImage->SetBrushFromTexture(BaseData.ItemIcon);
 
     if (DurabilityText)
         DurabilityText->SetText(FText::Format(NSLOCTEXT("Tooltip", "Durability", "Durability: {0}"), FText::AsNumber(InstanceData.Durability)));

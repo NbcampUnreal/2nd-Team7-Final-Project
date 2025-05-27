@@ -319,8 +319,6 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 		return;
 	}
 	SetDesiredAiming(ActionValue.Get<bool>());
-	// 임시로 넣은 부분 꼭 삭제할것!
-	UseEquippedItem();
 }
 
 void ABaseCharacter::Handle_ViewMode()
@@ -340,9 +338,6 @@ void ABaseCharacter::Handle_Strafe(const FInputActionValue& ActionValue)
 		return;
 	}
 	const auto Value{ UAlsVector::ClampMagnitude012D(ActionValue.Get<FVector2D>()) };
-
-	// 임시로 넣은 부분 꼭 삭제할것!
-	UseEquippedItem();
 }
 
 void ABaseCharacter::Handle_Interact(AActor* HitActor)
@@ -1116,37 +1111,18 @@ void ABaseCharacter::ToggleInventory()
 		return;
 	}
 
-	APlayerController* PC = Cast<APlayerController>(GetController());
-	if (!PC)
+	// ⭐ 간소화된 인벤토리 토글
+	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 	{
-		LOG_Item_WARNING(TEXT("[ABaseCharacter::ToggleInventory] PlayerController가 없습니다"));
-		return;
+		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+		{
+			UIManager->ToggleInventory(); // 통합된 함수 사용
+
+			// 상태는 UIManager에서 가져오기
+			//bInventoryOpen = UIManager->CachedInventoryMainWidget ?
+			//	UIManager->CachedInventoryMainWidget->IsBackpackInventoryOpen() : false;
+		}
 	}
-
-	UGameInstance* GameInstance = GetGameInstance();
-	if (!GameInstance)
-	{
-		LOG_Item_ERROR(TEXT("[ABaseCharacter::ToggleInventory] GameInstance가 없습니다"));
-		return;
-	}
-
-	ULCGameInstanceSubsystem* Subsystem = GameInstance->GetSubsystem<ULCGameInstanceSubsystem>();
-	if (!Subsystem)
-	{
-		LOG_Item_WARNING(TEXT("[ABaseCharacter::ToggleInventory] GameInstanceSubsystem이 없습니다"));
-		return;
-	}
-
-	ULCUIManager* UIManager = Subsystem->GetUIManager();
-	if (!UIManager)
-	{
-		LOG_Item_WARNING(TEXT("[ABaseCharacter::ToggleInventory] UIManager가 없습니다"));
-		return;
-	}
-
-	UIManager->ToggleInventoryPopup();
-
-	bInventoryOpen = !bInventoryOpen;
 }
 
 bool ABaseCharacter::IsInventoryOpen() const

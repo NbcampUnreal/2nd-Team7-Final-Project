@@ -177,22 +177,123 @@ bool UInventorySlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FDrag
 	return bSuccess;
 }
 
+void UInventorySlotWidget::UpdateTooltipPosition()
+{
+	if (!ItemTooltipWidget || !ItemTooltipWidget->IsInViewport())
+	{
+		return;
+	}
+
+	FVector2D MousePosition;
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		PC->GetMousePosition(MousePosition.X, MousePosition.Y);
+
+		FVector2D TooltipPosition = MousePosition + FVector2D(15.0f, -50.0f);
+
+		float MinY = 100.0f;
+		TooltipPosition.Y = FMath::Max(TooltipPosition.Y, MinY);
+
+		float MinX = 50.0f;
+		TooltipPosition.X = FMath::Max(TooltipPosition.X, MinX);
+
+		FVector2D ViewportSize;
+		if (GEngine && GEngine->GameViewport)
+		{
+			GEngine->GameViewport->GetViewportSize(ViewportSize);
+
+			FVector2D EstimatedTooltipSize(230.0f, 230.0f);
+
+			float MaxX = ViewportSize.X - EstimatedTooltipSize.X - 10.0f;
+			float MaxY = ViewportSize.Y - EstimatedTooltipSize.Y - 10.0f;
+
+			TooltipPosition.X = FMath::Clamp(TooltipPosition.X, MinX, MaxX);
+			TooltipPosition.Y = FMath::Clamp(TooltipPosition.Y, MinY, MaxY);
+		}
+
+		ItemTooltipWidget->SetPositionInViewport(TooltipPosition);
+	}
+}
+
 void UInventorySlotWidget::ShowTooltip()
 {
-	if (TooltipWidgetClass && !ItemTooltipWidget)
+	// 빈 슬롯이면 툴팁 표시하지 않음
+	if (ItemData.ItemRowName.IsNone())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[ShowTooltip] 빈 슬롯 - 툴팁 스킵"));
+		return;
+	}
+
+	// 이미 툴팁이 표시 중이면 스킵
+	if (ItemTooltipWidget && ItemTooltipWidget->IsInViewport())
+	{
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[ShowTooltip] 툴팁 표시 시작"));
+
+	// TooltipWidgetClass 확인
+	if (!TooltipWidgetClass)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[ShowTooltip] TooltipWidgetClass가 설정되지 않음"));
+		return;
+	}
+
+	// 툴팁 위젯 생성
+	if (!ItemTooltipWidget)
 	{
 		ItemTooltipWidget = CreateWidget<UItemTooltipWidget>(GetWorld(), TooltipWidgetClass);
+		if (!ItemTooltipWidget)
+		{
+			UE_LOG(LogTemp, Error, TEXT("[ShowTooltip] 툴팁 위젯 생성 실패"));
+			return;
+		}
 	}
-	if (ItemTooltipWidget)
+
+	// ⭐ 데이터 테이블에서 아이템 정보 가져오기
+	if (ItemDataTable)
 	{
-		//ItemTooltipWidget->SetTooltipData(ItemData, );
-		ItemTooltipWidget->AddToViewport();
+		FItemDataRow* ItemRowData = ItemDataTable->FindRow<FItemDataRow>(ItemData.ItemRowName, TEXT("ShowTooltip"));
+		if (ItemRowData)
+		{
+			ItemTooltipWidget->SetTooltipData(*ItemRowData, ItemData);
+			ItemTooltipWidget->AddToViewport(10);
+
+			// ⭐ 초기 위치 설정
+			UpdateTooltipPosition();
+
+			// ⭐ 주기적으로 위치 업데이트 (마우스를 따라다니게 함)
+			GetWorld()->GetTimerManager().SetTimer(TooltipUpdateTimer,
+				this, &UInventorySlotWidget::UpdateTooltipPosition,
+				0.016f, true); // 60fps로 업데이트
+
+			UE_LOG(LogTemp, Warning, TEXT("[ShowTooltip] 툴팁 표시 완료"));
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[ShowTooltip] 아이템 데이터를 찾을 수 없음: %s"), *ItemData.ItemRowName.ToString());
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[ShowTooltip] ItemDataTable이 NULL"));
 	}
 }
 
 void UInventorySlotWidget::HideTooltip()
 {
-	// TODO : UI 매니저에서 종료 지시
+	UE_LOG(LogTemp, Warning, TEXT("[HideTooltip] 툴팁 숨기기"));
+
+	if (TooltipUpdateTimer.IsValid())
+	{
+		GetWorld()->GetTimerManager().ClearTimer(TooltipUpdateTimer);
+	}
+
+	if (ItemTooltipWidget && ItemTooltipWidget->IsInViewport())
+	{
+		ItemTooltipWidget->RemoveFromParent();
+		UE_LOG(LogTemp, Warning, TEXT("[HideTooltip] 툴팁 숨기기 완료"));
+	}
 }
 
 void UInventorySlotWidget::OnUseButtonClicked()

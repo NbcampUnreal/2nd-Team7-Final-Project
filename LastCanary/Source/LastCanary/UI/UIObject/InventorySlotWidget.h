@@ -116,6 +116,13 @@ public:
     /** 드롭 처리 */
     virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
 
+private:
+    /** 툴팁 업데이트 타이머 */
+    FTimerHandle TooltipUpdateTimer;
+
+    /** 툴팁 위치 업데이트 */
+    void UpdateTooltipPosition();
+
     // TODO : 추후 구현 예정인 블루프린트 이벤트 (현재 미사용)
     /*
     UFUNCTION(BlueprintImplementableEvent, Category = "Inventory|Events")
