@@ -35,6 +35,7 @@ public:
 	void ShowRoomListMenu();
 	void ShowEnterPasswordWidget(const FString& RoomID);
 	void ShowInGameHUD();
+	void HideInGameHUD();
 	void ShowOptionPopup();
 	void ShowPauseMenu();
 	void HidePauseMenu();
@@ -62,6 +63,7 @@ public:
 	ULobbyMenu* GetLobbyMenu() const { return CachedLobbyMenu; }
 	UEnterPasswordWidget* GetEnterPasswordWidget() const { return CachedEnterPasswordWidget; }
 	UOptionWidget* GetOptionWidget() const { return CachedOptionWidget; }
+	UInGameHUD* GetInGameHUD() const { return CachedInGameHUD; }
 
 	void SetLastShopInteractor(AShopInteractor* Interactor);
 	void SetLastMapSelectInteractor(AMapSelectInteractor* Interactor);

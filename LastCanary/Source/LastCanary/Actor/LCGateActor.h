@@ -38,6 +38,7 @@ public:
 
     /** 상호작용 처리 */
     virtual void Interact_Implementation(APlayerController* Controller) override;
+    virtual FString GetInteractMessage_Implementation() const override;
 
     /** 외부에서 목적지 맵 설정 */
     void SetTargetMapID(const int32& InMapID);

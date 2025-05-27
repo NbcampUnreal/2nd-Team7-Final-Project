@@ -30,6 +30,7 @@ protected:
 
 public:
 	virtual void Interact_Implementation(APlayerController* Interactor) override;
+	virtual FString GetInteractMessage_Implementation() const override;
 
 	UWidgetComponent* GetShopWidgetComponent() const;
 };
