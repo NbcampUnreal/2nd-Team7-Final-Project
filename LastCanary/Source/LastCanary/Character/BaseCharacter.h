@@ -146,8 +146,11 @@ public:
 public:
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	void HandlePlayerDeath();
-	virtual float GetFallDamage(float Amount) override;
+	virtual float GetFallDamage(float Velocity) override;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dmaage")
+	float FallDamageThreshold = 1000.0f;
+
 	//Character Movement
 public:
 	bool CheckHardLandState();
