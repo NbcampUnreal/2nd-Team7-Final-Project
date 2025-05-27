@@ -48,7 +48,7 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 
 FString ALCGateActor::GetInteractMessage_Implementation() const
 {
-	return TEXT("Press [F] to Interact");
+	return TEXT("Press [F] to Use Gate");
 }
 
 void ALCGateActor::SetTargetMapID(const int32& InMapID)

@@ -34,6 +34,7 @@ public:
     ALCGateActor* TargetGateActor;
 
     virtual void Interact_Implementation(APlayerController* Controller) override;
+    virtual FString GetInteractMessage_Implementation() const override;
 
     UWidgetComponent* GetMapSelectWidgetComponent() const;
 };
