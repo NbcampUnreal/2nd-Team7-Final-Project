@@ -7,13 +7,14 @@
 #include "UI/UIElement/OptionWidget.h"
 #include "UI/UIElement/InGameHUD.h"
 #include "UI/UIElement/ShopWidget.h"
+#include "UI/UIElement/MapSelectWidget.h"
 #include "UI/UIElement/InventoryMainWidget.h"
 #include "UI/UIElement/UIElementCreateSession.h"
 
 #include "UI/UIObject/ConfirmPopup.h"
 #include "UI/Popup/PopupLoading.h"
 
-#include "Framework/PlayerController/LCLobbyPlayerController.h"
+//#include "Framework/PlayerController/LCLobbyPlayerController.h"
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 
@@ -24,7 +25,6 @@
 ULCUIManager::ULCUIManager()
 {
 	CurrentWidget = nullptr;
-	// Constructor logic here
 }
 
 void ULCUIManager::InitUIManager(APlayerController* PlayerController)
@@ -40,6 +40,7 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			OptionWidgetClass = Settings->FromBPOptionWidgetClass;
 			InGameHUDWidgetClass = Settings->FromBPInGameHUDClass;
 			ShopWidgetClass = Settings->FromBPShopWidgetClass;
+			MapSelectWidgetClass = Settings->FromBPMapSelectWidgetClass;
 			InventoryMainWidgetClass = Settings->FromBPInventoryMainUIClass;
 			CreateSessionClass = Settings->FromBPCreateSessionWidgetClass;
 			PopUpLoadingClass = Settings->FromBPPopupLoadingClass;
@@ -67,9 +68,11 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			if ((CachedShopWidget == nullptr) && ShopWidgetClass)
 			{
 				CachedShopWidget = CreateWidget<UShopWidget>(PlayerController, ShopWidgetClass);
-				LOG_Frame_WARNING(TEXT("CachedShopWidget Created"));
 			}
-
+			if ((CachedMapSelectWidget == nullptr) && MapSelectWidgetClass)
+			{
+				CachedMapSelectWidget = CreateWidget<UMapSelectWidget>(PlayerController, MapSelectWidgetClass);
+			}
 			if ((CachedInventoryMainWidget == nullptr) && InventoryMainWidgetClass)
 			{
 				CachedInventoryMainWidget = CreateWidget<UInventoryMainWidget>(PlayerController, InventoryMainWidgetClass);
@@ -95,12 +98,14 @@ void ULCUIManager::ShowTitleMenu()
 {
 	LOG_Frame_WARNING(TEXT("ShowTitleMenu"));
 	SwitchToWidget(CachedTitleMenu);
+	SetInputModeUIOnly(CurrentWidget);
 }
 
 void ULCUIManager::ShowLobbyMenu()
 {
 	LOG_Frame_WARNING(TEXT("ShowLobbyMenu"));
 	SwitchToWidget(CachedLobbyMenu);
+	SetInputModeUIOnly(CurrentWidget);
 }
 
 void ULCUIManager::ShowRoomListMenu()
@@ -116,6 +121,7 @@ void ULCUIManager::ShowEnterPasswordWidget(const FString& RoomID)
 		CachedEnterPasswordWidget->Init(RoomID);
 	}
 	SwitchToWidget(CachedEnterPasswordWidget);
+	SetInputModeUIOnly(CurrentWidget);
 }
 
 void ULCUIManager::ShowOptionPopup()
@@ -132,10 +138,7 @@ void ULCUIManager::ShowOptionPopup()
 		CachedOptionWidget->AddToViewport(1);
 	}
 
-	if (CachedOptionWidget)
-	{
-		SetInputModeUIOnly(CachedOptionWidget);
-	}
+	SetInputModeUIOnly(CurrentWidget);
 }
 
 void ULCUIManager::ShowPauseMenu()
@@ -176,12 +179,12 @@ void ULCUIManager::ShowConfirmPopup(TFunction<void()> OnConfirm)
 void ULCUIManager::ShowShopPopup()
 {
 	LOG_Frame_WARNING(TEXT("ShowShopPopup"));
+	HideInGameHUD();
 
 	if (LastShopInteractor && LastShopInteractor->GetShopWidgetComponent())
 	{
 		LastShopInteractor->GetShopWidgetComponent()->SetVisibility(false);
 	}
-
 	if (CachedShopWidget)
 	{
 		CachedShopWidget->AddToViewport(1);
@@ -196,9 +199,8 @@ void ULCUIManager::ShowShopPopup()
 
 		FInputModeUIOnly InputMode;
 		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-		OwningPlayer->SetInputMode(InputMode);
-		OwningPlayer->bShowMouseCursor = true;
 	}
+	SetInputModeUIOnly(CurrentWidget);
 }
 
 // 사용하지 않게 될 확률이 높음
@@ -376,9 +378,9 @@ void ULCUIManager::HideShopPopup()
 		}
 
 		OwningPlayer->SetViewTargetWithBlend(OwningPlayer->GetPawn(), 1.0f);
-		OwningPlayer->SetInputMode(FInputModeGameOnly());
-		OwningPlayer->bShowMouseCursor = false;
 	}
+	SetInputModeGameOnly();
+	ShowInGameHUD();
 }
 
 void ULCUIManager::ShowCreateSession()
@@ -408,10 +410,73 @@ void ULCUIManager::HidePopUpLoading()
 	}
 }
 
+void ULCUIManager::ShowMapSelectPopup()
+{
+	LOG_Frame_WARNING(TEXT("ShowMapSelectPopup"));
+	HideInGameHUD();
+
+	if (LastMapSelectInteractor && LastMapSelectInteractor->GetMapSelectWidgetComponent())
+	{
+		LastMapSelectInteractor->GetMapSelectWidgetComponent()->SetVisibility(false);
+	}
+
+	if (CachedMapSelectWidget && LastMapSelectInteractor)
+	{
+		CachedMapSelectWidget->AddToViewport(1);
+		CachedMapSelectWidget->GateActorInstance = LastMapSelectInteractor->TargetGateActor;
+	}
+
+	if (OwningPlayer)
+	{
+		if (APawn* Pawn = OwningPlayer->GetPawn())
+		{
+			Pawn->DisableInput(OwningPlayer);
+		}
+	}
+	SetInputModeUIOnly(CurrentWidget);
+}
+
+void ULCUIManager::HideMapSelectPopup()
+{
+	LOG_Frame_WARNING(TEXT("HideMapSelectPopup"));
+
+	if (LastMapSelectInteractor && LastMapSelectInteractor->GetMapSelectWidgetComponent())
+	{
+		LastMapSelectInteractor->GetMapSelectWidgetComponent()->SetVisibility(true);
+	}
+
+	if (CachedMapSelectWidget)
+	{
+		CachedMapSelectWidget->RemoveFromParent();
+	}
+
+	if (OwningPlayer)
+	{
+		if (APawn* Pawn = OwningPlayer->GetPawn())
+		{
+			Pawn->EnableInput(OwningPlayer);
+		}
+
+		OwningPlayer->SetViewTargetWithBlend(OwningPlayer->GetPawn(), 1.0f);
+	}
+	SetInputModeGameOnly();
+	ShowInGameHUD();
+}
+
 void ULCUIManager::ShowInGameHUD()
 {
 	LOG_Frame_WARNING(TEXT("ShowInGameHUD"));
 	SwitchToWidget(CachedInGameHUD);
+	SetInputModeGameOnly();
+}
+
+void ULCUIManager::HideInGameHUD()
+{
+	LOG_Frame_WARNING(TEXT("HideInGameHUD"));
+	if (CachedInGameHUD && CachedInGameHUD->IsInViewport())
+	{
+		CachedInGameHUD->RemoveFromParent();
+	}
 }
 
 void ULCUIManager::SwitchToWidget(UUserWidget* NewWidget)
@@ -439,7 +504,6 @@ void ULCUIManager::SwitchToWidget(UUserWidget* NewWidget)
 	}
 
 	CurrentWidget = NewWidget;
-	SetInputModeUIOnly(CurrentWidget);
 }
 
 void ULCUIManager::SetInputModeUIOnly(UUserWidget* FocusWidget)
@@ -476,4 +540,9 @@ void ULCUIManager::SetInputModeGameOnly()
 void ULCUIManager::SetLastShopInteractor(AShopInteractor* Interactor)
 {
 	LastShopInteractor = Interactor;
+}
+
+void ULCUIManager::SetLastMapSelectInteractor(AMapSelectInteractor* Interactor)
+{
+	LastMapSelectInteractor = Interactor;
 }

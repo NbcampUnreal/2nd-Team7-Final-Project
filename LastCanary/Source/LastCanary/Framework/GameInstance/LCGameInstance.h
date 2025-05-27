@@ -8,16 +8,12 @@
 #include "AdvancedSessions/Classes/AdvancedFriendsGameInstance.h"
 #include "LCGameInstance.generated.h"
 
-/**
- * 
- */
 class ULCUIManagerSettings;
 
 UCLASS()
 class LASTCANARY_API ULCGameInstance : public UAdvancedFriendsGameInstance
 {
 	GENERATED_BODY()
-	
 private:
 	UPROPERTY(EditAnywhere, Category = "UI")
 	ULCUIManagerSettings* UIManagerSettings;
@@ -40,6 +36,7 @@ public:
 	UDataTable* GunDataTable;
 	void LoadGunData();
 
+public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Session")
 	void CreateSession(const FString& ServerName, int AmountOfSlots);
 
