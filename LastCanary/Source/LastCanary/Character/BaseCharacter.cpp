@@ -297,8 +297,6 @@ void ABaseCharacter::Handle_Crouch()
 	{
 		SetDesiredStance(AlsStanceTags::Standing);
 	}
-	// 임시로 넣은 부분 꼭 삭제할것!
-	DropCurrentItem();
 }
 
 void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
@@ -328,8 +326,6 @@ void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
 		}
 
 		Jump();
-
-		ToggleInventory();
 	}
 	else
 	{
