@@ -402,28 +402,6 @@ void ABaseCharacter::Handle_Interact()
 		UE_LOG(LogTemp, Warning, TEXT("Handle_Interact: %s does not implement IInteractableInterface"), *CurrentFocusedActor->GetName());
 		PlayInteractionMontage(CurrentFocusedActor);
 	}
-
-	// 임시 추가 코드
-	AItemBase* HitItem = Cast<AItemBase>(HitActor);
-	if (!HitItem)
-	{
-		return;
-	}
-
-	const FItemDataRow* ItemData = HitItem->ItemDataTable->FindRow<FItemDataRow>(HitItem->ItemRowName, TEXT("Handle_Interact"));
-	if (!ItemData)
-	{
-		return;
-	}
-
-	const FGameplayTag ItemTypeTag = FGameplayTag::RequestGameplayTag(FName("ItemType"));
-	if (!ItemData->ItemType.MatchesTag(ItemTypeTag))
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Handle_Interact: HitItem에 ItemType 태그가 없음!"));
-		return;
-	}
-
-	TryPickupItem(HitItem);
 }
 
 void ABaseCharacter::PickupItem()
@@ -956,6 +934,16 @@ void ABaseCharacter::SetBackpackInventoryComponent(UBackpackInventoryComponent* 
 	}
 }
 
+UToolbarInventoryComponent* ABaseCharacter::GetToolbarInventoryComponent() const
+{
+	return ToolbarInventoryComponent;
+}
+
+UBackpackInventoryComponent* ABaseCharacter::GetBackpackInventoryComponent() const
+{
+	return BackpackInventoryComponent;
+}
+
 bool ABaseCharacter::IsEquipped() const
 {
 	static FGameplayTag EquippedTag = FGameplayTag::RequestGameplayTag(TEXT("Character.Player.Equipped"));
@@ -988,23 +976,13 @@ bool ABaseCharacter::TryPickupItem(AItemBase* HitItem)
 		return true;
 	}
 
-	if (BackpackInventoryComponent)
+	// ⭐ 아이템의 Interact 함수를 직접 호출
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
-		if (BackpackInventoryComponent->TryAddItem(HitItem))
-		{
-			return true;
-		}
+		HitItem->Interact_Implementation(PC);
+		return true;
 	}
 
-	if (ToolbarInventoryComponent)
-	{
-		if (ToolbarInventoryComponent->TryAddItem(HitItem))
-		{
-			return true;
-		}
-	}
-
-	UE_LOG(LogTemp, Warning, TEXT("아이템 습득 실패!"));
 	return false;
 }
 

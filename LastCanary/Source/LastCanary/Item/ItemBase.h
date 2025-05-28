@@ -3,12 +3,13 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "DataTable/ItemDataRow.h"
+#include "Interface/InteractableInterface.h"
 #include "ItemBase.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnItemStateChanged);
 
 UCLASS()
-class LASTCANARY_API AItemBase : public AActor
+class LASTCANARY_API AItemBase : public AActor, public IInteractableInterface
 {
     GENERATED_BODY()
 
@@ -88,9 +89,32 @@ public:
     bool IsCollectible() const;
 
     //-----------------------------------------------------
+    // InteractableInterface 구현
+    //-----------------------------------------------------
+public:
+    /** 플레이어가 상호작용할 때 호출 (인터페이스 구현) */
+    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interaction")
+    void Interact(APlayerController* Interactor);
+    virtual void Interact_Implementation(APlayerController* Interactor);
+
+    /** 상호작용 메시지 반환 (인터페이스 구현) */
+    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interaction")
+    FString GetInteractMessage() const;
+    virtual FString GetInteractMessage_Implementation() const;
+
+protected:
+    /** 아이템 습득 시도 (서버에서 실행) */
+    UFUNCTION(Server, Reliable, Category = "Item|Pickup")
+    void Server_TryPickupByPlayer(APlayerController* PlayerController);
+    void Server_TryPickupByPlayer_Implementation(APlayerController* PlayerController);
+
+    /** 실제 아이템 습득 로직 */
+    bool Internal_TryPickupByPlayer(APlayerController* PlayerController);
+
+    //-----------------------------------------------------
     // 충돌 이벤트 핸들러
     //-----------------------------------------------------
-
+public:
     /** 아이템과 다른 액터 간의 오버랩 시작 시 호출 */
     UFUNCTION()
     void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,

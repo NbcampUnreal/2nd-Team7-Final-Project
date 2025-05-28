@@ -221,6 +221,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	void SetBackpackInventoryComponent(UBackpackInventoryComponent* BackpackInvenComp, bool bEquip);
 
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	UToolbarInventoryComponent* GetToolbarInventoryComponent() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	UBackpackInventoryComponent* GetBackpackInventoryComponent() const;
 private:
 	UPROPERTY(Replicated)
 	FGameplayTagContainer EquippedTags;
@@ -231,6 +236,8 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Equipment")
 	void SetEquipped(bool bEquip);
+
+
 
 	// 임의적으로 만든 캐릭터의 상호작용 함수
 	bool TryPickupItem(AItemBase* HitItem);
