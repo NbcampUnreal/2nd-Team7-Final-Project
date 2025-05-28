@@ -38,23 +38,23 @@ public:
     
     /** 손전등 빛의 강도 */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Flashlight|Properties")
-    float LightIntensity;
+    float LightIntensity = 10000.0f;
     
     /** 손전등 빛의 색상 */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Flashlight|Properties")
-    FLinearColor LightColor;
+    FLinearColor LightColor = FLinearColor(1.0f, 0.9f, 0.8f, 1.0f);
     
     /** 손전등 빛의 내부 원뿔 각도 */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Flashlight|Properties")
-    float InnerConeAngle;
+    float InnerConeAngle = 0.0f;
     
     /** 손전등 빛의 외부 원뿔 각도 */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Flashlight|Properties")
-    float OuterConeAngle;
+    float OuterConeAngle = 40.0f;
     
     /** 초당 배터리 소모율 */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Flashlight|Battery")
-    float BatteryConsumptionRate;
+    float BatteryConsumptionRate = 0.2f;
     
     /** 배터리 소모 타이머 핸들 */
     FTimerHandle BatteryTimerHandle;

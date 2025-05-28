@@ -17,22 +17,12 @@ AFlashlightItem::AFlashlightItem()
     SpotLightComponent->SetIsReplicated(true);
 
     // 스포트라이트 위치 조정 (메시의 앞쪽을 향하도록)
-    SpotLightComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 35.0f));
+    SpotLightComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 45.0f));
     SpotLightComponent->SetRelativeRotation(FRotator(90.0f, 0.0f, 0.0f));
-
-    // 기본 속성 설정
-    LightIntensity = 5000.0f;
-    LightColor = FLinearColor(1.0f, 0.9f, 0.8f);  // 따뜻한 빛
-    InnerConeAngle = 20.0f;
-    OuterConeAngle = 35.0f;
-    BatteryConsumptionRate = 0.2f;  // 초당 배터리 소모율 (Durability 기준)
 
     // 초기에는 빛 꺼두기
     bIsLightOn = false;
     SpotLightComponent->SetVisibility(false);
-
-    // 기본 내구도를 배터리 용량으로 활용
-    Durability = 100.0f;  // 100%
 }
 
 void AFlashlightItem::UseItem()

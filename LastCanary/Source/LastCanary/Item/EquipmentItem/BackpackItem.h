@@ -1,13 +1,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Item/ItemBase.h"
+#include "Item/EquipmentItem/EquipmentItemBase.h"
 #include "Inventory/BackpackInventoryComponent.h"
 #include "BackpackItem.generated.h"
 
 
 UCLASS()
-class LASTCANARY_API ABackpackItem : public AItemBase
+class LASTCANARY_API ABackpackItem : public AEquipmentItemBase
 {
 	GENERATED_BODY()
 

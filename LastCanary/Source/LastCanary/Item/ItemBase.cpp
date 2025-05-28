@@ -246,15 +246,13 @@ void AItemBase::Interact_Implementation(APlayerController* Interactor)
 	UE_LOG(LogTemp, Warning, TEXT("[AItemBase::Interact_Implementation] 아이템 상호작용: %s"),
 		*ItemRowName.ToString());
 
-	// ⭐ 서버라면 직접 실행, 클라이언트라면 RPC 호출
-	if (HasAuthority())
+	if (ABaseCharacter* Character = Cast<ABaseCharacter>(Interactor->GetPawn()))
 	{
-		Internal_TryPickupByPlayer(Interactor);
+		Character->TryPickupItem(this);
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[AItemBase::Interact_Implementation] 클라이언트에서 서버 RPC 호출"));
-		Server_TryPickupByPlayer(Interactor);
+		UE_LOG(LogTemp, Warning, TEXT("[AItemBase::Interact_Implementation] BaseCharacter를 찾을 수 없음"));
 	}
 }
 

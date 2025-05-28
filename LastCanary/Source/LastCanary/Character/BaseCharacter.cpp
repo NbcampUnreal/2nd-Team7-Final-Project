@@ -297,8 +297,6 @@ void ABaseCharacter::Handle_Crouch()
 	{
 		SetDesiredStance(AlsStanceTags::Standing);
 	}
-	// 임시로 넣은 부분 꼭 삭제할것!
-	DropCurrentItem();
 }
 
 void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
@@ -328,8 +326,6 @@ void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
 		}
 
 		Jump();
-
-		ToggleInventory();
 	}
 	else
 	{
@@ -970,30 +966,61 @@ bool ABaseCharacter::TryPickupItem(AItemBase* HitItem)
 		return false;
 	}
 
-	if (GetLocalRole() < ROLE_Authority)
+	if (HasAuthority())
+	{
+		return TryPickupItem_Internal(HitItem);
+	}
+	else
 	{
 		Server_TryPickupItem(HitItem);
 		return true;
 	}
-
-	// ⭐ 아이템의 Interact 함수를 직접 호출
-	if (APlayerController* PC = Cast<APlayerController>(GetController()))
-	{
-		HitItem->Interact_Implementation(PC);
-		return true;
-	}
-
-	return false;
 }
 
 void ABaseCharacter::Server_TryPickupItem_Implementation(AItemBase* HitItem)
 {
 	if (!HitItem)
 	{
-		LOG_Item_WARNING(TEXT("[ABaseCharacter::ServerTryPickupItem] HitItem이 nullptr입니다."));
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::Server_TryPickupItem] ItemActor가 nullptr입니다."));
 		return;
 	}
-	TryPickupItem(HitItem);
+
+	TryPickupItem_Internal(HitItem);
+}
+
+bool ABaseCharacter::TryPickupItem_Internal(AItemBase* ItemActor)
+{
+	if (!HasAuthority())
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::TryPickupItem_Internal] Authority가 없습니다."));
+		return false;
+	}
+
+	if (!ItemActor)
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::TryPickupItem_Internal] ItemActor가 nullptr입니다."));
+		return false;
+	}
+
+	if (BackpackInventoryComponent)
+	{
+		if (BackpackInventoryComponent->TryAddItem(ItemActor))
+		{
+			return true;
+		}
+	}
+
+	if (ToolbarInventoryComponent)
+	{
+		if (ToolbarInventoryComponent->TryAddItem(ItemActor))
+		{
+			return true;
+		}
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[ABaseCharacter::TryPickupItem_Internal] 인벤토리가 가득참: %s"),
+		*ItemActor->ItemRowName.ToString());
+	return false;
 }
 
 void ABaseCharacter::Server_UnequipCurrentItem_Implementation()
