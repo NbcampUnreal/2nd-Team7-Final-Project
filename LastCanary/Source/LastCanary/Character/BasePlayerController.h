@@ -150,7 +150,7 @@ public:
 	bool bIsRunKeyHeld = false;
 	bool bWantsToRun = false;
 
-private:
+public:
 	virtual void Input_OnLookMouse(const FInputActionValue& ActionValue);
 
 	virtual void Input_OnLook(const FInputActionValue& ActionValue);

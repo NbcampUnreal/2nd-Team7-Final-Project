@@ -10,6 +10,7 @@ class UAlsCameraComponent;
 class UInputMappingContext;
 class UInputAction;
 class UBoxComponent;
+class USpringArmComponent;
 
 UCLASS()
 class LASTCANARY_API ABaseCharacter : public AAlsCharacter
@@ -23,6 +24,24 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
 	USkeletalMeshComponent* OverlaySkeletalMesh;
 
+
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* RemoteOnlySkeletalMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	UStaticMeshComponent* RemoteOnlyOverlayStaticMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* RemoteOnlyOverlaySkeletalMesh;
+
+
+	
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Als Character Example")
+	TObjectPtr<UAlsCameraComponent> sCamera;
+
+	virtual void CalcCamera(float DeltaTime, FMinimalViewInfo& ViewInfo) override;
+	
 	/*IsCharacterPossess?*/
 public:
 	void SetPossess(bool IsPossessed);
@@ -37,12 +56,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-	// Camera
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Settings|Camera")
-	TObjectPtr<UAlsCameraComponent> Camera;
 
-protected:
-	virtual void CalcCamera(float DeltaTime, FMinimalViewInfo& ViewInfo) override;
 
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|MouseSensitivity", Meta = (ClampMin = 0, ForceUnits = "x"))

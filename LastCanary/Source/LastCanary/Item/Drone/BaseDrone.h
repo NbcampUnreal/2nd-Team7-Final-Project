@@ -154,4 +154,10 @@ public:
 
 	void Server_ReturnAsItem_Implementation();
 	void ReturnAsItem();
+
+
+public:
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_ReturnToPlayer();
+	void Multicast_ReturnToPlayer_Implementation();
 };

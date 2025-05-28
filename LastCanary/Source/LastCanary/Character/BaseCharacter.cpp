@@ -20,6 +20,8 @@
 #include "BasePlayerState.h"
 #include "Net/UnrealNetwork.h"
 #include "../Plugins/ALS-Refactored-4.15/Source/ALS/Public/Utility/AlsConstants.h"
+#include "GameFramework/SpringArmComponent.h"
+
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -33,13 +35,24 @@ ABaseCharacter::ABaseCharacter()
 
 	OverlaySkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("OverlaySkeletalMesh"));
 	OverlaySkeletalMesh->SetupAttachment(GetMesh());
+	
+	RemoteOnlySkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FPSSkeletalMesh"));
+	RemoteOnlySkeletalMesh->SetupAttachment(RootComponent);
 
+	RemoteOnlyOverlayStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RemoteOnlyOverlayStaticMesh"));
+	RemoteOnlyOverlayStaticMesh->SetupAttachment(RemoteOnlySkeletalMesh);
+
+	RemoteOnlyOverlaySkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("RemoteOnlyOverlaySkeletalMesh"));
+	RemoteOnlyOverlaySkeletalMesh->SetupAttachment(RemoteOnlySkeletalMesh);
+
+	
 	//Camera Settings
-	Camera = CreateDefaultSubobject<UAlsCameraComponent>(TEXT("Camera"));
-	Camera->SetupAttachment(GetMesh());
-	Camera->SetRelativeRotation_Direct({ 0.0f, 90.0f, 0.0f });
-
+	sCamera = CreateDefaultSubobject<UAlsCameraComponent>(TEXT("Camera"));
+	sCamera->SetupAttachment(GetMesh()); // Spring Arm에 카메라를 붙임
+	sCamera->SetRelativeRotation_Direct(FRotator::ZeroRotator); 
+	
 	SetViewMode(AlsViewModeTags::FirstPerson);
+	
 }
 
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
@@ -123,15 +136,15 @@ void ABaseCharacter::NotifyControllerChanged()
 
 void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo)
 {
-
-	if (Camera->IsActive())
+	
+	if (sCamera->IsActive())
 	{
-		Camera->GetViewInfo(ViewInfo);
+		sCamera->GetViewInfo(ViewInfo);
 		return;
 	}
 
 	Super::CalcCamera(DeltaTime, ViewInfo);
-
+	
 }
 
 
@@ -362,6 +375,8 @@ void ABaseCharacter::Handle_Interact()
 	if (!CurrentFocusedActor)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Handle_Interact: No focused actor."));
+		//Test Code
+		PlayInteractionMontage(CurrentFocusedActor);
 		return;
 	}
 
@@ -623,7 +638,7 @@ float ABaseCharacter::GetFallDamage(float Velocity)
 void ABaseCharacter::HandlePlayerDeath()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Character is dead"));
-	Camera->SetRelativeRotation_Direct({ 0.0f, 90.0f, 0.0f });
+	//Camera->SetRelativeRotation_Direct({ 0.0f, 90.0f, 0.0f });
 	StartRagdolling();
 }
 
@@ -748,6 +763,13 @@ void ABaseCharacter::AttachOverlayObject(UStaticMesh* NewStaticMesh, USkeletalMe
 	OverlaySkeletalMesh->SetSkinnedAssetAndUpdate(NewSkeletalMesh, true);
 	OverlaySkeletalMesh->SetAnimInstanceClass(NewAnimationClass);
 	OverlaySkeletalMesh->AttachToComponent(GetMesh(), AttachRules, ResultSocketName);
+
+	RemoteOnlyOverlayStaticMesh->SetStaticMesh(NewStaticMesh);
+	RemoteOnlyOverlayStaticMesh->AttachToComponent(RemoteOnlySkeletalMesh, AttachRules, ResultSocketName);
+
+	RemoteOnlyOverlaySkeletalMesh->SetSkinnedAssetAndUpdate(NewSkeletalMesh, true);
+	RemoteOnlyOverlaySkeletalMesh->SetAnimInstanceClass(NewAnimationClass);
+	RemoteOnlyOverlaySkeletalMesh->AttachToComponent(RemoteOnlySkeletalMesh, AttachRules, ResultSocketName);
 }
 
 void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(int index)
@@ -779,10 +801,12 @@ void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(int index)
 	if (IsValid(OverlayAnimationInstanceClass))
 	{
 		GetMesh()->LinkAnimClassLayers(OverlayAnimationInstanceClass);
+		RemoteOnlySkeletalMesh->LinkAnimClassLayers(OverlayAnimationInstanceClass);
 	}
 	else
 	{
 		GetMesh()->LinkAnimClassLayers(DefaultAnimationClass);
+		RemoteOnlySkeletalMesh->LinkAnimClassLayers(DefaultAnimationClass);
 	}
 }
 
@@ -795,9 +819,10 @@ void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(int index)
 
 void ABaseCharacter::PlayInteractionMontage(AActor* Target)
 {
+	/*
 	if (!Target || !GetMesh() || !GetMesh()->GetAnimInstance())
 		return;
-
+		*/
 
 	UAnimMontage* MontageToPlay = InteractMontage;
 	// 1. 대상 클래스별로 분기
@@ -833,5 +858,8 @@ void ABaseCharacter::Server_PlayMontage_Implementation(UAnimMontage* MontageToPl
 void ABaseCharacter::Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay)
 {
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	AnimInstance->Montage_Play(MontageToPlay);
+	
+	AnimInstance = RemoteOnlySkeletalMesh->GetAnimInstance();
 	AnimInstance->Montage_Play(MontageToPlay);
 }
