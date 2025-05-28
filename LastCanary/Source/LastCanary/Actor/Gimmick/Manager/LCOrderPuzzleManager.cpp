@@ -1,4 +1,4 @@
-#include "Actor/Gimmick/Controller/LCOrderPuzzleManager.h"
+#include "Actor/Gimmick/Manager/LCOrderPuzzleManager.h"
 #include "Interface/GimmickEffectInterface.h"
 #include "Actor/Gimmick/Trigger/LCOrderPlate.h"
 

@@ -1,5 +1,5 @@
 #include "Actor/Gimmick/Trigger/LCOrderSwitch.h"
-#include "Actor/Gimmick/Controller/LCOrderPuzzleManager.h"
+#include "Actor/Gimmick/Manager/LCOrderPuzzleManager.h"
 
 #include "LastCanary.h"
 
