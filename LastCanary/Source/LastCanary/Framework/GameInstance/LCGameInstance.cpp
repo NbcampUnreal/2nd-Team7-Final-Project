@@ -83,3 +83,26 @@ void ULCGameInstance::Shutdown()
     Super::Shutdown();
 
 }
+
+void ULCGameInstance::LoadGunData()
+{
+    if (GunDataTable == nullptr)
+    {
+        // LOG_Frame_WARNING(TEXT("GunDataTable is not assigned in ULCGameInstance."));
+        return;
+    }
+
+    static const FString ContextString(TEXT("Gun Lookup"));
+    TArray<FGunDataRow*> AllGuns;
+    GunDataTable->GetAllRows(ContextString, AllGuns);
+
+    for (FGunDataRow* GunDataRow : AllGuns)
+    {
+        if (GunDataRow)
+        {
+            // 예: 아이디 해시화 → 캐싱 용도
+            int32 HashedID = GetTypeHash(GunDataRow->GunName);
+            GunDataRow->GunID = HashedID;
+        }
+    }
+}

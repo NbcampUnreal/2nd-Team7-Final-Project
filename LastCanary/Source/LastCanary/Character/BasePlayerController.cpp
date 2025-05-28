@@ -7,6 +7,8 @@
 #include "BasePlayerState.h"
 
 #include "Net/UnrealNetwork.h"
+#include "UI/Manager/LCUIManager.h"
+#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 
 void ABasePlayerController::BeginPlay()
 {
@@ -30,6 +32,24 @@ void ABasePlayerController::BeginPlay()
 		PS->OnStaminaChanged.AddDynamic(this, &ABasePlayerController::OnStaminaUpdated);
 	}
 
+	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+	{
+		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+		{
+			UIManager->InitUIManager(this);
+
+			if (GetPawn())
+			{
+				FTimerHandle HUDTimer;
+				GetWorld()->GetTimerManager().SetTimer(HUDTimer,
+					[this, UIManager]()
+					{
+						UIManager->ShowInGameHUD();
+					},
+					0.2f, false);
+			}
+		}
+	}
 }
 
 void ABasePlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

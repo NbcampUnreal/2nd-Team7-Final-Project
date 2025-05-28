@@ -11,6 +11,10 @@ class UInputMappingContext;
 class UInputAction;
 class UBoxComponent;
 
+class AItemBase;
+class UToolbarInventoryComponent;
+class UBackpackInventoryComponent;
+
 UCLASS()
 class LASTCANARY_API ABaseCharacter : public AAlsCharacter
 {
@@ -89,7 +93,7 @@ public:
 	void TraceInteractableActor();
 public:
 	// 아이템 퀵슬롯 및 변경 관련 로직
-	void EquipItemFromCurrentQuickSlot(int QuickSlotIndex);
+	void EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex);
 
 	// 퀵슬롯 아이템들 (타입은 아이템 구조에 따라 UObject*, AItemBase*, UItemData* 등)
 	TArray<UObject*> QuickSlots;
@@ -198,4 +202,88 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "TEST")
 	bool bIsGetFallDownDamage = false;
+
+	// 인벤토리 아이템 관련 변수 및 함수
+public:
+	UPROPERTY()
+	FGameplayTagContainer OwnedTags;
+
+	UChildActorComponent* ChildActorComponent;
+
+private:
+	UPROPERTY(VisibleAnywhere, Category = "Inventory")
+	UToolbarInventoryComponent* ToolbarInventoryComponent;
+
+	UPROPERTY(VisibleAnywhere, Category = "Inventory")
+	UBackpackInventoryComponent* BackpackInventoryComponent;
+
+public:
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	void SetBackpackInventoryComponent(UBackpackInventoryComponent* BackpackInvenComp, bool bEquip);
+
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	UToolbarInventoryComponent* GetToolbarInventoryComponent() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	UBackpackInventoryComponent* GetBackpackInventoryComponent() const;
+private:
+	UPROPERTY(Replicated)
+	FGameplayTagContainer EquippedTags;
+
+public:
+	UFUNCTION(BlueprintCallable, Category = "Equipment")
+	bool IsEquipped() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Equipment")
+	void SetEquipped(bool bEquip);
+
+
+public:
+	// 임의적으로 만든 캐릭터의 상호작용 함수
+	bool TryPickupItem(AItemBase* HitItem);
+	UFUNCTION(Server, Reliable)
+	void Server_TryPickupItem(AItemBase* HitItem);
+	void Server_TryPickupItem_Implementation(AItemBase* ItemToPickup);
+
+protected:
+	/** 실제 아이템 습득 로직 (서버에서만 실행) */
+	bool TryPickupItem_Internal(AItemBase* ItemActor);
+
+public:
+	UFUNCTION(Server, Reliable)
+	void Server_UnequipCurrentItem();
+	void Server_UnequipCurrentItem_Implementation();
+
+	UFUNCTION(Server, Reliable)
+	void Server_EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex);
+	void Server_EquipItemFromCurrentQuickSlot_Implementation(int32 QuickSlotIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "Equipment")
+	bool UseEquippedItem();
+	UFUNCTION(Server, Reliable)
+	void Server_UseEquippedItem();
+	void Server_UseEquippedItem_Implementation();
+
+public:
+	/** 인벤토리 UI를 토글합니다 */
+	UFUNCTION(BlueprintCallable, Category = "Character|UI")
+	void ToggleInventory();
+
+	/** 인벤토리가 현재 열려있는지 확인 */
+	UFUNCTION(BlueprintCallable, Category = "Character|UI")
+	bool IsInventoryOpen() const;
+
+private:
+	/** 인벤토리 UI가 열려있는지 추적 */
+	UPROPERTY(Replicated)
+	bool bInventoryOpen = false;
+
+public:
+	/** 현재 장착된 아이템 드랍 */
+	UFUNCTION(BlueprintCallable, Category = "Character|Inventory")
+	void DropCurrentItem();
+
+	/** 특정 슬롯 아이템 드랍 */
+	UFUNCTION(BlueprintCallable, Category = "Character|Inventory")
+	void DropItemAtSlot(int32 SlotIndex, int32 Quantity = 1);
 };
