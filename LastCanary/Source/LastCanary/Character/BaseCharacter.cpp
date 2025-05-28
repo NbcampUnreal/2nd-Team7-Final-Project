@@ -205,7 +205,7 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 		}
 	}
 	// 임시로 넣은 코드이니 꼭 삭제할 것!
-	DropCurrentItem();
+	UseEquippedItem();
 }
 
 void ABaseCharacter::Handle_SprintOnPlayerState(const FInputActionValue& ActionValue, float multiplier)
@@ -271,7 +271,7 @@ void ABaseCharacter::Handle_Crouch()
 		SetDesiredStance(AlsStanceTags::Standing);
 	}
 	// 임시로 넣은 부분 꼭 삭제할것!
-	UseEquippedItem();
+	DropCurrentItem();
 }
 
 void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
@@ -987,7 +987,6 @@ void ABaseCharacter::SetBackpackInventoryComponent(UBackpackInventoryComponent* 
 	}
 }
 
-// 게임 플레이 태그 관련 함수
 bool ABaseCharacter::IsEquipped() const
 {
 	static FGameplayTag EquippedTag = FGameplayTag::RequestGameplayTag(TEXT("Character.Player.Equipped"));
@@ -999,12 +998,10 @@ void ABaseCharacter::SetEquipped(bool bEquip)
 	static FGameplayTag EquippedTag = FGameplayTag::RequestGameplayTag(TEXT("Character.Player.Equipped"));
 	if (bEquip)
 	{
-		LOG_Item_WARNING(TEXT("[ABaseCharacter::SetEquipped] 태그 추가"));
 		EquippedTags.AddTag(EquippedTag);
 	}
 	else
 	{
-		LOG_Item_WARNING(TEXT("[ABaseCharacter::SetEquipped] 태그 제거"));
 		EquippedTags.RemoveTag(EquippedTag);
 	}
 }
@@ -1113,16 +1110,11 @@ void ABaseCharacter::ToggleInventory()
 		return;
 	}
 
-	// ⭐ 간소화된 인벤토리 토글
 	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 	{
 		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
 		{
-			UIManager->ToggleInventory(); // 통합된 함수 사용
-
-			// 상태는 UIManager에서 가져오기
-			//bInventoryOpen = UIManager->CachedInventoryMainWidget ?
-			//	UIManager->CachedInventoryMainWidget->IsBackpackInventoryOpen() : false;
+			UIManager->ToggleInventory();
 		}
 	}
 }
@@ -1136,13 +1128,11 @@ void ABaseCharacter::DropCurrentItem()
 {
 	if (!IsLocallyControlled())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[DropCurrentItem] 로컬 컨트롤이 아님"));
 		return;
 	}
 
 	if (ToolbarInventoryComponent)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[DropCurrentItem] 아이템 드랍 시도"));
 		ToolbarInventoryComponent->DropCurrentEquippedItem();
 	}
 }

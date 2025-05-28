@@ -11,11 +11,6 @@ void UInventoryWidgetBase::NativeConstruct()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[InventoryWidgetBase::NativeConstruct] SlotWidgetClass가 설정되지 않음. 블루프린트에서 설정하세요."));
 	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[InventoryWidgetBase::NativeConstruct] SlotWidgetClass 확인: %s"),
-			*SlotWidgetClass->GetName());
-	}
 
 	if (UWorld* World = GetWorld())
 	{
@@ -84,6 +79,5 @@ UInventorySlotWidget* UInventoryWidgetBase::CreateSlotWidget(int32 SlotIndex, co
 	SlotWidget->SetInventoryComponent(InventoryComponent);
 	SlotWidget->SlotIndex = SlotIndex;
 
-	UE_LOG(LogTemp, Warning, TEXT("[InventoryWidgetBase::CreateSlotWidget] 슬롯 %d 위젯 생성 성공"), SlotIndex);
 	return SlotWidget;
 }

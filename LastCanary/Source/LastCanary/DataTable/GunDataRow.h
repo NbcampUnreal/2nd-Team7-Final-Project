@@ -47,7 +47,7 @@ struct FGunDataRow : public FTableRowBase
     float Spread;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Performance")
-    int32 BulletsPerShot;  // 샷건 등을 위한 설정
+    int32 BulletsPerShot;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Performance")
     float RecoilAmount;

@@ -10,8 +10,6 @@ void UInventoryMainWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	UE_LOG(LogTemp, Warning, TEXT("[InventoryMainWidget::NativeConstruct] 시작: %s"), *GetName());
-
 	AutoInitializeWithPlayer();
 
 	ShowToolbarOnly();

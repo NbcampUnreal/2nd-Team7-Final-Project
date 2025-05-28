@@ -149,8 +149,6 @@ void AItemBase::ApplyItemDataFromTable()
 	if (MeshComponent && ItemData.StaticMesh)
 	{
 		MeshComponent->SetStaticMesh(ItemData.StaticMesh);
-		LOG_Item_WARNING(TEXT("[AItemBase::ApplyItemDataFromTable] 메시 적용 완료: %s"),
-			*ItemData.ItemName.ToString());
 	}
 
 	// 상태 변경 브로드캐스트
@@ -212,7 +210,6 @@ void AItemBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetim
 
 void AItemBase::OnRepItemRowName()
 {
-	// 클라이언트에서 ItemRowName이 복제되면 데이터 테이블 적용
 	if (!ItemRowName.IsNone())
 	{
 		ApplyItemDataFromTable();

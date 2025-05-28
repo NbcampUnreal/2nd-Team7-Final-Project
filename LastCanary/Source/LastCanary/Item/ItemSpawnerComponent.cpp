@@ -63,9 +63,8 @@ AItemBase* UItemSpawnerComponent::CreateItemWithCustomData(FName ItemRowName, co
         return nullptr;
     }
 
-    // ⭐ 스폰 매개변수 설정 (Owner 설정으로 네트워크 권한 명확화)
     FActorSpawnParameters SpawnParams;
-    SpawnParams.Owner = GetOwner(); // ⭐ 인벤토리 컴포넌트의 소유자가 아이템 소유자
+    SpawnParams.Owner = nullptr;
     SpawnParams.Instigator = Cast<APawn>(GetOwner());
     SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 

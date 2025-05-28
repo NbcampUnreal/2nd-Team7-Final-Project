@@ -109,9 +109,6 @@ void UInventorySlotWidget::UpdateSlotUI()
 	}
 
 	UpdateBorderColor();
-
-	LOG_Item_WARNING(TEXT("[InventorySlotWidget::UpdateSlotUI] UI 업데이트 완료: %s (Q:%d)"),
-		*ItemData.ItemRowName.ToString(), ItemData.Quantity);
 }
 
 FReply UInventorySlotWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
@@ -245,7 +242,6 @@ void UInventorySlotWidget::UpdateBorderColor()
 	{
 		// 장착된 아이템
 		TargetColor = EquippedBorderColor;
-		UE_LOG(LogTemp, Warning, TEXT("[UpdateBorderColor] 슬롯 %d 장착 상태로 색상 변경"), SlotIndex);
 	}
 	else
 	{
@@ -262,7 +258,6 @@ void UInventorySlotWidget::ShowTooltip()
 	// 빈 슬롯이면 툴팁 표시하지 않음
 	if (ItemData.ItemRowName.IsNone())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[ShowTooltip] 빈 슬롯 - 툴팁 스킵"));
 		return;
 	}
 
@@ -271,8 +266,6 @@ void UInventorySlotWidget::ShowTooltip()
 	{
 		return;
 	}
-
-	UE_LOG(LogTemp, Warning, TEXT("[ShowTooltip] 툴팁 표시 시작"));
 
 	// TooltipWidgetClass 확인
 	if (!TooltipWidgetClass)
@@ -292,7 +285,6 @@ void UInventorySlotWidget::ShowTooltip()
 		}
 	}
 
-	// ⭐ 데이터 테이블에서 아이템 정보 가져오기
 	if (ItemDataTable)
 	{
 		FItemDataRow* ItemRowData = ItemDataTable->FindRow<FItemDataRow>(ItemData.ItemRowName, TEXT("ShowTooltip"));
@@ -301,15 +293,11 @@ void UInventorySlotWidget::ShowTooltip()
 			ItemTooltipWidget->SetTooltipData(*ItemRowData, ItemData);
 			ItemTooltipWidget->AddToViewport(10);
 
-			// ⭐ 초기 위치 설정
 			UpdateTooltipPosition();
 
-			// ⭐ 주기적으로 위치 업데이트 (마우스를 따라다니게 함)
 			GetWorld()->GetTimerManager().SetTimer(TooltipUpdateTimer,
 				this, &UInventorySlotWidget::UpdateTooltipPosition,
-				0.016f, true); // 60fps로 업데이트
-
-			UE_LOG(LogTemp, Warning, TEXT("[ShowTooltip] 툴팁 표시 완료"));
+				0.016f, true);
 		}
 		else
 		{
@@ -324,7 +312,6 @@ void UInventorySlotWidget::ShowTooltip()
 
 void UInventorySlotWidget::HideTooltip()
 {
-	UE_LOG(LogTemp, Warning, TEXT("[HideTooltip] 툴팁 숨기기"));
 
 	if (TooltipUpdateTimer.IsValid())
 	{
@@ -334,7 +321,6 @@ void UInventorySlotWidget::HideTooltip()
 	if (ItemTooltipWidget && ItemTooltipWidget->IsInViewport())
 	{
 		ItemTooltipWidget->RemoveFromParent();
-		UE_LOG(LogTemp, Warning, TEXT("[HideTooltip] 툴팁 숨기기 완료"));
 	}
 }
 

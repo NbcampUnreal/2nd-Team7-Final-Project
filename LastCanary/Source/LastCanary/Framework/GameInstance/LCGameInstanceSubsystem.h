@@ -34,8 +34,6 @@ public:
 	void ChangeLevelByMapName(const FName& MapName);
 	void ChangeLevelByMapID(int32 MapID);
 
-
-	// 데이터 테이블 접근 함수들 추가
 	FItemDataRow* GetItemDataByRowName(FName ItemRowName) const;
 
 	UFUNCTION(BlueprintPure, Category = "Data")

@@ -40,36 +40,17 @@ AItemSpawner::AItemSpawner()
     // 네트워크 복제 활성화
     bReplicates = true;
     bAlwaysRelevant = false;
-    AActor::SetReplicateMovement(false); // 스포너는 움직이지 않음
+    AActor::SetReplicateMovement(false);
 }
 
 void AItemSpawner::BeginPlay()
 {
     Super::BeginPlay();
 
-    // 스포너 설정 상태 전체 로그
-    UE_LOG(LogTemp, Warning, TEXT("=== [AItemSpawner::BeginPlay] 스포너 설정 확인 시작 ==="));
-    UE_LOG(LogTemp, Warning, TEXT("스포너 이름: %s"), *GetName());
-    UE_LOG(LogTemp, Warning, TEXT("스포너 타입: %d"), (int32)SpawnerType);
-    UE_LOG(LogTemp, Warning, TEXT("스폰 가능한 아이템 개수: %d"), SpawnableItems.Num());
-
-    // 각 아이템 정보 상세 로그
     for (int32 i = 0; i < SpawnableItems.Num(); ++i)
     {
         const FSpawnableItemInfo& ItemInfo = SpawnableItems[i];
-        UE_LOG(LogTemp, Warning, TEXT("--- 아이템 [%d] 정보 ---"), i);
-        UE_LOG(LogTemp, Warning, TEXT("ItemClass: %s"), ItemInfo.ItemClass ? *ItemInfo.ItemClass->GetName() : TEXT("NULL"));
-        UE_LOG(LogTemp, Warning, TEXT("ItemRowName: %s"), *ItemInfo.ItemRowName.ToString());
-        UE_LOG(LogTemp, Warning, TEXT("ItemRowName IsValid: %s"), ItemInfo.ItemRowName.IsValid() ? TEXT("True") : TEXT("False"));
-        UE_LOG(LogTemp, Warning, TEXT("ItemRowName IsNone: %s"), ItemInfo.ItemRowName.IsNone() ? TEXT("True") : TEXT("False"));
-        UE_LOG(LogTemp, Warning, TEXT("ItemRowName String: '%s'"), *ItemInfo.ItemRowName.ToString());
-        UE_LOG(LogTemp, Warning, TEXT("SpawnProbability: %f"), ItemInfo.SpawnProbability);
-        UE_LOG(LogTemp, Warning, TEXT("MinQuantity: %d"), ItemInfo.MinQuantity);
-        UE_LOG(LogTemp, Warning, TEXT("MaxQuantity: %d"), ItemInfo.MaxQuantity);
-        UE_LOG(LogTemp, Warning, TEXT("MinDurability: %f"), ItemInfo.MinDurability);
-        UE_LOG(LogTemp, Warning, TEXT("MaxDurability: %f"), ItemInfo.MaxDurability);
     }
-    UE_LOG(LogTemp, Warning, TEXT("=== 스포너 설정 확인 완료 ==="));
 
     // 근접 컴포넌트 반경 설정
     ProximityComponent->SetSphereRadius(ProximityDistance);
@@ -98,11 +79,6 @@ void AItemSpawner::Tick(float DeltaTime)
 
 void AItemSpawner::SpawnItems()
 {
-    LOG_Item_WARNING(TEXT("[AItemSpawner::SpawnItems] 스폰 시작 - Authority: %s, Enabled: %s, Count: %d/%d"),
-        HasAuthority() ? TEXT("True") : TEXT("False"),
-        bIsEnabled ? TEXT("True") : TEXT("False"),
-        CurrentSpawnCount, MaxSpawnCount);
-
     if (!bIsEnabled || CurrentSpawnCount >= MaxSpawnCount)
     {
         LOG_Item_WARNING(TEXT("[AItemSpawner::SpawnItems] 스포너 비활성화 상태이거나 최대 스폰 개수에 도달했습니다."));

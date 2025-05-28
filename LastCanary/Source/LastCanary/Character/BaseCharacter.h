@@ -221,14 +221,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "TEST")
 	bool bIsGetFallDownDamage = false;
 
-	// 게임 플래이 태그를 통해 플레이어 확인용으로 사용
+	// 인벤토리 아이템 관련 변수 및 함수
 public:
 	UPROPERTY()
 	FGameplayTagContainer OwnedTags;
 
 	UChildActorComponent* ChildActorComponent;
 
-	// 인벤토리 컴포넌트
 private:
 	UPROPERTY(VisibleAnywhere, Category = "Inventory")
 	UToolbarInventoryComponent* ToolbarInventoryComponent;
@@ -237,11 +236,9 @@ private:
 	UBackpackInventoryComponent* BackpackInventoryComponent;
 
 public:
-	// TODO : 인벤토리 컴포넌트와 상호작용하는 함수 추가 필요
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	void SetBackpackInventoryComponent(UBackpackInventoryComponent* BackpackInvenComp, bool bEquip);
 
-	// 게임 플레이 태그통한 장비 장비/해제 상태 부여 및 확인을 위해 추가한 부분입니다.
 private:
 	UPROPERTY(Replicated)
 	FGameplayTagContainer EquippedTags;
@@ -273,7 +270,6 @@ public:
 	void Server_UseEquippedItem();
 	void Server_UseEquippedItem_Implementation();
 
-	// 임시 인벤토리 확인용
 public:
 	/** 인벤토리 UI를 토글합니다 */
 	UFUNCTION(BlueprintCallable, Category = "Character|UI")

@@ -276,8 +276,6 @@ void AGunBase::ProcessHit(const FHitResult& HitResult, const FVector& StartLocat
 
         LOG_Item_WARNING(TEXT("ProcessHit: Actual damage applied = %.1f"), ActualDamage);
     }
-
-    // 개별 히트 처리는 여기서 하지 않음 - 모든 히트를 수집 후 한 번에 처리
 }
 
 void AGunBase::Multicast_SpawnImpactEffects_Implementation(const TArray<FHitResult>& Hits)
@@ -315,14 +313,6 @@ void AGunBase::Multicast_SpawnImpactEffects_Implementation(const TArray<FHitResu
         {
             UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, Hit.ImpactPoint);
             LOG_Item_WARNING(TEXT("SpawnImpactEffects: Played sound %s"), *ImpactSound->GetName());
-        }
-
-        // 영구적인 디버그 표시 (멀티플레이어에서 테스트용)
-        if (bDrawImpactDebug)
-        {
-            // 임팩트 지점에 영구적인 디버그 구체 추가
-            DrawDebugSphere(GetWorld(), Hit.ImpactPoint, 10.0f, 16, FColor::Yellow, true, -1.0f);
-            LOG_Item_WARNING(TEXT("SpawnImpactEffects: Drew permanent debug sphere at impact point"));
         }
     }
 }
@@ -427,16 +417,6 @@ void AGunBase::PlayGunAnimation(UAnimMontage* AnimMontage, float PlayRate)
 void AGunBase::BeginPlay()
 {
     Super::BeginPlay();
-
-    UE_LOG(LogTemp, Warning, TEXT("[AGunBase::BeginPlay] 네트워크 상태 확인"));
-    UE_LOG(LogTemp, Warning, TEXT("GetNetMode: %d"), (int32)GetNetMode());
-    UE_LOG(LogTemp, Warning, TEXT("GetLocalRole: %d"), (int32)GetLocalRole());
-    UE_LOG(LogTemp, Warning, TEXT("GetRemoteRole: %d"), (int32)GetRemoteRole());
-    UE_LOG(LogTemp, Warning, TEXT("bReplicates: %s"), bReplicates ? TEXT("True") : TEXT("False"));
-    UE_LOG(LogTemp, Warning, TEXT("Owner: %s"), GetOwner() ? *GetOwner()->GetName() : TEXT("None"));
-
-    LOG_Item_WARNING(TEXT("GunBase BeginPlay - ItemRowName: %s"),
-        ItemRowName.IsNone() ? TEXT("None") : *ItemRowName.ToString());
     
     if (Durability <= 0.0f)
     {
@@ -563,8 +543,6 @@ void AGunBase::ApplyGunDataFromDataTable()
             MeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
         }
     }
-
-    LOG_Item_WARNING(TEXT("[GunBase::ApplyGunDataFromDataTable] '%s' 총기 데이터 로드 완료"), *ItemRowName.ToString());
 }
 
 void AGunBase::UpdateAmmoState()

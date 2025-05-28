@@ -9,9 +9,6 @@
 
 void UToolbarInventoryWidget::RefreshInventoryUI()
 {
-    UE_LOG(LogTemp, Warning, TEXT("[ToolbarInventoryWidget::RefreshInventoryUI] 시작"));
-
-    // 기본 유효성 검사
     if (!InventoryComponent)
     {
         LOG_Item_WARNING(TEXT("[ToolbarInventoryWidget::RefreshInventoryUI] InventoryComponent is null!"));
@@ -36,7 +33,6 @@ void UToolbarInventoryWidget::RefreshInventoryUI()
         return;
     }
 
-    // 기존 슬롯들 제거
     ToolbarSlotBox->ClearChildren();
 
     UToolbarInventoryComponent* ToolbarInventory = Cast<UToolbarInventoryComponent>(InventoryComponent);
@@ -46,19 +42,16 @@ void UToolbarInventoryWidget::RefreshInventoryUI()
         return;
     }
 
-    // 슬롯 위젯들 생성
     for (int32 i = 0; i < ToolbarInventory->GetMaxSlots(); ++i)
     {
         const FBaseItemSlotData& SlotData = ToolbarInventory->ItemSlots[i];
 
-        // ⭐ 부모 클래스의 헬퍼 함수 사용
         UInventorySlotWidget* SlotWidget = CreateSlotWidget(i, SlotData);
         if (!SlotWidget)
         {
             continue;
         }
 
-        // 툴바 전용 처리 (장착된 아이템 표시)
         if (UToolbarSlotWidget* ToolbarSlot = Cast<UToolbarSlotWidget>(SlotWidget))
         {
             if (i == ToolbarInventory->GetCurrentEquippedSlotIndex())
@@ -70,10 +63,6 @@ void UToolbarInventoryWidget::RefreshInventoryUI()
             }
         }
 
-        // HorizontalBox에 추가
         ToolbarSlotBox->AddChild(SlotWidget);
     }
-
-    LOG_Item_WARNING(TEXT("[ToolbarInventoryWidget::RefreshInventoryUI] UI 새로고침 완료 - 총 %d개 슬롯"),
-        ToolbarInventory->GetMaxSlots());
 }
