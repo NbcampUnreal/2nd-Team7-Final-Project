@@ -15,7 +15,7 @@ void ALCBaseGimmick::ActivateGimmick_Implementation()
 		return;
 	}
 
-	if (bActivated == true)
+	if (bActivated)
 	{
 		return;
 	}

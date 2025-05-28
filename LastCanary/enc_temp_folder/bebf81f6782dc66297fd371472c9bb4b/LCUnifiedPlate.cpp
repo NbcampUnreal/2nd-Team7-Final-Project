@@ -33,15 +33,15 @@ void ALCUnifiedPlate::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, A
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
 	bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (HasAuthority() == false)
+	if (HasAuthority() ==false)
 	{
 		return;
 	}
-	if (IsValid(OtherActor) == false)
+	if (IsValid(OtherActor)==false)
 	{
 		return;
 	}
-	if (Cast<ACharacter>(OtherActor) == nullptr)
+	if (Cast<ACharacter>(OtherActor)==nullptr)
 	{
 		return;
 	}
@@ -110,7 +110,7 @@ void ALCUnifiedPlate::UpdateActivationState()
 
 void ALCUnifiedPlate::TryActivateAfterDelay()
 {
-	if (OverlappingActors.Num() >= RequiredCount && bActivated == false)
+	if (OverlappingActors.Num() >= RequiredCount && !bActivated)
 	{
 		ILCGimmickInterface::Execute_ActivateGimmick(this);
 	}
@@ -139,7 +139,7 @@ void ALCUnifiedPlate::DeactivateGimmick_Implementation()
 
 	for (AActor* Target : LinkedTargets)
 	{
-		if (IsValid(Target) == false)
+		if (!IsValid(Target))
 		{
 			continue;
 		}

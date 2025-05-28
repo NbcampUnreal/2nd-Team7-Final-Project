@@ -43,7 +43,7 @@ void ALCGimmickDoor::BeginPlay()
 
 void ALCGimmickDoor::OnDoorTimelineUpdate(float Value)
 {
-	if (bSlideInstead == true)
+	if (bSlideInstead)
 	{
 		FVector NewLocation = FMath::Lerp(InitialLocation, TargetLocation, Value);
 		SetActorLocation(NewLocation);
@@ -62,7 +62,7 @@ void ALCGimmickDoor::OnDoorTimelineFinished()
 
 void ALCGimmickDoor::StartDoorAnimation(bool bOpen)
 {
-	if (OpenCurve == nullptr)
+	if (!OpenCurve)
 	{
 		return;
 	}
@@ -74,7 +74,7 @@ void ALCGimmickDoor::StartDoorAnimation(bool bOpen)
 
 	this->bIsOpen = bOpen;
 
-	if (bSlideInstead == true)
+	if (bSlideInstead)
 	{
 		InitialLocation = GetActorLocation(); // 현재 위치에서 시작
 		TargetLocation = bOpen ? OpenedLocation : ClosedLocation;
@@ -90,7 +90,7 @@ void ALCGimmickDoor::StartDoorAnimation(bool bOpen)
 
 void ALCGimmickDoor::TriggerEffect_Implementation()
 {
-	if (bIsOpen == true)
+	if (bIsOpen)
 	{
 		return;
 	}
@@ -101,7 +101,7 @@ void ALCGimmickDoor::TriggerEffect_Implementation()
 
 void ALCGimmickDoor::StopEffect_Implementation()
 {
-	if (bIsOpen == false)
+	if (!bIsOpen)
 	{
 		return;
 	}

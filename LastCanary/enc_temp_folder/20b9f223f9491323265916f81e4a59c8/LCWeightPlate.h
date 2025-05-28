@@ -1,0 +1,57 @@
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Actor/Gimmick/LCBaseGimmick.h"
+#include "LCWeightPlate.generated.h"
+
+/**
+ * 
+ */
+class UBoxComponent;
+UCLASS()
+class LASTCANARY_API ALCWeightPlate : public ALCBaseGimmick
+{
+	GENERATED_BODY()
+	
+public:
+	ALCWeightPlate();
+
+protected:
+	virtual void BeginPlay() override;
+
+	/** 트리거 영역 */
+	UPROPERTY(VisibleAnywhere, Category = "Components")
+	UBoxComponent* TriggerVolume;
+
+	/** 현재 올라간 총 무게 */
+	UPROPERTY(VisibleInstanceOnly, Category = "Weight")
+	float CurrentWeight;
+
+	/** 발동 조건 무게 */
+	UPROPERTY(EditAnywhere, Category = "Weight")
+	float RequiredWeight = 100.f;
+
+	/** 현재 발판 위에 올라간 액터 목록 */
+	UPROPERTY()
+	TArray<AActor*> OverlappingActors;
+
+	/** 오버랩 진입 시 */
+	UFUNCTION()
+	void OnBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
+		bool bFromSweep, const FHitResult& SweepResult);
+
+	/** 오버랩 종료 시 */
+	UFUNCTION()
+	void OnEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+
+	/** 액터로부터 무게 추출 */
+	float GetActorWeight(AActor* Actor) const;
+
+	/** 무게 확인 및 퍼즐 처리 */
+	void CheckWeight();
+
+	virtual void DeactivateGimmick_Implementation() override;
+};
+
