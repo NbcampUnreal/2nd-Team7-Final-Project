@@ -33,11 +33,15 @@ void ALCUnifiedPlate::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, A
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
 	bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (!HasAuthority() || !IsValid(OtherActor))
+	if (HasAuthority() ==false)
 	{
 		return;
 	}
-	if (!Cast<ACharacter>(OtherActor))
+	if (IsValid(OtherActor)==false)
+	{
+		return;
+	}
+	if (Cast<ACharacter>(OtherActor)==nullptr)
 	{
 		return;
 	}
@@ -49,7 +53,11 @@ void ALCUnifiedPlate::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, A
 void ALCUnifiedPlate::OnEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	if (!HasAuthority() || !IsValid(OtherActor))
+	if (HasAuthority() == false)
+	{
+		return;
+	}
+	if (IsValid(OtherActor) == false)
 	{
 		return;
 	}
@@ -115,7 +123,11 @@ void ALCUnifiedPlate::OnTimedActivationExpired()
 
 void ALCUnifiedPlate::DeactivateGimmick_Implementation()
 {
-	if (!HasAuthority() || !bActivated)
+	if (HasAuthority() == false)
+	{
+		return;
+	}
+	if (bActivated == false)
 	{
 		return;
 	}
