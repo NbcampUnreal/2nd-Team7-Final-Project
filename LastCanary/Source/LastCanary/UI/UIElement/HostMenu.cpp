@@ -2,7 +2,7 @@
 
 
 #include "UI/UIElement/HostMenu.h"
-#include "Framework/GameMode/LCLobbyGameMode.h"
+#include "Framework/GameMode/LCRoomGameMode.h"
 #include "Components/Button.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
@@ -29,8 +29,8 @@ void UHostMenu::NativeDestruct()
 
 void UHostMenu::OnStartButtonClicked()
 {
-	if (ALCLobbyGameMode* LobbyGM = Cast<ALCLobbyGameMode>(UGameplayStatics::GetGameMode(this)))
+	if (ALCRoomGameMode* RoomGM = Cast<ALCRoomGameMode>(UGameplayStatics::GetGameMode(this)))
 	{
-		LobbyGM->StartGame();
+		//RoomGM->StartGame();
 	}
 }

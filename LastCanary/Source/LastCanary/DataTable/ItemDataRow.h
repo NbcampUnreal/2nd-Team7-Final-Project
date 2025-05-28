@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataTable.h"
+#include "GameplayTagContainer.h"
 #include "ItemDataRow.generated.h"
 
 /**
@@ -26,4 +27,21 @@ struct FItemDataRow : public FTableRowBase
 	bool bSellInShop = true;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bCanBuy = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 MaxStack = 1;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (Categories = "Item"))
+	FGameplayTag ItemType;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Weight = 1.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bUsable = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName AttachSocketName = TEXT("Rifle");;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UStaticMesh* StaticMesh = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USkeletalMesh* SkeletalMesh = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSubclassOf<class AItemBase> ItemActorClass;
 };

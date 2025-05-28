@@ -17,6 +17,10 @@ class UShopWidget;
 class UMapSelectWidget;
 class UUIElementCreateSession;
 class UPopupLoading;
+class UInventoryMainWidget;
+class UBackpackInventoryWidget;
+class UToolbarInventoryWidget;
+
 UCLASS(BlueprintType)
 class LASTCANARY_API ULCUIManagerSettings : public UDataAsset
 {
@@ -43,4 +47,6 @@ public:
 	TSubclassOf<UUIElementCreateSession> FromBPCreateSessionWidgetClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UPopupLoading> FromBPPopupLoadingClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UInventoryMainWidget> FromBPInventoryMainUIClass;
 };

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/PlayerController.h"
+#include "Framework/PlayerController/LCPlayerController.h"
 #include "Character/PlayerData/PlayerDataTypes.h"
 #include "BasePlayerController.generated.h"
 
@@ -13,12 +13,12 @@ class ABaseCharacter;
 class ABaseDrone;
 
 UCLASS()
-class LASTCANARY_API ABasePlayerController : public APlayerController
+class LASTCANARY_API ABasePlayerController : public ALCPlayerController
 {
 	GENERATED_BODY()
 private:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
-
+public:
 private:
 	APawn* CachedPawn;  // Pawn을 저장할 멤버 변수
 	APawn* CurrentPossessedPawn;
@@ -33,7 +33,6 @@ private:
 	UEnhancedInputComponent* EnhancedInput;
 	UInputMappingContext* CurrentIMC;
 public:
-protected:
 	virtual void SetupInputComponent() override;
 
 	void ApplyInputMappingContext(UInputMappingContext* IMC);

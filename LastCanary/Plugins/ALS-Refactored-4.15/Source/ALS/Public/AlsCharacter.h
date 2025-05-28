@@ -28,7 +28,7 @@ public:
 	bool bIsInHardLandingState = false;
 	void TriggerHardLanding(float DisableDuration);
 	void EndHardLanding();
-	virtual float GetFallDamage(float Amount);
+	virtual float GetFallDamage(float Velocity);
 
 
 

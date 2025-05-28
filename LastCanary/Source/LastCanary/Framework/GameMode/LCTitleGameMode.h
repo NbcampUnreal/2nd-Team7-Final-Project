@@ -4,9 +4,6 @@
 #include "GameFramework/GameModeBase.h"
 #include "LCTitleGameMode.generated.h"
 
-/**
- * 
- */
 UCLASS()
 class LASTCANARY_API ALCTitleGameMode : public AGameModeBase
 {

@@ -19,6 +19,7 @@ class UShopWidget;
 class UMapSelectWidget;
 class UUIElementCreateSession;
 class UPopupLoading;
+class UInventoryMainWidget;
 UCLASS(BlueprintType)
 class LASTCANARY_API ULCUIManager : public UObject
 {
@@ -35,6 +36,7 @@ public:
 	void ShowRoomListMenu();
 	void ShowEnterPasswordWidget(const FString& RoomID);
 	void ShowInGameHUD();
+	void HideInGameHUD();
 	void ShowOptionPopup();
 	void ShowPauseMenu();
 	void HidePauseMenu();
@@ -44,6 +46,7 @@ public:
 	void ShowMapSelectPopup();
 	void HideMapSelectPopup();
 	void ShowCreateSession();
+	void ToggleInventory();
 
 	void SwitchToWidget(UUserWidget* Widget);
 
@@ -62,6 +65,7 @@ public:
 	ULobbyMenu* GetLobbyMenu() const { return CachedLobbyMenu; }
 	UEnterPasswordWidget* GetEnterPasswordWidget() const { return CachedEnterPasswordWidget; }
 	UOptionWidget* GetOptionWidget() const { return CachedOptionWidget; }
+	UInGameHUD* GetInGameHUD() const { return CachedInGameHUD; }
 
 	void SetLastShopInteractor(AShopInteractor* Interactor);
 	void SetLastMapSelectInteractor(AMapSelectInteractor* Interactor);
@@ -101,6 +105,8 @@ private:
 	TSubclassOf<UUIElementCreateSession> CreateSessionClass;
 	UPROPERTY()
 	TSubclassOf<UPopupLoading> PopUpLoadingClass;
+	UPROPERTY()
+	TSubclassOf<UInventoryMainWidget> InventoryMainWidgetClass;
 
 	// 위젯 캐싱
 	UPROPERTY()
@@ -122,4 +128,6 @@ private:
 	UUIElementCreateSession* CachedCreateSession;
 	UPROPERTY()
 	UPopupLoading* CachedPopupLoading;
+	UPROPERTY()
+	UInventoryMainWidget* CachedInventoryMainWidget;
 };

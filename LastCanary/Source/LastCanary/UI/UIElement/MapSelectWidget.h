@@ -64,6 +64,14 @@ protected:
     UPROPERTY(meta = (BindWidget))
     UTextBlock* MapNameText;
 
+    ///** 맵 난이도 텍스트 */
+    //UPROPERTY(meta = (BindWidget))
+    //UTextBlock* MapDifficultyText;
+
+    ///** 맵 설명 or 목표 텍스트 */
+    //UPROPERTY(meta = (BindWidget))
+    //UTextBlock* MapDescriptionText;
+
     /** 좌우 버튼 + 확인 버튼 */
     UPROPERTY(meta = (BindWidget))
     UButton* LeftButton;
