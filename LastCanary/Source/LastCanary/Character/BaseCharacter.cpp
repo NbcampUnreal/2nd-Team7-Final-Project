@@ -21,6 +21,14 @@
 #include "Net/UnrealNetwork.h"
 #include "../Plugins/ALS-Refactored-4.15/Source/ALS/Public/Utility/AlsConstants.h"
 
+#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "Inventory/ToolbarInventoryComponent.h"
+#include "Inventory/BackpackInventoryComponent.h"
+#include "Item/ItemBase.h"
+#include "Item/EquipmentItem/EquipmentItemBase.h"
+#include "UI/Manager/LCUIManager.h"
+#include "LastCanary.h"
+
 ABaseCharacter::ABaseCharacter()
 {
 	bIsPossessed = false;
@@ -40,6 +48,9 @@ ABaseCharacter::ABaseCharacter()
 	Camera->SetRelativeRotation_Direct({ 0.0f, 90.0f, 0.0f });
 
 	SetViewMode(AlsViewModeTags::FirstPerson);
+
+	ToolbarInventoryComponent = CreateDefaultSubobject<UToolbarInventoryComponent>(TEXT("ToolbarInventoryComponent"));
+	BackpackInventoryComponent = nullptr;
 }
 
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
@@ -47,6 +58,8 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& Out
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ABaseCharacter, CurrentQuickSlotIndex);
+	DOREPLIFETIME(ABaseCharacter, EquippedTags);
+	DOREPLIFETIME(ABaseCharacter, bInventoryOpen);
 }
 
 void ABaseCharacter::BeginPlay()
@@ -218,6 +231,8 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 			PC->SetSprintingStateToPlayerState(false);
 		}
 	}
+	// 임시로 넣은 코드이니 꼭 삭제할 것!
+	UseEquippedItem();
 }
 
 void ABaseCharacter::Handle_SprintOnPlayerState(const FInputActionValue& ActionValue, float multiplier)
@@ -282,6 +297,8 @@ void ABaseCharacter::Handle_Crouch()
 	{
 		SetDesiredStance(AlsStanceTags::Standing);
 	}
+	// 임시로 넣은 부분 꼭 삭제할것!
+	DropCurrentItem();
 }
 
 void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
@@ -311,6 +328,8 @@ void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
 		}
 
 		Jump();
+
+		ToggleInventory();
 	}
 	else
 	{
@@ -348,8 +367,6 @@ void ABaseCharacter::Handle_Strafe(const FInputActionValue& ActionValue)
 		return;
 	}
 	const auto Value{ UAlsVector::ClampMagnitude012D(ActionValue.Get<FVector2D>()) };
-
-
 }
 
 void ABaseCharacter::Handle_Interact()
@@ -403,6 +420,7 @@ void ABaseCharacter::PickupItem()
 		아이템 저장 함수
 		AddItem(HitItem);
 	*/
+
 }
 
 
@@ -525,7 +543,7 @@ void ABaseCharacter::Multicast_EquipItemFromQuickSlot_Implementation(int32 Index
 	EquipItemFromCurrentQuickSlot(Index);
 }
 
-void ABaseCharacter::EquipItemFromCurrentQuickSlot(int QuickSlotIndex)
+void ABaseCharacter::EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex)
 {
 	UE_LOG(LogTemp, Warning, TEXT("Change Equip Item"));
 
@@ -553,6 +571,33 @@ void ABaseCharacter::EquipItemFromCurrentQuickSlot(int QuickSlotIndex)
 		UnequipCurrentItem(); // 슬롯이 비어있으면 장착 해제
 	}
 	*/
+
+	if (!ToolbarInventoryComponent)
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::SwitchToSlot] 툴바 컴포넌트가 없습니다."));
+		return;
+	}
+
+	if (QuickSlotIndex < 0 || QuickSlotIndex >= ToolbarInventoryComponent->GetMaxSlots())
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::SwitchToSlot] 유효하지 않은 슬롯 인덱스: %d"), QuickSlotIndex);
+		return;
+	}
+
+	// 클라이언트에서 호출된 경우 서버에 요청
+	if (GetLocalRole() < ROLE_Authority)
+	{
+		Server_EquipItemFromCurrentQuickSlot(QuickSlotIndex);
+		return;
+	}
+
+	int32 CurrentSlot = ToolbarInventoryComponent->GetCurrentEquippedSlotIndex();
+	if (CurrentSlot == QuickSlotIndex)
+	{
+		return;
+	}
+
+	ToolbarInventoryComponent->EquipItemAtSlot(QuickSlotIndex);
 }
 
 void ABaseCharacter::EquipItem(UObject* Item)
@@ -568,6 +613,47 @@ void ABaseCharacter::UnequipCurrentItem()
 	HeldItem = nullptr;
 	//TODO: 손에서 제거, 메시 해제, 이펙트 제거 등 처리
 	UE_LOG(LogTemp, Log, TEXT("Unequipped current item"));
+
+	if (!IsEquipped())
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::UnequipCurrentItem] 현재 장비 상태가 아닙니다."));
+		return;
+	}
+
+	if (!ToolbarInventoryComponent)
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::UnequipCurrentItem] 툴바 컴포넌트가 없습니다."));
+		return;
+	}
+
+	// 클라이언트에서 호출된 경우 서버에 요청
+	if (GetLocalRole() < ROLE_Authority)
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::UnequipCurrentItem] 클라이언트에서 서버로 요청"));
+		Server_UnequipCurrentItem();
+		return;
+	}
+
+	// 서버에서 실제 처리
+	LOG_Item_WARNING(TEXT("[ABaseCharacter::UnequipCurrentItem] 서버에서 장비 해제 처리"));
+
+	// 현재 장착된 아이템 정보 가져오기 (로그용)
+	AItemBase* CurrentEquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
+	FString ItemName = CurrentEquippedItem ? CurrentEquippedItem->ItemRowName.ToString() : TEXT("Unknown");
+
+	// 툴바 컴포넌트에서 실제 해제 처리
+	ToolbarInventoryComponent->UnequipCurrentItem();
+
+	// 장비 해제 후 상태 확인
+	if (!IsEquipped())
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::UnequipCurrentItem] %s 아이템 해제 성공"), *ItemName);
+	}
+	else
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::UnequipCurrentItem] 아이템 해제 실패 - 여전히 장비 상태임"));
+		return;
+	}
 }
 
 
@@ -834,4 +920,179 @@ void ABaseCharacter::Multicast_PlayMontage_Implementation(UAnimMontage* MontageT
 {
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	AnimInstance->Montage_Play(MontageToPlay);
+}
+
+void ABaseCharacter::SetBackpackInventoryComponent(UBackpackInventoryComponent* BackpackInvenComp, bool bEquip)
+{
+	if (bEquip)
+	{
+		BackpackInventoryComponent = BackpackInvenComp;
+	}
+	else
+	{
+		BackpackInventoryComponent = nullptr;
+	}
+}
+
+UToolbarInventoryComponent* ABaseCharacter::GetToolbarInventoryComponent() const
+{
+	return ToolbarInventoryComponent;
+}
+
+UBackpackInventoryComponent* ABaseCharacter::GetBackpackInventoryComponent() const
+{
+	return BackpackInventoryComponent;
+}
+
+bool ABaseCharacter::IsEquipped() const
+{
+	static FGameplayTag EquippedTag = FGameplayTag::RequestGameplayTag(TEXT("Character.Player.Equipped"));
+	return EquippedTags.HasTag(EquippedTag);
+}
+
+void ABaseCharacter::SetEquipped(bool bEquip)
+{
+	static FGameplayTag EquippedTag = FGameplayTag::RequestGameplayTag(TEXT("Character.Player.Equipped"));
+	if (bEquip)
+	{
+		EquippedTags.AddTag(EquippedTag);
+	}
+	else
+	{
+		EquippedTags.RemoveTag(EquippedTag);
+	}
+}
+
+bool ABaseCharacter::TryPickupItem(AItemBase* HitItem)
+{
+	if (!HitItem)
+	{
+		return false;
+	}
+
+	if (GetLocalRole() < ROLE_Authority)
+	{
+		Server_TryPickupItem(HitItem);
+		return true;
+	}
+
+	// ⭐ 아이템의 Interact 함수를 직접 호출
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		HitItem->Interact_Implementation(PC);
+		return true;
+	}
+
+	return false;
+}
+
+void ABaseCharacter::Server_TryPickupItem_Implementation(AItemBase* HitItem)
+{
+	if (!HitItem)
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::ServerTryPickupItem] HitItem이 nullptr입니다."));
+		return;
+	}
+	TryPickupItem(HitItem);
+}
+
+void ABaseCharacter::Server_UnequipCurrentItem_Implementation()
+{
+	UnequipCurrentItem();
+}
+
+void ABaseCharacter::Server_EquipItemFromCurrentQuickSlot_Implementation(int32 QuickSlotIndex)
+{
+	EquipItemFromCurrentQuickSlot(QuickSlotIndex);
+}
+
+bool ABaseCharacter::UseEquippedItem()
+{
+	if (!IsEquipped())
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 장비 상태가 아닙니다."));
+		return false;
+	}
+
+	if (!ToolbarInventoryComponent)
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 툴바 컴포넌트가 없습니다."));
+		return false;
+	}
+
+	if (GetLocalRole() < ROLE_Authority)
+	{
+		Server_UseEquippedItem();
+		return true;
+	}
+
+	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
+	if (!EquippedItem)
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 현재 장착된 아이템이 없습니다."));
+		return false;
+	}
+
+	if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem))
+	{
+		EquipmentItem->UseItem();
+		return true;
+	}
+	else
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 아이템이 장비 아이템이 아닙니다."));
+		return false;
+	}
+}
+
+void ABaseCharacter::Server_UseEquippedItem_Implementation()
+{
+	UseEquippedItem();
+}
+
+void ABaseCharacter::ToggleInventory()
+{
+	if (!IsLocallyControlled())
+	{
+		return;
+	}
+
+	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+	{
+		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+		{
+			UIManager->ToggleInventory();
+		}
+	}
+}
+
+bool ABaseCharacter::IsInventoryOpen() const
+{
+	return bInventoryOpen;
+}
+
+void ABaseCharacter::DropCurrentItem()
+{
+	if (!IsLocallyControlled())
+	{
+		return;
+	}
+
+	if (ToolbarInventoryComponent)
+	{
+		ToolbarInventoryComponent->DropCurrentEquippedItem();
+	}
+}
+
+void ABaseCharacter::DropItemAtSlot(int32 SlotIndex, int32 Quantity)
+{
+	if (!IsLocallyControlled())
+	{
+		return;
+	}
+
+	if (ToolbarInventoryComponent)
+	{
+		ToolbarInventoryComponent->TryDropItemAtSlot(SlotIndex, Quantity);
+	}
 }
