@@ -1,149 +1,171 @@
-#include "Art/Ruins/Maze/RuinsMazeManager.h"
-#include "Art/Ruins/Maze/RuinsMazeWall.h"
+#include "RuinsMazeManager.h"
+#include "RuinsMazeWall.h"
 #include "Components/BoxComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetMathLibrary.h"
 #include "LastCanary.h"
 
 ARuinsMazeManager::ARuinsMazeManager()
 {
     PrimaryActorTick.bCanEverTick = false;
-
-    // MazeBounds는 디버깅/생성 영역 시각화를 위한 BoxComponent
     MazeBounds = CreateDefaultSubobject<UBoxComponent>(TEXT("MazeBounds"));
     RootComponent = MazeBounds;
-    MazeBounds->SetBoxExtent(FVector(1000.f, 1000.f, 100.f));
 }
 
 void ARuinsMazeManager::BeginPlay()
 {
     Super::BeginPlay();
-
-    if (HasAuthority())
-    {
-        GenerateMaze();
-    }
+    GenerateMaze();
 }
 
 void ARuinsMazeManager::GenerateMaze()
 {
-    const FVector Extent = MazeBounds->GetUnscaledBoxExtent();
-    const FVector Center = MazeBounds->GetComponentLocation();
+    LOG_Art(Log, TEXT("미로 생성 시작"));
 
-    // MazeBounds 내부 크기를 기반으로 셀 크기 계산
-    MazeSizeX = FMath::FloorToInt((Extent.X * 2.f) / CellSize);
-    MazeSizeY = FMath::FloorToInt((Extent.Y * 2.f) / CellSize);
-
-    // 중심에서 좌하단으로 이동 → 정렬된 MazeOrigin 계산
-    MazeOrigin = Center - FVector(Extent.X, Extent.Y, 0.f);
-
-    // 셀 배열 초기화
-    VisitedCells.SetNum(MazeSizeY);
-    for (int32 Y = 0; Y < MazeSizeY; ++Y)
+    if (!WallClass)
     {
-        VisitedCells[Y].Init(false, MazeSizeX);
-    }
-
-    LOG_Art(Log, TEXT("미로 셀 크기: %d x %d"), MazeSizeX, MazeSizeY);
-
-    FindEntranceAndExit();
-}
-
-void ARuinsMazeManager::FindEntranceAndExit()
-{
-    TArray<AActor*> Entrances, Exits;
-    UGameplayStatics::GetAllActorsWithTag(this, FName("MazeEntrance"), Entrances);
-    UGameplayStatics::GetAllActorsWithTag(this, FName("MazeExit"), Exits);
-
-    CHECK_Art(Entrances.Num() > 0 && Exits.Num() > 0, );
-
-    const FIntPoint EntranceCell = WorldToCell(Entrances[0]->GetActorLocation());
-    const FIntPoint ExitCell = WorldToCell(Exits[0]->GetActorLocation());
-
-    if (!IsValidCell(EntranceCell) || !IsValidCell(ExitCell))
-    {
-        LOG_Art_ERROR(TEXT("입출구가 MazeBounds 범위 밖입니다: 입구 (%d,%d), 출구 (%d,%d)"),
-            EntranceCell.X, EntranceCell.Y, ExitCell.X, ExitCell.Y);
+        LOG_Art(Error, TEXT("WallClass가 지정되지 않았습니다."));
         return;
     }
 
-    LOG_Art(Log, TEXT("입구 셀: (%d, %d) | 출구 셀: (%d, %d)"), EntranceCell.X, EntranceCell.Y, ExitCell.X, ExitCell.Y);
+    const FVector BoundsExtent = MazeBounds->GetScaledBoxExtent();
+    const FVector BoundsOrigin = MazeBounds->GetComponentLocation();
+    MazeOrigin = BoundsOrigin - FVector(BoundsExtent.X, BoundsExtent.Y, 0.f);
 
-    GenerateRecursive(EntranceCell);
+    MazeCells.SetNum(MazeSizeX);
+    for (int32 X = 0; X < MazeSizeX; ++X)
+    {
+        MazeCells[X].SetNum(MazeSizeY);
+    }
+
+    GenerateMainPath(FIntPoint(0, 0));
+
+    for (int32 X = 0; X < MazeSizeX; ++X)
+    {
+        for (int32 Y = 0; Y < MazeSizeY; ++Y)
+        {
+            const FRuinsMazeCell& Cell = MazeCells[X][Y];
+            FVector CellWorld = MazeOrigin + FVector(X * CellSize, Y * CellSize, 0.f);
+
+            if (Cell.bWallTop)
+                SpawnWall(CellWorld + FVector(0.f, CellSize / 2, 0.f), FRotator(0.f, 0.f, 0.f));
+            if (Cell.bWallBottom)
+                SpawnWall(CellWorld + FVector(0.f, -CellSize / 2, 0.f), FRotator(0.f, 0.f, 0.f));
+            if (Cell.bWallLeft)
+                SpawnWall(CellWorld + FVector(-CellSize / 2, 0.f, 0.f), FRotator(0.f, 90.f, 0.f));
+            if (Cell.bWallRight)
+                SpawnWall(CellWorld + FVector(CellSize / 2, 0.f, 0.f), FRotator(0.f, 90.f, 0.f));
+        }
+    }
+
+    LOG_Art(Log, TEXT("미로 생성 완료"));
+    IsPathToExitValid(FIntPoint(0, 0), FIntPoint(MazeSizeX - 1, MazeSizeY - 1));
 }
 
-void ARuinsMazeManager::GenerateRecursive(const FIntPoint& Cell)
+void ARuinsMazeManager::GenerateMainPath(const FIntPoint& Cell)
 {
-    VisitedCells[Cell.Y][Cell.X] = true;
+    MazeCells[Cell.X][Cell.Y].bVisited = true;
 
-    for (const FIntPoint& Dir : GetShuffledDirections())
+    for (const FIntPoint& Neighbor : GetShuffledUnvisitedNeighbors(Cell))
     {
-        FIntPoint Next = Cell + Dir;
-
-        if (IsValidCell(Next) && !VisitedCells[Next.Y][Next.X])
+        if (!MazeCells[Neighbor.X][Neighbor.Y].bVisited)
         {
-            RemoveWallBetween(Cell, Next);
-            GenerateRecursive(Next);
+            if (Neighbor.X > Cell.X)
+            {
+                MazeCells[Cell.X][Cell.Y].bWallRight = false;
+                MazeCells[Neighbor.X][Neighbor.Y].bWallLeft = false;
+            }
+            else if (Neighbor.X < Cell.X)
+            {
+                MazeCells[Cell.X][Cell.Y].bWallLeft = false;
+                MazeCells[Neighbor.X][Neighbor.Y].bWallRight = false;
+            }
+            else if (Neighbor.Y > Cell.Y)
+            {
+                MazeCells[Cell.X][Cell.Y].bWallTop = false;
+                MazeCells[Neighbor.X][Neighbor.Y].bWallBottom = false;
+            }
+            else if (Neighbor.Y < Cell.Y)
+            {
+                MazeCells[Cell.X][Cell.Y].bWallBottom = false;
+                MazeCells[Neighbor.X][Neighbor.Y].bWallTop = false;
+            }
+
+            GenerateMainPath(Neighbor);
         }
     }
 }
 
-TArray<FIntPoint> ARuinsMazeManager::GetShuffledDirections()
+TArray<FIntPoint> ARuinsMazeManager::GetShuffledUnvisitedNeighbors(const FIntPoint& Cell)
 {
-    TArray<FIntPoint> Directions = {
-        FIntPoint(1, 0), FIntPoint(-1, 0), FIntPoint(0, 1), FIntPoint(0, -1)
-    };
+    TArray<FIntPoint> Neighbors;
+    if (Cell.X > 0)
+        Neighbors.Add(FIntPoint(Cell.X - 1, Cell.Y));
+    if (Cell.X < MazeSizeX - 1)
+        Neighbors.Add(FIntPoint(Cell.X + 1, Cell.Y));
+    if (Cell.Y > 0)
+        Neighbors.Add(FIntPoint(Cell.X, Cell.Y - 1));
+    if (Cell.Y < MazeSizeY - 1)
+        Neighbors.Add(FIntPoint(Cell.X, Cell.Y + 1));
 
-    for (int32 i = Directions.Num() - 1; i > 0; --i)
+    for (int32 i = 0; i < Neighbors.Num(); ++i)
     {
-        int32 j = FMath::RandRange(0, i);
-        Directions.Swap(i, j);
+        int32 j = FMath::RandRange(i, Neighbors.Num() - 1);
+        Neighbors.Swap(i, j);
     }
-
-    return Directions;
+    return Neighbors;
 }
 
-bool ARuinsMazeManager::IsValidCell(const FIntPoint& Cell) const
+void ARuinsMazeManager::SpawnWall(const FVector& Location, const FRotator& Rotation)
 {
-    return Cell.X >= 0 && Cell.X < MazeSizeX && Cell.Y >= 0 && Cell.Y < MazeSizeY;
-}
-
-FIntPoint ARuinsMazeManager::WorldToCell(const FVector& WorldLocation) const
-{
-    const FVector Local = MazeBounds->GetComponentTransform().InverseTransformPosition(WorldLocation);
-    const FVector Extent = MazeBounds->GetUnscaledBoxExtent();
-
-    const int32 X = FMath::FloorToInt((Local.X + Extent.X) / CellSize);
-    const int32 Y = FMath::FloorToInt((Local.Y + Extent.Y) / CellSize);
-
-    return FIntPoint(X, Y);
-}
-
-FVector ARuinsMazeManager::CellToWorld(const FIntPoint& Cell) const
-{
-    return MazeOrigin + FVector(Cell.X * CellSize, Cell.Y * CellSize, 0.f);
-}
-
-void ARuinsMazeManager::RemoveWallBetween(const FIntPoint& From, const FIntPoint& To)
-{
-    SpawnWall(From, To);
-}
-
-void ARuinsMazeManager::SpawnWall(const FIntPoint& From, const FIntPoint& To)
-{
-    CHECK_Art(WallClass != nullptr, );
-
-    const FVector Mid = (CellToWorld(From) + CellToWorld(To)) / 2.f;
-    const FRotator Rot = (From.X != To.X) ? FRotator(0.f, 0.f, 0.f) : FRotator(0.f, 90.f, 0.f);
-
     FActorSpawnParameters Params;
     Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-    Params.Owner = this;
-
-    ARuinsMazeWall* Wall = GetWorld()->SpawnActor<ARuinsMazeWall>(WallClass, Mid, Rot, Params);
-
-    if (Wall)
-    {
-        SpawnedWalls.Add((From + To) / 2, Wall);
-    }
+    GetWorld()->SpawnActor<ARuinsMazeWall>(WallClass, Location, Rotation, Params);
 }
 
+bool ARuinsMazeManager::IsPathToExitValid(const FIntPoint& Start, const FIntPoint& End)
+{
+    TSet<FIntPoint> VisitedPathCheck;
+    bool bValid = RecursiveCheckPath(Start, End, VisitedPathCheck);
+
+    if (bValid)
+    {
+        LOG_Art(Log, TEXT("입구에서 출구까지 경로가 연결되어 있습니다."));
+    }
+    else
+    {
+        LOG_Art_WARNING(TEXT("입구에서 출구까지 경로가 없습니다!"));
+    }
+
+    return bValid;
+}
+
+bool ARuinsMazeManager::RecursiveCheckPath(const FIntPoint& Current, const FIntPoint& Target, TSet<FIntPoint>& VisitedPathCheck)
+{
+    if (Current == Target)
+        return true;
+
+    VisitedPathCheck.Add(Current);
+    const FRuinsMazeCell& Cell = MazeCells[Current.X][Current.Y];
+
+    const TArray<TPair<FIntPoint, bool>> Directions = {
+        {FIntPoint(0, 1), !Cell.bWallTop},
+        {FIntPoint(0, -1), !Cell.bWallBottom},
+        {FIntPoint(-1, 0), !Cell.bWallLeft},
+        {FIntPoint(1, 0), !Cell.bWallRight},
+    };
+
+    for (const auto& [Offset, bPassable] : Directions)
+    {
+        FIntPoint Next = Current + Offset;
+        if (bPassable && !VisitedPathCheck.Contains(Next) &&
+            Next.X >= 0 && Next.X < MazeSizeX &&
+            Next.Y >= 0 && Next.Y < MazeSizeY)
+        {
+            if (RecursiveCheckPath(Next, Target, VisitedPathCheck))
+                return true;
+        }
+    }
+
+    return false;
+}
