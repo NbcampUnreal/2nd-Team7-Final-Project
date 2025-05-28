@@ -6,6 +6,7 @@
 #include "GameFramework/Pawn.h"
 #include "BaseDrone.generated.h"
 
+
 struct FInputActionValue;
 
 UCLASS()
@@ -20,6 +21,14 @@ protected:
 	virtual void BeginPlay() override;
 
 	void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const;
+public:
+
+	FVector CharacterLocation;
+	void SetCharacterLocation(FVector Location);
+
+	UPROPERTY(EditAnywhere, Category = "Drone | Distance")
+	float MaxDistanceToPlayer= 2000.f;
+
 
 public:
 	virtual void Tick(float DeltaTime) override;

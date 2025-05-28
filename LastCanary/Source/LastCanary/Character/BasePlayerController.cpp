@@ -63,7 +63,7 @@ void ABasePlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
 
-	InitInputComponent();
+	//InitInputComponent();
 }
 
 void ABasePlayerController::OnCharacterDamaged(float CurrentHP)
@@ -176,7 +176,10 @@ void ABasePlayerController::OnPossess(APawn* InPawn)
 		UE_LOG(LogTemp, Warning, TEXT("Be possessed by something other than a character"));
 		//SpawnedPlayerDrone = Cast<ABaseDrone>(InPawn);
 	}
+
+	
 	ApplyInputMappingContext(CurrentIMC);
+	
 }
 
 void ABasePlayerController::OnRep_Pawn()
@@ -629,7 +632,6 @@ void ABasePlayerController::Input_OnInteract()
 	{
 		return;
 	}
-
 	
 	/**/
 	// APawn 타입에 맞는 처리를 실행
@@ -638,7 +640,7 @@ void ABasePlayerController::Input_OnInteract()
 		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
 		if (IsValid(PlayerCharacter))
 		{
-			PlayerCharacter->Handle_Interact(HitActor);
+			PlayerCharacter->Handle_Interact();
 		}
 	}
 }
@@ -1086,5 +1088,8 @@ void ABasePlayerController::PossessOnDrone()
 
 
 	CurrentPossessedPawn = SpawnedPlayerDrone;
+
+	SpawnedPlayerDrone->SetCharacterLocation(SpanwedPlayerCharacter->GetActorLocation());
+	
 	SetViewTargetWithBlend(SpawnedPlayerDrone, 0.5f);
 }
