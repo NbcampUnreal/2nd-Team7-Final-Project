@@ -8,6 +8,7 @@
 #include "UI/UIElement/InGameHUD.h"
 #include "UI/UIElement/ShopWidget.h"
 #include "UI/UIElement/MapSelectWidget.h"
+#include "UI/UIElement/InventoryMainWidget.h"
 #include "UI/UIElement/UIElementCreateSession.h"
 
 #include "UI/UIObject/ConfirmPopup.h"
@@ -40,9 +41,9 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			InGameHUDWidgetClass = Settings->FromBPInGameHUDClass;
 			ShopWidgetClass = Settings->FromBPShopWidgetClass;
 			MapSelectWidgetClass = Settings->FromBPMapSelectWidgetClass;
+			InventoryMainWidgetClass = Settings->FromBPInventoryMainUIClass;
 			CreateSessionClass = Settings->FromBPCreateSessionWidgetClass;
 			PopUpLoadingClass = Settings->FromBPPopupLoadingClass;
-
 			if ((CachedTitleMenu == nullptr) && TitleMenuClass)
 			{
 				CachedTitleMenu = CreateWidget<UTitleMenu>(PlayerController, TitleMenuClass);
@@ -78,6 +79,10 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			if ((CachedPopupLoading == nullptr) && PopUpLoadingClass)
 			{
 				CachedPopupLoading = CreateWidget<UPopupLoading>(PlayerController, PopUpLoadingClass);
+			}
+			if ((CachedInventoryMainWidget == nullptr) && InventoryMainWidgetClass)
+			{
+				CachedInventoryMainWidget = CreateWidget<UInventoryMainWidget>(PlayerController, InventoryMainWidgetClass);
 			}
 		}
 	}
@@ -235,6 +240,40 @@ void ULCUIManager::ShowCreateSession()
 	//SwitchToWidget(CachedCreateSession);
 }
 
+void ULCUIManager::ToggleInventory()
+{
+	if (!CachedInventoryMainWidget)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[ToggleInventory] 인벤토리 위젯이 없습니다. InitUIManager가 제대로 호출되지 않았을 수 있습니다."));
+		return;
+	}
+
+	if (!CachedInventoryMainWidget->IsInViewport())
+	{
+		CachedInventoryMainWidget->AddToViewport(1);
+		CachedInventoryMainWidget->ShowToolbarOnly();
+	}
+
+	CachedInventoryMainWidget->ToggleBackpackInventory();
+
+	if (OwningPlayer)
+	{
+		if (CachedInventoryMainWidget->IsBackpackInventoryOpen())
+		{
+			FInputModeGameAndUI InputMode;
+			InputMode.SetWidgetToFocus(CachedInventoryMainWidget->TakeWidget());
+			InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+			OwningPlayer->SetInputMode(InputMode);
+			OwningPlayer->bShowMouseCursor = true;
+		}
+		else
+		{
+			OwningPlayer->SetInputMode(FInputModeGameOnly());
+			OwningPlayer->bShowMouseCursor = false;
+		}
+	}
+}
+
 void ULCUIManager::ShowPopUpLoading()
 {
 	if (CachedPopupLoading)
@@ -309,6 +348,15 @@ void ULCUIManager::ShowInGameHUD()
 	LOG_Frame_WARNING(TEXT("ShowInGameHUD"));
 	SwitchToWidget(CachedInGameHUD);
 	SetInputModeGameOnly();
+
+	if (CachedInventoryMainWidget)
+	{
+		if (!CachedInventoryMainWidget->IsInViewport())
+		{
+			CachedInventoryMainWidget->AddToViewport(1);
+		}
+		CachedInventoryMainWidget->ShowToolbarOnly();
+	}
 }
 
 void ULCUIManager::HideInGameHUD()

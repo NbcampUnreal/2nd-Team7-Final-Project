@@ -19,6 +19,7 @@ class UShopWidget;
 class UMapSelectWidget;
 class UUIElementCreateSession;
 class UPopupLoading;
+class UInventoryMainWidget;
 UCLASS(BlueprintType)
 class LASTCANARY_API ULCUIManager : public UObject
 {
@@ -45,6 +46,7 @@ public:
 	void ShowMapSelectPopup();
 	void HideMapSelectPopup();
 	void ShowCreateSession();
+	void ToggleInventory();
 
 	void SwitchToWidget(UUserWidget* Widget);
 
@@ -103,6 +105,8 @@ private:
 	TSubclassOf<UUIElementCreateSession> CreateSessionClass;
 	UPROPERTY()
 	TSubclassOf<UPopupLoading> PopUpLoadingClass;
+	UPROPERTY()
+	TSubclassOf<UInventoryMainWidget> InventoryMainWidgetClass;
 
 	// 위젯 캐싱
 	UPROPERTY()
@@ -124,4 +128,6 @@ private:
 	UUIElementCreateSession* CachedCreateSession;
 	UPROPERTY()
 	UPopupLoading* CachedPopupLoading;
+	UPROPERTY()
+	UInventoryMainWidget* CachedInventoryMainWidget;
 };

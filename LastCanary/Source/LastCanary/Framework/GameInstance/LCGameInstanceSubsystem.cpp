@@ -15,8 +15,10 @@ void ULCGameInstanceSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	{
 		MapDataTable = GI->MapDataTable;
 		ItemDataTable = GI->ItemDataTable;
+		GunDataTable = GI->GunDataTable;
 		GI->LoadMapData();
 		GI->LoadItemData();
+		GI->LoadGunData();
 	}
 }
 
@@ -55,4 +57,25 @@ void ULCGameInstanceSubsystem::ChangeLevelByMapID(int32 MapID)
 	}
 
 	LOG_Frame_WARNING(TEXT("Map not found for ID: %d"), MapID);
+}
+
+FItemDataRow* ULCGameInstanceSubsystem::GetItemDataByRowName(FName ItemRowName) const
+{
+	if (!ItemDataTable)
+	{
+		LOG_Item_WARNING(TEXT("[ULCGameInstanceSubsystem::GetItemDataByRowName] ItemDataTable이 없습니다."));
+		return nullptr;
+	}
+
+	return ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("GetItemDataByRowName"));
+}
+
+UDataTable* ULCGameInstanceSubsystem::GetItemDataTable() const
+{
+	return ItemDataTable;
+}
+
+UDataTable* ULCGameInstanceSubsystem::GetGunDataTable() const
+{
+	return GunDataTable;
 }
