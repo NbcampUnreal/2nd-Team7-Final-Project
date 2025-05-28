@@ -28,12 +28,18 @@ void ALCWeightPlate::BeginPlay()
 	Super::BeginPlay();
 	TriggerVolume->OnComponentBeginOverlap.AddDynamic(this, &ALCWeightPlate::OnBeginOverlap);
 	TriggerVolume->OnComponentEndOverlap.AddDynamic(this, &ALCWeightPlate::OnEndOverlap);
+
+	InitialLocation = GetActorLocation();
 }
 
 void ALCWeightPlate::OnBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (!HasAuthority() || !IsValid(OtherActor))
+	if (HasAuthority()==false)
+	{
+		return;
+	}
+	if (IsValid(OtherActor)==false)
 	{
 		return;
 	}
@@ -45,7 +51,11 @@ void ALCWeightPlate::OnBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor*
 void ALCWeightPlate::OnEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	if (!HasAuthority() || !IsValid(OtherActor))
+	if (HasAuthority() == false)
+	{
+		return;
+	}
+	if (IsValid(OtherActor) == false)
 	{
 		return;
 	}
@@ -67,9 +77,25 @@ void ALCWeightPlate::CheckWeight()
 
 	LOG_Frame_WARNING(TEXT("[WeightPlate] Current Weight: %.1f / %.1f"), TotalWeight, RequiredWeight);
 
+	// 무게에 따른 높이 변경
+	float WeightRatio = FMath::Clamp(TotalWeight / MaxWeight, 0.f, 1.f);
+	TargetLocation = InitialLocation;
+	//TargetLocation.Z = InitialLocation.Z + (WeightRatio * MaxOffsetZ);
+	TargetLocation.X = InitialLocation.X + (WeightRatio * MaxOffsetZ);
+
+	StartLocation = GetActorLocation();
+	MoveElapsed = 0.f;
+
+	// 이동 타이머 시작
+	GetWorld()->GetTimerManager().ClearTimer(SmoothMoveHandle);
+	GetWorld()->GetTimerManager().SetTimer(
+		SmoothMoveHandle, this, &ALCWeightPlate::UpdateSmoothMove,
+		MoveStepInterval, true
+	);
+
 	if (TotalWeight >= RequiredWeight)
 	{
-		if (!bActivated)
+		if (bActivated==false)
 		{
 			ILCGimmickInterface::Execute_ActivateGimmick(this);
 			bActivated = true;
@@ -77,10 +103,23 @@ void ALCWeightPlate::CheckWeight()
 	}
 	else
 	{
-		if (bActivated)
+		if (bActivated==true)
 		{
 			ILCGimmickInterface::Execute_DeactivateGimmick(this);
 		}
+	}
+}
+
+void ALCWeightPlate::UpdateSmoothMove()
+{
+	MoveElapsed += MoveStepInterval;
+	float Alpha = FMath::Clamp(MoveElapsed / MoveDuration, 0.f, 1.f);
+	FVector NewLocation = FMath::Lerp(StartLocation, TargetLocation, Alpha);
+	SetActorLocation(NewLocation);
+
+	if (Alpha >= 1.f)
+	{
+		GetWorld()->GetTimerManager().ClearTimer(SmoothMoveHandle);
 	}
 }
 
@@ -103,20 +142,6 @@ float ALCWeightPlate::GetActorWeight(AActor* Actor) const
 		return MassSum;
 	}
 	
-	// 태그 기반 방식 (기본 사용)
-	/*if (Actor->Tags.Contains(FName("Heavy")))
-	{
-		return 100.0f;
-	}
-	else if (Actor->Tags.Contains(FName("Medium")))
-	{
-		return 50.0f;
-	}
-	else if (Actor->Tags.Contains(FName("Light")))
-	{
-		return 10.0f;
-	}*/
-
 	return 0.0f; // 기본값
 }
 
@@ -125,16 +150,19 @@ void ALCWeightPlate::DeactivateGimmick_Implementation()
 	LOG_Frame_WARNING(TEXT("[WeightPlate] Deactivated due to insufficient weight."));
 	bActivated = false;
 
-	for (AActor* Target : LinkedTargets)
+	if (bRevertible==true)
 	{
-		if (!IsValid(Target))
+		for (AActor* Target : LinkedTargets)
 		{
-			continue;
-		}
+			if (IsValid(Target)==false)
+			{
+				continue;
+			}
 
-		if (Target->GetClass()->ImplementsInterface(UGimmickEffectInterface::StaticClass()))
-		{
-			IGimmickEffectInterface::Execute_StopEffect(Target);
+			if (Target->GetClass()->ImplementsInterface(UGimmickEffectInterface::StaticClass()))
+			{
+				IGimmickEffectInterface::Execute_StopEffect(Target);
+			}
 		}
 	}
 }

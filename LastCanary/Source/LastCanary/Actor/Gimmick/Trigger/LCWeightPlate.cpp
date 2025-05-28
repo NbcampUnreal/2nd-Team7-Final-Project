@@ -28,6 +28,8 @@ void ALCWeightPlate::BeginPlay()
 	Super::BeginPlay();
 	TriggerVolume->OnComponentBeginOverlap.AddDynamic(this, &ALCWeightPlate::OnBeginOverlap);
 	TriggerVolume->OnComponentEndOverlap.AddDynamic(this, &ALCWeightPlate::OnEndOverlap);
+
+	InitialLocation = GetActorLocation();
 }
 
 void ALCWeightPlate::OnBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
@@ -75,6 +77,21 @@ void ALCWeightPlate::CheckWeight()
 
 	LOG_Frame_WARNING(TEXT("[WeightPlate] Current Weight: %.1f / %.1f"), TotalWeight, RequiredWeight);
 
+	// 무게에 따른 높이 변경
+	float WeightRatio = FMath::Clamp(TotalWeight / MaxWeight, 0.f, 1.f);
+	TargetLocation = InitialLocation;
+	TargetLocation.Z = InitialLocation.Z + (WeightRatio * MaxOffsetZ);
+
+	StartLocation = GetActorLocation();
+	MoveElapsed = 0.f;
+
+	// 이동 타이머 시작
+	GetWorld()->GetTimerManager().ClearTimer(SmoothMoveHandle);
+	GetWorld()->GetTimerManager().SetTimer(
+		SmoothMoveHandle, this, &ALCWeightPlate::UpdateSmoothMove,
+		MoveStepInterval, true
+	);
+
 	if (TotalWeight >= RequiredWeight)
 	{
 		if (bActivated==false)
@@ -89,6 +106,19 @@ void ALCWeightPlate::CheckWeight()
 		{
 			ILCGimmickInterface::Execute_DeactivateGimmick(this);
 		}
+	}
+}
+
+void ALCWeightPlate::UpdateSmoothMove()
+{
+	MoveElapsed += MoveStepInterval;
+	float Alpha = FMath::Clamp(MoveElapsed / MoveDuration, 0.f, 1.f);
+	FVector NewLocation = FMath::Lerp(StartLocation, TargetLocation, Alpha);
+	SetActorLocation(NewLocation);
+
+	if (Alpha >= 1.f)
+	{
+		GetWorld()->GetTimerManager().ClearTimer(SmoothMoveHandle);
 	}
 }
 

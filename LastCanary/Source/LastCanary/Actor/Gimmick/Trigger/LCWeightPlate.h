@@ -35,6 +35,28 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Weight")
 	float RequiredWeight = 100.f;
 
+	/** 최대 무게 (이 무게일 때 최대로 내려감) */
+	UPROPERTY(EditAnywhere, Category = "Weight Plate")
+	float MaxWeight = 100.f; 
+
+	/**최대 얼마나 내려갈지 (Z 축 방향) */
+	UPROPERTY(EditAnywhere, Category = "Weight Plate")
+	float MaxOffsetZ = -30.f;  
+
+	FVector InitialLocation;
+
+	FTimerHandle SmoothMoveHandle;
+
+	UPROPERTY(EditAnywhere, Category = "Weight Plate")
+	float MoveDuration = 0.5f; // 부드럽게 이동할 총 시간
+
+	UPROPERTY(EditAnywhere, Category = "Weight Plate")
+	float MoveStepInterval = 0.02f; // 0.02초마다 이동 (부드러움 정도)
+
+	FVector TargetLocation;
+	FVector StartLocation;
+	float MoveElapsed = 0.f;
+
 	/** 현재 발판 위에 올라간 액터 목록 */
 	UPROPERTY()
 	TArray<AActor*> OverlappingActors;
@@ -55,6 +77,8 @@ protected:
 
 	/** 무게 확인 및 퍼즐 처리 */
 	void CheckWeight();
+
+	void UpdateSmoothMove();
 
 	virtual void DeactivateGimmick_Implementation() override;
 };
