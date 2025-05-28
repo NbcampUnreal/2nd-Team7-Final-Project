@@ -22,4 +22,7 @@ public:
     /** 기믹 효과가 발동될 때 호출되는 함수 */
     UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Gimmick")
     void TriggerEffect();
+
+    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Gimmick")
+    void StopEffect();
 };
