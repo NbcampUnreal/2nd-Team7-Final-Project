@@ -300,7 +300,7 @@ void AAlsCharacter::Tick(const float DeltaTime)
 	RefreshGroundedRotation(DeltaTime);
 	RefreshInAirRotation(DeltaTime);
 
-	//StartMantlingInAir();
+	StartMantlingInAir();
 	RefreshMantling();
 	RefreshRagdolling(DeltaTime);
 	RefreshRolling(DeltaTime);
@@ -519,10 +519,11 @@ void AAlsCharacter::NotifyLocomotionModeChanged(const FGameplayTag& PreviousLoco
 	if (LocomotionMode == AlsLocomotionModeTags::Grounded &&
 	    PreviousLocomotionMode == AlsLocomotionModeTags::InAir)
 	{
+		GetFallDamage(LocomotionState.Velocity.Z);
 		if (LocomotionState.Velocity.Z <= -500.0f) // 적절히 튜닝
 		{
 			TriggerHardLanding(-LocomotionState.Velocity.Z / 1000.0f); // 속도에 비례하여 몇초간은 움직임 차단
-			GetFallDamage(-LocomotionState.Velocity.Z / 30.0f);
+			
 		}
 
 		if (Settings->Ragdolling.bStartRagdollingOnLand &&
@@ -1964,8 +1965,7 @@ void AAlsCharacter::RefreshViewRelativeTargetYawAngle()
 
 
 
-float AAlsCharacter::GetFallDamage(float Amount)
+float AAlsCharacter::GetFallDamage(float Velocity)
 {
-	UE_LOG(LogTemp, Log, TEXT("ALS Take Fall Damage : %f"), Amount);
-	return Amount;
+	return Velocity;
 }

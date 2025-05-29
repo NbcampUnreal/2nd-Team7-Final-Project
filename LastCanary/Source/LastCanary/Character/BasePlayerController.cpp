@@ -7,6 +7,8 @@
 #include "BasePlayerState.h"
 
 #include "Net/UnrealNetwork.h"
+#include "UI/Manager/LCUIManager.h"
+#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 
 void ABasePlayerController::BeginPlay()
 {
@@ -29,6 +31,25 @@ void ABasePlayerController::BeginPlay()
 		PS->OnExhausted.AddDynamic(this, &ABasePlayerController::Complete_OnSprint);
 		PS->OnStaminaChanged.AddDynamic(this, &ABasePlayerController::OnStaminaUpdated);
 	}
+
+	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+	{
+		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+		{
+			UIManager->InitUIManager(this);
+
+			if (GetPawn())
+			{
+				FTimerHandle HUDTimer;
+				GetWorld()->GetTimerManager().SetTimer(HUDTimer,
+					[this, UIManager]()
+					{
+						UIManager->ShowInGameHUD();
+					},
+					0.5f, false);
+			}
+		}
+	}
 }
 
 void ABasePlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -42,7 +63,7 @@ void ABasePlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
 
-	InitInputComponent();
+	//InitInputComponent();
 }
 
 void ABasePlayerController::OnCharacterDamaged(float CurrentHP)
@@ -155,7 +176,10 @@ void ABasePlayerController::OnPossess(APawn* InPawn)
 		UE_LOG(LogTemp, Warning, TEXT("Be possessed by something other than a character"));
 		//SpawnedPlayerDrone = Cast<ABaseDrone>(InPawn);
 	}
+
+	
 	ApplyInputMappingContext(CurrentIMC);
+	
 }
 
 void ABasePlayerController::OnRep_Pawn()
@@ -241,7 +265,9 @@ void ABasePlayerController::InitInputComponent()
 		EnhancedInput->BindAction(ItemUseAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_OnItemUse);
 
 		EnhancedInput->BindAction(ThrowItemAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_OnItemThrow);
-		
+
+		EnhancedInput->BindAction(RifleReloadAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_Reload);
+
 		EnhancedInput->BindAction(VoiceAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_OnStartedVoiceChat);
 		EnhancedInput->BindAction(VoiceAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnCanceledVoiceChat);
 
@@ -275,6 +301,14 @@ void ABasePlayerController::Input_OnLookMouse(const FInputActionValue& ActionVal
 		if (IsValid(PlayerCharacter))
 		{
 			PlayerCharacter->Handle_LookMouse(ActionValue);  // ABaseCharacter에 맞는 LookMouse 호출
+		}
+	}
+	if (CurrentPossessedPawn->IsA<ABaseDrone>())
+	{
+		ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn);
+		if (IsValid(Drone))
+		{
+			Drone->Input_Look(ActionValue);
 		}
 	}
 }
@@ -317,7 +351,7 @@ void ABasePlayerController::Input_OnMove(const FInputActionValue& ActionValue)
 		ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn);
 		if (IsValid(Drone))
 		{
-			Drone->Handle_DroneMoveUp(ActionValue);
+			Drone->Input_Move(ActionValue);
 		}
 	}
 }
@@ -361,16 +395,6 @@ void ABasePlayerController::Input_OnSprint(const FInputActionValue& ActionValue)
 			}
 		}
 	}
-	if (CurrentPossessedPawn->IsA<ABaseDrone>())
-	{
-		ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn);
-		if (IsValid(Drone))
-		{
-			UE_LOG(LogTemp, Warning, TEXT("Drone Thrust"));
-			Drone->Handle_DroneThrustFront(ActionValue);
-		}
-	}
-
 }
 
 void ABasePlayerController::End_OnSprint(const FInputActionValue& ActionValue)
@@ -482,6 +506,9 @@ void ABasePlayerController::Input_OnWalk(const FInputActionValue& ActionValue)
 void ABasePlayerController::Input_OnCrouch(const FInputActionValue& ActionValue)
 {
 	UE_LOG(LogTemp, Warning, TEXT("Crouch"));
+	const float Value = ActionValue.Get<float>();
+	UE_LOG(LogTemp, Log, TEXT("Input_OnCrouch: Value = %.2f"), Value);
+
 	if (!IsValid(CurrentPossessedPawn))
 	{
 		return;
@@ -526,13 +553,17 @@ void ABasePlayerController::Input_OnCrouch(const FInputActionValue& ActionValue)
 		ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn);
 		if (IsValid(Drone))
 		{
-			Drone->Handle_DroneThrustBack(ActionValue);
+			Drone->Input_MoveDown(ActionValue);
 		}
 	}
 }
 
 void ABasePlayerController::Input_OnJump(const FInputActionValue& ActionValue)
 {
+	UE_LOG(LogTemp, Warning, TEXT("Jump"));
+	const float Value = ActionValue.Get<float>();
+
+	UE_LOG(LogTemp, Log, TEXT("Input_OnJump: Value = %.2f"), Value);
 	if (!IsValid(CurrentPossessedPawn))
 	{
 		return;
@@ -544,6 +575,14 @@ void ABasePlayerController::Input_OnJump(const FInputActionValue& ActionValue)
 		if (IsValid(PlayerCharacter))
 		{
 			PlayerCharacter->Handle_Jump(ActionValue);
+		}
+	}
+	if (CurrentPossessedPawn->IsA<ABaseDrone>())
+	{
+		ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn);
+		if (IsValid(Drone))
+		{
+			Drone->Input_MoveUp(ActionValue);
 		}
 	}
 }
@@ -595,14 +634,31 @@ void ABasePlayerController::Input_OnInteract()
 	{
 		return;
 	}
-
+	
+	/**/
 	// APawn 타입에 맞는 처리를 실행
 	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
 	{
 		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
 		if (IsValid(PlayerCharacter))
 		{
-			PlayerCharacter->Handle_Interact(HitActor);
+			PlayerCharacter->Handle_Interact();
+		}
+	}
+}
+
+void ABasePlayerController::Input_Reload()
+{
+
+	UE_LOG(LogTemp, Warning, TEXT("input Reload"));
+	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
+	{
+		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
+		if (IsValid(PlayerCharacter))
+		{
+
+			UE_LOG(LogTemp, Warning, TEXT("Reload"));
+			PlayerCharacter->Handle_Reload();
 		}
 	}
 }
@@ -613,13 +669,25 @@ void ABasePlayerController::Input_OnStrafe(const FInputActionValue& ActionValue)
 	{
 		return;
 	}
+
+	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Toggle Inventory"));
+		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
+		if (IsValid(PlayerCharacter))
+		{			
+			PlayerCharacter->ToggleInventory();
+		}
+	}
+	
+	//Deprecated//
 	// APawn 타입에 맞는 처리를 실행
 	if (CurrentPossessedPawn->IsA<ABaseDrone>())
 	{
 		ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn);
 		if (IsValid(Drone))
 		{
-			Drone->Handle_DroneStrafe(ActionValue);
+
 		}
 	}
 }
@@ -641,6 +709,9 @@ void ABasePlayerController::Input_OnItemUse()
 	{
 		return;
 	}
+
+	// 임시로 넣은 코드이니 꼭 삭제할 것!
+	PlayerCharacter->UseEquippedItem();
 	//To Do: 아이템 추가 되고 나서...
 	//if(GetHeldItem()->IsA<ABaseDrone>())
 	//{
@@ -654,11 +725,11 @@ void ABasePlayerController::Input_OnItemUse()
 	//test
 	if (PlayerCharacter->GetCurrentQuickSlotIndex() == 0)
 	{
-		CameraShake();
+		//CameraShake();
 	}
-	if (PlayerCharacter->GetCurrentQuickSlotIndex() == 1)
+	if (PlayerCharacter->GetCurrentQuickSlotIndex() == 2)
 	{
-		SpawnDrone();
+		//SpawnDrone();
 	}
 	//만약 총기라면
 	//CameraShake();
@@ -667,7 +738,14 @@ void ABasePlayerController::Input_OnItemUse()
 void ABasePlayerController::Input_OnItemThrow()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Throw Item"));
-	//TODO: Item 클래스 생기면 퀵슬롯의 아이템을 빼면서, 아이템 생성해서 힘을 주면서 밀어버리기
+	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
+	{
+		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
+		if (IsValid(PlayerCharacter))
+		{
+			PlayerCharacter->DropCurrentItem();;
+		}
+	}
 }
 
 void ABasePlayerController::Input_OnStartedVoiceChat()
@@ -930,15 +1008,32 @@ void ABasePlayerController::SetSprintingStateToPlayerState(bool flag)
 
 void ABasePlayerController::CameraShake()
 {
-	AddPitchInput(1.5f);
+	// 새로운 반동량을 기존 값에 누적
+	RecoilStepPitch += 1.5f / RecoilMaxSteps;
+	RecoilStepYaw += FMath::RandRange(-YawRecoilRange, YawRecoilRange) / RecoilMaxSteps;
 
-	// 좌우(Yaw) 반동: 랜덤값만
-	//TODO: 총기의 설정값에 있는 반동값을 가져오기
-	
-	//test용
-	float YawRecoil = FMath::RandRange(-0.1f, 0.1f);
-	AddYawInput(YawRecoil);
+	// 타이머가 안 돌고 있을 때만 시작
+	if (!GetWorld()->GetTimerManager().IsTimerActive(RecoilTimerHandle))
+	{
+		RecoilStep = 0;
+		GetWorld()->GetTimerManager().SetTimer(RecoilTimerHandle, this, &ABasePlayerController::ApplyRecoilStep, 0.02f, true);
+	}
+}
 
+void ABasePlayerController::ApplyRecoilStep()
+{
+	AddPitchInput(RecoilStepPitch);
+	AddYawInput(RecoilStepYaw);
+
+	RecoilStep++;
+
+	if (RecoilStep >= RecoilMaxSteps)
+	{
+		// 마지막 단계에서 값을 0으로 초기화
+		RecoilStepPitch = 0.0f;
+		RecoilStepYaw = 0.0f;
+		GetWorld()->GetTimerManager().ClearTimer(RecoilTimerHandle);
+	}
 }
 
 
@@ -991,6 +1086,7 @@ void ABasePlayerController::Input_DroneExit()
 	if (CurrentPossessedPawn->IsA<ABaseDrone>())
 	{
 		CurrentPossessedPawn = SpanwedPlayerCharacter;
+		//Possess(SpanwedPlayerCharacter);
 		SetViewTargetWithBlend(SpanwedPlayerCharacter, 0.5f);
 		SpawnedPlayerDrone->ReturnAsItem();
 		SpawnedPlayerDrone = nullptr;
@@ -1018,8 +1114,10 @@ void ABasePlayerController::Server_SpawnDrone_Implementation()
 	// ABasedrone 포인터로 받아서 타입 안전하게 캐스팅
 	ABaseDrone* Drone = GetWorld()->SpawnActor<ABaseDrone>(DroneClass, Location, Rotation, Params);
 	SpawnedPlayerDrone = Drone;
-	//SpawnedPlayerDrone->SetOwner(this);
-	if (IsLocalPlayerController())
+	SpawnedPlayerDrone->SetOwner(this);	
+
+	//리슨서버 호스트만 
+	if (HasAuthority())
 	{
 		PossessOnDrone();
 	}
@@ -1033,22 +1131,27 @@ void ABasePlayerController::OnRep_SpawnedPlayerDrone()
 		UE_LOG(LogTemp, Warning, TEXT("SpawnedPlayerDrone is invalid on client!"));
 		return;
 	}
-	//로컬 클라이언트에서는...
-	//SpawnedPlayerDrone->SetOwner(this);
-	UE_LOG(LogTemp, Warning, TEXT("Client received replicated drone"));
-	if (IsValid(SpawnedPlayerDrone))
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Client received replicated drone: %s"), *SpawnedPlayerDrone->GetName());
-		// 여기서 필요한 후처리 (UI 연동 등) 가능
-	}
-	PossessOnDrone();
+
+	UE_LOG(LogTemp, Warning, TEXT("Client received replicated drone: %s"), *SpawnedPlayerDrone->GetName());
+
+	// UI 연동이나 기타 클라이언트 작업만 여기서
+	PossessOnDrone(); // 내부에서 서버에 possession 요청함
 }
 
 void ABasePlayerController::PossessOnDrone()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Possess on drone: %s"), *SpawnedPlayerDrone->GetName());
-	//SpanwedPlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
+	if (!IsValid(SpawnedPlayerDrone))
+		return;
+
+
 	CurrentPossessedPawn = SpawnedPlayerDrone;
-	UE_LOG(LogTemp, Warning, TEXT("Drone Possess"));
+
+	SpawnedPlayerDrone->SetCharacterLocation(SpanwedPlayerCharacter->GetActorLocation());
+	
 	SetViewTargetWithBlend(SpawnedPlayerDrone, 0.5f);
+}
+
+void ABasePlayerController::CameraSetOnScope()
+{
+
 }

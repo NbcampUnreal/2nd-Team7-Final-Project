@@ -128,6 +128,7 @@ void UAlsAnimationInstance::NativeUpdateAnimation(const float DeltaTime)
 	ViewMode = Character->GetViewMode();
 	LocomotionMode = Character->GetLocomotionMode();
 	RotationMode = Character->GetRotationMode();
+	//RotationMode = AlsRotationModeTags::Aiming;
 	Stance = Character->GetStance();
 	Gait = Character->GetGait();
 	OverlayMode = Character->GetOverlayMode();

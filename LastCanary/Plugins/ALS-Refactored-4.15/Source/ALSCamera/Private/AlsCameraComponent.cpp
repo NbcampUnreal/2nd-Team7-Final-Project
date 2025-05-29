@@ -106,8 +106,8 @@ void UAlsCameraComponent::CompleteParallelAnimationEvaluation(const bool bDoPost
 }
 
 FVector UAlsCameraComponent::GetFirstPersonCameraLocation() const
-{
-	return Character->GetMesh()->GetSocketLocation(Settings->FirstPerson.CameraSocketName);
+{	
+	return Character->GetMesh()->GetSocketLocation(CurrentName);
 }
 
 FVector UAlsCameraComponent::GetThirdPersonPivotLocation() const
@@ -226,6 +226,9 @@ void UAlsCameraComponent::TickCamera(const float DeltaTime, bool bAllowLag)
 		PivotLocation = PivotTargetLocation;
 
 		CameraLocation = GetFirstPersonCameraLocation();
+		// 속도가 높을수록 더 빠르게 도달
+		//CameraLocation = FMath::VInterpTo(CameraLocation, GetFirstPersonCameraLocation(), DeltaTime, 16.0f);
+
 		CameraRotation = CameraTargetRotation;
 
 		CameraFieldOfView = bOverrideFieldOfView ? FieldOfViewOverride : Settings->FirstPerson.FieldOfView;
