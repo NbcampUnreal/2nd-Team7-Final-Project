@@ -40,8 +40,8 @@ private:
 	UPROPERTY(meta = (BindWidget))
 	UKeySettingWidget* KeySettingWidget;
 	
-	FLinearColor SelectedColor = FLinearColor(0.87f, 0.87f, 0.87f);   
-	FLinearColor UnselectedColor = FLinearColor(0.5f, 0.5f, 0.5f);    
+	//FLinearColor SelectedColor = FLinearColor(0.87f, 0.87f, 0.87f);   
+	//FLinearColor UnselectedColor = FLinearColor(0.5f, 0.5f, 0.5f);    
 
 	UFUNCTION()
 	void OnApplyButtonClicked();
@@ -55,6 +55,6 @@ private:
 public:
 	/* 위젯 게터 */
 	UKeySettingWidget* GetKeySettingWidget() const { return KeySettingWidget; }
-	void SetTabButtonStyle(UButton* Button, bool bIsSelected);
+	//void SetTabButtonStyle(UButton* Button, bool bIsSelected);
 };
 

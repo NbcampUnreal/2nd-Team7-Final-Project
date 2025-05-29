@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
+#include "Item/EquipmentItem/EquipmentItemBase.h"
 #include "BaseDrone.generated.h"
 
 
@@ -154,4 +155,10 @@ public:
 
 	void Server_ReturnAsItem_Implementation();
 	void ReturnAsItem();
+
+
+public:
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_ReturnToPlayer();
+	void Multicast_ReturnToPlayer_Implementation();
 };
