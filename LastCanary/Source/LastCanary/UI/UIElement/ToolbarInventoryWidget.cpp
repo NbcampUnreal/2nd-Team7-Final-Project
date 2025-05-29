@@ -1,10 +1,9 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "UI/UIElement/ToolbarInventoryWidget.h"
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "UI/UIObject/ToolbarSlotWidget.h"
 #include "Components/HorizontalBox.h"
+#include "Components/HorizontalBoxSlot.h"
+
 #include "LastCanary.h"
 
 void UToolbarInventoryWidget::RefreshInventoryUI()
@@ -63,6 +62,12 @@ void UToolbarInventoryWidget::RefreshInventoryUI()
             }
         }
 
-        ToolbarSlotBox->AddChild(SlotWidget);
+        /*ToolbarSlotBox->AddChild(SlotWidget);*/
+        if (UHorizontalBoxSlot* AddedSlot = Cast<UHorizontalBoxSlot>(ToolbarSlotBox->AddChild(SlotWidget)))
+        {
+            AddedSlot->SetHorizontalAlignment(HAlign_Fill);
+            AddedSlot->SetVerticalAlignment(VAlign_Fill);
+            AddedSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+        }
     }
 }

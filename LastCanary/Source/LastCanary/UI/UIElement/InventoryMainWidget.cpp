@@ -12,7 +12,7 @@ void UInventoryMainWidget::NativeConstruct()
 
 	AutoInitializeWithPlayer();
 
-	ShowToolbarOnly();
+	// ShowToolbarOnly();
 }
 
 void UInventoryMainWidget::AutoInitializeWithPlayer()
