@@ -28,6 +28,9 @@ public:
     UPROPERTY(VisibleAnywhere)
     UStaticMeshComponent* MeshComponent;
 
+    UPROPERTY(VisibleAnywhere)
+    USkeletalMeshComponent* SkeletalMeshComponent;
+
     /** 아이템 상호작용 감지용 구체 컴포넌트 */
     UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
     class USphereComponent* SphereComponent;

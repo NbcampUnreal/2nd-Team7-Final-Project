@@ -327,4 +327,29 @@ void UInventorySlotWidget::HideTooltip()
 void UInventorySlotWidget::OnUseButtonClicked()
 {
 	// TODO : 슬롯을 클릭했을 때 사용, 버리기, 취소 버튼 등이 나오도록 작동
+
+	if (!InventoryComponent || ItemData.ItemRowName.IsNone())
+	{
+		return;
+	}
+
+	// 가방 아이템인지 확인
+	if (const FItemDataRow* ItemRowData = ItemDataTable->FindRow<FItemDataRow>(ItemData.ItemRowName, TEXT("OnUseButtonClicked")))
+	{
+		static const FGameplayTag BackpackTag = FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Backpack"));
+		if (ItemRowData->ItemType.MatchesTag(BackpackTag))
+		{
+			// 가방 사용 (인벤토리 열기)
+			UE_LOG(LogTemp, Warning, TEXT("[OnUseButtonClicked] 가방 사용 - 인벤토리 열기"));
+
+			if (ULCGameInstanceSubsystem* Subsystem = GetWorld()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+			{
+				if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+				{
+					UIManager->ToggleInventory();
+				}
+			}
+			return;
+		}
+	}
 }

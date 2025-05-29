@@ -49,8 +49,16 @@ ABaseCharacter::ABaseCharacter()
 
 	SetViewMode(AlsViewModeTags::FirstPerson);
 
+
+	BackpackMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BackpackMeshComponent"));
+	BackpackMeshComponent->SetupAttachment(GetMesh(), TEXT("backpack1"));
+	BackpackMeshComponent->SetVisibility(false);
+	BackpackMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
 	ToolbarInventoryComponent = CreateDefaultSubobject<UToolbarInventoryComponent>(TEXT("ToolbarInventoryComponent"));
-	BackpackInventoryComponent = nullptr;
+
+	BackpackInventoryComponent = CreateDefaultSubobject<UBackpackInventoryComponent>(TEXT("BackpackInventoryComponent"));
+	BackpackInventoryComponent->MaxSlots = 0;
 }
 
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
@@ -231,8 +239,6 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 			PC->SetSprintingStateToPlayerState(false);
 		}
 	}
-	// 임시로 넣은 코드이니 꼭 삭제할 것!
-	UseEquippedItem();
 }
 
 void ABaseCharacter::Handle_SprintOnPlayerState(const FInputActionValue& ActionValue, float multiplier)
@@ -918,18 +924,6 @@ void ABaseCharacter::Multicast_PlayMontage_Implementation(UAnimMontage* MontageT
 	AnimInstance->Montage_Play(MontageToPlay);
 }
 
-void ABaseCharacter::SetBackpackInventoryComponent(UBackpackInventoryComponent* BackpackInvenComp, bool bEquip)
-{
-	if (bEquip)
-	{
-		BackpackInventoryComponent = BackpackInvenComp;
-	}
-	else
-	{
-		BackpackInventoryComponent = nullptr;
-	}
-}
-
 UToolbarInventoryComponent* ABaseCharacter::GetToolbarInventoryComponent() const
 {
 	return ToolbarInventoryComponent;
@@ -963,6 +957,7 @@ bool ABaseCharacter::TryPickupItem(AItemBase* HitItem)
 {
 	if (!HitItem)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[ABaseCharacter::TryPickupItem] ItemActor가 NULL"));
 		return false;
 	}
 
@@ -1002,23 +997,33 @@ bool ABaseCharacter::TryPickupItem_Internal(AItemBase* ItemActor)
 		return false;
 	}
 
-	if (BackpackInventoryComponent)
+	ULCGameInstanceSubsystem* GameSubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
+	if (GameSubsystem)
 	{
-		if (BackpackInventoryComponent->TryAddItem(ItemActor))
+		if (const FItemDataRow* ItemData = GameSubsystem->GetItemDataByRowName(ItemActor->ItemRowName))
 		{
-			return true;
+			static const FGameplayTag CollectibleTag = FGameplayTag::RequestGameplayTag(TEXT("ItemType.Collectible"));
+			bool bIsCollectible = ItemData->ItemType.MatchesTag(CollectibleTag);
+			if (bIsCollectible && BackpackInventoryComponent)
+			{
+				if (BackpackInventoryComponent->TryAddItem(ItemActor))
+				{
+					return true;
+				}
+			}
 		}
 	}
 
 	if (ToolbarInventoryComponent)
-	{
+	{;
 		if (ToolbarInventoryComponent->TryAddItem(ItemActor))
 		{
 			return true;
 		}
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("[ABaseCharacter::TryPickupItem_Internal] 인벤토리가 가득참: %s"),
+
+	UE_LOG(LogTemp, Warning, TEXT("[ABaseCharacter::TryPickupItem_Internal] 모든 인벤토리가 가득참: %s"),
 		*ItemActor->ItemRowName.ToString());
 	return false;
 }
@@ -1121,5 +1126,88 @@ void ABaseCharacter::DropItemAtSlot(int32 SlotIndex, int32 Quantity)
 	if (ToolbarInventoryComponent)
 	{
 		ToolbarInventoryComponent->TryDropItemAtSlot(SlotIndex, Quantity);
+	}
+}
+
+bool ABaseCharacter::EquipBackpack(FName BackpackItemRowName, const TArray<FBaseItemSlotData>& BackpackData, int32 MaxSlots)
+{
+	if (BackpackItemRowName.IsNone())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[ABaseCharacter::EquipBackpack] 잘못된 매개변수"));
+		return false;
+	}
+
+	if (BackpackInventoryComponent)
+	{
+		BackpackInventoryComponent->MaxSlots = MaxSlots;
+		BackpackInventoryComponent->ItemSlots = BackpackData;
+
+		if (ULCGameInstanceSubsystem* GameSubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+		{
+			BackpackInventoryComponent->ItemDataTable = GameSubsystem->ItemDataTable;
+		}
+
+		if (BackpackInventoryComponent->ItemSlots.Num() == 0)
+		{
+			BackpackInventoryComponent->InitializeSlots();
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[ABaseCharacter::EquipBackpack] BackpackInventoryComponent가 없습니다"));
+		return false;
+	}
+
+	if (ULCGameInstanceSubsystem* GameSubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+	{
+		if (const FItemDataRow* ItemData = GameSubsystem->GetItemDataByRowName(BackpackItemRowName))
+		{
+			SetBackpackMesh(ItemData->StaticMesh);
+		}
+	}
+
+	return true;
+}
+
+TArray<FBaseItemSlotData> ABaseCharacter::UnequipBackpack()
+{
+	TArray<FBaseItemSlotData> BackpackData;
+
+	if (BackpackInventoryComponent)
+	{
+		BackpackData = BackpackInventoryComponent->ItemSlots;
+
+		BackpackInventoryComponent->ItemSlots.Empty();
+		BackpackInventoryComponent->MaxSlots = 0;
+	}
+
+	SetBackpackMesh(nullptr);
+
+	return BackpackData;
+}
+
+bool ABaseCharacter::HasBackpackEquipped() const
+{
+	return BackpackInventoryComponent && BackpackInventoryComponent->MaxSlots > 0;
+}
+
+void ABaseCharacter::SetBackpackMesh(UStaticMesh* BackpackMesh)
+{
+	if (!BackpackMeshComponent)
+	{
+		return;
+	}
+
+	if (BackpackMesh)
+	{
+		BackpackMeshComponent->SetStaticMesh(BackpackMesh);
+		BackpackMeshComponent->SetVisibility(true);
+		UE_LOG(LogTemp, Warning, TEXT("[SetBackpackMesh] 가방 메시 표시"));
+	}
+	else
+	{
+		BackpackMeshComponent->SetStaticMesh(nullptr);
+		BackpackMeshComponent->SetVisibility(false);
+		UE_LOG(LogTemp, Warning, TEXT("[SetBackpackMesh] 가방 메시 숨김"));
 	}
 }

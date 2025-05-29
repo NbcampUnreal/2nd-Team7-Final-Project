@@ -157,24 +157,19 @@ FVector UInventoryComponentBase::CalculateDropLocation() const
         return FVector::ZeroVector;
     }
 
-    // ⭐ ItemSpawner 설정값 사용
     if (!ItemSpawner)
     {
         return CachedOwnerCharacter->GetActorLocation() + CachedOwnerCharacter->GetActorForwardVector() * 200.0f;
     }
 
-    // 캐릭터의 위치와 방향 가져오기
     FVector CharacterLocation = CachedOwnerCharacter->GetActorLocation();
     FVector ForwardVector = CachedOwnerCharacter->GetActorForwardVector();
 
-    // ItemSpawner의 설정값을 사용하여 위치 계산
-    float DropDistance = 200.0f; // ItemSpawner에서 설정 가능하도록 수정 예정
+    float DropDistance = 200.0f;
     FVector DropLocation = CharacterLocation + ForwardVector * DropDistance;
 
-    // 높이 오프셋 적용
     DropLocation.Z += 50.0f;
 
-    // 바닥에 라인 트레이스로 정확한 위치 찾기
     FHitResult HitResult;
     FVector TraceStart = DropLocation + FVector(0, 0, 500.0f);
     FVector TraceEnd = DropLocation - FVector(0, 0, 1000.0f);
@@ -193,27 +188,19 @@ FVector UInventoryComponentBase::CalculateDropLocation() const
 
 bool UInventoryComponentBase::TryDropItemAtSlot(int32 SlotIndex, int32 Quantity)
 {
-    // ⭐ 서버라면 직접 실행, 클라이언트라면 RPC 호출
     if (GetOwner() && GetOwner()->HasAuthority())
     {
-        // 서버에서 직접 실행
-        UE_LOG(LogTemp, Warning, TEXT("[TryDropItemAtSlot] 서버에서 직접 실행: 슬롯 %d"), SlotIndex);
         return Internal_TryDropItemAtSlot(SlotIndex, Quantity);
     }
     else
     {
-        // 클라이언트에서 서버 RPC 호출
-        UE_LOG(LogTemp, Warning, TEXT("[TryDropItemAtSlot] 클라이언트에서 서버 RPC 호출: 슬롯 %d"), SlotIndex);
         Server_TryDropItemAtSlot(SlotIndex, Quantity);
-        return true; // RPC 호출 성공 (실제 결과는 서버에서 처리)
+        return true;
     }
 }
 
 void UInventoryComponentBase::Server_TryDropItemAtSlot_Implementation(int32 SlotIndex, int32 Quantity)
 {
-    UE_LOG(LogTemp, Warning, TEXT("[Server_TryDropItemAtSlot] 서버에서 실행: 슬롯 %d"), SlotIndex);
-
-    // 서버에서 실제 드랍 로직 실행
     Internal_TryDropItemAtSlot(SlotIndex, Quantity);
 }
 
@@ -221,94 +208,75 @@ bool UInventoryComponentBase::Internal_TryDropItemAtSlot(int32 SlotIndex, int32 
 {
     if (!GetOwner() || !GetOwner()->HasAuthority())
     {
-        LOG_Item_WARNING(TEXT("[TryDropItemAtSlot_Internal] Authority가 없습니다. 서버에서만 실행하세요."));
+        LOG_Item_WARNING(TEXT("[UInventoryComponentBase::Internal_TryDropItemAtSlot] Authority가 없습니다. 서버에서만 실행하세요."));
         return false;
     }
 
     if (!ItemSlots.IsValidIndex(SlotIndex))
     {
-        LOG_Item_WARNING(TEXT("[TryDropItemAtSlot_Internal] 유효하지 않은 슬롯 인덱스: %d"), SlotIndex);
+        LOG_Item_WARNING(TEXT("[UInventoryComponentBase::Internal_TryDropItemAtSlot] 유효하지 않은 슬롯 인덱스: %d"), SlotIndex);
         return false;
     }
 
     if (!IsOwnerCharacterValid())
     {
-        LOG_Item_WARNING(TEXT("[TryDropItemAtSlot_Internal] CachedOwnerCharacter가 유효하지 않습니다."));
+        LOG_Item_WARNING(TEXT("[UInventoryComponentBase::Internal_TryDropItemAtSlot] CachedOwnerCharacter가 유효하지 않습니다."));
         return false;
     }
 
     FBaseItemSlotData& SlotData = ItemSlots[SlotIndex];
 
-    // 빈 슬롯인지 확인
     if (SlotData.ItemRowName.IsNone() || SlotData.Quantity <= 0)
     {
-        LOG_Item_WARNING(TEXT("[TryDropItemAtSlot_Internal] 빈 슬롯입니다: %d"), SlotIndex);
+        LOG_Item_WARNING(TEXT("[UInventoryComponentBase::Internal_TryDropItemAtSlot] 빈 슬롯입니다: %d"), SlotIndex);
         return false;
     }
 
-    // 드랍할 수량 확인
     int32 DropQuantity = FMath::Min(Quantity, SlotData.Quantity);
     if (DropQuantity <= 0)
     {
-        LOG_Item_WARNING(TEXT("[TryDropItemAtSlot_Internal] 드랍할 수량이 0 이하입니다."));
+        LOG_Item_WARNING(TEXT("[UInventoryComponentBase::Internal_TryDropItemAtSlot] 드랍할 수량이 0 이하입니다."));
         return false;
     }
 
-    // 드랍 위치 계산
     FVector DropLocation = CalculateDropLocation();
 
-    // 드랍할 아이템 데이터 준비
     FBaseItemSlotData DropItemData = SlotData;
     DropItemData.Quantity = DropQuantity;
 
-    // ⭐ ItemSpawner를 이용한 아이템 생성
     AItemBase* DroppedItem = ItemSpawner->CreateItemFromData(DropItemData, DropLocation);
     if (!DroppedItem)
     {
-        LOG_Item_WARNING(TEXT("[TryDropItemAtSlot_Internal] 아이템 스폰 실패"));
+        LOG_Item_WARNING(TEXT("[UInventoryComponentBase::Internal_TryDropItemAtSlot] 아이템 스폰 실패"));
         return false;
     }
 
-    // 인벤토리에서 아이템 제거
     SlotData.Quantity -= DropQuantity;
     if (SlotData.Quantity <= 0)
     {
-        // 슬롯 초기화
         SlotData = FBaseItemSlotData();
     }
 
-    // UI 업데이트 (복제되므로 모든 클라이언트에 자동 전파)
     OnInventoryUpdated.Broadcast();
-
-    LOG_Item_WARNING(TEXT("[TryDropItemAtSlot_Internal] 아이템 드랍 성공: %s (수량: %d)"),
-        *DropItemData.ItemRowName.ToString(), DropQuantity);
 
     return true;
 }
 
 bool UInventoryComponentBase::TryDropItem(FName ItemRowName, int32 Quantity)
 {
-    // ⭐ 서버라면 직접 실행, 클라이언트라면 RPC 호출
     if (GetOwner() && GetOwner()->HasAuthority())
     {
-        // 서버에서 직접 실행
-        UE_LOG(LogTemp, Warning, TEXT("[TryDropItem] 서버에서 직접 실행: %s"), *ItemRowName.ToString());
         return TryDropItem_Internal(ItemRowName, Quantity);
     }
     else
     {
-        // 클라이언트에서 서버 RPC 호출
-        UE_LOG(LogTemp, Warning, TEXT("[TryDropItem] 클라이언트에서 서버 RPC 호출: %s"), *ItemRowName.ToString());
         Server_TryDropItem(ItemRowName, Quantity);
-        return true; // RPC 호출 성공
+        return true;
     }
 }
 
 void UInventoryComponentBase::Server_TryDropItem_Implementation(FName ItemRowName, int32 Quantity)
 {
-    UE_LOG(LogTemp, Warning, TEXT("[Server_TryDropItem] 서버에서 실행: %s"), *ItemRowName.ToString());
-
-    // 서버에서 실제 드랍 로직 실행
     TryDropItem_Internal(ItemRowName, Quantity);
 }
 
@@ -316,17 +284,16 @@ bool UInventoryComponentBase::TryDropItem_Internal(FName ItemRowName, int32 Quan
 {
     if (!GetOwner() || !GetOwner()->HasAuthority())
     {
-        LOG_Item_WARNING(TEXT("[TryDropItem_Internal] Authority가 없습니다."));
+        LOG_Item_WARNING(TEXT("[UInventoryComponentBase::TryDropItem_Internal] Authority가 없습니다."));
         return false;
     }
 
     if (ItemRowName.IsNone() || Quantity <= 0)
     {
-        LOG_Item_WARNING(TEXT("[TryDropItem_Internal] 유효하지 않은 매개변수"));
+        LOG_Item_WARNING(TEXT("[UInventoryComponentBase::TryDropItem_Internal] 유효하지 않은 매개변수"));
         return false;
     }
 
-    // 해당 아이템을 가진 슬롯 찾기
     for (int32 i = 0; i < ItemSlots.Num(); ++i)
     {
         if (ItemSlots[i].ItemRowName == ItemRowName && ItemSlots[i].Quantity > 0)
@@ -336,6 +303,6 @@ bool UInventoryComponentBase::TryDropItem_Internal(FName ItemRowName, int32 Quan
         }
     }
 
-    LOG_Item_WARNING(TEXT("[TryDropItem_Internal] 아이템을 찾을 수 없습니다: %s"), *ItemRowName.ToString());
+    LOG_Item_WARNING(TEXT("[UInventoryComponentBase::TryDropItem_Internal] 아이템을 찾을 수 없습니다: %s"), *ItemRowName.ToString());
     return false;
 }

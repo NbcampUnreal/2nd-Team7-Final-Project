@@ -84,7 +84,7 @@ public:
 	float TraceDistance = 300.0f;
 
 	FTimerHandle InteractionTraceTimerHandle;
-	
+
 	// 현재 바라보고 있는 상호작용 가능한 액터
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interact")
 	AActor* CurrentFocusedActor;
@@ -194,12 +194,12 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_PlayMontage(UAnimMontage* MontageToPlay);
 	void Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay);
-	
+
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_PlayMontage(UAnimMontage* MontageToPlay);
 	void Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay);
-	
-	
+
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "TEST")
 	bool bIsGetFallDownDamage = false;
 
@@ -217,10 +217,11 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "Inventory")
 	UBackpackInventoryComponent* BackpackInventoryComponent;
 
-public:
-	UFUNCTION(BlueprintCallable, Category = "Inventory")
-	void SetBackpackInventoryComponent(UBackpackInventoryComponent* BackpackInvenComp, bool bEquip);
+protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment")
+	UStaticMeshComponent* BackpackMeshComponent;
 
+public:
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	UToolbarInventoryComponent* GetToolbarInventoryComponent() const;
 
@@ -286,4 +287,25 @@ public:
 	/** 특정 슬롯 아이템 드랍 */
 	UFUNCTION(BlueprintCallable, Category = "Character|Inventory")
 	void DropItemAtSlot(int32 SlotIndex, int32 Quantity = 1);
+
+public:
+	//-----------------------------------------------------
+	// 가방 관리 (간소화)
+	//-----------------------------------------------------
+
+	/** 가방 장착 (데이터 복사 방식) */
+	UFUNCTION(BlueprintCallable, Category = "Character|Equipment")
+	bool EquipBackpack(FName BackpackItemRowName, const TArray<FBaseItemSlotData>& BackpackData, int32 MaxSlots);
+
+	/** 가방 해제 (데이터 반환) */
+	UFUNCTION(BlueprintCallable, Category = "Character|Equipment")
+	TArray<FBaseItemSlotData> UnequipBackpack();
+
+	/** 가방이 장착되어 있는지 확인 */
+	UFUNCTION(BlueprintPure, Category = "Character|Equipment")
+	bool HasBackpackEquipped() const;
+
+private:
+	/** 가방 메시 설정 */
+	void SetBackpackMesh(UStaticMesh* BackpackMesh);
 };

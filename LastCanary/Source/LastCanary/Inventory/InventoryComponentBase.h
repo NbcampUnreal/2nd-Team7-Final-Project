@@ -21,11 +21,11 @@ class LASTCANARY_API UInventoryComponentBase : public UActorComponent
 public:
     UInventoryComponentBase();
 
-protected:
-    virtual void BeginPlay() override;
-
     UFUNCTION(BlueprintCallable, Category = "Inventory|Internal")
     void InitializeSlots();
+
+protected:
+    virtual void BeginPlay() override;
 
     /** 아이템 스포너 컴포넌트 */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
