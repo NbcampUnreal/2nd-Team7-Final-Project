@@ -82,11 +82,11 @@ void UBTTask_RandomPatrol::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* No
     {
         AIController->StopMovement();
 
-        ABaseMonsterCharacter* Monster = Cast<ABaseMonsterCharacter>(AIController->GetPawn());
+        /*ABaseMonsterCharacter* Monster = Cast<ABaseMonsterCharacter>(AIController->GetPawn());
         if (Monster)
         {
             Monster->MulticastAIDeath();
-        }
+        }*/
 
         FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
     }

@@ -23,5 +23,5 @@ public:
 protected:
 	/** 그리드 레이아웃 설정 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Layout")
-	int32 ColumnsPerRow = 6;
+	int32 ColumnsPerRow = 5;
 };
