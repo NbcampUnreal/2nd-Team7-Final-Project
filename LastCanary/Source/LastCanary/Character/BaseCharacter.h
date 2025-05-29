@@ -274,13 +274,18 @@ public:
 	void SetEquipped(bool bEquip);
 
 
-
+public:
 	// 임의적으로 만든 캐릭터의 상호작용 함수
 	bool TryPickupItem(AItemBase* HitItem);
 	UFUNCTION(Server, Reliable)
 	void Server_TryPickupItem(AItemBase* HitItem);
 	void Server_TryPickupItem_Implementation(AItemBase* ItemToPickup);
 
+protected:
+	/** 실제 아이템 습득 로직 (서버에서만 실행) */
+	bool TryPickupItem_Internal(AItemBase* ItemActor);
+
+public:
 	UFUNCTION(Server, Reliable)
 	void Server_UnequipCurrentItem();
 	void Server_UnequipCurrentItem_Implementation();

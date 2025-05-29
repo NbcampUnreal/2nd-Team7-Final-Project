@@ -1,0 +1,2 @@
+#include "DataType/GimmickActivationType.h"
+
