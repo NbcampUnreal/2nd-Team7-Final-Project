@@ -111,6 +111,7 @@ public: //Functions to process controller input.
 	virtual void Handle_Aim(const FInputActionValue& ActionValue);
 	virtual void Handle_Interact();
 	virtual void Handle_ViewMode();
+	virtual void Handle_Reload();
 
 public:
 	//Interact Function
@@ -223,6 +224,15 @@ public:
 	//애니메이션 몽타주
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
 	UAnimMontage* InteractMontage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UAnimMontage* ReloadMontage;
+
+	UPROPERTY(BlueprintReadOnly)
+	bool bIsReloading = false;
+
+	UFUNCTION()
+	void OnGunReloadAnimComplete(UAnimMontage* CompletedMontage, bool bInterrupted);
 
 	UFUNCTION()
 	void PlayInteractionMontage(AActor* Target);

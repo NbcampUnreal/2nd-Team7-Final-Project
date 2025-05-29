@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
+#include "Item/EquipmentItem/EquipmentItemBase.h"
 #include "BaseDrone.generated.h"
 
 

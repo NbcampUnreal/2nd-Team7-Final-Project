@@ -265,7 +265,9 @@ void ABasePlayerController::InitInputComponent()
 		EnhancedInput->BindAction(ItemUseAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_OnItemUse);
 
 		EnhancedInput->BindAction(ThrowItemAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_OnItemThrow);
-		
+
+		EnhancedInput->BindAction(RifleReloadAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_Reload);
+
 		EnhancedInput->BindAction(VoiceAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_OnStartedVoiceChat);
 		EnhancedInput->BindAction(VoiceAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnCanceledVoiceChat);
 
@@ -641,6 +643,22 @@ void ABasePlayerController::Input_OnInteract()
 		if (IsValid(PlayerCharacter))
 		{
 			PlayerCharacter->Handle_Interact();
+		}
+	}
+}
+
+void ABasePlayerController::Input_Reload()
+{
+
+	UE_LOG(LogTemp, Warning, TEXT("input Reload"));
+	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
+	{
+		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
+		if (IsValid(PlayerCharacter))
+		{
+
+			UE_LOG(LogTemp, Warning, TEXT("Reload"));
+			PlayerCharacter->Handle_Reload();
 		}
 	}
 }

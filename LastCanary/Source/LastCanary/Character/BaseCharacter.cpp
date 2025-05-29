@@ -376,6 +376,11 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 		return;
 	}
 
+	if (bIsReloading)
+	{
+		return; // 리로드 중이므로 줌 입력 무시
+	}
+
 	if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem))
 	{
 		if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
@@ -440,8 +445,61 @@ void ABaseCharacter::CalcCameraLocation()
 
 }
 
+void ABaseCharacter::Handle_Reload()
+{
+	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
+	if (!EquippedItem)
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 현재 장착된 아이템이 없습니다."));
+		return;
+	}
+	AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem);
+	if (!IsValid(EquipmentItem))
+	{
+		return;
+	}
+	if (EquipmentItem->ItemData.ItemType != FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
+	{
+		return;
+	}
+	AGunBase* RifleItem = Cast<AGunBase>(EquippedItem);
+	UAnimMontage* MontageToPlay = ReloadMontage;
 
+	if (!(MontageToPlay && RifleItem && GetMesh()))
+	{
+		return;
+	}
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (!IsValid(AnimInstance))
+	{
+		return;
+	}
+	float Duration = AnimInstance->Montage_Play(MontageToPlay, 1.0f);
+	if (Duration > 0.f)
+	{
+		SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+		bIsReloading = true;
+		FOnMontageEnded EndDelegate;
+		EndDelegate.BindUObject(this, &ABaseCharacter::OnGunReloadAnimComplete);
+		AnimInstance->Montage_SetEndDelegate(EndDelegate, MontageToPlay);
+	}
+}
 
+void ABaseCharacter::OnGunReloadAnimComplete(UAnimMontage* CompletedMontage, bool bInterrupted)
+{
+	bIsReloading = false; // <- 리로드 끝났으므로 플래그 해제
+	if (bInterrupted)
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::OnGunReloadAnimComplete] 애니메이션이 중단되었습니다."));
+		return;
+	}
+
+	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
+	if (AGunBase* Gun = Cast<AGunBase>(EquippedItem))
+	{
+		Gun->Reload(1); // 원하는 탄약 수 만큼
+	}
+}
 
 
 void ABaseCharacter::Handle_ViewMode()
@@ -474,7 +532,7 @@ void ABaseCharacter::Handle_Interact()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Handle_Interact: No focused actor."));
 		//Test Code
-		PlayInteractionMontage(CurrentFocusedActor);
+		//PlayInteractionMontage(CurrentFocusedActor);
 		return;
 	}
 
@@ -660,7 +718,12 @@ void ABaseCharacter::Multicast_EquipItemFromQuickSlot_Implementation(int32 Index
 void ABaseCharacter::EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex)
 {
 	UE_LOG(LogTemp, Warning, TEXT("Change Equip Item"));
-
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && AnimInstance->IsAnyMontagePlaying())
+	{
+		AnimInstance->Montage_Stop(0.25f); // 페이드 아웃 시간: 0.25초
+	}
+	AnimInstance->Montage_Stop(0.25f, ReloadMontage);
 	//TODO: 아이템 교체 로직 추가
 	/* // 지금은 아이템 없어서 임시 비활성화.
 	if (!QuickSlots.IsValidIndex(QuickSlotIndex))
@@ -1230,6 +1293,10 @@ void ABaseCharacter::Server_UnequipCurrentItem_Implementation()
 
 bool ABaseCharacter::UseEquippedItem()
 {
+	if (bIsReloading)
+	{
+		return true;
+	}
 	if (!IsEquipped())
 	{
 		LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 장비 상태가 아닙니다."));
@@ -1254,34 +1321,34 @@ bool ABaseCharacter::UseEquippedItem()
 		LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 현재 장착된 아이템이 없습니다."));
 		return false;
 	}
-
-	if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem))
+	if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))
 	{
-		if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
+		ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+		if (PC)
 		{
-			if (IsDesiredAiming() == false)
-			{
-				UE_LOG(LogTemp, Warning, TEXT("조준하세요"));
-				return false;
-			}
-			
+			PC->SpawnDrone();
+			return true;
 		}
-		EquipmentItem->UseItem();
-		if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
-		{
-			ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
-			if (PC)
-			{
-				PC->CameraShake();
-			}
-		}
-		return true;
 	}
-	else
+	if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
 	{
-		LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 아이템이 장비 아이템이 아닙니다."));
-		return false;
+		if (IsDesiredAiming() == false)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("조준하세요"));
+			return false;
+		}
 	}
+	
+	EquippedItem->UseItem();
+	if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
+	{
+		ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+		if (PC)
+		{
+			PC->CameraShake();
+		}
+	}
+	return true;
 }
 
 void ABaseCharacter::Server_UseEquippedItem_Implementation()

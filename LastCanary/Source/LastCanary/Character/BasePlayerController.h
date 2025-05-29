@@ -101,6 +101,9 @@ public:
 	TObjectPtr<UInputAction> ThrowItemAction;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
+	TObjectPtr<UInputAction> RifleReloadAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
 	TObjectPtr<UInputAction> VoiceAction;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
@@ -187,6 +190,8 @@ public:
 	virtual void Input_OnCanceledVoiceChat();
 
 	virtual void Input_ChangeShootingSetting();
+
+	virtual void Input_Reload();
 
 	virtual void Input_ChangeQuickSlot(const FInputActionValue& ActionValue);
 
