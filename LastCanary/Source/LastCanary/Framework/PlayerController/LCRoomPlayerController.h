@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "LCPlayerController.h"
 #include "Character/BasePlayerController.h"
+#include "DataType/ItemDropData.h"
 #include "LCRoomPlayerController.generated.h"
 
 class URoomWidget;
@@ -28,9 +29,14 @@ public:
 	// 서버에서만 호출
 	//void StartGame();
 
+	UPROPERTY(EditDefaultsOnly, Category = "Shop")
+	TSubclassOf<class ALCDroneDelivery> DroneDeliveryClass;
+
+	UFUNCTION(Server, Reliable)
+	void Server_RequestPurchase(const TArray<FItemDropData>& DropList);
+	void Server_RequestPurchase_Implementation(const TArray<FItemDropData>& DropList);
+
 private:
 	void CreateAndShowSelecetGameUI();
 	void CreateAndShowRoomUI();
-
-
 };
