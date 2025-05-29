@@ -4,6 +4,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "TimerManager.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 
 #include "LastCanary.h"
 
@@ -31,23 +32,49 @@ void ALCDroneDelivery::BeginPlay()
 	}
 }
 
-void ALCDroneDelivery::StartDeliveryWithPath(ALCDronePath* InDronePathActor)
+void ALCDroneDelivery::StartDelivery()
 {
-	if (HasAuthority() == true)
+	if (HasAuthority()==false)
 	{
-		DronePathActor = InDronePathActor;
-		ExternalSpline = InDronePathActor ? InDronePathActor->SplinePath : nullptr;
-		BeginDelivery();
+		return;
 	}
-	else
+
+	// 가장 가까운 드론 경로 찾기
+	DronePathActor = FindNearestDronePath();
+	ExternalSpline = DronePathActor ? DronePathActor->SplinePath : nullptr;
+
+	if (ExternalSpline==nullptr)
 	{
-		Server_StartDeliveryWithPath(InDronePathActor);
+		UE_LOG(LogTemp, Error, TEXT("[Drone] No valid spline found for delivery."));
+		Destroy();
+		return;
 	}
+
+	BeginDelivery();
+}
+
+ALCDronePath* ALCDroneDelivery::FindNearestDronePath()
+{
+	FVector MyLocation = GetActorLocation();
+	float ClosestDistSq = FLT_MAX;
+	ALCDronePath* NearestPath = nullptr;
+
+	for (TActorIterator<ALCDronePath> It(GetWorld()); It; ++It)
+	{
+		float DistSq = FVector::DistSquared(It->GetActorLocation(), MyLocation);
+		if (DistSq < ClosestDistSq)
+		{
+			ClosestDistSq = DistSq;
+			NearestPath = *It;
+		}
+	}
+
+	return NearestPath;
 }
 
 void ALCDroneDelivery::Server_StartDeliveryWithPath_Implementation(ALCDronePath* InDronePathActor)
 {
-	StartDeliveryWithPath(InDronePathActor); // 서버에서 직접 실행
+	StartDelivery(); // 서버에서 직접 실행
 }
 
 void ALCDroneDelivery::BeginDelivery()
@@ -202,7 +229,7 @@ void ALCDroneDelivery::OnDropBoxHit(UPrimitiveComponent* HitComp, AActor* OtherA
 
 void ALCDroneDelivery::SpawnDroppedItems()
 {
-	if (!HasAuthority())
+	if (HasAuthority()==false)
 	{
 		return;
 	}

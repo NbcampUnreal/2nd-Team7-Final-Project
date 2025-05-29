@@ -7,7 +7,7 @@
 #include "LCUIManager.generated.h"
 
 /**
- * 
+ *
  */
 class ULCUIManagerSettings;
 class UTitleMenu;
@@ -24,7 +24,7 @@ UCLASS(BlueprintType)
 class LASTCANARY_API ULCUIManager : public UObject
 {
 	GENERATED_BODY()
-	
+
 public:
 	ULCUIManager();
 	void InitUIManager(APlayerController* PlayerController);
@@ -91,7 +91,7 @@ private:
 	TSubclassOf<UEnterPasswordWidget> EnterPasswordWidgetClass;
 
 	UPROPERTY()
-	TSubclassOf<UOptionWidget> OptionWidgetClass;	
+	TSubclassOf<UOptionWidget> OptionWidgetClass;
 	UPROPERTY()
 	TSubclassOf<UOptionWidget> ConfirmPopupClass;
 	UPROPERTY()
@@ -130,4 +130,5 @@ private:
 	UPopupLoading* CachedPopupLoading;
 	UPROPERTY()
 	UInventoryMainWidget* CachedInventoryMainWidget;
+
 };

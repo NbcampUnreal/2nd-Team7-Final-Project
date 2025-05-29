@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "DataType/ItemDromData.h"
+#include "DataType/ItemDropData.h"
 #include "LCDroneDelivery.generated.h"
 
 class USplineComponent;
@@ -18,13 +18,21 @@ public:
 
 	/** 클라이언트에서 호출해 서버에 전달 */
 	UFUNCTION(BlueprintCallable)
-	void StartDeliveryWithPath(ALCDronePath* InDronePathActor);
+	void StartDelivery();
+
+    ALCDronePath* FindNearestDronePath();
 	
 	void SetDropItems(const TArray<FItemDropData>& InItems) { ItemsToDrop = InItems; }
     
     UFUNCTION(BlueprintCallable)
     const TArray<FItemDropData>& GetDropItems() const { return ItemsToDrop; }
     
+    UPROPERTY(EditAnywhere, Category = "Drop")
+    TArray<FItemDropData> ItemsToDrop;
+
+    UFUNCTION(BlueprintCallable, Category = "Drone")
+    ALCDronePath* GetDronePath() const { return DronePathActor; }
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -80,9 +88,6 @@ private:
 
     UPROPERTY(EditDefaultsOnly, Category = "Escape")
     float EscapeDelay = 1.0f;
-
-    UPROPERTY(EditAnywhere, Category = "Drop")
-    TArray<FItemDropData> ItemsToDrop;
 
     UPROPERTY()
     USplineComponent* ExternalSpline;

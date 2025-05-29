@@ -18,6 +18,6 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spline")
 	USplineComponent* SplinePath;
 
-	/** 스플라인 길이 반환 */
-	float GetPathLength() const;
+	UFUNCTION(BlueprintCallable, Category = "Spline")
+	USplineComponent* GetSpline() const { return SplinePath; }
 };

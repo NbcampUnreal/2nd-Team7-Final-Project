@@ -1,10 +1,14 @@
 #include "UI/UIElement/ShopWidget.h"
 #include "UI/UIObject/ShopItemEntry.h"
 #include "UI/UIObject/ShopItemInfoWidget.h"
+#include "UI/UIObject/ShoppingCartWidget.h"
 #include "UI/Manager/LCUIManager.h"
 
 #include "Components/ScrollBox.h"
 #include "Components/Button.h"
+
+#include "Actor/LCDroneDelivery.h"
+#include "Actor/LCDronePath.h"
 
 #include "LastCanary.h"
 
@@ -27,6 +31,7 @@ void UShopWidget::NativeConstruct()
 	{
 		PlayAnimation(ShopFadeAnim, 0.0f, 1);
 	}
+	
 	PopulateShopItems();
 }
 
@@ -73,7 +78,7 @@ void UShopWidget::PopulateShopItems()
 				ItemEntry->OnItemClicked.BindUObject(this, &UShopWidget::OnShopItemClicked);
 				ItemListBox->AddChild(ItemEntry);
 
-				LOG_Frame_WARNING(TEXT("Shop item bound: %s"), *ItemData->ItemName.ToString());
+				// LOG_Frame_WARNING(TEXT("Shop item bound: %s"), *ItemData->ItemName.ToString());
 			}
 		}
 	}
@@ -104,7 +109,39 @@ void UShopWidget::OnShopItemClicked(UShopItemEntry* ClickedEntry)
 
 void UShopWidget::OnPurchaseButtonClicked()
 {
-	LOG_Frame_WARNING(TEXT("OnPurchaseButtonClicked"));
+	if (!ShoppingCartWidget || !DroneDeliveryClass)
+	{
+		LOG_Frame_WARNING(TEXT("ShopWidget missing references."));
+		return;
+	}
+
+	// 1. 아이템 리스트 가져오기
+	TArray<FItemDropData> DropList = ShoppingCartWidget->GetItemDropList();
+
+	if (DropList.IsEmpty())
+	{
+		LOG_Frame_WARNING(TEXT("Cart is empty."));
+		return;
+	}
+
+	// 2. 드론 액터 스폰
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+	Params.Owner = GetOwningPlayerPawn();
+
+	FVector SpawnLoc = GetOwningPlayerPawn()->GetActorLocation(); // 임시: 플레이어 위치에서 드론 스폰
+	ALCDroneDelivery* Drone = GetWorld()->SpawnActor<ALCDroneDelivery>(DroneDeliveryClass, SpawnLoc, FRotator::ZeroRotator, Params);
+
+	if (Drone)
+	{
+		Drone->ItemsToDrop = DropList;
+		Drone->StartDelivery(); // 경로는 내부에서 자동 탐색
+		LOG_Frame_WARNING(TEXT("Drone delivery started with %d items."), DropList.Num());
+	}
+	else
+	{
+		LOG_Frame_WARNING(TEXT("Drone delivery spawn failed."));
+	}
 }
 
 void UShopWidget::OnExitButtonClicked()

@@ -29,8 +29,3 @@ ALCDronePath::ALCDronePath()
 	SplinePath->SetClosedLoop(false);
 	SplinePath->SetMobility(EComponentMobility::Static);
 }
-
-float ALCDronePath::GetPathLength() const
-{
-	return SplinePath ? SplinePath->GetSplineLength() : 0.0f;
-}
