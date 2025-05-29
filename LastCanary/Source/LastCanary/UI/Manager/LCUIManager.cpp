@@ -278,6 +278,7 @@ void ULCUIManager::ShowShopPopup()
 	}*/
 
 	SwitchToWidget(CachedShopWidget);
+	HideInventoryMainWidget();
 
 	if (OwningPlayer)
 	{
@@ -340,6 +341,7 @@ void ULCUIManager::HideShopPopup()
 	SetInputModeGameOnly();
 	//ShowInGameHUD();
 	SwitchToWidget(CachedInGameHUD);
+	ShowInventoryMainWidget();
 }
 
 void ULCUIManager::ShowCreateSession()
@@ -462,6 +464,22 @@ void ULCUIManager::ShowInGameHUD()
 	SwitchToWidget(CachedInGameHUD);
 	SetInputModeGameOnly();
 
+	ShowInventoryMainWidget();
+}
+
+void ULCUIManager::HideInGameHUD()
+{
+	LOG_Frame_WARNING(TEXT("HideInGameHUD"));
+	if (CachedInGameHUD && CachedInGameHUD->IsInViewport())
+	{
+		CachedInGameHUD->RemoveFromParent();
+	}
+
+	HideInventoryMainWidget();
+}
+
+void ULCUIManager::ShowInventoryMainWidget()
+{
 	if (CachedInventoryMainWidget)
 	{
 		if (!CachedInventoryMainWidget->IsInViewport())
@@ -472,12 +490,11 @@ void ULCUIManager::ShowInGameHUD()
 	}
 }
 
-void ULCUIManager::HideInGameHUD()
+void ULCUIManager::HideInventoryMainWidget()
 {
-	LOG_Frame_WARNING(TEXT("HideInGameHUD"));
-	if (CachedInGameHUD && CachedInGameHUD->IsInViewport())
+	if (CachedInventoryMainWidget && CachedInventoryMainWidget->IsInViewport())
 	{
-		CachedInGameHUD->RemoveFromParent();
+		CachedInventoryMainWidget->RemoveFromParent();
 	}
 }
 
