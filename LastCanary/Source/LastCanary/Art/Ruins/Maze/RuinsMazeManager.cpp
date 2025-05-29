@@ -39,7 +39,7 @@ void ARuinsMazeManager::GenerateMaze()
         MazeCells[X].SetNum(MazeSizeY);
     }
 
-    //  입구/출구 셀: Top, Bottom 경계에서 Y 좌표 랜덤
+    //  입구/출구 셀: Top, Bottom 경계에서 X 좌표 랜덤
     FIntPoint EntranceCell(0, FMath::RandRange(0, MazeSizeY - 1));
     FIntPoint ExitCell(MazeSizeX - 1, FMath::RandRange(0, MazeSizeY - 1));
 
@@ -187,3 +187,4 @@ bool ARuinsMazeManager::RecursiveCheckPath(const FIntPoint& Current, const FIntP
 
     return false;
 }
+
