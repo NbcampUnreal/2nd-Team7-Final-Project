@@ -10,6 +10,8 @@
 #include "Actor/LCDroneDelivery.h"
 #include "Actor/LCDronePath.h"
 
+#include "Framework/PlayerController/LCRoomPlayerController.h"
+
 #include "LastCanary.h"
 
 void UShopWidget::NativeConstruct()
@@ -21,7 +23,7 @@ void UShopWidget::NativeConstruct()
 	}
 	if (ExitButton)
 	{
-		ExitButton->OnClicked.AddUniqueDynamic(this, &UShopWidget::OnExitButtonClicked);
+		ExitButton->OnClicked.AddUniqueDynamic(this, &UShopWidget::CloseShopWidget);
 	}
 	if (ItemInfoWidget && ShoppingCartWidget)
 	{
@@ -44,7 +46,7 @@ void UShopWidget::NativeDestruct()
 	}
 	if (ExitButton)
 	{
-		ExitButton->OnClicked.RemoveDynamic(this, &UShopWidget::OnExitButtonClicked);
+		ExitButton->OnClicked.RemoveDynamic(this, &UShopWidget::CloseShopWidget);
 	}
 	if (ShopFadeAnim)
 	{
@@ -109,44 +111,17 @@ void UShopWidget::OnShopItemClicked(UShopItemEntry* ClickedEntry)
 
 void UShopWidget::OnPurchaseButtonClicked()
 {
-	if (!ShoppingCartWidget || !DroneDeliveryClass)
+	ALCRoomPlayerController* PC = Cast<ALCRoomPlayerController>(GetOwningPlayer());
+	if (PC)
 	{
-		LOG_Frame_WARNING(TEXT("ShopWidget missing references."));
-		return;
+		PC->Server_RequestPurchase(ShoppingCartWidget->GetItemDropList());
 	}
-
-	// 1. 아이템 리스트 가져오기
-	TArray<FItemDropData> DropList = ShoppingCartWidget->GetItemDropList();
-
-	if (DropList.IsEmpty())
-	{
-		LOG_Frame_WARNING(TEXT("Cart is empty."));
-		return;
-	}
-
-	// 2. 드론 액터 스폰
-	FActorSpawnParameters Params;
-	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-	Params.Owner = GetOwningPlayerPawn();
-
-	FVector SpawnLoc = GetOwningPlayerPawn()->GetActorLocation(); // 임시: 플레이어 위치에서 드론 스폰
-	ALCDroneDelivery* Drone = GetWorld()->SpawnActor<ALCDroneDelivery>(DroneDeliveryClass, SpawnLoc, FRotator::ZeroRotator, Params);
-
-	if (Drone)
-	{
-		Drone->ItemsToDrop = DropList;
-		Drone->StartDelivery(); // 경로는 내부에서 자동 탐색
-		LOG_Frame_WARNING(TEXT("Drone delivery started with %d items."), DropList.Num());
-	}
-	else
-	{
-		LOG_Frame_WARNING(TEXT("Drone delivery spawn failed."));
-	}
+	ShoppingCartWidget->ClearCart();
+	CloseShopWidget();
 }
 
-void UShopWidget::OnExitButtonClicked()
+void UShopWidget::CloseShopWidget()
 {
-	LOG_Frame_WARNING(TEXT("OnExitButtonClicked"));
 	ULCUIManager* UIManager = ResolveUIManager();
 	if (UIManager)
 	{

@@ -37,9 +37,6 @@ protected:
 	UPROPERTY(meta = (BindWidgetAnim), Transient)
 	UWidgetAnimation* ShopFadeAnim;
 
-	UPROPERTY(EditAnywhere, Category = "Delivery")
-	TSubclassOf<ALCDroneDelivery> DroneDeliveryClass;
-
 	UPROPERTY(EditDefaultsOnly, Category = "Shop")
 	UDataTable* ItemDataTable;
 	UPROPERTY(EditDefaultsOnly, Category = "Shop")
@@ -53,7 +50,7 @@ protected:
 	UFUNCTION()
 	void OnPurchaseButtonClicked();
 	UFUNCTION()
-	void OnExitButtonClicked();
+	void CloseShopWidget();
 
 	void PopulateShopItems();
 

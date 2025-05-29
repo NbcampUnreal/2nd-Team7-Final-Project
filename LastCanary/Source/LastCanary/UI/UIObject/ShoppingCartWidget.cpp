@@ -117,3 +117,14 @@ TArray<FItemDropData> UShoppingCartWidget::GetItemDropList() const
 
 	return Result;
 }
+
+void UShoppingCartWidget::ClearCart()
+{
+	if (CartItemBox)
+	{
+		CartItemBox->ClearChildren();
+	}
+
+	CartEntries.Empty();
+	RecalculateTotalPrice();
+}

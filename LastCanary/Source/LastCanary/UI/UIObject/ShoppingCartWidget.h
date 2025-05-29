@@ -30,6 +30,8 @@ public:
 
 	TArray<FItemDropData> GetItemDropList() const;
 
+	void ClearCart();
+
 protected:
 	UPROPERTY(meta = (BindWidget))
 	UScrollBox* CartItemBox;
