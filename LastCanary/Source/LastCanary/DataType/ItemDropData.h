@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
-#include "ItemDromData.generated.h"
+#include "ItemDropData.generated.h"
 
 USTRUCT(BlueprintType)
 struct FItemDropData
