@@ -18,6 +18,8 @@ AAlsCharacterExample::AAlsCharacterExample()
 
 void AAlsCharacterExample::NotifyControllerChanged()
 {
+
+	UE_LOG(LogTemp, Warning, TEXT("Character NotifyControllerChanged"));
 	const auto* PreviousPlayer{Cast<APlayerController>(PreviousController)};
 	if (IsValid(PreviousPlayer))
 	{
@@ -42,6 +44,8 @@ void AAlsCharacterExample::NotifyControllerChanged()
 			Options.bNotifyUserSettings = true;
 
 			InputSubsystem->AddMappingContext(InputMappingContext, 0, Options);
+
+			UE_LOG(LogTemp, Warning, TEXT("ALS ADDMAPPING CONTEXT"));
 		}
 	}
 
@@ -63,6 +67,7 @@ void AAlsCharacterExample::SetupPlayerInputComponent(UInputComponent* Input)
 {
 	Super::SetupPlayerInputComponent(Input);
 
+	UE_LOG(LogTemp, Warning, TEXT("ALS SETUPPLAYERINPUT"));
 	auto* EnhancedInput{Cast<UEnhancedInputComponent>(Input)};
 	if (IsValid(EnhancedInput))
 	{

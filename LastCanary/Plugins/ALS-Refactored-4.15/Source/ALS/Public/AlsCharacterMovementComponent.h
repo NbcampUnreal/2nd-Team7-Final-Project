@@ -78,6 +78,21 @@ class ALS_API UAlsCharacterMovementComponent : public UCharacterMovementComponen
 	friend FAlsSavedMove;
 
 public:
+	float GetSprintSpeed();
+	void SetGaitSettings(float _WalkForwardSpeed, float _WalkBackwardSpeed, float _RunForwardSpeed, float _RunBackwardSpeed, float _SprintSpeed);
+	void ResetGaitSettings();
+
+
+	float SprintSpeed{ 650.0f };
+
+	float WalkForwardSpeed{ 175.0f };
+
+	float WalkBackwardSpeed{ 175.0f };
+
+	float RunForwardSpeed{ 375.0f };
+
+	float RunBackwardSpeed{ 375.0f };
+
 	// If checked, this improves the response to interaction from moving kinematic physical
 	// bodies, but may cause some issues when interacting with simulated physical bodies.
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Settings", Transient)

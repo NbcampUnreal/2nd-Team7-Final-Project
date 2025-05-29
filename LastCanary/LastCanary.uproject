@@ -32,6 +32,22 @@
 		{
 			"Name": "PCG",
 			"Enabled": true
+		},
+		{
+			"Name": "Volumetrics",
+			"Enabled": true
+		},
+		{
+			"Name": "SunPosition",
+			"Enabled": true
+		},
+		{
+			"Name": "OnlineSubsystemSteam",
+
+
+
+
+			"Enabled": true
 		}
 	]
 }
