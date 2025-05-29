@@ -17,14 +17,19 @@
 //innclude "ALSCamera/Public/AlsCameraComponent.h"
 
 #include "ALS/Public/AlsCharacterMovementComponent.h"
+#include "ALSCamera/Public/AlsCameraSettings.h"
 #include "BasePlayerState.h"
 #include "Net/UnrealNetwork.h"
 #include "../Plugins/ALS-Refactored-4.15/Source/ALS/Public/Utility/AlsConstants.h"
+#include "GameFramework/SpringArmComponent.h"
+#include "Camera/CameraComponent.h"
+
 
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "Inventory/BackpackInventoryComponent.h"
 #include "Item/ItemBase.h"
+#include "Item//EquipmentItem/GunBase.h"
 #include "Item/EquipmentItem/EquipmentItemBase.h"
 #include "UI/Manager/LCUIManager.h"
 #include "LastCanary.h"
@@ -41,16 +46,37 @@ ABaseCharacter::ABaseCharacter()
 
 	OverlaySkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("OverlaySkeletalMesh"));
 	OverlaySkeletalMesh->SetupAttachment(GetMesh());
+	
+	RemoteOnlySkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FPSSkeletalMesh"));
+	RemoteOnlySkeletalMesh->SetupAttachment(RootComponent);
 
+	RemoteOnlyOverlayStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RemoteOnlyOverlayStaticMesh"));
+	RemoteOnlyOverlayStaticMesh->SetupAttachment(RemoteOnlySkeletalMesh);
+
+	RemoteOnlyOverlaySkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("RemoteOnlyOverlaySkeletalMesh"));
+	RemoteOnlyOverlaySkeletalMesh->SetupAttachment(RemoteOnlySkeletalMesh);
+
+	
 	//Camera Settings
-	Camera = CreateDefaultSubobject<UAlsCameraComponent>(TEXT("Camera"));
-	Camera->SetupAttachment(GetMesh());
-	Camera->SetRelativeRotation_Direct({ 0.0f, 90.0f, 0.0f });
+	/*
+	sCamera = CreateDefaultSubobject<UAlsCameraComponent>(TEXT("Camera"));
+	sCamera->SetupAttachment(GetMesh()); // Spring Arm에 카메라를 붙임
+	sCamera->SetRelativeRotation_Direct(FRotator::ZeroRotator); 
+	sCamera->MovementBaseBoneName = FName("Pelvis");
+	*/
 
-	SetViewMode(AlsViewModeTags::FirstPerson);
+	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
+	SpringArm->SetupAttachment(GetMesh(), TEXT("FirstPersonCamera"));
+
+	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
+	Camera->SetupAttachment(SpringArm);  // SpringArm에 카메라 부착
+
+	// 초기 방향 설정
+	Camera->SetRelativeRotation(FRotator::ZeroRotator);  // 필요시만 설정
 
 	ToolbarInventoryComponent = CreateDefaultSubobject<UToolbarInventoryComponent>(TEXT("ToolbarInventoryComponent"));
 	BackpackInventoryComponent = nullptr;
+
 }
 
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
@@ -74,7 +100,8 @@ void ABaseCharacter::BeginPlay()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Character BeginPlay - Complete  This is Client."));
 	}
-	
+
+	SetViewMode(AlsViewModeTags::FirstPerson);
 
 	CurrentQuickSlotIndex = 0;
 
@@ -133,20 +160,20 @@ void ABaseCharacter::NotifyControllerChanged()
 	
 	Super::NotifyControllerChanged();
 }
-
+/*
 void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo)
 {
-
-	if (Camera->IsActive())
+	
+	if (sCamera->IsActive())
 	{
-		Camera->GetViewInfo(ViewInfo);
+		sCamera->GetViewInfo(ViewInfo);
 		return;
 	}
 
 	Super::CalcCamera(DeltaTime, ViewInfo);
-
+	
 }
-
+*/
 
 
 void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue)
@@ -231,8 +258,6 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 			PC->SetSprintingStateToPlayerState(false);
 		}
 	}
-	// 임시로 넣은 코드이니 꼭 삭제할 것!
-	UseEquippedItem();
 }
 
 void ABaseCharacter::Handle_SprintOnPlayerState(const FInputActionValue& ActionValue, float multiplier)
@@ -343,8 +368,139 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 	{
 		return;
 	}
+
+	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
+	if (!EquippedItem)
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 현재 장착된 아이템이 없습니다."));
+		return;
+	}
+
+	if (bIsReloading)
+	{
+		return; // 리로드 중이므로 줌 입력 무시
+	}
+
+	if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem))
+	{
+		if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
+		{
+			AGunBase* RifleItem = Cast<AGunBase>(EquippedItem);
+			if (ActionValue.Get<float>() > 0.5f)
+			{
+
+				UE_LOG(LogTemp, Warning, TEXT("Scope on"));
+				SpringArm->AttachToComponent(RifleItem->GunMesh , FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
+				//SpringArm->AttachToComponent(EquipmentItem->MeshComponent, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
+				//FVector CurrentLocation = Camera->GetComponentLocation();
+				//FVector TargetSocketLocation = GetMesh()->GetSocketLocation(TEXT("Scope"));
+				//TargetSocketName = TEXT("Scope");
+				//StartSmoothMove(CurrentLocation, TargetSocketLocation); // 부드럽게 이동 추가
+				
+				return;
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Scope out"));
+				SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+				///FVector CurrentLocation = Camera->GetComponentLocation();
+				///FVector TargetSocketLocation = GetMesh()->GetSocketLocation(TEXT("FirstPersonCamera"));
+				///TargetSocketName = TEXT("FirstPersonCamera");
+				///StartSmoothMove(CurrentLocation, TargetSocketLocation); // 부드럽게 이동 추가
+				return;
+			}
+		}
+	}
+
 	SetDesiredAiming(ActionValue.Get<bool>());
 }
+
+void ABaseCharacter::StartSmoothMove(const FVector& Start, const FVector& Destination)
+{
+	StartLocation = Start;
+	TargetLocation = Destination;
+
+	// 0.01초 간격으로 반복 (100fps 수준)
+	GetWorldTimerManager().SetTimer(MoveTimerHandle, this, &ABaseCharacter::SmoothMoveStep, 0.01f, true);
+}
+
+void ABaseCharacter::SmoothMoveStep()
+{
+	FVector Current = Camera->GetComponentLocation();
+	FVector New = FMath::VInterpTo(Current, TargetLocation, 0.01f, InterpSpeed); // 고정된 DeltaTime 사용
+
+	if (FVector::Dist(New, TargetLocation) < SnapTolerance)
+	{
+		Camera->SetWorldLocation(TargetLocation);
+		GetWorldTimerManager().ClearTimer(MoveTimerHandle); // 타이머 중지
+		SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TargetSocketName);
+		return;
+	}
+
+	Camera->SetWorldLocation(New);
+}
+
+void ABaseCharacter::CalcCameraLocation()
+{
+
+}
+
+void ABaseCharacter::Handle_Reload()
+{
+	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
+	if (!EquippedItem)
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 현재 장착된 아이템이 없습니다."));
+		return;
+	}
+	AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem);
+	if (!IsValid(EquipmentItem))
+	{
+		return;
+	}
+	if (EquipmentItem->ItemData.ItemType != FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
+	{
+		return;
+	}
+	AGunBase* RifleItem = Cast<AGunBase>(EquippedItem);
+	UAnimMontage* MontageToPlay = ReloadMontage;
+
+	if (!(MontageToPlay && RifleItem && GetMesh()))
+	{
+		return;
+	}
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (!IsValid(AnimInstance))
+	{
+		return;
+	}
+	float Duration = AnimInstance->Montage_Play(MontageToPlay, 1.0f);
+	if (Duration > 0.f)
+	{
+		SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+		bIsReloading = true;
+		FOnMontageEnded EndDelegate;
+		EndDelegate.BindUObject(this, &ABaseCharacter::OnGunReloadAnimComplete);
+		AnimInstance->Montage_SetEndDelegate(EndDelegate, MontageToPlay);
+	}
+}
+
+void ABaseCharacter::OnGunReloadAnimComplete(UAnimMontage* CompletedMontage, bool bInterrupted)
+{
+	bIsReloading = false; // <- 리로드 끝났으므로 플래그 해제
+	if (bInterrupted)
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::OnGunReloadAnimComplete] 애니메이션이 중단되었습니다."));
+		return;
+	}
+
+	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
+	if (AGunBase* Gun = Cast<AGunBase>(EquippedItem))
+	{
+		Gun->Reload(1); // 원하는 탄약 수 만큼
+	}
+}
+
 
 void ABaseCharacter::Handle_ViewMode()
 {
@@ -352,7 +508,7 @@ void ABaseCharacter::Handle_ViewMode()
 	{
 		return;
 	}
-	SetViewMode(GetViewMode() == AlsViewModeTags::ThirdPerson ? AlsViewModeTags::FirstPerson : AlsViewModeTags::ThirdPerson);
+	//SetViewMode(GetViewMode() == AlsViewModeTags::ThirdPerson ? AlsViewModeTags::FirstPerson : AlsViewModeTags::ThirdPerson);
 }
 
 
@@ -375,6 +531,8 @@ void ABaseCharacter::Handle_Interact()
 	if (!CurrentFocusedActor)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Handle_Interact: No focused actor."));
+		//Test Code
+		//PlayInteractionMontage(CurrentFocusedActor);
 		return;
 	}
 
@@ -387,6 +545,11 @@ void ABaseCharacter::Handle_Interact()
 		{
 			IInteractableInterface::Execute_Interact(CurrentFocusedActor, PC);
 			UE_LOG(LogTemp, Log, TEXT("Handle_Interact: Called Interact on %s"), *CurrentFocusedActor->GetName());
+
+
+			UE_LOG(LogTemp, Log, TEXT("Equipped item on slot"));
+			RefreshOverlayObject(0);
+
 		}
 		else
 		{
@@ -450,6 +613,17 @@ void ABaseCharacter::TraceInteractableActor()
 		Hit, Start, End, ECC_GameTraceChannel1, Params);
 
 	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 0.1f);
+
+	/*
+	FVector TargetOffset = bHit ? FVector(-20.f, 0.f, -10.f) : FVector::ZeroVector;
+	if (IsValid(GetToolbarInventoryComponent()->GetCurrentEquippedItem()))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("총 들고 있음 ㅇㅇ"));
+		GetToolbarInventoryComponent()->GetCurrentEquippedItem()->MeshComponent->SetRelativeLocation(FMath::VInterpTo(GetToolbarInventoryComponent()->GetCurrentEquippedItem()->MeshComponent->GetRelativeLocation(), TargetOffset, 0.1f, 10.f));
+		SetDesiredAiming(false);
+	}
+	*/
+	
 
 	if (bHit && Hit.GetActor() && Hit.GetActor()->Implements<UInteractableInterface>())
 	{
@@ -536,14 +710,20 @@ void ABaseCharacter::Server_SetQuickSlotIndex_Implementation(int32 NewIndex)
 
 void ABaseCharacter::Multicast_EquipItemFromQuickSlot_Implementation(int32 Index)
 {
+	LOG_Item_WARNING(TEXT("refresh animation"));
+
 	EquipItemFromCurrentQuickSlot(Index);
 }
 
 void ABaseCharacter::EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex)
 {
 	UE_LOG(LogTemp, Warning, TEXT("Change Equip Item"));
-
-	TestEquipFunction(QuickSlotIndex);
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && AnimInstance->IsAnyMontagePlaying())
+	{
+		AnimInstance->Montage_Stop(0.25f); // 페이드 아웃 시간: 0.25초
+	}
+	AnimInstance->Montage_Stop(0.25f, ReloadMontage);
 	//TODO: 아이템 교체 로직 추가
 	/* // 지금은 아이템 없어서 임시 비활성화.
 	if (!QuickSlots.IsValidIndex(QuickSlotIndex))
@@ -583,7 +763,7 @@ void ABaseCharacter::EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex)
 	// 클라이언트에서 호출된 경우 서버에 요청
 	if (GetLocalRole() < ROLE_Authority)
 	{
-		Server_EquipItemFromCurrentQuickSlot(QuickSlotIndex);
+		Server_EquipItemFromCurrentQuickSlot(QuickSlotIndex); // 클라이언트에서 호출 무시되는 중...
 		return;
 	}
 
@@ -594,6 +774,15 @@ void ABaseCharacter::EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex)
 	}
 
 	ToolbarInventoryComponent->EquipItemAtSlot(QuickSlotIndex);
+
+
+	RefreshOverlayObject(0);
+}
+
+
+void ABaseCharacter::Server_EquipItemFromCurrentQuickSlot_Implementation(int32 QuickSlotIndex)
+{
+	EquipItemFromCurrentQuickSlot(QuickSlotIndex);
 }
 
 void ABaseCharacter::EquipItem(UObject* Item)
@@ -705,7 +894,7 @@ float ABaseCharacter::GetFallDamage(float Velocity)
 void ABaseCharacter::HandlePlayerDeath()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Character is dead"));
-	Camera->SetRelativeRotation_Direct({ 0.0f, 90.0f, 0.0f });
+	//Camera->SetRelativeRotation_Direct({ 0.0f, 90.0f, 0.0f });
 	StartRagdolling();
 }
 
@@ -765,6 +954,61 @@ void ABaseCharacter::TestEquipFunction(int32 NewIndex)
 
 void ABaseCharacter::RefreshOverlayObject(int index)
 {
+	UE_LOG(LogTemp, Warning, TEXT("Equipped"));
+	AItemBase* CurrentItem = GetToolbarInventoryComponent()->GetCurrentEquippedItem();
+	//static FGameplayTag CurrentItemTag = FGameplayTag::RequestGameplayTag(TEXT("Character.Player.Equipped"));
+	if (!IsValid(CurrentItem))
+	{
+		SetDesiredGait(AlsOverlayModeTags::Default);
+		SetOverlayMode(AlsOverlayModeTags::Default);
+		RefreshOverlayLinkedAnimationLayer(3);
+		//AttachOverlayObject(SM_Torch, NULL, NULL, "Torch", true);
+
+		UE_LOG(LogTemp, Warning, TEXT("Character Equipped None"));
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("Equipped Item is Valid"));
+	FGameplayTag ItemTag = CurrentItem->ItemData.ItemType;
+
+	UE_LOG(LogTemp, Warning, TEXT("ItemTag: %s"), *ItemTag.ToString());
+
+	if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))  // 또는 HasTag 등 비교 방식에 따라
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Rifle"));
+		SetDesiredGait(AlsOverlayModeTags::Rifle);
+		SetOverlayMode(AlsOverlayModeTags::Rifle);
+		RefreshOverlayLinkedAnimationLayer(0);
+
+		SetDesiredAiming(true);
+		//AttachOverlayObject(NULL, SKM_Rifle, NULL, "Rifle", false);
+
+		UE_LOG(LogTemp, Warning, TEXT("Character Equipped Rifle"));
+		return;
+	}
+	
+	if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.FlashLight")))  // 또는 HasTag 등 비교 방식에 따라
+	{
+		SetDesiredGait(AlsOverlayModeTags::Torch);
+		SetOverlayMode(AlsOverlayModeTags::Torch);
+		RefreshOverlayLinkedAnimationLayer(2);
+		//AttachOverlayObject(SM_Torch, NULL, NULL, "Torch", true);
+
+		UE_LOG(LogTemp, Warning, TEXT("Character Equipped Torch"));
+		return;
+	}
+	UE_LOG(LogTemp, Warning, TEXT("Equipped Item is Valid but doesn`t match any tag"));
+
+	SetDesiredGait(AlsOverlayModeTags::Default);
+	SetOverlayMode(AlsOverlayModeTags::Default);
+	RefreshOverlayLinkedAnimationLayer(3);
+	//AttachOverlayObject(SM_Torch, NULL, NULL, "Torch", true);
+
+	UE_LOG(LogTemp, Warning, TEXT("Character Equipped None"));
+	return;
+
+	/*
+
 	if (index == 0)
 	{
 		SetDesiredGait(AlsOverlayModeTags::Rifle);
@@ -794,7 +1038,7 @@ void ABaseCharacter::RefreshOverlayObject(int index)
 		OverlaySkeletalMesh->SetSkinnedAssetAndUpdate(NULL, true);
 		OverlaySkeletalMesh->SetAnimInstanceClass(NULL);
 	}
-
+	*/
 }
 
 void ABaseCharacter::AttachOverlayObject(UStaticMesh* NewStaticMesh, USkeletalMesh* NewSkeletalMesh, TSubclassOf<UAnimInstance> NewAnimationClass, FName SocketName, bool bUseLeftGunBone)
@@ -830,11 +1074,20 @@ void ABaseCharacter::AttachOverlayObject(UStaticMesh* NewStaticMesh, USkeletalMe
 	OverlaySkeletalMesh->SetSkinnedAssetAndUpdate(NewSkeletalMesh, true);
 	OverlaySkeletalMesh->SetAnimInstanceClass(NewAnimationClass);
 	OverlaySkeletalMesh->AttachToComponent(GetMesh(), AttachRules, ResultSocketName);
+
+	RemoteOnlyOverlayStaticMesh->SetStaticMesh(NewStaticMesh);
+	RemoteOnlyOverlayStaticMesh->AttachToComponent(RemoteOnlySkeletalMesh, AttachRules, ResultSocketName);
+
+	RemoteOnlyOverlaySkeletalMesh->SetSkinnedAssetAndUpdate(NewSkeletalMesh, true);
+	RemoteOnlyOverlaySkeletalMesh->SetAnimInstanceClass(NewAnimationClass);
+	RemoteOnlyOverlaySkeletalMesh->AttachToComponent(RemoteOnlySkeletalMesh, AttachRules, ResultSocketName);
 }
 
 void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(int index)
 {
 	TSubclassOf<UAnimInstance> OverlayAnimationInstanceClass;
+
+
 
 	if (index == 0)
 	{
@@ -861,10 +1114,12 @@ void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(int index)
 	if (IsValid(OverlayAnimationInstanceClass))
 	{
 		GetMesh()->LinkAnimClassLayers(OverlayAnimationInstanceClass);
+		RemoteOnlySkeletalMesh->LinkAnimClassLayers(OverlayAnimationInstanceClass);
 	}
 	else
 	{
 		GetMesh()->LinkAnimClassLayers(DefaultAnimationClass);
+		RemoteOnlySkeletalMesh->LinkAnimClassLayers(DefaultAnimationClass);
 	}
 }
 
@@ -877,9 +1132,10 @@ void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(int index)
 
 void ABaseCharacter::PlayInteractionMontage(AActor* Target)
 {
+	/*
 	if (!Target || !GetMesh() || !GetMesh()->GetAnimInstance())
 		return;
-
+		*/
 
 	UAnimMontage* MontageToPlay = InteractMontage;
 	// 1. 대상 클래스별로 분기
@@ -916,7 +1172,14 @@ void ABaseCharacter::Multicast_PlayMontage_Implementation(UAnimMontage* MontageT
 {
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	AnimInstance->Montage_Play(MontageToPlay);
+
+	
+	AnimInstance = RemoteOnlySkeletalMesh->GetAnimInstance();
+	AnimInstance->Montage_Play(MontageToPlay);
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void ABaseCharacter::SetBackpackInventoryComponent(UBackpackInventoryComponent* BackpackInvenComp, bool bEquip)
 {
@@ -942,7 +1205,7 @@ UBackpackInventoryComponent* ABaseCharacter::GetBackpackInventoryComponent() con
 
 bool ABaseCharacter::IsEquipped() const
 {
-	static FGameplayTag EquippedTag = FGameplayTag::RequestGameplayTag(TEXT("Character.Player.Equipped"));
+	static FGameplayTag EquippedTag = FGameplayTag::RequestGameplayTag(TEXT("Character.Player.Equipped"));	
 	return EquippedTags.HasTag(EquippedTag);
 }
 
@@ -1028,13 +1291,12 @@ void ABaseCharacter::Server_UnequipCurrentItem_Implementation()
 	UnequipCurrentItem();
 }
 
-void ABaseCharacter::Server_EquipItemFromCurrentQuickSlot_Implementation(int32 QuickSlotIndex)
-{
-	EquipItemFromCurrentQuickSlot(QuickSlotIndex);
-}
-
 bool ABaseCharacter::UseEquippedItem()
 {
+	if (bIsReloading)
+	{
+		return true;
+	}
 	if (!IsEquipped())
 	{
 		LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 장비 상태가 아닙니다."));
@@ -1059,17 +1321,34 @@ bool ABaseCharacter::UseEquippedItem()
 		LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 현재 장착된 아이템이 없습니다."));
 		return false;
 	}
-
-	if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem))
+	if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))
 	{
-		EquipmentItem->UseItem();
-		return true;
+		ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+		if (PC)
+		{
+			PC->SpawnDrone();
+			return true;
+		}
 	}
-	else
+	if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
 	{
-		LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 아이템이 장비 아이템이 아닙니다."));
-		return false;
+		if (IsDesiredAiming() == false)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("조준하세요"));
+			return false;
+		}
 	}
+	
+	EquippedItem->UseItem();
+	if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
+	{
+		ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+		if (PC)
+		{
+			PC->CameraShake();
+		}
+	}
+	return true;
 }
 
 void ABaseCharacter::Server_UseEquippedItem_Implementation()
@@ -1108,6 +1387,8 @@ void ABaseCharacter::DropCurrentItem()
 	if (ToolbarInventoryComponent)
 	{
 		ToolbarInventoryComponent->DropCurrentEquippedItem();
+
+		RefreshOverlayObject(0);
 	}
 }
 
@@ -1123,3 +1404,4 @@ void ABaseCharacter::DropItemAtSlot(int32 SlotIndex, int32 Quantity)
 		ToolbarInventoryComponent->TryDropItemAtSlot(SlotIndex, Quantity);
 	}
 }
+
