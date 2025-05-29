@@ -246,7 +246,23 @@ public:
 	void SetSprintingStateToPlayerState(bool flag);
 
 public:
+
+	// Recoil 상태
+	FTimerHandle RecoilTimerHandle;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite);
+	float YawRecoilRange = 1.0f;
+
+	int32 RecoilStep = 0;
+	int32 RecoilMaxSteps = 5;
+	float RecoilStepPitch = 0.f;
+	float RecoilStepYaw = 0.f;
+
 	void CameraShake();
+	void ApplyRecoilStep();
+
+	void CameraSetOnScope();
+	
 
 	UFUNCTION(BlueprintCallable)
 	void SetPlayerMovementSetting();
