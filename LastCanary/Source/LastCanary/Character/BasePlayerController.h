@@ -101,6 +101,9 @@ public:
 	TObjectPtr<UInputAction> ThrowItemAction;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
+	TObjectPtr<UInputAction> RifleReloadAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
 	TObjectPtr<UInputAction> VoiceAction;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
@@ -150,7 +153,7 @@ public:
 	bool bIsRunKeyHeld = false;
 	bool bWantsToRun = false;
 
-private:
+public:
 	virtual void Input_OnLookMouse(const FInputActionValue& ActionValue);
 
 	virtual void Input_OnLook(const FInputActionValue& ActionValue);
@@ -187,6 +190,8 @@ private:
 	virtual void Input_OnCanceledVoiceChat();
 
 	virtual void Input_ChangeShootingSetting();
+
+	virtual void Input_Reload();
 
 	virtual void Input_ChangeQuickSlot(const FInputActionValue& ActionValue);
 
@@ -246,7 +251,23 @@ public:
 	void SetSprintingStateToPlayerState(bool flag);
 
 public:
+
+	// Recoil 상태
+	FTimerHandle RecoilTimerHandle;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite);
+	float YawRecoilRange = 1.0f;
+
+	int32 RecoilStep = 0;
+	int32 RecoilMaxSteps = 5;
+	float RecoilStepPitch = 0.f;
+	float RecoilStepYaw = 0.f;
+
 	void CameraShake();
+	void ApplyRecoilStep();
+
+	void CameraSetOnScope();
+	
 
 	UFUNCTION(BlueprintCallable)
 	void SetPlayerMovementSetting();

@@ -10,7 +10,8 @@ class UAlsCameraComponent;
 class UInputMappingContext;
 class UInputAction;
 class UBoxComponent;
-
+class USpringArmComponent;
+class UCameraComponent;
 class AItemBase;
 class UToolbarInventoryComponent;
 class UBackpackInventoryComponent;
@@ -21,12 +22,52 @@ class LASTCANARY_API ABaseCharacter : public AAlsCharacter
 	GENERATED_BODY()
 
 public:
+	bool bIsScoped = false;
+
+
+public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
 	UStaticMeshComponent* OverlayStaticMesh;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
 	USkeletalMeshComponent* OverlaySkeletalMesh;
 
+
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* RemoteOnlySkeletalMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	UStaticMeshComponent* RemoteOnlyOverlayStaticMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* RemoteOnlyOverlaySkeletalMesh;
+
+
+	/*
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Als Character Example")
+	TObjectPtr<UAlsCameraComponent> sCamera;
+
+	virtual void CalcCamera(float DeltaTime, FMinimalViewInfo& ViewInfo) override;
+	*/
+
+	// SpringArm 컴포넌트 (카메라 거리와 회전 보정용)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+	USpringArmComponent* SpringArm;
+
+	// Camera 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+	UCameraComponent* Camera;
+
+	FTimerHandle MoveTimerHandle;
+	FVector StartLocation;
+	FVector TargetLocation;
+	FName TargetSocketName = FName("");
+	float InterpSpeed = 15.0f;
+	float SnapTolerance = 1.0f;
+	void StartSmoothMove(const FVector& Start, const FVector& Destination);
+	void SmoothMoveStep();
+	void CalcCameraLocation();
 	/*IsCharacterPossess?*/
 public:
 	void SetPossess(bool IsPossessed);
@@ -41,12 +82,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-	// Camera
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Settings|Camera")
-	TObjectPtr<UAlsCameraComponent> Camera;
 
-protected:
-	virtual void CalcCamera(float DeltaTime, FMinimalViewInfo& ViewInfo) override;
 
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|MouseSensitivity", Meta = (ClampMin = 0, ForceUnits = "x"))
@@ -75,6 +111,7 @@ public: //Functions to process controller input.
 	virtual void Handle_Aim(const FInputActionValue& ActionValue);
 	virtual void Handle_Interact();
 	virtual void Handle_ViewMode();
+	virtual void Handle_Reload();
 
 public:
 	//Interact Function
@@ -96,7 +133,7 @@ public:
 	void EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex);
 
 	// 퀵슬롯 아이템들 (타입은 아이템 구조에 따라 UObject*, AItemBase*, UItemData* 등)
-	TArray<UObject*> QuickSlots;
+	//TArray<UObject*> QuickSlots;
 
 	// 현재 장착된 아이템
 	UObject* HeldItem = nullptr;
@@ -188,6 +225,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
 	UAnimMontage* InteractMontage;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UAnimMontage* ReloadMontage;
+
+	UPROPERTY(BlueprintReadOnly)
+	bool bIsReloading = false;
+
+	UFUNCTION()
+	void OnGunReloadAnimComplete(UAnimMontage* CompletedMontage, bool bInterrupted);
+
 	UFUNCTION()
 	void PlayInteractionMontage(AActor* Target);
 
@@ -258,6 +304,9 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex);
 	void Server_EquipItemFromCurrentQuickSlot_Implementation(int32 QuickSlotIndex);
+
+
+
 
 	UFUNCTION(BlueprintCallable, Category = "Equipment")
 	bool UseEquippedItem();

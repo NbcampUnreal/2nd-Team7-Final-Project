@@ -6,6 +6,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Character/BasePlayerController.h"
 
 #include "Net/UnrealNetwork.h"
 
@@ -83,6 +84,7 @@ void ABaseDrone::Tick(float DeltaTime)
 
 	if (Distance > MaxDistanceToPlayer)
 	{
+		Multicast_ReturnToPlayer();
 	}
 }
 
@@ -227,4 +229,13 @@ void ABaseDrone::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLife
 void ABaseDrone::SetCharacterLocation(FVector Location)
 {
 	CharacterLocation = Location;
+}
+
+void ABaseDrone::Multicast_ReturnToPlayer_Implementation()
+{
+	APlayerController* PC = Cast<APlayerController>(GetOwner());
+	if (ABasePlayerController* MyPC = Cast<ABasePlayerController>(PC))
+	{
+		MyPC->Input_DroneExit();
+	}
 }
