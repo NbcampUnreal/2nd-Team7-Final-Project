@@ -709,30 +709,8 @@ void ABasePlayerController::Input_OnItemUse()
 	{
 		return;
 	}
-
-	// 임시로 넣은 코드이니 꼭 삭제할 것!
+	
 	PlayerCharacter->UseEquippedItem();
-	//To Do: 아이템 추가 되고 나서...
-	//if(GetHeldItem()->IsA<ABaseDrone>())
-	//{
-	//SpawnDrone();
-	//}
-	//TODO: AItem 타입에 맞는 처리를 실행
-	/*
-	아이템이 무언가를 상속받는 인터페이스 클래스가 있다면
-	ItemInterface->UseItem();
-	*/
-	//test
-	if (PlayerCharacter->GetCurrentQuickSlotIndex() == 0)
-	{
-		//CameraShake();
-	}
-	if (PlayerCharacter->GetCurrentQuickSlotIndex() == 2)
-	{
-		//SpawnDrone();
-	}
-	//만약 총기라면
-	//CameraShake();
 }
 
 void ABasePlayerController::Input_OnItemThrow()
@@ -757,7 +735,7 @@ void ABasePlayerController::Input_OnStartedVoiceChat()
 
 void ABasePlayerController::Input_OnCanceledVoiceChat()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Voice On"));
+	UE_LOG(LogTemp, Warning, TEXT("Voice Off"));
 	//TODO: Voice 기능을 잘 추가해보기
 	ConsoleCommand(TEXT("ToggleSpeaking 1"), true);
 }

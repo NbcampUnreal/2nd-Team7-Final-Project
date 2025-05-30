@@ -30,9 +30,14 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Drone | Distance")
 	float MaxDistanceToPlayer= 2000.f;
 
+	// 충돌 이벤트 함수 선언 (OnComponentHit 시그니처)
+	UFUNCTION()
+	void OnDroneHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
 
 public:
 	virtual void Tick(float DeltaTime) override;
+	
+		
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* DroneMesh;
 
@@ -41,6 +46,9 @@ public:
 
 	UPROPERTY(VisibleAnywhere)
 	class USpringArmComponent* SpringArm;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement", meta = (AllowPrivateAccess = "true"))
+	class UFloatingPawnMovement* MovementComponent;
 
 	// 상하 카메라 회전값 (Pitch)
 	UPROPERTY(ReplicatedUsing = OnRep_CameraPitch)

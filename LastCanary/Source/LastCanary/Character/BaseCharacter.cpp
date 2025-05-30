@@ -380,7 +380,10 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 	{
 		return; // 리로드 중이므로 줌 입력 무시
 	}
-
+	if (bIsClose)
+	{
+		return;
+	}
 	if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem))
 	{
 		if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
@@ -497,7 +500,7 @@ void ABaseCharacter::OnGunReloadAnimComplete(UAnimMontage* CompletedMontage, boo
 	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
 	if (AGunBase* Gun = Cast<AGunBase>(EquippedItem))
 	{
-		Gun->Reload(1); // 원하는 탄약 수 만큼
+		Gun->Reload(30); // 원하는 탄약 수 만큼
 	}
 }
 
@@ -508,7 +511,7 @@ void ABaseCharacter::Handle_ViewMode()
 	{
 		return;
 	}
-	//SetViewMode(GetViewMode() == AlsViewModeTags::ThirdPerson ? AlsViewModeTags::FirstPerson : AlsViewModeTags::ThirdPerson);
+	//SetViewMode(GetViewMode() == AlsViewModeTags::ThirdPerson ? AlsViewModeTags::FirstPerson : AlsViewModeTags::ThirdPerson);  카메라 컴포넌트 바껴서 잘 바꿔야됨
 }
 
 
@@ -531,8 +534,6 @@ void ABaseCharacter::Handle_Interact()
 	if (!CurrentFocusedActor)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Handle_Interact: No focused actor."));
-		//Test Code
-		//PlayInteractionMontage(CurrentFocusedActor);
 		return;
 	}
 
@@ -569,17 +570,6 @@ void ABaseCharacter::PickupItem()
 	{
 		return;
 	}
-	//TO DO...
-	//Play Animation Montage
-	//when Animation Montage ended, call NotifyFunc() to getItem
-	//add to quickslot
-	/*
-	AItemBase* HitItem = Cast<AItemBase>(Hit.GetActor());
-	if (!HitItem) return;
-		아이템 저장 함수
-		AddItem(HitItem);
-	*/
-
 }
 
 
@@ -611,18 +601,51 @@ void ABaseCharacter::TraceInteractableActor()
 
 	bool bHit = GetWorld()->LineTraceSingleByChannel(
 		Hit, Start, End, ECC_GameTraceChannel1, Params);
-
-	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 0.1f);
-
 	/*
-	FVector TargetOffset = bHit ? FVector(-20.f, 0.f, -10.f) : FVector::ZeroVector;
-	if (IsValid(GetToolbarInventoryComponent()->GetCurrentEquippedItem()))
+	if (bHit)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("총 들고 있음 ㅇㅇ"));
-		GetToolbarInventoryComponent()->GetCurrentEquippedItem()->MeshComponent->SetRelativeLocation(FMath::VInterpTo(GetToolbarInventoryComponent()->GetCurrentEquippedItem()->MeshComponent->GetRelativeLocation(), TargetOffset, 0.1f, 10.f));
-		SetDesiredAiming(false);
+		float DistanceToHit = Hit.Distance;
+		LOG_Item_WARNING(TEXT("Hit Actor: %s, Distance: %.2f"),
+			*Hit.GetActor()->GetName(), DistanceToHit);
 	}
 	*/
+	
+	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 0.1f);
+	//여기가 로그가 안찍힘 수정해야됨
+	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();	
+	if (EquippedItem)
+	{
+		AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem);
+		if (IsValid(EquipmentItem))
+		{
+			if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
+			{
+				AGunBase* RifleItem = Cast<AGunBase>(EquippedItem);
+				
+				if (bHit)  // 레이가 맞으면서 맞은 대상이 벽인 경우를 추가하거나, 캐릭터의 캡슐 콜라이더가 닿았을 때로 조건을 변경하는 것도...
+				{
+					float DistanceToHit = Hit.Distance;
+					LOG_Item_WARNING(TEXT("Hit Actor: %s, Distance: %.2f"),
+						*Hit.GetActor()->GetName(), DistanceToHit);
+					//거리가80미만이면 줌 해제
+					if (DistanceToHit < 120.0f)
+					{
+						SetDesiredAiming(false);
+						SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+						UE_LOG(LogTemp, Warning, TEXT("Scope out: Too Close"));
+						bIsClose = true;
+					}
+					else
+					{
+						SetDesiredAiming(true);
+						bIsClose = false;
+					}
+				}
+				
+			}
+		}
+	}
+	
 	
 
 	if (bHit && Hit.GetActor() && Hit.GetActor()->Implements<UInteractableInterface>())
@@ -718,35 +741,14 @@ void ABaseCharacter::Multicast_EquipItemFromQuickSlot_Implementation(int32 Index
 void ABaseCharacter::EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex)
 {
 	UE_LOG(LogTemp, Warning, TEXT("Change Equip Item"));
+
+	SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && AnimInstance->IsAnyMontagePlaying())
 	{
 		AnimInstance->Montage_Stop(0.25f); // 페이드 아웃 시간: 0.25초
 	}
 	AnimInstance->Montage_Stop(0.25f, ReloadMontage);
-	//TODO: 아이템 교체 로직 추가
-	/* // 지금은 아이템 없어서 임시 비활성화.
-	if (!QuickSlots.IsValidIndex(QuickSlotIndex))
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Invalid quick slot index: %d"), QuickSlotIndex);
-		return;
-	}
-
-	if (QuickSlotIndex >= QuickSlots.Num())
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Invalid quick slot index : %d (Out of Range)"), QuickSlotIndex);
-		return;
-	}
-	UObject* Item = QuickSlots[QuickSlotIndex];
-	if (Item)
-	{
-		EquipItem(Item); // 실제 장착 로직 호출
-	}
-	else
-	{
-		UnequipCurrentItem(); // 슬롯이 비어있으면 장착 해제
-	}
-	*/
 
 	if (!ToolbarInventoryComponent)
 	{
@@ -956,7 +958,7 @@ void ABaseCharacter::RefreshOverlayObject(int index)
 {
 	UE_LOG(LogTemp, Warning, TEXT("Equipped"));
 	AItemBase* CurrentItem = GetToolbarInventoryComponent()->GetCurrentEquippedItem();
-	//static FGameplayTag CurrentItemTag = FGameplayTag::RequestGameplayTag(TEXT("Character.Player.Equipped"));
+	//static FGameplayTag CurrentItemTag = FGameplayTag::RequestGameplayTag(TEXT("Character.Player.Equipped"));  // 참고용
 	if (!IsValid(CurrentItem))
 	{
 		SetDesiredGait(AlsOverlayModeTags::Default);
@@ -987,7 +989,7 @@ void ABaseCharacter::RefreshOverlayObject(int index)
 		return;
 	}
 	
-	if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.FlashLight")))  // 또는 HasTag 등 비교 방식에 따라
+	if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.FlashLight")))
 	{
 		SetDesiredGait(AlsOverlayModeTags::Torch);
 		SetOverlayMode(AlsOverlayModeTags::Torch);
@@ -1008,37 +1010,14 @@ void ABaseCharacter::RefreshOverlayObject(int index)
 	return;
 
 	/*
-
+	예시 코드.. 참고할 것!
 	if (index == 0)
 	{
 		SetDesiredGait(AlsOverlayModeTags::Rifle);
 		SetOverlayMode(AlsOverlayModeTags::Rifle);
 		RefreshOverlayLinkedAnimationLayer(index);
 		AttachOverlayObject(NULL, SKM_Rifle, NULL, "Rifle", false);
-	}
-	else if (index == 1)
-	{
-		SetDesiredGait(AlsOverlayModeTags::PistolOneHanded);
-		SetOverlayMode(AlsOverlayModeTags::PistolOneHanded);
-		RefreshOverlayLinkedAnimationLayer(index);
-		AttachOverlayObject(NULL, SKM_Pistol, NULL, "Pistol", false);
-	}
-	else if (index == 2)
-	{
-		SetDesiredGait(AlsOverlayModeTags::Bow);
-		SetOverlayMode(AlsOverlayModeTags::Bow);
-		RefreshOverlayLinkedAnimationLayer(index);
-		AttachOverlayObject(SM_Torch, NULL, NULL, "Torch", true);
-	}
-	else if (index == 3)
-	{
-		SetDesiredGait(AlsOverlayModeTags::Default);
-		RefreshOverlayLinkedAnimationLayer(index);
-		OverlayStaticMesh->SetStaticMesh(NULL);
-		OverlaySkeletalMesh->SetSkinnedAssetAndUpdate(NULL, true);
-		OverlaySkeletalMesh->SetAnimInstanceClass(NULL);
-	}
-	*/
+	}*/
 }
 
 void ABaseCharacter::AttachOverlayObject(UStaticMesh* NewStaticMesh, USkeletalMesh* NewSkeletalMesh, TSubclassOf<UAnimInstance> NewAnimationClass, FName SocketName, bool bUseLeftGunBone)
@@ -1124,35 +1103,10 @@ void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(int index)
 }
 
 
-
-/// <summary>
-/// 물체 별 인터렉션애니메이션 몽타주 재생 함수
-/// </summary>
-/// <param name="Target"></param>
-
 void ABaseCharacter::PlayInteractionMontage(AActor* Target)
 {
-	/*
-	if (!Target || !GetMesh() || !GetMesh()->GetAnimInstance())
-		return;
-		*/
-
 	UAnimMontage* MontageToPlay = InteractMontage;
-	// 1. 대상 클래스별로 분기
-	/*
-	if (Target->IsA(ADoorActor::StaticClass()))
-	{
-		MontageToPlay = OpenDoorMontage;
-	}
-	else if (Target->IsA(AChestActor::StaticClass()))
-	{
-		MontageToPlay = OpenChestMontage;
-	}
-	else if (Target->ActorHasTag("Tree"))
-	{
-		MontageToPlay = ChopTreeMontage;
-	}
-	*/
+
 	// 2. 몽타주 재생
 	if (MontageToPlay)
 	{
@@ -1160,7 +1114,6 @@ void ABaseCharacter::PlayInteractionMontage(AActor* Target)
 		Server_PlayMontage(MontageToPlay);
 		
 	}
-	
 }
 
 void ABaseCharacter::Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay)
@@ -1321,31 +1274,45 @@ bool ABaseCharacter::UseEquippedItem()
 		LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 현재 장착된 아이템이 없습니다."));
 		return false;
 	}
+
 	if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))
 	{
 		ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
 		if (PC)
 		{
 			PC->SpawnDrone();
+			ToolbarInventoryComponent->DropCurrentEquippedItem();
+			RefreshOverlayObject(0);
 			return true;
 		}
 	}
+
 	if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
 	{
 		if (IsDesiredAiming() == false)
 		{
 			UE_LOG(LogTemp, Warning, TEXT("조준하세요"));
-			return false;
+			return true;
 		}
 	}
 	
 	EquippedItem->UseItem();
+
 	if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
 	{
+		AGunBase* RifleItem = Cast<AGunBase>(EquippedItem);
 		ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
 		if (PC)
 		{
-			PC->CameraShake();
+			if (RifleItem)
+			{
+				if (RifleItem->CurrentAmmo > 0)
+				{
+					PC->CameraShake();
+				}
+				
+			}
+			
 		}
 	}
 	return true;

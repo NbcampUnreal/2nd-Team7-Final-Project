@@ -7,40 +7,51 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Character/BasePlayerController.h"
-
+#include "Components/CapsuleComponent.h"
+#include "GameFramework/FloatingPawnMovement.h"
 #include "Net/UnrealNetwork.h"
 
 ABaseDrone::ABaseDrone()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	// 루트 컴포넌트 설정
-	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootComponent"));
-
 	// 스태틱 메시 생성
 	DroneMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("DroneMesh"));
-	DroneMesh->SetupAttachment(RootComponent);
+	RootComponent = DroneMesh; // 이 줄 추가!
 
+	// SpringArm과 Camera 설정
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
-	SpringArm->SetupAttachment(RootComponent);
+	SpringArm->SetupAttachment(DroneMesh);
 	SpringArm->TargetArmLength = 0.f;
-	
 
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(SpringArm);
 
-	PrimaryActorTick.bCanEverTick = true;
-	SetReplicatingMovement(true); // redundancy safety
+	// 기타 설정
+	SetReplicatingMovement(true);
 	bReplicates = true;
 
 	SpringArm->bUsePawnControlRotation = false;
 	Camera->bUsePawnControlRotation = false;
+	
+
+	MovementComponent = CreateDefaultSubobject<UFloatingPawnMovement>(TEXT("MovementComponent"));
+	MovementComponent->UpdatedComponent = DroneMesh; // RootComponent 또는 DroneMesh로 설정
 
 }
 
 void ABaseDrone::BeginPlay()
 {
 	Super::BeginPlay();
+
+	DroneMesh->SetNotifyRigidBodyCollision(true); // 충돌 이벤트 사용하려면 true여야 함
+	DroneMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	DroneMesh->SetCollisionResponseToAllChannels(ECR_Block);
+
+	// 충돌 이벤트 바인딩 (OnComponentHit)
+	DroneMesh->OnComponentHit.AddDynamic(this, &ABaseDrone::OnDroneHit);
+
+	MoveDirection = FVector::ForwardVector;
 }
 
 void ABaseDrone::Tick(float DeltaTime)
@@ -80,7 +91,7 @@ void ABaseDrone::Tick(float DeltaTime)
 	float Distance = FVector::Dist(MyLocation, CharacterLocation);
 
 
-	UE_LOG(LogTemp, Log, TEXT("Distance to CharacterLocation: %.2f"), Distance);
+	//UE_LOG(LogTemp, Log, TEXT("Distance to CharacterLocation: %.2f"), Distance);
 
 	if (Distance > MaxDistanceToPlayer)
 	{
@@ -238,4 +249,42 @@ void ABaseDrone::Multicast_ReturnToPlayer_Implementation()
 	{
 		MyPC->Input_DroneExit();
 	}
+}
+// CPP 구현
+void ABaseDrone::OnDroneHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
+{
+	FVector Normal = Hit.ImpactNormal;
+	FVector CurrVelocity = CurrentVelocity;
+	
+	// 로그 출력
+	UE_LOG(LogTemp, Warning, TEXT("Drone hit %s"), *OtherActor->GetName());
+	UE_LOG(LogTemp, Warning, TEXT("Impact Normal: X=%.3f Y=%.3f Z=%.3f"), Normal.X, Normal.Y, Normal.Z);
+	UE_LOG(LogTemp, Warning, TEXT("Current Velocity Before Reflection: X=%.3f Y=%.3f Z=%.3f"), CurrVelocity.X, CurrVelocity.Y, CurrVelocity.Z);
+	// 기존 벡터 크기 저장
+	float Speed = CurrVelocity.Size();
+
+	// 반사 벡터 계산 (방향만)
+	FVector ReflectedDir = CurrVelocity.MirrorByVector(Normal).GetSafeNormal();
+
+	// 크기 유지
+	FVector Reflected = ReflectedDir * Speed * 0.5f; // 반감 크기
+
+	CurrentVelocity = Reflected;
+	if (Normal.Z > 0.0f)
+	{
+		VerticalVelocity = -VerticalVelocity * Normal.Z * 0.5f;
+	}
+	else
+	{
+		VerticalVelocity = VerticalVelocity * Normal.Z * 0.5f;
+	}
+	// 반사 후 속도 로그
+	UE_LOG(LogTemp, Warning, TEXT("Reflected Velocity: X=%.3f Y=%.3f Z=%.3f (Speed=%.3f)"), Reflected.X, Reflected.Y, Reflected.Z, Reflected.Size());
+
+
+	// 디버그 선으로 노말 벡터 시각화 (초록색, 1초간 표시)
+	const float DebugLineLength = 100.0f;
+	FVector Start = Hit.ImpactPoint;
+	FVector End = Start + Normal * DebugLineLength;
+	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 1.0f, 0, 2.0f);
 }

@@ -231,6 +231,9 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 	bool bIsReloading = false;
 
+	UPROPERTY(BlueprintReadOnly)
+	bool bIsClose = false;
+
 	UFUNCTION()
 	void OnGunReloadAnimComplete(UAnimMontage* CompletedMontage, bool bInterrupted);
 
