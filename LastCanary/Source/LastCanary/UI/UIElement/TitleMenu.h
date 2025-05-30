@@ -25,6 +25,8 @@ private:
 	UPROPERTY(meta = (BindWidget))
 	UButton* StartButton;
 	UPROPERTY(meta = (BindWidget))
+	UButton* JoinButton;
+	UPROPERTY(meta = (BindWidget))
 	UButton* OptionButton;
 	UPROPERTY(meta = (BindWidget))
 	UButton* ExitButton;
@@ -33,6 +35,8 @@ private:
 
 	UFUNCTION()
 	void OnStartButtonClicked();
+	UFUNCTION()
+	void OnJoinButtonClicked();
 	UFUNCTION()
 	void OnOptionButtonClicked();
 	UFUNCTION()
