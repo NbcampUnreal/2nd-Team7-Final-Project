@@ -42,11 +42,11 @@
 			"Enabled": true
 		},
 		{
+			"Name": "ActorPalette",
+			"Enabled": true
+		},
+		{
 			"Name": "OnlineSubsystemSteam",
-
-
-
-
 			"Enabled": true
 		}
 	]

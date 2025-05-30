@@ -12,14 +12,6 @@ void UInGameHUD::NativeDestruct()
 	Super::NativeDestruct();
 }
 
-void UInGameHUD::UpdateHealthBar(float HealthPercent)
-{
-	if (HealthBar)
-	{
-		HealthBar->SetPercent(HealthPercent);
-	}
-}
-
 void UInGameHUD::UpdateStaminaBar(float StaminaPercent)
 {
 	if (StaminaBar)

@@ -26,14 +26,16 @@ ABaseMonsterCharacter::ABaseMonsterCharacter()
     AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 
     AttackCollider = CreateDefaultSubobject<USphereComponent>(TEXT("AttackCollider"));
-    AttackCollider->SetupAttachment(GetMesh(), FName("foot_r"));
+    AttackCollider->SetupAttachment(GetMesh(), FName("hand_r"));
     AttackCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     //AttackCollider->OnComponentBeginOverlap.AddDynamic(this, &ABaseMonsterCharacter::OnAttackHit);
 
     UCapsuleComponent* CapsuleComp = GetCapsuleComponent();
     if (CapsuleComp)
     {
-        CapsuleComp->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+        //CapsuleComp->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+        CapsuleComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+        CapsuleComp->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
     }
 
     SetReplicateMovement(true);
@@ -62,14 +64,31 @@ float ABaseMonsterCharacter::TakeDamage(float DamageAmount, struct FDamageEvent 
     float DamageApplied = FMath::Clamp(DamageAmount, 0.0f, CurrentHP);
     CurrentHP -= DamageAmount;
 
+    //TO DO : Add Hit Motion
+
     if (CurrentHP <= 0)
     {
         CurrentHP = 0;
         bIsDead = true;
         MulticastAIDeath();
+
+        // ���������� ���� �� Destroy ó��
+        if (HasAuthority())
+        {
+            GetWorldTimerManager().SetTimer(DeathTimerHandle, this,
+                &ABaseMonsterCharacter::DestroyActor, 2.0f, false);
+        }
     }
 
     return DamageApplied;
+}
+
+void ABaseMonsterCharacter::DestroyActor()
+{
+    if (HasAuthority())
+    {
+        Destroy();
+    }
 }
 
 void ABaseMonsterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -138,18 +157,13 @@ void ABaseMonsterCharacter::MulticastAIMove_Implementation()
 
 void ABaseMonsterCharacter::MulticastAIDeath_Implementation()
 {
-    //UE_LOG(LogTemp, Warning, TEXT("Death"));
+    UE_LOG(LogTemp, Warning, TEXT("Death"));
     if (IsValid(AIDeath))
     {
         PlayAnimMontage(AIDeath);
-
-        if (HasAuthority())
-        {
-            Destroy();
-        }
+        // Destroy() ����! ���������� ó����
     }
 }
-
 
 void ABaseMonsterCharacter::EnableAttackCollider()
 {

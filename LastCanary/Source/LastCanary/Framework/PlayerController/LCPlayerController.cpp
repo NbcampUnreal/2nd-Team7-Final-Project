@@ -29,9 +29,14 @@ void ALCPlayerController::Login()
 
 }
 
-void ALCPlayerController::Client_UpdatePlayers_Implementation()
+void ALCPlayerController::Client_UpdatePlayerList_Implementation(const TArray<FSessionPlayerInfo>& PlayerInfos)
 {
 
+}
+
+
+void ALCPlayerController::Client_UpdatePlayers_Implementation()
+{
 
 }
 

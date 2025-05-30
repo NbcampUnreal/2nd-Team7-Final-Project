@@ -597,6 +597,11 @@ void ABaseCharacter::TraceInteractableActor()
 		return;
 	}
 
+	if (!IsLocallyControlled())
+	{
+		return;
+	}
+
 	FVector ViewLocation;
 	FRotator ViewRotation;
 

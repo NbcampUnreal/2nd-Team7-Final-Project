@@ -104,10 +104,13 @@ protected:
     bool bIsAttacking;*/
 
     FTimerHandle AttackTimerHandle;
+    FTimerHandle DeathTimerHandle;
 
     UFUNCTION()
     void OnAttackFinished();
 
+    UFUNCTION()
+    void DestroyActor();
     //void OnAttackHit(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 private:
