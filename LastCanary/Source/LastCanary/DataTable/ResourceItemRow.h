@@ -24,4 +24,10 @@ struct FResourceItemRow : public FTableRowBase
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     UTexture2D* ResourceIcon = nullptr;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UStaticMesh* Mesh = nullptr;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UMaterialInterface* Material = nullptr;
 };
