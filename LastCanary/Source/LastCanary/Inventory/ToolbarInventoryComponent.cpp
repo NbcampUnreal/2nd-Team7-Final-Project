@@ -1,6 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "Character/BaseCharacter.h"
 #include "DataTable/ItemDataRow.h"
@@ -272,69 +269,71 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
     if (!ItemData || !ItemData->ItemActorClass)
     {
         LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::EquipItemAtSlot] ItemData 또는 ItemActorClass가 없습니다. ItemRowName: %s"), *SlotData->ItemRowName.ToString());
-        return;
+       // return;
     }
 
-    FName TargetSocket = ItemData->AttachSocketName;
-    if (TargetSocket.IsNone() || !CachedOwnerCharacter->GetMesh()->DoesSocketExist(TargetSocket))
+    if (ItemData)
     {
-        TargetSocket = TEXT("Rifle");
+        FName TargetSocket = ItemData->AttachSocketName;
+        if (TargetSocket.IsNone() || !CachedOwnerCharacter->GetMesh()->DoesSocketExist(TargetSocket))
+        {
+            TargetSocket = TEXT("Rifle");
+        }
+        EquippedItemComponent->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+
+        FAttachmentTransformRules AttachRules(
+            EAttachmentRule::SnapToTarget,
+            EAttachmentRule::SnapToTarget,
+            EAttachmentRule::KeepWorld,
+            false
+        );
+
+        EquippedItemComponent->AttachToComponent(
+            CachedOwnerCharacter->GetMesh(),
+            AttachRules,
+            TargetSocket
+        );
+
+        EquippedItemComponent->SetChildActorClass(ItemData->ItemActorClass);
+
+        // 즉시 액터 확인 및 데이터 설정
+        AItemBase* EquippedItem = Cast<AItemBase>(EquippedItemComponent->GetChildActor());
+        if (!EquippedItem)
+        {
+            LOG_Item_ERROR(TEXT("[ToolbarInventoryComponent::EquipItemAtSlot] ChildActor 생성 실패 또는 Cast 실패"));
+            return;
+        }
+
+        EquippedItem->SetOwner(GetOwner());
+        if (APawn* OwnerPawn = Cast<APawn>(GetOwner()))
+        {
+            EquippedItem->SetInstigator(OwnerPawn);
+        }
+
+        // 아이템 데이터 설정
+        EquippedItem->ItemRowName = SlotData->ItemRowName;
+        EquippedItem->Quantity = SlotData->Quantity;
+        EquippedItem->Durability = SlotData->Durability;
+        EquippedItem->SetActorEnableCollision(false);
+
+        // 명시적으로 데이터 적용
+        EquippedItem->ApplyItemDataFromTable();
+
+        // 총기인 경우 추가 처리
+        if (AGunBase* Gun = Cast<AGunBase>(EquippedItem))
+        {
+            Gun->ApplyGunDataFromDataTable();
+        }
+
+        // 장착 상태 설정
+        if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem))
+        {
+            EquipmentItem->SetEquipped(true);
+        }
+
+        // 강제 네트워크 업데이트
+        EquippedItem->ForceNetUpdate();
     }
-
-    EquippedItemComponent->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
-
-    FAttachmentTransformRules AttachRules(
-        EAttachmentRule::SnapToTarget,
-        EAttachmentRule::SnapToTarget,
-        EAttachmentRule::KeepWorld,
-        false
-    );
-
-    EquippedItemComponent->AttachToComponent(
-        CachedOwnerCharacter->GetMesh(),
-        AttachRules,
-        TargetSocket
-    );
-
-    EquippedItemComponent->SetChildActorClass(ItemData->ItemActorClass);
-
-    // 즉시 액터 확인 및 데이터 설정
-    AItemBase* EquippedItem = Cast<AItemBase>(EquippedItemComponent->GetChildActor());
-    if (!EquippedItem)
-    {
-        LOG_Item_ERROR(TEXT("[ToolbarInventoryComponent::EquipItemAtSlot] ChildActor 생성 실패 또는 Cast 실패"));
-        return;
-    }
-
-    EquippedItem->SetOwner(GetOwner());
-    if (APawn* OwnerPawn = Cast<APawn>(GetOwner()))
-    {
-        EquippedItem->SetInstigator(OwnerPawn);
-    }
-
-    // 아이템 데이터 설정
-    EquippedItem->ItemRowName = SlotData->ItemRowName;
-    EquippedItem->Quantity = SlotData->Quantity;
-    EquippedItem->Durability = SlotData->Durability;
-    EquippedItem->SetActorEnableCollision(false);
-
-    // 명시적으로 데이터 적용
-    EquippedItem->ApplyItemDataFromTable();
-
-    // 총기인 경우 추가 처리
-    if (AGunBase* Gun = Cast<AGunBase>(EquippedItem))
-    {
-        Gun->ApplyGunDataFromDataTable();
-    }
-
-    // 장착 상태 설정
-    if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem))
-    {
-        EquipmentItem->SetEquipped(true);
-    }
-
-    // 강제 네트워크 업데이트
-    EquippedItem->ForceNetUpdate();
 
     // 인벤토리 상태 업데이트
     ItemSlots[SlotIndex].bIsEquipped = true;
@@ -361,7 +360,7 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
     if (CurrentEquippedSlotIndex < 0 || !ItemSlots.IsValidIndex(CurrentEquippedSlotIndex))
     {
         LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::UnequipCurrentItem] 장착된 아이템이 없습니다."));
-        return;
+        //return;
     }
 
     // 현재 장착된 아이템 데이터 가져오기
@@ -384,33 +383,35 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
     if (!ItemData)
     {
         LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::UnequipCurrentItem] 아이템 데이터를 찾을 수 없습니다: %s"), *SlotData->ItemRowName.ToString());
-        return;
+       // return;
     }
 
-    FName TargetSocket = ItemData->AttachSocketName;
-    if (TargetSocket.IsNone())
+    if (ItemData)
     {
-        TargetSocket = TEXT("RightHandSocket");
-    }
-
-    LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::UnequipCurrentItem] 소켓에서 아이템 제거: %s"), *TargetSocket.ToString());
-
-    // 현재 장착된 아이템 처리
-    if (AItemBase* CurrentItem = Cast<AItemBase>(EquippedItemComponent->GetChildActor()))
-    {
-        if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(CurrentItem))
+        FName TargetSocket = ItemData->AttachSocketName;
+        if (TargetSocket.IsNone())
         {
-            EquipmentItem->SetEquipped(false);
+            TargetSocket = TEXT("RightHandSocket");
         }
-        else
+
+        LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::UnequipCurrentItem] 소켓에서 아이템 제거: %s"), *TargetSocket.ToString());
+
+        // 현재 장착된 아이템 처리
+        if (AItemBase* CurrentItem = Cast<AItemBase>(EquippedItemComponent->GetChildActor()))
         {
-            CurrentItem->bIsEquipped = false;
+            if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(CurrentItem))
+            {
+                EquipmentItem->SetEquipped(false);
+            }
+            else
+            {
+                CurrentItem->bIsEquipped = false;
+            }
         }
+
+        // 아이템 제거
+        EquippedItemComponent->DestroyChildActor();
     }
-
-    // 아이템 제거
-    EquippedItemComponent->DestroyChildActor();
-
     // 슬롯 상태 업데이트
     ItemSlots[CurrentEquippedSlotIndex].bIsEquipped = false;
     CurrentEquippedSlotIndex = -1;

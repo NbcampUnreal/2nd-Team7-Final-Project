@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "UI/LCUserWidgetBase.h"
 #include "DataTable/ItemDataRow.h"
+#include "DataType/ItemDropData.h"
 #include "ShoppingCartWidget.generated.h"
 
 /**
@@ -27,6 +28,10 @@ public:
 	
 	void RecalculateTotalPrice();
 
+	TArray<FItemDropData> GetItemDropList() const;
+
+	void ClearCart();
+
 protected:
 	UPROPERTY(meta = (BindWidget))
 	UScrollBox* CartItemBox;
@@ -39,4 +44,5 @@ protected:
 private:
 	UPROPERTY()
 	TMap<int32, UShoppingCartEntry*> CartEntries;
+
 };

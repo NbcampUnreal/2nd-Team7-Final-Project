@@ -9,7 +9,6 @@
 void ULCOptionManager::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
-	LOG_Frame_WARNING(TEXT("ULCOptionManager Initialized"));
 	if (SoundClassSettings)
 	{
 		AudioMix = SoundClassSettings->AudioMix;
@@ -23,7 +22,6 @@ void ULCOptionManager::Initialize(FSubsystemCollectionBase& Collection)
 void ULCOptionManager::Deinitialize()
 {
 	Super::Deinitialize();
-	LOG_Frame_WARNING(TEXT("ULCOptionManager Deinitialized"));
 }
 
 void ULCOptionManager::ChangeScreen(EScreenMode Mode)

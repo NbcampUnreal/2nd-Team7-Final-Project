@@ -1,8 +1,12 @@
 #include "UI/UIObject/ShoppingCartWidget.h"
 #include "UI/UIObject/ShoppingCartEntry.h"
+#include "DataTable/ItemDataRow.h"
+#include "Item/ItemBase.h"
 
 #include "Components/ScrollBox.h"
 #include "Components/TextBlock.h"
+
+#include "LastCanary.h"
 
 void UShoppingCartWidget::NativeConstruct()
 {
@@ -89,4 +93,38 @@ void UShoppingCartWidget::RecalculateTotalPrice()
 		FString TotalText = FString::Printf(TEXT("총 가격: %d"), Total);
 		TotalPriceText->SetText(FText::FromString(TotalText));
 	}
+}
+
+TArray<FItemDropData> UShoppingCartWidget::GetItemDropList() const
+{
+	TArray<FItemDropData> Result;
+
+	for (const TPair<int32, UShoppingCartEntry*>& Pair : CartEntries)
+	{
+		if (const UShoppingCartEntry* Entry = Pair.Value)
+		{
+			FItemDropData DropData;
+			DropData.ItemClass = Entry->GetItemData().ItemActorClass; // FItemDataRow에 ActorClass가 있어야 함
+			DropData.Count = Entry->GetQuantity(); // Entry가 수량을 저장하고 있어야 함
+
+			if (DropData.ItemClass && DropData.Count > 0)
+			{
+				Result.Add(DropData);
+				LOG_Frame_WARNING(TEXT("ItemDataCount : %d"), DropData.Count);
+			}
+		}
+	}
+
+	return Result;
+}
+
+void UShoppingCartWidget::ClearCart()
+{
+	if (CartItemBox)
+	{
+		CartItemBox->ClearChildren();
+	}
+
+	CartEntries.Empty();
+	RecalculateTotalPrice();
 }

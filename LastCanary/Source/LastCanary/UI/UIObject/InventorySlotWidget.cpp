@@ -49,22 +49,14 @@ void UInventorySlotWidget::UpdateSlotUI()
 
 	if (ItemData.ItemRowName.IsNone())
 	{
-		if (ItemNameText)
-		{
-			ItemNameText->SetText(FText::GetEmpty());
-		}
-
 		if (ItemIconImage)
 		{
-			ItemIconImage->SetVisibility(ESlateVisibility::Hidden);
+			LOG_Item_WARNING(TEXT("[InventorySlotWidget::UpdateSlotUI] ItemIconImage!!!"));
+
+			//ItemIconImage->SetVisibility(ESlateVisibility::Hidden);
 		}
 
-		if (ItemQuantityText)
-		{
-			ItemQuantityText->SetText(FText::GetEmpty());
-		}
-
-		UpdateBorderColor();
+		UpdateBorderImage();
 		return;
 	}
 
@@ -74,12 +66,6 @@ void UInventorySlotWidget::UpdateSlotUI()
 		LOG_Item_WARNING(TEXT("[InventorySlotWidget::UpdateSlotUI] ItemData not found for: %s"),
 			*ItemData.ItemRowName.ToString());
 		return;
-	}
-
-	// UI 업데이트
-	if (ItemNameText)
-	{
-		ItemNameText->SetText(FText::FromName(ItemRowData->ItemName));
 	}
 
 	if (ItemIconImage)
@@ -95,20 +81,7 @@ void UInventorySlotWidget::UpdateSlotUI()
 		}
 	}
 
-	if (ItemQuantityText)
-	{
-		if (ItemData.Quantity > 1)
-		{
-			ItemQuantityText->SetText(FText::AsNumber(ItemData.Quantity));
-			ItemQuantityText->SetVisibility(ESlateVisibility::Visible);
-		}
-		else
-		{
-			ItemQuantityText->SetVisibility(ESlateVisibility::Hidden);
-		}
-	}
-
-	UpdateBorderColor();
+	UpdateBorderImage();
 }
 
 FReply UInventorySlotWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
@@ -222,35 +195,40 @@ void UInventorySlotWidget::UpdateTooltipPosition()
 	}
 }
 
-void UInventorySlotWidget::UpdateBorderColor()
+void UInventorySlotWidget::UpdateBorderImage()
 {
 	if (!SlotBorder)
 	{
-		// 보더가 바인딩되지 않았다면 로그만 남기고 리턴
-		UE_LOG(LogTemp, VeryVerbose, TEXT("[UpdateBorderColor] SlotBorder가 바인딩되지 않음"));
+		UE_LOG(LogTemp, Warning, TEXT("[UpdateBorderImage] SlotBorder가 바인딩되지 않음"));
 		return;
 	}
 
-	FLinearColor TargetColor;
+	// 미리 에디터에서 할당한 텍스처들
+	UTexture2D* TargetTexture = nullptr;
 
-	if (ItemData.ItemRowName.IsNone())
-	{
-		// 빈 슬롯
-		TargetColor = EmptyBorderColor;
-	}
-	else if (ItemData.bIsEquipped)
+	if (ItemData.bIsEquipped)
 	{
 		// 장착된 아이템
-		TargetColor = EquippedBorderColor;
+		TargetTexture = EquippedBorderTexture;
 	}
 	else
 	{
 		// 일반 아이템
-		TargetColor = NormalBorderColor;
+		TargetTexture = NormalBorderTexture;
 	}
 
-	// 보더 색상 설정
-	SlotBorder->SetBrushColor(TargetColor);
+	if (TargetTexture)
+	{
+		FSlateBrush NewBrush;
+		NewBrush.SetResourceObject(TargetTexture);
+		NewBrush.ImageSize = FVector2D(64.f, 64.f); // 필요한 크기로 설정
+
+		SlotBorder->SetBrush(NewBrush);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[UpdateBorderImage] TargetTexture가 설정되지 않음"));
+	}
 }
 
 void UInventorySlotWidget::ShowTooltip()
@@ -312,7 +290,6 @@ void UInventorySlotWidget::ShowTooltip()
 
 void UInventorySlotWidget::HideTooltip()
 {
-
 	if (TooltipUpdateTimer.IsValid())
 	{
 		GetWorld()->GetTimerManager().ClearTimer(TooltipUpdateTimer);
