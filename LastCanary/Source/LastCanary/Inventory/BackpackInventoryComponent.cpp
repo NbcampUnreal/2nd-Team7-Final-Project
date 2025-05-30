@@ -3,6 +3,7 @@
 
 #include "Inventory/BackpackInventoryComponent.h"
 #include "Item/ItemBase.h"
+#include "Character/BaseCharacter.h"
 #include "LastCanary.h"
 
 UBackpackInventoryComponent::UBackpackInventoryComponent()
@@ -278,6 +279,7 @@ bool UBackpackInventoryComponent::TryStoreItem(AItemBase* ItemActor)
 				Slot.Quantity += 1;
 				LOG_Item_WARNING(TEXT("[BackpackInventoryComponent::TryStoreItem] ✅ 기존 슬롯에 스택 성공! 슬롯 %d, 새 수량: %d"), i, Slot.Quantity);
 				ItemActor->Destroy();
+				UpdateWeight();
 				return true;
 			}
 		}
@@ -295,6 +297,7 @@ bool UBackpackInventoryComponent::TryStoreItem(AItemBase* ItemActor)
 			Slot.Quantity = 1;
 			LOG_Item_WARNING(TEXT("[BackpackInventoryComponent::TryStoreItem] ✅ 빈 슬롯에 저장 성공! 슬롯 %d"), i);
 			ItemActor->Destroy();
+			UpdateWeight();
 			return true;
 		}
 	}
@@ -308,4 +311,41 @@ bool UBackpackInventoryComponent::TryStoreItem(AItemBase* ItemActor)
 void UBackpackInventoryComponent::PostAddProcess()
 {
 	OnInventoryUpdated.Broadcast();
+}
+
+void UBackpackInventoryComponent::UpdateWeight()
+{
+	float OldWeight = CurrentTotalWeight;
+	float NewWeight = 0.0f;
+
+	// 기본 무게 계산
+	for (const FBaseItemSlotData& Slot : ItemSlots)
+	{
+		if (!Slot.ItemRowName.IsNone() && Slot.Quantity > 0)
+		{
+			float ItemWeight = GetItemWeight(Slot.ItemRowName);
+			NewWeight += ItemWeight * Slot.Quantity;
+		}
+	}
+
+	// ⭐ 가방 인벤토리는 1/10 무게만 적용
+	NewWeight *= WeightReductionMultiplier;
+	CurrentTotalWeight = NewWeight;
+	float WeightDifference = NewWeight - OldWeight;
+
+	if (FMath::Abs(WeightDifference) > 0.01f)
+	{
+		LOG_Item_WARNING(TEXT("[BackpackInventoryComponent::UpdateWeight] 무게 변경: %.2f -> %.2f (감소율: %.1f%%)"),
+			OldWeight, NewWeight, WeightReductionMultiplier * 100.0f);
+
+		OnWeightChanged.Broadcast(NewWeight, WeightDifference);
+
+		if (AActor* Owner = GetOwner())
+		{
+			if (ABaseCharacter* Character = Cast<ABaseCharacter>(Owner))
+			{
+				Character->OnInventoryWeightChanged(WeightDifference);
+			}
+		}
+	}
 }

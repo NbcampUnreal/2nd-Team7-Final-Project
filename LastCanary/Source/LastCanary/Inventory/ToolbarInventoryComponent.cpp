@@ -113,6 +113,7 @@ bool UToolbarInventoryComponent::TryAddItemSlot(FName ItemRowName, int32 Amount)
 
     if (RemainAmount == 0)
     {
+        UpdateWeight();
         OnInventoryUpdated.Broadcast();
         return true;
     }
@@ -151,6 +152,7 @@ bool UToolbarInventoryComponent::TryDecreaseItem(FName ItemRowName, int32 Amount
                 ItemSlots.RemoveAt(i);
             }
 
+            UpdateWeight();
             return true;
         }
     }
@@ -612,6 +614,7 @@ bool UToolbarInventoryComponent::TryStoreItem(AItemBase* ItemActor)
         ItemActor->Destroy();
     }
 
+    UpdateWeight();
     return true;
 }
 

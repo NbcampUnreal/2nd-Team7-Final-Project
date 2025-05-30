@@ -357,4 +357,18 @@ public:
 private:
 	/** 가방 메시 설정 */
 	void SetBackpackMesh(UStaticMesh* BackpackMesh);
+
+public:
+	/** 인벤토리 무게 변경 시 호출 */
+	UFUNCTION(BlueprintCallable, Category = "Character|Weight")
+	void OnInventoryWeightChanged(float WeightDifference);
+
+	/** 총 무게 가져오기 */
+	UFUNCTION(BlueprintPure, Category = "Character|Weight")
+	float GetTotalCarryingWeight() const;
+
+protected:
+	/** 현재 총 무게 */
+	UPROPERTY(BlueprintReadOnly, Category = "Character|Weight")
+	float CurrentTotalWeight = 0.0f;
 };

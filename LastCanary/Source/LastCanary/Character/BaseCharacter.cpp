@@ -1508,3 +1508,32 @@ void ABaseCharacter::SetBackpackMesh(UStaticMesh* BackpackMesh)
 		UE_LOG(LogTemp, Warning, TEXT("[SetBackpackMesh] 가방 메시 숨김"));
 	}
 }
+
+void ABaseCharacter::OnInventoryWeightChanged(float WeightDifference)
+{
+	float NewTotalWeight = 0.0f;
+
+	if (ToolbarInventoryComponent)
+	{
+		NewTotalWeight += ToolbarInventoryComponent->GetTotalWeight();
+	}
+
+	if (BackpackInventoryComponent)
+	{
+		NewTotalWeight += BackpackInventoryComponent->GetTotalWeight();
+	}
+
+	float OldWeight = CurrentTotalWeight;
+	CurrentTotalWeight = NewTotalWeight;
+
+	LOG_Item_WARNING(TEXT("[OnInventoryWeightChanged] 총 무게: %.2f -> %.2f"),
+		OldWeight, NewTotalWeight);
+
+	//// 블루프린트에서 UI 업데이트나 이동속도 조절 처리
+	//OnWeightChanged(OldWeight, NewTotalWeight);
+}
+
+float ABaseCharacter::GetTotalCarryingWeight() const
+{
+	return CurrentTotalWeight;
+}

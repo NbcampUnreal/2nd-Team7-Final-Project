@@ -332,3 +332,59 @@ bool UInventoryComponentBase::TryDropItem_Internal(FName ItemRowName, int32 Quan
     LOG_Item_WARNING(TEXT("[UInventoryComponentBase::TryDropItem_Internal] 아이템을 찾을 수 없습니다: %s"), *ItemRowName.ToString());
     return false;
 }
+
+void UInventoryComponentBase::UpdateWeight()
+{
+    float OldWeight = CurrentTotalWeight;
+    float NewWeight = 0.0f;
+
+    // ⭐ 간단하게 전체 슬롯 순회해서 무게 계산
+    for (const FBaseItemSlotData& Slot : ItemSlots)
+    {
+        if (!Slot.ItemRowName.IsNone() && Slot.Quantity > 0)
+        {
+            float ItemWeight = GetItemWeight(Slot.ItemRowName);
+            NewWeight += ItemWeight * Slot.Quantity;
+        }
+    }
+
+    CurrentTotalWeight = NewWeight;
+    float WeightDifference = NewWeight - OldWeight;
+
+    // 유의미한 변화가 있을 때만 알림
+    if (FMath::Abs(WeightDifference) > 0.01f)
+    {
+        LOG_Item_WARNING(TEXT("[UpdateWeight] %s 무게 변경: %.2f -> %.2f (차이: %.2f)"),
+            *GetClass()->GetName(), OldWeight, NewWeight, WeightDifference);
+
+        OnWeightChanged.Broadcast(NewWeight, WeightDifference);
+
+        // 캐릭터에 알림
+        if (AActor* Owner = GetOwner())
+        {
+            if (ABaseCharacter* Character = Cast<ABaseCharacter>(Owner))
+            {
+                Character->OnInventoryWeightChanged(WeightDifference);
+            }
+        }
+    }
+}
+
+float UInventoryComponentBase::GetItemWeight(FName ItemRowName) const
+{
+    if (ItemRowName.IsNone())
+        return 0.0f;
+
+    if (!ItemDataTable)
+    {
+        return 1.0f; // 기본 무게
+    }
+
+    const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("GetItemWeight"));
+    if (!ItemData)
+    {
+        return 1.0f; // 기본 무게
+    }
+
+    return ItemData->Weight;
+}

@@ -4,6 +4,7 @@
 #include "GameFramework/Actor.h"
 #include "DataTable/ItemDataRow.h"
 #include "Interface/InteractableInterface.h"
+#include "Engine/Engine.h"
 #include "ItemBase.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnItemStateChanged);

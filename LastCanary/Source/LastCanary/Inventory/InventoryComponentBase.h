@@ -7,6 +7,7 @@
 #include "InventoryComponentBase.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInventoryUpdated);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnWeightChanged, float, NewWeight, float, WeightDifference);
 
 class ULCUserWidgetBase;
 class UItemTooltipWidget;
@@ -157,6 +158,32 @@ protected:
     /** 아이템 스포너 접근자 */
     UFUNCTION(BlueprintPure, Category = "Inventory")
     UItemSpawnerComponent* GetItemSpawner() const { return ItemSpawner; }
+
+
+    //-----------------------------------------------------
+    // 무게 관리 시스템
+    //-----------------------------------------------------
+public:
+    /** 무게 변경 델리게이트 */
+    UPROPERTY(BlueprintAssignable, Category = "Inventory|Weight")
+    FOnWeightChanged OnWeightChanged;
+
+    /** 현재 총 무게 반환 */
+    UFUNCTION(BlueprintPure, Category = "Inventory|Weight")
+    float GetTotalWeight() const { return CurrentTotalWeight; }
+
+protected:
+    /** 현재 총 무게 */
+    UPROPERTY(BlueprintReadOnly, Category = "Inventory|Weight")
+    float CurrentTotalWeight = 0.0f;
+
+    /** 무게 즉시 계산 및 갱신 */
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Weight")
+    virtual void UpdateWeight();
+
+    /** 아이템의 실제 무게 가져오기 */
+    UFUNCTION(BlueprintPure, Category = "Inventory|Weight")
+    float GetItemWeight(FName ItemRowName) const;
 
     //-----------------------------------------------------
     // 네트워크 기능

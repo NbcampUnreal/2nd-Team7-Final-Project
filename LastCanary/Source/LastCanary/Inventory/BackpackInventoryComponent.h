@@ -35,6 +35,14 @@ protected:
     /** 아이템 추가 후 처리 */
     virtual void PostAddProcess() override;
 
+protected:
+    /** 가방 인벤토리 무게 감소 배율 */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory|Weight")
+    float WeightReductionMultiplier = 0.1f; // 1/10
+
+    /** 가방 전용 무게 계산 (오버라이드) */
+    virtual void UpdateWeight() override;
+
 public:
     //-----------------------------------------------------
     // 인벤토리 공개 인터페이스 (오버라이드)
