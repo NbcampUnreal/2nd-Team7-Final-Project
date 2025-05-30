@@ -15,7 +15,7 @@ class ALSCAMERA_API UAlsCameraComponent : public USkeletalMeshComponent
 {
 	GENERATED_BODY()
 
-protected:
+public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
 	TObjectPtr<UAlsCameraSettings> Settings;
 
@@ -125,6 +125,8 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "ALS|Camera")
 	void GetViewInfo(FMinimalViewInfo& ViewInfo) const;
+
+	FName CurrentName = FName("FirstPersonCamera");
 
 private:
 	void TickCamera(float DeltaTime, bool bAllowLag = true);

@@ -36,7 +36,7 @@ void ABasePlayerController::BeginPlay()
 	{
 		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
 		{
-			UIManager->InitUIManager(this);
+			// UIManager->InitUIManager(this);
 
 			if (GetPawn())
 			{
@@ -46,7 +46,7 @@ void ABasePlayerController::BeginPlay()
 					{
 						UIManager->ShowInGameHUD();
 					},
-					0.2f, false);
+					0.5f, false);
 			}
 		}
 	}
@@ -265,7 +265,9 @@ void ABasePlayerController::InitInputComponent()
 		EnhancedInput->BindAction(ItemUseAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_OnItemUse);
 
 		EnhancedInput->BindAction(ThrowItemAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_OnItemThrow);
-		
+
+		EnhancedInput->BindAction(RifleReloadAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_Reload);
+
 		EnhancedInput->BindAction(VoiceAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_OnStartedVoiceChat);
 		EnhancedInput->BindAction(VoiceAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnCanceledVoiceChat);
 
@@ -645,12 +647,40 @@ void ABasePlayerController::Input_OnInteract()
 	}
 }
 
+void ABasePlayerController::Input_Reload()
+{
+
+	UE_LOG(LogTemp, Warning, TEXT("input Reload"));
+	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
+	{
+		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
+		if (IsValid(PlayerCharacter))
+		{
+
+			UE_LOG(LogTemp, Warning, TEXT("Reload"));
+			PlayerCharacter->Handle_Reload();
+		}
+	}
+}
+
 void ABasePlayerController::Input_OnStrafe(const FInputActionValue& ActionValue)
 {
 	if (!IsValid(CurrentPossessedPawn))
 	{
 		return;
 	}
+
+	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Toggle Inventory"));
+		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
+		if (IsValid(PlayerCharacter))
+		{			
+			PlayerCharacter->ToggleInventory();
+		}
+	}
+	
+	//Deprecated//
 	// APawn 타입에 맞는 처리를 실행
 	if (CurrentPossessedPawn->IsA<ABaseDrone>())
 	{
@@ -679,6 +709,9 @@ void ABasePlayerController::Input_OnItemUse()
 	{
 		return;
 	}
+
+	// 임시로 넣은 코드이니 꼭 삭제할 것!
+	PlayerCharacter->UseEquippedItem();
 	//To Do: 아이템 추가 되고 나서...
 	//if(GetHeldItem()->IsA<ABaseDrone>())
 	//{
@@ -692,11 +725,11 @@ void ABasePlayerController::Input_OnItemUse()
 	//test
 	if (PlayerCharacter->GetCurrentQuickSlotIndex() == 0)
 	{
-		CameraShake();
+		//CameraShake();
 	}
-	if (PlayerCharacter->GetCurrentQuickSlotIndex() == 1)
+	if (PlayerCharacter->GetCurrentQuickSlotIndex() == 2)
 	{
-		SpawnDrone();
+		//SpawnDrone();
 	}
 	//만약 총기라면
 	//CameraShake();
@@ -705,7 +738,14 @@ void ABasePlayerController::Input_OnItemUse()
 void ABasePlayerController::Input_OnItemThrow()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Throw Item"));
-	//TODO: Item 클래스 생기면 퀵슬롯의 아이템을 빼면서, 아이템 생성해서 힘을 주면서 밀어버리기
+	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
+	{
+		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
+		if (IsValid(PlayerCharacter))
+		{
+			PlayerCharacter->DropCurrentItem();;
+		}
+	}
 }
 
 void ABasePlayerController::Input_OnStartedVoiceChat()
@@ -968,15 +1008,32 @@ void ABasePlayerController::SetSprintingStateToPlayerState(bool flag)
 
 void ABasePlayerController::CameraShake()
 {
-	AddPitchInput(1.5f);
+	// 새로운 반동량을 기존 값에 누적
+	RecoilStepPitch += 1.5f / RecoilMaxSteps;
+	RecoilStepYaw += FMath::RandRange(-YawRecoilRange, YawRecoilRange) / RecoilMaxSteps;
 
-	// 좌우(Yaw) 반동: 랜덤값만
-	//TODO: 총기의 설정값에 있는 반동값을 가져오기
-	
-	//test용
-	float YawRecoil = FMath::RandRange(-0.1f, 0.1f);
-	AddYawInput(YawRecoil);
+	// 타이머가 안 돌고 있을 때만 시작
+	if (!GetWorld()->GetTimerManager().IsTimerActive(RecoilTimerHandle))
+	{
+		RecoilStep = 0;
+		GetWorld()->GetTimerManager().SetTimer(RecoilTimerHandle, this, &ABasePlayerController::ApplyRecoilStep, 0.02f, true);
+	}
+}
 
+void ABasePlayerController::ApplyRecoilStep()
+{
+	AddPitchInput(RecoilStepPitch);
+	AddYawInput(RecoilStepYaw);
+
+	RecoilStep++;
+
+	if (RecoilStep >= RecoilMaxSteps)
+	{
+		// 마지막 단계에서 값을 0으로 초기화
+		RecoilStepPitch = 0.0f;
+		RecoilStepYaw = 0.0f;
+		GetWorld()->GetTimerManager().ClearTimer(RecoilTimerHandle);
+	}
 }
 
 
@@ -1092,4 +1149,9 @@ void ABasePlayerController::PossessOnDrone()
 	SpawnedPlayerDrone->SetCharacterLocation(SpanwedPlayerCharacter->GetActorLocation());
 	
 	SetViewTargetWithBlend(SpawnedPlayerDrone, 0.5f);
+}
+
+void ABasePlayerController::CameraSetOnScope()
+{
+
 }

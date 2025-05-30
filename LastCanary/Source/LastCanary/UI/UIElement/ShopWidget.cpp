@@ -1,10 +1,16 @@
 #include "UI/UIElement/ShopWidget.h"
 #include "UI/UIObject/ShopItemEntry.h"
 #include "UI/UIObject/ShopItemInfoWidget.h"
+#include "UI/UIObject/ShoppingCartWidget.h"
 #include "UI/Manager/LCUIManager.h"
 
 #include "Components/ScrollBox.h"
 #include "Components/Button.h"
+
+#include "Actor/LCDroneDelivery.h"
+#include "Actor/LCDronePath.h"
+
+#include "Framework/PlayerController/LCRoomPlayerController.h"
 
 #include "LastCanary.h"
 
@@ -17,7 +23,7 @@ void UShopWidget::NativeConstruct()
 	}
 	if (ExitButton)
 	{
-		ExitButton->OnClicked.AddUniqueDynamic(this, &UShopWidget::OnExitButtonClicked);
+		ExitButton->OnClicked.AddUniqueDynamic(this, &UShopWidget::CloseShopWidget);
 	}
 	if (ItemInfoWidget && ShoppingCartWidget)
 	{
@@ -27,6 +33,7 @@ void UShopWidget::NativeConstruct()
 	{
 		PlayAnimation(ShopFadeAnim, 0.0f, 1);
 	}
+	
 	PopulateShopItems();
 }
 
@@ -39,7 +46,7 @@ void UShopWidget::NativeDestruct()
 	}
 	if (ExitButton)
 	{
-		ExitButton->OnClicked.RemoveDynamic(this, &UShopWidget::OnExitButtonClicked);
+		ExitButton->OnClicked.RemoveDynamic(this, &UShopWidget::CloseShopWidget);
 	}
 	if (ShopFadeAnim)
 	{
@@ -73,7 +80,7 @@ void UShopWidget::PopulateShopItems()
 				ItemEntry->OnItemClicked.BindUObject(this, &UShopWidget::OnShopItemClicked);
 				ItemListBox->AddChild(ItemEntry);
 
-				LOG_Frame_WARNING(TEXT("Shop item bound: %s"), *ItemData->ItemName.ToString());
+				// LOG_Frame_WARNING(TEXT("Shop item bound: %s"), *ItemData->ItemName.ToString());
 			}
 		}
 	}
@@ -104,12 +111,17 @@ void UShopWidget::OnShopItemClicked(UShopItemEntry* ClickedEntry)
 
 void UShopWidget::OnPurchaseButtonClicked()
 {
-	LOG_Frame_WARNING(TEXT("OnPurchaseButtonClicked"));
+	ALCRoomPlayerController* PC = Cast<ALCRoomPlayerController>(GetOwningPlayer());
+	if (PC)
+	{
+		PC->Server_RequestPurchase(ShoppingCartWidget->GetItemDropList());
+	}
+	ShoppingCartWidget->ClearCart();
+	CloseShopWidget();
 }
 
-void UShopWidget::OnExitButtonClicked()
+void UShopWidget::CloseShopWidget()
 {
-	LOG_Frame_WARNING(TEXT("OnExitButtonClicked"));
 	ULCUIManager* UIManager = ResolveUIManager();
 	if (UIManager)
 	{
