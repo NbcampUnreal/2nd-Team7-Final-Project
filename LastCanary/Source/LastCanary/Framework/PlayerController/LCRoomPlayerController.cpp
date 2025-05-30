@@ -14,6 +14,7 @@
 #include "UI/Manager/LCUIManager.h"
 #include "Blueprint/UserWidget.h"
 #include "DataType/SessionPlayerInfo.h"
+#include "LastCanary.h"
 
 void ALCRoomPlayerController::BeginPlay()
 {
@@ -27,27 +28,37 @@ void ALCRoomPlayerController::Client_UpdatePlayerList_Implementation(const TArra
 {
 	Super::Client_UpdatePlayerList_Implementation(PlayerInfos);
 
-	FTimerHandle TimerHandle;
-	TWeakObjectPtr<ALCRoomPlayerController> WeakPtr = this;
-	TArray<FSessionPlayerInfo> InfosCopy = PlayerInfos;
+	if (IsValid(RoomWidgetInstance))
+	{
+		LOG_Frame_WARNING(TEXT("Try Update Player List!"));
+		RoomWidgetInstance->UpdatePlayerLists(PlayerInfos);
+	}
+	else
+	{
+		LOG_Frame_WARNING(TEXT("Not Initialized Widget Instance!! Retry Update Info"));
 
-	GetWorld()->GetTimerManager().SetTimer
-	(
-		TimerHandle,
-		[WeakPtr, InfosCopy]()
-		{
-			if (WeakPtr.IsValid())
+		FTimerHandle TimerHandle;
+		TWeakObjectPtr<ALCRoomPlayerController> WeakPtr = this;
+		TArray<FSessionPlayerInfo> InfosCopy = PlayerInfos;
+
+		GetWorld()->GetTimerManager().SetTimer
+		(
+			TimerHandle,
+			[WeakPtr, InfosCopy]()
 			{
-				if (WeakPtr->RoomWidgetInstance)
+				if (WeakPtr.IsValid())
 				{
-					UE_LOG(LogTemp, Warning, TEXT("Update Lobby UI!!"));
-					WeakPtr->RoomWidgetInstance->UpdatePlayerLists(InfosCopy);
+					if (WeakPtr->RoomWidgetInstance)
+					{
+						UE_LOG(LogTemp, Warning, TEXT("Update Lobby UI!!"));
+						WeakPtr->Client_UpdatePlayerList(InfosCopy);
+					}
 				}
-			}
-		},
-		1.0f,
-		false
-	);
+			},
+			RePeatRate,
+			false
+		);
+	}
 
 }
 
@@ -75,6 +86,11 @@ void ALCRoomPlayerController::Client_UpdatePlayers_Implementation()
 		1.0f,
 		false
 	);
+
+}
+
+void ALCRoomPlayerController::Server_SetReady_Implementation(bool bIsReady)
+{
 
 }
 

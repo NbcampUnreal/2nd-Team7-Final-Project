@@ -27,25 +27,15 @@ public:
 	TSubclassOf<UPlayerSlot> PlayerSlotClass;
 
 	UPROPERTY()
-	TArray<TObjectPtr<UPlayerSlot>> PlayerNameTextBlocks;
-	
-	// TODO : 별도의 Widget을 최대 인원수 만큼 만들기
-	UPROPERTY(meta = (BindWidget))
-	UTextBlock* PlayerNameText_0;
-
-	UPROPERTY(meta = (BindWidget))
-	UTextBlock* PlayerNameText_1;
-
-	UPROPERTY(meta = (BindWidget))
-	UTextBlock* PlayerNameText_2;
-
-	UPROPERTY(meta = (BindWidget))
-	UTextBlock* PlayerNameText_3;
+	TArray<TObjectPtr<UPlayerSlot>> PlayerSlots;
 
 	UFUNCTION(BlueprintCallable)
 	void UpdatePlayerNames();
 
 	UFUNCTION(BlueprintCallable)
 	void UpdatePlayerLists(const TArray<FSessionPlayerInfo>& PlayerInfos);
+
+private:
+	int MaxPlayerNum = 4;
 	
 };

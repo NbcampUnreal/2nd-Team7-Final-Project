@@ -5,6 +5,7 @@
 #include "PlayerSlot.generated.h"
 
 class UTextBlock;
+struct FSessionPlayerInfo;
 
 UCLASS()
 class LASTCANARY_API UPlayerSlot : public UUserWidget
@@ -18,6 +19,6 @@ public:
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* NickNameText;
 
-	void SetPlayerInfo(int Index, FString Name);
-	void SetPlayerName(FString Name);
+	void SetSlotIndex(const int Index);
+	void SetPlayerInfo(const FSessionPlayerInfo& PlayerInfo);
 };
