@@ -1188,18 +1188,6 @@ void ABaseCharacter::Multicast_PlayMontage_Implementation(UAnimMontage* MontageT
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void ABaseCharacter::SetBackpackInventoryComponent(UBackpackInventoryComponent* BackpackInvenComp, bool bEquip)
-{
-	if (bEquip)
-	{
-		BackpackInventoryComponent = BackpackInvenComp;
-	}
-	else
-	{
-		BackpackInventoryComponent = nullptr;
-	}
-}
-
 UToolbarInventoryComponent* ABaseCharacter::GetToolbarInventoryComponent() const
 {
 	return ToolbarInventoryComponent;
@@ -1397,29 +1385,44 @@ bool ABaseCharacter::IsInventoryOpen() const
 
 void ABaseCharacter::DropCurrentItem()
 {
-	if (!IsLocallyControlled())
+	if (!ToolbarInventoryComponent)
 	{
+		LOG_Item_WARNING(TEXT("[DropCurrentItem] ToolbarInventoryComponent is null"));
 		return;
 	}
 
-	if (ToolbarInventoryComponent)
+	int32 CurrentSlotIndex = ToolbarInventoryComponent->GetCurrentEquippedSlotIndex();
+	if (CurrentSlotIndex < 0)
 	{
-		ToolbarInventoryComponent->DropCurrentEquippedItem();
-
-		RefreshOverlayObject(0);
+		LOG_Item_WARNING(TEXT("[DropCurrentItem] 현재 장착된 아이템이 없습니다"));
+		return;
 	}
+
+	// ⭐ DropItemAtSlot 재사용 (Authority 처리 포함)
+	DropItemAtSlot(CurrentSlotIndex, 1);
+
+	// 장착 해제 및 UI 새로고침
+	RefreshOverlayObject(0);
 }
 
 void ABaseCharacter::DropItemAtSlot(int32 SlotIndex, int32 Quantity)
 {
-	if (!IsLocallyControlled())
+	if (!ToolbarInventoryComponent)
 	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::DropItemAtSlot] ToolbarInventoryComponent is null"));
 		return;
 	}
 
-	if (ToolbarInventoryComponent)
+	bool bSuccess = ToolbarInventoryComponent->TryDropItemAtSlot(SlotIndex, Quantity);
+
+	if (bSuccess)
 	{
-		ToolbarInventoryComponent->TryDropItemAtSlot(SlotIndex, Quantity);
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::DropItemAtSlot] 드롭 요청 성공"));
+		// UI 새로고침은 OnInventoryUpdated 델리게이트에서 자동 처리
+	}
+	else
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::DropItemAtSlot] 드롭 요청 실패"));
 	}
 }
 

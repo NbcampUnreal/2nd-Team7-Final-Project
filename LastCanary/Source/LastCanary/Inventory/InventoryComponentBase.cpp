@@ -151,52 +151,60 @@ int32 UInventoryComponentBase::GetMaxSlots() const
 
 FVector UInventoryComponentBase::CalculateDropLocation() const
 {
-    if (!IsOwnerCharacterValid())
+    AActor* OwnerActor = GetOwner();
+    if (!OwnerActor)
     {
-        LOG_Item_WARNING(TEXT("[CalculateDropLocation] CachedOwnerCharacter가 유효하지 않습니다."));
+        LOG_Item_WARNING(TEXT("[CalculateDropLocation] Owner is null"));
         return FVector::ZeroVector;
     }
 
-    if (!ItemSpawner)
+    ABaseCharacter* Character = Cast<ABaseCharacter>(OwnerActor);
+    if (!Character)
     {
-        return CachedOwnerCharacter->GetActorLocation() + CachedOwnerCharacter->GetActorForwardVector() * 200.0f;
+        LOG_Item_WARNING(TEXT("[CalculateDropLocation] Owner is not BaseCharacter"));
+        return FVector::ZeroVector;
     }
 
-    FVector CharacterLocation = CachedOwnerCharacter->GetActorLocation();
-    FVector ForwardVector = CachedOwnerCharacter->GetActorForwardVector();
+    // ⭐ 카메라 시점 기준으로 던지기 위치 계산
+    AController* Controller = Character->GetController();
+    if (!Controller)
+    {
+        LOG_Item_WARNING(TEXT("[CalculateDropLocation] Controller is null"));
+        return Character->GetActorLocation();
+    }
 
-    float DropDistance = 200.0f;
-    FVector DropLocation = CharacterLocation + ForwardVector * DropDistance;
+    FVector CameraLocation;
+    FRotator CameraRotation;
+    Controller->GetPlayerViewPoint(CameraLocation, CameraRotation);
 
-    DropLocation.Z += 50.0f;
+    // ⭐ 카메라 앞쪽 일정 거리에서 생성 (손에서 던지는 느낌)
+    FVector ThrowStartOffset = CameraRotation.Vector() * 150.0f; // 카메라 앞 150cm
+    FVector HandOffset = Character->GetActorUpVector() * -20.0f; // 살짝 아래쪽 (손 높이)
 
+    FVector ThrowStartLocation = CameraLocation + ThrowStartOffset + HandOffset;
+
+    // 바닥과 너무 가까우면 조정
     FHitResult HitResult;
-    FVector TraceStart = DropLocation + FVector(0, 0, 500.0f);
-    FVector TraceEnd = DropLocation - FVector(0, 0, 1000.0f);
+    FVector TraceStart = ThrowStartLocation + FVector(0, 0, 100.0f);
+    FVector TraceEnd = ThrowStartLocation - FVector(0, 0, 200.0f);
 
     FCollisionQueryParams QueryParams;
-    QueryParams.AddIgnoredActor(CachedOwnerCharacter);
+    QueryParams.AddIgnoredActor(Character);
     QueryParams.bTraceComplex = true;
 
     if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_WorldStatic, QueryParams))
     {
-        DropLocation = HitResult.ImpactPoint + FVector(0, 0, 10.0f);
+        float MinHeight = HitResult.ImpactPoint.Z + 80.0f; // 바닥에서 80cm 위
+        ThrowStartLocation.Z = FMath::Max(ThrowStartLocation.Z, MinHeight);
     }
 
-    return DropLocation;
+    LOG_Item_WARNING(TEXT("[CalculateDropLocation] 던지기 시작 위치: %s"), *ThrowStartLocation.ToString());
+    return ThrowStartLocation;
 }
 
 bool UInventoryComponentBase::TryDropItemAtSlot(int32 SlotIndex, int32 Quantity)
 {
-    if (GetOwner() && GetOwner()->HasAuthority())
-    {
-        return Internal_TryDropItemAtSlot(SlotIndex, Quantity);
-    }
-    else
-    {
-        Server_TryDropItemAtSlot(SlotIndex, Quantity);
-        return true;
-    }
+    return Internal_TryDropItemAtSlot(SlotIndex, Quantity);
 }
 
 void UInventoryComponentBase::Server_TryDropItemAtSlot_Implementation(int32 SlotIndex, int32 Quantity)
@@ -206,10 +214,22 @@ void UInventoryComponentBase::Server_TryDropItemAtSlot_Implementation(int32 Slot
 
 bool UInventoryComponentBase::Internal_TryDropItemAtSlot(int32 SlotIndex, int32 Quantity)
 {
-    if (!GetOwner() || !GetOwner()->HasAuthority())
+    AActor* Owner = GetOwner();
+    if (!Owner)
     {
-        LOG_Item_WARNING(TEXT("[UInventoryComponentBase::Internal_TryDropItemAtSlot] Authority가 없습니다. 서버에서만 실행하세요."));
+        LOG_Item_WARNING(TEXT("[UInventoryComponentBase::Internal_TryDropItemAtSlot] Owner is null"));
         return false;
+    }
+
+    if (!Owner->HasAuthority())
+    {
+        LOG_Item_WARNING(TEXT("[UInventoryComponentBase::Internal_TryDropItemAtSlot] Authority가 없습니다. 서버 RPC를 통해 요청하세요."));
+        LOG_Item_WARNING(TEXT("[UInventoryComponentBase::Internal_TryDropItemAtSlot] Owner: %s, HasAuthority: %s"),
+            *Owner->GetName(), Owner->HasAuthority() ? TEXT("true") : TEXT("false"));
+
+        // ⭐ 클라이언트에서는 자동으로 서버 RPC 호출
+        Server_TryDropItemAtSlot(SlotIndex, Quantity);
+        return true; // 클라이언트에서는 요청 성공으로 처리
     }
 
     if (!ItemSlots.IsValidIndex(SlotIndex))
@@ -243,6 +263,12 @@ bool UInventoryComponentBase::Internal_TryDropItemAtSlot(int32 SlotIndex, int32 
 
     FBaseItemSlotData DropItemData = SlotData;
     DropItemData.Quantity = DropQuantity;
+
+    if (!ItemSpawner)
+    {
+        LOG_Item_WARNING(TEXT("[UInventoryComponentBase::Internal_TryDropItemAtSlot] ItemSpawner is null"));
+        return false;
+    }
 
     AItemBase* DroppedItem = ItemSpawner->CreateItemFromData(DropItemData, DropLocation);
     if (!DroppedItem)

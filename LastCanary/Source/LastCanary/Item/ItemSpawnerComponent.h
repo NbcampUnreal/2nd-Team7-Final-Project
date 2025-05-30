@@ -84,4 +84,34 @@ private:
 
     /** 물리 시뮬레이션 활성화 */
     void EnablePhysicsSimulation(AItemBase* Item);
+
+protected:
+    /** 던지기 기본 속도 */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Throw Settings")
+    float BaseThrowVelocity = 300.0f;
+
+    /** 던지기 각도 (위쪽 방향) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Throw Settings")
+    float ThrowAngleDegrees = 25.0f;
+
+    /** 무게 기반 속도 감소 계수 */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Throw Settings")
+    float WeightMultiplier = 0.1f;
+
+    /** 최소 던지기 속도 */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Throw Settings")
+    float MinThrowVelocity = 200.0f;
+
+    /** 최대 던지기 속도 */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Throw Settings")
+    float MaxThrowVelocity = 1200.0f;
+
+public:
+    /** 무게를 고려한 던지기 속도 계산 */
+    UFUNCTION(BlueprintPure, Category = "Throw Settings")
+    float CalculateThrowVelocity(float ItemWeight) const;
+
+    /** 던지기 방향 벡터 계산 */
+    UFUNCTION(BlueprintPure, Category = "Throw Settings")
+    FVector CalculateThrowDirection() const;
 };
