@@ -1,44 +1,44 @@
 ﻿#include "AI/Task/BTTask_BossMoveToTarget.h"
 #include "AIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
-#include "Navigation/PathFollowingComponent.h"
-#include "DrawDebugHelpers.h"
+#include "NavigationSystem.h"
+#include "NavigationPath.h"
+#include "GameFramework/Character.h"
 
 UBTTask_BossMoveToTarget::UBTTask_BossMoveToTarget(const FObjectInitializer& ObjInit)
     : Super(ObjInit)
 {
-    NodeName = TEXT("Boss Move To Target (Avoid Obstacles)");
-    AcceptanceRadius = 150.f;
-    bNotifyTick = true;  // TickTask 사용
+    NodeName = TEXT("Boss Move To Target");
+    bNotifyTick = true;          // ExecuteTask 후 TickTask 를 호출
+    bCreateNodeInstance = true;  // 노드별 인스턴스 메모리 유지
 }
 
 EBTNodeResult::Type UBTTask_BossMoveToTarget::ExecuteTask(
     UBehaviorTreeComponent& OwnerComp,
     uint8* NodeMemory)
 {
-    AAIController* AICon = OwnerComp.GetAIOwner();
-    if (!AICon)
+    AAIController* AIController = OwnerComp.GetAIOwner();
+    if (!AIController)
+    {
         return EBTNodeResult::Failed;
+    }
 
-    FVector TargetLoc = OwnerComp
-        .GetBlackboardComponent()
-        ->GetValueAsVector(TEXT("TargetLocationKey"));
+    UBlackboardComponent* BlackboardComp = OwnerComp.GetBlackboardComponent();
+    if (!BlackboardComp)
+    {
+        return EBTNodeResult::Failed;
+    }
 
-    EPathFollowingRequestResult::Type MoveResult =
-        AICon->MoveToLocation(
-            TargetLoc,
-            AcceptanceRadius,
-            true,   // bStopOnOverlap
-            true,   // bUsePathfinding
-            false,  // bProjectGoalLocation
-            false,  // bAllowPartialPath
-            0,      // NavFilterClass
-            true    // bAllowStrafe
-        );
+    AActor* TargetActor = Cast<AActor>(BlackboardComp->GetValueAsObject("TargetActor"));
+    if (!TargetActor)
+    {
+        return EBTNodeResult::Failed;
+    }
 
-    return (MoveResult == EPathFollowingRequestResult::RequestSuccessful)
-        ? EBTNodeResult::InProgress
-        : EBTNodeResult::Failed;
+
+    AIController->MoveToActor(TargetActor, MyAcceptableRadius);
+
+    return EBTNodeResult::InProgress;
 }
 
 void UBTTask_BossMoveToTarget::TickTask(
@@ -46,81 +46,46 @@ void UBTTask_BossMoveToTarget::TickTask(
     uint8* NodeMemory,
     float DeltaSeconds)
 {
-    Super::TickTask(OwnerComp, NodeMemory, DeltaSeconds);
+    AAIController* AIController = OwnerComp.GetAIOwner();
+    UBlackboardComponent* BlackboardComp = OwnerComp.GetBlackboardComponent();
 
-    AAIController* AICon = OwnerComp.GetAIOwner();
-    APawn* Pawn = AICon ? AICon->GetPawn() : nullptr;
-    if (!AICon || !Pawn)
+    if (!AIController || !BlackboardComp)
     {
         FinishLatentTask(OwnerComp, EBTNodeResult::Failed);
         return;
     }
 
-    // 장애물 회피 로직
-    const float DetectionDistance = 400.f;
-    const float AvoidanceRadius = 300.f;
-    const float ObstacleSphereRadius = 75.f;
-
-    FVector PawnLoc = Pawn->GetActorLocation();
-    FVector ForwardDir = Pawn->GetActorForwardVector();
-    FVector TraceStart = PawnLoc;
-    FVector TraceEnd = PawnLoc + ForwardDir * DetectionDistance;
-
-    FCollisionQueryParams Params;
-    Params.AddIgnoredActor(Pawn);
-
-    FHitResult Hit;
-    bool bHit = Pawn->GetWorld()->SweepSingleByChannel(
-        Hit,
-        TraceStart,
-        TraceEnd,
-        FQuat::Identity,
-        ECC_WorldStatic,
-        FCollisionShape::MakeSphere(ObstacleSphereRadius),
-        Params
-    );
-
-    if (bHit)
+    AActor* TargetActor = Cast<AActor>(BlackboardComp->GetValueAsObject("TargetActor"));
+    if (!TargetActor)
     {
-        // 장애물 법선에서 횡회전 방향 계산
-        FVector AvoidDir = FVector::CrossProduct(Hit.Normal, FVector::UpVector).GetSafeNormal();
-        FVector AvoidLocation = PawnLoc + AvoidDir * AvoidanceRadius;
+        AAIController* BaseAIController = Cast<AAIController>(AIController);
+        if (BaseAIController)
+        {
+            AIController->StopMovement();
 
-        AICon->MoveToLocation(
-            AvoidLocation,
-            AcceptanceRadius,
-            true, true, false, false, 0, true
-        );
-    }
-    else
-    {
-        FVector TargetLoc = OwnerComp
-            .GetBlackboardComponent()
-            ->GetValueAsVector(TEXT("TargetLocation"));
+            //UE_LOG(LogTemp, Warning, TEXT("Miss Target"));
 
-        AICon->MoveToLocation(
-            TargetLoc,
-            AcceptanceRadius,
-            true, true, false, false, 0, true
-        );
+            FinishLatentTask(OwnerComp, EBTNodeResult::Failed);
+            return;
+        }
     }
 
-    EPathFollowingStatus::Type Status =
-        AICon->GetPathFollowingComponent()->GetStatus();
+    //이동중인가?
+    EPathFollowingStatus::Type MoveStatus = AIController->GetMoveStatus();
 
-    if (Status != EPathFollowingStatus::Moving)
+    if (MoveStatus == EPathFollowingStatus::Idle)
     {
-        FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
+        //다시 추적
+        AIController->MoveToActor(TargetActor, MyAcceptableRadius);
     }
-}
 
-EBTNodeResult::Type UBTTask_BossMoveToTarget::AbortTask(
-    UBehaviorTreeComponent& OwnerComp,
-    uint8* NodeMemory)
-{
-    if (AAIController* AICon = OwnerComp.GetAIOwner())
+    APawn* ControlledPawn = AIController->GetPawn();
+    if (ControlledPawn)
     {
-        AICon->StopMovement();
+        float DistanceToTarget = FVector::Distance(ControlledPawn->GetActorLocation(), TargetActor->GetActorLocation());
+        if (DistanceToTarget <= MyAcceptableRadius + 50)
+        {
+            FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
+        }
     }
-    return EBTNodeResult::Aborted;
 }

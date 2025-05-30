@@ -22,25 +22,23 @@ public:
 
 protected:
     virtual void BeginPlay() override;
-
-    /** 서브클래스에서 감지 구성만 수행 */
-    virtual void ConfigureSenses() PURE_VIRTUAL(ALCBaseBossAIController::ConfigureSenses, );
-
-    /** 지각 이벤트 처리 (공통 로직) */
-    UFUNCTION()
-    virtual void OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus);
-
-    /** Behavior Tree 초기화 헬퍼 */
     void InitializeBehavior();
 
-    /** BehaviorTree / Blackboard 컴포넌트 */
+    /** 공통 지각 콜백 */
+    UFUNCTION()
+    void OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus);
+
+    // AAIController에 이미 선언된 PerceptionComponent를 그대로 사용
+
+    /** Behavior Tree 컴포넌트 */
     UPROPERTY(VisibleAnywhere, Category = "AI")
     UBehaviorTreeComponent* BehaviorComp;
 
+    /** Blackboard 컴포넌트 */
     UPROPERTY(VisibleAnywhere, Category = "AI")
     UBlackboardComponent* BlackboardComp;
 
-    /** 사용할 BT 에셋 */
+    /** 에디터에서 지정할 BT 에셋 */
     UPROPERTY(EditDefaultsOnly, Category = "AI")
     UBehaviorTree* BehaviorTreeAsset;
 	

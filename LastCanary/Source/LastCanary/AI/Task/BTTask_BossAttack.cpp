@@ -1,5 +1,5 @@
 ﻿#include "AI/Task/BTTask_BossAttack.h"
-#include "AI/LCBossMonsterCharacter.h"
+#include "AI/BaseBossMonsterCharacter.h"
 #include "AI/BaseAIController.h"
 #include "AIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
@@ -22,7 +22,7 @@ EBTNodeResult::Type UBTTask_BossAttack::ExecuteTask(
     if (!Pawn)
         return EBTNodeResult::Failed;
 
-    ALCBossMonsterCharacter* Boss = Cast<ALCBossMonsterCharacter>(Pawn);
+    ABaseBossMonsterCharacter* Boss = Cast<ABaseBossMonsterCharacter>(Pawn);
     if (!Boss)
         return EBTNodeResult::Failed;
 

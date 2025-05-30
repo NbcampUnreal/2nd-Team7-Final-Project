@@ -1,13 +1,13 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
-#include "AI/BaseMonsterCharacter.h"
+#include "AI/BaseBossMonsterCharacter.h"
 #include "LCBossBanshee.generated.h"
 
 UCLASS()
-class LASTCANARY_API ALCBossBanshee : public ABaseMonsterCharacter
+class LASTCANARY_API ALCBossBanshee : public ABaseBossMonsterCharacter
 {
-    GENERATED_BODY()
+	GENERATED_BODY()
 
 public:
     ALCBossBanshee();
@@ -28,34 +28,36 @@ protected:
 
     /** --- 반향 탐지 설정 --- **/
     UPROPERTY(EditDefaultsOnly, Category = "Banshee|Echolocation")
-    float PingInterval;     // 핑 주기 (초)
+    float PingInterval = 8.f;     // 핑 주기 (초)
 
     UPROPERTY(EditDefaultsOnly, Category = "Banshee|Echolocation")
-    float PingRadius;       // 핑 반경
+    float PingRadius = 2000.f;    // 핑 반경
 
     UPROPERTY(EditDefaultsOnly, Category = "Banshee|Echolocation")
-    float RevealDuration;   // 드러내는 시간 (초)
+    float RevealDuration = 4.f;   // 드러내는 시간 (초)
 
     UPROPERTY(EditDefaultsOnly, Category = "Banshee|Sound")
-    USoundBase* EcholocationSound; // 반향 소리
+    USoundBase* EcholocationSound = nullptr; // 반향 소리
 
     /** --- 소닉 울부짖기 설정 --- **/
     UPROPERTY(EditDefaultsOnly, Category = "Banshee|Sonic")
-    float ShriekDamage;     // 울부짖기 데미지
+    float ShriekDamage = 75.f;     // 울부짖기 데미지
 
     UPROPERTY(EditDefaultsOnly, Category = "Banshee|Sonic")
-    float ShriekRadius;     // 울부짖기 반경
+    float ShriekRadius = 800.f;    // 울부짖기 반경
 
     UPROPERTY(EditDefaultsOnly, Category = "Banshee|Sonic")
-    float ShriekCooldown;   // 울부짖기 재사용 대기 시간
+    float ShriekCooldown = 6.f;    // 울부짖기 재사용 대기 시간
 
     UPROPERTY(EditDefaultsOnly, Category = "Banshee|Sound")
-    USoundBase* SonicShriekSound;  // 울부짖는 소리
+    USoundBase* SonicShriekSound = nullptr;  // 울부짖는 소리
 
 private:
-    FTimerHandle PingTimerHandle;    // 반향 핑 타이머 핸들
-    FTimerHandle ShriekTimerHandle;  // 울부짖기 재사용 타이머 핸들
+    /** 타이머 핸들 **/
+    FTimerHandle PingTimerHandle;
+    FTimerHandle ShriekTimerHandle;
 
-    bool bCanShriek;  // 울부짖기 가능 여부
-
+    /** 울부짖기 가능 여부 **/
+    bool bCanShriek = true;
+	
 };

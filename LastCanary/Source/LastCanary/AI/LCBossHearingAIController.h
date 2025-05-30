@@ -16,7 +16,5 @@ public:
 protected:
     UPROPERTY(VisibleAnywhere, Category = "AI")
     UAISenseConfig_Hearing* HearingConfig;
-
-    virtual void ConfigureSenses() override;
 	
 };
