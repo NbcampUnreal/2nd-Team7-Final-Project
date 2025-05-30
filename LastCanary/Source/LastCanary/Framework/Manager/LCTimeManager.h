@@ -8,7 +8,8 @@ UENUM(BlueprintType)
 enum class EDayPhase : uint8
 {
 	Day,
-	Night
+	Night,
+	Any
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTimePhaseChanged, EDayPhase, NewPhase);
@@ -20,6 +21,9 @@ class LASTCANARY_API ALCTimeManager : public AActor
 	
 public:	
 	ALCTimeManager();
+
+	UPROPERTY(EditAnywhere)
+	EDayPhase RequiredPhase = EDayPhase::Any;
 
 protected:
 	virtual void BeginPlay() override;
