@@ -1,21 +1,15 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
 #include "UI/LCUserWidgetBase.h"
-#include "UIElementCreateSession.generated.h"
-
-/**
- * 
- */
+#include "PopupCreateSession.generated.h"
 
 class UButton;
 class UComboBoxString;
 class UEditableTextBox;
 
 UCLASS()
-class LASTCANARY_API UUIElementCreateSession : public ULCUserWidgetBase
+class LASTCANARY_API UPopupCreateSession : public ULCUserWidgetBase
 {
 	GENERATED_BODY()
 	
