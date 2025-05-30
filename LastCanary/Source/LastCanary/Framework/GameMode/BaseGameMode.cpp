@@ -22,17 +22,51 @@ void ABaseGameMode::PostLogin(APlayerController* NewPlayer)
 	{
 		SpawnPlayerCharacter(NewPlayer);
 
-		for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
+		AllPlayerControllers.Add(NewPlayer);
+
+		FSessionPlayerInfo SessionInfo;
+		if (APlayerState* PS = NewPlayer->PlayerState)
 		{
-			if (ALCPlayerController* PlayerController = Cast<ALCPlayerController>(Iterator->Get()))
-			{
-				PlayerController->Client_UpdatePlayers();
-			}
+			SessionInfo.PlayerName = PS->GetPlayerName();
+			SessionPlayerInfos.Add(SessionInfo);
 		}
+
+		UpdatePlayers();
 	}
 	else
 	{
 		UE_LOG(LogTemp, Error, TEXT("ABaseGameMode::PostLogin : GameInstance Cast Failed."))
+	}
+}
+
+void ABaseGameMode::Logout(AController* Exiting)
+{
+	Super::Logout(Exiting);
+
+	if (APlayerController* PC = Cast<APlayerController>(Exiting))
+	{
+		AllPlayerControllers.Remove(PC);
+		FString PlayerName = PC->PlayerState->GetPlayerName();
+
+		SessionPlayerInfos.RemoveAll(
+			[&](const FSessionPlayerInfo& Info)
+			{
+				return Info.PlayerName == PlayerName;
+			}
+		);
+	}
+
+	UpdatePlayers();
+}
+
+void ABaseGameMode::UpdatePlayers()
+{
+	for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
+	{
+		if (ALCPlayerController* PlayerController = Cast<ALCPlayerController>(Iterator->Get()))
+		{
+			PlayerController->Client_UpdatePlayerList(SessionPlayerInfos);
+		}
 	}
 }
 
@@ -41,9 +75,6 @@ void ABaseGameMode::SpawnPlayerCharacter(APlayerController* Controller)
 	// 하위 게임모드에서 구현
 }
 
-void ABaseGameMode::Logout(AController* Exiting)
-{
-}
 
 void ABaseGameMode::TravelMapBySoftPath(FString SoftPath)
 {

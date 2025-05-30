@@ -8,24 +8,47 @@
 
 #include "UI/UIElement/RoomWidget.h"
 
-#include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
 #include "Misc/PackageName.h"
 
 #include "UI/Manager/LCUIManager.h"
 #include "Blueprint/UserWidget.h"
-
-#include "OnlineSubsystem.h"
-#include "Interfaces/OnlineSessionInterface.h"
-
+#include "DataType/SessionPlayerInfo.h"
 
 void ALCRoomPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// TODO : Base Camp Level 에서 인터렉션 후 UI 표시
-	//CreateAndShowSelecetGameUI();
 	CreateAndShowRoomUI();
+}
+
+
+void ALCRoomPlayerController::Client_UpdatePlayerList_Implementation(const TArray<FSessionPlayerInfo>& PlayerInfos)
+{
+	Super::Client_UpdatePlayerList_Implementation(PlayerInfos);
+
+	FTimerHandle TimerHandle;
+	TWeakObjectPtr<ALCRoomPlayerController> WeakPtr = this;
+	TArray<FSessionPlayerInfo> InfosCopy = PlayerInfos;
+
+	GetWorld()->GetTimerManager().SetTimer
+	(
+		TimerHandle,
+		[WeakPtr, InfosCopy]()
+		{
+			if (WeakPtr.IsValid())
+			{
+				if (WeakPtr->RoomWidgetInstance)
+				{
+					UE_LOG(LogTemp, Warning, TEXT("Update Lobby UI!!"));
+					WeakPtr->RoomWidgetInstance->UpdatePlayerLists(InfosCopy);
+				}
+			}
+		},
+		1.0f,
+		false
+	);
+
 }
 
 void ALCRoomPlayerController::Client_UpdatePlayers_Implementation()
@@ -33,32 +56,27 @@ void ALCRoomPlayerController::Client_UpdatePlayers_Implementation()
 	Super::Client_UpdatePlayers_Implementation();
 
 	FTimerHandle TimerHandle;
-	FTimerDelegate TimerDel;
-	TimerDel.BindLambda(
-		[this]()
+	TWeakObjectPtr<ALCRoomPlayerController> WeakPtr = this;
+
+	GetWorld()->GetTimerManager().SetTimer
+	(
+		TimerHandle,
+		[WeakPtr]()
 		{
-			if (RoomWidgetInstance)
+			if (WeakPtr.IsValid())
 			{
-				UE_LOG(LogTemp, Warning, TEXT("Update Lobby UI!!"));
-				RoomWidgetInstance->UpdatePlayerNames();
+				if (WeakPtr->RoomWidgetInstance)
+				{
+					UE_LOG(LogTemp, Warning, TEXT("Update Lobby UI!!"));
+					WeakPtr->RoomWidgetInstance->UpdatePlayerNames();
+				}
 			}
-		});
+		},
+		1.0f,
+		false
+	);
 
-	GetWorld()->GetTimerManager().SetTimer(TimerHandle, TimerDel, 1.0f, false);
 }
-
-//void ALCRoomPlayerController::StartGame()
-//{
-//	if (!HasAuthority()) return;
-//
-//	if (UWorld* World = GetWorld())
-//	{
-//		if (ALCRoomGameMode* RoomGM = Cast<ALCRoomGameMode>(World->GetAuthGameMode()))
-//		{
-//			//RoomGM->StartGame();
-//		}
-//	}
-//}
 
 void ALCRoomPlayerController::Server_RequestPurchase_Implementation(const TArray<FItemDropData>& DropList)
 {
@@ -78,21 +96,6 @@ void ALCRoomPlayerController::Server_RequestPurchase_Implementation(const TArray
 	{
 		Drone->ItemsToDrop = DropList;
 		Drone->StartDelivery();
-	}
-}
-
-void ALCRoomPlayerController::CreateAndShowSelecetGameUI()
-{
-	if (HasAuthority() && IsLocalPlayerController())
-	{
-		if (StartGameWidgetClass)
-		{
-			UUserWidget* StartWidget = CreateWidget<UUserWidget>(this, StartGameWidgetClass);
-			if (StartWidget)
-			{
-				StartWidget->AddToViewport();
-			}
-		}
 	}
 }
 
