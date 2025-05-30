@@ -1,5 +1,5 @@
 #include "Item/ResourceItem/ResourceItemSpawnPoint.h"
-#include "Item/ResourceItem/ResourceItemBase.h"
+#include "Item/ItemBase.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/GameplayStatics.h"
 #include "Framework/Manager/LCTimeManager.h" // 낮밤 체크용
@@ -72,7 +72,7 @@ void AResourceItemSpawnPoint::SpawnItemByRow(FName ItemRowName)
 
 	FTransform SpawnTransform = GetActorTransform();
 
-	AResourceItemBase* SpawnedItem = GetWorld()->SpawnActorDeferred<AResourceItemBase>(
+	AItemBase* SpawnedItem = GetWorld()->SpawnActorDeferred<AItemBase>(
 		ItemClass, SpawnTransform, this, nullptr, ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
 
 	if (SpawnedItem)

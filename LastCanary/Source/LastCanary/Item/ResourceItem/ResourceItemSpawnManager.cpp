@@ -1,6 +1,6 @@
 #include "Item/ResourceItem/ResourceItemSpawnManager.h"
 #include "Item/ResourceItem/ResourceItemSpawnPoint.h"
-#include "Item/ResourceItem/ResourceItemBase.h"
+#include "Item/ItemBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "Framework/Manager/LCTimeManager.h"
 

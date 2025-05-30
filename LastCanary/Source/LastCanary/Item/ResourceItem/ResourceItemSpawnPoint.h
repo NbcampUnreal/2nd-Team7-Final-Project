@@ -12,7 +12,7 @@ enum class ESpawnTimeCondition : uint8
     NightOnly   UMETA(DisplayName = "Night Only")    // 밤에만 스폰됨
 };
 
-class AResourceItemBase;
+class AItemBase;
 UCLASS()
 class LASTCANARY_API AResourceItemSpawnPoint : public AActor
 {
@@ -31,7 +31,7 @@ public:
     ESpawnTimeCondition SpawnTimeCondition = ESpawnTimeCondition::Always;
 
     UPROPERTY()
-    AResourceItemBase* SpawnedResourceItem;
+    AItemBase* SpawnedResourceItem;
 
     /** 스폰 가능한 아이템들의 RowName 목록 */
     UPROPERTY(EditAnywhere, Category = "Spawn")
@@ -43,7 +43,7 @@ public:
 
     /** 아이템 스폰용 클래스 */
     UPROPERTY(EditAnywhere, Category = "Spawn")
-    TSubclassOf<class AResourceItemBase> ItemClass;
+    TSubclassOf<AItemBase> ItemClass;
 
     /** 아이템을 스폰 시도 */
     UFUNCTION(BlueprintCallable)
