@@ -72,11 +72,10 @@ float ABaseMonsterCharacter::TakeDamage(float DamageAmount, struct FDamageEvent 
         bIsDead = true;
         MulticastAIDeath();
 
-        // ���������� ���� �� Destroy ó��
         if (HasAuthority())
         {
             GetWorldTimerManager().SetTimer(DeathTimerHandle, this,
-                &ABaseMonsterCharacter::DestroyActor, 2.0f, false);
+                &ABaseMonsterCharacter::DestroyActor, 3.0f, false);
         }
     }
 
@@ -161,7 +160,6 @@ void ABaseMonsterCharacter::MulticastAIDeath_Implementation()
     if (IsValid(AIDeath))
     {
         PlayAnimMontage(AIDeath);
-        // Destroy() ����! ���������� ó����
     }
 }
 
