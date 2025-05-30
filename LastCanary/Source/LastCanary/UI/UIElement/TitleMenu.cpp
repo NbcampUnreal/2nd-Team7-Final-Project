@@ -13,6 +13,10 @@ void UTitleMenu::NativeConstruct()
 	{
 		StartButton->OnClicked.AddUniqueDynamic(this, &UTitleMenu::OnStartButtonClicked);
 	}
+	if (JoinButton)
+	{
+		JoinButton->OnClicked.AddUniqueDynamic(this, &UTitleMenu::OnJoinButtonClicked);
+	}
 	if (OptionButton)
 	{
 		OptionButton->OnClicked.AddUniqueDynamic(this, &UTitleMenu::OnOptionButtonClicked);
@@ -29,6 +33,10 @@ void UTitleMenu::NativeDestruct()
 	if (StartButton)
 	{
 		StartButton->OnClicked.RemoveDynamic(this,&UTitleMenu::OnStartButtonClicked);
+	}
+	if (JoinButton)
+	{
+		JoinButton->OnClicked.RemoveDynamic(this, &UTitleMenu::OnJoinButtonClicked);
 	}
 	if (OptionButton)
 	{
@@ -64,10 +72,17 @@ void UTitleMenu::OnStartButtonClicked()
 {
 	LOG_Frame_WARNING(TEXT("Start Button Clicked"));
 	ULCUIManager* UIManager = ResolveUIManager();
-	UIManager->ShowLobbyMenu();
+	UIManager->ShowCreateSession();
 	//ULCGameInstanceSubsystem* LCGameInstanceSubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
 	//int32 LevelID = GetTypeHash(FName(TEXT("LobbyMenu")));
 	//LCGameInstanceSubsystem->ChangeLevelByMapID(LevelID);
+}
+
+void UTitleMenu::OnJoinButtonClicked()
+{
+	LOG_Frame_WARNING(TEXT("Join Button Clicked"));
+	ULCUIManager* UIManager = ResolveUIManager();
+	UIManager->ShowLobbyMenu();
 }
 
 void UTitleMenu::OnOptionButtonClicked()
