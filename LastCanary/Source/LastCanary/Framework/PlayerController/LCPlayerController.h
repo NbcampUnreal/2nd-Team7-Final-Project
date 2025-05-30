@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "UI/Manager/LCUIManager.h"
+#include "DataType/SessionPlayerInfo.h"
 #include "GameFramework/PlayerController.h"
 #include "LCPlayerController.generated.h"
 
@@ -19,9 +20,15 @@ public:
 	void Login();
 
 	UFUNCTION(Client, Reliable)
+	void Client_UpdatePlayerList(const TArray<FSessionPlayerInfo>& PlayerInfos);
+	virtual void Client_UpdatePlayerList_Implementation(const TArray<FSessionPlayerInfo>& PlayerInfos);
+
+	UFUNCTION(Client, Reliable)
 	void Client_UpdatePlayers();
 
 	virtual void Client_UpdatePlayers_Implementation();
+
+	void StartGame(FString SoftPath);
 
 protected:
 	TObjectPtr<ULCUIManager> LCUIManager;

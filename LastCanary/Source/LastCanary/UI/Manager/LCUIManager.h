@@ -17,13 +17,15 @@ class UOptionWidget;
 class UInGameHUD;
 class UShopWidget;
 class UMapSelectWidget;
-class UUIElementCreateSession;
+class UPopupCreateSession;
 class UPopupLoading;
+class UPopupNotice;
+class UInventoryMainWidget;
 UCLASS(BlueprintType)
 class LASTCANARY_API ULCUIManager : public UObject
 {
 	GENERATED_BODY()
-	
+
 public:
 	ULCUIManager();
 	void InitUIManager(APlayerController* PlayerController);
@@ -36,6 +38,8 @@ public:
 	void ShowEnterPasswordWidget(const FString& RoomID);
 	void ShowInGameHUD();
 	void HideInGameHUD();
+	void ShowInventoryMainWidget();
+	void HideInventoryMainWidget();
 	void ShowOptionPopup();
 	void ShowPauseMenu();
 	void HidePauseMenu();
@@ -44,15 +48,22 @@ public:
 	void HideShopPopup();
 	void ShowMapSelectPopup();
 	void HideMapSelectPopup();
-	void ShowCreateSession();
+	//void ShowCreateSession();
+	void ToggleInventory();
 
 	void SwitchToWidget(UUserWidget* Widget);
 
-	// TO DO : 로딩 팝업 표시
+	/* 팝업 */
+	void ShowCreateSession();
 	UFUNCTION(BlueprintCallable)
 	void ShowPopUpLoading();
 	UFUNCTION(BlueprintCallable)
 	void HidePopUpLoading();
+
+	UFUNCTION(BlueprintCallable)
+	void ShowPopupNotice(FString Notice);
+	UFUNCTION(BlueprintCallable)
+	void HidePopUpNotice();
 
 	/* 입력 모드 제어 */
 	void SetInputModeUIOnly(UUserWidget* FocusWidget = nullptr);
@@ -64,6 +75,8 @@ public:
 	UEnterPasswordWidget* GetEnterPasswordWidget() const { return CachedEnterPasswordWidget; }
 	UOptionWidget* GetOptionWidget() const { return CachedOptionWidget; }
 	UInGameHUD* GetInGameHUD() const { return CachedInGameHUD; }
+	UInventoryMainWidget* GetInventoryMainWidget() const { return CachedInventoryMainWidget; }
+
 
 	void SetLastShopInteractor(AShopInteractor* Interactor);
 	void SetLastMapSelectInteractor(AMapSelectInteractor* Interactor);
@@ -89,7 +102,7 @@ private:
 	TSubclassOf<UEnterPasswordWidget> EnterPasswordWidgetClass;
 
 	UPROPERTY()
-	TSubclassOf<UOptionWidget> OptionWidgetClass;	
+	TSubclassOf<UOptionWidget> OptionWidgetClass;
 	UPROPERTY()
 	TSubclassOf<UOptionWidget> ConfirmPopupClass;
 	UPROPERTY()
@@ -100,9 +113,13 @@ private:
 	TSubclassOf<UMapSelectWidget> MapSelectWidgetClass;
 
 	UPROPERTY()
-	TSubclassOf<UUIElementCreateSession> CreateSessionClass;
+	TSubclassOf<UPopupCreateSession> CreateSessionClass;
 	UPROPERTY()
 	TSubclassOf<UPopupLoading> PopUpLoadingClass;
+	UPROPERTY()
+	TSubclassOf<UPopupNotice> PopUpNoticeClass;
+	UPROPERTY()
+	TSubclassOf<UInventoryMainWidget> InventoryMainWidgetClass;
 
 	// 위젯 캐싱
 	UPROPERTY()
@@ -120,8 +137,12 @@ private:
 	UPROPERTY()
 	UMapSelectWidget* CachedMapSelectWidget;
 
-	UPROPERTY()
-	UUIElementCreateSession* CachedCreateSession;
+	//UPROPERTY()
+	//UPopupCreateSession* CachedCreateSession;
 	UPROPERTY()
 	UPopupLoading* CachedPopupLoading;
+	UPROPERTY()
+	UPopupNotice* CachedPopupNotice;
+	UPROPERTY()
+	UInventoryMainWidget* CachedInventoryMainWidget;
 };

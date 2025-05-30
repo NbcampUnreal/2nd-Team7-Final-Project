@@ -1,5 +1,6 @@
 ﻿#include "Framework/PlayerController/LCPlayerController.h"
 
+#include "Framework/GameMode/BaseGameMode.h"
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 
@@ -25,26 +26,30 @@ void ALCPlayerController::BeginPlay()
 
 void ALCPlayerController::Login()
 {
-    bool bIsPlayerLoggedin = false;;
-    if (const ULCGameInstance* MyGI = Cast<ULCGameInstance>(GetGameInstance()))
-    {
-        bIsPlayerLoggedin = MyGI->IsPlayerLoggedIn();
-    }
 
-    if (!bIsPlayerLoggedin)
-    {
-        ULCGameInstance* MyGI = Cast<ULCGameInstance>(GetGameInstance());
-        check(MyGI);
-        MyGI->Login();
-    }
-    else
-    {
-        UE_LOG(LogTemp, Warning, TEXT("Player already logged in!"));
-    }
 }
+
+void ALCPlayerController::Client_UpdatePlayerList_Implementation(const TArray<FSessionPlayerInfo>& PlayerInfos)
+{
+
+}
+
 
 void ALCPlayerController::Client_UpdatePlayers_Implementation()
 {
-          
 
+}
+
+void ALCPlayerController::StartGame(FString SoftPath)
+{
+    if (!HasAuthority()) return;
+
+    UE_LOG(LogTemp, Warning, TEXT("Try Start Game!!"));
+    if (UWorld* World = GetWorld())
+    {
+        if (ABaseGameMode* LCGM = Cast<ABaseGameMode>(World->GetAuthGameMode()))
+        {
+            LCGM->TravelMapBySoftPath(SoftPath);
+        }
+    }
 }

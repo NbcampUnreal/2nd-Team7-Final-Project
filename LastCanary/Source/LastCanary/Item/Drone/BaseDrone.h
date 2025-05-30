@@ -4,7 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
+#include "Item/EquipmentItem/EquipmentItemBase.h"
 #include "BaseDrone.generated.h"
+
 
 struct FInputActionValue;
 
@@ -20,6 +22,14 @@ protected:
 	virtual void BeginPlay() override;
 
 	void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const;
+public:
+
+	FVector CharacterLocation;
+	void SetCharacterLocation(FVector Location);
+
+	UPROPERTY(EditAnywhere, Category = "Drone | Distance")
+	float MaxDistanceToPlayer= 2000.f;
+
 
 public:
 	virtual void Tick(float DeltaTime) override;
@@ -145,4 +155,10 @@ public:
 
 	void Server_ReturnAsItem_Implementation();
 	void ReturnAsItem();
+
+
+public:
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_ReturnToPlayer();
+	void Multicast_ReturnToPlayer_Implementation();
 };

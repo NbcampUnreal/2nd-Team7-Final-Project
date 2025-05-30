@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/PlayerController.h"
+#include "Framework/PlayerController/LCPlayerController.h"
 #include "Character/PlayerData/PlayerDataTypes.h"
 #include "BasePlayerController.generated.h"
 
@@ -13,12 +13,12 @@ class ABaseCharacter;
 class ABaseDrone;
 
 UCLASS()
-class LASTCANARY_API ABasePlayerController : public APlayerController
+class LASTCANARY_API ABasePlayerController : public ALCPlayerController
 {
 	GENERATED_BODY()
 private:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
-
+public:
 private:
 	APawn* CachedPawn;  // Pawn을 저장할 멤버 변수
 	APawn* CurrentPossessedPawn;
@@ -33,7 +33,6 @@ private:
 	UEnhancedInputComponent* EnhancedInput;
 	UInputMappingContext* CurrentIMC;
 public:
-protected:
 	virtual void SetupInputComponent() override;
 
 	void ApplyInputMappingContext(UInputMappingContext* IMC);
@@ -102,6 +101,9 @@ protected:
 	TObjectPtr<UInputAction> ThrowItemAction;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
+	TObjectPtr<UInputAction> RifleReloadAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
 	TObjectPtr<UInputAction> VoiceAction;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
@@ -151,7 +153,7 @@ protected:
 	bool bIsRunKeyHeld = false;
 	bool bWantsToRun = false;
 
-private:
+public:
 	virtual void Input_OnLookMouse(const FInputActionValue& ActionValue);
 
 	virtual void Input_OnLook(const FInputActionValue& ActionValue);
@@ -188,6 +190,8 @@ private:
 	virtual void Input_OnCanceledVoiceChat();
 
 	virtual void Input_ChangeShootingSetting();
+
+	virtual void Input_Reload();
 
 	virtual void Input_ChangeQuickSlot(const FInputActionValue& ActionValue);
 
@@ -247,7 +251,23 @@ public:
 	void SetSprintingStateToPlayerState(bool flag);
 
 public:
+
+	// Recoil 상태
+	FTimerHandle RecoilTimerHandle;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite);
+	float YawRecoilRange = 1.0f;
+
+	int32 RecoilStep = 0;
+	int32 RecoilMaxSteps = 5;
+	float RecoilStepPitch = 0.f;
+	float RecoilStepYaw = 0.f;
+
 	void CameraShake();
+	void ApplyRecoilStep();
+
+	void CameraSetOnScope();
+	
 
 	UFUNCTION(BlueprintCallable)
 	void SetPlayerMovementSetting();
