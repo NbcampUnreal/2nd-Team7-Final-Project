@@ -7,7 +7,7 @@
 #include "LCUIManager.generated.h"
 
 /**
- * 
+ *
  */
 class ULCUIManagerSettings;
 class UTitleMenu;
@@ -24,7 +24,7 @@ UCLASS(BlueprintType)
 class LASTCANARY_API ULCUIManager : public UObject
 {
 	GENERATED_BODY()
-	
+
 public:
 	ULCUIManager();
 	void InitUIManager(APlayerController* PlayerController);
@@ -37,6 +37,8 @@ public:
 	void ShowEnterPasswordWidget(const FString& RoomID);
 	void ShowInGameHUD();
 	void HideInGameHUD();
+	void ShowInventoryMainWidget();
+	void HideInventoryMainWidget();
 	void ShowOptionPopup();
 	void ShowPauseMenu();
 	void HidePauseMenu();
@@ -66,6 +68,8 @@ public:
 	UEnterPasswordWidget* GetEnterPasswordWidget() const { return CachedEnterPasswordWidget; }
 	UOptionWidget* GetOptionWidget() const { return CachedOptionWidget; }
 	UInGameHUD* GetInGameHUD() const { return CachedInGameHUD; }
+	UInventoryMainWidget* GetInventoryMainWidget() const { return CachedInventoryMainWidget; }
+
 
 	void SetLastShopInteractor(AShopInteractor* Interactor);
 	void SetLastMapSelectInteractor(AMapSelectInteractor* Interactor);
@@ -91,7 +95,7 @@ private:
 	TSubclassOf<UEnterPasswordWidget> EnterPasswordWidgetClass;
 
 	UPROPERTY()
-	TSubclassOf<UOptionWidget> OptionWidgetClass;	
+	TSubclassOf<UOptionWidget> OptionWidgetClass;
 	UPROPERTY()
 	TSubclassOf<UOptionWidget> ConfirmPopupClass;
 	UPROPERTY()
@@ -130,4 +134,5 @@ private:
 	UPopupLoading* CachedPopupLoading;
 	UPROPERTY()
 	UInventoryMainWidget* CachedInventoryMainWidget;
+
 };

@@ -4,6 +4,8 @@
 #include "Framework/PlayerState/LCPlayerState.h"
 #include "Framework/GameMode/LCRoomGameMode.h"
 
+#include "Actor/LCDroneDelivery.h"
+
 #include "UI/UIElement/RoomWidget.h"
 
 #include "Kismet/GameplayStatics.h"
@@ -57,6 +59,27 @@ void ALCRoomPlayerController::Client_UpdatePlayers_Implementation()
 //		}
 //	}
 //}
+
+void ALCRoomPlayerController::Server_RequestPurchase_Implementation(const TArray<FItemDropData>& DropList)
+{
+	if (DropList.IsEmpty() || !DroneDeliveryClass)
+	{
+		return;
+	}
+
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+	Params.Owner = this;
+
+	FVector SpawnLoc = FVector::ZeroVector;
+
+	ALCDroneDelivery* Drone = GetWorld()->SpawnActor<ALCDroneDelivery>(DroneDeliveryClass, SpawnLoc, FRotator::ZeroRotator, Params);
+	if (Drone)
+	{
+		Drone->ItemsToDrop = DropList;
+		Drone->StartDelivery();
+	}
+}
 
 void ALCRoomPlayerController::CreateAndShowSelecetGameUI()
 {

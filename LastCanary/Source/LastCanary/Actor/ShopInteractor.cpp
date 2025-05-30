@@ -62,7 +62,8 @@ void AShopInteractor::Interact_Implementation(APlayerController* InteractingPlay
 				{
 					if (ULCUIManager* UIManager = GI->GetUIManager())
 					{
-						UIManager->SetLastShopInteractor(this); 
+						UIManager->SetLastShopInteractor(this);
+						LOG_Frame_WARNING(TEXT("PC : %s"), *InteractingPlayerController->GetActorNameOrLabel());
 						UIManager->ShowShopPopup();
 
 						ShopWidgetComponent->SetVisibility(false);
@@ -72,9 +73,9 @@ void AShopInteractor::Interact_Implementation(APlayerController* InteractingPlay
 		});
 
 	GetWorld()->GetTimerManager().SetTimer(
-		TimerHandle, 
+		TimerHandle,
 		TimerDel,
-		0.5f, 
+		0.5f,
 		false);
 }
 
