@@ -7,7 +7,7 @@
 #include "LCUIManager.generated.h"
 
 /**
- *
+ * 
  */
 class ULCUIManagerSettings;
 class UTitleMenu;
@@ -17,8 +17,9 @@ class UOptionWidget;
 class UInGameHUD;
 class UShopWidget;
 class UMapSelectWidget;
-class UUIElementCreateSession;
+class UPopupCreateSession;
 class UPopupLoading;
+class UPopupNotice;
 class UInventoryMainWidget;
 UCLASS(BlueprintType)
 class LASTCANARY_API ULCUIManager : public UObject
@@ -47,16 +48,22 @@ public:
 	void HideShopPopup();
 	void ShowMapSelectPopup();
 	void HideMapSelectPopup();
-	void ShowCreateSession();
+	//void ShowCreateSession();
 	void ToggleInventory();
 
 	void SwitchToWidget(UUserWidget* Widget);
 
-	// TO DO : 로딩 팝업 표시
+	/* 팝업 */
+	void ShowCreateSession();
 	UFUNCTION(BlueprintCallable)
 	void ShowPopUpLoading();
 	UFUNCTION(BlueprintCallable)
 	void HidePopUpLoading();
+
+	UFUNCTION(BlueprintCallable)
+	void ShowPopupNotice(FString Notice);
+	UFUNCTION(BlueprintCallable)
+	void HidePopUpNotice();
 
 	/* 입력 모드 제어 */
 	void SetInputModeUIOnly(UUserWidget* FocusWidget = nullptr);
@@ -106,9 +113,11 @@ private:
 	TSubclassOf<UMapSelectWidget> MapSelectWidgetClass;
 
 	UPROPERTY()
-	TSubclassOf<UUIElementCreateSession> CreateSessionClass;
+	TSubclassOf<UPopupCreateSession> CreateSessionClass;
 	UPROPERTY()
 	TSubclassOf<UPopupLoading> PopUpLoadingClass;
+	UPROPERTY()
+	TSubclassOf<UPopupNotice> PopUpNoticeClass;
 	UPROPERTY()
 	TSubclassOf<UInventoryMainWidget> InventoryMainWidgetClass;
 
@@ -128,11 +137,12 @@ private:
 	UPROPERTY()
 	UMapSelectWidget* CachedMapSelectWidget;
 
-	UPROPERTY()
-	UUIElementCreateSession* CachedCreateSession;
+	//UPROPERTY()
+	//UPopupCreateSession* CachedCreateSession;
 	UPROPERTY()
 	UPopupLoading* CachedPopupLoading;
 	UPROPERTY()
+	UPopupNotice* CachedPopupNotice;
+	UPROPERTY()
 	UInventoryMainWidget* CachedInventoryMainWidget;
-
 };

@@ -9,7 +9,8 @@
 #include "UI/UIElement/ShopWidget.h"
 #include "UI/UIElement/MapSelectWidget.h"
 #include "UI/UIElement/InventoryMainWidget.h"
-#include "UI/UIElement/UIElementCreateSession.h"
+#include "UI/Popup/PopupCreateSession.h"
+#include "UI/Popup/PopupNotice.h"
 
 #include "UI/UIObject/ConfirmPopup.h"
 #include "UI/Popup/PopupLoading.h"
@@ -50,6 +51,7 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			MapSelectWidgetClass = Settings->FromBPMapSelectWidgetClass;
 			InventoryMainWidgetClass = Settings->FromBPInventoryMainUIClass;
 			CreateSessionClass = Settings->FromBPCreateSessionWidgetClass;
+			PopUpNoticeClass = Settings->FromBPPopupNoticeClass;
 			PopUpLoadingClass = Settings->FromBPPopupLoadingClass;
 			if ((CachedTitleMenu == nullptr) && TitleMenuClass)
 			{
@@ -79,13 +81,17 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			{
 				CachedMapSelectWidget = CreateWidget<UMapSelectWidget>(PlayerController, MapSelectWidgetClass);
 			}
-			if ((CachedCreateSession == nullptr) && CreateSessionClass)
-			{
-				CachedCreateSession = CreateWidget<UUIElementCreateSession>(PlayerController, CreateSessionClass);
-			}
+			//if ((CachedCreateSession == nullptr) && CreateSessionClass)
+			//{
+			//	CachedCreateSession = CreateWidget<UPopupCreateSession>(PlayerController, CreateSessionClass);
+			//}
 			if ((CachedPopupLoading == nullptr) && PopUpLoadingClass)
 			{
 				CachedPopupLoading = CreateWidget<UPopupLoading>(PlayerController, PopUpLoadingClass);
+			}
+			if ((CachedPopupNotice == nullptr) && PopUpNoticeClass)
+			{
+				CachedPopupNotice = CreateWidget<UPopupNotice>(PlayerController, PopUpNoticeClass);
 			}
 			if ((CachedInventoryMainWidget == nullptr) && InventoryMainWidgetClass)
 			{
@@ -158,6 +164,7 @@ void ULCUIManager::ShowEnterPasswordWidget(const FString& RoomID)
 		return;
 	}
 
+	LOG_Frame_WARNING(TEXT("ShowEnterPasswordWidget"));
 	if (CachedEnterPasswordWidget)
 	{
 		CachedEnterPasswordWidget->Init(RoomID);
@@ -349,10 +356,9 @@ void ULCUIManager::ShowCreateSession()
 	LOG_Frame_WARNING(TEXT("Show Create Session"));
 	if (CreateSessionClass)
 	{
-		CachedCreateSession = CreateWidget<UUIElementCreateSession>(OwningPlayer, CreateSessionClass);
-		CachedCreateSession->AddToViewport(1);
+		UPopupCreateSession* CreateSessionWidget = CreateWidget<UPopupCreateSession>(OwningPlayer, CreateSessionClass);
+		CreateSessionWidget->AddToViewport(1);
 	}
-	//SwitchToWidget(CachedCreateSession);
 }
 
 void ULCUIManager::ToggleInventory()
@@ -402,6 +408,24 @@ void ULCUIManager::HidePopUpLoading()
 	if (CachedPopupLoading)
 	{
 		CachedPopupLoading->RemoveFromParent();
+	}
+}
+
+void ULCUIManager::ShowPopupNotice(FString Notice)
+{
+	LOG_Frame_WARNING(TEXT("Show Popup Notice"));
+	if (CachedPopupNotice)
+	{
+		CachedPopupNotice->InitializeNoticePopup(Notice);
+		CachedPopupNotice->AddToViewport(1);
+	}
+}
+
+void ULCUIManager::HidePopUpNotice()
+{
+	if (CachedPopupNotice)
+	{
+		CachedPopupNotice->RemoveFromParent();
 	}
 }
 
