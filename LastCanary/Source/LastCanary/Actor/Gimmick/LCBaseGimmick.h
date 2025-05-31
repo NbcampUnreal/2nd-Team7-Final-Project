@@ -13,7 +13,8 @@ class LASTCANARY_API ALCBaseGimmick : public AActor, public ILCGimmickInterface
 public:
     ALCBaseGimmick();
 
-protected:
+/** LinckedTargets 받아오려고 수정 */
+//protected:
     /** 연결된 효과 액터들 */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick")
     TArray<AActor*> LinkedTargets;
