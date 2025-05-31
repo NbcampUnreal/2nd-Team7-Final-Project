@@ -108,15 +108,19 @@ public:
 
 	// Gold & Exp
 	UPROPERTY(Replicated, BlueprintReadOnly)
-	int32 TotalGold;
+	int32 TotalGold=500;
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	int32 TotalExp;
 	void AddTotalGold(int32 Amount);
 	void AddTotalExp(int32 Amount);
 	UFUNCTION(BlueprintCallable)
-	int32 GetTotalGold();
+	int32 GetTotalGold() const;
 	UFUNCTION(BlueprintCallable)
-	int32 GetTotalExp();
+	int32 GetTotalExp() const;
+	
+	UFUNCTION(Server, Reliable)
+	void Server_SpendGold(int32 Amount);
+	void Server_SpendGold_Implementation(int32 Amount);
 
 	UFUNCTION(BlueprintCallable)
 	void SetPlayerMovementSetting(float _WalkForwardSpeed, float _WalkBackwardSpeed, float _RunForwardSpeed, float _RunBackwardSpeed, float _SprintSpeed);
