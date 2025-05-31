@@ -11,6 +11,7 @@
 #include "Actor/LCDronePath.h"
 
 #include "Framework/PlayerController/LCRoomPlayerController.h"
+#include "Character/BasePlayerState.h"
 
 #include "LastCanary.h"
 
@@ -20,6 +21,7 @@ void UShopWidget::NativeConstruct()
 	if (PurchaseButton)
 	{
 		PurchaseButton->OnClicked.AddUniqueDynamic(this, &UShopWidget::OnPurchaseButtonClicked);
+		PurchaseButton->SetIsEnabled(false); // 시작 시 비활성화
 	}
 	if (ExitButton)
 	{
@@ -29,11 +31,30 @@ void UShopWidget::NativeConstruct()
 	{
 		ItemInfoWidget->SetShoppingCartWidget(ShoppingCartWidget);
 	}
-	if (ShopFadeAnim)
-	{
-		PlayAnimation(ShopFadeAnim, 0.0f, 1);
-	}
 	
+	if (ShoppingCartWidget)
+	{
+		// 골드 가져오기 
+		int32 PlayerGold = 0;
+		if (const APlayerState* PS = GetOwningPlayerState())
+		{
+			if (const ABasePlayerState* MyPS = Cast<ABasePlayerState>(PS))
+			{
+				PlayerGold = MyPS->GetTotalGold();
+			}
+		}
+		ShoppingCartWidget->SetPlayerGold(PlayerGold);
+
+		// 델리게이트 바인딩
+		ShoppingCartWidget->OnCartValidityChanged.BindLambda([this](bool bCanAfford)
+			{
+				if (PurchaseButton)
+				{
+					PurchaseButton->SetIsEnabled(bCanAfford);
+				}
+			});
+	}
+
 	PopulateShopItems();
 }
 
@@ -47,10 +68,6 @@ void UShopWidget::NativeDestruct()
 	if (ExitButton)
 	{
 		ExitButton->OnClicked.RemoveDynamic(this, &UShopWidget::CloseShopWidget);
-	}
-	if (ShopFadeAnim)
-	{
-		PlayAnimation(ShopFadeAnim, 0.0f, 1);
 	}
 }
 
@@ -111,6 +128,17 @@ void UShopWidget::OnShopItemClicked(UShopItemEntry* ClickedEntry)
 
 void UShopWidget::OnPurchaseButtonClicked()
 {
+	/*TArray<FItemDropData> DropList = ShoppingCartWidget->GetItemDropList();
+
+	LOG_Frame_WARNING(TEXT("DropList Count: %d"), DropList.Num());
+
+	for (const auto& Drop : DropList)
+	{
+		LOG_Frame_WARNING(TEXT("Drop Item: %s, Count: %d"),
+			Drop.ItemClass ? *Drop.ItemClass->GetName() : TEXT("nullptr"),
+			Drop.Count);
+	}*/
+
 	ALCRoomPlayerController* PC = Cast<ALCRoomPlayerController>(GetOwningPlayer());
 	if (PC)
 	{

@@ -243,12 +243,12 @@ bool ABasePlayerState::IsStaminaFull() const
 	return CurrentStamina >= InitialStats.MaxStamina;
 }
 
-int32 ABasePlayerState::GetTotalGold()
+int32 ABasePlayerState::GetTotalGold() const
 {
 	return TotalGold;
 }
 
-int32 ABasePlayerState::GetTotalExp()
+int32 ABasePlayerState::GetTotalExp() const
 {
 	return TotalExp;
 }
@@ -261,6 +261,24 @@ void ABasePlayerState::AddTotalGold(int32 Amount)
 void ABasePlayerState::AddTotalExp(int32 Amount)
 {
 	TotalExp += Amount;
+}
+
+void ABasePlayerState::Server_SpendGold_Implementation(int32 Amount)
+{
+	if (Amount <= 0)
+	{
+		return;
+	}
+
+	if (TotalGold >= Amount)
+	{
+		TotalGold -= Amount;
+		LOG_Frame_WARNING(TEXT("Gold spent: %d, Remaining: %d"), Amount, TotalGold);
+	}
+	else
+	{
+		LOG_Frame_WARNING(TEXT("Not enough gold. Required: %d, Have: %d"), Amount, TotalGold);
+	}
 }
 
 void ABasePlayerState::SetPlayerMovementSetting(float _WalkForwardSpeed, float _WalkBackwardSpeed, float _RunForwardSpeed, float _RunBackwardSpeed, float _SprintSpeed)

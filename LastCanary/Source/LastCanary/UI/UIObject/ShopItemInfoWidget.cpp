@@ -10,7 +10,6 @@
 
 #include "LastCanary.h"
 
-
 void UShopItemInfoWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
@@ -105,7 +104,7 @@ void UShopItemInfoWidget::OnAddToCartButtonClicked()
 
 	for (const FItemDataRow* ItemRow : AllItems)
 	{
-		if (ItemRow && ItemRow->ItemID == ItemID) // ItemID는 LoadItemFromDataTable 시점에 저장해둬야 함
+		if (ItemRow && ItemRow->ItemID == ItemID) 
 		{
 			ShoppingCartWidget->AddItemToCart(*ItemRow, SelectedCount);
 			return;
