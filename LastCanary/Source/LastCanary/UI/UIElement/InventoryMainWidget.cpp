@@ -159,12 +159,18 @@ UBackpackInventoryComponent* UInventoryMainWidget::GetCorrectBackpackComponent()
         return nullptr;
     }
 
-    // 3. 컴포넌트 상태 검증
     LOG_Item_WARNING(TEXT("[GetCorrectBackpackComponent] BackpackInventoryComponent 주소: %p"), BackpackComp);
     LOG_Item_WARNING(TEXT("[GetCorrectBackpackComponent] 슬롯 수: %d"), BackpackComp->ItemSlots.Num());
     LOG_Item_WARNING(TEXT("[GetCorrectBackpackComponent] MaxSlots: %d"), BackpackComp->MaxSlots);
 
-    // 4. 가방이 장착되어 있는지 확인
+    // ⭐ 가방이 실제로 장착되어 있는지 확인 (캐릭터에서 직접 확인)
+    if (!Character->HasBackpackEquipped())
+    {
+        LOG_Item_WARNING(TEXT("[GetCorrectBackpackComponent] ❌ 가방이 장착되지 않음"));
+        return nullptr;
+    }
+
+    // ⭐ MaxSlots 확인 (가방이 해제되면 0으로 설정되어야 함)
     if (BackpackComp->MaxSlots <= 0)
     {
         LOG_Item_WARNING(TEXT("[GetCorrectBackpackComponent] ❌ 가방이 장착되지 않음 (MaxSlots: %d)"), BackpackComp->MaxSlots);

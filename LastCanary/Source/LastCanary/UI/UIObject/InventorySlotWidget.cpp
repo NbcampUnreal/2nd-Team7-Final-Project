@@ -205,11 +205,7 @@ void UInventorySlotWidget::UpdateBorderImage()
 
 	UTexture2D* TargetTexture = nullptr;
 
-    if (ItemData.ItemRowName.IsNone() || IsDefaultItem(ItemData.ItemRowName))
-    {
-        TargetTexture = EmptyBorderTexture;
-    }
-    else if (ItemData.bIsEquipped)
+	if (ItemData.bIsEquipped)
     {
         TargetTexture = EquippedBorderTexture;
     }

@@ -468,13 +468,38 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
 
     if (ItemData->ItemType.MatchesTag(BackpackTag))
     {
+        // ⭐ 가방 아이템인 경우 실제 해제하지 않고 슬롯 상태만 변경
+        LOG_Item_WARNING(TEXT("[UnequipCurrentItem] 가방 아이템 해제 - 실제 가방은 유지, 슬롯 상태만 변경"));
+
+        CurrentEquippedSlotIndex = -1;
+
+        // 캐릭터는 여전히 장착 상태 유지 (가방이 있으므로)
         if (CachedOwnerCharacter)
         {
-            CachedOwnerCharacter->UnequipBackpack();
+            // 가방이 있으면 여전히 장착 상태로 간주
+            bool bHasOtherEquipment = false;
+            for (int32 i = 0; i < ItemSlots.Num(); ++i)
+            {
+                if (i != UnequipSlotIndex && ItemSlots[i].bIsEquipped &&
+                    !IsDefaultItem(ItemSlots[i].ItemRowName))
+                {
+                    bHasOtherEquipment = true;
+                    break;
+                }
+            }
+
+            // 다른 장비가 없으면 SetEquipped(false), 있으면 유지
+            if (!bHasOtherEquipment)
+            {
+                CachedOwnerCharacter->SetEquipped(false);
+            }
         }
     }
     else
     {
+        // ⭐ 일반 장비 아이템 해제
+        LOG_Item_WARNING(TEXT("[UnequipCurrentItem] 일반 장비 아이템 해제: %s"), *SlotData->ItemRowName.ToString());
+
         // 장착된 아이템 액터에서 해제 처리
         if (AItemBase* CurrentItem = Cast<AItemBase>(EquippedItemComponent->GetChildActor()))
         {
@@ -485,16 +510,33 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
         }
 
         EquippedItemComponent->DestroyChildActor();
-    }
 
-    CurrentEquippedSlotIndex = -1;
+        CurrentEquippedSlotIndex = -1;
 
-    if (CachedOwnerCharacter)
-    {
-        CachedOwnerCharacter->SetEquipped(false);
+        // 가방이 장착되어 있는지 확인
+        bool bHasBackpack = CachedOwnerCharacter && CachedOwnerCharacter->HasBackpackEquipped();
+        bool bHasOtherEquipment = false;
+
+        for (int32 i = 0; i < ItemSlots.Num(); ++i)
+        {
+            if (i != UnequipSlotIndex && ItemSlots[i].bIsEquipped &&
+                !IsDefaultItem(ItemSlots[i].ItemRowName))
+            {
+                bHasOtherEquipment = true;
+                break;
+            }
+        }
+
+        if (CachedOwnerCharacter)
+        {
+            // 가방이나 다른 장비가 있으면 장착 상태 유지
+            CachedOwnerCharacter->SetEquipped(bHasBackpack || bHasOtherEquipment);
+        }
     }
 
     OnInventoryUpdated.Broadcast();
+
+    LOG_Item_WARNING(TEXT("[UnequipCurrentItem] ✅ 해제 완료: %s"), *SlotData->ItemRowName.ToString());
 }
 
 AItemBase* UToolbarInventoryComponent::GetCurrentEquippedItem() const
@@ -651,7 +693,7 @@ bool UToolbarInventoryComponent::TryStoreItem(AItemBase* ItemActor)
 
             if (CachedOwnerCharacter->EquipBackpack(ItemActor->ItemRowName, BackpackData, BackpackMaxSlots))
             {
-                ItemSlots[EmptySlotIndex].bIsEquipped = true;
+                ItemSlots[EmptySlotIndex].bIsEquipped = false;
             }
             else
             {
@@ -702,17 +744,113 @@ bool UToolbarInventoryComponent::TryDropItemAtSlot(int32 SlotIndex, int32 Quanti
     {
         LOG_Item_WARNING(TEXT("[TryDropItemAtSlot] 장착된 아이템 드롭: 슬롯 %d"), SlotIndex);
 
-        // ⭐ UnequipCurrentItem 호출하지 않고 직접 처리
         if (!GetOwner() || !GetOwner()->HasAuthority())
         {
             LOG_Item_WARNING(TEXT("[TryDropItemAtSlot] Authority가 없습니다."));
             return false;
         }
 
-        // 현재 장착된 아이템 정보 백업
-        FBaseItemSlotData OriginalSlotData = ItemSlots[SlotIndex];
+        // ⭐ 가방 아이템인지 확인
+        FBaseItemSlotData* SlotData = GetItemDataAtSlot(SlotIndex);
+        if (!SlotData)
+        {
+            LOG_Item_WARNING(TEXT("[TryDropItemAtSlot] 슬롯 데이터가 없습니다."));
+            return false;
+        }
 
-        // 장착 해제 (SetSlotToDefault 호출 안함)
+        ULCGameInstanceSubsystem* GISubsystem = GetOwner()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
+        if (GISubsystem)
+        {
+            const FItemDataRow* ItemData = GISubsystem->GetItemDataByRowName(SlotData->ItemRowName);
+            if (ItemData)
+            {
+                static const FGameplayTag BackpackTag = FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Backpack"));
+
+                if (ItemData->ItemType.MatchesTag(BackpackTag))
+                {
+                    LOG_Item_WARNING(TEXT("[TryDropItemAtSlot] 가방 아이템 드롭 - 실제 가방 해제 진행"));
+
+                    // ⭐ 가방 드롭 시에만 실제 가방 해제
+                    TArray<FBaseItemSlotData> BackpackData;
+                    if (CachedOwnerCharacter && CachedOwnerCharacter->HasBackpackEquipped())
+                    {
+                        BackpackData = CachedOwnerCharacter->UnequipBackpack();
+                        LOG_Item_WARNING(TEXT("[TryDropItemAtSlot] 가방 해제 완료, 백팩 데이터: %d개"), BackpackData.Num());
+                    }
+
+                    // ⭐ 가방 데이터와 함께 드롭
+                    FVector DropLocation = CalculateDropLocation();
+
+                    FBaseItemSlotData DropItemData = *SlotData;
+                    DropItemData.Quantity = FMath::Min(Quantity, SlotData->Quantity);
+                    DropItemData.bIsEquipped = false;
+
+                    if (!ItemSpawner)
+                    {
+                        LOG_Item_WARNING(TEXT("[TryDropItemAtSlot] ItemSpawner is null"));
+                        return false;
+                    }
+
+                    AItemBase* DroppedItem = ItemSpawner->CreateItemFromData(DropItemData, DropLocation);
+                    if (!DroppedItem)
+                    {
+                        LOG_Item_WARNING(TEXT("[TryDropItemAtSlot] 가방 아이템 스폰 실패"));
+                        return false;
+                    }
+
+                    // ⭐ 가방에 데이터 설정
+                    if (ABackpackItem* DroppedBackpack = Cast<ABackpackItem>(DroppedItem))
+                    {
+                        DroppedBackpack->SetBackpackData(BackpackData);
+                        LOG_Item_WARNING(TEXT("[TryDropItemAtSlot] 드롭된 가방에 데이터 설정 완료"));
+                    }
+
+                    // 슬롯에서 제거
+                    SlotData->Quantity -= DropItemData.Quantity;
+                    if (SlotData->Quantity <= 0)
+                    {
+                        SetSlotToDefault(SlotIndex);
+                    }
+
+                    // 장착 상태 해제
+                    SlotData->bIsEquipped = false;
+                    CurrentEquippedSlotIndex = -1;
+
+                    // 캐릭터 상태 변경
+                    if (CachedOwnerCharacter)
+                    {
+                        // 가방이 해제되었으므로 다른 장비가 없으면 SetEquipped(false)
+                        bool bHasOtherEquipment = false;
+                        for (int32 i = 0; i < ItemSlots.Num(); ++i)
+                        {
+                            if (i != SlotIndex && ItemSlots[i].bIsEquipped &&
+                                !IsDefaultItem(ItemSlots[i].ItemRowName))
+                            {
+                                bHasOtherEquipment = true;
+                                break;
+                            }
+                        }
+
+                        CachedOwnerCharacter->SetEquipped(bHasOtherEquipment);
+                        LOG_Item_WARNING(TEXT("[TryDropItemAtSlot] 캐릭터 장착 상태: %s"),
+                            bHasOtherEquipment ? TEXT("장착됨") : TEXT("해제됨"));
+                    }
+
+                    UpdateWeight();
+                    OnInventoryUpdated.Broadcast();
+
+                    LOG_Item_WARNING(TEXT("[TryDropItemAtSlot] ✅ 가방 드롭 성공"));
+                    return true;
+                }
+            }
+        }
+
+        // ⭐ 일반 아이템 드롭 처리 (기존 로직)
+        // 현재 장착된 아이템 정보 백업 (bIsEquipped는 false로 설정)
+        FBaseItemSlotData OriginalSlotData = ItemSlots[SlotIndex];
+        OriginalSlotData.bIsEquipped = false;
+
+        // 일반 장착 해제 처리
         if (AItemBase* CurrentItem = Cast<AItemBase>(EquippedItemComponent->GetChildActor()))
         {
             if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(CurrentItem))
@@ -725,12 +863,28 @@ bool UToolbarInventoryComponent::TryDropItemAtSlot(int32 SlotIndex, int32 Quanti
         // 캐릭터 상태 변경
         if (CachedOwnerCharacter)
         {
-            CachedOwnerCharacter->SetEquipped(false);
+            // 가방이 있는지 확인
+            bool bHasBackpack = CachedOwnerCharacter->HasBackpackEquipped();
+            bool bHasOtherEquipment = false;
+
+            for (int32 i = 0; i < ItemSlots.Num(); ++i)
+            {
+                if (i != SlotIndex && ItemSlots[i].bIsEquipped &&
+                    !IsDefaultItem(ItemSlots[i].ItemRowName))
+                {
+                    bHasOtherEquipment = true;
+                    break;
+                }
+            }
+
+            CachedOwnerCharacter->SetEquipped(bHasBackpack || bHasOtherEquipment);
         }
 
+        // 슬롯의 bIsEquipped도 false로 설정
+        ItemSlots[SlotIndex].bIsEquipped = false;
         CurrentEquippedSlotIndex = -1;
 
-        // ⭐ 원래 슬롯 데이터로 복원한 후 드롭 진행
+        // 수정된 슬롯 데이터로 복원한 후 드롭 진행
         ItemSlots[SlotIndex] = OriginalSlotData;
 
         // 일반 드롭 로직 실행
