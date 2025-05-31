@@ -30,7 +30,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
 	USkeletalMeshComponent* OverlaySkeletalMesh;
 
-	/*(타인만 볼 수 있는)*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
 	USkeletalMeshComponent* RemoteOnlySkeletalMesh;
 

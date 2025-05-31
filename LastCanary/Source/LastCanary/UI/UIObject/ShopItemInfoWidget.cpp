@@ -121,15 +121,6 @@ int32 UShopItemInfoWidget::GetSelectedCount() const
 void UShopItemInfoWidget::SetShoppingCartWidget(UShoppingCartWidget* InCartWidget)
 {
 	ShoppingCartWidget = InCartWidget;
-
-	if (ShoppingCartWidget)
-	{
-		LOG_Frame_WARNING(TEXT("SetShoppingCartWidget: SUCCESS"));
-	}
-	else
-	{
-		LOG_Frame_WARNING(TEXT("SetShoppingCartWidget: FAILED"));
-	}
 }
 
 void UShopItemInfoWidget::LoadItemFromDataTable(int32 InItemID)

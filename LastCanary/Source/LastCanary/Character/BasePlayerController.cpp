@@ -36,7 +36,7 @@ void ABasePlayerController::BeginPlay()
 	{
 		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
 		{
-			UIManager->InitUIManager(this);
+			// UIManager->InitUIManager(this);
 
 			if (GetPawn())
 			{

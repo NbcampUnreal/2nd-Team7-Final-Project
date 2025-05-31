@@ -22,13 +22,7 @@ public:
     //-----------------------------------------------------
 
     UPROPERTY(meta = (BindWidget))
-    class UTextBlock* ItemNameText;
-
-    UPROPERTY(meta = (BindWidget))
     class UImage* ItemIconImage;
-
-    UPROPERTY(meta = (BindWidget))
-    class UTextBlock* ItemQuantityText;
 
     UPROPERTY(meta = (BindWidget))
     class UBorder* SlotBorder;
@@ -53,14 +47,23 @@ public:
     UPROPERTY(BlueprintReadOnly, Category = "Inventory|Data")
     UInventoryComponentBase* InventoryComponent;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual Settings")
+   /* UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual Settings")
     FLinearColor EquippedBorderColor = FLinearColor(0.0f, 1.0f, 0.0f, 0.3f);
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual Settings")
     FLinearColor NormalBorderColor = FLinearColor(0.2f, 0.2f, 0.2f, 0.3f);
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual Settings")
-    FLinearColor EmptyBorderColor = FLinearColor(0.5f, 0.5f, 0.5f, 0.3f);
+    FLinearColor EmptyBorderColor = FLinearColor(0.5f, 0.5f, 0.5f, 0.3f);*/
+
+    UPROPERTY(EditDefaultsOnly, Category = "Inventory|Border")
+    UTexture2D* EmptyBorderTexture;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Inventory|Border")
+    UTexture2D* EquippedBorderTexture;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Inventory|Border")
+    UTexture2D* NormalBorderTexture;
 
     //-----------------------------------------------------
     // 툴팁 관련
@@ -133,8 +136,8 @@ private:
     void UpdateTooltipPosition();
 
     /** 보더 색상 업데이트 */
-    void UpdateBorderColor();
-
+    void UpdateBorderImage();
+    
     // TODO : 추후 구현 예정인 블루프린트 이벤트 (현재 미사용)
     /*
     UFUNCTION(BlueprintImplementableEvent, Category = "Inventory|Events")

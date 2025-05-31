@@ -9,12 +9,14 @@
 #include "UI/UIElement/ShopWidget.h"
 #include "UI/UIElement/MapSelectWidget.h"
 #include "UI/UIElement/InventoryMainWidget.h"
-#include "UI/UIElement/UIElementCreateSession.h"
+#include "UI/Popup/PopupCreateSession.h"
+#include "UI/Popup/PopupNotice.h"
 
 #include "UI/UIObject/ConfirmPopup.h"
 #include "UI/Popup/PopupLoading.h"
 
 //#include "Framework/PlayerController/LCLobbyPlayerController.h"
+#include "Framework/PlayerController/LCRoomPlayerController.h"
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 
@@ -29,7 +31,13 @@ ULCUIManager::ULCUIManager()
 
 void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 {
-	OwningPlayer = PlayerController;
+		LOG_Frame_WARNING(TEXT("InitUIManager Called."));
+	if (OwningPlayer == nullptr)
+	{
+		LOG_Frame_WARNING(TEXT("PlayerController is nullptr in InitUIManager."));
+		OwningPlayer = PlayerController;
+	}
+
 	if (const ULCGameInstance* GI = Cast<ULCGameInstance>(PlayerController->GetGameInstance()))
 	{
 		if (const ULCUIManagerSettings* Settings = GI->GetUIManagerSettings())
@@ -43,6 +51,7 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			MapSelectWidgetClass = Settings->FromBPMapSelectWidgetClass;
 			InventoryMainWidgetClass = Settings->FromBPInventoryMainUIClass;
 			CreateSessionClass = Settings->FromBPCreateSessionWidgetClass;
+			PopUpNoticeClass = Settings->FromBPPopupNoticeClass;
 			PopUpLoadingClass = Settings->FromBPPopupLoadingClass;
 			if ((CachedTitleMenu == nullptr) && TitleMenuClass)
 			{
@@ -72,13 +81,17 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			{
 				CachedMapSelectWidget = CreateWidget<UMapSelectWidget>(PlayerController, MapSelectWidgetClass);
 			}
-			if ((CachedCreateSession == nullptr) && CreateSessionClass)
-			{
-				CachedCreateSession = CreateWidget<UUIElementCreateSession>(PlayerController, CreateSessionClass);
-			}
+			//if ((CachedCreateSession == nullptr) && CreateSessionClass)
+			//{
+			//	CachedCreateSession = CreateWidget<UPopupCreateSession>(PlayerController, CreateSessionClass);
+			//}
 			if ((CachedPopupLoading == nullptr) && PopUpLoadingClass)
 			{
 				CachedPopupLoading = CreateWidget<UPopupLoading>(PlayerController, PopUpLoadingClass);
+			}
+			if ((CachedPopupNotice == nullptr) && PopUpNoticeClass)
+			{
+				CachedPopupNotice = CreateWidget<UPopupNotice>(PlayerController, PopUpNoticeClass);
 			}
 			if ((CachedInventoryMainWidget == nullptr) && InventoryMainWidgetClass)
 			{
@@ -95,6 +108,16 @@ void ULCUIManager::SetPlayerController(APlayerController* PlayerController)
 
 void ULCUIManager::ShowTitleMenu()
 {
+	if (OwningPlayer == nullptr)
+	{
+		LOG_Frame_WARNING(TEXT("OwningPlayer is nullptr"));
+		return;
+	}
+	/*if (OwningPlayer->IsLocalPlayerController() == false)
+	{
+		return;
+	}*/
+
 	LOG_Frame_WARNING(TEXT("ShowTitleMenu"));
 	SwitchToWidget(CachedTitleMenu);
 	SetInputModeUIOnly(CurrentWidget);
@@ -102,6 +125,15 @@ void ULCUIManager::ShowTitleMenu()
 
 void ULCUIManager::ShowLobbyMenu()
 {
+	if (OwningPlayer == nullptr)
+	{
+		return;
+	}
+	if (OwningPlayer->IsLocalPlayerController() == false)
+	{
+		return;
+	}
+
 	LOG_Frame_WARNING(TEXT("ShowLobbyMenu"));
 	SwitchToWidget(CachedLobbyMenu);
 	SetInputModeUIOnly(CurrentWidget);
@@ -109,11 +141,29 @@ void ULCUIManager::ShowLobbyMenu()
 
 void ULCUIManager::ShowRoomListMenu()
 {
+	if (OwningPlayer == nullptr)
+	{
+		return;
+	}
+	if (OwningPlayer->IsLocalPlayerController() == false)
+	{
+		return;
+	}
+
 	LOG_Frame_WARNING(TEXT("ShowRoomListMenu"));
 }
 
 void ULCUIManager::ShowEnterPasswordWidget(const FString& RoomID)
 {
+	if (OwningPlayer == nullptr)
+	{
+		return;
+	}
+	if (OwningPlayer->IsLocalPlayerController() == false)
+	{
+		return;
+	}
+
 	LOG_Frame_WARNING(TEXT("ShowEnterPasswordWidget"));
 	if (CachedEnterPasswordWidget)
 	{
@@ -125,6 +175,15 @@ void ULCUIManager::ShowEnterPasswordWidget(const FString& RoomID)
 
 void ULCUIManager::ShowOptionPopup()
 {
+	if (OwningPlayer == nullptr)
+	{
+		return;
+	}
+	if (OwningPlayer->IsLocalPlayerController() == false)
+	{
+		return;
+	}
+
 	LOG_Frame_WARNING(TEXT("ShowOptionPopup"));
 
 	if (!IsValid(CachedOptionWidget))
@@ -142,6 +201,15 @@ void ULCUIManager::ShowOptionPopup()
 
 void ULCUIManager::ShowPauseMenu()
 {
+	if (OwningPlayer == nullptr)
+	{
+		return;
+	}
+	if (OwningPlayer->IsLocalPlayerController() == false)
+	{
+		return;
+	}
+
 	LOG_Frame_WARNING(TEXT("ShowPauseMenu"));
 	if (CachedOptionWidget)
 	{
@@ -156,11 +224,29 @@ void ULCUIManager::ShowPauseMenu()
 
 void ULCUIManager::HidePauseMenu()
 {
+	if (OwningPlayer == nullptr)
+	{
+		return;
+	}
+	if (OwningPlayer->IsLocalPlayerController() == false)
+	{
+		return;
+	}
+
 	SetInputModeGameOnly();
 }
 
 void ULCUIManager::ShowConfirmPopup(TFunction<void()> OnConfirm)
 {
+	if (OwningPlayer == nullptr)
+	{
+		return;
+	}
+	if (OwningPlayer->IsLocalPlayerController() == false)
+	{
+		return;
+	}
+
 	LOG_Frame_WARNING(TEXT("ShowConfirmPopup"));
 	if (!ConfirmPopupClass)
 	{
@@ -177,56 +263,92 @@ void ULCUIManager::ShowConfirmPopup(TFunction<void()> OnConfirm)
 
 void ULCUIManager::ShowShopPopup()
 {
+	if (OwningPlayer == nullptr)
+	{
+		return;
+	}
+	if (OwningPlayer->IsLocalPlayerController() == false)
+	{
+		return;
+	}
+
 	LOG_Frame_WARNING(TEXT("ShowShopPopup"));
-	HideInGameHUD();
+	// HideInGameHUD();
 
 	if (LastShopInteractor && LastShopInteractor->GetShopWidgetComponent())
 	{
 		LastShopInteractor->GetShopWidgetComponent()->SetVisibility(false);
 	}
-	if (CachedShopWidget)
+	/*if (CachedShopWidget)
 	{
 		CachedShopWidget->AddToViewport(1);
-	}
+	}*/
+
+	SwitchToWidget(CachedShopWidget);
+	HideInventoryMainWidget();
 
 	if (OwningPlayer)
 	{
 		if (APawn* Pawn = OwningPlayer->GetPawn())
 		{
+			LOG_Frame_WARNING(TEXT("Pawn : %s"), *Pawn->GetActorNameOrLabel());
+
 			Pawn->DisableInput(OwningPlayer);
 		}
 
 		FInputModeUIOnly InputMode;
 		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		LOG_Frame_WARNING(TEXT("InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock"));
 	}
+
 	SetInputModeUIOnly(CurrentWidget);
 }
 
 void ULCUIManager::HideShopPopup()
 {
-	LOG_Frame_WARNING(TEXT("HideShopPopup"));
+	if (OwningPlayer == nullptr)
+	{
+		return;
+	}
+	if (OwningPlayer->IsLocalPlayerController() == false)
+	{
+		return;
+	}
+
+	LOG_Frame_WARNING(TEXT("HideShopPopup Called"));
 
 	if (LastShopInteractor && LastShopInteractor->GetShopWidgetComponent())
 	{
 		LastShopInteractor->GetShopWidgetComponent()->SetVisibility(true);
 	}
 
-	if (CachedShopWidget)
+	/*if (CachedShopWidget)
 	{
 		CachedShopWidget->RemoveFromParent();
-	}
+	}*/
 
 	if (OwningPlayer)
 	{
+		LOG_Frame_WARNING(TEXT("OwningPlayer Exist %s"), *OwningPlayer->GetActorNameOrLabel());
+
 		if (APawn* Pawn = OwningPlayer->GetPawn())
 		{
+			LOG_Frame_WARNING(TEXT("Pawn Exist : %s"), *Pawn->GetActorNameOrLabel());
+
 			Pawn->EnableInput(OwningPlayer);
 		}
 
 		OwningPlayer->SetViewTargetWithBlend(OwningPlayer->GetPawn(), 1.0f);
 	}
+	else
+	{
+		LOG_Frame_WARNING(TEXT("OwningPlayer is nullptr"));
+	}
+
 	SetInputModeGameOnly();
-	ShowInGameHUD();
+	//ShowInGameHUD();
+	SwitchToWidget(CachedInGameHUD);
+	ShowInventoryMainWidget();
 }
 
 void ULCUIManager::ShowCreateSession()
@@ -234,10 +356,9 @@ void ULCUIManager::ShowCreateSession()
 	LOG_Frame_WARNING(TEXT("Show Create Session"));
 	if (CreateSessionClass)
 	{
-		CachedCreateSession = CreateWidget<UUIElementCreateSession>(OwningPlayer, CreateSessionClass);
-		CachedCreateSession->AddToViewport(1);
+		UPopupCreateSession* CreateSessionWidget = CreateWidget<UPopupCreateSession>(OwningPlayer, CreateSessionClass);
+		CreateSessionWidget->AddToViewport(1);
 	}
-	//SwitchToWidget(CachedCreateSession);
 }
 
 void ULCUIManager::ToggleInventory()
@@ -287,6 +408,24 @@ void ULCUIManager::HidePopUpLoading()
 	if (CachedPopupLoading)
 	{
 		CachedPopupLoading->RemoveFromParent();
+	}
+}
+
+void ULCUIManager::ShowPopupNotice(FString Notice)
+{
+	LOG_Frame_WARNING(TEXT("Show Popup Notice"));
+	if (CachedPopupNotice)
+	{
+		CachedPopupNotice->InitializeNoticePopup(Notice);
+		CachedPopupNotice->AddToViewport(1);
+	}
+}
+
+void ULCUIManager::HidePopUpNotice()
+{
+	if (CachedPopupNotice)
+	{
+		CachedPopupNotice->RemoveFromParent();
 	}
 }
 
@@ -349,6 +488,22 @@ void ULCUIManager::ShowInGameHUD()
 	SwitchToWidget(CachedInGameHUD);
 	SetInputModeGameOnly();
 
+	ShowInventoryMainWidget();
+}
+
+void ULCUIManager::HideInGameHUD()
+{
+	LOG_Frame_WARNING(TEXT("HideInGameHUD"));
+	if (CachedInGameHUD && CachedInGameHUD->IsInViewport())
+	{
+		CachedInGameHUD->RemoveFromParent();
+	}
+
+	HideInventoryMainWidget();
+}
+
+void ULCUIManager::ShowInventoryMainWidget()
+{
 	if (CachedInventoryMainWidget)
 	{
 		if (!CachedInventoryMainWidget->IsInViewport())
@@ -359,12 +514,11 @@ void ULCUIManager::ShowInGameHUD()
 	}
 }
 
-void ULCUIManager::HideInGameHUD()
+void ULCUIManager::HideInventoryMainWidget()
 {
-	LOG_Frame_WARNING(TEXT("HideInGameHUD"));
-	if (CachedInGameHUD && CachedInGameHUD->IsInViewport())
+	if (CachedInventoryMainWidget && CachedInventoryMainWidget->IsInViewport())
 	{
-		CachedInGameHUD->RemoveFromParent();
+		CachedInventoryMainWidget->RemoveFromParent();
 	}
 }
 

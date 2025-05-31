@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "UI/LCUserWidgetBase.h"
 #include "DataTable/ItemDataRow.h"
+#include "DataType/ItemDropData.h"
 #include "ShopWidget.generated.h"
 
 /**
@@ -14,6 +15,8 @@ class UButton;
 class UDataTable;
 class UShopItemInfoWidget;
 class UShoppingCartWidget;
+class ALCDroneDelivery;
+class ALCDronePath;
 UCLASS()
 class LASTCANARY_API UShopWidget : public ULCUserWidgetBase
 {
@@ -47,7 +50,7 @@ protected:
 	UFUNCTION()
 	void OnPurchaseButtonClicked();
 	UFUNCTION()
-	void OnExitButtonClicked();
+	void CloseShopWidget();
 
 	void PopulateShopItems();
 

@@ -17,7 +17,4 @@ void ALCTitlePlayerController::BeginPlay()
 		UE_LOG(LogTemp, Warning, TEXT("TitlePC"));
 		LCUIManager->ShowTitleMenu();
 	}
-
-	const FString PlayerName = PlayerState->GetPlayerName();
-	PlayerState->SetPlayerName(PlayerName);
 }

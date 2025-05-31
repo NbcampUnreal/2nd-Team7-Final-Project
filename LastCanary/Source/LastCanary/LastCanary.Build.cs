@@ -16,7 +16,7 @@ public class LastCanary : ModuleRules
             "UMG",
             "AIModule", 
             "NavigationSystem",
-            "GamePlayTags", 
+            "GameplayTags", 
             "Slate",
             "SlateCore",
             "OnlineSubsystem",
