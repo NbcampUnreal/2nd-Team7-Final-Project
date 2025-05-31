@@ -66,21 +66,9 @@ protected:
     FName DefaultItemRowName = FName("Default");
 
     //-----------------------------------------------------
-    // 툴팁 관련
-    //-----------------------------------------------------
-public:
-    /** 툴팁 위젯 클래스 */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory|Tooltip")
-    TSubclassOf<UItemTooltipWidget> TooltipWidgetClass;
-
-    /** 툴팁 위젯 인스턴스 */
-    UPROPERTY()
-    UItemTooltipWidget* ItemTooltipWidget;
-
-    //-----------------------------------------------------
     // 데이터 설정 함수
     //-----------------------------------------------------
-
+public:
     /** 슬롯의 아이템 데이터 설정 */
     UFUNCTION(BlueprintCallable, Category = "Inventory|Setup")
     void SetItemData(const FBaseItemSlotData& InItemSlotData, UDataTable* InItemDataTable);
@@ -101,11 +89,23 @@ public:
     UFUNCTION()
     void OnUseButtonClicked();
 
-    /** 툴팁 표시 */
+    //-----------------------------------------------------
+    // 툴팁 관련 (공유 툴팁 사용)
+    //-----------------------------------------------------
+public:
+    /** 부모 인벤토리 위젯 참조 */
+    UPROPERTY()
+    UInventoryWidgetBase* ParentInventoryWidget;
+
+    /** 부모 인벤토리 위젯 설정 */
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Setup")
+    void SetParentInventoryWidget(UInventoryWidgetBase* InParentWidget);
+
+    /** 툴팁 표시 (부모 위젯의 공유 툴팁 사용) */
     UFUNCTION(BlueprintCallable, Category = "Inventory|Tooltip")
     void ShowTooltip();
 
-    /** 툴팁 숨김 */
+    /** 툴팁 숨김 (부모 위젯의 공유 툴팁 사용) */
     UFUNCTION(BlueprintCallable, Category = "Inventory|Tooltip")
     void HideTooltip();
 
@@ -129,12 +129,6 @@ public:
     virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
 
 private:
-    /** 툴팁 업데이트 타이머 */
-    FTimerHandle TooltipUpdateTimer;
-
-    /** 툴팁 위치 업데이트 */
-    void UpdateTooltipPosition();
-
     /** 보더 색상 업데이트 */
     void UpdateBorderImage();
     
