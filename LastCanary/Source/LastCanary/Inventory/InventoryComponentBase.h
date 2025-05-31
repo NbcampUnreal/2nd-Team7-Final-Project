@@ -205,4 +205,21 @@ protected:
 
     /** 아이템 추가 후 처리 */
     virtual void PostAddProcess() PURE_VIRTUAL(UInventoryComponentBase::PostAddProcess, return;);
+
+	//-----------------------------------------------------
+    // 빈 슬롯 아이템 관리
+	//-----------------------------------------------------
+protected:
+    /** Default 아이템 Row Name */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory|Default")
+    FName DefaultItemRowName = FName("Default");
+
+public:
+    /** Default 아이템인지 확인 */
+    UFUNCTION(BlueprintPure, Category = "Inventory|Utility")
+    bool IsDefaultItem(FName ItemRowName) const;
+
+    /** 빈 슬롯을 Default 아이템으로 설정 */
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Utility")
+    void SetSlotToDefault(int32 SlotIndex);
 };

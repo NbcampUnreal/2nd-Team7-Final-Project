@@ -199,28 +199,24 @@ void UInventorySlotWidget::UpdateBorderImage()
 {
 	if (!SlotBorder)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[UpdateBorderImage] SlotBorder가 바인딩되지 않음"));
+		LOG_Item_WARNING(TEXT("[UInventorySlotWidget::UpdateBorderImage] SlotBorder가 바인딩되지 않음"));
 		return;
 	}
 
-	// 미리 에디터에서 할당한 텍스처들
 	UTexture2D* TargetTexture = nullptr;
 
-	if (ItemData.ItemRowName.IsNone())
-	{
-		// 빈 슬롯
-		TargetTexture = EmptyBorderTexture;
-	}
-	else if (ItemData.bIsEquipped)
-	{
-		// 장착된 아이템
-		TargetTexture = EquippedBorderTexture;
-	}
-	else
-	{
-		// 일반 아이템
-		TargetTexture = NormalBorderTexture;
-	}
+    if (ItemData.ItemRowName.IsNone() || IsDefaultItem(ItemData.ItemRowName))
+    {
+        TargetTexture = EmptyBorderTexture;
+    }
+    else if (ItemData.bIsEquipped)
+    {
+        TargetTexture = EquippedBorderTexture;
+    }
+    else
+    {
+        TargetTexture = NormalBorderTexture;
+    }
 
 	if (TargetTexture)
 	{
@@ -232,14 +228,14 @@ void UInventorySlotWidget::UpdateBorderImage()
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[UpdateBorderImage] TargetTexture가 설정되지 않음"));
+		LOG_Item_WARNING(TEXT("[UInventorySlotWidget::UpdateBorderImage] TargetTexture가 설정되지 않음"));
 	}
 }
 
 void UInventorySlotWidget::ShowTooltip()
 {
 	// 빈 슬롯이면 툴팁 표시하지 않음
-	if (ItemData.ItemRowName.IsNone())
+	if (ItemData.ItemRowName.IsNone() || IsDefaultItem(ItemData.ItemRowName))
 	{
 		return;
 	}
@@ -334,4 +330,9 @@ void UInventorySlotWidget::OnUseButtonClicked()
 			return;
 		}
 	}
+}
+
+bool UInventorySlotWidget::IsDefaultItem(FName ItemRowName) const
+{
+	return ItemRowName == FName("Default");
 }

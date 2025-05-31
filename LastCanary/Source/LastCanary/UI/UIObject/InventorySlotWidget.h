@@ -47,15 +47,6 @@ public:
     UPROPERTY(BlueprintReadOnly, Category = "Inventory|Data")
     UInventoryComponentBase* InventoryComponent;
 
-   /* UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual Settings")
-    FLinearColor EquippedBorderColor = FLinearColor(0.0f, 1.0f, 0.0f, 0.3f);
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual Settings")
-    FLinearColor NormalBorderColor = FLinearColor(0.2f, 0.2f, 0.2f, 0.3f);
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Visual Settings")
-    FLinearColor EmptyBorderColor = FLinearColor(0.5f, 0.5f, 0.5f, 0.3f);*/
-
     UPROPERTY(EditDefaultsOnly, Category = "Inventory|Border")
     UTexture2D* EmptyBorderTexture;
 
@@ -65,10 +56,19 @@ public:
     UPROPERTY(EditDefaultsOnly, Category = "Inventory|Border")
     UTexture2D* NormalBorderTexture;
 
+protected:
+    /** Default 아이템인지 확인 */
+    UFUNCTION(BlueprintPure, Category = "Inventory|Utility")
+    bool IsDefaultItem(FName ItemRowName) const;
+
+    /** Default 아이템 Row Name */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory|Default")
+    FName DefaultItemRowName = FName("Default");
+
     //-----------------------------------------------------
     // 툴팁 관련
     //-----------------------------------------------------
-
+public:
     /** 툴팁 위젯 클래스 */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory|Tooltip")
     TSubclassOf<UItemTooltipWidget> TooltipWidgetClass;

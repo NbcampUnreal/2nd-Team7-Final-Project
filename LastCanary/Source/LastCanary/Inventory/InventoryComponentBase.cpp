@@ -65,14 +65,19 @@ void UInventoryComponentBase::InitializeSlots()
         return;
     }
 
-    // MaxSlots 크기만큼 빈 슬롯 생성
     ItemSlots.Empty();
     ItemSlots.Reserve(MaxSlots);
 
     for (int32 i = 0; i < MaxSlots; ++i)
     {
-        FBaseItemSlotData EmptySlot;
-        ItemSlots.Add(EmptySlot);
+        FBaseItemSlotData DefaultSlot;
+        DefaultSlot.ItemRowName = DefaultItemRowName;
+        DefaultSlot.Quantity = 1;
+        DefaultSlot.Durability = 100.0f;
+        DefaultSlot.bIsValid = true;
+        DefaultSlot.bIsEquipped = false;
+
+        ItemSlots.Add(DefaultSlot);
     }
 
     // UI 업데이트
@@ -246,44 +251,55 @@ bool UInventoryComponentBase::Internal_TryDropItemAtSlot(int32 SlotIndex, int32 
 
     FBaseItemSlotData& SlotData = ItemSlots[SlotIndex];
 
+    // ⭐ Default 아이템 체크를 실제 드롭 전으로 이동
+    if (IsDefaultItem(SlotData.ItemRowName))
+    {
+        LOG_Item_WARNING(TEXT("[Internal_TryDropItemAtSlot] Default 아이템은 드롭할 수 없습니다: 슬롯 %d"), SlotIndex);
+        return false;
+    }
+
     if (SlotData.ItemRowName.IsNone() || SlotData.Quantity <= 0)
     {
-        LOG_Item_WARNING(TEXT("[UInventoryComponentBase::Internal_TryDropItemAtSlot] 빈 슬롯입니다: %d"), SlotIndex);
+        LOG_Item_WARNING(TEXT("[Internal_TryDropItemAtSlot] 빈 슬롯입니다: %d"), SlotIndex);
         return false;
     }
 
     int32 DropQuantity = FMath::Min(Quantity, SlotData.Quantity);
     if (DropQuantity <= 0)
     {
-        LOG_Item_WARNING(TEXT("[UInventoryComponentBase::Internal_TryDropItemAtSlot] 드랍할 수량이 0 이하입니다."));
+        LOG_Item_WARNING(TEXT("[Internal_TryDropItemAtSlot] 드랍할 수량이 0 이하입니다."));
         return false;
     }
 
     FVector DropLocation = CalculateDropLocation();
-
     FBaseItemSlotData DropItemData = SlotData;
     DropItemData.Quantity = DropQuantity;
 
     if (!ItemSpawner)
     {
-        LOG_Item_WARNING(TEXT("[UInventoryComponentBase::Internal_TryDropItemAtSlot] ItemSpawner is null"));
+        LOG_Item_WARNING(TEXT("[Internal_TryDropItemAtSlot] ItemSpawner is null"));
         return false;
     }
 
     AItemBase* DroppedItem = ItemSpawner->CreateItemFromData(DropItemData, DropLocation);
     if (!DroppedItem)
     {
-        LOG_Item_WARNING(TEXT("[UInventoryComponentBase::Internal_TryDropItemAtSlot] 아이템 스폰 실패"));
+        LOG_Item_WARNING(TEXT("[Internal_TryDropItemAtSlot] 아이템 스폰 실패"));
         return false;
     }
 
+    // ⭐ 중복 제거 및 정리
     SlotData.Quantity -= DropQuantity;
     if (SlotData.Quantity <= 0)
     {
-        SlotData = FBaseItemSlotData();
+        SetSlotToDefault(SlotIndex); // ⭐ 여기서만 Default 설정
     }
 
+    UpdateWeight(); // ⭐ 무게 갱신 추가
     OnInventoryUpdated.Broadcast();
+
+    LOG_Item_WARNING(TEXT("[Internal_TryDropItemAtSlot] ✅ 드롭 성공: %s (수량: %d)"),
+        *DropItemData.ItemRowName.ToString(), DropQuantity);
 
     return true;
 }
@@ -387,4 +403,27 @@ float UInventoryComponentBase::GetItemWeight(FName ItemRowName) const
     }
 
     return ItemData->Weight;
+}
+
+bool UInventoryComponentBase::IsDefaultItem(FName ItemRowName) const
+{
+    return ItemRowName == DefaultItemRowName;
+}
+
+void UInventoryComponentBase::SetSlotToDefault(int32 SlotIndex)
+{
+    if (!ItemSlots.IsValidIndex(SlotIndex))
+    {
+        LOG_Item_WARNING(TEXT("[SetSlotToDefault] 유효하지 않은 슬롯 인덱스: %d"), SlotIndex);
+        return;
+    }
+
+    FBaseItemSlotData& Slot = ItemSlots[SlotIndex];
+    Slot.ItemRowName = DefaultItemRowName;
+    Slot.Quantity = 1;
+    Slot.Durability = 100.0f;
+    Slot.bIsValid = true;
+    Slot.bIsEquipped = false;
+
+    LOG_Item_WARNING(TEXT("[SetSlotToDefault] 슬롯 %d를 Default 아이템으로 설정"), SlotIndex);
 }

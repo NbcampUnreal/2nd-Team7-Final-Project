@@ -219,7 +219,10 @@ FVector UItemSpawnerComponent::CalculateThrowDirection() const
 void UItemSpawnerComponent::EnablePhysicsSimulation(AItemBase* Item)
 {
     if (!Item)
+    {
+        LOG_Item_WARNING(TEXT("[EnablePhysicsSimulation] 아이템이 null입니다."));
         return;
+    }
 
     // 아이템 데이터에서 무게 가져오기
     float ItemWeight = 1.0f;

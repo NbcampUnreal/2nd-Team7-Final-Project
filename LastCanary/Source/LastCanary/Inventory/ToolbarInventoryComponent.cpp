@@ -182,13 +182,29 @@ bool UToolbarInventoryComponent::TrySwapItemSlots(int32 FromIndex, int32 ToIndex
 {
     if (!ItemSlots.IsValidIndex(FromIndex) || !ItemSlots.IsValidIndex(ToIndex))
     {
-        LOG_Item_WARNING(TEXT("[InventoryComponentBase::SwapItemSlots] 유효하지 않은 슬롯입니다."));
+        LOG_Item_WARNING(TEXT("[UToolbarInventoryComponent::TrySwapItemSlots] 유효하지 않은 슬롯입니다. From: %d, To: %d"), FromIndex, ToIndex);
         return false;
     }
 
-    ItemSlots.Swap(FromIndex, ToIndex);
-    OnInventoryUpdated.Broadcast();
+    int32 NewEquippedSlotIndex = CurrentEquippedSlotIndex;
 
+    if (CurrentEquippedSlotIndex == FromIndex)
+    {
+        NewEquippedSlotIndex = ToIndex;
+    }
+    else if (CurrentEquippedSlotIndex == ToIndex)
+    {
+        NewEquippedSlotIndex = FromIndex;
+    }
+
+    ItemSlots.Swap(FromIndex, ToIndex);
+
+    if (NewEquippedSlotIndex != CurrentEquippedSlotIndex)
+    {
+        CurrentEquippedSlotIndex = NewEquippedSlotIndex;
+    }
+
+    OnInventoryUpdated.Broadcast();
     return true;
 }
 
@@ -259,8 +275,29 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
         return;
     }
 
-    ULCGameInstanceSubsystem* GameSubsystem = GetOwner()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
-    if (!GameSubsystem)
+    if (IsDefaultItem(SlotData->ItemRowName))
+    {
+        LOG_Item_WARNING(TEXT("[EquipItemAtSlot] Default 아이템 장착 - 빈 손 상태로 설정"));
+
+        // 현재 장착된 아이템 해제
+        UnequipCurrentItem();
+
+        // Default 슬롯을 장착된 상태로 설정
+        ItemSlots[SlotIndex].bIsEquipped = true;
+        CurrentEquippedSlotIndex = SlotIndex;
+
+        // 캐릭터를 빈 손 상태로 설정
+        if (CachedOwnerCharacter)
+        {
+            CachedOwnerCharacter->SetEquipped(false); // 빈 손 상태
+        }
+
+        OnInventoryUpdated.Broadcast();
+        return;
+    }
+
+    ULCGameInstanceSubsystem* GISubsystem = GetOwner()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
+    if (!GISubsystem)
     {
         LOG_Item_ERROR(TEXT("[ToolbarInventoryComponent::EquipItemAtSlot] 게임 인스턴스 서브시스템이 없습니다."));
         return;
@@ -269,7 +306,7 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
     // 현재 장착된 아이템 해제
     UnequipCurrentItem();
 
-    FItemDataRow* ItemData = GameSubsystem->GetItemDataByRowName(SlotData->ItemRowName);
+    FItemDataRow* ItemData = GISubsystem->GetItemDataByRowName(SlotData->ItemRowName);
     if (!ItemData)
     {
         LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::EquipItemAtSlot] ItemData가 없습니다: %s"),
@@ -390,6 +427,28 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
         return;
     }
 
+    // ⭐ 모든 아이템에 대해 bIsEquipped = false 설정
+    int32 UnequipSlotIndex = CurrentEquippedSlotIndex; // 백업
+    ItemSlots[UnequipSlotIndex].bIsEquipped = false;
+
+    LOG_Item_WARNING(TEXT("[UnequipCurrentItem] 슬롯 %d의 bIsEquipped를 false로 설정: %s"),
+        UnequipSlotIndex, *SlotData->ItemRowName.ToString());
+
+    if (IsDefaultItem(SlotData->ItemRowName))
+    {
+        LOG_Item_WARNING(TEXT("[UnequipCurrentItem] Default 아이템 해제"));
+
+        CurrentEquippedSlotIndex = -1;
+
+        if (CachedOwnerCharacter)
+        {
+            CachedOwnerCharacter->SetEquipped(false);
+        }
+
+        OnInventoryUpdated.Broadcast();
+        return;
+    }
+
     ULCGameInstanceSubsystem* GISubsystem = GetOwner()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
     if (!GISubsystem)
     {
@@ -416,28 +475,18 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
     }
     else
     {
-        FName TargetSocket = ItemData->AttachSocketName;
-        if (TargetSocket.IsNone())
-        {
-            TargetSocket = TEXT("RightHandSocket");
-        }
-
+        // 장착된 아이템 액터에서 해제 처리
         if (AItemBase* CurrentItem = Cast<AItemBase>(EquippedItemComponent->GetChildActor()))
         {
             if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(CurrentItem))
             {
                 EquipmentItem->SetEquipped(false);
             }
-            else
-            {
-                CurrentItem->bIsEquipped = false;
-            }
         }
 
         EquippedItemComponent->DestroyChildActor();
     }
 
-    ItemSlots[CurrentEquippedSlotIndex].bIsEquipped = false;
     CurrentEquippedSlotIndex = -1;
 
     if (CachedOwnerCharacter)
@@ -494,18 +543,26 @@ bool UToolbarInventoryComponent::CanAddItem(AItemBase* ItemActor)
         return false;
     }
 
-    const FItemDataRow* ItemData = GameSubsystem->GetItemDataByRowName(ItemActor->ItemRowName);
+    const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(ItemActor->ItemRowName, TEXT("CanAddItem"));
     if (!ItemData)
     {
-        LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::CanAddItem] ItemData가 없습니다. ItemRowName: %s"),
-            *ItemActor->ItemRowName.ToString());
+        LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::CanAddItem] ItemData is null!"));
         return false;
     }
 
     for (const FBaseItemSlotData& Slot : ItemSlots)
     {
-        if (!Slot.bIsValid)
+        // 빈 슬롯이거나 Default 아이템인 경우
+        if (!Slot.bIsValid || IsDefaultItem(Slot.ItemRowName))
         {
+            LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::CanAddItem] ✅ 사용 가능한 슬롯 발견"));
+            return true;
+        }
+
+        // 스택 가능한 슬롯 확인
+        if (Slot.ItemRowName == ItemActor->ItemRowName && Slot.Quantity < ItemData->MaxStack)
+        {
+            LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::CanAddItem] ✅ 스택 가능한 슬롯 발견"));
             return true;
         }
     }
@@ -546,7 +603,7 @@ bool UToolbarInventoryComponent::TryStoreItem(AItemBase* ItemActor)
     int32 EmptySlotIndex = -1;
     for (int32 i = 0; i < ItemSlots.Num(); ++i)
     {
-        if (!ItemSlots[i].bIsValid)
+        if (!ItemSlots[i].bIsValid || IsDefaultItem(ItemSlots[i].ItemRowName))
         {
             FBaseItemSlotData NewSlot;
             NewSlot.ItemRowName = ItemActor->ItemRowName;
@@ -557,6 +614,8 @@ bool UToolbarInventoryComponent::TryStoreItem(AItemBase* ItemActor)
 
             ItemSlots[i] = NewSlot;
             EmptySlotIndex = i;
+            LOG_Item_WARNING(TEXT("[TryStoreItem] Default 슬롯에 아이템 저장: %s (슬롯: %d)"),
+                *ItemActor->ItemRowName.ToString(), i);
             break;
         }
     }
@@ -602,10 +661,6 @@ bool UToolbarInventoryComponent::TryStoreItem(AItemBase* ItemActor)
             }
         }
     }
-    else if (ItemData->ItemType.MatchesTag(EquipmentTag) && CachedOwnerCharacter && !CachedOwnerCharacter->IsEquipped())
-    {
-        EquipItemAtSlot(EmptySlotIndex);
-    }
 
     OnInventoryUpdated.Broadcast();
 
@@ -645,9 +700,44 @@ bool UToolbarInventoryComponent::TryDropItemAtSlot(int32 SlotIndex, int32 Quanti
 {
     if (SlotIndex == CurrentEquippedSlotIndex && CurrentEquippedSlotIndex >= 0)
     {
-        UnequipCurrentItem();
+        LOG_Item_WARNING(TEXT("[TryDropItemAtSlot] 장착된 아이템 드롭: 슬롯 %d"), SlotIndex);
+
+        // ⭐ UnequipCurrentItem 호출하지 않고 직접 처리
+        if (!GetOwner() || !GetOwner()->HasAuthority())
+        {
+            LOG_Item_WARNING(TEXT("[TryDropItemAtSlot] Authority가 없습니다."));
+            return false;
+        }
+
+        // 현재 장착된 아이템 정보 백업
+        FBaseItemSlotData OriginalSlotData = ItemSlots[SlotIndex];
+
+        // 장착 해제 (SetSlotToDefault 호출 안함)
+        if (AItemBase* CurrentItem = Cast<AItemBase>(EquippedItemComponent->GetChildActor()))
+        {
+            if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(CurrentItem))
+            {
+                EquipmentItem->SetEquipped(false);
+            }
+        }
+        EquippedItemComponent->DestroyChildActor();
+
+        // 캐릭터 상태 변경
+        if (CachedOwnerCharacter)
+        {
+            CachedOwnerCharacter->SetEquipped(false);
+        }
+
+        CurrentEquippedSlotIndex = -1;
+
+        // ⭐ 원래 슬롯 데이터로 복원한 후 드롭 진행
+        ItemSlots[SlotIndex] = OriginalSlotData;
+
+        // 일반 드롭 로직 실행
+        return Super::TryDropItemAtSlot(SlotIndex, Quantity);
     }
 
+    // 장착되지 않은 아이템은 일반 드롭
     return Super::TryDropItemAtSlot(SlotIndex, Quantity);
 }
 
