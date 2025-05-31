@@ -737,7 +737,7 @@ void ABasePlayerController::Input_OnCanceledVoiceChat()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Voice Off"));
 	//TODO: Voice 기능을 잘 추가해보기
-	ConsoleCommand(TEXT("ToggleSpeaking 1"), true);
+	ConsoleCommand(TEXT("ToggleSpeaking 0"), true);
 }
 
 void ABasePlayerController::Input_ChangeShootingSetting()
@@ -1083,7 +1083,7 @@ void ABasePlayerController::SpawnDrone()
 
 void ABasePlayerController::Server_SpawnDrone_Implementation()
 {
-	FVector Location = GetPawn()->GetActorLocation() + FVector(200, 0, 100);
+	FVector Location = GetPawn()->GetActorLocation() + FVector(0, 0, 200);
 	FRotator Rotation = FRotator::ZeroRotator;
 	FActorSpawnParameters Params;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;

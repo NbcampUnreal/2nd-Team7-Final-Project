@@ -6,16 +6,10 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Components/BoxComponent.h"
-
 #include "UI/UIElement/InGameHUD.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
-
 #include "Interface/InteractableInterface.h"
-
-//#include "ALS/Public/Utility/AlsVector.h"
 #include "../Plugins/ALS-Refactored-4.15/Source/ALS/Public/Utility/AlsVector.h"
-//innclude "ALSCamera/Public/AlsCameraComponent.h"
-
 #include "ALS/Public/AlsCharacterMovementComponent.h"
 #include "ALSCamera/Public/AlsCameraSettings.h"
 #include "BasePlayerState.h"
@@ -23,9 +17,6 @@
 #include "../Plugins/ALS-Refactored-4.15/Source/ALS/Public/Utility/AlsConstants.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
-
-
-#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "Inventory/BackpackInventoryComponent.h"
 #include "Item/ItemBase.h"
@@ -57,7 +48,7 @@ ABaseCharacter::ABaseCharacter()
 	RemoteOnlyOverlaySkeletalMesh->SetupAttachment(RemoteOnlySkeletalMesh);
 
 	
-	//Camera Settings
+	//Camera Settings (Maybe Deprecated)
 	/*
 	sCamera = CreateDefaultSubobject<UAlsCameraComponent>(TEXT("Camera"));
 	sCamera->SetupAttachment(GetMesh()); // Spring Arm에 카메라를 붙임
@@ -70,6 +61,7 @@ ABaseCharacter::ABaseCharacter()
 
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(SpringArm);  // SpringArm에 카메라 부착
+	
 
 	// 초기 방향 설정
 	Camera->SetRelativeRotation(FRotator::ZeroRotator);  // 필요시만 설정
@@ -101,10 +93,7 @@ void ABaseCharacter::BeginPlay()
 		UE_LOG(LogTemp, Warning, TEXT("Character BeginPlay - Complete  This is Client."));
 	}
 
-	SetViewMode(AlsViewModeTags::FirstPerson);
-
 	CurrentQuickSlotIndex = 0;
-
 	//애니메이션 오버레이 활성화.
 	RefreshOverlayObject(CurrentQuickSlotIndex);
 
@@ -115,6 +104,11 @@ void ABaseCharacter::BeginPlay()
 		0.1f,
 		true 
 	);
+
+	if (ToolbarInventoryComponent)
+	{
+		//ToolbarInventoryComponent->OnInventoryUpdated.AddDynamic(this, &ABaseCharacter::HandleInventoryUpdated);
+	}
 }
 
 
@@ -160,7 +154,8 @@ void ABaseCharacter::NotifyControllerChanged()
 	
 	Super::NotifyControllerChanged();
 }
-/*
+
+/* Maybe Deprecated
 void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo)
 {
 	
@@ -178,7 +173,10 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 
 void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue)
 {
-
+	if (LocomotionAction == AlsLocomotionActionTags::Mantling)
+	{
+		return;
+	}
 	const FVector2f Value{ ActionValue.Get<FVector2D>() };
 
 	if (!Controller) return;
@@ -258,37 +256,6 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 			PC->SetSprintingStateToPlayerState(false);
 		}
 	}
-}
-
-void ABaseCharacter::Handle_SprintOnPlayerState(const FInputActionValue& ActionValue, float multiplier)
-{
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
-	{
-		return;
-	}
-	if (CheckHardLandState())
-	{
-		return;
-	}
-
-	SetDesiredGait(ActionValue.Get<bool>() ? AlsGaitTags::Sprinting : AlsGaitTags::Running);
-	if (GetDesiredGait() == AlsGaitTags::Sprinting)
-	{
-		ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
-		if (PC)
-		{
-			PC->SetSprintingStateToPlayerState(true);
-		}
-	}
-	else
-	{
-		ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
-		if (PC)
-		{
-			PC->SetSprintingStateToPlayerState(false);
-		}
-	}
-
 }
 
 void ABaseCharacter::Handle_Walk(const FInputActionValue& ActionValue)
@@ -546,10 +513,7 @@ void ABaseCharacter::Handle_Interact()
 		{
 			IInteractableInterface::Execute_Interact(CurrentFocusedActor, PC);
 			UE_LOG(LogTemp, Log, TEXT("Handle_Interact: Called Interact on %s"), *CurrentFocusedActor->GetName());
-
-
 			UE_LOG(LogTemp, Log, TEXT("Equipped item on slot"));
-			RefreshOverlayObject(0);
 
 		}
 		else
@@ -562,6 +526,8 @@ void ABaseCharacter::Handle_Interact()
 		UE_LOG(LogTemp, Warning, TEXT("Handle_Interact: %s does not implement IInteractableInterface"), *CurrentFocusedActor->GetName());
 		PlayInteractionMontage(CurrentFocusedActor);
 	}
+
+	UE_LOG(LogTemp, Log, TEXT("Interact Ended"));
 }
 
 void ABaseCharacter::PickupItem()
@@ -575,6 +541,9 @@ void ABaseCharacter::PickupItem()
 
 void ABaseCharacter::TraceInteractableActor()
 {
+
+	SetDesiredAiming(true);
+	SetRotationMode(AlsRotationModeTags::Aiming);
 	if (CheckPlayerCurrentState() == EPlayerState::Dead)
 	{
 		return;
@@ -710,13 +679,21 @@ int32 ABaseCharacter::GetCurrentQuickSlotIndex()
 }
 void ABaseCharacter::SetCurrentQuickSlotIndex(int32 NewIndex)
 {
+
+	UE_LOG(LogTemp, Warning, TEXT("Request Server to change QuickSlotindex"));
 	Server_SetQuickSlotIndex(NewIndex);
 }
 
 void ABaseCharacter::Server_SetQuickSlotIndex_Implementation(int32 NewIndex)
 {
+	UE_LOG(LogTemp, Warning, TEXT("change QuickSlotindex on Server"));
+	if (!IsValid(ToolbarInventoryComponent))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("툴바 없음."));
+		return;
+	}
 	int32 AdjustedIndex = NewIndex;
-	if (AdjustedIndex > MaxQuickSlotIndex)
+	if (AdjustedIndex > MaxQuickSlotIndex) // 툴바의 최대 슬롯 개수 가져오는 함수는?
 	{
 		AdjustedIndex = 0;
 	}
@@ -725,6 +702,11 @@ void ABaseCharacter::Server_SetQuickSlotIndex_Implementation(int32 NewIndex)
 		AdjustedIndex = MaxQuickSlotIndex;
 	}
 
+	//if(ToolbarInventoryComponent->GetCurrentEquippedSlotIndex() == AdjustedIndex )  //  인덱스에 변화가 없으면 할 필요가 X
+	// {
+	//	 retturn;
+	// }
+	//ToolbarInventoryComponent->SetCurrentEquippedSlotIndex(AdjustedIndex);
 	CurrentQuickSlotIndex = AdjustedIndex;
 
 	// 동기화된 장착 요청
@@ -733,8 +715,7 @@ void ABaseCharacter::Server_SetQuickSlotIndex_Implementation(int32 NewIndex)
 
 void ABaseCharacter::Multicast_EquipItemFromQuickSlot_Implementation(int32 Index)
 {
-	LOG_Item_WARNING(TEXT("refresh animation"));
-
+	UE_LOG(LogTemp, Warning, TEXT("refresh animation on Client"));
 	EquipItemFromCurrentQuickSlot(Index);
 }
 
@@ -742,17 +723,21 @@ void ABaseCharacter::EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex)
 {
 	UE_LOG(LogTemp, Warning, TEXT("Change Equip Item"));
 
+	//카메라 초기화(총 줌 쓰고 있다가 바뀔 가능성 대비)
 	SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+
+	//Mesh의 애니메이션 인스턴스 가져오기
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && AnimInstance->IsAnyMontagePlaying())
 	{
-		AnimInstance->Montage_Stop(0.25f); // 페이드 아웃 시간: 0.25초
+		//만약 재생중인 몽타주가 있으면(예시: 장전모션) 강제로 해제
+		AnimInstance->Montage_Stop(0.25f); // 페이드 아웃 시간: 0.25초 //AnimInstance->Montage_Stop(0.25f, ReloadMontage);이런 것도 가능
 	}
-	AnimInstance->Montage_Stop(0.25f, ReloadMontage);
-
+	
 	if (!ToolbarInventoryComponent)
 	{
 		LOG_Item_WARNING(TEXT("[ABaseCharacter::SwitchToSlot] 툴바 컴포넌트가 없습니다."));
+		RefreshOverlayObject(0);
 		return;
 	}
 
@@ -761,23 +746,23 @@ void ABaseCharacter::EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex)
 		LOG_Item_WARNING(TEXT("[ABaseCharacter::SwitchToSlot] 유효하지 않은 슬롯 인덱스: %d"), QuickSlotIndex);
 		return;
 	}
-
+	/*
 	// 클라이언트에서 호출된 경우 서버에 요청
 	if (GetLocalRole() < ROLE_Authority)
 	{
 		Server_EquipItemFromCurrentQuickSlot(QuickSlotIndex); // 클라이언트에서 호출 무시되는 중...
 		return;
 	}
-
+	*/
+	/*  똑같으면 무시하라는 거 같은데...
 	int32 CurrentSlot = ToolbarInventoryComponent->GetCurrentEquippedSlotIndex();
 	if (CurrentSlot == QuickSlotIndex)
 	{
 		return;
 	}
-
+	*/
+	//TODO: 툴바 index로 읽어서 있는 아이템이 뭔지 받아오고, 그걸 토대로 장착 및 애니메이션 변경하지
 	ToolbarInventoryComponent->EquipItemAtSlot(QuickSlotIndex);
-
-
 	RefreshOverlayObject(0);
 }
 
@@ -785,6 +770,13 @@ void ABaseCharacter::EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex)
 void ABaseCharacter::Server_EquipItemFromCurrentQuickSlot_Implementation(int32 QuickSlotIndex)
 {
 	EquipItemFromCurrentQuickSlot(QuickSlotIndex);
+}
+
+void ABaseCharacter::HandleInventoryUpdated()
+{
+	UE_LOG(LogTemp, Log, TEXT("Inventory updated!"));
+
+	// 여기서 UI 갱신 등 원하는 작업 수행
 }
 
 void ABaseCharacter::EquipItem(UObject* Item)
@@ -947,11 +939,6 @@ void ABaseCharacter::SetMovementSetting(float _WalkForwardSpeed, float _WalkBack
 void ABaseCharacter::ResetMovementSetting()
 {
 	AlsCharacterMovement->ResetGaitSettings();
-}
-
-void ABaseCharacter::TestEquipFunction(int32 NewIndex)
-{
-	RefreshOverlayObject(NewIndex);
 }
 
 void ABaseCharacter::RefreshOverlayObject(int index)
@@ -1181,13 +1168,14 @@ bool ABaseCharacter::TryPickupItem(AItemBase* HitItem)
 	{
 		return false;
 	}
-
+	//서버
 	if (HasAuthority())
 	{
 		return TryPickupItem_Internal(HitItem);
 	}
 	else
 	{
+		//클라이언트
 		Server_TryPickupItem(HitItem);
 		return true;
 	}
@@ -1217,7 +1205,8 @@ bool ABaseCharacter::TryPickupItem_Internal(AItemBase* ItemActor)
 		LOG_Item_WARNING(TEXT("[ABaseCharacter::TryPickupItem_Internal] ItemActor가 nullptr입니다."));
 		return false;
 	}
-
+	////  여기서의 처리는 전부 서버. 
+	//가방을 들고 있다면? 가방에 넣기. 안되면 다음으로
 	if (BackpackInventoryComponent)
 	{
 		if (BackpackInventoryComponent->TryAddItem(ItemActor))
@@ -1226,14 +1215,18 @@ bool ABaseCharacter::TryPickupItem_Internal(AItemBase* ItemActor)
 		}
 	}
 
+	//툴바가 있으면
 	if (ToolbarInventoryComponent)
 	{
+		//툴바에 집어넣기
 		if (ToolbarInventoryComponent->TryAddItem(ItemActor))
 		{
+			UE_LOG(LogTemp, Warning, TEXT("툴바에 집어넣는중"));
 			return true;
 		}
 	}
 
+	//모든 곳이 꽉찼다면
 	UE_LOG(LogTemp, Warning, TEXT("[ABaseCharacter::TryPickupItem_Internal] 인벤토리가 가득참: %s"),
 		*ItemActor->ItemRowName.ToString());
 	return false;

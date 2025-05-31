@@ -9,6 +9,9 @@
 
 #include "LastCanary.h"
 
+#include "UI/UIObject/KeySettingWidget.h"
+
+
 void UOptionWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
@@ -94,6 +97,8 @@ void UOptionWidget::OnKeySettingTabButtonClicked()
 	}
 	SetTabButtonStyle(GeneralTabButton, false);
 	SetTabButtonStyle(KeySettingTabButton, true);
+
+	KeySettingWidget->InitialMappings();
 }
 
 void UOptionWidget::SetTabButtonStyle(UButton* Button, bool bIsSelected)
