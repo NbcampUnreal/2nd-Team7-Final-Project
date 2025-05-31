@@ -1,6 +1,7 @@
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "UI/Manager/LCUIManager.h"
 #include "Framework/GameInstance/LCGameInstance.h"
+#include "Framework/GameMode/LCRoomGameMode.h"
 #include "Kismet/GameplayStatics.h"
 
 #include "LastCanary.h"
@@ -50,14 +51,26 @@ void ULCGameInstanceSubsystem::ChangeLevelByMapID(int32 MapID)
 	{
 		if (MapRow && MapRow->MapID == MapID)
 		{
-			UGameplayStatics::OpenLevel(GetWorld(), MapRow->MapInfo.MapName);
-			LOG_Frame_WARNING(TEXT("Trying to open level: %s"), *MapRow->MapInfo.MapName.ToString());
+			// UWorld 경로 → ServerTravel용 문자열로 변환
+			const FString AssetPath = MapRow->MapInfo.MapPath.ToSoftObjectPath().ToString(); // "/Game/Maps/MapName.MapName"
+			const FString CleanedPath = FPackageName::ObjectPathToPackageName(AssetPath);   // "/Game/Maps/MapName"
+			const FString TravelURL = FString::Printf(TEXT("%s?listen"), *CleanedPath);
+
+			// SeamlessTravel 활성화
+			if (AGameModeBase* GM = GetWorld()->GetAuthGameMode())
+			{
+				GM->bUseSeamlessTravel = true;
+			}
+
+			LOG_Frame_WARNING(TEXT("Trying to ServerTravel to: %s (MapID: %d)"), *TravelURL, MapID);
+			GetWorld()->ServerTravel(TravelURL, true);
 			return;
 		}
 	}
 
 	LOG_Frame_WARNING(TEXT("Map not found for ID: %d"), MapID);
 }
+
 
 FItemDataRow* ULCGameInstanceSubsystem::GetItemDataByRowName(FName ItemRowName) const
 {
@@ -68,6 +81,11 @@ FItemDataRow* ULCGameInstanceSubsystem::GetItemDataByRowName(FName ItemRowName) 
 	}
 
 	return ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("GetItemDataByRowName"));
+}
+
+UDataTable* ULCGameInstanceSubsystem::GetMapDataTable() const
+{
+	return MapDataTable;
 }
 
 UDataTable* ULCGameInstanceSubsystem::GetItemDataTable() const

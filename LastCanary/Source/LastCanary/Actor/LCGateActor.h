@@ -25,7 +25,7 @@ protected:
 
 public:
     /** 이동할 맵 경로 */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gate")
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Gate")
     int32 TargetMapID;
 
     /** [F] UI 텍스트 */

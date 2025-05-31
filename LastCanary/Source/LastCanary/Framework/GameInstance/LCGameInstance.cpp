@@ -35,8 +35,7 @@ void ULCGameInstance::LoadMapData()
         {
             MapDataRow->MapID = FCrc::StrCrc32(*MapDataRow->MapInfo.MapName.ToString());
             //MapDataRow->MapID = GetTypeHash(MapDataRow->MapInfo.MapName);
-
-           // LOG_Frame_WARNING(TEXT("Loaded map: %s"), *MapDataRow->MapInfo.MapName.ToString());
+            LOG_Frame_WARNING(TEXT("Loaded map: %s"), *MapDataRow->MapInfo.MapName.ToString());
         }
     }
 }
