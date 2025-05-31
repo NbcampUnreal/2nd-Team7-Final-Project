@@ -31,10 +31,10 @@ ULCUIManager::ULCUIManager()
 
 void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 {
-		LOG_Frame_WARNING(TEXT("InitUIManager Called."));
+	//LOG_Frame_WARNING(TEXT("InitUIManager Called."));
 	if (OwningPlayer == nullptr)
 	{
-		LOG_Frame_WARNING(TEXT("PlayerController is nullptr in InitUIManager."));
+		//LOG_Frame_WARNING(TEXT("PlayerController is nullptr in InitUIManager."));
 		OwningPlayer = PlayerController;
 	}
 
@@ -484,7 +484,7 @@ void ULCUIManager::HideMapSelectPopup()
 
 void ULCUIManager::ShowInGameHUD()
 {
-	LOG_Frame_WARNING(TEXT("ShowInGameHUD"));
+	//LOG_Frame_WARNING(TEXT("ShowInGameHUD"));
 	SwitchToWidget(CachedInGameHUD);
 	SetInputModeGameOnly();
 
@@ -493,7 +493,7 @@ void ULCUIManager::ShowInGameHUD()
 
 void ULCUIManager::HideInGameHUD()
 {
-	LOG_Frame_WARNING(TEXT("HideInGameHUD"));
+	//LOG_Frame_WARNING(TEXT("HideInGameHUD"));
 	if (CachedInGameHUD && CachedInGameHUD->IsInViewport())
 	{
 		CachedInGameHUD->RemoveFromParent();
