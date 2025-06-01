@@ -17,3 +17,8 @@ void UPlayerSlot::SetPlayerInfo(const FSessionPlayerInfo& PlayerInfo)
         NickNameText->SetText(FText::FromString(PlayerInfo.PlayerName));
     }
 }
+
+void UPlayerSlot::ClearPlayerInfo()
+{
+    NickNameText->SetText(FText::FromString("Empty Slot"));
+}

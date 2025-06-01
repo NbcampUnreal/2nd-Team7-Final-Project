@@ -5,6 +5,7 @@
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
+#include "Components/Button.h"
 #include "Kismet/GameplayStatics.h"
 #include "UI/UIObject/PlayerSlot.h"
 
@@ -15,6 +16,29 @@ void URoomWidget::NativeConstruct()
 	Super::NativeConstruct();
 
 	CreatePlayerSlots();
+
+	if (InviteButton)
+	{
+		InviteButton->OnClicked.AddUniqueDynamic(this, &URoomWidget::OnInviteButtonClicked);
+	}
+	if (BackButton)
+	{
+		BackButton->OnClicked.AddUniqueDynamic(this, &URoomWidget::OnBackButtonClicked);
+	}
+}
+
+void URoomWidget::NativeDestruct()
+{
+	Super::NativeDestruct();
+
+	if (InviteButton)
+	{
+		InviteButton->OnClicked.RemoveDynamic(this, &URoomWidget::OnInviteButtonClicked);
+	}
+	if (BackButton)
+	{
+		BackButton->OnClicked.RemoveDynamic(this, &URoomWidget::OnBackButtonClicked);
+	}
 }
 
 void URoomWidget::CreatePlayerSlots()
@@ -61,14 +85,28 @@ void URoomWidget::UpdatePlayerLists(const TArray<FSessionPlayerInfo>& PlayerInfo
 		LOG_Server_WARNING(TEXT("PlayerList Container is Not Valid!"));
 	}
 
-	int Index = 0;
-	for (auto Info : PlayerInfos)
+	for (int32 i = 0; i < MaxPlayerNum; i++)
 	{
-		if (PlayerSlots.IsValidIndex(Index) && PlayerSlots[Index])
+		if (PlayerSlots.IsValidIndex(i) && PlayerSlots[i])
 		{
-			PlayerSlots[Index]->SetPlayerInfo(Info);
-		}
+			PlayerSlots[i]->ClearPlayerInfo();
 
-		Index++;
+			if (PlayerInfos.IsValidIndex(i))
+			{
+				FSessionPlayerInfo Info = PlayerInfos[i];
+				PlayerSlots[i]->SetPlayerInfo(Info);
+			}
+		}
 	}
+}
+
+void URoomWidget::OnInviteButtonClicked()
+{
+	LOG_Frame_WARNING(TEXT("OnClick Invite Button"));
+}
+
+void URoomWidget::OnBackButtonClicked()
+{
+	LOG_Frame_WARNING(TEXT("OnClick Back Button"));
+
 }

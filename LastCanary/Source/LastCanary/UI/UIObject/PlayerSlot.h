@@ -20,5 +20,6 @@ public:
 	UTextBlock* NickNameText;
 
 	void SetSlotIndex(const int Index);
+	void ClearPlayerInfo();
 	void SetPlayerInfo(const FSessionPlayerInfo& PlayerInfo);
 };
