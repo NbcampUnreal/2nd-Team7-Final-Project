@@ -752,15 +752,7 @@ void ABaseCharacter::TraceInteractableActor()
 
 				if (bHit)  // 레이가 맞으면서 맞은 대상이 벽인 경우를 추가하거나, 캐릭터의 캡슐 콜라이더가 닿았을 때로 조건을 변경하는 것도...
 				{
-					float DistanceToHit = Hit.Distance;
-					
-					LOG_Item_WARNING(TEXT("Hit Actor: %s, Distance: %.2f"),
-						*Hit.GetActor()->GetName(), DistanceToHit);
-					float DistanceToWall = Hit.Distance;
-					CapsuleWallRatio = 1.0f - (DistanceToWall / 100.0f);
-					CapsuleWallRatio = FMath::Clamp(CapsuleWallRatio, 0.0f, 1.0f);
 				}
-
 			}
 		}
 	}
@@ -815,7 +807,6 @@ void ABaseCharacter::UpdateGunWallClipOffset(float DeltaTime)
 	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
 	if (!IsValid(EquippedItem))
 	{
-		UE_LOG(LogTemp, Log, TEXT("총 없음"));
 		WallClipAimOffsetPitch = 0.0f;
 		return;
 	}
@@ -844,7 +835,7 @@ void ABaseCharacter::UpdateGunWallClipOffset(float DeltaTime)
 	float MuzzlePitch = MuzzleRot.Pitch;  // 상하 방향 판별용
 
 	// 2. 라인 트레이스
-	FVector TraceEnd = MuzzleLoc + MuzzleForward * 50.0f;
+	FVector TraceEnd = MuzzleLoc + MuzzleForward * 100.0f;
 
 	FHitResult Hit;
 	FCollisionQueryParams Params;
@@ -870,6 +861,7 @@ void ABaseCharacter::UpdateGunWallClipOffset(float DeltaTime)
 	// 5. 부드러운 보간
 	WallClipAimOffsetPitch = FMath::FInterpTo(WallClipAimOffsetPitch, TargetOffset, DeltaTime, 10.0f);
 
+	UE_LOG(LogTemp, Log, TEXT("%f"), WallClipAimOffsetPitch);
 	// 6. 애님 인스턴스에 전달
 	if (UAlsAnimationInstance* AlsAnim = Cast<UAlsAnimationInstance>(GetMesh()->GetAnimInstance()))
 	{
