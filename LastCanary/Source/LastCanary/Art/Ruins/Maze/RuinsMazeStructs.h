@@ -30,11 +30,11 @@ struct FGimmickSpawnInfo
 {
     GENERATED_BODY()
 
-    /** 트리거 액터 클래스 (예: ALCUnifiedPlate) */
+    /** 트리거 액터 클래스 */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick")
     TSubclassOf<AActor> PlateClass;
 
-    /** 작동 대상 클래스 (예: ALCGimmickDoor, ATrap 등) */
+    /** 작동 대상 클래스 */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick")
     TSubclassOf<AActor> TargetClass;
 
@@ -53,5 +53,13 @@ struct FGimmickSpawnInfo
     /** Target의 회전값 */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick")
     FRotator TargetRotation = FRotator::ZeroRotator;
+
+    /** Plate의 Z 보정값 (지면에 붙이기 위함) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick")
+    float PlateZOffset = -50.f;
+
+    /** Target의 Z 보정값 */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick")
+    float TargetZOffset = -50.f;
 };
 

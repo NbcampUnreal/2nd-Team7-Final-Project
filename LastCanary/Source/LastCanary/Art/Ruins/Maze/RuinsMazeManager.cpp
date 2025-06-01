@@ -42,6 +42,14 @@ void ARuinsMazeManager::GenerateMaze()
         const FVector BoundsExtent = MazeBounds->GetScaledBoxExtent();
         const FVector BoundsCenter = MazeBounds->GetComponentLocation();
         MazeOrigin = BoundsCenter - FVector(MazeSizeX * CellSize, MazeSizeY * CellSize, 0.f) * 0.5f;
+        MazeOrigin.Z -= BoundsExtent.Z;
+
+        // 로그 출력: 피벗 기준 Z 위치 확인
+        LOG_Art(Log, TEXT("[MazeManager] GetActorLocation().Z          = %.1f"), GetActorLocation().Z);
+        LOG_Art(Log, TEXT("[MazeManager] MazeBounds Center Z           = %.1f"), BoundsCenter.Z);
+        LOG_Art(Log, TEXT("[MazeManager] MazeBounds Extent Z           = %.1f"), BoundsExtent.Z);
+        LOG_Art(Log, TEXT("[MazeManager] MazeOrigin (지면 기준) Z      = %.1f"), MazeOrigin.Z);
+
 
         MazeCells.SetNum(MazeSizeX);
         for (int32 X = 0; X < MazeSizeX; ++X)
@@ -366,14 +374,31 @@ void ARuinsMazeManager::MaybeSpawnGimmickAtCell(const FIntPoint& Cell)
 
     // 위치 계산
     const FVector CellLocation = GetCellWorldPosition(Cell);
+    const float MazeGroundZ = MazeOrigin.Z - CellSize * 0.5f; // 바닥 기준 Z
 
     // 스폰 파라미터
     FActorSpawnParameters Params;
     Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-    // Plate, Target 스폰
-    AActor* Plate = GetWorld()->SpawnActor<AActor>(Chosen->PlateClass, CellLocation, Chosen->PlateRotation, Params);
-    AActor* Target = GetWorld()->SpawnActor<AActor>(Chosen->TargetClass, CellLocation + Chosen->TargetOffset, Chosen->TargetRotation, Params);
+    // Plate, Target 스폰 (지면 기준으로 Z 보정 적용)
+    const FVector PlateLocation = FVector(CellLocation.X, CellLocation.Y, MazeGroundZ + Chosen->PlateZOffset);
+    const FVector TargetLocation = FVector(
+        CellLocation.X + Chosen->TargetOffset.X,
+        CellLocation.Y + Chosen->TargetOffset.Y,
+        MazeGroundZ + Chosen->TargetOffset.Z + Chosen->TargetZOffset);
+
+    AActor* Plate = GetWorld()->SpawnActor<AActor>(
+        Chosen->PlateClass,
+        PlateLocation,
+        Chosen->PlateRotation,
+        Params);
+
+    AActor* Target = GetWorld()->SpawnActor<AActor>(
+        Chosen->TargetClass,
+        TargetLocation,
+        Chosen->TargetRotation,
+        Params);
+
 
     // 스폰 결과 확인
     if (!IsValid(Plate))
