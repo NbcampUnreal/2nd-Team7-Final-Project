@@ -1,6 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "Character/BaseCharacter.h"
 #include "DataTable/ItemDataRow.h"
@@ -417,7 +414,7 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
     if (CurrentEquippedSlotIndex < 0 || !ItemSlots.IsValidIndex(CurrentEquippedSlotIndex))
     {
         LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::UnequipCurrentItem] 장착된 아이템이 없습니다."));
-        return;
+        //return;
     }
 
     FBaseItemSlotData* SlotData = GetItemDataAtSlot(CurrentEquippedSlotIndex);
@@ -494,6 +491,9 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
                 CachedOwnerCharacter->SetEquipped(false);
             }
         }
+
+        // 아이템 제거
+        EquippedItemComponent->DestroyChildActor();
     }
     else
     {

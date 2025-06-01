@@ -37,6 +37,9 @@ public:
 	FItemDataRow* GetItemDataByRowName(FName ItemRowName) const;
 
 	UFUNCTION(BlueprintPure, Category = "Data")
+	UDataTable* GetMapDataTable() const;
+	
+	UFUNCTION(BlueprintPure, Category = "Data")
 	UDataTable* GetItemDataTable() const;
 
 	UFUNCTION(BlueprintPure, Category = "Data")
