@@ -310,13 +310,6 @@ public:
 
 	UChildActorComponent* ChildActorComponent;
 
-private:
-	UPROPERTY(VisibleAnywhere, Category = "Inventory")
-	UToolbarInventoryComponent* ToolbarInventoryComponent;
-
-	UPROPERTY(VisibleAnywhere, Category = "Inventory")
-	UBackpackInventoryComponent* BackpackInventoryComponent;
-
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment")
 	UStaticMeshComponent* BackpackMeshComponent;
@@ -424,6 +417,6 @@ public:
 
 protected:
 	/** 현재 총 무게 */
-	UPROPERTY(BlueprintReadOnly, Category = "Character|Weight")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Character|Weight")
 	float CurrentTotalWeight = 0.0f;
 };

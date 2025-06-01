@@ -80,10 +80,6 @@ ABaseCharacter::ABaseCharacter()
 	// 캐릭터 클래스의 생성자 함수 내부 
 	FieldOfView = Camera->FieldOfView;
 
-	ToolbarInventoryComponent = CreateDefaultSubobject<UToolbarInventoryComponent>(TEXT("ToolbarInventoryComponent"));
-
-	BackpackInventoryComponent = nullptr;
-
 	BackpackMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BackpackMeshComponent"));
 	BackpackMeshComponent->SetupAttachment(GetMesh(), TEXT("backpack1"));
 	BackpackMeshComponent->SetVisibility(false);
