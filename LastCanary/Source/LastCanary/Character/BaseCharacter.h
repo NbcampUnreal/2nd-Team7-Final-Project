@@ -73,7 +73,12 @@ public:
 		Super::Tick(DeltaSeconds);
 
 		//SmoothADSCamera(DeltaSeconds);
+		UpdateGunWallClipOffset(DeltaSeconds);
 	}
+	float WallClipAimOffsetPitch;
+	float MaxWallClipPitch = 90.0f;
+	float CapsuleWallRatio = 0.0f;
+	void UpdateGunWallClipOffset(float DeltaTime);
 
 #pragma region Character Default Settings
 protected:
