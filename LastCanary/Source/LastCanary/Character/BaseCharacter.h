@@ -15,6 +15,7 @@ class UCameraComponent;
 class AItemBase;
 class UToolbarInventoryComponent;
 class UBackpackInventoryComponent;
+class UItemSpawnerComponent;
 
 UCLASS()
 class LASTCANARY_API ABaseCharacter : public AAlsCharacter
@@ -309,6 +310,9 @@ public:
 	FGameplayTagContainer OwnedTags;
 
 	UChildActorComponent* ChildActorComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UItemSpawnerComponent* ItemSpawner;
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment")

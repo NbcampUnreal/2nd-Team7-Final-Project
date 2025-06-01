@@ -29,9 +29,14 @@ protected:
     virtual void BeginPlay() override;
 
     /** 아이템 스포너 컴포넌트 */
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+    UPROPERTY()
     UItemSpawnerComponent* ItemSpawner;
 
+public:
+    /** 캐릭터로부터 ItemSpawner 참조 가져오기 */
+    UItemSpawnerComponent* GetItemSpawner() const;
+
+protected:
     /** 캐싱된 소유자 캐릭터 */
     UPROPERTY(BlueprintReadOnly, Category = "Inventory|Cache")
     ABaseCharacter* CachedOwnerCharacter;
@@ -154,10 +159,6 @@ protected:
     /** 드랍 위치 계산 */
     UFUNCTION(BlueprintPure, Category = "Inventory|Utility")
     FVector CalculateDropLocation() const;
-
-    /** 아이템 스포너 접근자 */
-    UFUNCTION(BlueprintPure, Category = "Inventory")
-    UItemSpawnerComponent* GetItemSpawner() const { return ItemSpawner; }
 
 
     //-----------------------------------------------------

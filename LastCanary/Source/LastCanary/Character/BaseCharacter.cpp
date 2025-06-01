@@ -20,7 +20,8 @@
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "Inventory/BackpackInventoryComponent.h"
 #include "Item/ItemBase.h"
-#include "Item//EquipmentItem/GunBase.h"
+#include "Item/ItemSpawnerComponent.h"
+#include "Item/EquipmentItem/GunBase.h"
 #include "Item/EquipmentItem/EquipmentItemBase.h"
 #include "UI/Manager/LCUIManager.h"
 #include "LastCanary.h"
@@ -79,6 +80,8 @@ ABaseCharacter::ABaseCharacter()
 
 	// 캐릭터 클래스의 생성자 함수 내부 
 	FieldOfView = Camera->FieldOfView;
+
+	ItemSpawner = CreateDefaultSubobject<UItemSpawnerComponent>(TEXT("ItemSpawner"));
 
 	BackpackMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BackpackMeshComponent"));
 	BackpackMeshComponent->SetupAttachment(GetMesh(), TEXT("backpack1"));
