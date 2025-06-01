@@ -130,7 +130,7 @@ protected:
 	bool bADS = false; // 현재 정조준 상태인가?
 #pragma endregion
 
-#pragma region Character Mesh and Component
+#pragma region Character Input Handle Function
 	
 public: 
 	/*Function called by the controller*/
@@ -246,6 +246,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dmaage")
 	float FallDamageThreshold = 1000.0f;
 #pragma endregion
+
+	UFUNCTION(Server, Reliable)
+	void Server_PlayReload();
+	void Server_PlayReload_Implementation();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayReload();
+	void Multicast_PlayReload_Implementation();
+
 
 public:
 

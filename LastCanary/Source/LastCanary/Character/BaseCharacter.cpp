@@ -537,6 +537,19 @@ void ABaseCharacter::CalcCameraLocation()
 
 void ABaseCharacter::Handle_Reload()
 {
+	Server_PlayReload();
+}
+void ABaseCharacter::Server_PlayReload_Implementation()
+{
+	Multicast_PlayReload();
+}
+
+void ABaseCharacter::Multicast_PlayReload_Implementation()
+{
+	if (HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("AnimInstance on server: %s"), *GetNameSafe(GetMesh()->GetAnimInstance()));
+	}
 	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
 	if (!EquippedItem)
 	{
@@ -564,15 +577,24 @@ void ABaseCharacter::Handle_Reload()
 	{
 		return;
 	}
+
+
 	float Duration = AnimInstance->Montage_Play(MontageToPlay, 1.0f);
 	if (Duration > 0.f)
 	{
+		RifleItem->Multicast_PlayReloadAnimation_Implementation();
 		SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 		bIsReloading = true;
 		FOnMontageEnded EndDelegate;
 		EndDelegate.BindUObject(this, &ABaseCharacter::OnGunReloadAnimComplete);
 		AnimInstance->Montage_SetEndDelegate(EndDelegate, MontageToPlay);
+	}	
+	UAnimInstance* RemoteAnimInstance = RemoteOnlySkeletalMesh->GetAnimInstance();
+	if (!IsValid(RemoteAnimInstance))
+	{
+		return;
 	}
+	RemoteAnimInstance->Montage_Play(MontageToPlay, 1.0f);
 }
 
 void ABaseCharacter::OnGunReloadAnimComplete(UAnimMontage* CompletedMontage, bool bInterrupted)
@@ -716,6 +738,7 @@ void ABaseCharacter::TraceInteractableActor()
 
 	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 0.1f);
 	//여기가 로그가 안찍힘 수정해야됨
+
 	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
 	if (EquippedItem)
 	{
