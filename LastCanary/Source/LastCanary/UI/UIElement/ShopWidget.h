@@ -34,9 +34,6 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UShoppingCartWidget* ShoppingCartWidget;
 
-	UPROPERTY(meta = (BindWidgetAnim), Transient)
-	UWidgetAnimation* ShopFadeAnim;
-
 	UPROPERTY(EditDefaultsOnly, Category = "Shop")
 	UDataTable* ItemDataTable;
 	UPROPERTY(EditDefaultsOnly, Category = "Shop")
