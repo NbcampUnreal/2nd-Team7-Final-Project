@@ -19,9 +19,19 @@ public:
 	UFUNCTION()
 	void Login();
 
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_SetPlayerInfo(const FSessionPlayerInfo& PlayerInfo);
+	virtual void Server_SetPlayerInfo_Implementation(const FSessionPlayerInfo& PlayerInfo);
+
 	UFUNCTION(Client, Reliable)
 	void Client_UpdatePlayerList(const TArray<FSessionPlayerInfo>& PlayerInfos);
 	virtual void Client_UpdatePlayerList_Implementation(const TArray<FSessionPlayerInfo>& PlayerInfos);
+
+	virtual void ClientReturnToMainMenuWithTextReason_Implementation(const FText& ReturnReason) override;
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Session")
+	void ClientWasKicked_Implementation(const FText& KickReason);
+	void ClientWasKicked_Implementation_Implementation(const FText& KickReason);
 
 	UFUNCTION(Client, Reliable)
 	void Client_UpdatePlayers();
