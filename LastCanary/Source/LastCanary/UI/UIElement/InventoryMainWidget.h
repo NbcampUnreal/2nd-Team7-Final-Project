@@ -42,6 +42,11 @@ private:
 	UPROPERTY(EditAnywhere, Category = "WidgetClasses")
 	TSubclassOf<UBackpackInventoryWidget> BackpackWidgetClass;
 
+protected:
+	/** 올바른 BackpackInventoryComponent를 찾는 함수 */
+	UFUNCTION()
+	UBackpackInventoryComponent* GetCorrectBackpackComponent();
+
 public:
 	void RefreshInventory();
 };

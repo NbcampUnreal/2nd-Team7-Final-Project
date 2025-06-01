@@ -83,6 +83,7 @@ private:
 	FTimerHandle StaminaRecoveryHandle;
 	FTimerHandle StaminaRecoveryDelayHandle;
 
+public:
 	// UI Update
 	void UpdateHPUI();
 	void UpdateStaminaUI();
