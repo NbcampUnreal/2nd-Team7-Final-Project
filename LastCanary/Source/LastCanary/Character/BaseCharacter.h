@@ -204,8 +204,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
 	UAnimMontage* ReloadMontage;
 
-
-
 	UFUNCTION()
 	void OnGunReloadAnimComplete(UAnimMontage* CompletedMontage, bool bInterrupted);
 
@@ -322,7 +320,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Equipment")
 	void SetEquipped(bool bEquip);
 
-
 public:
 	// 임의적으로 만든 캐릭터의 상호작용 함수
 	bool TryPickupItem(AItemBase* HitItem);
@@ -342,9 +339,6 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex);
 	void Server_EquipItemFromCurrentQuickSlot_Implementation(int32 QuickSlotIndex);
-
-
-
 
 	UFUNCTION(BlueprintCallable, Category = "Equipment")
 	bool UseEquippedItem();
@@ -374,8 +368,6 @@ public:
 	/** 특정 슬롯 아이템 드랍 */
 	UFUNCTION(BlueprintCallable, Category = "Character|Inventory")
 	void DropItemAtSlot(int32 SlotIndex, int32 Quantity = 1);
-
-
 
 #pragma region Editor Test Settings
 public:
