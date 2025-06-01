@@ -47,14 +47,33 @@ public:
 	// Camera 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	UCameraComponent* Camera;
+	
+	// SpringArm 컴포넌트 for ADS
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+	USpringArmComponent* ADSSpringArm; //Aim Down Sight
 
+	// Camera 컴포넌트 for ADS
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+	UCameraComponent* ADSCamera;
 	// 캐릭터 인벤토리 컴포넌트
 	UPROPERTY(VisibleAnywhere, Category = "Inventory")
 	UToolbarInventoryComponent* ToolbarInventoryComponent;
 
 	UPROPERTY(VisibleAnywhere, Category = "Inventory")
 	UBackpackInventoryComponent* BackpackInventoryComponent;
+
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	TObjectPtr<UArrowComponent> ThirdPersonArrow;
+	
 #pragma endregion
+
+	void Tick(float DeltaSeconds)
+	{
+		Super::Tick(DeltaSeconds);
+
+		//SmoothADSCamera(DeltaSeconds);
+	}
 
 #pragma region Character Default Settings
 protected:
@@ -92,9 +111,26 @@ protected:
 	void StartSmoothMove(const FVector& Start, const FVector& Destination);
 	void SmoothMoveStep();
 
+	bool bIsFPSCamera = true;
+	void ToADSCamera(bool bToADS);
+	bool bDesiredADS = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float SmoothCameraSpeed = 5.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float SmoothCameraTimeThreshold = 0.5f;
+
+	float SmoothCameraCurrentTime = 0.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float FieldOfView = 90.f;
+
+	void SmoothADSCamera(float DeltaTime);
+	bool bADS = false; // 현재 정조준 상태인가?
 #pragma endregion
 
-#pragma region Character Mesh and Component
+#pragma region Character Input Handle Function
 	
 public: 
 	/*Function called by the controller*/
@@ -120,7 +156,7 @@ public:
 	bool bIsPossessed;
 	bool bIsReloading = false;
 	bool bIsClose = false;
-
+	bool bIsSprinting = false;
 	void SetPossess(bool IsPossessed);
 #pragma endregion
 
@@ -211,6 +247,15 @@ public:
 	float FallDamageThreshold = 1000.0f;
 #pragma endregion
 
+	UFUNCTION(Server, Reliable)
+	void Server_PlayReload();
+	void Server_PlayReload_Implementation();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayReload();
+	void Multicast_PlayReload_Implementation();
+
+
 public:
 
 	void PickupItem();
@@ -244,6 +289,7 @@ public:
 	int32 GetCurrentQuickSlotIndex();
 	void SetCurrentQuickSlotIndex(int32 NewIndex);
 
+	UFUNCTION()
 	void HandleInventoryUpdated();
 
 
