@@ -16,4 +16,7 @@ struct FItemDropData
     // 몇 개 스폰할지 (1개 이상)
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item")
     int32 Count = 1;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    int32 ItemID = -1; 
 };

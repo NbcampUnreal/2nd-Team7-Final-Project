@@ -513,3 +513,30 @@ void UKeySettingWidget::UpdateMappings(FName DisplayName, FKey Key)
 
 		}, 0.2f, false);
 }
+
+
+void UKeySettingWidget::InitialMappings()
+{
+	APlayerController* PC = GetOwningPlayer();
+	if (!IsValid(PC))
+	{
+		return;
+	}
+	ULocalPlayer* LP = PC->GetLocalPlayer();
+	if (!IsValid(LP))
+	{
+		return;
+	}
+	UEnhancedInputLocalPlayerSubsystem* Subsystem = LP->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
+	if (!IsValid(Subsystem))
+	{
+		return;
+	}
+	UEnhancedInputUserSettings* UserSettings = Subsystem->GetUserSettings();
+	if (!IsValid(UserSettings))
+	{
+		return;
+	}
+	const TArray<FEnhancedActionKeyMapping> Mappings = Subsystem->GetAllPlayerMappableActionKeyMappings();
+	RefreshMappings(Mappings);
+}

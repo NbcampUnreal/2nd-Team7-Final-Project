@@ -206,12 +206,7 @@ void UInventorySlotWidget::UpdateBorderImage()
 	// 미리 에디터에서 할당한 텍스처들
 	UTexture2D* TargetTexture = nullptr;
 
-	if (ItemData.ItemRowName.IsNone())
-	{
-		// 빈 슬롯
-		TargetTexture = EmptyBorderTexture;
-	}
-	else if (ItemData.bIsEquipped)
+	if (ItemData.bIsEquipped)
 	{
 		// 장착된 아이템
 		TargetTexture = EquippedBorderTexture;
