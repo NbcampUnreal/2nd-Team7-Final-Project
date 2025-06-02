@@ -15,7 +15,10 @@ class LASTCANARY_API ALCRoomPlayerController : public ABasePlayerController
 	GENERATED_BODY()
 
 protected:
+	ALCRoomPlayerController();
+
 	virtual void BeginPlay() override;
+	virtual void PostSeamlessTravel() override;
 
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "UI")

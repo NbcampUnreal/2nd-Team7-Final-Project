@@ -23,6 +23,9 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
+	UPROPERTY()
+	bool bAlreadyInitialized;
+
 public:
 	// Stats
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stats")
@@ -104,12 +107,14 @@ public:
 	// Multicast
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_OnDamaged();
+	void Multicast_OnDamaged_Implementation();
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_OnDied();
+	void Multicast_OnDied_Implementation();
 
 	// Gold & Exp
 	UPROPERTY(Replicated, BlueprintReadOnly)
-	int32 TotalGold=500;
+	int32 TotalGold = 500;
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	int32 TotalExp;
 	void AddTotalGold(int32 Amount);
@@ -118,7 +123,7 @@ public:
 	int32 GetTotalGold() const;
 	UFUNCTION(BlueprintCallable)
 	int32 GetTotalExp() const;
-	
+
 	UFUNCTION(Server, Reliable)
 	void Server_SpendGold(int32 Amount);
 	void Server_SpendGold_Implementation(int32 Amount);
@@ -132,4 +137,11 @@ public:
 
 private:
 	void InitializeStats();
+
+public:
+	// Items
+	UPROPERTY(Replicated)
+	TArray<int32> AquiredItemIDs;
+
+	virtual void CopyProperties(APlayerState* PlayerState) override;
 };

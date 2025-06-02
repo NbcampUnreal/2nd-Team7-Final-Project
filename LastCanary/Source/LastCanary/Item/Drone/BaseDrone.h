@@ -28,7 +28,7 @@ public:
 	void SetCharacterLocation(FVector Location);
 
 	UPROPERTY(EditAnywhere, Category = "Drone | Distance")
-	float MaxDistanceToPlayer= 2000.f;
+	float MaxDistanceToPlayer = 2000.f;
 
 	// 충돌 이벤트 함수 선언 (OnComponentHit 시그니처)
 	UFUNCTION()
@@ -36,8 +36,8 @@ public:
 
 public:
 	virtual void Tick(float DeltaTime) override;
-	
-		
+
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* DroneMesh;
 
@@ -169,4 +169,22 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_ReturnToPlayer();
 	void Multicast_ReturnToPlayer_Implementation();
+
+
+
+protected:
+	UFUNCTION()
+	void SpawnDroneItemAtCurrentLocation();
+
+	/** 드론 아이템 스폰을 위한 ItemSpawner 컴포넌트 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	class UItemSpawnerComponent* ItemSpawner;
+
+	/** 드론 아이템의 데이터 테이블 Row Name */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drone|Item")
+	FName DroneItemRowName = FName("Drone");
+
+	/** 아이템 스폰 위치 오프셋 (드론 기준) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drone|Item")
+	FVector ItemSpawnOffset = FVector(0.0f, 0.0f, -50.0f);
 };

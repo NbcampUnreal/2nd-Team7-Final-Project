@@ -120,48 +120,6 @@ void UItemSpawnerComponent::ApplyItemSettings(AItemBase* Item, FName ItemRowName
     Item->ForceNetUpdate();
 }
 
-//void UItemSpawnerComponent::EnablePhysicsSimulation(AItemBase* Item)
-//{
-//    if (!Item)
-//        return;
-//
-//    // 총기인 경우
-//    if (AGunBase* Gun = Cast<AGunBase>(Item))
-//    {
-//        if (USkeletalMeshComponent* GunMesh = Gun->GetGunMesh())
-//        {
-//            GunMesh->SetSimulatePhysics(true);
-//            GunMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-//            GunMesh->SetCollisionObjectType(ECC_WorldDynamic);
-//            GunMesh->SetCollisionResponseToAllChannels(ECR_Block);
-//
-//            // ⭐ 컴포넌트 설정값 사용
-//            FVector RandomImpulse = FVector(
-//                FMath::RandRange(-ImpulseRandomRange.X, ImpulseRandomRange.X),
-//                FMath::RandRange(-ImpulseRandomRange.Y, ImpulseRandomRange.Y),
-//                FMath::RandRange(100.0f, (float)ImpulseRandomRange.Z)
-//            );
-//            GunMesh->AddImpulse(RandomImpulse * DropImpulseStrength / 300.0f);
-//        }
-//    }
-//    // 일반 아이템인 경우
-//    else if (UStaticMeshComponent* MeshComp = Item->GetMeshComponent())
-//    {
-//        MeshComp->SetSimulatePhysics(true);
-//        MeshComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-//        MeshComp->SetCollisionObjectType(ECC_WorldDynamic);
-//        MeshComp->SetCollisionResponseToAllChannels(ECR_Block);
-//
-//        // ⭐ 컴포넌트 설정값 사용
-//        FVector RandomImpulse = FVector(
-//            FMath::RandRange(-ImpulseRandomRange.X, ImpulseRandomRange.X),
-//            FMath::RandRange(-ImpulseRandomRange.Y, ImpulseRandomRange.Y),
-//            FMath::RandRange(100.0f, (float)ImpulseRandomRange.Z)
-//        );
-//        MeshComp->AddImpulse(RandomImpulse * DropImpulseStrength / 300.0f);
-//    }
-//}
-
 float UItemSpawnerComponent::CalculateThrowVelocity(float ItemWeight) const
 {
     // 무게에 반비례하는 속도 계산
@@ -224,70 +182,111 @@ void UItemSpawnerComponent::EnablePhysicsSimulation(AItemBase* Item)
         return;
     }
 
-    // 아이템 데이터에서 무게 가져오기
+    bool bIgnoreCharacterCollision = false;
     float ItemWeight = 1.0f;
-    if (ULCGameInstanceSubsystem* GameSubsystem = GetGameSubsystem())
+
+    if (UWorld* World = GetWorld())
     {
-        if (const FItemDataRow* ItemData = GameSubsystem->GetItemDataByRowName(Item->ItemRowName))
+        if (UGameInstance* GI = World->GetGameInstance())
         {
-            ItemWeight = ItemData->Weight;
+            if (ULCGameInstanceSubsystem* GameSubsystem = GI->GetSubsystem<ULCGameInstanceSubsystem>())
+            {
+                if (const FItemDataRow* ItemData = GameSubsystem->GetItemDataByRowName(Item->ItemRowName))
+                {
+                    ItemWeight = ItemData->Weight;
+                    bIgnoreCharacterCollision = ItemData->bIgnoreCharacterCollision;
+
+                    LOG_Item_WARNING(TEXT("[EnablePhysicsSimulation] 아이템 데이터 로드: %s, 무게: %.2f, 캐릭터 충돌 무시: %s"),
+                        *Item->ItemRowName.ToString(), ItemWeight, bIgnoreCharacterCollision ? TEXT("true") : TEXT("false"));
+                }
+                else
+                {
+                    LOG_Item_WARNING(TEXT("[EnablePhysicsSimulation] ❌ 아이템 데이터를 찾을 수 없음: %s"), *Item->ItemRowName.ToString());
+                }
+            }
         }
     }
 
-    // 던지기 속도와 방향 계산
-    float ThrowVelocity = CalculateThrowVelocity(ItemWeight);
-    FVector ThrowDirection = CalculateThrowDirection();
-    FVector ThrowImpulse = ThrowDirection * ThrowVelocity;
-
-    LOG_Item_WARNING(TEXT("[EnablePhysicsSimulation] 아이템: %s, 무게: %.2f, 속도: %.2f"),
-        *Item->ItemRowName.ToString(), ItemWeight, ThrowVelocity);
-
-    // ⭐ 무브먼트 리플리케이션을 위한 설정
-    Item->SetReplicateMovement(true);
-    Item->SetReplicates(true);
-
-    // 총기인 경우
-    if (AGunBase* Gun = Cast<AGunBase>(Item))
-    {
-        if (USkeletalMeshComponent* GunMesh = Gun->GetGunMesh())
+    // ⭐ 네트워크 동기화를 위한 지연 적용
+    FTimerHandle DelayedCollisionTimer;
+    GetWorld()->GetTimerManager().SetTimer(DelayedCollisionTimer, [this, Item, bIgnoreCharacterCollision, ItemWeight]()
         {
-            // 물리 설정
-            GunMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-            GunMesh->SetCollisionObjectType(ECC_WorldDynamic);
-            GunMesh->SetCollisionResponseToAllChannels(ECR_Block);
-            GunMesh->SetSimulatePhysics(true);
+            if (!IsValid(Item))
+                return;
 
-            // ⭐ 즉시 임펄스 적용 (타이머 제거)
-            GunMesh->SetPhysicsLinearVelocity(ThrowDirection * ThrowVelocity * 0.01f); // 초기 속도 설정
-            GunMesh->AddImpulse(ThrowImpulse, NAME_None, true); // VelChange 사용
+            float ThrowVelocity = CalculateThrowVelocity(ItemWeight);
+            FVector ThrowDirection = CalculateThrowDirection();
+            FVector ThrowImpulse = ThrowDirection * ThrowVelocity;
 
-            LOG_Item_WARNING(TEXT("[EnablePhysicsSimulation] 총기 임펄스 즉시 적용"));
-        }
-    }
-    // 일반 아이템인 경우
-    else if (UStaticMeshComponent* MeshComp = Item->GetMeshComponent())
-    {
-        // 물리 설정
-        MeshComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-        MeshComp->SetCollisionObjectType(ECC_WorldDynamic);
-        MeshComp->SetCollisionResponseToAllChannels(ECR_Block);
-        MeshComp->SetSimulatePhysics(true);
+            Item->SetReplicateMovement(true);
+            Item->SetReplicates(true);
 
-        // ⭐ 즉시 임펄스 적용
-        MeshComp->SetPhysicsLinearVelocity(ThrowDirection * ThrowVelocity * 0.01f);
-        MeshComp->AddImpulse(ThrowImpulse, NAME_None, true); // VelChange 사용
+            if (AGunBase* Gun = Cast<AGunBase>(Item))
+            {
+                if (USkeletalMeshComponent* GunMesh = Gun->GetGunMesh())
+                {
+                    ApplyCollisionSettings(GunMesh, bIgnoreCharacterCollision);
+                    GunMesh->SetSimulatePhysics(true);
+                    GunMesh->SetPhysicsLinearVelocity(ThrowDirection * ThrowVelocity * 0.01f);
+                    GunMesh->AddImpulse(ThrowImpulse, NAME_None, true);
 
-        LOG_Item_WARNING(TEXT("[EnablePhysicsSimulation] 아이템 임펄스 즉시 적용"));
-    }
+                    LOG_Item_WARNING(TEXT("[EnablePhysicsSimulation] 총기 물리 설정 적용 (지연)"));
+                }
+            }
+            else if (UStaticMeshComponent* MeshComp = Item->GetMeshComponent())
+            {
+                ApplyCollisionSettings(MeshComp, bIgnoreCharacterCollision);
+                MeshComp->SetSimulatePhysics(true);
+                MeshComp->SetPhysicsLinearVelocity(ThrowDirection * ThrowVelocity * 0.01f);
+                MeshComp->AddImpulse(ThrowImpulse, NAME_None, true);
 
-    // ⭐ 디버그 시각화 (던지기 궤적)
+                LOG_Item_WARNING(TEXT("[EnablePhysicsSimulation] 아이템 물리 설정 적용 (지연)"));
+            }
+
+        }, 0.1f, false); // ⭐ 0.1초 지연 후 적용
+
+    // ⭐ 디버그 시각화
     if (AActor* Owner = GetOwner())
     {
         FVector StartLocation = Item->GetActorLocation();
+        FVector ThrowDirection = CalculateThrowDirection();
         FVector EndLocation = StartLocation + ThrowDirection * 500.0f;
 
-        DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Yellow, false, 2.0f, 0, 2.0f);
-        DrawDebugSphere(GetWorld(), StartLocation, 15.0f, 12, FColor::Green, false, 2.0f);
-        DrawDebugDirectionalArrow(GetWorld(), StartLocation, EndLocation, 30.0f, FColor::Red, false, 2.0f, 0, 2.0f);
+        FColor DebugColor = bIgnoreCharacterCollision ? FColor::Blue : FColor::Yellow;
+        DrawDebugLine(GetWorld(), StartLocation, EndLocation, DebugColor, false, 3.0f, 0, 2.0f);
+        DrawDebugSphere(GetWorld(), StartLocation, 15.0f, 12, FColor::Green, false, 3.0f);
+        DrawDebugDirectionalArrow(GetWorld(), StartLocation, EndLocation, 30.0f, FColor::Red, false, 3.0f, 0, 2.0f);
+
+        FString CollisionText = bIgnoreCharacterCollision ? TEXT("NO_COLLISION") : TEXT("COLLISION");
+        DrawDebugString(GetWorld(), StartLocation + FVector(0, 0, 50), CollisionText, nullptr, DebugColor, 3.0f);
     }
+}
+
+void UItemSpawnerComponent::ApplyCollisionSettings(UPrimitiveComponent* MeshComponent, bool bIgnoreCharacterCollision)
+{
+    if (!MeshComponent)
+    {
+        LOG_Item_WARNING(TEXT("[ApplyCollisionSettings] MeshComponent is null"));
+        return;
+    }
+
+    MeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+    MeshComponent->SetCollisionObjectType(ECC_WorldDynamic);
+
+    MeshComponent->SetCollisionResponseToAllChannels(ECR_Block);
+
+    if (bIgnoreCharacterCollision)
+    {
+        MeshComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+        ECollisionResponse PawnResponse = MeshComponent->GetCollisionResponseToChannel(ECC_Pawn);
+    }
+    else
+    {
+        MeshComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
+    }
+
+    MeshComponent->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
+    MeshComponent->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);
+    MeshComponent->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+    MeshComponent->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 }
