@@ -11,11 +11,14 @@ class UInputMappingContext;
 class UInputAction;
 class ABaseCharacter;
 class ABaseDrone;
+class ABasePlayerState;
 
 UCLASS()
 class LASTCANARY_API ABasePlayerController : public ALCPlayerController
 {
 	GENERATED_BODY()
+
+
 private:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
 private:
@@ -235,11 +238,21 @@ public:
 	void Client_OnCharacterDied();
 	void Client_OnCharacterDied_Implementation();
 
+
+
+
+	//SpectatorMode
 	UFUNCTION(BlueprintImplementableEvent)
 	void TEST_CallSpectatorWidget();
 
 	UPROPERTY(BlueprintReadWrite)
 	int32 CurrentSpectatedCharacterIndex = 0;
+
+	void SpectateNextPlayer();
+	void SpectatePreviousPlayer();
+	TArray<ABasePlayerState*> GetPlayerArray();
+
+	TArray<ABasePlayerState*> SpectatorTargets;
 
 public:
 	bool bIsSprinting = false;
@@ -293,6 +306,7 @@ public:
 
 	UFUNCTION(Server, Reliable)
 	void Server_SpawnDrone();
+	void Server_SpawnDrone_Implementation();
 
 	//test용
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)

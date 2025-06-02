@@ -104,34 +104,38 @@ void ABasePlayerState::UpdateExhaustedUI()
 void ABasePlayerState::ApplyDamage(float Damage)
 {
 	////여기는 서버에서 처리
-	APlayerController* OwnerPC = Cast<APlayerController>(GetOwner());
-	if (OwnerPC)
-	{
-	}
-	
 	CurrentHP = FMath::Clamp(CurrentHP - Damage, 0.f, InitialStats.MaxHP);
-	if (IsOwnedBy(GetWorld()->GetFirstPlayerController()))
-	{
-		UpdateHPUI();
-	}
 
-	// Multicast_OnDamaged();
-
+	//빠른 동기화를 위해서
+	Multicast_OnDamaged(CurrentHP);
 
 	if (CurrentHP <= 0.f)
 	{
 		OnDied.Broadcast();
 		CurrentState = EPlayerState::Dead;
-		if (IsOwnedBy(GetWorld()->GetFirstPlayerController()))
-		{
-			UpdateDeathUI();
-		}
 	}
 }
 
 void ABasePlayerState::OnRep_CurrentState()
 {
 
+}
+
+
+void ABasePlayerState::Multicast_OnDamaged_Implementation(float HP)
+{
+
+	if (IsOwnedBy(GetWorld()->GetFirstPlayerController()))
+	{
+		CurrentHP = HP;
+		UpdateHPUI();
+		if (CurrentHP <= 0.f)
+		{
+			OnDied.Broadcast();
+			CurrentState = EPlayerState::Dead;
+			UpdateDeathUI();
+		}
+	}
 }
 
 void ABasePlayerState::Multicast_OnDied_Implementation()

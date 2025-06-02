@@ -5,7 +5,7 @@
 #include "Item/Drone/BaseDrone.h"
 #include "Kismet/GameplayStatics.h"
 #include "BasePlayerState.h"
-
+#include "Framework/GameState/LCGameState.h"
 #include "Net/UnrealNetwork.h"
 #include "UI/Manager/LCUIManager.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
@@ -103,7 +103,9 @@ void ABasePlayerController::Client_OnCharacterDied_Implementation()
 			PlayerCharacter->HandlePlayerDeath(); //플레이어 사망처리
 		}
 	}
-	TEST_CallSpectatorWidget();
+
+	//CreateWidget();
+	//addtoviewport
 }
 
 APawn* ABasePlayerController::GetMyPawn()
@@ -671,7 +673,25 @@ void ABasePlayerController::Input_OnStrafe(const FInputActionValue& ActionValue)
 	{
 		return;
 	}
+	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
+	if (MyPlayerState)
+	{
+		if (MyPlayerState->CurrentState == EPlayerState::Dead)
+		{
+			const float Input = ActionValue.Get<float>();
+			if (Input > 0.5f)
+			{
+				SpectateNextPlayer();
+			}
+			else
+			{
+				SpectatePreviousPlayer();
+			}
+		}
+		return;
+	}
 
+	//나중에 사용으로 빼긴 할 건데 일단 테스트용으로 넣어놔서 아쉽게도 호출이 되는 그런 코드.
 	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Toggle Inventory"));
@@ -681,18 +701,58 @@ void ABasePlayerController::Input_OnStrafe(const FInputActionValue& ActionValue)
 			PlayerCharacter->ToggleInventory();
 		}
 	}
-	
-	//Deprecated//
-	// APawn 타입에 맞는 처리를 실행
-	if (CurrentPossessedPawn->IsA<ABaseDrone>())
-	{
-		ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn);
-		if (IsValid(Drone))
-		{
+}
 
+
+void ABasePlayerController::SpectatePreviousPlayer()
+{
+	TArray<ABasePlayerState*> PlayerList = GetPlayerArray();
+	int32 PlayerListLength = PlayerList.Num();
+	if (PlayerListLength <= 0)
+	{
+		return;
+	}
+
+	CurrentSpectatedCharacterIndex--;
+	if (CurrentSpectatedCharacterIndex < 0)
+	{
+		CurrentSpectatedCharacterIndex = PlayerListLength - 1;
+	}
+	SetViewTargetWithBlend(PlayerList[CurrentSpectatedCharacterIndex]->GetPawn());
+}
+void ABasePlayerController::SpectateNextPlayer()
+{
+	TArray<ABasePlayerState*> PlayerList = GetPlayerArray();
+	int32 PlayerListLength = PlayerList.Num();
+	if (PlayerListLength <= 0)
+	{
+		return;
+	}
+
+	CurrentSpectatedCharacterIndex++;
+	CurrentSpectatedCharacterIndex %= PlayerListLength;
+	SetViewTargetWithBlend(PlayerList[CurrentSpectatedCharacterIndex]->GetPawn());
+}
+TArray<ABasePlayerState*> ABasePlayerController::GetPlayerArray()
+{
+	SpectatorTargets.Empty();
+	ALCGameState* GameState = GetWorld()->GetGameState<ALCGameState>();
+	if (!IsValid(GameState))
+	{
+		return SpectatorTargets;
+	}
+
+	for (APlayerState* PS : GameState->PlayerArray)
+	{
+		ABasePlayerState* MyPS = Cast<ABasePlayerState>(PS);
+		if (MyPS && MyPS->CurrentState != EPlayerState::Dead)  // 살아있는 플레이어 필터
+		{
+			SpectatorTargets.Add(MyPS);
 		}
 	}
+	return SpectatorTargets;
 }
+
 
 void ABasePlayerController::Input_OnItemUse()
 {

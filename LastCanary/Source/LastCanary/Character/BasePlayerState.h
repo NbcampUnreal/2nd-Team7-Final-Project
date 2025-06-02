@@ -107,8 +107,8 @@ public:
 
 	// Multicast
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_OnDamaged();
-	void Multicast_OnDamaged_Implementation();
+	void Multicast_OnDamaged(float HP);
+	void Multicast_OnDamaged_Implementation(float HP);
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_OnDied();
 	void Multicast_OnDied_Implementation();
