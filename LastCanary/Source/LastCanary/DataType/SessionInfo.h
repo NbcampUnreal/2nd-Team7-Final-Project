@@ -9,8 +9,14 @@ struct FSessionInfo
 	GENERATED_BODY()
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FString SessionName;
+	FString ServerName;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 MaxPlayerCount;
+	bool bIsPublic;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FString Password;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int MaxPlayerNum;
 };

@@ -90,6 +90,33 @@ protected:
     void BP_EndDarknessEffect();
     virtual void BP_EndDarknessEffect_Implementation();
 
+    /** 단서 관련 멤버들 */
+
+    /** 할퀸 자국 블루프린트 클래스 참조 */
+    UPROPERTY(EditAnywhere, Category = "Clue")
+    TSubclassOf<AActor> ScratchMarkClass;
+
+    /** 그림자 얼룩 블루프린트 클래스 참조 */
+    UPROPERTY(EditAnywhere, Category = "Clue")
+    TSubclassOf<AActor> ShadowStainClass;
+
+    /** 단서를 남길 최소/최대 간격 (초) */
+    UPROPERTY(EditAnywhere, Category = "Clue", meta = (ClampMin = "1.0", ClampMax = "30.0"))
+    float ClueSpawnIntervalMin = 5.0f;
+
+    UPROPERTY(EditAnywhere, Category = "Clue", meta = (ClampMin = "1.0", ClampMax = "30.0"))
+    float ClueSpawnIntervalMax = 12.0f;
+
+    /** 이미 스폰된 단서를 추적하기 위한 배열 (원본 데모에서는 쓸 필요 없지만, 관리용으로 남겨둠) */
+    UPROPERTY()
+    TArray<AActor*> SpawnedClues;
+
+    /** 클루 스폰 타이머 핸들 */
+    FTimerHandle ClueTimerHandle;
+
+    /** 실제 단서를 스폰하는 함수 */
+    void SpawnRandomClue();
+
     FTimerHandle DarknessTimer;
 
     UPROPERTY()

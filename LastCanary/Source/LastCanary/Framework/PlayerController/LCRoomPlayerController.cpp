@@ -232,7 +232,7 @@ void ALCRoomPlayerController::CreateAndShowRoomUI()
 			RoomWidgetInstance = CreateWidget<URoomWidget>(this, RoomWidgetClass);
 			if (RoomWidgetInstance)
 			{
-				RoomWidgetInstance->AddToViewport();
+				//RoomWidgetInstance->AddToViewport();
 			}
 		}
 	}

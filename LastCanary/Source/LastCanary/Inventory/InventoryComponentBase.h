@@ -207,9 +207,9 @@ protected:
     /** 아이템 추가 후 처리 */
     virtual void PostAddProcess() PURE_VIRTUAL(UInventoryComponentBase::PostAddProcess, return;);
 
-	//-----------------------------------------------------
+    //-----------------------------------------------------
     // 빈 슬롯 아이템 관리
-	//-----------------------------------------------------
+    //-----------------------------------------------------
 protected:
     /** Default 아이템 Row Name */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory|Default")
@@ -223,4 +223,25 @@ public:
     /** 빈 슬롯을 Default 아이템으로 설정 */
     UFUNCTION(BlueprintCallable, Category = "Inventory|Utility")
     void SetSlotToDefault(int32 SlotIndex);
+
+
+public:
+    /** 인벤토리 슬롯들의 ItemID 배열 반환 (레벨 이동 시 사용) */
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Persistence")
+    TArray<int32> GetInventoryItemIDs() const;
+
+    /** ItemID 배열로부터 인벤토리 복원 (레벨 이동 후 사용) */
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Persistence")
+    void SetInventoryFromItemIDs(const TArray<int32>& ItemIDs);
+
+protected:
+    /** ItemRowName을 ItemID로 변환 */
+    UFUNCTION(BlueprintPure, Category = "Inventory|Utility")
+    int32 GetItemIDFromRowName(FName ItemRowName) const;
+
+    /** ItemID를 ItemRowName으로 변환 */
+    UFUNCTION(BlueprintPure, Category = "Inventory|Utility")
+    FName GetItemRowNameFromID(int32 ItemID) const;
+
+    void ClearInventorySlots();
 };

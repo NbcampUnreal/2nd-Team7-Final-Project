@@ -11,14 +11,29 @@
 ABasePlayerState::ABasePlayerState()
 {
 	bReplicates = true;
-	LOG_Frame_WARNING(TEXT("ABasePlayerState::ABasePlayerState()ABasePlayerState::ABasePlayerState()"));
-
+	LOG_Frame_WARNING(TEXT("ABasePlayerState::Constructor"));
 }
 
 void ABasePlayerState::BeginPlay()
 {
+	Super::BeginPlay();
+
+	if (bAlreadyInitialized)
+	{
+		LOG_Frame_WARNING(TEXT("ABasePlayerState::BeginPlay - 중복 호출 차단"));
+		return;
+	}
+	bAlreadyInitialized = true;
+
 	LOG_Frame_WARNING(TEXT("ABasePlayerState::BeginPlay()"));
-	InitializeStats();
+
+	if (CurrentHP <= 0.f && InitialStats.MaxHP > 0.f)  // 새 생성일 경우만
+	{
+		LOG_Frame_WARNING(TEXT("ABasePlayerState::Should InitializeStats"));
+
+		InitializeStats();
+	}
+
 	UpdateHPUI();
 	UpdateStaminaUI();
 }

@@ -21,6 +21,18 @@ void ALCBossEoduksini::BeginPlay()
     Super::BeginPlay();
     // 시작 스케일 적용
     SetActorScale3D(FVector(CurScale));
+
+    if (HasAuthority())
+    {
+        const float InitialDelay = FMath::RandRange(ClueSpawnIntervalMin, ClueSpawnIntervalMax);
+        GetWorldTimerManager().SetTimer(
+            ClueTimerHandle,
+            this,
+            &ALCBossEoduksini::SpawnRandomClue,
+            InitialDelay,
+            false
+        );
+    }
 }
 
 void ALCBossEoduksini::Tick(float DeltaSeconds)
@@ -81,6 +93,87 @@ void ALCBossEoduksini::Tick(float DeltaSeconds)
             BB->SetValueAsBool(TEXT("IsDarknessActive"), bDarknessActive);
         }
     }
+}
+
+void ALCBossEoduksini::SpawnRandomClue()
+{
+    // 1) ScratchMarkClass / ShadowStainClass 가 제대로 지정되었는지 확인
+    if (!ScratchMarkClass || !ShadowStainClass)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("[SpawnRandomClue] 클래스가 지정되지 않음: Scratch=%s, Shadow=%s"),
+            *GetNameSafe(ScratchMarkClass), *GetNameSafe(ShadowStainClass));
+
+        // 다음 타이머 예약만 재설정 후 반환
+        float NextDelay = FMath::RandRange(ClueSpawnIntervalMin, ClueSpawnIntervalMax);
+        GetWorldTimerManager().SetTimer(
+            ClueTimerHandle,
+            this,
+            &ALCBossEoduksini::SpawnRandomClue,
+            NextDelay,
+            false
+        );
+        return;
+    }
+
+    // 2) 절반 확률로 ScratchMark 또는 ShadowStain 중 하나 선택
+    bool bSpawnScratch = FMath::RandBool();
+    TSubclassOf<AActor> ChosenClass = bSpawnScratch
+        ? ScratchMarkClass
+        : ShadowStainClass;
+
+    // 3) 스폰 위치를 보스 위치 주변에 약간 오프셋
+    FVector BossLoc = GetActorLocation();
+    FVector Forward = GetActorForwardVector();
+    FVector Right = GetActorRightVector();
+    FVector Up = FVector::UpVector;
+
+    float OffsetForward = FMath::RandRange(-50.f, 50.f);
+    float OffsetRight = FMath::RandRange(-100.f, 100.f);
+    float OffsetUp = FMath::RandRange(-20.f, 20.f);
+
+    FVector SpawnLoc = BossLoc
+        + Forward * OffsetForward
+        + Right * OffsetRight
+        + Up * OffsetUp;
+
+    FRotator SpawnRot = GetActorRotation();
+
+    // 4) SpawnParameters 설정 (충돌이 있더라도 무조건 스폰하도록 설정)
+    FActorSpawnParameters SpawnParams;
+    SpawnParams.Owner = this;
+    SpawnParams.Instigator = GetInstigator();
+    SpawnParams.SpawnCollisionHandlingOverride =
+        ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+    // 5) 실제로 액터 스폰 시도
+    AActor* NewClue = GetWorld()->SpawnActor<AActor>(
+        ChosenClass, SpawnLoc, SpawnRot, SpawnParams);
+
+    if (NewClue)
+    {
+        UE_LOG(LogTemp, Log,
+            TEXT("[SpawnRandomClue] %s 을(를) %s 에 스폰 성공"),
+            *NewClue->GetName(), *SpawnLoc.ToCompactString());
+
+        SpawnedClues.Add(NewClue);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("[SpawnRandomClue] 스폰 실패: 클래스=%s, 위치=%s"),
+            *GetNameSafe(ChosenClass), *SpawnLoc.ToCompactString());
+    }
+
+    // 6) 다음 단서를 스폰하기 위해 타이머를 다시 예약
+    float NextDelay = FMath::RandRange(ClueSpawnIntervalMin, ClueSpawnIntervalMax);
+    GetWorldTimerManager().SetTimer(
+        ClueTimerHandle,
+        this,
+        &ALCBossEoduksini::SpawnRandomClue,
+        NextDelay,
+        false
+    );
 }
 
 bool ALCBossEoduksini::IsLookedAtByAnyPlayer() const

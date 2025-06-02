@@ -10,6 +10,7 @@
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/FloatingPawnMovement.h"
 #include "Net/UnrealNetwork.h"
+#include "Item/ItemSpawnerComponent.h"
 
 ABaseDrone::ABaseDrone()
 {
@@ -38,6 +39,7 @@ ABaseDrone::ABaseDrone()
 	MovementComponent = CreateDefaultSubobject<UFloatingPawnMovement>(TEXT("MovementComponent"));
 	MovementComponent->UpdatedComponent = DroneMesh; // RootComponent 또는 DroneMesh로 설정
 
+	ItemSpawner = CreateDefaultSubobject<UItemSpawnerComponent>(TEXT("ItemSpawner"));
 }
 
 void ABaseDrone::BeginPlay()
@@ -219,15 +221,31 @@ void ABaseDrone::OnRep_CameraPitch()
 
 void ABaseDrone::Server_ReturnAsItem_Implementation()
 {
+	if (!HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Server_ReturnAsItem] Authority가 없습니다."));
+		return;
+	}
+
+	// ⭐ 드론 아이템 스폰
+	SpawnDroneItemAtCurrentLocation();
 	Destroy();
 }
 
 void ABaseDrone::ReturnAsItem()
 {
-	Server_ReturnAsItem();
+	if (HasAuthority())
+	{
+		// 서버에서 직접 실행
+		Server_ReturnAsItem_Implementation();
+	}
+	else
+	{
+		// 클라이언트에서는 서버 RPC 호출
+		Server_ReturnAsItem();
+	}
+
 	UE_LOG(LogTemp, Warning, TEXT("Drone return to Item"));
-	//TODO: Spawn Drone Item Class
-	
 }
 
 void ABaseDrone::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
@@ -287,4 +305,46 @@ void ABaseDrone::OnDroneHit(UPrimitiveComponent* HitComponent, AActor* OtherActo
 	FVector Start = Hit.ImpactPoint;
 	FVector End = Start + Normal * DebugLineLength;
 	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 1.0f, 0, 2.0f);
+}
+
+void ABaseDrone::SpawnDroneItemAtCurrentLocation()
+{
+	if (!HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[SpawnDroneItemAtCurrentLocation] Authority가 없습니다."));
+		return;
+	}
+
+	if (!ItemSpawner)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[SpawnDroneItemAtCurrentLocation] ItemSpawner가 없습니다."));
+		return;
+	}
+
+	FVector CurrentLocation = GetActorLocation();
+	FVector SpawnLocation = CurrentLocation + ItemSpawnOffset;
+
+	FHitResult HitResult;
+	FVector TraceStart = SpawnLocation + FVector(0, 0, 100.0f);
+	FVector TraceEnd = SpawnLocation - FVector(0, 0, 500.0f);
+
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(this);
+	QueryParams.bTraceComplex = true;
+
+	if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_WorldStatic, QueryParams))
+	{
+		SpawnLocation = HitResult.ImpactPoint + FVector(0, 0, 30.0f);
+	}
+
+	AItemBase* DroneItem = ItemSpawner->CreateItem(DroneItemRowName, SpawnLocation);
+	if (DroneItem)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[SpawnDroneItemAtCurrentLocation] 드론 아이템 스폰 성공: %s"),
+			*DroneItem->GetName());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[SpawnDroneItemAtCurrentLocation] 드론 아이템 스폰 실패"));
+	}
 }
