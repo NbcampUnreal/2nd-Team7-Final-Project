@@ -15,13 +15,14 @@ class UCameraComponent;
 class AItemBase;
 class UToolbarInventoryComponent;
 class UBackpackInventoryComponent;
+struct FBaseItemSlotData;
 
 UCLASS()
 class LASTCANARY_API ABaseCharacter : public AAlsCharacter
 {
 	GENERATED_BODY()
 
-#pragma region Character Mesh and Component
+//Character Mesh and Component
 public:
 	/*1인칭 전용 메시 (자신만 보이는)*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
@@ -66,7 +67,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	TObjectPtr<UArrowComponent> ThirdPersonArrow;
 	
-#pragma endregion
+
 
 	void Tick(float DeltaSeconds)
 	{
@@ -80,16 +81,16 @@ public:
 	float CapsuleWallRatio = 0.0f;
 	void UpdateGunWallClipOffset(float DeltaTime);
 
-#pragma region Character Default Settings
+//Character Default Settings
 protected:
 	/*Character Default Settings*/
 	ABaseCharacter();
 	void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const;
 	virtual void NotifyControllerChanged() override;
 	virtual void BeginPlay() override;
-#pragma endregion
 
-#pragma region Camera Settings
+
+// Camera Settings
 protected:
 	/*Camera Settings*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|MouseSensitivity", Meta = (ClampMin = 0, ForceUnits = "x"))
@@ -133,9 +134,9 @@ protected:
 
 	void SmoothADSCamera(float DeltaTime);
 	bool bADS = false; // 현재 정조준 상태인가?
-#pragma endregion
 
-#pragma region Character Input Handle Function
+
+// Character Input Handle Function
 	
 public: 
 	/*Function called by the controller*/
@@ -152,9 +153,9 @@ public:
 	virtual void Handle_ViewMode();
 	virtual void Handle_Reload();
 
-#pragma endregion
 
-#pragma region Character State
+
+//Character State
 
 public:
 	bool bIsScoped = false;
@@ -163,9 +164,9 @@ public:
 	bool bIsClose = false;
 	bool bIsSprinting = false;
 	void SetPossess(bool IsPossessed);
-#pragma endregion
 
-#pragma region About Character Animation Montage and Animation Class
+
+//About Character Animation Montage and Animation Class
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	bool UseGunBoneforOverlayObjects;
@@ -223,9 +224,9 @@ public:
 	void Multicast_PlayMontage(UAnimMontage* MontageToPlay);
 	void Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay);
 	
-#pragma endregion
+
 	
-#pragma region Check Player Focus Everytime
+//Check Player Focus Everytime
 public:
 	/*About Interact*/
 
@@ -239,9 +240,9 @@ public:
 	AActor* CurrentFocusedActor;
 
 	void TraceInteractableActor();
-#pragma endregion
 
-#pragma region Player Take Damage
+
+//Player Take Damage
 public:
 	/*Player Damage, Death*/
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
@@ -250,7 +251,7 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dmaage")
 	float FallDamageThreshold = 1000.0f;
-#pragma endregion
+
 
 	UFUNCTION(Server, Reliable)
 	void Server_PlayReload();
