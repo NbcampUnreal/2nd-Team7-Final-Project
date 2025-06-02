@@ -5,20 +5,42 @@
 #include "Inventory/BackpackInventoryComponent.h"
 #include "BackpackItem.generated.h"
 
-
 UCLASS()
 class LASTCANARY_API ABackpackItem : public AEquipmentItemBase
 {
-	GENERATED_BODY()
-
-private:
-	UPROPERTY(VisibleAnywhere, Category = "Inventory")
-	UBackpackInventoryComponent* BackpackInventoryComponent;
+    GENERATED_BODY()
 
 public:
-	// TODO : 인벤토리 컴포넌트와 상호작용하는 함수 추가 필요
-	UFUNCTION(BlueprintCallable, Category = "Inventory")
-	UBackpackInventoryComponent* GetBackpackInventoryComponent() const;
+    ABackpackItem();
 
-	void CopyInventoryData(UBackpackInventoryComponent* NewBackpackInventoryComponent);
+protected:
+    virtual void BeginPlay() override;
+
+public:
+    /** 가방의 인벤토리 컴포넌트 */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+    UBackpackInventoryComponent* BackpackInventoryComponent;
+
+    /** 가방 인벤토리 컴포넌트 접근자 */
+    UFUNCTION(BlueprintPure, Category = "Inventory")
+    UBackpackInventoryComponent* GetBackpackInventoryComponent() const;
+
+    /** 가방 최대 슬롯 수 */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Backpack Settings", meta = (ClampMin = "1", ClampMax = "50"))
+    int32 BackpackSlots = 20;
+
+    /** 가방 사용 (인벤토리 열기) */
+    virtual void UseItem() override;
+
+    /** 가방 데이터 가져오기 */
+    UFUNCTION(BlueprintPure, Category = "Backpack")
+    TArray<FBaseItemSlotData> GetBackpackData() const;
+
+    /** 가방에 데이터 설정 */
+    UFUNCTION(BlueprintCallable, Category = "Backpack")
+    void SetBackpackData(const TArray<FBaseItemSlotData>& NewData);
+
+protected:
+    /** 가방 초기화 */
+    void InitializeBackpack();
 };

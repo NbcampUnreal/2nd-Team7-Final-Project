@@ -20,7 +20,19 @@ class UMapSelectWidget;
 class UPopupCreateSession;
 class UPopupLoading;
 class UPopupNotice;
+class ULoadingLevel;
 class UInventoryMainWidget;
+class UPauseMenu;
+
+UENUM(BlueprintType)
+enum class ELCUIContext : uint8
+{
+	None,
+	Title,
+	Room,
+	InGame,
+};
+
 UCLASS(BlueprintType)
 class LASTCANARY_API ULCUIManager : public UObject
 {
@@ -43,6 +55,7 @@ public:
 	void ShowOptionPopup();
 	void ShowPauseMenu();
 	void HidePauseMenu();
+	bool IsPauseMenuOpen() const;
 	void ShowConfirmPopup(TFunction<void()> OnConfirm);
 	void ShowShopPopup();
 	void HideShopPopup();
@@ -65,6 +78,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void HidePopUpNotice();
 
+	void ShowLoadingLevel();
+	void HideLoadingLevel();
+
 	/* 입력 모드 제어 */
 	void SetInputModeUIOnly(UUserWidget* FocusWidget = nullptr);
 	void SetInputModeGameOnly();
@@ -74,12 +90,16 @@ public:
 	ULobbyMenu* GetLobbyMenu() const { return CachedLobbyMenu; }
 	UEnterPasswordWidget* GetEnterPasswordWidget() const { return CachedEnterPasswordWidget; }
 	UOptionWidget* GetOptionWidget() const { return CachedOptionWidget; }
+	UPauseMenu* GetPauseMenu() const { return CachedPauseMenu; }
 	UInGameHUD* GetInGameHUD() const { return CachedInGameHUD; }
 	UInventoryMainWidget* GetInventoryMainWidget() const { return CachedInventoryMainWidget; }
 
 
 	void SetLastShopInteractor(AShopInteractor* Interactor);
 	void SetLastMapSelectInteractor(AMapSelectInteractor* Interactor);
+
+	void UpdateInputModeByContext();
+	void SetUIContext(ELCUIContext NewContext);
 
 private:
 	UPROPERTY()
@@ -111,6 +131,8 @@ private:
 	TSubclassOf<UShopWidget> ShopWidgetClass;
 	UPROPERTY()
 	TSubclassOf<UMapSelectWidget> MapSelectWidgetClass;
+	UPROPERTY()
+	TSubclassOf<UPauseMenu> PauseMenuClass;
 
 	UPROPERTY()
 	TSubclassOf<UPopupCreateSession> CreateSessionClass;
@@ -118,6 +140,8 @@ private:
 	TSubclassOf<UPopupLoading> PopUpLoadingClass;
 	UPROPERTY()
 	TSubclassOf<UPopupNotice> PopUpNoticeClass;
+	UPROPERTY()
+	TSubclassOf<ULoadingLevel> LoadingLevelClass;
 	UPROPERTY()
 	TSubclassOf<UInventoryMainWidget> InventoryMainWidgetClass;
 
@@ -136,6 +160,8 @@ private:
 	UShopWidget* CachedShopWidget;
 	UPROPERTY()
 	UMapSelectWidget* CachedMapSelectWidget;
+	UPROPERTY()
+	UPauseMenu* CachedPauseMenu;
 
 	//UPROPERTY()
 	//UPopupCreateSession* CachedCreateSession;
@@ -144,5 +170,10 @@ private:
 	UPROPERTY()
 	UPopupNotice* CachedPopupNotice;
 	UPROPERTY()
+	ULoadingLevel* CachedLoadingLevel;
+	UPROPERTY()
 	UInventoryMainWidget* CachedInventoryMainWidget;
+
+	UPROPERTY()
+	ELCUIContext CurrentContext;
 };

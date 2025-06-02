@@ -3,10 +3,8 @@
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "GameFramework/PlayerStart.h"
 #include "Framework/PlayerController/LCPlayerController.h"
-
-ABaseGameMode::ABaseGameMode()
-{
-}
+#include "LastCanary.h"
+#include "GameFramework/GameSession.h"
 
 void ABaseGameMode::BeginPlay()
 {
@@ -20,7 +18,7 @@ void ABaseGameMode::PostLogin(APlayerController* NewPlayer)
 
 	if (const auto CastedGameInstance = Cast<ULCGameInstance>(GetGameInstance()))
 	{
-		SpawnPlayerCharacter(NewPlayer);
+		//SpawnPlayerCharacter(NewPlayer);
 
 		AllPlayerControllers.Add(NewPlayer);
 
@@ -28,6 +26,7 @@ void ABaseGameMode::PostLogin(APlayerController* NewPlayer)
 		if (APlayerState* PS = NewPlayer->PlayerState)
 		{
 			SessionInfo.PlayerName = PS->GetPlayerName();
+			SessionInfo.bIsPlayerReady = false;
 			SessionPlayerInfos.Add(SessionInfo);
 		}
 
@@ -46,15 +45,53 @@ void ABaseGameMode::Logout(AController* Exiting)
 	if (APlayerController* PC = Cast<APlayerController>(Exiting))
 	{
 		AllPlayerControllers.Remove(PC);
-		FString PlayerName = PC->PlayerState->GetPlayerName();
 
+		FString LeavingPlayerName = PC->PlayerState->GetPlayerName();
 		SessionPlayerInfos.RemoveAll(
 			[&](const FSessionPlayerInfo& Info)
 			{
-				return Info.PlayerName == PlayerName;
+				return Info.PlayerName == LeavingPlayerName;
 			}
 		);
 	}
+
+	UpdatePlayers();
+}
+
+void ABaseGameMode::KickPlayer(const FSessionPlayerInfo& SessionInfo)
+{
+	APlayerController* TargetPC = nullptr;
+	for (APlayerController* PC : AllPlayerControllers)
+	{
+		if (!PC || !PC->PlayerState)
+		{
+			continue;
+		}
+
+		if (PC->PlayerState->GetPlayerName() == SessionInfo.PlayerName)
+		{
+			TargetPC = PC;
+			break;
+		}
+	}
+
+	if (!TargetPC)
+	{
+		LOG_Server_ERROR(TEXT("KickPlayer: 이름이 %s 인 플레이어를 찾을 수 없습니다."), *SessionInfo.PlayerName);
+		return;
+	}
+
+	const FText KickReason = FText::FromString(TEXT("호스트에 의해 강퇴되었습니다."));
+	GameSession->KickPlayer(TargetPC, KickReason);
+
+	AllPlayerControllers.Remove(TargetPC);
+
+	SessionPlayerInfos.RemoveAll(
+		[&](const FSessionPlayerInfo& Info)
+		{
+			return Info.PlayerName == SessionInfo.PlayerName;
+		}
+	);
 
 	UpdatePlayers();
 }
@@ -69,6 +106,26 @@ void ABaseGameMode::UpdatePlayers()
 		}
 	}
 }
+
+void ABaseGameMode::SetPlayerInfo(FSessionPlayerInfo RequestInfo)
+{
+	for (FSessionPlayerInfo& Info : SessionPlayerInfos)
+	{
+		if (RequestInfo.PlayerName == Info.PlayerName)
+		{
+			Info = RequestInfo;
+
+			LOG_Server_ERROR(
+				TEXT("PlayerInfo Changed Name : %s, Ready : %s"),
+				*RequestInfo.PlayerName,
+				RequestInfo.bIsPlayerReady ? TEXT("True") : TEXT("False")
+			);
+		}
+	}
+
+	UpdatePlayers();
+}
+
 
 void ABaseGameMode::SpawnPlayerCharacter(APlayerController* Controller)
 {

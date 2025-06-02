@@ -25,9 +25,13 @@ void UHealthComponent::BeginPlay()
 void UHealthComponent::OnTakeAnyDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
 {
     if (Damage <= 0.0f || bIsDead)
+    {
         return;
+    }
     if (GetOwnerRole() != ROLE_Authority)
+    {
         return;
+    }
     CurrentHealth = FMath::Clamp(CurrentHealth - Damage, 0.0f, MaxHealth);
     OnHealthChanged.Broadcast(this, CurrentHealth, -Damage, DamageCauser);
     if (CurrentHealth <= 0.0f && !bIsDead)

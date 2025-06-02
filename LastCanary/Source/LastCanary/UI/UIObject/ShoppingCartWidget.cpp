@@ -88,10 +88,37 @@ void UShoppingCartWidget::RecalculateTotalPrice()
 		}
 	}
 
+	TotalPrice = Total;
+
+	UpdateVisuals();
+
+	// 구매 가능 여부에 따라 델리게이트 실행
+	const bool bCanAfford = PlayerGold >= TotalPrice;
+	OnCartValidityChanged.ExecuteIfBound(bCanAfford);
+}
+
+void UShoppingCartWidget::SetPlayerGold(int32 NewGold)
+{
+	PlayerGold = NewGold;
+	UpdateVisuals();
+}
+
+void UShoppingCartWidget::UpdateVisuals()
+{
 	if (TotalPriceText)
 	{
-		FString TotalText = FString::Printf(TEXT("총 가격: %d"), Total);
-		TotalPriceText->SetText(FText::FromString(TotalText));
+		FString PriceString = FString::Printf(TEXT("총 금액: %d G"), TotalPrice);
+		TotalPriceText->SetText(FText::FromString(PriceString));
+
+		const bool bCanAfford = PlayerGold >= TotalPrice;
+		FSlateColor Color = bCanAfford ? FSlateColor(FLinearColor::White) : FSlateColor(FLinearColor::Red);
+		TotalPriceText->SetColorAndOpacity(Color);
+	}
+
+	if (PlayerGoldText)
+	{
+		FString GoldString = FString::Printf(TEXT("보유 골드: %d G"), PlayerGold);
+		PlayerGoldText->SetText(FText::FromString(GoldString));
 	}
 }
 
@@ -106,6 +133,7 @@ TArray<FItemDropData> UShoppingCartWidget::GetItemDropList() const
 			FItemDropData DropData;
 			DropData.ItemClass = Entry->GetItemData().ItemActorClass; // FItemDataRow에 ActorClass가 있어야 함
 			DropData.Count = Entry->GetQuantity(); // Entry가 수량을 저장하고 있어야 함
+			DropData.ItemID = Entry->GetItemData().ItemID;
 
 			if (DropData.ItemClass && DropData.Count > 0)
 			{

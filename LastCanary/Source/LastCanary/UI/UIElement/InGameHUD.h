@@ -9,6 +9,7 @@
  */
 class UProgressBar;
 class UTextBlock;
+class UImage;
 UCLASS()
 class LASTCANARY_API UInGameHUD : public ULCUserWidgetBase
 {
@@ -20,14 +21,17 @@ protected:
 	
 private:
 	UPROPERTY(meta = (BindWidget))
+	UImage* LowHealthEffectImage;
+	UPROPERTY(meta = (BindWidget))
 	UProgressBar* StaminaBar;
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* InteractMessageText;
 
-	UFUNCTION()
-	void UpdateStaminaBar(float StaminaPercent);
-
 public:
+	UFUNCTION(BlueprintCallable)
+	void UpdateLowHealthEffect(float CurrentHealth, float MaxHealth);
+	UFUNCTION(BlueprintCallable)
+	void UpdateStaminaBar(float StaminaPercent);
 	UFUNCTION(BlueprintCallable)
 	void SetInteractMessage(const FString& Message);
 	UFUNCTION(BlueprintCallable)

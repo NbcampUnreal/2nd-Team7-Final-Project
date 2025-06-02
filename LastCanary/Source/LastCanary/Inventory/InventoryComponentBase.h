@@ -7,6 +7,7 @@
 #include "InventoryComponentBase.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInventoryUpdated);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnWeightChanged, float, NewWeight, float, WeightDifference);
 
 class ULCUserWidgetBase;
 class UItemTooltipWidget;
@@ -21,16 +22,21 @@ class LASTCANARY_API UInventoryComponentBase : public UActorComponent
 public:
     UInventoryComponentBase();
 
-protected:
-    virtual void BeginPlay() override;
-
     UFUNCTION(BlueprintCallable, Category = "Inventory|Internal")
     void InitializeSlots();
 
+protected:
+    virtual void BeginPlay() override;
+
     /** 아이템 스포너 컴포넌트 */
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+    UPROPERTY()
     UItemSpawnerComponent* ItemSpawner;
 
+public:
+    /** 캐릭터로부터 ItemSpawner 참조 가져오기 */
+    UItemSpawnerComponent* GetItemSpawner() const;
+
+protected:
     /** 캐싱된 소유자 캐릭터 */
     UPROPERTY(BlueprintReadOnly, Category = "Inventory|Cache")
     ABaseCharacter* CachedOwnerCharacter;
@@ -154,9 +160,31 @@ protected:
     UFUNCTION(BlueprintPure, Category = "Inventory|Utility")
     FVector CalculateDropLocation() const;
 
-    /** 아이템 스포너 접근자 */
-    UFUNCTION(BlueprintPure, Category = "Inventory")
-    UItemSpawnerComponent* GetItemSpawner() const { return ItemSpawner; }
+
+    //-----------------------------------------------------
+    // 무게 관리 시스템
+    //-----------------------------------------------------
+public:
+    /** 무게 변경 델리게이트 */
+    UPROPERTY(BlueprintAssignable, Category = "Inventory|Weight")
+    FOnWeightChanged OnWeightChanged;
+
+    /** 현재 총 무게 반환 */
+    UFUNCTION(BlueprintPure, Category = "Inventory|Weight")
+    float GetTotalWeight() const { return CurrentTotalWeight; }
+
+protected:
+    /** 현재 총 무게 */
+    UPROPERTY(BlueprintReadOnly, Category = "Inventory|Weight")
+    float CurrentTotalWeight = 0.0f;
+
+    /** 무게 즉시 계산 및 갱신 */
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Weight")
+    virtual void UpdateWeight();
+
+    /** 아이템의 실제 무게 가져오기 */
+    UFUNCTION(BlueprintPure, Category = "Inventory|Weight")
+    float GetItemWeight(FName ItemRowName) const;
 
     //-----------------------------------------------------
     // 네트워크 기능
@@ -178,4 +206,42 @@ protected:
 
     /** 아이템 추가 후 처리 */
     virtual void PostAddProcess() PURE_VIRTUAL(UInventoryComponentBase::PostAddProcess, return;);
+
+    //-----------------------------------------------------
+    // 빈 슬롯 아이템 관리
+    //-----------------------------------------------------
+protected:
+    /** Default 아이템 Row Name */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory|Default")
+    FName DefaultItemRowName = FName("Default");
+
+public:
+    /** Default 아이템인지 확인 */
+    UFUNCTION(BlueprintPure, Category = "Inventory|Utility")
+    bool IsDefaultItem(FName ItemRowName) const;
+
+    /** 빈 슬롯을 Default 아이템으로 설정 */
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Utility")
+    void SetSlotToDefault(int32 SlotIndex);
+
+
+public:
+    /** 인벤토리 슬롯들의 ItemID 배열 반환 (레벨 이동 시 사용) */
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Persistence")
+    TArray<int32> GetInventoryItemIDs() const;
+
+    /** ItemID 배열로부터 인벤토리 복원 (레벨 이동 후 사용) */
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Persistence")
+    void SetInventoryFromItemIDs(const TArray<int32>& ItemIDs);
+
+protected:
+    /** ItemRowName을 ItemID로 변환 */
+    UFUNCTION(BlueprintPure, Category = "Inventory|Utility")
+    int32 GetItemIDFromRowName(FName ItemRowName) const;
+
+    /** ItemID를 ItemRowName으로 변환 */
+    UFUNCTION(BlueprintPure, Category = "Inventory|Utility")
+    FName GetItemRowNameFromID(int32 ItemID) const;
+
+    void ClearInventorySlots();
 };
