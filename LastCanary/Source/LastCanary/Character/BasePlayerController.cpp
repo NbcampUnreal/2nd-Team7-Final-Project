@@ -75,13 +75,15 @@ void ABasePlayerController::OnCharacterDamaged(float CurrentHP)
 
 void ABasePlayerController::OnCharacterDied()
 {
+	//서버에서 실행
 	// HUD 갱신하거나 효과 표시 등
-	UE_LOG(LogTemp, Warning, TEXT("Player die!"));
-	
-	//
-	//TODO: 사망 전용 UI 띄우기
-		//TODO: 입력 막기 등 처리
+	UE_LOG(LogTemp, Warning, TEXT("Player die!"));	
+	//클라이언트에서 해야할 것.
+	Client_OnCharacterDied();
+}
 
+void ABasePlayerController::Client_OnCharacterDied_Implementation()
+{
 	if (!IsValid(CurrentPossessedPawn))
 	{
 		return;
@@ -101,7 +103,7 @@ void ABasePlayerController::OnCharacterDied()
 			PlayerCharacter->HandlePlayerDeath(); //플레이어 사망처리
 		}
 	}
-	
+	TEST_CallSpectatorWidget();
 }
 
 APawn* ABasePlayerController::GetMyPawn()

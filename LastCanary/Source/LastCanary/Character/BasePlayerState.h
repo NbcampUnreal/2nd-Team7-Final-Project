@@ -39,8 +39,12 @@ public:
 	float SprintSpeed{ 650.0f };
 
 	// State
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State")
+	UPROPERTY(ReplicatedUsing = OnRep_CurrentState, VisibleAnywhere, BlueprintReadOnly, Category = "State")
 	EPlayerState CurrentState = EPlayerState::Idle;
+
+	UFUNCTION()
+	void OnRep_CurrentState();
+
 	UPROPERTY(BlueprintReadOnly)
 	ECharacterMovementState MovementState = ECharacterMovementState::Idle;
 	ECharacterMovementState GetPlayerMovementState();

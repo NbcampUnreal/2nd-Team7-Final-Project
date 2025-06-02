@@ -232,6 +232,16 @@ public:
 	UFUNCTION()
 	void OnCharacterDied();
 
+	UFUNCTION(Client, Reliable)
+	void Client_OnCharacterDied();
+	void Client_OnCharacterDied_Implementation();
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void TEST_CallSpectatorWidget();
+
+	UPROPERTY(BlueprintReadWrite)
+	int32 CurrentSpectatedCharacterIndex = 0;
+
 public:
 	bool bIsSprinting = false;
 

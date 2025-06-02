@@ -28,7 +28,10 @@ void ABasePlayerState::InitializeStats()
 void ABasePlayerState::OnRep_CurrentHP()
 {
 	OnDamaged.Broadcast(CurrentHP);
-	LOG_Char_WARNING(TEXT("OnRep_CurrentHP"));
+	if (CurrentHP <= 0.f)
+	{
+		CurrentState = EPlayerState::Dead;
+	}
 	UpdateHPUI();
 }
 
@@ -77,6 +80,16 @@ void ABasePlayerState::UpdateStaminaUI()
 void ABasePlayerState::UpdateDeathUI()
 {
 	// TODO: implement HUD->OnPlayerDeath(); if needed
+	if (APlayerController* PC = Cast<APlayerController>(GetOwner()))
+	{
+		if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+		{
+			if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+			{
+
+			}
+		}
+	}
 }
 
 void ABasePlayerState::UpdateExhaustedUI()
@@ -86,41 +99,37 @@ void ABasePlayerState::UpdateExhaustedUI()
 
 void ABasePlayerState::ApplyDamage(float Damage)
 {
+	////여기는 서버에서 처리
+	APlayerController* OwnerPC = Cast<APlayerController>(GetOwner());
+	if (OwnerPC)
+	{
+	}
+	
 	CurrentHP = FMath::Clamp(CurrentHP - Damage, 0.f, InitialStats.MaxHP);
-
 	if (IsOwnedBy(GetWorld()->GetFirstPlayerController()))
 	{
 		UpdateHPUI();
 	}
-
-	Multicast_OnDamaged();
-
 	if (CurrentHP <= 0.f)
 	{
+		OnDied.Broadcast();
 		CurrentState = EPlayerState::Dead;
-
 		if (IsOwnedBy(GetWorld()->GetFirstPlayerController()))
 		{
 			UpdateDeathUI();
 		}
-
-		Multicast_OnDied();
 	}
 }
 
-void ABasePlayerState::Multicast_OnDamaged_Implementation()
+void ABasePlayerState::OnRep_CurrentState()
 {
-	OnDamaged.Broadcast(CurrentHP);
-	if (!IsOwnedBy(GetWorld()->GetFirstPlayerController()))
-	{
-		UpdateHPUI();
-	}
+
 }
 
 void ABasePlayerState::Multicast_OnDied_Implementation()
 {
 	OnDied.Broadcast();
-	if (!IsOwnedBy(GetWorld()->GetFirstPlayerController()))
+	if (IsOwnedBy(GetWorld()->GetFirstPlayerController()))
 	{
 		UpdateDeathUI();
 	}
@@ -302,4 +311,5 @@ void ABasePlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME(ABasePlayerState, CurrentStamina);
 	DOREPLIFETIME(ABasePlayerState, TotalGold);
 	DOREPLIFETIME(ABasePlayerState, TotalExp);
+	DOREPLIFETIME(ABasePlayerState, CurrentState);
 }
