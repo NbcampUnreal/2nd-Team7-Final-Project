@@ -1,4 +1,5 @@
 #include "UI/UIObject/InventorySlotWidget.h"
+#include "UI/UIObject/InventoryWidgetBase.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Components/TextBlock.h"
@@ -157,70 +158,29 @@ bool UInventorySlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FDrag
 	return bSuccess;
 }
 
-void UInventorySlotWidget::UpdateTooltipPosition()
+void UInventorySlotWidget::SetParentInventoryWidget(UInventoryWidgetBase* InParentWidget)
 {
-	if (!ItemTooltipWidget || !ItemTooltipWidget->IsInViewport())
-	{
-		return;
-	}
-
-	FVector2D MousePosition;
-	if (APlayerController* PC = GetOwningPlayer())
-	{
-		PC->GetMousePosition(MousePosition.X, MousePosition.Y);
-
-		FVector2D TooltipPosition = MousePosition + FVector2D(15.0f, -50.0f);
-
-		float MinY = 100.0f;
-		TooltipPosition.Y = FMath::Max(TooltipPosition.Y, MinY);
-
-		float MinX = 50.0f;
-		TooltipPosition.X = FMath::Max(TooltipPosition.X, MinX);
-
-		FVector2D ViewportSize;
-		if (GEngine && GEngine->GameViewport)
-		{
-			GEngine->GameViewport->GetViewportSize(ViewportSize);
-
-			FVector2D EstimatedTooltipSize(230.0f, 230.0f);
-
-			float MaxX = ViewportSize.X - EstimatedTooltipSize.X - 10.0f;
-			float MaxY = ViewportSize.Y - EstimatedTooltipSize.Y - 10.0f;
-
-			TooltipPosition.X = FMath::Clamp(TooltipPosition.X, MinX, MaxX);
-			TooltipPosition.Y = FMath::Clamp(TooltipPosition.Y, MinY, MaxY);
-		}
-
-		ItemTooltipWidget->SetPositionInViewport(TooltipPosition);
-	}
+	ParentInventoryWidget = InParentWidget;
 }
 
 void UInventorySlotWidget::UpdateBorderImage()
 {
 	if (!SlotBorder)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[UpdateBorderImage] SlotBorder가 바인딩되지 않음"));
+		LOG_Item_WARNING(TEXT("[UInventorySlotWidget::UpdateBorderImage] SlotBorder가 바인딩되지 않음"));
 		return;
 	}
 
-	// 미리 에디터에서 할당한 텍스처들
 	UTexture2D* TargetTexture = nullptr;
 
-	if (ItemData.ItemRowName.IsNone())
-	{
-		// 빈 슬롯
-		TargetTexture = EmptyBorderTexture;
-	}
-	else if (ItemData.bIsEquipped)
-	{
-		// 장착된 아이템
-		TargetTexture = EquippedBorderTexture;
-	}
-	else
-	{
-		// 일반 아이템
-		TargetTexture = NormalBorderTexture;
-	}
+	if (ItemData.bIsEquipped)
+    {
+        TargetTexture = EquippedBorderTexture;
+    }
+    else
+    {
+        TargetTexture = NormalBorderTexture;
+    }
 
 	if (TargetTexture)
 	{
@@ -232,81 +192,65 @@ void UInventorySlotWidget::UpdateBorderImage()
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[UpdateBorderImage] TargetTexture가 설정되지 않음"));
+		LOG_Item_WARNING(TEXT("[UInventorySlotWidget::UpdateBorderImage] TargetTexture가 설정되지 않음"));
 	}
 }
 
 void UInventorySlotWidget::ShowTooltip()
 {
-	// 빈 슬롯이면 툴팁 표시하지 않음
-	if (ItemData.ItemRowName.IsNone())
+	if (!ParentInventoryWidget)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[InventorySlotWidget::ShowTooltip] ParentInventoryWidget이 설정되지 않음"));
 		return;
 	}
 
-	// 이미 툴팁이 표시 중이면 스킵
-	if (ItemTooltipWidget && ItemTooltipWidget->IsInViewport())
-	{
-		return;
-	}
-
-	// TooltipWidgetClass 확인
-	if (!TooltipWidgetClass)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[ShowTooltip] TooltipWidgetClass가 설정되지 않음"));
-		return;
-	}
-
-	// 툴팁 위젯 생성
-	if (!ItemTooltipWidget)
-	{
-		ItemTooltipWidget = CreateWidget<UItemTooltipWidget>(GetWorld(), TooltipWidgetClass);
-		if (!ItemTooltipWidget)
-		{
-			UE_LOG(LogTemp, Error, TEXT("[ShowTooltip] 툴팁 위젯 생성 실패"));
-			return;
-		}
-	}
-
-	if (ItemDataTable)
-	{
-		FItemDataRow* ItemRowData = ItemDataTable->FindRow<FItemDataRow>(ItemData.ItemRowName, TEXT("ShowTooltip"));
-		if (ItemRowData)
-		{
-			ItemTooltipWidget->SetTooltipData(*ItemRowData, ItemData);
-			ItemTooltipWidget->AddToViewport(10);
-
-			UpdateTooltipPosition();
-
-			GetWorld()->GetTimerManager().SetTimer(TooltipUpdateTimer,
-				this, &UInventorySlotWidget::UpdateTooltipPosition,
-				0.016f, true);
-		}
-		else
-		{
-			UE_LOG(LogTemp, Warning, TEXT("[ShowTooltip] 아이템 데이터를 찾을 수 없음: %s"), *ItemData.ItemRowName.ToString());
-		}
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[ShowTooltip] ItemDataTable이 NULL"));
-	}
+	// ⭐ 부모 위젯의 공유 툴팁 사용
+	ParentInventoryWidget->ShowTooltipForSlot(ItemData, this);
 }
 
 void UInventorySlotWidget::HideTooltip()
 {
-	if (TooltipUpdateTimer.IsValid())
+	if (!ParentInventoryWidget)
 	{
-		GetWorld()->GetTimerManager().ClearTimer(TooltipUpdateTimer);
+		UE_LOG(LogTemp, Warning, TEXT("[InventorySlotWidget::HideTooltip] ParentInventoryWidget이 설정되지 않음"));
+		return;
 	}
 
-	if (ItemTooltipWidget && ItemTooltipWidget->IsInViewport())
-	{
-		ItemTooltipWidget->RemoveFromParent();
-	}
+	// ⭐ 부모 위젯의 공유 툴팁 숨김
+	ParentInventoryWidget->HideTooltip();
 }
 
 void UInventorySlotWidget::OnUseButtonClicked()
 {
 	// TODO : 슬롯을 클릭했을 때 사용, 버리기, 취소 버튼 등이 나오도록 작동
+
+	if (!InventoryComponent || ItemData.ItemRowName.IsNone())
+	{
+		return;
+	}
+
+	// 가방 아이템인지 확인
+	if (const FItemDataRow* ItemRowData = ItemDataTable->FindRow<FItemDataRow>(ItemData.ItemRowName, TEXT("OnUseButtonClicked")))
+	{
+		static const FGameplayTag BackpackTag = FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Backpack"));
+		if (ItemRowData->ItemType.MatchesTag(BackpackTag))
+		{
+			// 가방 사용 (인벤토리 열기)
+			UE_LOG(LogTemp, Warning, TEXT("[OnUseButtonClicked] 가방 사용 - 인벤토리 열기"));
+
+			if (ULCGameInstanceSubsystem* Subsystem = GetWorld()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+			{
+				if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+				{
+					UIManager->ToggleInventory();
+				}
+			}
+			return;
+		}
+	}
+}
+
+bool UInventorySlotWidget::IsDefaultItem(FName ItemRowName) const
+{
+	return ItemRowName == FName("Default");
 }

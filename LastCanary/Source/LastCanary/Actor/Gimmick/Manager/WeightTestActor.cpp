@@ -27,6 +27,6 @@ void AWeightTestActor::UpdateMass()
 	{
 		// 질량을 수동으로 설정
 		Mesh->SetMassOverrideInKg(NAME_None, CustomMass, true);
-		LOG_Frame_WARNING(TEXT("[WeightTestActor] Mass overridden to: %.1f kg"), CustomMass);
+		//LOG_Frame_WARNING(TEXT("[WeightTestActor] Mass overridden to: %.1f kg"), CustomMass);
 	}
 }

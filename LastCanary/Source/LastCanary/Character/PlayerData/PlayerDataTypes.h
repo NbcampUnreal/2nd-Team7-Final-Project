@@ -56,7 +56,6 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
     float JumpPower = 420.f;
 
-
     //스태미나 관련 추가
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stamina")
     float MaxStamina = 100.f;
@@ -71,7 +70,6 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Stamina")
     bool bIsExhausted = false;
 };
-
 
 // ------------------------------
 // 게임 끝나고 얻을 Struct

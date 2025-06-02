@@ -1,6 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "Item/ItemBase.h"
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "Inventory/BackpackInventoryComponent.h"
@@ -153,6 +150,13 @@ void AItemBase::ApplyItemDataFromTable()
 		MeshComponent->SetStaticMesh(ItemData.StaticMesh);
 	}
 
+	if (ItemData.bIsResourceItem)
+	{
+		// 점수 시스템에서 사용
+		LOG_Frame_WARNING(TEXT("이 아이템은 자원입니다. 카테고리: %d, 점수: %d"),
+			static_cast<int32>(ItemData.Category), ItemData.BaseScore);
+	}
+
 	// 상태 변경 브로드캐스트
 	OnItemStateChanged.Broadcast();
 }
@@ -184,7 +188,6 @@ void AItemBase::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEve
 			if (Found)
 			{
 				ItemData = *Found;
-				LOG_Item_WARNING(TEXT("[ItemBase::PostEditChangeProperty] 아이템 데이터 할당 성공 : %s"), *ItemData.ItemName.ToString());
 
 				if (ItemData.StaticMesh && MeshComponent)
 				{
@@ -220,9 +223,6 @@ void AItemBase::OnRepItemRowName()
 		{
 			SetActorEnableCollision(false);
 		}
-
-		LOG_Item_WARNING(TEXT("[AItemBase::OnRepItemRowName] 클라이언트에서 아이템 데이터 적용: %s"),
-			*ItemRowName.ToString());
 	}
 }
 
@@ -243,9 +243,6 @@ void AItemBase::Interact_Implementation(APlayerController* Interactor)
 		return;
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("[AItemBase::Interact_Implementation] 아이템 상호작용: %s"),
-		*ItemRowName.ToString());
-
 	if (ABaseCharacter* Character = Cast<ABaseCharacter>(Interactor->GetPawn()))
 	{
 		Character->TryPickupItem(this);
@@ -263,7 +260,6 @@ FString AItemBase::GetInteractMessage_Implementation() const
 		return FString(TEXT("아이템 습득"));
 	}
 
-	// ⭐ 아이템 데이터에서 이름 가져오기
 	if (ItemDataTable)
 	{
 		if (const FItemDataRow* Found = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("GetInteractMessage")))
@@ -279,8 +275,6 @@ FString AItemBase::GetInteractMessage_Implementation() const
 
 void AItemBase::Server_TryPickupByPlayer_Implementation(APlayerController* PlayerController)
 {
-	UE_LOG(LogTemp, Warning, TEXT("[AItemBase::Server_TryPickupByPlayer] 서버에서 습득 시도"));
-
 	if (!PlayerController)
 	{
 		LOG_Item_WARNING(TEXT("[AItemBase::Server_TryPickupByPlayer] PlayerController가 nullptr입니다."));
@@ -294,49 +288,40 @@ bool AItemBase::Internal_TryPickupByPlayer(APlayerController* PlayerController)
 {
 	if (!HasAuthority())
 	{
-		LOG_Item_WARNING(TEXT("[AItemBase::TryPickupByPlayer_Internal] Authority가 없습니다."));
+		LOG_Item_WARNING(TEXT("[AItemBase::Internal_TryPickupByPlayer] Authority가 없습니다."));
 		return false;
 	}
 
 	if (!PlayerController)
 	{
-		LOG_Item_WARNING(TEXT("[AItemBase::TryPickupByPlayer_Internal] PlayerController가 nullptr입니다."));
+		LOG_Item_WARNING(TEXT("[AItemBase::Internal_TryPickupByPlayer] PlayerController가 nullptr입니다."));
 		return false;
 	}
 
 	ABaseCharacter* Character = Cast<ABaseCharacter>(PlayerController->GetPawn());
 	if (!Character)
 	{
-		LOG_Item_WARNING(TEXT("[AItemBase::TryPickupByPlayer_Internal] BaseCharacter를 찾을 수 없습니다."));
+		LOG_Item_WARNING(TEXT("[AItemBase::Internal_TryPickupByPlayer] BaseCharacter를 찾을 수 없습니다."));
 		return false;
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("[AItemBase::TryPickupByPlayer_Internal] 습득 시도: %s"),
-		*ItemRowName.ToString());
-
-	// ⭐ 백팩 먼저 시도
 	if (UBackpackInventoryComponent* BackpackInventory = Character->GetBackpackInventoryComponent())
 	{
 		if (BackpackInventory->TryAddItem(this))
 		{
-			LOG_Item_WARNING(TEXT("[AItemBase::TryPickupByPlayer_Internal] 백팩에 습득 성공: %s"),
-				*ItemRowName.ToString());
 			return true;
 		}
 	}
 
-	// ⭐ 백팩이 실패하면 툴바 시도
 	if (UToolbarInventoryComponent* ToolbarInventory = Character->GetToolbarInventoryComponent())
 	{
 		if (ToolbarInventory->TryAddItem(this))
 		{
-			LOG_Item_WARNING(TEXT("[AItemBase::TryPickupByPlayer_Internal] 툴바에 습득 성공: %s"),
-				*ItemRowName.ToString());
 			return true;
 		}
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("[AItemBase::TryPickupByPlayer_Internal] 인벤토리가 가득참: %s"),
+	UE_LOG(LogTemp, Warning, TEXT("[AItemBase::Internal_TryPickupByPlayer] 인벤토리가 가득참: %s"),
 		*ItemRowName.ToString());
 	return false;
 }

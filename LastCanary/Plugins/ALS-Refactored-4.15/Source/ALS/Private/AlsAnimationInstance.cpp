@@ -376,7 +376,9 @@ void UAlsAnimationInstance::RefreshView(const float DeltaTime)
 
 	ViewState.LookAmount = ViewAmount * (1.0f - AimingAmount);
 
-	RefreshSpine(ViewAmount * AimingAmount, DeltaTime);
+	RefreshSpine(ViewAmount * 1, DeltaTime);
+
+	//RefreshSpine(ViewAmount * AimingAmount, DeltaTime);
 }
 
 bool UAlsAnimationInstance::IsSpineRotationAllowed()

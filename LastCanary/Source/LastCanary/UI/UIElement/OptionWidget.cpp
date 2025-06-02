@@ -9,6 +9,9 @@
 
 #include "LastCanary.h"
 
+#include "UI/UIObject/KeySettingWidget.h"
+
+
 void UOptionWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
@@ -92,8 +95,13 @@ void UOptionWidget::OnKeySettingTabButtonClicked()
 	{
 		LOG_Frame_ERROR(TEXT("Key Setting Widget is nullptr"));
 	}
+
+
+	KeySettingWidget->InitialMappings();
+
 	//SetTabButtonStyle(GeneralTabButton, false);
 	//SetTabButtonStyle(KeySettingTabButton, true);
+
 }
 
 //void UOptionWidget::SetTabButtonStyle(UButton* Button, bool bIsSelected)
