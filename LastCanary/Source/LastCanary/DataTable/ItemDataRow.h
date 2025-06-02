@@ -9,6 +9,7 @@
 /**
  * 
  */
+class AItemBase;
 USTRUCT(BlueprintType)
 struct FItemDataRow : public FTableRowBase
 {
@@ -43,7 +44,7 @@ struct FItemDataRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	USkeletalMesh* SkeletalMesh = nullptr;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TSubclassOf<class AItemBase> ItemActorClass;
+	TSubclassOf<AItemBase> ItemActorClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resource")
 	bool bIsResourceItem = false;
@@ -51,4 +52,7 @@ struct FItemDataRow : public FTableRowBase
 	int32 BaseScore = 1;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resource")
 	EResourceCategory Category;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
+	bool bIgnoreCharacterCollision = false;
 };

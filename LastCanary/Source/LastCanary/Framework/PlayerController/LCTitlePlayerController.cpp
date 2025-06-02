@@ -5,7 +5,7 @@
 
 void ALCTitlePlayerController::BeginPlay()
 {
-	Super::BeginPlay();
+	 Super::BeginPlay();
 
 	FInputModeUIOnly InputMode;
 	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
@@ -14,7 +14,7 @@ void ALCTitlePlayerController::BeginPlay()
 
 	if (IsValid(LCUIManager))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("TitlePC"));
 		LCUIManager->ShowTitleMenu();
+		LCUIManager->SetUIContext(ELCUIContext::Title);
 	}
 }

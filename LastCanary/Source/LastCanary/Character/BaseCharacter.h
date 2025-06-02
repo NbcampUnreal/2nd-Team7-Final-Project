@@ -15,13 +15,15 @@ class UCameraComponent;
 class AItemBase;
 class UToolbarInventoryComponent;
 class UBackpackInventoryComponent;
+struct FBaseItemSlotData;
+class UItemSpawnerComponent;
 
 UCLASS()
 class LASTCANARY_API ABaseCharacter : public AAlsCharacter
 {
 	GENERATED_BODY()
 
-#pragma region Character Mesh and Component
+//Character Mesh and Component
 public:
 	/*1인칭 전용 메시 (자신만 보이는)*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
@@ -47,25 +49,49 @@ public:
 	// Camera 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	UCameraComponent* Camera;
+	
+	// SpringArm 컴포넌트 for ADS
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+	USpringArmComponent* ADSSpringArm; //Aim Down Sight
 
+	// Camera 컴포넌트 for ADS
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+	UCameraComponent* ADSCamera;
 	// 캐릭터 인벤토리 컴포넌트
 	UPROPERTY(VisibleAnywhere, Category = "Inventory")
 	UToolbarInventoryComponent* ToolbarInventoryComponent;
 
 	UPROPERTY(VisibleAnywhere, Category = "Inventory")
 	UBackpackInventoryComponent* BackpackInventoryComponent;
-#pragma endregion
 
-#pragma region Character Default Settings
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	TObjectPtr<UArrowComponent> ThirdPersonArrow;
+	
+
+
+	void Tick(float DeltaSeconds)
+	{
+		Super::Tick(DeltaSeconds);
+
+		//SmoothADSCamera(DeltaSeconds);
+		UpdateGunWallClipOffset(DeltaSeconds);
+	}
+	float WallClipAimOffsetPitch;
+	float MaxWallClipPitch = 90.0f;
+	float CapsuleWallRatio = 0.0f;
+	void UpdateGunWallClipOffset(float DeltaTime);
+
+//Character Default Settings
 protected:
 	/*Character Default Settings*/
 	ABaseCharacter();
 	void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const;
 	virtual void NotifyControllerChanged() override;
 	virtual void BeginPlay() override;
-#pragma endregion
 
-#pragma region Camera Settings
+
+// Camera Settings
 protected:
 	/*Camera Settings*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|MouseSensitivity", Meta = (ClampMin = 0, ForceUnits = "x"))
@@ -92,9 +118,26 @@ protected:
 	void StartSmoothMove(const FVector& Start, const FVector& Destination);
 	void SmoothMoveStep();
 
-#pragma endregion
+	bool bIsFPSCamera = true;
+	void ToADSCamera(bool bToADS);
+	bool bDesiredADS = false;
 
-#pragma region Character Mesh and Component
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float SmoothCameraSpeed = 5.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float SmoothCameraTimeThreshold = 0.5f;
+
+	float SmoothCameraCurrentTime = 0.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float FieldOfView = 90.f;
+
+	void SmoothADSCamera(float DeltaTime);
+	bool bADS = false; // 현재 정조준 상태인가?
+
+
+// Character Input Handle Function
 	
 public: 
 	/*Function called by the controller*/
@@ -111,20 +154,20 @@ public:
 	virtual void Handle_ViewMode();
 	virtual void Handle_Reload();
 
-#pragma endregion
 
-#pragma region Character State
+
+//Character State
 
 public:
 	bool bIsScoped = false;
 	bool bIsPossessed;
 	bool bIsReloading = false;
 	bool bIsClose = false;
-
+	bool bIsSprinting = false;
 	void SetPossess(bool IsPossessed);
-#pragma endregion
 
-#pragma region About Character Animation Montage and Animation Class
+
+//About Character Animation Montage and Animation Class
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	bool UseGunBoneforOverlayObjects;
@@ -177,14 +220,14 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_PlayMontage(UAnimMontage* MontageToPlay);
 	void Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay);
-	
+
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_PlayMontage(UAnimMontage* MontageToPlay);
 	void Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay);
 	
-#pragma endregion
+
 	
-#pragma region Check Player Focus Everytime
+//Check Player Focus Everytime
 public:
 	/*About Interact*/
 
@@ -198,9 +241,9 @@ public:
 	AActor* CurrentFocusedActor;
 
 	void TraceInteractableActor();
-#pragma endregion
 
-#pragma region Player Take Damage
+
+//Player Take Damage
 public:
 	/*Player Damage, Death*/
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
@@ -209,7 +252,16 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dmaage")
 	float FallDamageThreshold = 1000.0f;
-#pragma endregion
+
+
+	UFUNCTION(Server, Reliable)
+	void Server_PlayReload();
+	void Server_PlayReload_Implementation();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayReload();
+	void Multicast_PlayReload_Implementation();
+
 
 public:
 
@@ -244,6 +296,7 @@ public:
 	int32 GetCurrentQuickSlotIndex();
 	void SetCurrentQuickSlotIndex(int32 NewIndex);
 
+	UFUNCTION()
 	void HandleInventoryUpdated();
 
 
@@ -263,10 +316,15 @@ public:
 	FGameplayTagContainer OwnedTags;
 
 	UChildActorComponent* ChildActorComponent;
-public:
-	UFUNCTION(BlueprintCallable, Category = "Inventory")
-	void SetBackpackInventoryComponent(UBackpackInventoryComponent* BackpackInvenComp, bool bEquip);
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UItemSpawnerComponent* ItemSpawner;
+
+protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment")
+	UStaticMeshComponent* BackpackMeshComponent;
+
+public:
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	UToolbarInventoryComponent* GetToolbarInventoryComponent() const;
 
@@ -337,4 +395,38 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "TEST")
 	bool bIsGetFallDownDamage = false;
 #pragma endregion
+public:
+	//-----------------------------------------------------
+	// 가방 관리 (간소화)
+	//-----------------------------------------------------
+
+	/** 가방 장착 (데이터 복사 방식) */
+	UFUNCTION(BlueprintCallable, Category = "Character|Equipment")
+	bool EquipBackpack(FName BackpackItemRowName, const TArray<FBaseItemSlotData>& BackpackData, int32 MaxSlots);
+
+	/** 가방 해제 (데이터 반환) */
+	UFUNCTION(BlueprintCallable, Category = "Character|Equipment")
+	TArray<FBaseItemSlotData> UnequipBackpack();
+
+	/** 가방이 장착되어 있는지 확인 */
+	UFUNCTION(BlueprintPure, Category = "Character|Equipment")
+	bool HasBackpackEquipped() const;
+
+private:
+	/** 가방 메시 설정 */
+	void SetBackpackMesh(UStaticMesh* BackpackMesh);
+
+public:
+	/** 인벤토리 무게 변경 시 호출 */
+	UFUNCTION(BlueprintCallable, Category = "Character|Weight")
+	void OnInventoryWeightChanged(float WeightDifference);
+
+	/** 총 무게 가져오기 */
+	UFUNCTION(BlueprintPure, Category = "Character|Weight")
+	float GetTotalCarryingWeight() const;
+
+protected:
+	/** 현재 총 무게 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Character|Weight")
+	float CurrentTotalWeight = 0.0f;
 };

@@ -3,6 +3,7 @@
 
 #include "Inventory/BackpackInventoryComponent.h"
 #include "Item/ItemBase.h"
+#include "Character/BaseCharacter.h"
 #include "LastCanary.h"
 
 UBackpackInventoryComponent::UBackpackInventoryComponent()
@@ -212,9 +213,30 @@ bool UBackpackInventoryComponent::CanAddItem(AItemBase* ItemActor)
 		return false;
 	}
 
-	if (ItemSlots.Num() >= MaxSlots)
+	LOG_Item_WARNING(TEXT("[BackpackInventoryComponent::CanAddItem] 슬롯 가용성 확인 시작 (총 %d개 슬롯)"), ItemSlots.Num());
+
+	// 1. 스택 가능한 기존 슬롯 확인
+	for (int32 i = 0; i < ItemSlots.Num(); ++i)
 	{
-		return false;
+		const FBaseItemSlotData& Slot = ItemSlots[i];
+
+		// 빈 슬롯 확인
+		if (Slot.ItemRowName.IsNone() || Slot.Quantity <= 0)
+		{
+			LOG_Item_WARNING(TEXT("[BackpackInventoryComponent::CanAddItem] ✅ 빈 슬롯 발견: 인덱스 %d"), i);
+			return true;
+		}
+
+		// 스택 가능한 슬롯 확인
+		if (Slot.ItemRowName == ItemActor->ItemRowName)
+		{
+			int32 StackSpace = ItemData->MaxStack - Slot.Quantity;
+			if (StackSpace > 0)
+			{
+				LOG_Item_WARNING(TEXT("[BackpackInventoryComponent::CanAddItem] ✅ 스택 가능한 슬롯 발견: 인덱스 %d (여유 공간: %d)"), i, StackSpace);
+				return true;
+			}
+		}
 	}
 
 	// TODO : 무게와 같은 제한 조건 추가가 필요할지도
@@ -243,31 +265,43 @@ bool UBackpackInventoryComponent::TryStoreItem(AItemBase* ItemActor)
 		return false;
 	}
 
-	for (FBaseItemSlotData& Slot : ItemSlots)
+	// 1. 기존 슬롯에 스택 시도
+	LOG_Item_WARNING(TEXT("[BackpackInventoryComponent::TryStoreItem] 기존 슬롯 스택 확인 시작"));
+	for (int32 i = 0; i < ItemSlots.Num(); ++i)
 	{
-		if (Slot.ItemRowName == ItemActor->ItemRowName)
+		FBaseItemSlotData& Slot = ItemSlots[i];
+
+		if (Slot.ItemRowName == ItemActor->ItemRowName && Slot.Quantity > 0)
 		{
 			int32 StackSpace = ItemData->MaxStack - Slot.Quantity;
-			int32 Addable = FMath::Min(1, StackSpace);
-			if (Addable > 0)
+			if (StackSpace > 0)
 			{
-				Slot.Quantity += Addable;
+				Slot.Quantity += 1;
+				LOG_Item_WARNING(TEXT("[BackpackInventoryComponent::TryStoreItem] ✅ 기존 슬롯에 스택 성공! 슬롯 %d, 새 수량: %d"), i, Slot.Quantity);
 				ItemActor->Destroy();
+				UpdateWeight();
 				return true;
 			}
 		}
 	}
 
-	if (ItemSlots.Num() < MaxSlots)
+	// 2. 빈 슬롯에 새로 추가
+	LOG_Item_WARNING(TEXT("[BackpackInventoryComponent::TryStoreItem] 빈 슬롯 찾기 시작"));
+	for (int32 i = 0; i < ItemSlots.Num(); ++i)
 	{
-		FBaseItemSlotData NewSlot;
-		NewSlot.ItemRowName = ItemActor->ItemRowName;
-		NewSlot.Quantity = 1;
-		ItemSlots.Add(NewSlot);
+		FBaseItemSlotData& Slot = ItemSlots[i];
 
-		ItemActor->Destroy();
-		return true;
+		if (Slot.ItemRowName.IsNone() || Slot.Quantity <= 0)
+		{
+			Slot.ItemRowName = ItemActor->ItemRowName;
+			Slot.Quantity = 1;
+			LOG_Item_WARNING(TEXT("[BackpackInventoryComponent::TryStoreItem] ✅ 빈 슬롯에 저장 성공! 슬롯 %d"), i);
+			ItemActor->Destroy();
+			UpdateWeight();
+			return true;
+		}
 	}
+
 
 	LOG_Item_WARNING(TEXT("[BackpackInventoryComponent::TryStoreItem] 저장 공간이 부족합니다."));
 	// TODO : 저장할 공간이 부족하다는 위젯 또는 메시지 출력이 필요할지도
@@ -277,4 +311,41 @@ bool UBackpackInventoryComponent::TryStoreItem(AItemBase* ItemActor)
 void UBackpackInventoryComponent::PostAddProcess()
 {
 	OnInventoryUpdated.Broadcast();
+}
+
+void UBackpackInventoryComponent::UpdateWeight()
+{
+	float OldWeight = CurrentTotalWeight;
+	float NewWeight = 0.0f;
+
+	// 기본 무게 계산
+	for (const FBaseItemSlotData& Slot : ItemSlots)
+	{
+		if (!Slot.ItemRowName.IsNone() && Slot.Quantity > 0)
+		{
+			float ItemWeight = GetItemWeight(Slot.ItemRowName);
+			NewWeight += ItemWeight * Slot.Quantity;
+		}
+	}
+
+	// ⭐ 가방 인벤토리는 1/10 무게만 적용
+	NewWeight *= WeightReductionMultiplier;
+	CurrentTotalWeight = NewWeight;
+	float WeightDifference = NewWeight - OldWeight;
+
+	if (FMath::Abs(WeightDifference) > 0.01f)
+	{
+		LOG_Item_WARNING(TEXT("[BackpackInventoryComponent::UpdateWeight] 무게 변경: %.2f -> %.2f (감소율: %.1f%%)"),
+			OldWeight, NewWeight, WeightReductionMultiplier * 100.0f);
+
+		OnWeightChanged.Broadcast(NewWeight, WeightDifference);
+
+		if (AActor* Owner = GetOwner())
+		{
+			if (ABaseCharacter* Character = Cast<ABaseCharacter>(Owner))
+			{
+				Character->OnInventoryWeightChanged(WeightDifference);
+			}
+		}
+	}
 }

@@ -4,6 +4,7 @@
 #include "GameFramework/Actor.h"
 #include "DataTable/ItemDataRow.h"
 #include "Interface/InteractableInterface.h"
+#include "Engine/Engine.h"
 #include "ItemBase.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnItemStateChanged);
@@ -27,6 +28,9 @@ public:
     /** 아이템의 기본 메시 컴포넌트 */
     UPROPERTY(VisibleAnywhere)
     UStaticMeshComponent* MeshComponent;
+
+    UPROPERTY(VisibleAnywhere)
+    USkeletalMeshComponent* SkeletalMeshComponent;
 
     /** 아이템 상호작용 감지용 구체 컴포넌트 */
     UPROPERTY(BlueprintReadOnly, VisibleAnywhere)

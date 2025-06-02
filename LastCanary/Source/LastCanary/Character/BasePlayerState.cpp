@@ -5,15 +5,19 @@
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "UI/Manager/LCUIManager.h"
 #include "UI/UIElement/InGameHUD.h"
+
 #include "LastCanary.h"
 
 ABasePlayerState::ABasePlayerState()
 {
 	bReplicates = true;
+	LOG_Frame_WARNING(TEXT("ABasePlayerState::ABasePlayerState()ABasePlayerState::ABasePlayerState()"));
+
 }
 
 void ABasePlayerState::BeginPlay()
 {
+	LOG_Frame_WARNING(TEXT("ABasePlayerState::BeginPlay()"));
 	InitializeStats();
 	UpdateHPUI();
 	UpdateStaminaUI();
@@ -93,7 +97,7 @@ void ABasePlayerState::ApplyDamage(float Damage)
 		UpdateHPUI();
 	}
 
-	Multicast_OnDamaged();
+	// Multicast_OnDamaged();
 
 	if (CurrentHP <= 0.f)
 	{
@@ -197,7 +201,7 @@ void ABasePlayerState::TickStaminaRecovery()
 		return;
 	}
 	CurrentStamina = FMath::Clamp(CurrentStamina + InitialStats.StaminaRecoveryRate * 0.1f, 0.f, InitialStats.MaxStamina);
-
+	
 	if (IsOwnedBy(GetWorld()->GetFirstPlayerController()))
 	{
 		UpdateStaminaUI();
@@ -213,7 +217,7 @@ void ABasePlayerState::ConsumeStamina(float Amount)
 	}
 
 	CurrentStamina = FMath::Clamp(CurrentStamina - Amount, 0.f, InitialStats.MaxStamina);
-
+	UE_LOG(LogTemp, Warning, TEXT("stamina : %f"), CurrentStamina);
 	if (IsOwnedBy(GetWorld()->GetFirstPlayerController()))
 	{
 		UpdateStaminaUI();
@@ -243,12 +247,12 @@ bool ABasePlayerState::IsStaminaFull() const
 	return CurrentStamina >= InitialStats.MaxStamina;
 }
 
-int32 ABasePlayerState::GetTotalGold()
+int32 ABasePlayerState::GetTotalGold() const
 {
 	return TotalGold;
 }
 
-int32 ABasePlayerState::GetTotalExp()
+int32 ABasePlayerState::GetTotalExp() const
 {
 	return TotalExp;
 }
@@ -261,6 +265,24 @@ void ABasePlayerState::AddTotalGold(int32 Amount)
 void ABasePlayerState::AddTotalExp(int32 Amount)
 {
 	TotalExp += Amount;
+}
+
+void ABasePlayerState::Server_SpendGold_Implementation(int32 Amount)
+{
+	if (Amount <= 0)
+	{
+		return;
+	}
+
+	if (TotalGold >= Amount)
+	{
+		TotalGold -= Amount;
+		LOG_Frame_WARNING(TEXT("Gold spent: %d, Remaining: %d"), Amount, TotalGold);
+	}
+	else
+	{
+		LOG_Frame_WARNING(TEXT("Not enough gold. Required: %d, Have: %d"), Amount, TotalGold);
+	}
 }
 
 void ABasePlayerState::SetPlayerMovementSetting(float _WalkForwardSpeed, float _WalkBackwardSpeed, float _RunForwardSpeed, float _RunBackwardSpeed, float _SprintSpeed)
@@ -276,6 +298,21 @@ void ABasePlayerState::SetPlayerMovementSetting(float _WalkForwardSpeed, float _
 	}
 }
 
+void ABasePlayerState::CopyProperties(APlayerState* PlayerState)
+{
+	Super::CopyProperties(PlayerState);
+	LOG_Frame_WARNING(TEXT("CopyProperties called for ABasePlayerState"));
+	if (ABasePlayerState* TargetState = Cast<ABasePlayerState>(PlayerState))
+	{
+		TargetState->AquiredItemIDs = AquiredItemIDs;
+		TargetState->TotalGold = TotalGold;
+		TargetState->TotalExp = TotalExp;
+		// 필요한 데이터 더 복사 가능
+		TargetState->CurrentHP = CurrentHP; // 테스트용으로 추가
+		LOG_Frame_WARNING(TEXT("TotalGold: %d, TotalExp: %d"), TotalGold, TotalExp);
+	}
+}
+
 void ABasePlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -284,4 +321,5 @@ void ABasePlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME(ABasePlayerState, CurrentStamina);
 	DOREPLIFETIME(ABasePlayerState, TotalGold);
 	DOREPLIFETIME(ABasePlayerState, TotalExp);
+	DOREPLIFETIME(ABasePlayerState, AquiredItemIDs);
 }

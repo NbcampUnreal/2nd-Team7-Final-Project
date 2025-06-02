@@ -5,15 +5,17 @@
 #include "UI/UIElement/LobbyMenu.h"
 #include "UI/UIElement/EnterPasswordWidget.h"
 #include "UI/UIElement/OptionWidget.h"
+#include "UI/UIElement/PauseMenu.h"
 #include "UI/UIElement/InGameHUD.h"
 #include "UI/UIElement/ShopWidget.h"
 #include "UI/UIElement/MapSelectWidget.h"
 #include "UI/UIElement/InventoryMainWidget.h"
 #include "UI/Popup/PopupCreateSession.h"
 #include "UI/Popup/PopupNotice.h"
+#include "UI/Popup/PopupLoading.h"
+#include "UI/UIElement/LoadingLevel.h"
 
 #include "UI/UIObject/ConfirmPopup.h"
-#include "UI/Popup/PopupLoading.h"
 
 //#include "Framework/PlayerController/LCLobbyPlayerController.h"
 #include "Framework/PlayerController/LCRoomPlayerController.h"
@@ -46,6 +48,7 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			LobbyMenuClass = Settings->FromBPLobbyMenuClass;
 			EnterPasswordWidgetClass = Settings->FromBPEnterPasswordWidgetClass;
 			OptionWidgetClass = Settings->FromBPOptionWidgetClass;
+			PauseMenuClass = Settings->FromBPPauseMenuClass;
 			InGameHUDWidgetClass = Settings->FromBPInGameHUDClass;
 			ShopWidgetClass = Settings->FromBPShopWidgetClass;
 			MapSelectWidgetClass = Settings->FromBPMapSelectWidgetClass;
@@ -53,6 +56,7 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			CreateSessionClass = Settings->FromBPCreateSessionWidgetClass;
 			PopUpNoticeClass = Settings->FromBPPopupNoticeClass;
 			PopUpLoadingClass = Settings->FromBPPopupLoadingClass;
+			LoadingLevelClass = Settings->FromBPLoadingLevelClass;
 			if ((CachedTitleMenu == nullptr) && TitleMenuClass)
 			{
 				CachedTitleMenu = CreateWidget<UTitleMenu>(PlayerController, TitleMenuClass);
@@ -69,6 +73,10 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			{
 				CachedOptionWidget = CreateWidget<UOptionWidget>(PlayerController, OptionWidgetClass);
 			}
+			if ((CachedPauseMenu == nullptr) && PauseMenuClass)
+			{
+				CachedPauseMenu = CreateWidget<UPauseMenu>(PlayerController, PauseMenuClass);
+			}
 			if ((CachedInGameHUD == nullptr) && InGameHUDWidgetClass)
 			{
 				CachedInGameHUD = CreateWidget<UInGameHUD>(PlayerController, InGameHUDWidgetClass);
@@ -81,10 +89,6 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			{
 				CachedMapSelectWidget = CreateWidget<UMapSelectWidget>(PlayerController, MapSelectWidgetClass);
 			}
-			//if ((CachedCreateSession == nullptr) && CreateSessionClass)
-			//{
-			//	CachedCreateSession = CreateWidget<UPopupCreateSession>(PlayerController, CreateSessionClass);
-			//}
 			if ((CachedPopupLoading == nullptr) && PopUpLoadingClass)
 			{
 				CachedPopupLoading = CreateWidget<UPopupLoading>(PlayerController, PopUpLoadingClass);
@@ -92,6 +96,10 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			if ((CachedPopupNotice == nullptr) && PopUpNoticeClass)
 			{
 				CachedPopupNotice = CreateWidget<UPopupNotice>(PlayerController, PopUpNoticeClass);
+			}
+			if ((CachedLoadingLevel == nullptr) && LoadingLevelClass)
+			{
+				CachedLoadingLevel = CreateWidget<ULoadingLevel>(PlayerController, LoadingLevelClass);
 			}
 			if ((CachedInventoryMainWidget == nullptr) && InventoryMainWidgetClass)
 			{
@@ -209,16 +217,16 @@ void ULCUIManager::ShowPauseMenu()
 	{
 		return;
 	}
-
+	CurrentWidget = CachedPauseMenu;
 	LOG_Frame_WARNING(TEXT("ShowPauseMenu"));
-	if (CachedOptionWidget)
+	if (CachedPauseMenu)
 	{
-		CachedOptionWidget->AddToViewport(1);
+		CachedPauseMenu->AddToViewport(1);
 	}
 
 	if (OwningPlayer)
 	{
-		SetInputModeUIOnly(CachedOptionWidget);
+		SetInputModeUIOnly(CachedPauseMenu);
 	}
 }
 
@@ -234,6 +242,11 @@ void ULCUIManager::HidePauseMenu()
 	}
 
 	SetInputModeGameOnly();
+}
+
+bool ULCUIManager::IsPauseMenuOpen() const
+{
+	return CachedPauseMenu && CachedPauseMenu->IsInViewport();
 }
 
 void ULCUIManager::ShowConfirmPopup(TFunction<void()> OnConfirm)
@@ -429,6 +442,22 @@ void ULCUIManager::HidePopUpNotice()
 	}
 }
 
+void ULCUIManager::ShowLoadingLevel()
+{
+	if (CachedLoadingLevel)
+	{
+		CachedLoadingLevel->AddToViewport(10);
+	}
+}
+
+void ULCUIManager::HideLoadingLevel()
+{
+	if (CachedLoadingLevel)
+	{
+		CachedLoadingLevel->RemoveFromParent();
+	}
+}
+
 void ULCUIManager::ShowMapSelectPopup()
 {
 	LOG_Frame_WARNING(TEXT("ShowMapSelectPopup"));
@@ -568,6 +597,7 @@ void ULCUIManager::SetInputModeUIOnly(UUserWidget* FocusWidget)
 	}
 
 	LOG_Frame_WARNING(TEXT("SetInputModeUIOnly: %s"), *GetNameSafe(FocusWidget ? FocusWidget : CurrentWidget));
+	LOG_Frame_WARNING(TEXT("SetWidgetFocus: %s"), *FocusWidget->GetName());
 }
 
 void ULCUIManager::SetInputModeGameOnly()
@@ -588,4 +618,34 @@ void ULCUIManager::SetLastShopInteractor(AShopInteractor* Interactor)
 void ULCUIManager::SetLastMapSelectInteractor(AMapSelectInteractor* Interactor)
 {
 	LastMapSelectInteractor = Interactor;
+}
+
+void ULCUIManager::UpdateInputModeByContext()
+{
+	if (OwningPlayer == nullptr)
+	{
+		LOG_Frame_WARNING(TEXT("OwningPlayer is nullptr in SetInputModeByContext."));
+		return;
+	}
+	
+	switch(CurrentContext)
+	{
+	case ELCUIContext::Title:
+		SetInputModeUIOnly(CachedTitleMenu);
+		break;
+	case ELCUIContext::Room:
+		SetInputModeGameOnly();
+		break;
+	case ELCUIContext::InGame:
+		SetInputModeGameOnly();
+		break;
+	default:
+		SetInputModeGameOnly();
+		break;
+	}
+}
+
+void ULCUIManager::SetUIContext(ELCUIContext NewContext)
+{
+	CurrentContext = NewContext;
 }
