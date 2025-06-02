@@ -108,4 +108,9 @@ private:
     float EscapeAlpha = 0.f;
     FVector StartLocation;
     FVector TargetLocation;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+    class UItemSpawnerComponent* ItemSpawner;
+
+    FName FindItemRowNameByID(int32 ItemID);
 };

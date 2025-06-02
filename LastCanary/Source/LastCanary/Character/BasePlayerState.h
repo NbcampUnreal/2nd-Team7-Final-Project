@@ -23,6 +23,9 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
+	UPROPERTY()
+	bool bAlreadyInitialized;
+
 public:
 	// Stats
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stats")
