@@ -33,7 +33,9 @@ class ALS_API UAlsAnimationInstance : public UAnimInstance
 	GENERATED_BODY()
 
 	friend UAlsLinkedAnimationInstance;
-
+public:
+	UPROPERTY(BlueprintReadOnly)
+	float WallClipAimOffsetPitch = 0.0f;
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
 	TObjectPtr<UAlsAnimationInstanceSettings> Settings;
