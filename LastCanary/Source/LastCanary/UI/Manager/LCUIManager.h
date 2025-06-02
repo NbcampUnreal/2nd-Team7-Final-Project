@@ -44,6 +44,7 @@ public:
 	void ShowOptionPopup();
 	void ShowPauseMenu();
 	void HidePauseMenu();
+	bool IsPauseMenuOpen() const;
 	void ShowConfirmPopup(TFunction<void()> OnConfirm);
 	void ShowShopPopup();
 	void HideShopPopup();

@@ -238,6 +238,11 @@ void ULCUIManager::HidePauseMenu()
 	SetInputModeGameOnly();
 }
 
+bool ULCUIManager::IsPauseMenuOpen() const
+{
+	return CachedOptionWidget && CachedOptionWidget->IsInViewport();
+}
+
 void ULCUIManager::ShowConfirmPopup(TFunction<void()> OnConfirm)
 {
 	if (OwningPlayer == nullptr)
