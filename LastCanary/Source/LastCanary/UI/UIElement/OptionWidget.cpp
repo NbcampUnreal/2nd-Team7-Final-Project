@@ -1,5 +1,6 @@
 #include "UI/UIElement/OptionWidget.h"
 #include "UI/UIObject/GeneralOptionWidget.h"
+#include "UI/Manager/LCUIManager.h"
 
 #include "Components/WidgetSwitcher.h"
 #include "Components/Button.h"

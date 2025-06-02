@@ -12,6 +12,7 @@ class ULobbyMenu;
 class URoomListEntry;
 class UEnterPasswordWidget;
 class UOptionWidget;
+class UPauseMenu;
 class UInGameHUD;
 class UShopWidget;
 class UMapSelectWidget;
@@ -39,6 +40,8 @@ public:
 	TSubclassOf<UEnterPasswordWidget> FromBPEnterPasswordWidgetClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UOptionWidget> FromBPOptionWidgetClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UPauseMenu> FromBPPauseMenuClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UInGameHUD> FromBPInGameHUDClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
