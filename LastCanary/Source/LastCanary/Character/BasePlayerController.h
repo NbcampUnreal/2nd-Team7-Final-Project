@@ -318,9 +318,9 @@ public:
 
 
 public:
-	void InteractGimmick(class ARuinsGimmickBase* Target);
+	void InteractGimmick(ARuinsGimmickBase* Target);
 
 	UFUNCTION(Server, Reliable)
-	void Server_InteractWithGimmick(class ARuinsGimmickBase* Target);
-	void Server_InteractWithGimmick_Implementation(class ARuinsGimmickBase* Target);
+	void Server_InteractWithGimmick(ARuinsGimmickBase* Target);
+	void Server_InteractWithGimmick_Implementation(ARuinsGimmickBase* Target);
 };
