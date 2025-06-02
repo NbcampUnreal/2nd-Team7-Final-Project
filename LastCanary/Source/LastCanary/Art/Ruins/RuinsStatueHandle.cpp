@@ -1,57 +1,69 @@
 #include "RuinsStatueHandle.h"
 #include "RuinsRotatingStatue.h"
 #include "Net/UnrealNetwork.h"
-#include <Kismet/GameplayStatics.h>
-#include "TimerManager.h"
+#include "Kismet/GameplayStatics.h"
 #include "LastCanary.h"
 
 ARuinsStatueHandle::ARuinsStatueHandle()
-	: CooldownTime(1.0f) 
-	, LastActivatedTime(-1000.f) 
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
 
 	bReplicates = true;
 	bAlwaysRelevant = true;
 	SetReplicateMovement(false);
 
+	CooldownTime = 1.0f;
+	LastActivatedTime = -1000.f;
+}
+
+void ARuinsStatueHandle::BeginPlay()
+{
+	Super::BeginPlay();
 }
 
 void ARuinsStatueHandle::ActivateGimmick_Implementation()
 {
-	Super::ActivateGimmick_Implementation();
+	if (!HasAuthority())
+	{
+		return;
+	}
 
 	const float CurrentTime = GetWorld()->GetTimeSeconds();
 	if (CurrentTime - LastActivatedTime < CooldownTime)
 	{
-		LOG_Art_WARNING(TEXT("핸들 쿨타임 진행 중 - %.2f초 남음"), CooldownTime - (CurrentTime - LastActivatedTime));
+		const float Remain = CooldownTime - (CurrentTime - LastActivatedTime);
+		LOG_Art_WARNING(TEXT("ARuinsStatueHandle - 쿨타임 미충족: %.2f초 남음"), Remain);
 		return;
 	}
-
-	if (!IsValid(TargetStatue))
-	{
-		LOG_Art_ERROR(TEXT("TargetStatue가 유효하지 않습니다."));
-		return;
-	}
-
-	// 회전 동상으로 캐스팅 시도
-	ARuinsRotatingStatue* Statue = Cast<ARuinsRotatingStatue>(TargetStatue);
-	if (!IsValid(Statue))
-	{
-		LOG_Art_WARNING(TEXT("TargetStatue는 ARuinsRotatingStatue 타입이 아닙니다."));
-		return;
-	}
-
-	// 동상 회전 요청
-	Statue->ActivateGimmick();
 
 	LastActivatedTime = CurrentTime;
 
-	LOG_Art(Log, TEXT("핸들이 동상 회전 요청을 보냈습니다."));
+	// 핸들 자신 회전 + 사운드 재생
+	StartRotation(RotationStep);
+	Multicast_PlaySound();
+
+	LOG_Art(Log, TEXT("ARuinsStatueHandle - 회전 실행됨"));
+
+	// 동상에게 상호작용 전달 (인터페이스 기반)
+	if (IsValid(TargetStatue))
+	{
+		if (TargetStatue->GetClass()->ImplementsInterface(UInteractableInterface::StaticClass()))
+		{
+			IInteractableInterface::Execute_Interact(TargetStatue, nullptr);
+			LOG_Art(Log, TEXT("ARuinsStatueHandle - TargetStatue에 Interact 호출: %s"), *TargetStatue->GetName());
+		}
+		else
+		{
+			LOG_Art_WARNING(TEXT("ARuinsStatueHandle - TargetStatue가 IInteractableInterface 구현 안됨: %s"), *TargetStatue->GetName());
+		}
+	}
+	else
+	{
+		LOG_Art_WARNING(TEXT("ARuinsStatueHandle - TargetStatue가 유효하지 않음"));
+	}
 }
 
-// 상호작용 메시지 반환
 FString ARuinsStatueHandle::GetInteractMessage_Implementation() const
 {
-	return TEXT("핸들을 돌려 동상을 회전시킵니다");
+	return TEXT("Press F");
 }

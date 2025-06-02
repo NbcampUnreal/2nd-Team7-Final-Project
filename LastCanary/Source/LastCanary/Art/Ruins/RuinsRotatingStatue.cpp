@@ -4,66 +4,42 @@
 #include "LastCanary.h"
 
 ARuinsRotatingStatue::ARuinsRotatingStatue()
-	: RotationStep(45.f)
-	, RotationIndex(0)   
-	, RotateSpeed(60.f)
-	, bIsRotating(false)
-	, TargetYaw(0.f)
 {
 	PrimaryActorTick.bCanEverTick = true;
 	bReplicates = true;
-	SetReplicateMovement(true); 
+	SetReplicateMovement(true);
 	bAlwaysRelevant = true;
+
+	CooldownTime = 0.f;
+	LastActivatedTime = -1000.f;
+}
+
+void ARuinsRotatingStatue::BeginPlay()
+{
+	Super::BeginPlay();
+
+	LOG_Art(Log, TEXT("▶ ARuinsRotatingStatue::BeginPlay - 동상 초기화 완료"));
+}
+
+void ARuinsRotatingStatue::Interact_Implementation(APlayerController* Interactor)
+{
+	LOG_Art(Log, TEXT("▶ ARuinsRotatingStatue::Interact_Implementation - Role: %s"),
+		*UEnum::GetValueAsString(GetLocalRole()));
+
+	if (HasAuthority())
+	{
+		ActivateGimmick();  
+	}
+	else
+	{
+		Server_Interact(Interactor);  
+	}
 }
 
 void ARuinsRotatingStatue::ActivateGimmick_Implementation()
 {
-	Super::ActivateGimmick_Implementation();
+	StartRotation(RotationStep);
+	Multicast_PlaySound();
 
-	if (bIsRotating)
-	{
-		LOG_Art_WARNING(TEXT("동상이 회전 중입니다. 중복 회전 요청 무시"));
-		return;
-	}
-
-	StartRotation();
-}
-
-void ARuinsRotatingStatue::StartRotation()
-{
-	bIsRotating = true;
-
-	RotationIndex = (RotationIndex + 1) % FMath::RoundToInt(360.f / RotationStep);
-
-	TargetYaw = RotationIndex * RotationStep;
-
-	LOG_Art(Log, TEXT("▶ 회전 시작 - TargetYaw: %.1f"), TargetYaw);
-}
-
-// 회전 완료 처리
-void ARuinsRotatingStatue::FinishRotation()
-{
-	bIsRotating = false;
-
-	LOG_Art(Log, TEXT("▶ 회전 완료 - 최종 Yaw: %.1f"), GetActorRotation().Yaw);
-}
-
-void ARuinsRotatingStatue::Tick(float DeltaSeconds)
-{
-	Super::Tick(DeltaSeconds);
-
-	if (!HasAuthority() || !bIsRotating)
-	{
-		return;
-	}
-
-	FRotator CurrentRotation = GetActorRotation();
-	float NewYaw = FMath::FInterpConstantTo(CurrentRotation.Yaw, TargetYaw, DeltaSeconds, RotateSpeed);
-	SetActorRotation(FRotator(CurrentRotation.Pitch, NewYaw, CurrentRotation.Roll));
-
-	if (FMath::IsNearlyEqual(NewYaw, TargetYaw, 0.1f))
-	{
-		SetActorRotation(FRotator(CurrentRotation.Pitch, TargetYaw, CurrentRotation.Roll));
-		FinishRotation();
-	}
+	LOG_Art(Log, TEXT("▶ ARuinsRotatingStatue::ActivateGimmick_Implementation - 회전 시작"));
 }

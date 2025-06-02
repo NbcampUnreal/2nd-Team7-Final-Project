@@ -17,34 +17,58 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-	virtual void Tick(float DeltaSeconds) override;
+	virtual void Tick(float DeltaTime) override;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gimmick|Mesh", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gimmick|Mesh")
 	TObjectPtr<UStaticMeshComponent> GimmickMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick|Rotation")
+	float RotationStep;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick|Rotation")
+	float RotateSpeed;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Replicated, Category = "Gimmick|Rotation")
+	bool bIsRotating;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Replicated, Category = "Gimmick|Rotation")
+	float TargetYaw;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick|Sound")
 	TObjectPtr<USoundCue> GimmickSound;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick|Interaction")
+	FString InteractionMessage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick|Cooldown")
+	float CooldownTime;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Replicated, Category = "Gimmick|Cooldown")
+	float LastActivatedTime;
+
+public:
+	// 인터페이스 구현
+	virtual void Interact_Implementation(APlayerController* Interactor) override;
+	virtual FString GetInteractMessage_Implementation() const override;
+
+	// 서버에서 기믹 실행
+	UFUNCTION(Server, Reliable, Category = "Gimmick")
+	void ActivateGimmick();
+	virtual void ActivateGimmick_Implementation();
+
+	// 클라이언트가 호출하는 서버 RPC
+	UFUNCTION(Server, Reliable)
+	void Server_Interact(APlayerController* Interactor);
+	void Server_Interact_Implementation(APlayerController* Interactor);
+
+	// 사운드 재생
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_PlaySound();
 	virtual void Multicast_PlaySound_Implementation();
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick|Interaction")
-	FString InteractionMessage;
+	// 회전 실행
+	virtual void StartRotation(float Step);
+	virtual void FinishRotation();
 
-public:
-	/** 기믹 활성화 함수 (블루프린트에서 오버라이드 가능) */
-	UFUNCTION(BlueprintNativeEvent, Category = "Gimmick")
-	void ActivateGimmick();
-	virtual void ActivateGimmick_Implementation();
-
-	/** 상호작용 메시지 반환 (인터페이스 구현) */
-	virtual FString GetInteractMessage_Implementation() const override;
-
-	/** 상호작용 처리 (기본은 서버에 Activate 요청) */
-	virtual void Interact_Implementation(APlayerController* Interactor) override;
-
-	// 변수 복제 등록 함수 (Replication용)
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
 };
