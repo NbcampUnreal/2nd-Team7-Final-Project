@@ -20,7 +20,8 @@
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "Inventory/BackpackInventoryComponent.h"
 #include "Item/ItemBase.h"
-#include "Item//EquipmentItem/GunBase.h"
+#include "Item/ItemSpawnerComponent.h"
+#include "Item/EquipmentItem/GunBase.h"
 #include "Item/EquipmentItem/EquipmentItemBase.h"
 #include "UI/Manager/LCUIManager.h"
 #include "LastCanary.h"
@@ -28,6 +29,7 @@
 #include "PhysicsEngine/PhysicsAsset.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Components/ArrowComponent.h"
+#include "../Plugins/ALS-Refactored-4.15/Source/ALS/Public/AlsAnimationInstance.h"
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -79,6 +81,8 @@ ABaseCharacter::ABaseCharacter()
 
 	// 캐릭터 클래스의 생성자 함수 내부 
 	FieldOfView = Camera->FieldOfView;
+
+	ItemSpawner = CreateDefaultSubobject<UItemSpawnerComponent>(TEXT("ItemSpawner"));
 
 	BackpackMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BackpackMeshComponent"));
 	BackpackMeshComponent->SetupAttachment(GetMesh(), TEXT("backpack1"));
@@ -756,24 +760,7 @@ void ABaseCharacter::TraceInteractableActor()
 
 				if (bHit)  // 레이가 맞으면서 맞은 대상이 벽인 경우를 추가하거나, 캐릭터의 캡슐 콜라이더가 닿았을 때로 조건을 변경하는 것도...
 				{
-					float DistanceToHit = Hit.Distance;
-					LOG_Item_WARNING(TEXT("Hit Actor: %s, Distance: %.2f"),
-						*Hit.GetActor()->GetName(), DistanceToHit);
-					//거리가80미만이면 줌 해제
-					if (DistanceToHit < 120.0f)
-					{
-						SetDesiredAiming(false);
-						SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
-						UE_LOG(LogTemp, Warning, TEXT("Scope out: Too Close"));
-						bIsClose = true;
-					}
-					else
-					{
-						SetDesiredAiming(true);
-						bIsClose = false;
-					}
 				}
-
 			}
 		}
 	}
@@ -821,7 +808,74 @@ void ABaseCharacter::TraceInteractableActor()
 		}
 	}
 }
+void ABaseCharacter::UpdateGunWallClipOffset(float DeltaTime)
+{
+	// 1. 총을 들고 있는 상태인지 확인 (OverlayState or 커스텀 상태)
+	
+	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
+	if (!IsValid(EquippedItem))
+	{
+		WallClipAimOffsetPitch = 0.0f;
+		return;
+	}
 
+	AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem);
+	if (!IsValid(EquipmentItem))
+	{
+		return;
+	}
+	if (EquipmentItem->ItemData.ItemType != FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
+	{
+		return;
+	}
+	AGunBase* RifleItem = Cast<AGunBase>(EquippedItem);
+	if (!IsValid(RifleItem))
+	{
+		return;
+	}
+	
+	FVector MuzzleLoc = RifleItem->GunMesh->GetSocketLocation("Muzzle");
+	FTransform MuzzleTransform = RifleItem->GunMesh->GetSocketTransform("Muzzle", RTS_World);
+
+	// 1. 머즐의 앞 방향과 Pitch 각도 얻기
+	FVector MuzzleForward = MuzzleTransform.GetUnitAxis(EAxis::Z); // 머즐의 "앞" 방향
+	FRotator MuzzleRot = MuzzleForward.Rotation();
+	float MuzzlePitch = MuzzleRot.Pitch;  // 상하 방향 판별용
+
+	// 2. 라인 트레이스
+	FVector TraceEnd = MuzzleLoc + MuzzleForward * 100.0f;
+
+	FHitResult Hit;
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, MuzzleLoc, TraceEnd, ECC_Visibility, Params);
+
+	DrawDebugLine(GetWorld(), MuzzleLoc, TraceEnd, FColor::Red, false, 0.1f);
+
+	// 3. 벽과의 거리 비율 계산
+	float WallRatio = 0.0f;
+	if (bHit)
+	{
+		float Dist = (Hit.Location - MuzzleLoc).Size();
+		WallRatio = 1.0f - (Dist / 30.0f); // 30cm 안으로 들어가면 1.0
+		WallRatio = FMath::Clamp(WallRatio, 0.0f, 1.0f);
+	}
+
+	// 4. Pitch 보정값 계산 (상하 방향에 따라 부호 바꿈)
+	float DirectionSign = MuzzlePitch >= 0 ? 1.0f : -1.0f;  // 위를 보면 +, 아래를 보면 -
+	float TargetOffset = FMath::Lerp(0.0f, MaxWallClipPitch, WallRatio) * DirectionSign;
+
+	// 5. 부드러운 보간
+	WallClipAimOffsetPitch = FMath::FInterpTo(WallClipAimOffsetPitch, TargetOffset, DeltaTime, 10.0f);
+
+	UE_LOG(LogTemp, Log, TEXT("%f"), WallClipAimOffsetPitch);
+	// 6. 애님 인스턴스에 전달
+	if (UAlsAnimationInstance* AlsAnim = Cast<UAlsAnimationInstance>(GetMesh()->GetAnimInstance()))
+	{
+		AlsAnim->WallClipAimOffsetPitch = WallClipAimOffsetPitch;
+	}
+}
 
 
 void ABaseCharacter::SetPossess(bool IsPossessed)

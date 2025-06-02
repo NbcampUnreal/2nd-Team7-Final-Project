@@ -22,7 +22,12 @@ public:
 
 	virtual void Logout(AController* Exiting) override;
 
+	UFUNCTION(BlueprintCallable)
+	void KickPlayer(const FSessionPlayerInfo& SessionInfo);
+
 	void UpdatePlayers();
+
+	void SetPlayerInfo(FSessionPlayerInfo RequestInfo);
 
 	UFUNCTION(BlueprintCallable, Category = "Session")
 	void TravelMapBySoftPath(FString SoftPath);
@@ -30,8 +35,8 @@ public:
 	void TravelMapByPath(FString Path);
 
 	TArray<APlayerController*> AllPlayerControllers;
+	TArray<FSessionPlayerInfo> SessionPlayerInfos;
 
 	//TMap<int32, FSessionPlayerInfo> SessionPlayerInfos;
-	TArray<FSessionPlayerInfo> SessionPlayerInfos;
 
 };

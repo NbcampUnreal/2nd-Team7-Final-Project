@@ -12,7 +12,7 @@ UInventoryComponentBase::UInventoryComponentBase()
     PrimaryComponentTick.bCanEverTick = false;
     SetIsReplicatedByDefault(true);
 
-    ItemSpawner = CreateDefaultSubobject<UItemSpawnerComponent>(TEXT("ItemSpawner"));
+    ItemSpawner = nullptr;
 }
 
 void UInventoryComponentBase::BeginPlay()
@@ -47,6 +47,11 @@ void UInventoryComponentBase::BeginPlay()
     {
         LOG_Item_WARNING(TEXT("[InventoryComponentBase::BeginPlay] ItemDataTable is null"));
         return;
+    }
+
+    if (ABaseCharacter* Character = GetCachedOwnerCharacter())
+    {
+        ItemSpawner = Character->ItemSpawner;
     }
 
     // 서버에서만 슬롯 초기화
@@ -426,4 +431,13 @@ void UInventoryComponentBase::SetSlotToDefault(int32 SlotIndex)
     Slot.bIsEquipped = false;
 
     LOG_Item_WARNING(TEXT("[SetSlotToDefault] 슬롯 %d를 Default 아이템으로 설정"), SlotIndex);
+}
+
+UItemSpawnerComponent* UInventoryComponentBase::GetItemSpawner() const
+{
+    if (ABaseCharacter* Character = GetCachedOwnerCharacter())
+    {
+        return Character->ItemSpawner;
+    }
+    return nullptr;
 }

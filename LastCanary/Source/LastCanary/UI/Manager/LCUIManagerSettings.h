@@ -18,6 +18,7 @@ class UMapSelectWidget;
 class UPopupCreateSession;
 class UPopupLoading;
 class UPopupNotice;
+class ULoadingLevel;
 class UInventoryMainWidget;
 class UBackpackInventoryWidget;
 class UToolbarInventoryWidget;
@@ -50,6 +51,8 @@ public:
 	TSubclassOf<UPopupLoading> FromBPPopupLoadingClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UPopupNotice> FromBPPopupNoticeClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<ULoadingLevel> FromBPLoadingLevelClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UInventoryMainWidget> FromBPInventoryMainUIClass;
 };

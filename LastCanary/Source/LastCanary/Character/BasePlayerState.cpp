@@ -197,7 +197,7 @@ void ABasePlayerState::TickStaminaRecovery()
 		return;
 	}
 	CurrentStamina = FMath::Clamp(CurrentStamina + InitialStats.StaminaRecoveryRate * 0.1f, 0.f, InitialStats.MaxStamina);
-
+	
 	if (IsOwnedBy(GetWorld()->GetFirstPlayerController()))
 	{
 		UpdateStaminaUI();
@@ -213,7 +213,7 @@ void ABasePlayerState::ConsumeStamina(float Amount)
 	}
 
 	CurrentStamina = FMath::Clamp(CurrentStamina - Amount, 0.f, InitialStats.MaxStamina);
-
+	UE_LOG(LogTemp, Warning, TEXT("stamina : %f"), CurrentStamina);
 	if (IsOwnedBy(GetWorld()->GetFirstPlayerController()))
 	{
 		UpdateStaminaUI();

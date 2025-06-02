@@ -7,6 +7,7 @@
 
 class UVerticalBox;
 class UTextBlock;
+class UButton;
 class UPlayerSlot;
 UCLASS()
 class LASTCANARY_API URoomWidget : public ULCUserWidgetBase
@@ -15,6 +16,7 @@ class LASTCANARY_API URoomWidget : public ULCUserWidgetBase
 
 protected:
 	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
 
 public:
 	UFUNCTION(BlueprintCallable, Category="Room")
@@ -27,25 +29,27 @@ public:
 	TSubclassOf<UPlayerSlot> PlayerSlotClass;
 
 	UPROPERTY()
-	TArray<TObjectPtr<UPlayerSlot>> PlayerNameTextBlocks;
-	
-	// TODO : 별도의 Widget을 최대 인원수 만큼 만들기
-	UPROPERTY(meta = (BindWidget))
-	UTextBlock* PlayerNameText_0;
+	TArray<TObjectPtr<UPlayerSlot>> PlayerSlots;
 
-	UPROPERTY(meta = (BindWidget))
-	UTextBlock* PlayerNameText_1;
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
+	UButton* InviteButton;
 
-	UPROPERTY(meta = (BindWidget))
-	UTextBlock* PlayerNameText_2;
-
-	UPROPERTY(meta = (BindWidget))
-	UTextBlock* PlayerNameText_3;
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
+	UButton* BackButton;
 
 	UFUNCTION(BlueprintCallable)
 	void UpdatePlayerNames();
 
 	UFUNCTION(BlueprintCallable)
 	void UpdatePlayerLists(const TArray<FSessionPlayerInfo>& PlayerInfos);
+
+protected:
+	UFUNCTION()
+	void OnInviteButtonClicked();
+	UFUNCTION()
+	void OnBackButtonClicked();
+
+private:
+	int MaxPlayerNum = 4;
 	
 };
