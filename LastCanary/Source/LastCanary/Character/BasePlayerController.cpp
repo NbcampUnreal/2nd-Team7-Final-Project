@@ -9,6 +9,9 @@
 #include "Net/UnrealNetwork.h"
 #include "UI/Manager/LCUIManager.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "Actor/Gimmick/LCBaseGimmick.h"
+
+
 
 void ABasePlayerController::BeginPlay()
 {
@@ -1206,3 +1209,15 @@ void ABasePlayerController::CameraSetOnScope()
 
 }
 
+void ABasePlayerController::InteractGimmick(ALCBaseGimmick* Target)
+{
+	if (IsValid(Target))
+	{
+		Server_InteractWithGimmick(Target);
+	}
+}
+
+void ABasePlayerController::Server_InteractWithGimmick_Implementation(ALCBaseGimmick* Target)
+{
+	Target->Server_ActivateGimmick();
+}

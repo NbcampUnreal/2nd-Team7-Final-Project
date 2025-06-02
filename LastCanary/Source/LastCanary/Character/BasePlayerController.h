@@ -12,6 +12,7 @@ class UInputAction;
 class ABaseCharacter;
 class ABaseDrone;
 class ABasePlayerState;
+class ALCBaseGimmick;
 
 UCLASS()
 class LASTCANARY_API ABasePlayerController : public ALCPlayerController
@@ -131,7 +132,7 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
 	TObjectPtr<UInputAction> OpenPauseMenuAction;
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
 	TObjectPtr<UInputAction> ExitDroneAction;
 	// ... 필요한 입력들 추가
@@ -163,7 +164,7 @@ public:
 	virtual void Input_OnMove(const FInputActionValue& ActionValue);
 
 	virtual void Input_OnSprint(const FInputActionValue& ActionValue);
-	
+
 	virtual void End_OnSprint(const FInputActionValue& ActionValue);
 
 	UFUNCTION()
@@ -188,7 +189,7 @@ public:
 	virtual void Input_OnItemThrow();
 
 	virtual void Input_OnStartedVoiceChat();
-	
+
 	virtual void Input_OnCanceledVoiceChat();
 
 	virtual void Input_ChangeShootingSetting();
@@ -203,7 +204,7 @@ public:
 
 	virtual void Input_SelectQuickSlot3();
 
-	virtual void Input_SelectQuickSlot4();	
+	virtual void Input_SelectQuickSlot4();
 
 	virtual void Input_OpenPauseMenu();
 
@@ -289,7 +290,7 @@ public:
 	void ApplyRecoilStep();
 
 	void CameraSetOnScope();
-	
+
 
 	UFUNCTION(BlueprintCallable)
 	void SetPlayerMovementSetting();
@@ -313,4 +314,13 @@ public:
 	TSubclassOf<ABaseDrone> DroneClass;
 
 	void PossessOnDrone();
+
+
+
+public:
+	void InteractGimmick(ALCBaseGimmick* Target);
+
+	UFUNCTION(Server, Reliable)
+	void Server_InteractWithGimmick(ALCBaseGimmick* Target);
+	void Server_InteractWithGimmick_Implementation(ALCBaseGimmick* Target);
 };
