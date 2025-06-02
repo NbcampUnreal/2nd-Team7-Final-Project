@@ -4,6 +4,7 @@
 #include "Framework/PlayerState/LCPlayerState.h"
 #include "Framework/GameMode/LCRoomGameMode.h"
 #include "Character/BasePlayerState.h"
+#include "Framework/Manager/LCCheatManager.h"
 
 #include "Actor/LCDroneDelivery.h"
 
@@ -17,9 +18,13 @@
 #include "UI/Manager/LCUIManager.h"
 #include "Blueprint/UserWidget.h"
 #include "DataType/SessionPlayerInfo.h"
-#include "LastCanary.h"
 
 #include "LastCanary.h"
+
+ALCRoomPlayerController::ALCRoomPlayerController()
+{
+	CheatClass = ULCCheatManager::StaticClass();
+}
 
 void ALCRoomPlayerController::BeginPlay()
 {
@@ -33,6 +38,20 @@ void ALCRoomPlayerController::BeginPlay()
 		{
 			UIManager->SetUIContext(ELCUIContext::Room);
 		}
+	}
+}
+
+void ALCRoomPlayerController::PostSeamlessTravel()
+{
+	Super::PostSeamlessTravel();
+
+	LOG_Frame_WARNING(TEXT("PostSeamlessTravel: Ensuring CheatManager is ready"));
+
+	// 치트매니저 재초기화
+	if (CheatManager == nullptr)
+	{
+		CheatManager = NewObject<ULCCheatManager>(this, CheatClass);
+		CheatManager->InitCheatManager();
 	}
 }
 

@@ -14,6 +14,8 @@ class LASTCANARY_API ALCPlayerController : public APlayerController
 	GENERATED_BODY()
 	
 public:
+	ALCPlayerController();
+
 	virtual void BeginPlay() override;
 
 	UFUNCTION()

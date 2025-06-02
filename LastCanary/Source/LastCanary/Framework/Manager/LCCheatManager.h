@@ -15,6 +15,9 @@ class LASTCANARY_API ULCCheatManager : public UCheatManager
 {
 	GENERATED_BODY()
 
+protected:
+	virtual void InitCheatManager() override;
+
 public:
 	/** 자원 아이템을 전부 지급 */
 	UFUNCTION(exec)
@@ -59,6 +62,10 @@ public:
 	/** 맵 이동 */
 	UFUNCTION(exec)
 	void TravelToMap(FName MapName);
+
+	/** 주요 프레임워크 출력*/
+	UFUNCTION(Exec)
+	void ShowPlayerFrameworkInfo();
 
 	/** 현재 무적 여부 확인 */
 	bool IsGodModeEnabled() const { return bGodMode; }

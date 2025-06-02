@@ -6,10 +6,6 @@
 #include "LastCanary.h"
 #include "GameFramework/GameSession.h"
 
-ABaseGameMode::ABaseGameMode()
-{
-}
-
 void ABaseGameMode::BeginPlay()
 {
 	Super::BeginPlay();
