@@ -321,11 +321,9 @@ void ABaseDrone::SpawnDroneItemAtCurrentLocation()
 		return;
 	}
 
-	// ⭐ 현재 드론 위치에서 아이템 스폰 위치 계산
 	FVector CurrentLocation = GetActorLocation();
 	FVector SpawnLocation = CurrentLocation + ItemSpawnOffset;
 
-	// 바닥 체크 (아이템이 허공에 떠있지 않도록)
 	FHitResult HitResult;
 	FVector TraceStart = SpawnLocation + FVector(0, 0, 100.0f);
 	FVector TraceEnd = SpawnLocation - FVector(0, 0, 500.0f);
@@ -336,30 +334,17 @@ void ABaseDrone::SpawnDroneItemAtCurrentLocation()
 
 	if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_WorldStatic, QueryParams))
 	{
-		// 바닥에서 약간 위에 스폰
 		SpawnLocation = HitResult.ImpactPoint + FVector(0, 0, 30.0f);
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("[SpawnDroneItemAtCurrentLocation] 드론 위치: %s, 스폰 위치: %s"),
-		*CurrentLocation.ToString(), *SpawnLocation.ToString());
-
-	// ⭐ 드론 아이템 생성
 	AItemBase* DroneItem = ItemSpawner->CreateItem(DroneItemRowName, SpawnLocation);
 	if (DroneItem)
 	{
-		// 아이템에 약간의 물리 효과 적용 (자연스러운 드롭)
-		if (UStaticMeshComponent* MeshComp = DroneItem->GetMeshComponent())
-		{
-			// 살짝 위에서 떨어지는 효과
-			FVector DropImpulse = FVector(0, 0, -100.0f);
-			MeshComp->AddImpulse(DropImpulse, NAME_None, true);
-		}
-
-		UE_LOG(LogTemp, Warning, TEXT("[SpawnDroneItemAtCurrentLocation] ✅ 드론 아이템 스폰 성공: %s"),
+		UE_LOG(LogTemp, Warning, TEXT("[SpawnDroneItemAtCurrentLocation] 드론 아이템 스폰 성공: %s"),
 			*DroneItem->GetName());
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[SpawnDroneItemAtCurrentLocation] ❌ 드론 아이템 스폰 실패"));
+		UE_LOG(LogTemp, Warning, TEXT("[SpawnDroneItemAtCurrentLocation] 드론 아이템 스폰 실패"));
 	}
 }
