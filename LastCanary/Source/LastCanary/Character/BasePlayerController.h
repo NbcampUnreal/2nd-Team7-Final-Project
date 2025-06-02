@@ -12,7 +12,7 @@ class UInputAction;
 class ABaseCharacter;
 class ABaseDrone;
 class ABasePlayerState;
-class ARuinsGimmickBase;
+class ALCBaseGimmick;
 
 UCLASS()
 class LASTCANARY_API ABasePlayerController : public ALCPlayerController
@@ -318,9 +318,9 @@ public:
 
 
 public:
-	void InteractGimmick(ARuinsGimmickBase* Target);
+	void InteractGimmick(ALCBaseGimmick* Target);
 
 	UFUNCTION(Server, Reliable)
-	void Server_InteractWithGimmick(ARuinsGimmickBase* Target);
-	void Server_InteractWithGimmick_Implementation(ARuinsGimmickBase* Target);
+	void Server_InteractWithGimmick(ALCBaseGimmick* Target);
+	void Server_InteractWithGimmick_Implementation(ALCBaseGimmick* Target);
 };
