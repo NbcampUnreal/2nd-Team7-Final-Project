@@ -6,7 +6,7 @@
 #include "LCTitlePlayerController.generated.h"
 
 UCLASS()
-class LASTCANARY_API ALCTitlePlayerController : public ALCRoomPlayerController
+class LASTCANARY_API ALCTitlePlayerController : public ALCPlayerController
 {
 	GENERATED_BODY()
 
