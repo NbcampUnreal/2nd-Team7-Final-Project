@@ -114,4 +114,8 @@ public:
     /** 던지기 방향 벡터 계산 */
     UFUNCTION(BlueprintPure, Category = "Throw Settings")
     FVector CalculateThrowDirection() const;
+
+protected:
+    /** 컴포넌트에 충돌 설정 적용 */
+    void ApplyCollisionSettings(UPrimitiveComponent* MeshComponent, bool bIgnoreCharacterCollision);
 };

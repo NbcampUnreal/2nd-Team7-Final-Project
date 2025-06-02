@@ -15,5 +15,6 @@ void ALCTitlePlayerController::BeginPlay()
 	if (IsValid(LCUIManager))
 	{
 		LCUIManager->ShowTitleMenu();
+		LCUIManager->SetUIContext(ELCUIContext::Title);
 	}
 }

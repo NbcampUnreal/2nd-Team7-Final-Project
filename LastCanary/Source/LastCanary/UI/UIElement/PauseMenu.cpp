@@ -12,10 +12,6 @@ void UPauseMenu::NativeConstruct()
 	{
 		ResumeButton->OnClicked.AddUniqueDynamic(this, &UPauseMenu::OnResumeButtonClicked);
 	}
-	if (LobbyButton)
-	{
-		LobbyButton->OnClicked.AddUniqueDynamic(this, &UPauseMenu::OnLobbyButtonClicked);
-	}
 	if (OptionButton)
 	{
 		OptionButton->OnClicked.AddUniqueDynamic(this, &UPauseMenu::OnOptionButtonClicked);
@@ -33,10 +29,6 @@ void UPauseMenu::NativeDestruct()
 	{
 		ResumeButton->OnClicked.RemoveDynamic(this, &UPauseMenu::OnResumeButtonClicked);
 	}
-	if (LobbyButton)
-	{
-		LobbyButton->OnClicked.RemoveDynamic(this, &UPauseMenu::OnLobbyButtonClicked);
-	}
 	if (OptionButton)
 	{
 		OptionButton->OnClicked.RemoveDynamic(this, &UPauseMenu::OnOptionButtonClicked);
@@ -50,22 +42,9 @@ void UPauseMenu::NativeDestruct()
 void UPauseMenu::OnResumeButtonClicked()
 {
 	LOG_Frame_WARNING(TEXT("Resume Button Clicked"));
-}
-
-void UPauseMenu::OnLobbyButtonClicked()
-{
-	LOG_Frame_WARNING(TEXT("Lobby Button Clicked"));
-	ULCUIManager* LCUIManager = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>()->GetUIManager();
-	if (LCUIManager)
-	{
-		// 확인 팝업을 띄우고, 예를 눌렀을 경우에만 로비 메뉴로 전환)
-		LCUIManager->ShowConfirmPopup(
-			[]()
-			{
-				//TODO : 로비 메뉴로 전환
-			}
-		);
-	}
+	RemoveFromParent();
+	ULCUIManager* UIManager = ResolveUIManager();
+	UIManager->SetInputModeGameOnly();
 }
 
 void UPauseMenu::OnOptionButtonClicked()

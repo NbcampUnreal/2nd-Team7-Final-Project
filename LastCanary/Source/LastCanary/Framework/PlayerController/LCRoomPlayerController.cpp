@@ -31,6 +31,14 @@ void ALCRoomPlayerController::BeginPlay()
 	Super::BeginPlay();
 
 	CreateAndShowRoomUI();
+
+	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+	{
+		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+		{
+			UIManager->SetUIContext(ELCUIContext::Room);
+		}
+	}
 }
 
 void ALCRoomPlayerController::PostSeamlessTravel()

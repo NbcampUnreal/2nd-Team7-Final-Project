@@ -52,4 +52,7 @@ struct FItemDataRow : public FTableRowBase
 	int32 BaseScore = 1;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resource")
 	EResourceCategory Category;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
+	bool bIgnoreCharacterCollision = false;
 };
