@@ -16,5 +16,6 @@ void ALCTitlePlayerController::BeginPlay()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("TitlePC"));
 		LCUIManager->ShowTitleMenu();
+		LCUIManager->SetUIContext(ELCUIContext::Title);
 	}
 }
