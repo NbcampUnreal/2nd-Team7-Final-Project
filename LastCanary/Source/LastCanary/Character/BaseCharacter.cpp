@@ -1094,13 +1094,14 @@ float ABaseCharacter::GetFallDamage(float Velocity)
 	UE_LOG(LogTemp, Log, TEXT("player Take Fall Damage : %f"), Velocity);
 	ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
 	if (PC)
-	{
-		UE_LOG(LogTemp, Log, TEXT("Controller Existed"));
-		ABasePlayerState* MyPlayerState = PC->GetPlayerState<ABasePlayerState>();
-		if (MyPlayerState)
+	{		
+		if (PC->HasAuthority())
 		{
-			UE_LOG(LogTemp, Log, TEXT("State Existed"));
-			MyPlayerState->ApplyDamage(FallDamage);
+			ABasePlayerState* MyPlayerState = PC->GetPlayerState<ABasePlayerState>();
+			if (MyPlayerState)
+			{
+				MyPlayerState->ApplyDamage(FallDamage);
+			}
 		}
 	}
 	return FallDamage;
@@ -1125,7 +1126,6 @@ void ABaseCharacter::HandlePlayerDeath()
 	UE_LOG(LogTemp, Warning, TEXT("Pelvis BodyInstance: %s"), PelvisBody != nullptr ? TEXT("Valid") : TEXT("NULL"));
 	UE_LOG(LogTemp, Warning, TEXT("Spine03 BodyInstance: %s"), Spine03Body != nullptr ? TEXT("Valid") : TEXT("NULL"));
 	StartRagdolling();
-
 }
 
 bool ABaseCharacter::CheckHardLandState()

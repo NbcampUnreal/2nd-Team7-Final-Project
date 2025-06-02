@@ -11,11 +11,15 @@ class UInputMappingContext;
 class UInputAction;
 class ABaseCharacter;
 class ABaseDrone;
+class ABasePlayerState;
+class ALCBaseGimmick;
 
 UCLASS()
 class LASTCANARY_API ABasePlayerController : public ALCPlayerController
 {
 	GENERATED_BODY()
+
+
 private:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
 private:
@@ -128,7 +132,7 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
 	TObjectPtr<UInputAction> OpenPauseMenuAction;
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
 	TObjectPtr<UInputAction> ExitDroneAction;
 	// ... 필요한 입력들 추가
@@ -160,7 +164,7 @@ public:
 	virtual void Input_OnMove(const FInputActionValue& ActionValue);
 
 	virtual void Input_OnSprint(const FInputActionValue& ActionValue);
-	
+
 	virtual void End_OnSprint(const FInputActionValue& ActionValue);
 
 	UFUNCTION()
@@ -185,7 +189,7 @@ public:
 	virtual void Input_OnItemThrow();
 
 	virtual void Input_OnStartedVoiceChat();
-	
+
 	virtual void Input_OnCanceledVoiceChat();
 
 	virtual void Input_ChangeShootingSetting();
@@ -200,7 +204,7 @@ public:
 
 	virtual void Input_SelectQuickSlot3();
 
-	virtual void Input_SelectQuickSlot4();	
+	virtual void Input_SelectQuickSlot4();
 
 	virtual void Input_OpenPauseMenu();
 
@@ -230,6 +234,26 @@ public:
 
 	UFUNCTION()
 	void OnCharacterDied();
+
+	UFUNCTION(Client, Reliable)
+	void Client_OnCharacterDied();
+	void Client_OnCharacterDied_Implementation();
+
+
+
+
+	//SpectatorMode
+	UFUNCTION(BlueprintImplementableEvent)
+	void TEST_CallSpectatorWidget();
+
+	UPROPERTY(BlueprintReadWrite)
+	int32 CurrentSpectatedCharacterIndex = 0;
+
+	void SpectateNextPlayer();
+	void SpectatePreviousPlayer();
+	TArray<ABasePlayerState*> GetPlayerArray();
+
+	TArray<ABasePlayerState*> SpectatorTargets;
 
 public:
 	bool bIsSprinting = false;
@@ -266,7 +290,7 @@ public:
 	void ApplyRecoilStep();
 
 	void CameraSetOnScope();
-	
+
 
 	UFUNCTION(BlueprintCallable)
 	void SetPlayerMovementSetting();
@@ -283,10 +307,20 @@ public:
 
 	UFUNCTION(Server, Reliable)
 	void Server_SpawnDrone();
+	void Server_SpawnDrone_Implementation();
 
 	//test용
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<ABaseDrone> DroneClass;
 
 	void PossessOnDrone();
+
+
+
+public:
+	void InteractGimmick(ALCBaseGimmick* Target);
+
+	UFUNCTION(Server, Reliable)
+	void Server_InteractWithGimmick(ALCBaseGimmick* Target);
+	void Server_InteractWithGimmick_Implementation(ALCBaseGimmick* Target);
 };
