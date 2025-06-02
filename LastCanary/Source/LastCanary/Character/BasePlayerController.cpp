@@ -9,6 +9,8 @@
 #include "Net/UnrealNetwork.h"
 #include "UI/Manager/LCUIManager.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "Art/Ruins/RuinsGimmickBase.h"
+
 
 void ABasePlayerController::BeginPlay()
 {
@@ -1206,3 +1208,15 @@ void ABasePlayerController::CameraSetOnScope()
 
 }
 
+void ABasePlayerController::InteractGimmick(class ARuinsGimmickBase* Target)
+{
+	if (IsValid(Target))
+	{
+		Server_InteractWithGimmick(Target);
+	}
+}
+
+void ABasePlayerController::Server_InteractWithGimmick_Implementation(class ARuinsGimmickBase* Target)
+{
+	Target->Server_Interact(this);
+}
