@@ -1,5 +1,8 @@
 #include "LCDroneDelivery.h"
 #include "LCDronePath.h"
+#include "Item/ItemSpawnerComponent.h"
+#include "Item/ItemBase.h"
+#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Components/SplineComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "TimerManager.h"
@@ -20,6 +23,8 @@ ALCDroneDelivery::ALCDroneDelivery()
 
 	DropBoxMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("DropBoxMesh"));
 	DropBoxMesh->SetupAttachment(DroneMesh);
+
+	ItemSpawner = CreateDefaultSubobject<UItemSpawnerComponent>(TEXT("ItemSpawner"));
 }
 
 void ALCDroneDelivery::BeginPlay()
@@ -239,6 +244,16 @@ void ALCDroneDelivery::SpawnDroppedItems()
 
 	for (const FItemDropData& Drop : ItemsToDrop)
 	{
+		// ItemID로 데이터 테이블에서 RowName 찾기(스포너가 행이름 기반 탐색이라..)
+		FName ItemRowName = FindItemRowNameByID(Drop.ItemID);
+		if (ItemRowName.IsNone())
+		{
+			LOG_Frame_WARNING(TEXT("[Drone] ItemRowName not found for ItemID: %d"), Drop.ItemID);
+			continue;
+		}
+
+		LOG_Frame_WARNING(TEXT("[Drone] Spawning %d x %s (ID: %d)"), Drop.Count, *ItemRowName.ToString(), Drop.ItemID);
+
 		for (int32 i = 0; i < Drop.Count; ++i)
 		{
 			FVector Offset = FVector(
@@ -249,20 +264,47 @@ void ALCDroneDelivery::SpawnDroppedItems()
 
 			const FVector SpawnLocation = BaseLocation + Offset;
 
-			FActorSpawnParameters Params;
-			Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-
-			GetWorld()->SpawnActor<AActor>(
-				Drop.ItemClass,
-				SpawnLocation,
-				FRotator::ZeroRotator,
-				Params
-			);
-
-			LOG_Frame_WARNING(TEXT("[Drone] Spawned item: %s at %s"), *Drop.ItemClass->GetName(), *SpawnLocation.ToString());
+			AItemBase* SpawnedItem = ItemSpawner->CreateItem(ItemRowName, SpawnLocation);
 		}
 	}
 
 	Multicast_PlayDropExplosionEffect();
 	Destroy();
+}
+
+
+FName ALCDroneDelivery::FindItemRowNameByID(int32 ItemID)
+{
+	if (UWorld* World = GetWorld())
+	{
+		if (UGameInstance* GI = World->GetGameInstance())
+		{
+			if (ULCGameInstanceSubsystem* GameSubsystem = GI->GetSubsystem<ULCGameInstanceSubsystem>())
+			{
+				UDataTable* ItemDataTable = GameSubsystem->GetItemDataTable();
+				if (!ItemDataTable)
+				{
+					LOG_Frame_WARNING(TEXT("[FindItemRowNameByID] ItemDataTable is null"));
+					return NAME_None;
+				}
+
+				// ⭐ 데이터 테이블에서 ItemID로 검색
+				TArray<FName> RowNames = ItemDataTable->GetRowNames();
+				for (const FName& RowName : RowNames)
+				{
+					FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(RowName, TEXT("FindItemRowNameByID"));
+					if (ItemData && ItemData->ItemID == ItemID)
+					{
+						return RowName;
+					}
+				}
+
+				LOG_Frame_WARNING(TEXT("[FindItemRowNameByID] No RowName found for ItemID: %d"), ItemID);
+				return NAME_None;
+			}
+		}
+	}
+
+	LOG_Frame_WARNING(TEXT("[FindItemRowNameByID] Failed to get GameSubsystem"));
+	return NAME_None;
 }

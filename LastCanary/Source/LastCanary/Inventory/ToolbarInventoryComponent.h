@@ -81,6 +81,9 @@ public:
 private:
     bool Internal_DropCurrentEquippedItem();
 
+private:
+    bool Internal_DropEquippedItemAtSlot(int32 SlotIndex, int32 Quantity);
+
     //-----------------------------------------------------
     // 네트워크
     //-----------------------------------------------------
