@@ -23,6 +23,7 @@ void UBTService_RunEQS_FindCrowd::TickNode(UBehaviorTreeComponent& OwnerComp,
     AAIController* AICon = OwnerComp.GetAIOwner();
     if (!AICon) return;
 
+
     // 블랙보드와 키명 로컬 복사
     UBlackboardComponent* BBComp = OwnerComp.GetBlackboardComponent();
     const FName KeyName = CrowdLocKey.SelectedKeyName;
