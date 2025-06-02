@@ -20,6 +20,7 @@ class UMapSelectWidget;
 class UPopupCreateSession;
 class UPopupLoading;
 class UPopupNotice;
+class ULoadingLevel;
 class UInventoryMainWidget;
 UCLASS(BlueprintType)
 class LASTCANARY_API ULCUIManager : public UObject
@@ -64,6 +65,9 @@ public:
 	void ShowPopupNotice(FString Notice);
 	UFUNCTION(BlueprintCallable)
 	void HidePopUpNotice();
+
+	void ShowLoadingLevel();
+	void HideLoadingLevel();
 
 	/* 입력 모드 제어 */
 	void SetInputModeUIOnly(UUserWidget* FocusWidget = nullptr);
@@ -119,6 +123,8 @@ private:
 	UPROPERTY()
 	TSubclassOf<UPopupNotice> PopUpNoticeClass;
 	UPROPERTY()
+	TSubclassOf<ULoadingLevel> LoadingLevelClass;
+	UPROPERTY()
 	TSubclassOf<UInventoryMainWidget> InventoryMainWidgetClass;
 
 	// 위젯 캐싱
@@ -143,6 +149,8 @@ private:
 	UPopupLoading* CachedPopupLoading;
 	UPROPERTY()
 	UPopupNotice* CachedPopupNotice;
+	UPROPERTY()
+	ULoadingLevel* CachedLoadingLevel;
 	UPROPERTY()
 	UInventoryMainWidget* CachedInventoryMainWidget;
 };
