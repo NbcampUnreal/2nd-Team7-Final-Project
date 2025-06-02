@@ -912,10 +912,20 @@ void ABasePlayerController::UpdateQuickSlotUI()
 
 void ABasePlayerController::Input_OpenPauseMenu()
 {
-	//To Do...
-	//Open Pause Menu,
-	//Set mouse Cursor on
-	//
+	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+	{
+		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+		{
+			if (UIManager->IsPauseMenuOpen())
+			{
+				UIManager->HidePauseMenu();				
+			}
+			else
+			{
+				UIManager->ShowPauseMenu();
+			}
+		}
+	}
 }
 
 //To DO...
@@ -1135,3 +1145,4 @@ void ABasePlayerController::CameraSetOnScope()
 {
 
 }
+
