@@ -35,6 +35,9 @@ public:
 	void ClearPlayerInfo();
 	void SetPlayerInfo(const FSessionPlayerInfo& PlayerInfo);
 
+	UFUNCTION()
+	void OnKickButtonClicked();
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	FSessionPlayerInfo MySessionPlayerInfo;
