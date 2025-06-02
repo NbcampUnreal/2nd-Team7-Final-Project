@@ -104,8 +104,10 @@ public:
 	// Multicast
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_OnDamaged();
+	void Multicast_OnDamaged_Implementation();
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_OnDied();
+	void Multicast_OnDied_Implementation();
 
 	// Gold & Exp
 	UPROPERTY(Replicated, BlueprintReadOnly)
