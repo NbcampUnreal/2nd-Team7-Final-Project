@@ -12,8 +12,6 @@ class LASTCANARY_API ABaseGameMode : public AGameModeBase
 	GENERATED_BODY()
 
 public:
-	ABaseGameMode();
-
 	virtual void BeginPlay() override;
 
 	virtual void SpawnPlayerCharacter(APlayerController* Controller);

@@ -22,6 +22,11 @@
 
 DEFINE_LOG_CATEGORY(LogCheat);
 
+void ULCCheatManager::InitCheatManager()
+{
+	Super::InitCheatManager();
+}
+
 void ULCCheatManager::GiveAllResources()
 {
 	if (APlayerController* PC = GetOuterAPlayerController())
@@ -247,5 +252,56 @@ void ULCCheatManager::TravelToMap(FName MapName)
 		{
 			UE_LOG(LogCheat, Warning, TEXT("GameInstanceSubsystem이 존재하지 않습니다."));
 		}
+	}
+}
+
+void ULCCheatManager::ShowPlayerFrameworkInfo()
+{
+	APlayerController* PC = GetOuterAPlayerController();
+	if (!PC)
+	{
+		UE_LOG(LogCheat, Warning, TEXT("[치트] PlayerController 없음"));
+		return;
+	}
+
+	// PlayerState
+	ABasePlayerState* PS = PC->GetPlayerState<ABasePlayerState>();
+	// Pawn
+	APawn* Pawn = PC->GetPawn();
+
+	// 문자열 구성
+	FString InfoString = FString::Printf(TEXT("▶ PlayerFramework Info"));
+	InfoString += FString::Printf(TEXT("\n - Controller : %s"), *PC->GetName());
+
+	if (Pawn)
+	{
+		InfoString += FString::Printf(TEXT("\n - Pawn       : %s"), *Pawn->GetName());
+	}
+	else
+	{
+		InfoString += TEXT("\n - Pawn       : 없음");
+	}
+
+	if (PS)
+	{
+		InfoString += FString::Printf(TEXT("\n - PlayerState: %s"), *PS->GetName());
+		InfoString += FString::Printf(TEXT("\n   HP         : %.1f"), PS->GetHP());
+		InfoString += FString::Printf(TEXT("\n   Stamina    : %.1f"), PS->GetStamina());
+		InfoString += FString::Printf(TEXT("\n   Gold       : %d"), PS->GetTotalGold());
+		InfoString += FString::Printf(TEXT("\n   Exp        : %d"), PS->GetTotalExp());
+	}
+	else
+	{
+		InfoString += TEXT("\n - PlayerState: 없음");
+	}
+
+	// 로그 출력
+	UE_LOG(LogCheat, Warning, TEXT("[치트] ===== 현재 플레이어 프레임워크 정보 ====="));
+	UE_LOG(LogCheat, Warning, TEXT("%s"), *InfoString);
+
+	// 화면 출력
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Cyan, InfoString);
 	}
 }
