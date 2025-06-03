@@ -720,6 +720,11 @@ void UToolbarInventoryComponent::PostAddProcess()
     OnInventoryUpdated.Broadcast();
 }
 
+void UToolbarInventoryComponent::Server_DropEquippedItemAtSlot_Implementation(int32 SlotIndex, int32 Quantity)
+{
+    Internal_DropEquippedItemAtSlot(SlotIndex, Quantity);
+}
+
 bool UToolbarInventoryComponent::DropCurrentEquippedItem()
 {
     if (GetOwner() && GetOwner()->HasAuthority())
@@ -742,20 +747,14 @@ bool UToolbarInventoryComponent::TryDropItemAtSlot(int32 SlotIndex, int32 Quanti
 {
     if (SlotIndex == CurrentEquippedSlotIndex && CurrentEquippedSlotIndex >= 0)
     {
-        LOG_Item_WARNING(TEXT("[TryDropItemAtSlot] 장착된 아이템 드롭: 슬롯 %d"), SlotIndex);
-
-        // ⭐ 클라이언트에서는 부모 클래스의 서버 RPC를 통해 처리
         if (!GetOwner() || !GetOwner()->HasAuthority())
         {
-            LOG_Item_WARNING(TEXT("[TryDropItemAtSlot] 클라이언트에서 서버 RPC 호출"));
-            return Super::TryDropItemAtSlot(SlotIndex, Quantity); // ⭐ 부모 클래스 호출
+            Server_DropEquippedItemAtSlot(SlotIndex, Quantity);
+            return true;
         }
-
-        // ⭐ 서버에서만 장착 해제 처리 후 드롭
         return Internal_DropEquippedItemAtSlot(SlotIndex, Quantity);
     }
 
-    // 장착되지 않은 아이템은 일반 드롭
     return Super::TryDropItemAtSlot(SlotIndex, Quantity);
 }
 
