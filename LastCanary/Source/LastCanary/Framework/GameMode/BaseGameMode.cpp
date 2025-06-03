@@ -22,9 +22,9 @@ void ABaseGameMode::PostLogin(APlayerController* NewPlayer)
 
 		AllPlayerControllers.Add(NewPlayer);
 
-		FSessionPlayerInfo SessionInfo;
 		if (APlayerState* PS = NewPlayer->PlayerState)
 		{
+			FSessionPlayerInfo SessionInfo;
 			SessionInfo.PlayerName = PS->GetPlayerName();
 			SessionInfo.bIsPlayerReady = false;
 			SessionPlayerInfos.Add(SessionInfo);
@@ -107,7 +107,7 @@ void ABaseGameMode::UpdatePlayers()
 	}
 }
 
-void ABaseGameMode::SetPlayerInfo(FSessionPlayerInfo RequestInfo)
+void ABaseGameMode::SetPlayerInfo(const FSessionPlayerInfo& RequestInfo)
 {
 	for (FSessionPlayerInfo& Info : SessionPlayerInfos)
 	{
