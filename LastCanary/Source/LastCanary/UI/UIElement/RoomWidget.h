@@ -34,22 +34,15 @@ public:
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
 	UButton* InviteButton;
 
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
-	UButton* BackButton;
-
-	UFUNCTION(BlueprintCallable)
-	void UpdatePlayerNames();
-
 	UFUNCTION(BlueprintCallable)
 	void UpdatePlayerLists(const TArray<FSessionPlayerInfo>& PlayerInfos);
 
 protected:
 	UFUNCTION()
 	void OnInviteButtonClicked();
-	UFUNCTION()
-	void OnBackButtonClicked();
 
 private:
+	TArray<FSessionPlayerInfo> SessionPlayerInfos;
 	int MaxPlayerNum = 4;
 	
 };
