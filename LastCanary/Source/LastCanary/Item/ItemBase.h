@@ -37,9 +37,35 @@ public:
     class USphereComponent* SphereComponent;
 
     //-----------------------------------------------------
-    // 아이템 데이터
+    // 메시 관리
     //-----------------------------------------------------
 
+    /** 현재 활성화된 메시 타입 */
+    UPROPERTY(BlueprintReadOnly, Category = "Mesh")
+    bool bUsingSkeletalMesh = false;
+
+    /** 활성화된 메시 컴포넌트 반환 (StaticMesh 또는 SkeletalMesh) */
+    UFUNCTION(BlueprintPure, Category = "Mesh")
+    UPrimitiveComponent* GetActiveMeshComponent() const;
+
+    /** 스태틱 메시 컴포넌트 반환 */
+    UStaticMeshComponent* GetMeshComponent() const;
+
+    /** 스켈레탈 메시 컴포넌트 반환 */
+    UFUNCTION(BlueprintPure, Category = "Mesh")
+    USkeletalMeshComponent* GetSkeletalMeshComponent() const;
+
+protected:
+    /** 메시 타입 설정 및 적용 */
+    void SetupMeshComponents();
+
+    /** 메시 컴포넌트 활성화/비활성화 */
+    void SetMeshComponentActive(UPrimitiveComponent* ActiveComponent, UPrimitiveComponent* InactiveComponent);
+
+    //-----------------------------------------------------
+    // 아이템 데이터
+    //-----------------------------------------------------
+public:
     /** 아이템 데이터 테이블에서의 행 이름 */
     UPROPERTY(ReplicatedUsing = OnRepItemRowName, EditAnywhere, BlueprintReadWrite, Category = Item)
     FName ItemRowName;
@@ -137,8 +163,6 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Item|Initialization")
     void ApplyItemDataFromTable();
 
-    UStaticMeshComponent* GetMeshComponent() const;
-
     //-----------------------------------------------------
     // 네트워크 & 에디터 기능
     //-----------------------------------------------------
@@ -155,4 +179,9 @@ public:
     virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
     // virtual void OnConstruction(const FTransform& Transform) override;
 #endif
+
+    UPROPERTY(Replicated)
+    bool bIgnoreCharacterCollision = false;
+
+    void ApplyCollisionSettings();
 };

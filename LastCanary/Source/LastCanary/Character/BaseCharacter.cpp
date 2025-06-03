@@ -386,19 +386,29 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 		if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
 		{
 			AGunBase* RifleItem = Cast<AGunBase>(EquippedItem);
-			if (ActionValue.Get<float>() > 0.5f)
+			if (RifleItem)
 			{
-				UE_LOG(LogTemp, Warning, TEXT("Scope on"));
-				SpringArm->AttachToComponent(RifleItem->GunMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
-				//ToADSCamera(true);
-				return;
-			}
-			else
-			{
-				UE_LOG(LogTemp, Warning, TEXT("Scope out"));
-				SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
-				//ToADSCamera(false);
-				return;
+				USkeletalMeshComponent* RifleMesh = RifleItem->GetSkeletalMeshComponent();
+				if (!RifleMesh)
+				{
+					UE_LOG(LogTemp, Warning, TEXT("Handle_Aim: No SkeletalMeshComponent found on rifle"));
+					return;
+				}
+
+				if (ActionValue.Get<float>() > 0.5f)
+				{
+					UE_LOG(LogTemp, Warning, TEXT("Scope on"));
+					SpringArm->AttachToComponent(RifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
+					//ToADSCamera(true);
+					return;
+				}
+				else
+				{
+					UE_LOG(LogTemp, Warning, TEXT("Scope out"));
+					SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+					//ToADSCamera(false);
+					return;
+				}
 			}
 		}
 	}
@@ -834,8 +844,14 @@ void ABaseCharacter::UpdateGunWallClipOffset(float DeltaTime)
 		return;
 	}
 	
-	FVector MuzzleLoc = RifleItem->GunMesh->GetSocketLocation("Muzzle");
-	FTransform MuzzleTransform = RifleItem->GunMesh->GetSocketTransform("Muzzle", RTS_World);
+	USkeletalMeshComponent* RifleMesh = RifleItem->GetSkeletalMeshComponent();
+	if (!IsValid(RifleMesh))
+	{
+		return;
+	}
+
+	FVector MuzzleLoc = RifleMesh->GetSocketLocation("Muzzle");
+	FTransform MuzzleTransform = RifleMesh->GetSocketTransform("Muzzle", RTS_World);
 
 	// 1. 머즐의 앞 방향과 Pitch 각도 얻기
 	FVector MuzzleForward = MuzzleTransform.GetUnitAxis(EAxis::Z); // 머즐의 "앞" 방향

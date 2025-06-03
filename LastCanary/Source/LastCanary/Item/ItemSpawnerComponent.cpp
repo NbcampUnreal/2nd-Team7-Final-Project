@@ -36,7 +36,7 @@ AItemBase* UItemSpawnerComponent::CreateItemFromData(const FBaseItemSlotData& So
 
 AItemBase* UItemSpawnerComponent::CreateItemWithCustomData(FName ItemRowName, const FVector& SpawnLocation, int32 Quantity, float Durability)
 {
-    // ⭐ 권한 확인 (서버에서만 실행)
+    // 권한 확인 (서버에서만 실행)
     if (!GetOwner() || !GetOwner()->HasAuthority())
     {
         LOG_Item_WARNING(TEXT("[ItemSpawnerComponent::CreateItemWithCustomData] Authority가 없습니다. 서버에서만 실행하세요."));
@@ -77,20 +77,17 @@ AItemBase* UItemSpawnerComponent::CreateItemWithCustomData(FName ItemRowName, co
         SpawnParams
     );
 
-    if (!SpawnedItem)
+    if (SpawnedItem)
     {
-        LOG_Item_WARNING(TEXT("[ItemSpawnerComponent::CreateItemWithCustomData] 아이템 스폰 실패"));
-        return nullptr;
+        // ⭐ 기존 함수들만 사용
+        ApplyItemSettings(SpawnedItem, ItemRowName, Quantity, Durability);
+
+        // ⭐ 충돌 설정도 EnablePhysicsSimulation에서 처리
+        EnablePhysicsSimulation(SpawnedItem);
+
+        LOG_Item_WARNING(TEXT("[CreateItemWithCustomData] 아이템 생성 완료: %s (Q:%d, D:%.1f)"),
+            *ItemRowName.ToString(), Quantity, Durability);
     }
-
-    // 아이템 설정 적용
-    ApplyItemSettings(SpawnedItem, ItemRowName, Quantity, Durability);
-
-    // 물리 시뮬레이션 활성화
-    EnablePhysicsSimulation(SpawnedItem);
-
-    LOG_Item_WARNING(TEXT("[ItemSpawnerComponent::CreateItemWithCustomData] 아이템 생성 완료: %s (Q:%d, D:%.1f)"),
-        *ItemRowName.ToString(), Quantity, Durability);
 
     return SpawnedItem;
 }
@@ -135,14 +132,14 @@ FVector UItemSpawnerComponent::CalculateThrowDirection() const
     AActor* OwnerActor = GetOwner();
     if (!OwnerActor)
     {
-        LOG_Item_WARNING(TEXT("[CalculateThrowDirection] Owner is null"));
+        LOG_Item_WARNING(TEXT("[UItemSpawnerComponent::CalculateThrowDirection] Owner is null"));
         return FVector::ForwardVector;
     }
 
     ABaseCharacter* Character = Cast<ABaseCharacter>(OwnerActor);
     if (!Character)
     {
-        LOG_Item_WARNING(TEXT("[CalculateThrowDirection] Owner is not BaseCharacter"));
+        LOG_Item_WARNING(TEXT("[UItemSpawnerComponent::CalculateThrowDirection] Owner is not BaseCharacter"));
         return FVector::ForwardVector;
     }
 
@@ -150,7 +147,7 @@ FVector UItemSpawnerComponent::CalculateThrowDirection() const
     AController* Controller = Character->GetController();
     if (!Controller)
     {
-        LOG_Item_WARNING(TEXT("[CalculateThrowDirection] Controller is null"));
+        LOG_Item_WARNING(TEXT("[UItemSpawnerComponent::CalculateThrowDirection] Controller is null"));
         return FVector::ForwardVector;
     }
 
@@ -158,9 +155,9 @@ FVector UItemSpawnerComponent::CalculateThrowDirection() const
     FRotator CameraRotation;
     Controller->GetPlayerViewPoint(CameraLocation, CameraRotation);
 
-    LOG_Item_WARNING(TEXT("[CalculateThrowDirection] Camera Location: (%f, %f, %f)"),
+    LOG_Item_WARNING(TEXT("[UItemSpawnerComponent::CalculateThrowDirection] Camera Location: (%f, %f, %f)"),
         CameraLocation.X, CameraLocation.Y, CameraLocation.Z);
-    LOG_Item_WARNING(TEXT("[CalculateThrowDirection] Camera Rotation: (%f, %f, %f)"),
+    LOG_Item_WARNING(TEXT("[UItemSpawnerComponent::CalculateThrowDirection] Camera Rotation: (%f, %f, %f)"),
         CameraRotation.Pitch, CameraRotation.Yaw, CameraRotation.Roll);
 
     // 던지기 각도 추가 (위쪽으로)
@@ -168,7 +165,7 @@ FVector UItemSpawnerComponent::CalculateThrowDirection() const
     ThrowRotation.Pitch += ThrowAngleDegrees;
 
     FVector ThrowDirection = ThrowRotation.Vector();
-    LOG_Item_WARNING(TEXT("[CalculateThrowDirection] Final ThrowDirection: (%f, %f, %f)"),
+    LOG_Item_WARNING(TEXT("[UItemSpawnerComponent::CalculateThrowDirection] Final ThrowDirection: (%f, %f, %f)"),
         ThrowDirection.X, ThrowDirection.Y, ThrowDirection.Z);
 
     return ThrowDirection;
@@ -178,7 +175,7 @@ void UItemSpawnerComponent::EnablePhysicsSimulation(AItemBase* Item)
 {
     if (!Item)
     {
-        LOG_Item_WARNING(TEXT("[EnablePhysicsSimulation] 아이템이 null입니다."));
+        LOG_Item_WARNING(TEXT("[UItemSpawnerComponent::EnablePhysicsSimulation] 아이템이 null입니다."));
         return;
     }
 
@@ -196,60 +193,43 @@ void UItemSpawnerComponent::EnablePhysicsSimulation(AItemBase* Item)
                     ItemWeight = ItemData->Weight;
                     bIgnoreCharacterCollision = ItemData->bIgnoreCharacterCollision;
 
-                    LOG_Item_WARNING(TEXT("[EnablePhysicsSimulation] 아이템 데이터 로드: %s, 무게: %.2f, 캐릭터 충돌 무시: %s"),
+                    LOG_Item_WARNING(TEXT("[UItemSpawnerComponent::EnablePhysicsSimulation] 아이템 데이터 로드: %s, 무게: %.2f, 캐릭터 충돌 무시: %s"),
                         *Item->ItemRowName.ToString(), ItemWeight, bIgnoreCharacterCollision ? TEXT("true") : TEXT("false"));
-                }
-                else
-                {
-                    LOG_Item_WARNING(TEXT("[EnablePhysicsSimulation] ❌ 아이템 데이터를 찾을 수 없음: %s"), *Item->ItemRowName.ToString());
                 }
             }
         }
     }
 
-    // ⭐ 네트워크 동기화를 위한 지연 적용
-    FTimerHandle DelayedCollisionTimer;
-    GetWorld()->GetTimerManager().SetTimer(DelayedCollisionTimer, [this, Item, bIgnoreCharacterCollision, ItemWeight]()
-        {
-            if (!IsValid(Item))
-                return;
+    // 네트워크 설정
+    Item->SetReplicateMovement(true);
+    Item->SetReplicates(true);
 
-            float ThrowVelocity = CalculateThrowVelocity(ItemWeight);
-            FVector ThrowDirection = CalculateThrowDirection();
-            FVector ThrowImpulse = ThrowDirection * ThrowVelocity;
+    // 아이템의 충돌 설정 업데이트
+    Item->bIgnoreCharacterCollision = bIgnoreCharacterCollision;
+    Item->ApplyCollisionSettings();
 
-            Item->SetReplicateMovement(true);
-            Item->SetReplicates(true);
+    float ThrowVelocity = CalculateThrowVelocity(ItemWeight);
+    FVector ThrowDirection = CalculateThrowDirection();
+    FVector ThrowImpulse = ThrowDirection * ThrowVelocity;
 
-            if (AGunBase* Gun = Cast<AGunBase>(Item))
-            {
-                if (USkeletalMeshComponent* GunMesh = Gun->GetGunMesh())
-                {
-                    ApplyCollisionSettings(GunMesh, bIgnoreCharacterCollision);
-                    GunMesh->SetSimulatePhysics(true);
-                    GunMesh->SetPhysicsLinearVelocity(ThrowDirection * ThrowVelocity * 0.01f);
-                    GunMesh->AddImpulse(ThrowImpulse, NAME_None, true);
+    if (UPrimitiveComponent* ActiveMeshComp = Item->GetActiveMeshComponent())
+    {
+        SetupMeshPhysics(ActiveMeshComp, ThrowDirection, ThrowVelocity, ThrowImpulse);
+    }
+    else
+    {
+        LOG_Item_WARNING(TEXT("[EnablePhysicsSimulation] 활성화된 메시 컴포넌트를 찾을 수 없음: %s"), *Item->GetName());
+        return;
+    }
 
-                    LOG_Item_WARNING(TEXT("[EnablePhysicsSimulation] 총기 물리 설정 적용 (지연)"));
-                }
-            }
-            else if (UStaticMeshComponent* MeshComp = Item->GetMeshComponent())
-            {
-                ApplyCollisionSettings(MeshComp, bIgnoreCharacterCollision);
-                MeshComp->SetSimulatePhysics(true);
-                MeshComp->SetPhysicsLinearVelocity(ThrowDirection * ThrowVelocity * 0.01f);
-                MeshComp->AddImpulse(ThrowImpulse, NAME_None, true);
+    // 강제 네트워크 업데이트
+    Item->ForceNetUpdate();
 
-                LOG_Item_WARNING(TEXT("[EnablePhysicsSimulation] 아이템 물리 설정 적용 (지연)"));
-            }
 
-        }, 0.1f, false); // ⭐ 0.1초 지연 후 적용
-
-    // ⭐ 디버그 시각화
+    // 디버그 시각화
     if (AActor* Owner = GetOwner())
     {
         FVector StartLocation = Item->GetActorLocation();
-        FVector ThrowDirection = CalculateThrowDirection();
         FVector EndLocation = StartLocation + ThrowDirection * 500.0f;
 
         FColor DebugColor = bIgnoreCharacterCollision ? FColor::Blue : FColor::Yellow;
@@ -262,31 +242,27 @@ void UItemSpawnerComponent::EnablePhysicsSimulation(AItemBase* Item)
     }
 }
 
-void UItemSpawnerComponent::ApplyCollisionSettings(UPrimitiveComponent* MeshComponent, bool bIgnoreCharacterCollision)
+void UItemSpawnerComponent::SetupMeshPhysics(UPrimitiveComponent* MeshComponent, const FVector& ThrowDirection, float ThrowVelocity, const FVector& ThrowImpulse)
 {
     if (!MeshComponent)
     {
-        LOG_Item_WARNING(TEXT("[ApplyCollisionSettings] MeshComponent is null"));
+        LOG_Item_WARNING(TEXT("[UItemSpawnerComponent::SetupMeshPhysics] MeshComponent is null"));
         return;
     }
 
-    MeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-    MeshComponent->SetCollisionObjectType(ECC_WorldDynamic);
-
-    MeshComponent->SetCollisionResponseToAllChannels(ECR_Block);
-
-    if (bIgnoreCharacterCollision)
+    // 스켈레탈 메시인 경우 애니메이션 인스턴스만 제거
+    if (USkeletalMeshComponent* SkeletalMeshComp = Cast<USkeletalMeshComponent>(MeshComponent))
     {
-        MeshComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
-        ECollisionResponse PawnResponse = MeshComponent->GetCollisionResponseToChannel(ECC_Pawn);
-    }
-    else
-    {
-        MeshComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
+        if (UAnimInstance* AnimInstance = SkeletalMeshComp->GetAnimInstance())
+        {
+            SkeletalMeshComp->SetAnimInstanceClass(nullptr);
+        }
     }
 
-    MeshComponent->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
-    MeshComponent->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);
-    MeshComponent->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
-    MeshComponent->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+    MeshComponent->SetSimulatePhysics(true);
+    MeshComponent->SetPhysicsLinearVelocity(ThrowDirection * ThrowVelocity * 0.01f);
+    MeshComponent->AddImpulse(ThrowImpulse, NAME_None, true);
+
+    MeshComponent->SetLinearDamping(0.1f);
+    MeshComponent->SetAngularDamping(0.1f);
 }

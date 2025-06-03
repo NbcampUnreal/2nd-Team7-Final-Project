@@ -14,6 +14,12 @@ AItemBase::AItemBase()
 	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
 	RootComponent = MeshComponent;
 
+	SkeletalMeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("SkeletalMeshComponent"));
+	SkeletalMeshComponent->SetupAttachment(RootComponent);
+
+	SkeletalMeshComponent->SetVisibility(false);
+	SkeletalMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
 	SphereComponent = CreateDefaultSubobject<USphereComponent>(TEXT("Collision"));
 	SphereComponent->InitSphereRadius(50.0f);
 	SphereComponent->SetCollisionProfileName(TEXT("Trigger"));
@@ -27,6 +33,8 @@ AItemBase::AItemBase()
 
 	bReplicates = true;
 	bNetUseOwnerRelevancy = true;
+
+	SetReplicatingMovement(true);
 
 	bIsEquipped = false;
 
@@ -117,7 +125,6 @@ void AItemBase::ApplyItemDataFromTable()
 		return;
 	}
 
-	// 🔥 클라이언트에서도 데이터 테이블 참조 확보
 	if (!ItemDataTable)
 	{
 		if (UGameInstance* GI = GetGameInstance())
@@ -144,21 +151,83 @@ void AItemBase::ApplyItemDataFromTable()
 	}
 
 	ItemData = *Found;
+	bIgnoreCharacterCollision = ItemData.bIgnoreCharacterCollision;
 
-	if (MeshComponent && ItemData.StaticMesh)
-	{
-		MeshComponent->SetStaticMesh(ItemData.StaticMesh);
-	}
+	SetupMeshComponents();
 
 	if (ItemData.bIsResourceItem)
 	{
-		// 점수 시스템에서 사용
 		LOG_Frame_WARNING(TEXT("이 아이템은 자원입니다. 카테고리: %d, 점수: %d"),
 			static_cast<int32>(ItemData.Category), ItemData.BaseScore);
 	}
 
-	// 상태 변경 브로드캐스트
+	ApplyCollisionSettings();
+
 	OnItemStateChanged.Broadcast();
+}
+
+void AItemBase::SetupMeshComponents()
+{
+	if (ItemData.SkeletalMesh)
+	{
+		bUsingSkeletalMesh = true;
+		SkeletalMeshComponent->SetSkeletalMesh(ItemData.SkeletalMesh);
+
+		SetMeshComponentActive(SkeletalMeshComponent, MeshComponent);
+	}
+	else if (ItemData.StaticMesh)
+	{
+		bUsingSkeletalMesh = false;
+		MeshComponent->SetStaticMesh(ItemData.StaticMesh);
+
+		SetMeshComponentActive(MeshComponent, SkeletalMeshComponent);
+	}
+	else
+	{
+		LOG_Item_WARNING(TEXT("[SetupMeshComponents] 메시가 설정되지 않음: %s"), *ItemRowName.ToString());
+	}
+}
+
+void AItemBase::SetMeshComponentActive(UPrimitiveComponent* ActiveComponent, UPrimitiveComponent* InactiveComponent)
+{
+	if (ActiveComponent)
+	{
+		ActiveComponent->SetVisibility(true);
+		ActiveComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	}
+
+	if (InactiveComponent)
+	{
+		InactiveComponent->SetVisibility(false);
+		InactiveComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+}
+
+UPrimitiveComponent* AItemBase::GetActiveMeshComponent() const
+{
+	if (bUsingSkeletalMesh && SkeletalMeshComponent)
+	{
+		return SkeletalMeshComponent;
+	}
+	else if (MeshComponent)
+	{
+		return MeshComponent;
+	}
+	return nullptr;
+}
+
+UStaticMeshComponent* AItemBase::GetMeshComponent() const
+{
+	if (bUsingSkeletalMesh)
+	{
+		return nullptr;
+	}
+	return MeshComponent;
+}
+
+USkeletalMeshComponent* AItemBase::GetSkeletalMeshComponent() const
+{
+	return SkeletalMeshComponent;
 }
 
 //void AItemBase::UseItem()
@@ -211,6 +280,7 @@ void AItemBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetim
 	DOREPLIFETIME(AItemBase, Quantity);
 	DOREPLIFETIME(AItemBase, bIsEquipped);
 	DOREPLIFETIME_CONDITION_NOTIFY(AItemBase, Durability, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME(AItemBase, bIgnoreCharacterCollision);
 }
 
 void AItemBase::OnRepItemRowName()
@@ -224,15 +294,6 @@ void AItemBase::OnRepItemRowName()
 			SetActorEnableCollision(false);
 		}
 	}
-}
-
-UStaticMeshComponent* AItemBase::GetMeshComponent() const
-{
-	if (MeshComponent)
-	{
-		return MeshComponent;
-	}
-	return nullptr;
 }
 
 void AItemBase::Interact_Implementation(APlayerController* Interactor)
@@ -324,4 +385,48 @@ bool AItemBase::Internal_TryPickupByPlayer(APlayerController* PlayerController)
 	UE_LOG(LogTemp, Warning, TEXT("[AItemBase::Internal_TryPickupByPlayer] 인벤토리가 가득참: %s"),
 		*ItemRowName.ToString());
 	return false;
+}
+
+void AItemBase::ApplyCollisionSettings()
+{
+	UPrimitiveComponent* ActiveMeshComp = GetActiveMeshComponent();
+	if (!ActiveMeshComp)
+	{
+		LOG_Item_WARNING(TEXT("[ApplyCollisionSettings] 활성화된 메시 컴포넌트가 없음: %s"), *GetName());
+		return;
+	}
+
+	LOG_Item_WARNING(TEXT("[ApplyCollisionSettings] === 시작 === 아이템: %s, 메시 타입: %s, bIgnoreCharacterCollision: %s"),
+		*GetName(),
+		bUsingSkeletalMesh ? TEXT("SkeletalMesh") : TEXT("StaticMesh"),
+		bIgnoreCharacterCollision ? TEXT("true") : TEXT("false"));
+
+	// 통합된 충돌 설정
+	ActiveMeshComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	ActiveMeshComp->SetCollisionObjectType(ECC_WorldDynamic);
+	ActiveMeshComp->SetCollisionResponseToAllChannels(ECR_Block);
+
+	if (bIgnoreCharacterCollision)
+	{
+		ActiveMeshComp->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+		LOG_Item_WARNING(TEXT("[ApplyCollisionSettings] 캐릭터 충돌 무시 설정 적용: %s"), *GetName());
+	}
+	else
+	{
+		ActiveMeshComp->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
+		LOG_Item_WARNING(TEXT("[ApplyCollisionSettings] 캐릭터 충돌 활성화 설정 적용: %s"), *GetName());
+	}
+
+	// 기타 채널 설정
+	ActiveMeshComp->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
+	ActiveMeshComp->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);
+	ActiveMeshComp->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+	ActiveMeshComp->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+
+	// 설정 후 검증
+	ECollisionResponse PawnResponse = ActiveMeshComp->GetCollisionResponseToChannel(ECC_Pawn);
+	LOG_Item_WARNING(TEXT("[ApplyCollisionSettings] ✅ 설정 완료 - 아이템: %s, 메시 타입: %s, Pawn 채널 응답: %d"),
+		*GetName(),
+		bUsingSkeletalMesh ? TEXT("SkeletalMesh") : TEXT("StaticMesh"),
+		(int32)PawnResponse);
 }
