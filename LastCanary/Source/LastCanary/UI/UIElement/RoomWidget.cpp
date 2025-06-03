@@ -38,16 +38,16 @@ void URoomWidget::NativeDestruct()
 void URoomWidget::CreatePlayerSlots()
 {
 	// 기존 슬롯 지우기
-	if (PlayerListContainer)
+	if (!IsValid(PlayerListContainer))
 	{
-		LOG_Server_ERROR("Player List Container Is Null!!");
+		LOG_Server_ERROR(TEXT("Player List Container Is Null!!"));
 		return;
 	}
 
 	PlayerListContainer->ClearChildren();
 	PlayerSlots.Empty();
 
-	// 슬롯 개수만큼 TextBlock 생성
+	// 슬롯 개수만큼 Player Slot 생성
 	for (int32 i = 0; i < MaxPlayerNum; ++i)
 	{
 		UPlayerSlot* NewPlayerSlot = CreateWidget<UPlayerSlot>(this->GetOwningPlayer(), PlayerSlotClass);
