@@ -862,7 +862,6 @@ void ABaseCharacter::Handle_ViewMode()
 	if (bIsFPSCamera)
 	{
 		bIsFPSCamera = !bIsFPSCamera;
-		SpringArm->AttachToComponent(RootComponent, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
 		SpringArm->TargetArmLength = 400.0f;
 	}
 	else
@@ -955,9 +954,18 @@ void ABaseCharacter::TraceInteractableActor()
 	{
 		return;
 	}
-
-	FVector Start = ViewLocation;
-	FVector End = Start + (ViewRotation.Vector() * TraceDistance);
+	FVector Start;
+	FVector End;
+	if (bIsFPSCamera)
+	{
+		Start = ViewLocation;
+		End = Start + (ViewRotation.Vector() * TraceDistance);
+	}
+	else
+	{
+		Start = ViewLocation;
+		End = Start + (ViewRotation.Vector() * TraceDistance * 3);
+	}
 
 	FHitResult Hit;
 	FCollisionQueryParams Params;

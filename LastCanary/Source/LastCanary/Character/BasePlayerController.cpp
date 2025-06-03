@@ -1074,5 +1074,12 @@ void ABasePlayerController::InteractGimmick(ALCBaseGimmick* Target)
 
 void ABasePlayerController::Server_InteractWithGimmick_Implementation(ALCBaseGimmick* Target)
 {
-	Target->Server_ActivateGimmick();
+	if (!IsValid(Target))
+	{
+		return;
+	}
+
+	Target->SetOwner(this);
+
+	IInteractableInterface::Execute_Interact(Target, this);
 }
