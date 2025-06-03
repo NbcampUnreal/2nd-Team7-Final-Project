@@ -35,5 +35,6 @@ public:
 	TArray<APlayerController*> AllPlayerControllers;
 	TArray<FSessionPlayerInfo> SessionPlayerInfos;
 
+	bool IsAllPlayersReady() const;
 
 };

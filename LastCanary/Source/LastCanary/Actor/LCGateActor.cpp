@@ -2,6 +2,7 @@
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "GameFramework/PlayerController.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "Framework/GameMode/BaseGameMode.h"
 
 #include "LastCanary.h"
 
@@ -31,6 +32,23 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 		LOG_Frame_WARNING(TEXT("Gate interaction failed: no controller."));
 		return;
 	}
+
+	if (ABaseGameMode* BaseGM = Cast<ABaseGameMode>(GetWorld()->GetAuthGameMode()))
+	{
+		if (!BaseGM->IsAllPlayersReady())
+		{
+			LOG_Server_ERROR(TEXT("All Client is Not Ready!!"));
+			return;
+		}
+	}
+	else
+	{
+		LOG_Server_ERROR(TEXT("Cast Fail GameMode : Not Server!!"));
+		return;
+	}
+
+	LOG_Server_WARNING(TEXT("All Client is Ready!! Try To Server Travel"));
+
 
 	if (ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 	{

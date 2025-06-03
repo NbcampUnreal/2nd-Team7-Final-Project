@@ -154,3 +154,18 @@ void ABaseGameMode::TravelMapByPath(FString Path)
 
 	GetWorld()->ServerTravel(TravelURL, true);
 }
+
+bool ABaseGameMode::IsAllPlayersReady() const
+{
+	if (SessionPlayerInfos.Num() == 0)
+		return false;
+
+	for (const FSessionPlayerInfo& Info : SessionPlayerInfos)
+	{
+		if (!Info.bIsPlayerReady)
+		{
+			return false;
+		}
+	}
+	return true;
+}
