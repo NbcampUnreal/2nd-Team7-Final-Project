@@ -76,11 +76,6 @@ void ALCPlayerController::ClientWasKicked_Implementation_Implementation(const FT
 }
 
 
-void ALCPlayerController::Client_UpdatePlayers_Implementation()
-{
-
-}
-
 void ALCPlayerController::StartGame(FString SoftPath)
 {
     if (!HasAuthority()) return;
