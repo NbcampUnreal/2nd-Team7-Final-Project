@@ -35,4 +35,10 @@ private:
 	void OnOptionButtonClicked();
 	UFUNCTION()
 	void OnExitButtonClicked();
+
+public:
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Session")
+	void DestroySessionAndGoTitleMenu();
+
+	virtual void DestroySessionAndGoTitleMenu_Implementation();
 };
