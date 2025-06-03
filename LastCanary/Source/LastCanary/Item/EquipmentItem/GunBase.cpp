@@ -5,6 +5,7 @@
 #include "Engine/DamageEvents.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Net/UnrealNetwork.h"
+#include "GameplayTagAssetInterface.h"
 #include "LastCanary.h"
 
 AGunBase::AGunBase()
@@ -120,41 +121,6 @@ void AGunBase::HandleFire()
 bool AGunBase::PerformLineTrace(FHitResult& OutHit, FVector& StartLocation, FVector& EndLocation)
 {
     AActor* OwnerActor = GetOwner();
-
-    //if (!OwnerActor)
-    //{
-    //    APlayerController* PC = GetWorld()->GetFirstPlayerController();
-    //    if (PC)
-    //    {
-    //        OwnerActor = Cast<ABaseCharacter>(PC->GetPawn());
-    //    }
-    //}
-
-    //if (!OwnerActor)
-    //{
-    //    LOG_Item_WARNING(TEXT("PerformLineTrace: Owner is null, using fallback for debug"));
-
-    //    // 임시 시작점과 방향 설정 (디버그용)
-    //    StartLocation = GetActorLocation();
-    //    FVector ForwardVector = GetActorForwardVector();
-    //    EndLocation = StartLocation + ForwardVector * FireRange;
-
-    //    FCollisionQueryParams QueryParams;
-    //    QueryParams.AddIgnoredActor(this);
-    //    QueryParams.bTraceComplex = true;
-
-    //    bool bHit = GetWorld()->LineTraceSingleByChannel(OutHit, StartLocation, EndLocation, ECC_Visibility, QueryParams);
-
-    //    // 디버그 라인 그리기
-    //    if (bDrawDebugLine) {
-    //        DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Yellow, false, DebugDrawDuration, 0, 2.0f);
-    //        LOG_Item_WARNING(TEXT("PerformLineTrace: Drawing fallback debug line"));
-    //    }
-
-    //    return bHit;
-    //}
-
-    // Owner 정보 상세 로그
     if (OwnerActor)
     {
         LOG_Item_WARNING(TEXT("PerformLineTrace: Owner exists - Name: %s, Class: %s"),
@@ -268,13 +234,38 @@ void AGunBase::ProcessHit(const FHitResult& HitResult, const FVector& StartLocat
 
     if (HitActor && HitActor != this && HitActor != GetOwner())
     {
-        float AppliedDamage = BaseDamage;
-        LOG_Item_WARNING(TEXT("ProcessHit: Applying %.1f damage to %s"), AppliedDamage, *HitActor->GetName());
+        // GameplayTag로 적 캐릭터 판별
+        static const FGameplayTag EnemyTag = FGameplayTag::RequestGameplayTag(TEXT("Character.Enemy"));
 
-        FPointDamageEvent DamageEvent(AppliedDamage, HitResult, (HitResult.ImpactPoint - StartLocation).GetSafeNormal(), nullptr);
-        float ActualDamage = HitActor->TakeDamage(AppliedDamage, DamageEvent, GetInstigatorController(), this);
+        // ⭐ 수정된 부분: GameplayTagAssetInterface 사용
+        IGameplayTagAssetInterface* TagInterface = Cast<IGameplayTagAssetInterface>(HitActor);
+        if (TagInterface && TagInterface->HasMatchingGameplayTag(EnemyTag))
+        {
+            float AppliedDamage = BaseDamage;
+            LOG_Item_WARNING(TEXT("ProcessHit: Applying %.1f damage to enemy %s"),
+                AppliedDamage, *HitActor->GetName());
 
-        LOG_Item_WARNING(TEXT("ProcessHit: Actual damage applied = %.1f"), ActualDamage);
+            FPointDamageEvent DamageEvent(
+                AppliedDamage,
+                HitResult,
+                (HitResult.ImpactPoint - StartLocation).GetSafeNormal(),
+                nullptr
+            );
+
+            float ActualDamage = HitActor->TakeDamage(
+                AppliedDamage,
+                DamageEvent,
+                GetInstigatorController(),
+                this
+            );
+
+            LOG_Item_WARNING(TEXT("ProcessHit: Actual damage applied = %.1f"), ActualDamage);
+        }
+        else
+        {
+            LOG_Item_WARNING(TEXT("ProcessHit: Hit non-enemy actor %s. No damage applied"),
+                *HitActor->GetName());
+        }
     }
 }
 
