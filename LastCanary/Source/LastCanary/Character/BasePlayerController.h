@@ -33,6 +33,7 @@ private:
 	UFUNCTION()
 	void OnRep_SpawnedPlayerDrone();
 
+protected:
 	UEnhancedInputComponent* EnhancedInput;
 	UInputMappingContext* CurrentIMC;
 public:
@@ -62,7 +63,7 @@ public:
 	void ChangeInputMappingContext(UInputMappingContext* IMC);
 
 	virtual void BeginPlay() override;
-	void InitInputComponent();
+	virtual void InitInputComponent();
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
 	TObjectPtr<UInputMappingContext> InputMappingContext;
