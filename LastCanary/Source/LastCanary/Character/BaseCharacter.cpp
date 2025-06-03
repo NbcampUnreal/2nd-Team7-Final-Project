@@ -186,15 +186,7 @@ void ABaseCharacter::NotifyControllerChanged()
 		ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 		if (IsValid(MyPlayerState))
 		{
-			SetMovementSetting(
-				MyPlayerState->WalkForwardSpeed,
-				MyPlayerState->WalkBackwardSpeed,
-				MyPlayerState->RunForwardSpeed,
-				MyPlayerState->RunBackwardSpeed,
-				MyPlayerState->SprintSpeed,
-				MyPlayerState->CrouchSpeed,
-				MyPlayerState->JumpZVelocity
-			);
+			SetMovementSetting();
 			UE_LOG(LogTemp, Warning, TEXT("플레이어 무브먼트 세팅 초기화 성공"));
 		}
 		else
@@ -585,7 +577,7 @@ void ABaseCharacter::ConsumeStamina()
 		return;
 	}
 	float CurrentPlayerSpeed = GetPlayerMovementSpeed();
-	if (CurrentPlayerSpeed <= MyPlayerState->InitialStats.RunSpeed + 50.0f)
+	if (CurrentPlayerSpeed <= MyPlayerState->RunSpeed + 10.0f)
 	{
 		//일단 회복 시키기는 해
 		StartStaminaRecoverAfterDelay();
@@ -1360,8 +1352,19 @@ void ABaseCharacter::HandlePlayerDeath()
 		return;
 	}
 	PC->OnCharacterDied();
+	Multicast_SetPlayerInGameState();
 	UnequipCurrentItem();
 	StartRagdolling();
+}
+
+void ABaseCharacter::Multicast_SetPlayerInGameState_Implementation()
+{
+	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
+	if (!IsValid(MyPlayerState))
+	{
+		return;
+	}
+	MyPlayerState->CurrentState = EPlayerState::Dead;
 }
 
 float ABaseCharacter::CalculateTakeDamage(float DamageAmount)
@@ -1421,39 +1424,64 @@ EPlayerState ABaseCharacter::CheckPlayerCurrentState()
 }
 
 
-void ABaseCharacter::Client_SetMovementSetting_Implementation(float _WalkForwardSpeed, float _WalkBackwardSpeed, float _RunForwardSpeed, float _RunBackwardSpeed, float _SprintSpeed, float _CrouchSpeed, float _JumpZVelocity)
+void ABaseCharacter::Client_SetMovementSetting_Implementation()
 {
-
-	UE_LOG(LogTemp, Log, TEXT("Client_SetMovementSetting_Implementation"));
-
-	TArray<float> CalculatedSpeedArray = CalculateMovementSpeedWithWeigth(_WalkForwardSpeed, _WalkBackwardSpeed, _RunForwardSpeed, _RunBackwardSpeed, _SprintSpeed, _CrouchSpeed, _JumpZVelocity);
-	if (CalculatedSpeedArray.Num() < 7)
+	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
+	if (!IsValid(MyPlayerState))
 	{
 		return;
 	}
-	AlsCharacterMovement->SetGaitSettings(CalculatedSpeedArray[0], CalculatedSpeedArray[1], CalculatedSpeedArray[2], CalculatedSpeedArray[3], CalculatedSpeedArray[4], CalculatedSpeedArray[5]);
-	AlsCharacterMovement->JumpZVelocity = CalculatedSpeedArray[6];
+
+	TArray<float> CalculatedSpeedArray = CalculateMovementSpeedWithWeigth();
+	if (CalculatedSpeedArray.Num() < 5)
+	{
+		return;
+	}
+
+
+	//스테이트에 바뀐 값 저장
+	MyPlayerState->WalkSpeed = CalculatedSpeedArray[0];
+	MyPlayerState->RunSpeed = CalculatedSpeedArray[1];
+	MyPlayerState->SprintSpeed = CalculatedSpeedArray[2];
+	MyPlayerState->CrouchSpeed = CalculatedSpeedArray[3];
+	MyPlayerState->JumpZVelocity = CalculatedSpeedArray[4];
+
+	AlsCharacterMovement->SetGaitSettings(CalculatedSpeedArray[0], CalculatedSpeedArray[0], CalculatedSpeedArray[1], CalculatedSpeedArray[1], CalculatedSpeedArray[2], CalculatedSpeedArray[3]);
+	AlsCharacterMovement->JumpZVelocity = CalculatedSpeedArray[4];
 }
 
-void ABaseCharacter::SetMovementSetting(float _WalkForwardSpeed, float _WalkBackwardSpeed, float _RunForwardSpeed, float _RunBackwardSpeed, float _SprintSpeed, float _CrouchSpeed, float _JumpZVelocity)
+void ABaseCharacter::SetMovementSetting()
 {
-	UE_LOG(LogTemp, Log, TEXT("SetMovementSetting"));
 	if (HasAuthority())
 	{
-		UE_LOG(LogTemp, Log, TEXT("SetMovementSetting Has Authoity"));
-		Client_SetMovementSetting(_WalkForwardSpeed, _WalkBackwardSpeed, _RunForwardSpeed, _RunBackwardSpeed, _SprintSpeed, _CrouchSpeed, _JumpZVelocity);
+		Client_SetMovementSetting();
 	}
-	TArray<float> CalculatedSpeedArray = CalculateMovementSpeedWithWeigth(_WalkForwardSpeed, _WalkBackwardSpeed, _RunForwardSpeed, _RunBackwardSpeed, _SprintSpeed, _CrouchSpeed, _JumpZVelocity);
-	if (CalculatedSpeedArray.Num() < 7)
+
+	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
+	if (!IsValid(MyPlayerState))
 	{
 		return;
 	}
-	AlsCharacterMovement->SetGaitSettings(CalculatedSpeedArray[0], CalculatedSpeedArray[1], CalculatedSpeedArray[2], CalculatedSpeedArray[3], CalculatedSpeedArray[4], CalculatedSpeedArray[5]);
-	AlsCharacterMovement->JumpZVelocity = CalculatedSpeedArray[6];
+	
+	TArray<float> CalculatedSpeedArray = CalculateMovementSpeedWithWeigth();
+	if (CalculatedSpeedArray.Num() < 5)
+	{
+		return;
+	}
+	
+	//스테이트에 바뀐 값 저장
+	MyPlayerState->WalkSpeed = CalculatedSpeedArray[0];
+	MyPlayerState->RunSpeed = CalculatedSpeedArray[1];
+	MyPlayerState->SprintSpeed = CalculatedSpeedArray[2];
+	MyPlayerState->CrouchSpeed = CalculatedSpeedArray[3];
+	MyPlayerState->JumpZVelocity = CalculatedSpeedArray[4];
+
+	AlsCharacterMovement->SetGaitSettings(CalculatedSpeedArray[0], CalculatedSpeedArray[0], CalculatedSpeedArray[1], CalculatedSpeedArray[1], CalculatedSpeedArray[2], CalculatedSpeedArray[3]);
+	AlsCharacterMovement->JumpZVelocity = CalculatedSpeedArray[4];
 	
 }
 
-TArray<float> ABaseCharacter::CalculateMovementSpeedWithWeigth(float _WalkForwardSpeed, float _WalkBackwardSpeed, float _RunForwardSpeed, float _RunBackwardSpeed, float _SprintSpeed, float _CrouchSpeed, float _JumpZVelocity)
+TArray<float> ABaseCharacter::CalculateMovementSpeedWithWeigth()
 {
 	TArray<float> Calculated;
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
@@ -1462,20 +1490,14 @@ TArray<float> ABaseCharacter::CalculateMovementSpeedWithWeigth(float _WalkForwar
 		return Calculated;
 	}
 	float MyWeight = GetTotalCarryingWeight() * MyPlayerState->WeightSlowdownMultiplier;
-	float CalculatedWalkForwardSpeed = _WalkForwardSpeed - MyWeight;
-	float CalculatedWalkBackwardSpeed = _WalkBackwardSpeed - MyWeight;
-	float CalculatedRunForwardSpeed = _RunForwardSpeed - MyWeight;
-	float CalculatedRunBackwardSpeed = _RunBackwardSpeed - MyWeight;
-	float CalculatedSprintSpeed = _SprintSpeed - MyWeight;
-	float CalculatedCrouchSpeed = _CrouchSpeed - MyWeight / 2;
-	float CalculatedJumpZVelocity = _JumpZVelocity - MyWeight / 5;
+	float CalculatedWalkSpeed = MyPlayerState->DefaultWalkSpeed - MyWeight;
+	float CalculatedRunSpeed = MyPlayerState->DefaultRunSpeed - MyWeight;
+	float CalculatedSprintSpeed = MyPlayerState->DefaultSprintSpeed - MyWeight;
+	float CalculatedCrouchSpeed = MyPlayerState->DefaultCrouchSpeed - MyWeight / 2;
+	float CalculatedJumpZVelocity = MyPlayerState->DefaultJumpZVelocity - MyWeight / 5;
 
-	
-	
-	Calculated.Add(CalculatedWalkForwardSpeed);
-	Calculated.Add(CalculatedWalkBackwardSpeed);
-	Calculated.Add(CalculatedRunForwardSpeed);
-	Calculated.Add(CalculatedRunBackwardSpeed);
+	Calculated.Add(CalculatedWalkSpeed);
+	Calculated.Add(CalculatedRunSpeed);
 	Calculated.Add(CalculatedSprintSpeed);
 	Calculated.Add(CalculatedCrouchSpeed);
 	Calculated.Add(CalculatedJumpZVelocity);
@@ -2028,18 +2050,9 @@ void ABaseCharacter::OnInventoryWeightChanged(float WeightDifference)
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (IsValid(MyPlayerState))
 	{
-		SetMovementSetting(
-			MyPlayerState->WalkForwardSpeed,
-			MyPlayerState->WalkBackwardSpeed,
-			MyPlayerState->RunForwardSpeed,
-			MyPlayerState->RunBackwardSpeed,
-			MyPlayerState->SprintSpeed,
-			MyPlayerState->CrouchSpeed,
-			MyPlayerState->JumpZVelocity
-		);
+		SetMovementSetting();
 		UE_LOG(LogTemp, Warning, TEXT("플레이어 무브먼트 세팅 초기화 성공"));
 	}
-
 }
 
 float ABaseCharacter::GetTotalCarryingWeight() const

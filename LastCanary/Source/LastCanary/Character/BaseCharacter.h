@@ -258,6 +258,11 @@ public:
 	/*Player Damage, Death*/
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	void HandlePlayerDeath();
+	
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_SetPlayerInGameState();
+	void Multicast_SetPlayerInGameState_Implementation();
+
 	virtual void GetFallDamage(float Velocity) override;
 
 	float CalculateTakeDamage(float DamageAmount);
@@ -316,11 +321,11 @@ public:
 	EPlayerState CheckPlayerCurrentState();
 
 	UFUNCTION(Client, Reliable)
-	void Client_SetMovementSetting(float _WalkForwardSpeed, float _WalkBackwardSpeed, float _RunForwardSpeed, float _RunBackwardSpeed, float _SprintSpeed, float _CrouchSpeed, float _JumpZVelocity);
-	void Client_SetMovementSetting_Implementation(float _WalkForwardSpeed, float _WalkBackwardSpeed, float _RunForwardSpeed, float _RunBackwardSpeed, float _SprintSpeed, float _CrouchSpeed, float _JumpZVelocity);
+	void Client_SetMovementSetting();
+	void Client_SetMovementSetting_Implementation();
 
-	void SetMovementSetting(float _WalkForwardSpeed, float _WalkBackwardSpeed, float _RunForwardSpeed, float _RunBackwardSpeed, float _SprintSpeed, float _CrouchSpeed, float _JumpZVelocity);
-	TArray<float> CalculateMovementSpeedWithWeigth(float _WalkForwardSpeed, float _WalkBackwardSpeed, float _RunForwardSpeed, float _RunBackwardSpeed, float _SprintSpeed, float _CrouchSpeed, float _JumpZVelocity);
+	void SetMovementSetting();
+	TArray<float> CalculateMovementSpeedWithWeigth();
 	void ResetMovementSetting();
 
 

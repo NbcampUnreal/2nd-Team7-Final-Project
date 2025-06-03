@@ -22,7 +22,7 @@ protected:
 	bool bAlreadyInitialized;
 
 public:
-	// Stats
+	////////* Default Stats *////////
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
 	FPlayerStats InitialStats;
 	
@@ -30,40 +30,34 @@ public:
 	float MaxHP { InitialStats.MaxHP};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
-	float WalkForwardSpeed{ InitialStats.WalkSpeed };
+	float DefaultWalkSpeed{ InitialStats.WalkSpeed };
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
-	float WalkBackwardSpeed{ InitialStats.WalkSpeed };
+	float DefaultRunSpeed{ InitialStats.RunSpeed };
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
-	float RunForwardSpeed{ InitialStats.RunSpeed };
+	float DefaultSprintSpeed{ InitialStats.SptintSpeed };
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
-	float RunBackwardSpeed{ InitialStats.RunSpeed };
+	float DefaultCrouchSpeed{ InitialStats.CrouchSpeed };
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
-	float SprintSpeed{ InitialStats.SptintSpeed };
+	float DefaultJumpZVelocity{ InitialStats.JumpPower };
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
-	float CrouchSpeed{ InitialStats.CrouchSpeed };
+	float DefaultExhaustionRecoveryThreshold{ InitialStats.ExhaustionRecoveryThreshold };
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
-	float JumpZVelocity{ InitialStats.JumpPower };
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
-	float ExhaustionRecoveryThreshold{ InitialStats.ExhaustionRecoveryThreshold };
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
-	float StaminaDrainRate { InitialStats.StaminaDrainRate }; // 초당 15 소모
+	float DefaultStaminaDrainRate { InitialStats.StaminaDrainRate }; // 초당 15 소모
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
-	float StaminaRecoveryRate { InitialStats.StaminaRecoveryRate }; // 초당 30 회복
+	float DefaultStaminaRecoveryRate { InitialStats.StaminaRecoveryRate }; // 초당 30 회복
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
-	float RecoverDelayTime{ InitialStats.RecoverDelayTime };
+	float DefaultRecoverDelayTime{ InitialStats.RecoverDelayTime };
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")	
-	float JumpStaminaCost{ InitialStats.JumpStaminaCost };
+	float DefaultJumpStaminaCost{ InitialStats.JumpStaminaCost };
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")	
 	bool bInfiniteStamina { false };
@@ -76,6 +70,41 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	float WeightSlowdownMultiplier{ InitialStats.WeightSlowdownMultiplier };
+
+	////////* InGame Stats *////////
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float WalkSpeed{ InitialStats.WalkSpeed };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float RunSpeed{ InitialStats.RunSpeed };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float SprintSpeed{ InitialStats.SptintSpeed };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float CrouchSpeed{ InitialStats.CrouchSpeed };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float JumpZVelocity{ InitialStats.JumpPower };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float ExhaustionRecoveryThreshold{ InitialStats.ExhaustionRecoveryThreshold };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float StaminaDrainRate{ InitialStats.StaminaDrainRate }; // 초당 15 소모
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float StaminaRecoveryRate{ InitialStats.StaminaRecoveryRate }; // 초당 30 회복
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float RecoverDelayTime{ InitialStats.RecoverDelayTime };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float JumpStaminaCost{ InitialStats.JumpStaminaCost };
+
+
+
+
 
 	// State
 	UPROPERTY(ReplicatedUsing = OnRep_CurrentState, VisibleAnywhere, BlueprintReadOnly, Category = "State")

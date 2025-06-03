@@ -86,17 +86,9 @@ void ABasePlayerController::Client_OnCharacterDied_Implementation()
 			PlayerCharacter->SetViewMode(AlsViewModeTags::ThirdPerson);
 		}
 	}
-	ABasePlayerState* PS = GetPlayerState<ABasePlayerState>();
-	if (!IsValid(PS))
-	{
-		return;
-	}
-	PS->CurrentState = EPlayerState::Dead;
-
 	//CreateWidget();
 	//addtoviewport
 }
-
 APawn* ABasePlayerController::GetMyPawn()
 {
 	return CurrentPossessedPawn;
@@ -599,7 +591,6 @@ void ABasePlayerController::Input_OnStrafe(const FInputActionValue& ActionValue)
 
 void ABasePlayerController::SpectatePreviousPlayer()
 {
-	UE_LOG(LogTemp, Warning, TEXT("PreviousPlayer"));
 	TArray<ABasePlayerState*> PlayerList = GetPlayerArray();
 	int32 PlayerListLength = PlayerList.Num();
 	if (PlayerListLength <= 0)
@@ -616,7 +607,6 @@ void ABasePlayerController::SpectatePreviousPlayer()
 }
 void ABasePlayerController::SpectateNextPlayer()
 {
-	UE_LOG(LogTemp, Warning, TEXT("NextPlayer"));
 	TArray<ABasePlayerState*> PlayerList = GetPlayerArray();
 	int32 PlayerListLength = PlayerList.Num();
 	if (PlayerListLength <= 0)
@@ -630,22 +620,41 @@ void ABasePlayerController::SpectateNextPlayer()
 }
 TArray<ABasePlayerState*> ABasePlayerController::GetPlayerArray()
 {
-	SpectatorTargets.Empty();
 	ALCGameState* GameState = GetWorld()->GetGameState<ALCGameState>();
 	if (!IsValid(GameState))
 	{
 		return SpectatorTargets;
 	}
 
-	for (APlayerState* PS : GameState->PlayerArray)
+	//아마 처음 죽었을 때 이 분기를 타게 될 것임
+	if (SpectatorTargets.IsEmpty())
 	{
-		ABasePlayerState* MyPS = Cast<ABasePlayerState>(PS);
-		if (MyPS && MyPS->CurrentState != EPlayerState::Dead)  // 살아있는 플레이어 필터
+		for (APlayerState* PS : GameState->PlayerArray)
 		{
-			SpectatorTargets.Add(MyPS);
+			ABasePlayerState* MyPS = Cast<ABasePlayerState>(PS);
+			if (MyPS && MyPS->CurrentState != EPlayerState::Dead)  // 살아있는 플레이어 필터
+			{
+				SpectatorTargets.Add(MyPS);
+			}
 		}
+		return SpectatorTargets;
 	}
-	return SpectatorTargets;
+	else
+	{
+		TArray<ABasePlayerState*> ToRemove;
+		for (ABasePlayerState* MyPS : SpectatorTargets)
+		{
+			if (MyPS && MyPS->CurrentState == EPlayerState::Dead)
+			{
+				ToRemove.Add(MyPS);
+			}
+		}
+		for (ABasePlayerState* MyPS : ToRemove)
+		{
+			SpectatorTargets.Remove(MyPS);
+		}
+		return SpectatorTargets;
+	}
 }
 
 

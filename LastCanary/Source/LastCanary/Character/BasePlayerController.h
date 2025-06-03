@@ -233,15 +233,9 @@ public:
 	void Client_OnCharacterDied();
 	void Client_OnCharacterDied_Implementation();
 
-
-
-
-	//SpectatorMode
-	UFUNCTION(BlueprintImplementableEvent)
-	void TEST_CallSpectatorWidget();
-
 	UPROPERTY(BlueprintReadWrite)
 	int32 CurrentSpectatedCharacterIndex = 0;
+
 
 	void SpectateNextPlayer();
 	void SpectatePreviousPlayer();
