@@ -26,15 +26,6 @@ void ABasePlayerController::BeginPlay()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("서버 또는 다른 클라이언트의 컨트롤러입니다."));
 	}
-
-	if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
-	{
-		PS->OnDamaged.AddDynamic(this, &ABasePlayerController::OnCharacterDamaged);
-		PS->OnDied.AddDynamic(this, &ABasePlayerController::OnCharacterDied);
-		PS->OnExhausted.AddDynamic(this, &ABasePlayerController::Complete_OnSprint);
-		PS->OnStaminaChanged.AddDynamic(this, &ABasePlayerController::OnStaminaUpdated);
-	}
-
 	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 	{
 		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
@@ -69,18 +60,8 @@ void ABasePlayerController::SetupInputComponent()
 	//InitInputComponent();
 }
 
-void ABasePlayerController::OnCharacterDamaged(float CurrentHP)
-{
-	// HUD 갱신하거나 효과 표시 등
-	UE_LOG(LogTemp, Warning, TEXT("Player took damage!"));
-	TestHP = CurrentHP;
-}
-
 void ABasePlayerController::OnCharacterDied()
 {
-	//서버에서 실행
-	// HUD 갱신하거나 효과 표시 등
-	UE_LOG(LogTemp, Warning, TEXT("Player die!"));	
 	//클라이언트에서 해야할 것.
 	Client_OnCharacterDied();
 }
@@ -103,9 +84,14 @@ void ABasePlayerController::Client_OnCharacterDied_Implementation()
 		if (IsValid(PlayerCharacter))
 		{
 			PlayerCharacter->SetViewMode(AlsViewModeTags::ThirdPerson);
-			PlayerCharacter->HandlePlayerDeath(); //플레이어 사망처리
 		}
 	}
+	ABasePlayerState* PS = GetPlayerState<ABasePlayerState>();
+	if (!IsValid(PS))
+	{
+		return;
+	}
+	PS->CurrentState = EPlayerState::Dead;
 
 	//CreateWidget();
 	//addtoviewport
@@ -248,7 +234,7 @@ void ABasePlayerController::InitInputComponent()
 		EnhancedInput->BindAction(MoveAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnMove);
 
 		EnhancedInput->BindAction(SprintAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnSprint);
-		EnhancedInput->BindAction(SprintAction, ETriggerEvent::Canceled, this, &ABasePlayerController::End_OnSprint);
+		EnhancedInput->BindAction(SprintAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnSprint);
 
 		EnhancedInput->BindAction(WalkAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnWalk);
 		EnhancedInput->BindAction(WalkAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnWalk);
@@ -267,7 +253,6 @@ void ABasePlayerController::InitInputComponent()
 		EnhancedInput->BindAction(InteractAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnInteract);
 
 		EnhancedInput->BindAction(StrafeAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnStrafe);
-		EnhancedInput->BindAction(StrafeAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnStrafe);
 
 		EnhancedInput->BindAction(ItemUseAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_OnItemUse);
 
@@ -366,7 +351,6 @@ void ABasePlayerController::Input_OnMove(const FInputActionValue& ActionValue)
 
 void ABasePlayerController::Input_OnSprint(const FInputActionValue& ActionValue)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Sprint Triggered"));
 	if (!IsValid(CurrentPossessedPawn))
 	{
 		return;
@@ -378,103 +362,13 @@ void ABasePlayerController::Input_OnSprint(const FInputActionValue& ActionValue)
 		if (IsValid(PlayerCharacter))
 		{
 			PlayerCharacter->Handle_Sprint(ActionValue);
-			if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
-			{
-				if (PlayerCharacter->GetDesiredGait() != AlsGaitTags::Sprinting)
-				{
-					bIsSprinting = false;
-					PS->StopStaminaDrain();
-					PS->StartStaminaRecoverAfterDelay();
-				}
-				else
-				{
-					if (PS->GetPlayerMovementState() == ECharacterMovementState::Exhausted) // 스태미나 확인 후 Running 상태로 전환
-					{
-						PlayerCharacter->SetDesiredGait(AlsGaitTags::Running);
-						return;
-					}
-					PS->StopStaminaRecovery();
-					PS->StopStaminaRecoverAfterDelay();
-					PS->StartStaminaDrain();
-
-					bIsSprinting = true;
-				}
-			}
 		}
 	}
 }
-
-void ABasePlayerController::End_OnSprint(const FInputActionValue& ActionValue)
-{
-	UE_LOG(LogTemp, Warning, TEXT("Sprint End"));
-	if (!IsValid(CurrentPossessedPawn))
-	{
-		return;
-	}
-	// APawn 타입에 맞는 처리를 실행
-	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
-	{
-		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-		if (IsValid(PlayerCharacter))
-		{
-			PlayerCharacter->Handle_Sprint(ActionValue);
-			if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
-			{
-				if (bIsSprinting)
-				{
-					bIsSprinting = false;
-					PS->StopStaminaDrain();
-					PS->StartStaminaRecoverAfterDelay();
-				}
-				else
-				{
-					if (PS->GetPlayerMovementState() == ECharacterMovementState::Exhausted) // 스태미나 확인 후 Running 상태로 전환
-					{
-						PlayerCharacter->SetDesiredGait(AlsGaitTags::Running);
-						return;
-					}
-					PS->StopStaminaRecovery();
-					PS->StopStaminaRecoverAfterDelay();
-					PS->StartStaminaDrain();
-
-					bIsSprinting = true;
-				}
-			}
-		}
-	}
-}
-
-// 플레이어의 스태미너가 다 닳았을 때 처리되는 함수
-void ABasePlayerController::Complete_OnSprint()
-{
-	UE_LOG(LogTemp, Warning, TEXT("Sprint Complete"));
-	if (!IsValid(CurrentPossessedPawn))
-	{
-		return;
-	}
-
-	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
-	{
-		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-		if (IsValid(PlayerCharacter))
-		{
-			//플레이어의 상태를 바꿈으로써 강제로 달리기 멈춤
-			PlayerCharacter->SetDesiredGait(AlsGaitTags::Running);
-			if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
-			{
-				//스태미너 소비 중지, 스태미너 회복
-				PS->SetPlayerMovementState(ECharacterMovementState::Walking);
-				PS->StopStaminaDrain();
-				PS->StartStaminaRecoverAfterDelay();
-			}
-		}
-	}
-}
-
 
 void ABasePlayerController::Input_OnWalk(const FInputActionValue& ActionValue)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Walk "));
+	UE_LOG(LogTemp, Warning, TEXT("Walk"));
 	
 	if (!IsValid(CurrentPossessedPawn))
 	{
@@ -567,10 +461,6 @@ void ABasePlayerController::Input_OnCrouch(const FInputActionValue& ActionValue)
 
 void ABasePlayerController::Input_OnJump(const FInputActionValue& ActionValue)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Jump"));
-	const float Value = ActionValue.Get<float>();
-
-	UE_LOG(LogTemp, Log, TEXT("Input_OnJump: Value = %.2f"), Value);
 	if (!IsValid(CurrentPossessedPawn))
 	{
 		return;
@@ -709,6 +599,7 @@ void ABasePlayerController::Input_OnStrafe(const FInputActionValue& ActionValue)
 
 void ABasePlayerController::SpectatePreviousPlayer()
 {
+	UE_LOG(LogTemp, Warning, TEXT("PreviousPlayer"));
 	TArray<ABasePlayerState*> PlayerList = GetPlayerArray();
 	int32 PlayerListLength = PlayerList.Num();
 	if (PlayerListLength <= 0)
@@ -725,6 +616,7 @@ void ABasePlayerController::SpectatePreviousPlayer()
 }
 void ABasePlayerController::SpectateNextPlayer()
 {
+	UE_LOG(LogTemp, Warning, TEXT("NextPlayer"));
 	TArray<ABasePlayerState*> PlayerList = GetPlayerArray();
 	int32 PlayerListLength = PlayerList.Num();
 	if (PlayerListLength <= 0)
@@ -1034,13 +926,6 @@ ABaseCharacter* ABasePlayerController::GetControlledBaseCharacter() const
 }
 
 
-
-//TestFunction 추후 삭제
-void ABasePlayerController::OnStaminaUpdated(float NewStamina)
-{
-	TestStamina = NewStamina;
-}
-
 void ABasePlayerController::SetHardLandStateToPlayerState(bool flag)
 {
 	if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
@@ -1087,45 +972,6 @@ void ABasePlayerController::ApplyRecoilStep()
 		RecoilStepYaw = 0.0f;
 		GetWorld()->GetTimerManager().ClearTimer(RecoilTimerHandle);
 	}
-}
-
-
-void ABasePlayerController::SetPlayerMovementSetting()
-{
-	UE_LOG(LogTemp, Warning, TEXT("SetPlayerMovementSetting"));
-	if (!IsValid(CurrentPossessedPawn))
-	{
-		return;
-	}
-	// APawn 타입에 맞는 처리를 실행
-	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
-	{
-		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-		if (!IsValid(PlayerCharacter))
-		{
-			return;
-		}
-		ABasePlayerState* PS = GetPlayerState<ABasePlayerState>();
-		if (!IsValid(PS))
-		{
-			return;
-		}
-		PlayerCharacter->SetMovementSetting(PS->WalkForwardSpeed, PS->WalkBackwardSpeed, PS->RunForwardSpeed, PS->RunBackwardSpeed, PS->SprintSpeed);
-	}
-}
-
-void ABasePlayerController::ChangePlayerMovementSetting(float _WalkForwardSpeed, float _WalkBackwardSpeed, float _RunForwardSpeed, float _RunBackwardSpeed, float _SprintSpeed)
-{
-	ABasePlayerState* PS = GetPlayerState<ABasePlayerState>();
-	if (!IsValid(PS))
-	{
-		return;
-	}
-	PS->WalkForwardSpeed = _WalkForwardSpeed;
-	PS->WalkBackwardSpeed = _WalkBackwardSpeed;
-	PS->RunForwardSpeed = _RunForwardSpeed;
-	PS->RunBackwardSpeed = _RunBackwardSpeed;
-	PS->SprintSpeed = _SprintSpeed;
 }
 
 void ABasePlayerController::Input_DroneExit()

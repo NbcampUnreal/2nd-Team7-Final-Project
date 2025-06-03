@@ -39,36 +39,47 @@ struct FPlayerStats
     GENERATED_BODY()
 
 public:
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
     float MaxHP = 100.f;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
-    float WalkSpeed = 200.f;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
+    float WalkSpeed = 175.0f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
-    float RunSpeed = 600.f;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
+    float RunSpeed = 375.0f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
-    float SptintSpeed = 650.f;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
+    float SptintSpeed = 650.0f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
     float CrouchSpeed = 150.f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
-    float JumpPower = 420.f;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
+    float JumpPower = 450.0f;
 
     //스태미나 관련 추가
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stamina")
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stamina")
     float MaxStamina = 100.f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stamina")
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stamina")
     float StaminaDrainRate = 15.f; // 초당 15 소모
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stamina")
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stamina")
     float StaminaRecoveryRate = 30.f; // 초당 30 회복
 
-    // 필요 시 탈진 상태 확인용 변수도 추가 가능
-    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Stamina")
-    bool bIsExhausted = false;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stamina")
+    float RecoverDelayTime = 3.0f;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stamina")
+    float JumpStaminaCost = 15.0f;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stamina")
+    float ExhaustionRecoveryThreshold = 30.0f;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stat")
+    float FallDamageThreshold = 1000.0f;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stat")
+    float WeightSlowdownMultiplier = 50.0f;
 };
 
 // ------------------------------
