@@ -50,6 +50,10 @@ ABaseMonsterCharacter::ABaseMonsterCharacter()
     NavInvoker->SetGenerationRadii(NavGenerationradius, NavRemovalradius);
 
     GameplayTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Character.Enemy")));
+    if (GetMesh())
+    {
+        GetMesh()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+    }
 }
 
 //void ABaseMonsterCharacter::OnAttackHit(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
