@@ -48,6 +48,8 @@ ABaseMonsterCharacter::ABaseMonsterCharacter()
 
     NavInvoker = CreateDefaultSubobject<UNavigationInvokerComponent>(TEXT("NavInvoker"));
     NavInvoker->SetGenerationRadii(NavGenerationradius, NavRemovalradius);
+
+    GameplayTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Character.Enemy")));
 }
 
 //void ABaseMonsterCharacter::OnAttackHit(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -176,4 +178,11 @@ void ABaseMonsterCharacter::EnableAttackCollider()
 void ABaseMonsterCharacter::DisableAttackCollider()
 {
     AttackCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}
+
+
+
+void ABaseMonsterCharacter::GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) const
+{
+    TagContainer = GameplayTags;
 }
