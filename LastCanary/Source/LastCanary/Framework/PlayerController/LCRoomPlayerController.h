@@ -20,17 +20,8 @@ protected:
 	virtual void BeginPlay() override;
 	virtual void PostSeamlessTravel() override;
 
-protected:
-	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	TSubclassOf<URoomWidget> RoomWidgetClass;
-	URoomWidget* RoomWidgetInstance;
-
 public:
 	void Client_UpdatePlayerList_Implementation(const TArray<FSessionPlayerInfo>& PlayerInfos) override;
-	void Client_UpdatePlayers_Implementation() override;
-
-	// 서버에서만 호출
-	//void StartGame();
 
 	UPROPERTY(EditDefaultsOnly, Category = "Shop")
 	TSubclassOf<class ALCDroneDelivery> DroneDeliveryClass;
@@ -43,7 +34,19 @@ public:
 	void Server_RequestPurchase(const TArray<FItemDropData>& DropList);
 	void Server_RequestPurchase_Implementation(const TArray<FItemDropData>& DropList);
 
+protected:
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<URoomWidget> RoomWidgetClass;
+	URoomWidget* RoomWidgetInstance;
+
+	void InitInputComponent() override;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|RoomPC", Meta = (DisplayThumbnail = false))
+	TObjectPtr<UInputAction> RoomUIAction;
+
 private:
-	void CreateAndShowRoomUI();
+	void CreateRoomWidget();
+	void ToggleShowRoomWidget();
+	bool bIsShowRoomUI = false;
+;
 	float RePeatRate = 0.1f;
 };

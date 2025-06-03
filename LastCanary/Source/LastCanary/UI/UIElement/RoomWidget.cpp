@@ -21,10 +21,8 @@ void URoomWidget::NativeConstruct()
 	{
 		InviteButton->OnClicked.AddUniqueDynamic(this, &URoomWidget::OnInviteButtonClicked);
 	}
-	if (BackButton)
-	{
-		BackButton->OnClicked.AddUniqueDynamic(this, &URoomWidget::OnBackButtonClicked);
-	}
+
+	UpdatePlayerLists(SessionPlayerInfos);
 }
 
 void URoomWidget::NativeDestruct()
@@ -35,15 +33,17 @@ void URoomWidget::NativeDestruct()
 	{
 		InviteButton->OnClicked.RemoveDynamic(this, &URoomWidget::OnInviteButtonClicked);
 	}
-	if (BackButton)
-	{
-		BackButton->OnClicked.RemoveDynamic(this, &URoomWidget::OnBackButtonClicked);
-	}
 }
 
 void URoomWidget::CreatePlayerSlots()
 {
 	// 기존 슬롯 지우기
+	if (PlayerListContainer)
+	{
+		LOG_Server_ERROR("Player List Container Is Null!!");
+		return;
+	}
+
 	PlayerListContainer->ClearChildren();
 	PlayerSlots.Empty();
 
@@ -58,31 +58,19 @@ void URoomWidget::CreatePlayerSlots()
 	}
 }
 
-
-void URoomWidget::UpdatePlayerNames()
-{
-	if (AGameStateBase* GS = UGameplayStatics::GetGameState(this))
-	{
-		const TArray<APlayerState*>& PlayerArray = GS->PlayerArray;
-
-		// 임시로 최대 4명만 표시
-		for (int32 i = 0; i < 4; ++i)
-		{
-			FString Name = TEXT("Empty Slot");
-
-			if (i < PlayerArray.Num() && PlayerArray[i])
-			{
-				Name = PlayerArray[i]->GetPlayerName();
-			}
-		}
-	}
-}
-
 void URoomWidget::UpdatePlayerLists(const TArray<FSessionPlayerInfo>& PlayerInfos)
 {
+	SessionPlayerInfos = PlayerInfos;
+
+	if (!IsInViewport())
+	{
+		return;
+	}
+
 	if (!IsValid(PlayerListContainer))
 	{
 		LOG_Server_WARNING(TEXT("PlayerList Container is Not Valid!"));
+		return;
 	}
 
 	for (int32 i = 0; i < MaxPlayerNum; i++)
@@ -105,8 +93,8 @@ void URoomWidget::OnInviteButtonClicked()
 	LOG_Frame_WARNING(TEXT("OnClick Invite Button"));
 }
 
-void URoomWidget::OnBackButtonClicked()
-{
-	LOG_Frame_WARNING(TEXT("OnClick Back Button"));
-
-}
+//void URoomWidget::OnBackButtonClicked()
+//{
+//	LOG_Frame_WARNING(TEXT("OnClick Back Button"));
+//
+//}
