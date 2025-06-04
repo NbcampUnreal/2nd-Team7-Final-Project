@@ -23,6 +23,7 @@ class ULoadingLevel;
 class UInventoryMainWidget;
 class UBackpackInventoryWidget;
 class UToolbarInventoryWidget;
+class UConfirmPopup;
 
 UCLASS(BlueprintType)
 class LASTCANARY_API ULCUIManagerSettings : public UDataAsset
@@ -58,4 +59,6 @@ public:
 	TSubclassOf<ULoadingLevel> FromBPLoadingLevelClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UInventoryMainWidget> FromBPInventoryMainUIClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UConfirmPopup> FromBPConfirmPopupClass;
 };

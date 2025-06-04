@@ -23,6 +23,7 @@ class UPopupNotice;
 class ULoadingLevel;
 class UInventoryMainWidget;
 class UPauseMenu;
+class UConfirmPopup;
 
 UENUM(BlueprintType)
 enum class ELCUIContext : uint8
@@ -56,7 +57,7 @@ public:
 	void ShowPauseMenu();
 	void HidePauseMenu();
 	bool IsPauseMenuOpen() const;
-	void ShowConfirmPopup(TFunction<void()> OnConfirm);
+	void ShowConfirmPopup(TFunction<void()> OnConfirm, const FText& Message);
 	void ShowShopPopup();
 	void HideShopPopup();
 	void ShowMapSelectPopup();
@@ -124,7 +125,7 @@ private:
 	UPROPERTY()
 	TSubclassOf<UOptionWidget> OptionWidgetClass;
 	UPROPERTY()
-	TSubclassOf<UOptionWidget> ConfirmPopupClass;
+	TSubclassOf<UConfirmPopup> ConfirmPopupClass;
 	UPROPERTY()
 	TSubclassOf<UInGameHUD> InGameHUDWidgetClass;
 	UPROPERTY()

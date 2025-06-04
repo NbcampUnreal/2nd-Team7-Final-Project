@@ -60,6 +60,11 @@ void ALCRoomPlayerController::Client_UpdatePlayerList_Implementation(const TArra
 {
 	Super::Client_UpdatePlayerList_Implementation(PlayerInfos);
 
+	UpdatePlayerList(PlayerInfos);
+}
+
+void ALCRoomPlayerController::UpdatePlayerList(const TArray<FSessionPlayerInfo>& PlayerInfos)
+{
 	if (IsValid(RoomWidgetInstance))
 	{
 		LOG_Frame_WARNING(TEXT("Try Update Player List!"));
@@ -70,7 +75,7 @@ void ALCRoomPlayerController::Client_UpdatePlayerList_Implementation(const TArra
 		LOG_Frame_WARNING(TEXT("Not Initialized Widget Instance!! Retry Update Info"));
 
 		FTimerHandle TimerHandle;
-		TWeakObjectPtr<ALCRoomPlayerController> WeakPtr = this;
+		TWeakObjectPtr<ALCRoomPlayerController> WeakPtr(this);
 		TArray<FSessionPlayerInfo> InfosCopy = PlayerInfos;
 
 		GetWorld()->GetTimerManager().SetTimer
@@ -83,7 +88,7 @@ void ALCRoomPlayerController::Client_UpdatePlayerList_Implementation(const TArra
 					if (WeakPtr->RoomWidgetInstance)
 					{
 						UE_LOG(LogTemp, Warning, TEXT("Update Lobby UI!!"));
-						WeakPtr->Client_UpdatePlayerList(InfosCopy);
+						WeakPtr->UpdatePlayerList(InfosCopy);
 					}
 				}
 			},
@@ -218,6 +223,9 @@ void ALCRoomPlayerController::CreateRoomWidget()
 		if (RoomWidgetClass)
 		{
 			RoomWidgetInstance = CreateWidget<URoomWidget>(this, RoomWidgetClass);
+			RoomWidgetInstance->CreatePlayerSlots();
+			RoomWidgetInstance->AddToViewport();
+			bIsShowRoomUI = true;
 		}
 	}
 }

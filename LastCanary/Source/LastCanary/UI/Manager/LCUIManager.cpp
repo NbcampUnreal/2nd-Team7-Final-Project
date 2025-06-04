@@ -57,6 +57,8 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			PopUpNoticeClass = Settings->FromBPPopupNoticeClass;
 			PopUpLoadingClass = Settings->FromBPPopupLoadingClass;
 			LoadingLevelClass = Settings->FromBPLoadingLevelClass;
+			ConfirmPopupClass = Settings->FromBPConfirmPopupClass;
+
 			if ((CachedTitleMenu == nullptr) && TitleMenuClass)
 			{
 				CachedTitleMenu = CreateWidget<UTitleMenu>(PlayerController, TitleMenuClass);
@@ -249,7 +251,7 @@ bool ULCUIManager::IsPauseMenuOpen() const
 	return CachedPauseMenu && CachedPauseMenu->IsInViewport();
 }
 
-void ULCUIManager::ShowConfirmPopup(TFunction<void()> OnConfirm)
+void ULCUIManager::ShowConfirmPopup(TFunction<void()> OnConfirm, const FText& Message)
 {
 	if (OwningPlayer == nullptr)
 	{
@@ -269,7 +271,7 @@ void ULCUIManager::ShowConfirmPopup(TFunction<void()> OnConfirm)
 	UConfirmPopup* ConfirmPopup = CreateWidget<UConfirmPopup>(OwningPlayer, ConfirmPopupClass);
 	if (ConfirmPopup)
 	{
-		ConfirmPopup->Init(MoveTemp(OnConfirm));
+		ConfirmPopup->Init(MoveTemp(OnConfirm), Message);
 		ConfirmPopup->AddToViewport(10);
 	}
 }

@@ -50,7 +50,7 @@ void UPauseMenu::OnResumeButtonClicked()
 void UPauseMenu::OnOptionButtonClicked()
 {
 	LOG_Frame_WARNING(TEXT("Option Button Clicked"));
-	ULCUIManager* LCUIManager = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>()->GetUIManager();
+	ULCUIManager* LCUIManager = ResolveUIManager();
 	if (LCUIManager)
 	{
 		LCUIManager->ShowOptionPopup();
@@ -61,15 +61,22 @@ void UPauseMenu::OnExitButtonClicked()
 {
 	LOG_Frame_WARNING(TEXT("Exit Button Clicked"));
 	// UI 매니저 획득
-	ULCUIManager* LCUIManager = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>()->GetUIManager();
+	ULCUIManager* LCUIManager = ResolveUIManager();
 	if (LCUIManager)
 	{
 		// 확인 팝업을 띄우고, 예를 눌렀을 경우에만 타이틀 메뉴로 전환
 		LCUIManager->ShowConfirmPopup(
-			[]()
+			[this]()
 			{
 				//TODO : 타이틀 메뉴로 전환
-			}
+				DestroySessionAndGoTitleMenu();
+			},
+			FText::FromString(TEXT("정말로 종료(타이틀 메뉴로)\r\n 하시겠습니까?"))
 		);
 	}
+}
+
+void UPauseMenu::DestroySessionAndGoTitleMenu_Implementation()
+{
+
 }
