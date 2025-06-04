@@ -11,25 +11,22 @@ AItemBase::AItemBase()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
-	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
+	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMeshComponent"));
 	RootComponent = MeshComponent;
 
-	SphereComponent = CreateDefaultSubobject<USphereComponent>(TEXT("Collision"));
-	SphereComponent->InitSphereRadius(50.0f);
-	SphereComponent->SetCollisionProfileName(TEXT("Trigger"));
-	SphereComponent->SetupAttachment(MeshComponent);
+	SkeletalMeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("SkeletalMeshComponent"));
+	SkeletalMeshComponent->SetupAttachment(MeshComponent);
 
-	SphereComponent->OnComponentBeginOverlap.AddDynamic(this, & AItemBase::OnOverlapBegin);
-	SphereComponent->OnComponentEndOverlap.AddDynamic(this, &AItemBase::OnOverlapEnd);
-
-	SphereComponent->SetCollisionObjectType(ECC_GameTraceChannel1);
-	SphereComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	SkeletalMeshComponent->SetVisibility(false);
+	SkeletalMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	bReplicates = true;
-	bNetUseOwnerRelevancy = true;
+	bNetUseOwnerRelevancy = false;
+
+	SetReplicatingMovement(true);
 
 	bIsEquipped = false;
-
+	bUsingSkeletalMesh = false;
 	Quantity = 1;
 	Durability = 100.f;
 }
@@ -73,6 +70,12 @@ void AItemBase::BeginPlay()
 			ApplyItemDataFromTable();
 		}
 	}
+
+	if (HasAuthority())
+	{
+		GetWorld()->GetTimerManager().SetTimer(PhysicsLocationSyncTimer,
+			this, &AItemBase::SyncPhysicsLocationToActor, 0.1f, true);
+	}
 }
 
 void AItemBase::OnRepDurability()
@@ -89,26 +92,6 @@ void AItemBase::OnRepDurability()
 	OnItemStateChanged.Broadcast();
 }
 
-void AItemBase::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{
-	ABaseCharacter* Player = Cast<ABaseCharacter>(OtherActor);
-	if (Player && Player->OwnedTags.HasTagExact(FGameplayTag::RequestGameplayTag(FName("Character.Player"))))
-	{
-		// TODO : UI 매니저를 통한 UI 출력 또는 아웃라이너 변경
-		// ShowPickUpPrompt(ture);
-	}
-}
-
-void AItemBase::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-{
-	ABaseCharacter* Player = Cast<ABaseCharacter>(OtherActor);
-	if (Player && Player->OwnedTags.HasTagExact(FGameplayTag::RequestGameplayTag(FName("Character.Player"))))
-	{
-		// TODO : UI 매니저를 통한 UI 출력 또는 아웃라이너 변경
-		// ShowPickUpPrompt(false);
-	}
-}
-
 void AItemBase::ApplyItemDataFromTable()
 {
 	if (ItemRowName.IsNone())
@@ -117,7 +100,6 @@ void AItemBase::ApplyItemDataFromTable()
 		return;
 	}
 
-	// 🔥 클라이언트에서도 데이터 테이블 참조 확보
 	if (!ItemDataTable)
 	{
 		if (UGameInstance* GI = GetGameInstance())
@@ -144,21 +126,91 @@ void AItemBase::ApplyItemDataFromTable()
 	}
 
 	ItemData = *Found;
+	bIgnoreCharacterCollision = ItemData.bIgnoreCharacterCollision;
 
-	if (MeshComponent && ItemData.StaticMesh)
-	{
-		MeshComponent->SetStaticMesh(ItemData.StaticMesh);
-	}
+	SetupMeshComponents();
 
 	if (ItemData.bIsResourceItem)
 	{
-		// 점수 시스템에서 사용
-		// LOG_Frame_WARNING(TEXT("이 아이템은 자원입니다. 카테고리: %d, 점수: %d"),
-		//	static_cast<int32>(ItemData.Category), ItemData.BaseScore);
+		LOG_Frame_WARNING(TEXT("이 아이템은 자원입니다. 카테고리: %d, 점수: %d"),
+			static_cast<int32>(ItemData.Category), ItemData.BaseScore);
 	}
 
-	// 상태 변경 브로드캐스트
+	ApplyCollisionSettings();
+
 	OnItemStateChanged.Broadcast();
+}
+
+void AItemBase::SetupMeshComponents()
+{
+	if (ItemData.SkeletalMesh)
+	{
+		bUsingSkeletalMesh = true;
+		SkeletalMeshComponent->SetSkeletalMesh(ItemData.SkeletalMesh);
+
+		SetMeshComponentActive(SkeletalMeshComponent, MeshComponent);
+	}
+	else if (ItemData.StaticMesh)
+	{
+		bUsingSkeletalMesh = false;
+		MeshComponent->SetStaticMesh(ItemData.StaticMesh);
+
+		SetMeshComponentActive(MeshComponent, SkeletalMeshComponent);
+	}
+	else
+	{
+		LOG_Item_WARNING(TEXT("[SetupMeshComponents] 메시가 설정되지 않음: %s"), *ItemRowName.ToString());
+	}
+}
+
+void AItemBase::SetMeshComponentActive(UPrimitiveComponent* ActiveComponent, UPrimitiveComponent* InactiveComponent)
+{
+	if (ActiveComponent)
+	{
+		ActiveComponent->SetVisibility(true);
+		ActiveComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	}
+	else
+	{
+		LOG_Item_WARNING(TEXT("[AItemBase::SetMeshComponentActive] 활성화할 컴포넌트가 유효하지 않음"));
+	}
+
+	if (InactiveComponent)
+	{
+		InactiveComponent->SetVisibility(false);
+		InactiveComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+	else
+	{
+		LOG_Item_WARNING(TEXT("[SetMeshComponentActive] 비활성화할 컴포넌트가 유효하지 않음"));
+	}
+}
+
+UPrimitiveComponent* AItemBase::GetActiveMeshComponent() const
+{
+	if (bUsingSkeletalMesh && SkeletalMeshComponent)
+	{
+		return SkeletalMeshComponent;
+	}
+	else if (MeshComponent)
+	{
+		return MeshComponent;
+	}
+	return nullptr;
+}
+
+UStaticMeshComponent* AItemBase::GetMeshComponent() const
+{
+	if (bUsingSkeletalMesh)
+	{
+		return nullptr;
+	}
+	return MeshComponent;
+}
+
+USkeletalMeshComponent* AItemBase::GetSkeletalMeshComponent() const
+{
+	return SkeletalMeshComponent;
 }
 
 //void AItemBase::UseItem()
@@ -211,6 +263,7 @@ void AItemBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetim
 	DOREPLIFETIME(AItemBase, Quantity);
 	DOREPLIFETIME(AItemBase, bIsEquipped);
 	DOREPLIFETIME_CONDITION_NOTIFY(AItemBase, Durability, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME(AItemBase, bIgnoreCharacterCollision);
 }
 
 void AItemBase::OnRepItemRowName()
@@ -224,15 +277,6 @@ void AItemBase::OnRepItemRowName()
 			SetActorEnableCollision(false);
 		}
 	}
-}
-
-UStaticMeshComponent* AItemBase::GetMeshComponent() const
-{
-	if (MeshComponent)
-	{
-		return MeshComponent;
-	}
-	return nullptr;
 }
 
 void AItemBase::Interact_Implementation(APlayerController* Interactor)
@@ -324,4 +368,74 @@ bool AItemBase::Internal_TryPickupByPlayer(APlayerController* PlayerController)
 	UE_LOG(LogTemp, Warning, TEXT("[AItemBase::Internal_TryPickupByPlayer] 인벤토리가 가득참: %s"),
 		*ItemRowName.ToString());
 	return false;
+}
+
+void AItemBase::ApplyCollisionSettings()
+{
+	UPrimitiveComponent* ActiveMeshComp = GetActiveMeshComponent();
+	if (!ActiveMeshComp)
+	{
+		LOG_Item_WARNING(TEXT("[ApplyCollisionSettings] 활성화된 메시 컴포넌트가 없음: %s"), *GetName());
+		return;
+	}
+
+	ActiveMeshComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	ActiveMeshComp->SetCollisionObjectType(ECC_WorldDynamic);
+	ActiveMeshComp->SetCollisionResponseToAllChannels(ECR_Block);
+
+	if (bIgnoreCharacterCollision)
+	{
+		ActiveMeshComp->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+	}
+	else
+	{
+		ActiveMeshComp->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
+	}
+
+	// 기타 채널 설정
+	ActiveMeshComp->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
+	ActiveMeshComp->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);
+	ActiveMeshComp->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+	ActiveMeshComp->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+}
+
+void AItemBase::SyncPhysicsLocationToActor()
+{
+	if (!HasAuthority())
+		return;
+
+	if (UPrimitiveComponent* ActiveMeshComp = GetActiveMeshComponent())
+	{
+		if (ActiveMeshComp->IsSimulatingPhysics())
+		{
+			// 물리 컴포넌트의 위치를 액터 위치로 동기화
+			FVector PhysicsLocation = ActiveMeshComp->GetComponentLocation();
+			FVector ActorLocation = GetActorLocation();
+
+			float Distance = FVector::Dist(PhysicsLocation, ActorLocation);
+			if (Distance > 5.0f) 
+			{
+				SetActorLocation(PhysicsLocation);
+				ForceNetUpdate();
+			}
+		}
+		else
+		{
+			if (PhysicsLocationSyncTimer.IsValid())
+			{
+				GetWorld()->GetTimerManager().ClearTimer(PhysicsLocationSyncTimer);
+			}
+		}
+	}
+}
+
+// EndPlay에서 타이머 정리
+void AItemBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (PhysicsLocationSyncTimer.IsValid())
+	{
+		GetWorld()->GetTimerManager().ClearTimer(PhysicsLocationSyncTimer);
+	}
+
+	Super::EndPlay(EndPlayReason);
 }

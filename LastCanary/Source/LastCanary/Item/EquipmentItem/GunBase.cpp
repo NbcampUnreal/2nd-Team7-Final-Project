@@ -9,12 +9,7 @@
 #include "LastCanary.h"
 
 AGunBase::AGunBase()
-{
-    // 스켈레탈 메시 컴포넌트 생성 및 설정
-    GunMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("GunMesh"));
-    RootComponent = GunMesh;
-
-    // 기본 속성 초기화
+{;
     FireRange = 10000.0f;
     BaseDamage = 20.0f;
     FireRate = 0.2f;
@@ -26,9 +21,8 @@ AGunBase::AGunBase()
     DecalSize = FVector(5.0f, 5.0f, 5.0f);
     DecalLifeSpan = 10.0f;
 
-    // 무기 컴포넌트 초기화
     MuzzleLocation = CreateDefaultSubobject<USceneComponent>(TEXT("MuzzleLocation"));
-    MuzzleLocation->SetupAttachment(GunMesh);
+    MuzzleLocation->SetupAttachment(RootComponent);
     MuzzleLocation->SetRelativeLocation(FVector(0, 50, 10));
 
     bDrawDebugLine = true;
@@ -365,14 +359,20 @@ void AGunBase::Multicast_PlayReloadAnimation_Implementation()
 
 void AGunBase::PlayGunAnimation(UAnimMontage* AnimMontage, float PlayRate)
 {
-    if (!AnimMontage || !GunMesh)
+    if (!AnimMontage)
     {
-        LOG_Item_WARNING(TEXT("PlayGunAnimation: AnimMontage or GunMesh is null"));
+        LOG_Item_WARNING(TEXT("PlayGunAnimation: AnimMontage is null"));
         return;
     }
 
-    // 애니메이션 인스턴스 가져오기
-    UAnimInstance* AnimInstance = GunMesh->GetAnimInstance();
+    USkeletalMeshComponent* ActiveMesh = GetSkeletalMeshComponent();
+    if (!ActiveMesh)
+    {
+        LOG_Item_WARNING(TEXT("PlayGunAnimation: No SkeletalMeshComponent found"));
+        return;
+    }
+
+    UAnimInstance* AnimInstance = ActiveMesh->GetAnimInstance();
     if (!AnimInstance)
     {
         LOG_Item_WARNING(TEXT("PlayGunAnimation: No AnimInstance found on GunMesh"));
@@ -454,17 +454,21 @@ void AGunBase::BeginPlay()
     ApplyGunDataFromDataTable();
     UpdateAmmoState();
 
-    if (GunMesh)
+    if (USkeletalMeshComponent* ActiveMesh = GetSkeletalMeshComponent())
     {
-        UAnimInstance* AnimInstance = GunMesh->GetAnimInstance();
+        UAnimInstance* AnimInstance = ActiveMesh->GetAnimInstance();
         if (AnimInstance)
         {
-            LOG_Item_WARNING(TEXT("GunBase: AnimInstance found on GunMesh"));
+            LOG_Item_WARNING(TEXT("GunBase: AnimInstance found on SkeletalMeshComponent"));
         }
         else
         {
-            LOG_Item_WARNING(TEXT("GunBase: No AnimInstance on GunMesh - animations will not work"));
+            LOG_Item_WARNING(TEXT("GunBase: No AnimInstance on SkeletalMeshComponent - animations will not work"));
         }
+    }
+    else
+    {
+        LOG_Item_WARNING(TEXT("GunBase: No SkeletalMeshComponent found"));
     }
 }
 
@@ -518,22 +522,6 @@ void AGunBase::ApplyGunDataFromDataTable()
     FireSound = GunData.FireSound;
     EmptySound = GunData.EmptySound;
     ImpactSound = GunData.ImpactSound;
-
-    // 메시 설정 (있을 경우)
-    if (GunData.GunMesh)
-    {
-        GunMesh->SetSkeletalMesh(GunData.GunMesh);
-        GunMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-        GunMesh->SetCollisionObjectType(ECC_WorldDynamic);
-        GunMesh->SetCollisionResponseToAllChannels(ECR_Block);
-
-        // 부모의 MeshComponent 숨기기
-        if (MeshComponent)
-        {
-            MeshComponent->SetVisibility(false);
-            MeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-        }
-    }
 }
 
 void AGunBase::UpdateAmmoState()
@@ -572,9 +560,4 @@ void AGunBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetime
 {
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
     DOREPLIFETIME(AGunBase, RecentHits);
-}
-
-USkeletalMeshComponent* AGunBase::GetGunMesh()
-{
-    return GunMesh;
 }
