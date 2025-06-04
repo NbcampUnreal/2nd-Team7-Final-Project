@@ -23,6 +23,13 @@ private:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment", meta = (AllowPrivateAccess = "true"))
     UChildActorComponent* EquippedItemComponent;
 
+    /** RemoteOnly 메시용 장착된 아이템 컴포넌트 */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment", meta = (AllowPrivateAccess = "true"))
+    UChildActorComponent* RemoteOnlyEquippedItemComponent;
+
+    /** 특정 메시에 아이템 설정 */
+    void SetupEquippedItem(UChildActorComponent* ItemComponent, USkeletalMeshComponent* TargetMesh, FName SocketName, FItemDataRow* ItemData, FBaseItemSlotData* SlotData);
+
     /** 현재 장착된 슬롯 인덱스 */
     UPROPERTY(Replicated)
     int32 CurrentEquippedSlotIndex;
