@@ -72,6 +72,28 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Darkness")
     float DarknessDuration = 10.f;
 
+    /** ── 광폭화 모드(Berserk) 관련 ── */
+    
+    /** Berserk 상태에서 Rage 상승 속도를 몇 배로 할지 */
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Berserk")
+    float BerserkRageGainMultiplier = 2.0f;
+
+    /** Berserk 상태에서 StrongAttackChance를 얼마나 올릴지 (예: 0.3 → 0.6) */
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Berserk")
+    float StrongAttackChance_Berserk = 0.6f;
+
+    /** Berserk 상태에서 NormalAttackCooldown을 얼마나 줄일지 (초 단위) */
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Berserk")
+    float NormalAttackCooldown_Berserk = 0.6f;
+
+    /** Berserk 상태에서 StrongAttackCooldown을 얼마나 줄일지 (초 단위) */
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Berserk")
+    float StrongAttackCooldown_Berserk = 3.0f;
+
+    /** Berserk 상태에서 몽타주 재생 속도 배수 */
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Berserk")
+    float BerserkPlayRateMultiplier = 1.3f;
+
     UFUNCTION()
     void OnRep_DarknessActive();
 
@@ -80,25 +102,15 @@ protected:
     UFUNCTION(NetMulticast, Reliable)
     void Multicast_EndDarkness();
 
-    /** 포스트프로세스나 이펙트를 켤 때 */
     UFUNCTION(BlueprintNativeEvent, Category = "Darkness")
     void BP_StartDarknessEffect();
     virtual void BP_StartDarknessEffect_Implementation();
 
-    /** 포스트프로세스나 이펙트를 끌 때 */
     UFUNCTION(BlueprintNativeEvent, Category = "Darkness")
     void BP_EndDarknessEffect();
     virtual void BP_EndDarknessEffect_Implementation();
 
-    /** 단서 관련 멤버들 */
-
-    /** 할퀸 자국 블루프린트 클래스 참조 */
-    UPROPERTY(EditAnywhere, Category = "Clue")
-    TSubclassOf<AActor> ScratchMarkClass;
-
-    /** 그림자 얼룩 블루프린트 클래스 참조 */
-    UPROPERTY(EditAnywhere, Category = "Clue")
-    TSubclassOf<AActor> ShadowStainClass;
+    /** ── 단서(Clue) 관련 멤버들 ── */
 
     /** 단서를 남길 최소/최대 간격 (초) */
     UPROPERTY(EditAnywhere, Category = "Clue", meta = (ClampMin = "1.0", ClampMax = "30.0"))
@@ -107,7 +119,11 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Clue", meta = (ClampMin = "1.0", ClampMax = "30.0"))
     float ClueSpawnIntervalMax = 12.0f;
 
-    /** 이미 스폰된 단서를 추적하기 위한 배열 (원본 데모에서는 쓸 필요 없지만, 관리용으로 남겨둠) */
+    /** 단서로 스폰할 액터 클래스들을 배열로 선언 */
+    UPROPERTY(EditAnywhere, Category = "Clue", meta = (EditFixedOrder))
+    TArray<TSubclassOf<AActor>> ClueClasses;
+
+    /** 이미 스폰된 단서를 추적하기 위한 배열 */
     UPROPERTY()
     TArray<AActor*> SpawnedClues;
 
@@ -117,6 +133,7 @@ protected:
     /** 실제 단서를 스폰하는 함수 */
     void SpawnRandomClue();
 
+    /** Darkness 관련 타이머 */
     FTimerHandle DarknessTimer;
 
     UPROPERTY()
