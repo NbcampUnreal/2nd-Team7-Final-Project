@@ -1027,10 +1027,21 @@ void ABasePlayerController::CameraSetOnScope()
 
 void ABasePlayerController::InteractGimmick(ALCBaseGimmick* Target)
 {
-	if (IsValid(Target))
+	if (!IsValid(Target))
 	{
-		Server_InteractWithGimmick(Target);
+		return;		
 	}
+	if (!IsValid(CurrentPossessedPawn))
+	{
+		return;
+	}
+	if (!(CurrentPossessedPawn->IsA<ABaseCharacter>()))
+	{
+		return;
+	}
+	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
+	Server_InteractWithGimmick(Target);
+	PlayerCharacter->PlayInteractionMontage(Target);
 }
 
 void ABasePlayerController::Server_InteractWithGimmick_Implementation(ALCBaseGimmick* Target)

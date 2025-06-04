@@ -1681,13 +1681,13 @@ void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(int index)
 void ABaseCharacter::PlayInteractionMontage(AActor* Target)
 {
 	UAnimMontage* MontageToPlay = InteractMontage;
-
+	//TODO: 게임 플레이 태그 비교
+	//if(Target->GetGamePlayTag)
 	// 2. 몽타주 재생
 	if (MontageToPlay)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Anim Montage"));
 		Server_PlayMontage(MontageToPlay);
-
 	}
 }
 
