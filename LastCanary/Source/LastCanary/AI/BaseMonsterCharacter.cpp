@@ -52,11 +52,6 @@ ABaseMonsterCharacter::ABaseMonsterCharacter()
     GameplayTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Character.Enemy")));
 }
 
-//void ABaseMonsterCharacter::OnAttackHit(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-//{
-//    UE_LOG(LogTemp, Warning, TEXT("Damage: %s"), *OtherActor->GetName());
-//}
-
 float ABaseMonsterCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
     class AController* EventInstigator, AActor* DamageCauser)
 {
@@ -74,7 +69,6 @@ float ABaseMonsterCharacter::TakeDamage(float DamageAmount, struct FDamageEvent 
         bIsDead = true;
         MulticastAIDeath();
 
-        // ���������� ���� �� Destroy ó��
         if (HasAuthority())
         {
             GetWorldTimerManager().SetTimer(DeathTimerHandle, this,
@@ -140,17 +134,28 @@ void ABaseMonsterCharacter::OnAttackFinished()
 
 void ABaseMonsterCharacter::MulticastStartAttack_Implementation()
 {
-    //UE_LOG(LogTemp, Warning, TEXT("Attack"));
     if (IsValid(StartAttack))
     {
         PlayAnimMontage(StartAttack);
 
+        int32 RandomSound = FMath::RandRange(0, 2);
+        switch (RandomSound)
+        {
+        case 0:
+            PlayAttackSound1();
+            break;
+        case 1:
+            PlayAttackSound2();
+            break;
+        case 2:
+            PlayAttackSound3();
+            break;
+        }
     }
 }
 
 void ABaseMonsterCharacter::MulticastAIMove_Implementation()
 {
-    //UE_LOG(LogTemp, Warning, TEXT("Move"));
     if (IsValid(AImove))
     {
         PlayAnimMontage(AImove);
@@ -159,11 +164,11 @@ void ABaseMonsterCharacter::MulticastAIMove_Implementation()
 
 void ABaseMonsterCharacter::MulticastAIDeath_Implementation()
 {
-    UE_LOG(LogTemp, Warning, TEXT("Death"));
     if (IsValid(AIDeath))
     {
         PlayAnimMontage(AIDeath);
-        // Destroy() ����! ���������� ó����
+
+        (FMath::RandBool()) ? PlayDeathSound1() : PlayDeathSound2();
     }
 }
 
@@ -180,9 +185,83 @@ void ABaseMonsterCharacter::DisableAttackCollider()
     AttackCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
-
-
 void ABaseMonsterCharacter::GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) const
 {
     TagContainer = GameplayTags;
+}
+
+void ABaseMonsterCharacter::MulticastPlaySound_Implementation(USoundBase* Sound)
+{
+    if (Sound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(this,
+            Sound,
+            GetActorLocation(),
+            FRotator::ZeroRotator,
+            2.0f); //볼륨 배율이라고 함
+    }
+}
+
+void ABaseMonsterCharacter::PlayAttackSound1()
+{
+    if (AttackSound1)
+    {
+        MulticastPlaySound(AttackSound1);
+    }
+}
+
+void ABaseMonsterCharacter::PlayAttackSound2()
+{
+    if (AttackSound2)
+    {
+        MulticastPlaySound(AttackSound2);
+    }
+}
+
+void ABaseMonsterCharacter::PlayAttackSound3()
+{
+    if (AttackSound3)
+    {
+        MulticastPlaySound(AttackSound3);
+    }
+}
+
+void ABaseMonsterCharacter::PlayDeathSound1()
+{
+    if (DeathSound1)
+    {
+        MulticastPlaySound(DeathSound1);
+    }
+}
+
+void ABaseMonsterCharacter::PlayDeathSound2()
+{
+    if (DeathSound2)
+    {
+        MulticastPlaySound(DeathSound2);
+    }
+}
+
+void ABaseMonsterCharacter::PlayIdleSound()
+{
+    if (IdleSound)
+    {
+        MulticastPlaySound(IdleSound);
+    }
+}
+
+void ABaseMonsterCharacter::PlayMoveSound()
+{
+    if (MoveSound)
+    {
+        MulticastPlaySound(MoveSound);
+    }
+}
+
+void ABaseMonsterCharacter::PlayChaseSound()
+{
+    if (ChaseSound)
+    {
+        MulticastPlaySound(ChaseSound);
+    }
 }
