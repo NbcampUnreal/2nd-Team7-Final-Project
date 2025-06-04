@@ -78,7 +78,7 @@ void ALCGateManager::TrySpawnGate()
 	if (SpawnedGate)
 	{
 		SpawnedGate->TravelType = EGateTravelType::ToBaseCamp;
-		SpawnedGate->InteractionPromptText = FText::FromString(TEXT("Press [F] to Escape to Base Camp"));
-		LOG_Frame_WARNING(TEXT("[GateManager] Spawned BaseCamp Gate at %s"), *SpawnTransform.GetLocation().ToString());
+		/*SpawnedGate->InteractionPromptText = FText::FromString(TEXT("Press [F] to Escape to Base Camp"));
+		LOG_Frame_WARNING(TEXT("[GateManager] Spawned BaseCamp Gate at %s"), *SpawnTransform.GetLocation().ToString());*/
 	}
 }

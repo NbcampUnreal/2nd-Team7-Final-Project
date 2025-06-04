@@ -25,42 +25,42 @@ public:
 	////////* Default Stats *////////
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
 	FPlayerStats InitialStats;
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
-	float MaxHP { InitialStats.MaxHP};
+	float MaxHP{ InitialStats.MaxHP };
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	float DefaultWalkSpeed{ InitialStats.WalkSpeed };
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
-	float DefaultRunSpeed{ InitialStats.RunSpeed };
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
-	float DefaultSprintSpeed{ InitialStats.SptintSpeed };
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
-	float DefaultCrouchSpeed{ InitialStats.CrouchSpeed };
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
-	float DefaultJumpZVelocity{ InitialStats.JumpPower };
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
-	float DefaultExhaustionRecoveryThreshold{ InitialStats.ExhaustionRecoveryThreshold };
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
-	float DefaultStaminaDrainRate { InitialStats.StaminaDrainRate }; // 초당 15 소모
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
-	float DefaultStaminaRecoveryRate { InitialStats.StaminaRecoveryRate }; // 초당 30 회복
+	float DefaultRunSpeed{ InitialStats.RunSpeed };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float DefaultSprintSpeed{ InitialStats.SptintSpeed };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float DefaultCrouchSpeed{ InitialStats.CrouchSpeed };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float DefaultJumpZVelocity{ InitialStats.JumpPower };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float DefaultExhaustionRecoveryThreshold{ InitialStats.ExhaustionRecoveryThreshold };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float DefaultStaminaDrainRate{ InitialStats.StaminaDrainRate }; // 초당 15 소모
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float DefaultStaminaRecoveryRate{ InitialStats.StaminaRecoveryRate }; // 초당 30 회복
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	float DefaultRecoverDelayTime{ InitialStats.RecoverDelayTime };
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	float DefaultJumpStaminaCost{ InitialStats.JumpStaminaCost };
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")	
-	bool bInfiniteStamina { false };
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	bool bInfiniteStamina{ false };
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	bool bInfiniteHP{ false };
@@ -116,8 +116,16 @@ public:
 
 
 
-
+public:
 	// State
+	UPROPERTY(ReplicatedUsing = OnRep_bHasEscaped)
+	bool bHasEscaped = false;
+
+	UFUNCTION()
+	void OnRep_bHasEscaped();
+
+	void MarkAsEscaped();
+
 	UPROPERTY(ReplicatedUsing = OnRep_CurrentState, VisibleAnywhere, BlueprintReadOnly, Category = "State")
 	EPlayerState CurrentState = EPlayerState::Idle;
 
@@ -145,7 +153,7 @@ public:
 
 	FORCEINLINE float GetStamina() const { return CurrentStamina; }
 	FORCEINLINE float GetHP() const { return CurrentHP; }
-	
+
 	void SetStamina(float NewStamina);
 	void SetHP(float NewHP);
 

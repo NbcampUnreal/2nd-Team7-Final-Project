@@ -144,7 +144,6 @@ void UMapSelectWidget::OnConfirmButtonClicked()
 
 	if (GateActorInstance)
 	{
-		GateActorInstance->SetTargetMapID(SelectedRow->MapID);
 		LOG_Frame_WARNING(TEXT("Map selected for Gate: %s (ID: %d)"),
 			*SelectedRow->MapInfo.MapName.ToString(), SelectedRow->MapID);
 	}

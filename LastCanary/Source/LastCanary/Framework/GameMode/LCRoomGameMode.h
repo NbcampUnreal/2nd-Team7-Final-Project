@@ -5,6 +5,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "LCRoomGameMode.generated.h"
 
+class AChecklistManager;
 UCLASS()
 class LASTCANARY_API ALCRoomGameMode : public ABaseGameMode
 {
@@ -18,5 +19,10 @@ public:
 	virtual APlayerController* Login(UPlayer* NewPlayer, ENetRole InRemoteRole, const FString& Portal, const FString& Options, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage) override;
 	virtual void Logout(AController* Exiting) override;
 
+protected:
+	UPROPERTY(EditDefaultsOnly, Category = "Checklist")
+	TSubclassOf<AChecklistManager> ChecklistManagerClass;
 
+	UPROPERTY()
+	AChecklistManager* ChecklistManager;
 };
