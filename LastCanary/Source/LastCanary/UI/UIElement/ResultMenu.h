@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "UI/LCUserWidgetBase.h"
 #include "DataType/ResourceScoreInfo.h"
+#include "Framework/Manager/ChecklistManager.h"
 #include "ResultMenu.generated.h"
 
 class UTextBlock;
@@ -69,4 +70,6 @@ public:
     void SetTotalGold(int32 InTotalGold);
     void SetRankText(const FString& InRank);
     void ActivateResultCamera();
+    void SetChecklistResult(const FChecklistResultData& ResultData);
+
 };

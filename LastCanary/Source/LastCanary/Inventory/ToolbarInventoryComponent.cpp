@@ -26,13 +26,6 @@ UToolbarInventoryComponent::UToolbarInventoryComponent()
     EquippedItemComponent->SetUsingAbsoluteLocation(false);
     EquippedItemComponent->SetUsingAbsoluteRotation(false);
     EquippedItemComponent->SetUsingAbsoluteScale(false);
-
-    RemoteOnlyEquippedItemComponent = CreateDefaultSubobject<UChildActorComponent>(TEXT("RemoteOnlyEquippedItemComponent"));
-
-    RemoteOnlyEquippedItemComponent->SetIsReplicated(false);
-    RemoteOnlyEquippedItemComponent->SetUsingAbsoluteLocation(false);
-    RemoteOnlyEquippedItemComponent->SetUsingAbsoluteRotation(false);
-    RemoteOnlyEquippedItemComponent->SetUsingAbsoluteScale(false);
 }
 
 void UToolbarInventoryComponent::BeginPlay()
@@ -54,12 +47,6 @@ void UToolbarInventoryComponent::BeginPlay()
 
     EquippedItemComponent->AttachToComponent(
         CachedOwnerCharacter->GetMesh(),
-        AttachRules,
-        TEXT("Rifle")
-    );
-
-    RemoteOnlyEquippedItemComponent->AttachToComponent(
-        CachedOwnerCharacter->RemoteOnlySkeletalMesh,
         AttachRules,
         TEXT("Rifle")
     );
@@ -301,7 +288,7 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
         {
             CachedOwnerCharacter->SetEquipped(false); // 빈 손 상태
         }
-
+        
         OnInventoryUpdated.Broadcast();
         return;
     }
@@ -354,13 +341,9 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
         {
             TargetSocket = TEXT("Rifle");
         }
-
-        SetupEquippedItem(EquippedItemComponent, CachedOwnerCharacter->GetMesh(),
-            TargetSocket, ItemData, SlotData);
-
-        SetupEquippedItem(RemoteOnlyEquippedItemComponent, CachedOwnerCharacter->RemoteOnlySkeletalMesh,
-            TargetSocket, ItemData, SlotData);
-
+        
+        SetupEquippedItem(EquippedItemComponent, CachedOwnerCharacter->GetMesh(), TargetSocket, ItemData, SlotData);
+            
         ItemSlots[SlotIndex].bIsEquipped = true;
         CurrentEquippedSlotIndex = SlotIndex;
     }
@@ -464,7 +447,6 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
 
         // 아이템 제거
         EquippedItemComponent->DestroyChildActor();
-        RemoteOnlyEquippedItemComponent->DestroyChildActor();
     }
     else
     {
@@ -481,7 +463,6 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
         }
 
         EquippedItemComponent->DestroyChildActor();
-        RemoteOnlyEquippedItemComponent->DestroyChildActor();
 
         CurrentEquippedSlotIndex = -1;
 

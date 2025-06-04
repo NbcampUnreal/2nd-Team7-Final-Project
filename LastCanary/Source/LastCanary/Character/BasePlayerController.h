@@ -138,25 +138,6 @@ public:
 	TObjectPtr<UInputAction> ExitDroneAction;
 	// ... 필요한 입력들 추가
 
-
-	//인풋모드 변경(Toggle, Hold)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-	EInputMode SprintInputMode = EInputMode::Hold;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-	EInputMode WalkInputMode = EInputMode::Hold;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-	EInputMode CrouchInputMode = EInputMode::Hold;
-
-	bool bIsWalkToggled = false;
-
-	bool bIsCrouchToggled = false;
-	bool bIsCrouchKeyReleased = true;
-
-	bool bIsRunKeyHeld = false;
-	bool bWantsToRun = false;
-
 public:
 	virtual void Input_OnLookMouse(const FInputActionValue& ActionValue);
 
