@@ -70,13 +70,11 @@ bool UMonsterSpawnComponent::IsLocationInNavMeshBounds(const FVector& Location)
         return false;
     }
 
-    //NavMeshVolume 체크
     for (TActorIterator<ANavMeshBoundsVolume> ActorItr(World); ActorItr; ++ActorItr)
     {
         ANavMeshBoundsVolume* NavMeshVolume = *ActorItr;
         if (NavMeshVolume && NavMeshVolume->GetBrushComponent())
         {
-            // NavMeshBoundsVolume의 바운드 박스 내부에 있는지 확인
             FBoxSphereBounds Bounds = NavMeshVolume->GetBrushComponent()->Bounds;
             FBox VolumeBox = Bounds.GetBox();
 
@@ -98,7 +96,6 @@ FVector UMonsterSpawnComponent::GetValidSpawnLocationInNavVolume(const FVector& 
         return FVector::ZeroVector;
     }
 
-    // NavMeshBoundsVolume들을 수집
     TArray<ANavMeshBoundsVolume*> NavMeshVolumes;
     for (TActorIterator<ANavMeshBoundsVolume> ActorItr(World); ActorItr; ++ActorItr)
     {
@@ -114,10 +111,8 @@ FVector UMonsterSpawnComponent::GetValidSpawnLocationInNavVolume(const FVector& 
         return FVector::ZeroVector;
     }
 
-    // 최대 100번 시도
     for (int32 Attempt = 0; Attempt < 100; Attempt++)
     {
-        // 랜덤 위치 계산 (기존 로직 유지)
         float Quadrant = FMath::RandRange(0, 3);
         float BaseAngle = Quadrant * 90.0f;
         float AngleVariation = FMath::FRandRange(-45.0f, 45.0f);
@@ -136,7 +131,6 @@ FVector UMonsterSpawnComponent::GetValidSpawnLocationInNavVolume(const FVector& 
 
         FVector TestLocation = OwnerLocation + SpawnOffset;
 
-        // NavMeshBoundsVolume 내부에 있는지 확인
         bool bInNavVolume = false;
         for (ANavMeshBoundsVolume* NavVolume : NavMeshVolumes)
         {
@@ -175,12 +169,11 @@ FVector UMonsterSpawnComponent::GetValidSpawnLocationInNavVolume(const FVector& 
         if (bHit)
         {
             FVector ValidLocation = HitResult.Location;
-            ValidLocation.Z += 90.0f; //스폰높이 조절할때
+            ValidLocation.Z += 90.0f;
             return ValidLocation;
         }
         else
         {
-            //아니면 플레이어 Z 높이로
             FVector ValidLocation = TestLocation;
             ValidLocation.Z = OwnerLocation.Z + 90.0f;
             return ValidLocation;
@@ -206,13 +199,10 @@ void UMonsterSpawnComponent::SpawnMonsters()
         return;
     }
 
-    // 현재 살아있는 몬스터 수 확인 (DestroyAllMonsters에서 업데이트된 ReSpawnCount 사용)
     int32 MonstersToSpawn = MaxMonsterCount - ReSpawnCount;
 
-    // 스폰할 몬스터가 없으면 리턴
     if (MonstersToSpawn <= 0)
     {
-        // 다음 스폰 타이머 설정
         if (bIsSpawning)
         {
             World->GetTimerManager().SetTimer(
@@ -230,7 +220,6 @@ void UMonsterSpawnComponent::SpawnMonsters()
 
     TArray<FVector> UsedLocations;
 
-    // 기존 몬스터들의 위치도 UsedLocations에 추가
     for (ACharacter* ExistingMonster : SpawnedMonsters)
     {
         if (IsValid(ExistingMonster))
@@ -248,15 +237,14 @@ void UMonsterSpawnComponent::SpawnMonsters()
 
         if (SpawnLocation == FVector::ZeroVector)
         {
-            continue; // 유효한 위치를 찾지 못함
+            continue;
         }
 
-        // 기존 위치들과 너무 가까운지 확인
         bool TooClose = false;
         for (const FVector& UsedLocation : UsedLocations)
         {
             float DistSq = FVector::DistSquared2D(SpawnLocation, UsedLocation);
-            if (DistSq < 22500.0f) // 150 units 거리
+            if (DistSq < 22500.0f)
             {
                 TooClose = true;
                 break;
@@ -268,7 +256,6 @@ void UMonsterSpawnComponent::SpawnMonsters()
             continue;
         }
 
-        // 몬스터 클래스 선택
         int32 MonsterIndex = FMath::RandRange(0, MonsterClasses.Num() - 1);
         TSubclassOf<ACharacter> MonsterClass = MonsterClasses[MonsterIndex];
 
@@ -277,13 +264,11 @@ void UMonsterSpawnComponent::SpawnMonsters()
             continue;
         }
 
-        // 회전 설정 (플레이어를 향하도록)
         FVector DirectionToCenter = OwnerLocation - SpawnLocation;
         DirectionToCenter.Z = 0;
         FRotator Rotation = DirectionToCenter.Rotation();
         Rotation.Yaw += FMath::FRandRange(-45.0f, 45.0f);
 
-        // 몬스터 스폰
         FActorSpawnParameters SpawnParams;
         SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
@@ -302,7 +287,6 @@ void UMonsterSpawnComponent::SpawnMonsters()
         }
     }
 
-    // 다음 스폰 타이머 설정
     if (bIsSpawning)
     {
         World->GetTimerManager().SetTimer(
@@ -330,14 +314,11 @@ void UMonsterSpawnComponent::SpawnNightMonsters()
         return;
     }
 
-    // 현재 살아있는 몬스터 수 확인 (DestroyAllMonsters에서 업데이트된 ReSpawnCount 사용)
     int32 NightMaxMonsterCount = FMath::RoundToInt(MaxMonsterCount * 1.5f);
     int32 MonstersToSpawn = NightMaxMonsterCount - ReSpawnCount;
 
-    // 스폰할 몬스터가 없으면 리턴
     if (MonstersToSpawn <= 0)
     {
-        // 다음 스폰 타이머 설정
         if (bIsSpawning)
         {
             World->GetTimerManager().SetTimer(
@@ -355,7 +336,6 @@ void UMonsterSpawnComponent::SpawnNightMonsters()
 
     TArray<FVector> UsedLocations;
 
-    // 기존 몬스터들의 위치도 UsedLocations에 추가
     for (ACharacter* ExistingMonster : SpawnedMonsters)
     {
         if (IsValid(ExistingMonster))
@@ -373,15 +353,14 @@ void UMonsterSpawnComponent::SpawnNightMonsters()
 
         if (SpawnLocation == FVector::ZeroVector)
         {
-            continue; // 유효한 위치를 찾지 못함
+            continue;
         }
 
-        // 기존 위치들과 너무 가까운지 확인
         bool TooClose = false;
         for (const FVector& UsedLocation : UsedLocations)
         {
             float DistSq = FVector::DistSquared2D(SpawnLocation, UsedLocation);
-            if (DistSq < 22500.0f) // 150 units 거리
+            if (DistSq < 22500.0f)
             {
                 TooClose = true;
                 break;
@@ -393,7 +372,6 @@ void UMonsterSpawnComponent::SpawnNightMonsters()
             continue;
         }
 
-        //몬스터선택
         int32 MonsterIndex = FMath::RandRange(0, MonsterClasses.Num() - 1);
         TSubclassOf<ACharacter> MonsterClass = MonsterClasses[MonsterIndex];
 
@@ -402,13 +380,11 @@ void UMonsterSpawnComponent::SpawnNightMonsters()
             continue;
         }
 
-        // 회전 설정 (플레이어를 향하도록)
         FVector DirectionToCenter = OwnerLocation - SpawnLocation;
         DirectionToCenter.Z = 0;
         FRotator Rotation = DirectionToCenter.Rotation();
         Rotation.Yaw += FMath::FRandRange(-45.0f, 45.0f);
 
-        // 몬스터 스폰
         FActorSpawnParameters SpawnParams;
         SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
@@ -427,7 +403,6 @@ void UMonsterSpawnComponent::SpawnNightMonsters()
         }
     }
 
-    // 다음 스폰 타이머 설정
     if (bIsSpawning)
     {
         World->GetTimerManager().SetTimer(
@@ -441,7 +416,6 @@ void UMonsterSpawnComponent::SpawnNightMonsters()
 
 void UMonsterSpawnComponent::DestroyAllMonsters()
 {
-    // 죽거나 삭제된 몬스터들을 배열에서 제거하고 살아있는 몬스터 수 계산
     SpawnedMonsters.RemoveAll([](ACharacter* Monster) 
     {
         return !IsValid(Monster);
