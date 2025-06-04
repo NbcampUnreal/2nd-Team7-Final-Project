@@ -1,8 +1,13 @@
 #pragma once
+
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "GameFramework/Character.h"
+#include "Engine/World.h"
+#include "EngineUtils.h"
 #include "MonsterSpawnComponent.generated.h"
+
+class ANavMeshBoundsVolume;
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class LASTCANARY_API UMonsterSpawnComponent : public UActorComponent
@@ -13,7 +18,6 @@ public:
     UMonsterSpawnComponent();
 
     virtual void BeginPlay() override;
-
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
     UFUNCTION(BlueprintCallable, Category = "Monster Spawner")
@@ -49,19 +53,19 @@ protected:
 
 private:
     void SpawnMonsters();
-
     void SpawnNightMonsters();
-
     void DestroyAllMonsters();
+
+    // NavMeshBoundsVolume 관련 함수들
+    bool IsLocationInNavMeshBounds(const FVector& Location);
+    FVector GetValidSpawnLocationInNavVolume(const FVector& OwnerLocation);
 
     UPROPERTY()
     TArray<ACharacter*> SpawnedMonsters;
 
     FTimerHandle SpawnTimerHandle;
-
     FTimerHandle DestroyTimerHandle;
 
     bool bIsSpawning;
-
     int32 ReSpawnCount;
 };

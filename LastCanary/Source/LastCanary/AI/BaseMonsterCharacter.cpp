@@ -142,6 +142,19 @@ void ABaseMonsterCharacter::MulticastStartAttack_Implementation()
     {
         PlayAnimMontage(StartAttack);
 
+        int32 RandomSound = FMath::RandRange(0, 2);
+        switch (RandomSound)
+        {
+        case 0:
+            PlayAttackSound1();
+            break;
+        case 1:
+            PlayAttackSound2();
+            break;
+        case 2:
+            PlayAttackSound3();
+            break;
+        }
     }
 }
 
@@ -160,6 +173,8 @@ void ABaseMonsterCharacter::MulticastAIDeath_Implementation()
     if (IsValid(AIDeath))
     {
         PlayAnimMontage(AIDeath);
+
+        (FMath::RandBool()) ? PlayDeathSound1() : PlayDeathSound2();
     }
 }
 
@@ -174,4 +189,80 @@ void ABaseMonsterCharacter::EnableAttackCollider()
 void ABaseMonsterCharacter::DisableAttackCollider()
 {
     AttackCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}
+
+void ABaseMonsterCharacter::MulticastPlaySound_Implementation(USoundBase* Sound)
+{
+    if (Sound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(this,
+            Sound,
+            GetActorLocation(),
+            FRotator::ZeroRotator,
+            2.0f); //볼륨 배율이라고 함
+    }
+}
+
+void ABaseMonsterCharacter::PlayAttackSound1()
+{
+    if (AttackSound1)
+    {
+        MulticastPlaySound(AttackSound1);
+    }
+}
+
+void ABaseMonsterCharacter::PlayAttackSound2()
+{
+    if (AttackSound2)
+    {
+        MulticastPlaySound(AttackSound2);
+    }
+}
+
+void ABaseMonsterCharacter::PlayAttackSound3()
+{
+    if (AttackSound3)
+    {
+        MulticastPlaySound(AttackSound3);
+    }
+}
+
+void ABaseMonsterCharacter::PlayDeathSound1()
+{
+    if (DeathSound1)
+    {
+        MulticastPlaySound(DeathSound1);
+    }
+}
+
+void ABaseMonsterCharacter::PlayDeathSound2()
+{
+    if (DeathSound2)
+    {
+        MulticastPlaySound(DeathSound2);
+    }
+}
+
+void ABaseMonsterCharacter::PlayIdleSound()
+{
+    if (IdleSound)
+    {
+        MulticastPlaySound(IdleSound);
+    }
+}
+
+void ABaseMonsterCharacter::PlayMoveSound()
+{
+    if (MoveSound)
+    {
+        MulticastPlaySound(MoveSound);
+    }
+}
+
+void ABaseMonsterCharacter::PlayChaseSound()
+{
+    if (ChaseSound)
+    {
+        MulticastPlaySound(ChaseSound);
+    }
 }
