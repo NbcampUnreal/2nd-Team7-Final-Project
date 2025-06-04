@@ -163,7 +163,8 @@ void UResultMenu::OnAcceptClicked()
 	}
 
 	// 클라이언트면 무시
-	if (PC->GetNetMode() != NM_ListenServer)
+	//if (PC->GetNetMode() != NM_ListenServer)
+	if (PC->HasAuthority() == false)
 	{
 		LOG_Frame_WARNING(TEXT("ResultMenu - AcceptClicked → 클라이언트이므로 무시"));
 		return;
