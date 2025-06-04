@@ -20,6 +20,7 @@
 #include "DataType/SessionPlayerInfo.h"
 
 #include "LastCanary.h"
+#include "EnhancedInputComponent.h"
 
 ALCRoomPlayerController::ALCRoomPlayerController()
 {
@@ -30,7 +31,7 @@ void ALCRoomPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	CreateAndShowRoomUI();
+	CreateRoomWidget();
 
 	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 	{
@@ -59,6 +60,11 @@ void ALCRoomPlayerController::Client_UpdatePlayerList_Implementation(const TArra
 {
 	Super::Client_UpdatePlayerList_Implementation(PlayerInfos);
 
+	UpdatePlayerList(PlayerInfos);
+}
+
+void ALCRoomPlayerController::UpdatePlayerList(const TArray<FSessionPlayerInfo>& PlayerInfos)
+{
 	if (IsValid(RoomWidgetInstance))
 	{
 		LOG_Frame_WARNING(TEXT("Try Update Player List!"));
@@ -69,7 +75,7 @@ void ALCRoomPlayerController::Client_UpdatePlayerList_Implementation(const TArra
 		LOG_Frame_WARNING(TEXT("Not Initialized Widget Instance!! Retry Update Info"));
 
 		FTimerHandle TimerHandle;
-		TWeakObjectPtr<ALCRoomPlayerController> WeakPtr = this;
+		TWeakObjectPtr<ALCRoomPlayerController> WeakPtr(this);
 		TArray<FSessionPlayerInfo> InfosCopy = PlayerInfos;
 
 		GetWorld()->GetTimerManager().SetTimer
@@ -82,7 +88,7 @@ void ALCRoomPlayerController::Client_UpdatePlayerList_Implementation(const TArra
 					if (WeakPtr->RoomWidgetInstance)
 					{
 						UE_LOG(LogTemp, Warning, TEXT("Update Lobby UI!!"));
-						WeakPtr->Client_UpdatePlayerList(InfosCopy);
+						WeakPtr->UpdatePlayerList(InfosCopy);
 					}
 				}
 			},
@@ -90,33 +96,6 @@ void ALCRoomPlayerController::Client_UpdatePlayerList_Implementation(const TArra
 			false
 		);
 	}
-}
-
-void ALCRoomPlayerController::Client_UpdatePlayers_Implementation()
-{
-	Super::Client_UpdatePlayers_Implementation();
-
-	FTimerHandle TimerHandle;
-	TWeakObjectPtr<ALCRoomPlayerController> WeakPtr = this;
-
-	GetWorld()->GetTimerManager().SetTimer
-	(
-		TimerHandle,
-		[WeakPtr]()
-		{
-			if (WeakPtr.IsValid())
-			{
-				if (WeakPtr->RoomWidgetInstance)
-				{
-					UE_LOG(LogTemp, Warning, TEXT("Update Lobby UI!!"));
-					WeakPtr->RoomWidgetInstance->UpdatePlayerNames();
-				}
-			}
-		},
-		1.0f,
-		false
-	);
-
 }
 
 void ALCRoomPlayerController::Server_SetReady_Implementation(bool bIsReady)
@@ -223,17 +202,53 @@ void ALCRoomPlayerController::Server_RequestPurchase_Implementation(const TArray
 	}
 }
 
-void ALCRoomPlayerController::CreateAndShowRoomUI()
+void ALCRoomPlayerController::InitInputComponent()
+{
+	Super::InitInputComponent();
+
+	if (IsValid(EnhancedInput))
+	{
+		if (RoomUIAction)
+		{
+			EnhancedInput->BindAction(RoomUIAction, ETriggerEvent::Started, this, &ALCRoomPlayerController::ToggleShowRoomWidget);
+		}
+	}
+
+}
+
+void ALCRoomPlayerController::CreateRoomWidget()
 {
 	if (IsLocalPlayerController())
 	{
 		if (RoomWidgetClass)
 		{
 			RoomWidgetInstance = CreateWidget<URoomWidget>(this, RoomWidgetClass);
-			if (RoomWidgetInstance)
-			{
-				//RoomWidgetInstance->AddToViewport();
-			}
+			RoomWidgetInstance->CreatePlayerSlots();
+			RoomWidgetInstance->AddToViewport();
+			bIsShowRoomUI = true;
 		}
+	}
+}
+
+void ALCRoomPlayerController::ToggleShowRoomWidget()
+{
+	bIsShowRoomUI = !bIsShowRoomUI;
+
+	if (IsValid(RoomWidgetInstance))
+	{
+		if (bIsShowRoomUI)
+		{
+			RoomWidgetInstance->AddToViewport(10);
+			FInputModeGameAndUI GameAndUIInputMode;
+			SetInputMode(GameAndUIInputMode);
+		}
+		else
+		{
+			RoomWidgetInstance->RemoveFromParent();
+			FInputModeGameOnly GameInputMode;
+			SetInputMode(GameInputMode);
+		}
+
+		bShowMouseCursor = bIsShowRoomUI;
 	}
 }
