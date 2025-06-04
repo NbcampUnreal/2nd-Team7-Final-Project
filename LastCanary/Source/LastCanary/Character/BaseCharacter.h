@@ -319,7 +319,7 @@ public:
 public:
 	bool CheckHardLandState();
 
-	EPlayerState CheckPlayerCurrentState();
+	EPlayerInGameStatus CheckPlayerCurrentState();
 
 	UFUNCTION(Client, Reliable)
 	void Client_SetMovementSetting();

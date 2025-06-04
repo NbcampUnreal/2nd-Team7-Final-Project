@@ -201,11 +201,12 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 	{
 		// 관전자가 바라볼 경우 → 3인칭 시점
 		SpectatorCamera->GetCameraView(DeltaTime, ViewInfo);
-		GetMesh()->SetOwnerNoSee(true);
+		GetMesh()->SetOwnerNoSee(false);
+		GetMesh()->UnHideBoneByName(TEXT("head"));
 		if (IsLocallyControlled())
 		{
 			// "head"는 스켈레탈 메시의 머리 본에 해당하는 이름
-			GetMesh()->UnHideBoneByName(TEXT("head"));
+
 		}
 	}
 }
@@ -240,7 +241,7 @@ void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::Handle_Look(const FInputActionValue& ActionValue)
 {
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -252,7 +253,7 @@ void ABaseCharacter::Handle_Look(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::Handle_Move(const FInputActionValue& ActionValue)
 {
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -270,7 +271,7 @@ void ABaseCharacter::Handle_Move(const FInputActionValue& ActionValue)
 void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 {
 	const float Value = ActionValue.Get<float>();
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -342,7 +343,7 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 void ABaseCharacter::Handle_Walk(const FInputActionValue& ActionValue)
 {
 	const float Value = ActionValue.Get<float>();
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -390,7 +391,7 @@ void ABaseCharacter::Handle_Walk(const FInputActionValue& ActionValue)
 void ABaseCharacter::Handle_Crouch(const FInputActionValue& ActionValue)
 {
 	const float Value = ActionValue.Get<float>();
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -434,7 +435,7 @@ void ABaseCharacter::Handle_Crouch(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
 {
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -491,7 +492,7 @@ void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 {
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -863,7 +864,7 @@ void ABaseCharacter::CalcCameraLocation()
 
 void ABaseCharacter::Handle_Reload()
 {
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -940,7 +941,7 @@ void ABaseCharacter::OnGunReloadAnimComplete(UAnimMontage* CompletedMontage, boo
 
 void ABaseCharacter::Handle_ViewMode()
 {
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -953,18 +954,23 @@ void ABaseCharacter::SetCameraMode(bool bIsFirstPersonView)
 {
 	if (bIsFirstPersonView)
 	{
+		if (IsLocallyControlled())
+		{
+			GetMesh()->HideBoneByName(TEXT("head"), EPhysBodyOp::PBO_None);
+		}
 		SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 		SpringArm->TargetArmLength = 0.0f;
 	}
 	else
 	{
+		GetMesh()->UnHideBoneByName(TEXT("head"));
 		SpringArm->TargetArmLength = 200.0f;
 	}
 }
 
 void ABaseCharacter::Handle_Strafe(const FInputActionValue& ActionValue)
 {
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -972,7 +978,7 @@ void ABaseCharacter::Handle_Strafe(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::Handle_Interact()
 {
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -1010,7 +1016,7 @@ void ABaseCharacter::Handle_Interact()
 
 void ABaseCharacter::PickupItem()
 {
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -1022,7 +1028,7 @@ void ABaseCharacter::TraceInteractableActor()
 
 	SetDesiredAiming(true);
 	SetRotationMode(AlsRotationModeTags::Aiming);
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -1223,7 +1229,7 @@ void ABaseCharacter::GetHeldItem()
 
 void ABaseCharacter::SetCurrentQuickSlotIndex(int32 NewIndex)
 {
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -1320,7 +1326,7 @@ void ABaseCharacter::Server_EquipItemFromCurrentQuickSlot_Implementation(int32 Q
 
 int32 ABaseCharacter::GetCurrentQuickSlotIndex()
 {
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return 0;
 	}
@@ -1418,6 +1424,7 @@ float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageE
 	float MaxHP = MyPlayerState->MaxHP;
 	float CalCulatedHP = FMath::Clamp(CurrentHP - FinalDamage, 0.0f, MaxHP);
 	MyPlayerState->SetHP(CalCulatedHP);
+	UE_LOG(LogTemp, Warning, TEXT("Current HP : %f"), CalCulatedHP);
 	if (CalCulatedHP <= 0.f)
 	{
 		HandlePlayerDeath(); // 사망 처리
@@ -1446,6 +1453,7 @@ void ABaseCharacter::GetFallDamage(float Velocity)
 	float CurrentHP = MyPlayerState->GetHP();
 	float MaxHP = MyPlayerState->MaxHP;
 	float CalCulatedHP = FMath::Clamp(CurrentHP - FinalDamage, 0.0f, MaxHP);
+	UE_LOG(LogTemp, Warning, TEXT("Current HP : %f"), CalCulatedHP);
 	MyPlayerState->SetHP(CalCulatedHP);
 	if (CalCulatedHP <= 0.f)
 	{
@@ -1455,7 +1463,8 @@ void ABaseCharacter::GetFallDamage(float Velocity)
 
 void ABaseCharacter::HandlePlayerDeath()
 {
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	UE_LOG(LogTemp, Log, TEXT("Character Died"));
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -1512,6 +1521,7 @@ void ABaseCharacter::EscapeThroughGate()
 		return;
 	}
 
+	UE_LOG(LogTemp, Log, TEXT("Character EscapeThroughGate"));
 	PC->OnPlayerExitActivePlay();
 	Multicast_SetPlayerInGameStateOnEscapeGate();
 }
@@ -1550,14 +1560,14 @@ bool ABaseCharacter::CheckHardLandState()
 }
 
 
-EPlayerState ABaseCharacter::CheckPlayerCurrentState()
+EPlayerInGameStatus ABaseCharacter::CheckPlayerCurrentState()
 {
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
 	{
-		return EPlayerState::None;
+		return EPlayerInGameStatus::None;
 	}
-	return MyPlayerState->CurrentState;
+	return MyPlayerState->InGameState;
 }
 
 
