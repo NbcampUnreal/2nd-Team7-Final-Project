@@ -98,11 +98,6 @@ void ALCRoomPlayerController::UpdatePlayerList(const TArray<FSessionPlayerInfo>&
 	}
 }
 
-void ALCRoomPlayerController::Server_SetReady_Implementation(bool bIsReady)
-{
-
-}
-
 void ALCRoomPlayerController::Server_RequestPurchase_Implementation(const TArray<FItemDropData>& DropList)
 {
 	if (DropList.IsEmpty())
@@ -224,8 +219,9 @@ void ALCRoomPlayerController::CreateRoomWidget()
 		{
 			RoomWidgetInstance = CreateWidget<URoomWidget>(this, RoomWidgetClass);
 			RoomWidgetInstance->CreatePlayerSlots();
-			RoomWidgetInstance->AddToViewport();
-			bIsShowRoomUI = true;
+			RoomWidgetInstance->AddToViewport(10);
+			RoomWidgetInstance->SetVisibility(ESlateVisibility::Hidden);
+			bIsShowRoomUI = false;
 		}
 	}
 }
@@ -234,17 +230,24 @@ void ALCRoomPlayerController::ToggleShowRoomWidget()
 {
 	bIsShowRoomUI = !bIsShowRoomUI;
 
+	if (!IsLocalPlayerController())
+	{
+		return;
+	}
+
 	if (IsValid(RoomWidgetInstance))
 	{
 		if (bIsShowRoomUI)
 		{
-			RoomWidgetInstance->AddToViewport(10);
+			//RoomWidgetInstance->AddToViewport(10);
+			RoomWidgetInstance->SetVisibility(ESlateVisibility::Visible);
 			FInputModeGameAndUI GameAndUIInputMode;
 			SetInputMode(GameAndUIInputMode);
 		}
 		else
 		{
-			RoomWidgetInstance->RemoveFromParent();
+			//RoomWidgetInstance->RemoveFromParent();
+			RoomWidgetInstance->SetVisibility(ESlateVisibility::Hidden);
 			FInputModeGameOnly GameInputMode;
 			SetInputMode(GameInputMode);
 		}
