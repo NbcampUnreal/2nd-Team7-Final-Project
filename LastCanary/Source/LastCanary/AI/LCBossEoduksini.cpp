@@ -12,6 +12,18 @@ ALCBossEoduksini::ALCBossEoduksini()
     PrimaryActorTick.bCanEverTick = true;
     bReplicates = true;
 
+    // ── DarknessSphere 생성 ──
+    DarknessSphere = CreateDefaultSubobject<USphereComponent>(TEXT("DarknessSphere"));
+    DarknessSphere->SetupAttachment(GetRootComponent());
+    DarknessSphere->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
+    DarknessSphere->SetGenerateOverlapEvents(false); // 처음에는 비활성화
+    DarknessSphere->SetSphereRadius(DarknessRadius);
+
+    // Overlap 콜백 바인딩 (BeginPlay에서 활성화 타이밍 설정)
+    DarknessSphere->OnComponentBeginOverlap.AddDynamic(this, &ALCBossEoduksini::OnDarknessSphereBeginOverlap);
+    DarknessSphere->OnComponentEndOverlap.AddDynamic(this, &ALCBossEoduksini::OnDarknessSphereEndOverlap);
+
+
     // 초기값
     CurScale = MaxScale;
 
@@ -40,6 +52,10 @@ void ALCBossEoduksini::BeginPlay()
             false
         );
     }
+
+    // BeginPlay 시점에 Sphere 반경 설정을 한 번 더 보장
+    DarknessSphere->SetSphereRadius(DarknessRadius);
+    DarknessSphere->SetGenerateOverlapEvents(true);
 }
 
 void ALCBossEoduksini::Tick(float DeltaSeconds)
@@ -51,45 +67,11 @@ void ALCBossEoduksini::Tick(float DeltaSeconds)
     // 분노·스케일 자동 업데이트
     UpdateRageAndScale(DeltaSeconds);
 
-    // Darkness 자동 트리거
-    TryTriggerDarkness();
-
-    // — 거리 체크로 어둠 ON/OFF —
-    if (Rage >= DarknessRage)
-    {
-        UWorld* World = GetWorld();
-        for (auto It = World->GetPlayerControllerIterator(); It; ++It)
-        {
-            APlayerController* PC = It->Get();
-            if (!PC || !PC->IsLocalController()) continue;
-            APawn* Pawn = PC->GetPawn();
-            if (!Pawn) continue;
-
-            const float Dist = FVector::Dist(
-                Pawn->GetActorLocation(), GetActorLocation());
-            const bool bInside = (Dist <= DarknessRadius);
-            const bool bDark = DarkenedPlayers.Contains(PC);
-
-            if (bInside && !bDark)
-            {
-                // 반경 안으로 들어옴 → Fade In
-                PC->PlayerCameraManager->StartCameraFade(
-                    0.f, DarknessFadeAlpha,
-                    FadeDuration, FLinearColor::Black,
-                    false, true);
-                DarkenedPlayers.Add(PC);
-            }
-            else if (!bInside && bDark)
-            {
-                // 반경 밖으로 나감 → Fade Out
-                PC->PlayerCameraManager->StartCameraFade(
-                    DarknessFadeAlpha, 0.f,
-                    FadeDuration, FLinearColor::Black,
-                    false, false);
-                DarkenedPlayers.Remove(PC);
-            }
-        }
-    }
+	if (bIsBerserk && !bDarknessActive)
+	{
+		// 광폭화 상태에서 Darkness가 활성화되지 않았다면 자동으로 트리거
+		TryTriggerDarkness();
+	}
 
     // Blackboard 갱신
     if (auto* AICon = Cast<ALCBaseBossAIController>(GetController()))
@@ -98,9 +80,60 @@ void ALCBossEoduksini::Tick(float DeltaSeconds)
         {
             BB->SetValueAsFloat(TEXT("RagePercent"), Rage / MaxRage);
             BB->SetValueAsBool(TEXT("IsDarknessActive"), bDarknessActive);
-			BB->SetValueAsBool(TEXT("IsBerserkMode"), bIsBerserk);
+            BB->SetValueAsBool(TEXT("IsBerserkMode"), bIsBerserk);
         }
     }
+}
+
+void ALCBossEoduksini::OnDarknessSphereBeginOverlap(
+    UPrimitiveComponent* OverlappedComp,
+    AActor* OtherActor,
+    UPrimitiveComponent* OtherComp,
+    int32 OtherBodyIndex,
+    bool bFromSweep,
+    const FHitResult& SweepResult)
+{
+    if (!bDarknessActive) return;  // 어둠 상태가 활성화된 뒤에만 처리
+
+    // ① OtherActor를 Pawn으로 캐스트
+    APawn* Pawn = Cast<APawn>(OtherActor);
+    if (!Pawn) return;
+
+    // ② Pawn에서 PlayerController를 얻음
+    APlayerController* PC = Cast<APlayerController>(Pawn->GetController());
+    if (!PC || !PC->IsLocalController()) return;
+
+	// ③ 이미 어둠 효과가 적용된 플레이어는 무시
+	if (DarkenedPlayers.Contains(PC)) return;
+
+    // Fade In 적용
+    PC->PlayerCameraManager->StartCameraFade(
+        0.f, DarknessFadeAlpha,
+        FadeDuration, FLinearColor::Black,
+        false, true
+    );
+
+    DarkenedPlayers.Add(PC);
+}
+
+void ALCBossEoduksini::OnDarknessSphereEndOverlap(
+    UPrimitiveComponent* OverlappedComp,
+    AActor* OtherActor,
+    UPrimitiveComponent* OtherComp,
+    int32 OtherBodyIndex)
+{
+    // 플레이어 컨트롤러인지 확인
+    APlayerController* PC = Cast<APlayerController>(OtherActor->GetInstigatorController());
+    if (!PC || !PC->IsLocalController()) return;
+
+    // Fade Out 적용
+    PC->PlayerCameraManager->StartCameraFade(
+        DarknessFadeAlpha, 0.f,
+        FadeDuration, FLinearColor::Black,
+        false, false
+    );
+
+    DarkenedPlayers.Remove(PC);
 }
 
 void ALCBossEoduksini::SpawnRandomClue()
@@ -226,7 +259,7 @@ void ALCBossEoduksini::UpdateRageAndScale(float DeltaSeconds)
     float DeltaRage = (bLooked ? -RageLossPerSec : RageGainPerSec) * DeltaSeconds;
 
     // 광폭화 중이면 배수 적용
-    if (bIsBerserk && !bLooked)
+    if (bIsBerserk)
     {
         DeltaRage *= BerserkRageGainMultiplier;
     }
@@ -241,12 +274,18 @@ void ALCBossEoduksini::UpdateRageAndScale(float DeltaSeconds)
 void ALCBossEoduksini::TryTriggerDarkness()
 {
     if (bDarknessActive || Rage < MaxRage) return;
+
+    // 1) Darkness 상태 활성화
     bDarknessActive = true;
     Multicast_StartDarkness();
+
+    // 2) 일정 시간 후 Darkness 종료 예약
     GetWorldTimerManager().SetTimer(
-        DarknessTimer, this,
+        DarknessTimer,
+        this,
         &ALCBossEoduksini::EndDarkness,
-        DarknessDuration, false
+        DarknessDuration,
+        false
     );
 }
 
@@ -270,56 +309,52 @@ void ALCBossEoduksini::OnRep_DarknessActive()
 
 void ALCBossEoduksini::BP_StartDarknessEffect_Implementation()
 {
-    UE_LOG(LogTemp, Warning, TEXT("[Darkness] 시작!"));
+    UE_LOG(LogTemp, Warning, TEXT("[Darkness] 클라이언트: 화면 어둡게 처리 시작"));
 
-    UWorld* World = GetWorld();
-    if (!World) return;
-
-    for (auto It = World->GetPlayerControllerIterator(); It; ++It)
+    // 1) 이 클라이언트에서 로컬 컨트롤러를 찾아 페이드 처리
+    if (UWorld* World = GetWorld())
     {
-        APlayerController* PC = It->Get();
-        if (!PC || !PC->IsLocalController())
-            continue;
-        APawn* Pawn = PC->GetPawn();
-        if (!Pawn)
-            continue;
+        for (auto It = World->GetPlayerControllerIterator(); It; ++It)
+        {
+            APlayerController* PC = It->Get();
+            if (!PC || !PC->IsLocalController())
+                continue;
 
-
-        //PC->PlayerCameraManager->StartCameraFade(
-        //    0.f,
-        //    DarknessFadeAlpha,
-        //    FadeDuration,
-        //    FLinearColor::Black,
-        //    false,
-        //    true
-        //    );
+            // 각 로컬 플레이어 화면에 Fade In 적용
+            PC->PlayerCameraManager->StartCameraFade(
+                0.f,                  // 시작 Alpha
+                DarknessFadeAlpha,    // 목표 Alpha
+                FadeDuration,         // 페이드 시간
+                FLinearColor::Black,  // Black으로 페이드
+                false,                // bHoldWhenFinished = false
+                true                  // bFadeAudio = true (필요 시 사운드도 페이드)
+            );
+        }
     }
 }
 
 void ALCBossEoduksini::BP_EndDarknessEffect_Implementation()
 {
-    UE_LOG(LogTemp, Warning, TEXT("[Darkness] 종료!"));
+    UE_LOG(LogTemp, Warning, TEXT("[Darkness] 클라이언트: 화면 어둡기 해제 시작"));
 
-    UWorld* World = GetWorld();
-    if (!World) return;
-
-    for (auto It = World->GetPlayerControllerIterator(); It; ++It)
+    if (UWorld* World = GetWorld())
     {
-        APlayerController* PC = It->Get();
-        if (!PC || !PC->IsLocalController())
-            continue;
-        APawn* Pawn = PC->GetPawn();
-        if (!Pawn)
-            continue;
+        for (auto It = World->GetPlayerControllerIterator(); It; ++It)
+        {
+            APlayerController* PC = It->Get();
+            if (!PC || !PC->IsLocalController())
+                continue;
 
-        //PC->PlayerCameraManager->StartCameraFade(
-        //    DarknessFadeAlpha,
-        //    0.f,
-        //    FadeDuration,
-        //    FLinearColor::Black,
-        //    false,
-        //    false
-        //    );
+            // 각 로컬 플레이어 화면에 Fade Out 적용
+            PC->PlayerCameraManager->StartCameraFade(
+                DarknessFadeAlpha, // 시작 Alpha
+                0.f,               // 목표 Alpha
+                FadeDuration,      // 페이드 시간
+                FLinearColor::Black,
+                false,
+                false
+            );
+        }
     }
 }
 
