@@ -110,6 +110,8 @@ public:
 	UPROPERTY(ReplicatedUsing = OnRep_CurrentState, VisibleAnywhere, BlueprintReadOnly, Category = "State")
 	EPlayerState CurrentState = EPlayerState::Idle;
 
+	EPlayerInGameStatus InGameState = EPlayerInGameStatus::Alive;
+
 	UFUNCTION()
 	void OnRep_CurrentState();
 

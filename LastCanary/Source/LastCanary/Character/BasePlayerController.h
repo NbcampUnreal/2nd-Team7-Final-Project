@@ -227,11 +227,11 @@ public:
 public:
 
 	UFUNCTION()
-	void OnCharacterDied();
+	void OnPlayerExitActivePlay();
 
 	UFUNCTION(Client, Reliable)
-	void Client_OnCharacterDied();
-	void Client_OnCharacterDied_Implementation();
+	void Client_OnPlayerExitActivePlay();
+	void Client_OnPlayerExitActivePlay_Implementation();
 
 	UPROPERTY(BlueprintReadWrite)
 	int32 CurrentSpectatedCharacterIndex = 0;

@@ -147,6 +147,11 @@ protected:
 	bool bADS = false; // 현재 정조준 상태인가?
 
 
+
+public:
+	void SetCameraMode(bool bIsFirstPersonView);
+
+
 	// Character Input Handle Function
 
 public:
@@ -164,7 +169,7 @@ public:
 	virtual void Handle_ViewMode();
 	virtual void Handle_Reload();
 
-
+	void EscapeThroughGate();
 
 	//Character State
 
@@ -260,13 +265,18 @@ public:
 	void HandlePlayerDeath();
 	
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_SetPlayerInGameState();
-	void Multicast_SetPlayerInGameState_Implementation();
+	void Multicast_SetPlayerInGameStateOnDie();
+	void Multicast_SetPlayerInGameStateOnDie_ImplementationOnDie();
 
 	virtual void GetFallDamage(float Velocity) override;
 
 	float CalculateTakeDamage(float DamageAmount);
 	float CalculateFallDamage(float Velocity);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_SetPlayerInGameStateOnEscapeGate();
+	void Multicast_SetPlayerInGameStateOnEscapeGateImplementationOnDie();
+
 
 	UFUNCTION(Server, Reliable)
 	void Server_PlayReload();

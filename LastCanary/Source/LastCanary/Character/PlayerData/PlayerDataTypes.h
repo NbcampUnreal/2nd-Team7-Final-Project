@@ -9,7 +9,8 @@ enum class EPlayerState : uint8
     None UMETA(DisplayName = "None"),
     Idle UMETA(DisplayName = "Idle"),
     SplitMind UMETA(DisplayName = "정신분열중"),
-    Dead UMETA(DisplayName = "사망")
+    Dead UMETA(DisplayName = "사망"),
+    Escape UMETA(DisplayName = "탈출")
     // 필요한 상태 더 추가
 };
 
@@ -28,6 +29,14 @@ enum class EInputMode : uint8
 {
     Hold,
     Toggle
+};
+
+UENUM(BlueprintType)
+enum class EPlayerInGameStatus : uint8
+{
+    None        UMETA(DisplayName = "없음"),
+    Alive      UMETA(DisplayName = "게임 플레이 중"),
+    Spectating  UMETA(DisplayName = "관전 중")
 };
 
 // ------------------------------

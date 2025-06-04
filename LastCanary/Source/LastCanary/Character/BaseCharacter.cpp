@@ -53,14 +53,6 @@ ABaseCharacter::ABaseCharacter()
 	RemoteOnlyOverlaySkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("RemoteOnlyOverlaySkeletalMesh"));
 	RemoteOnlyOverlaySkeletalMesh->SetupAttachment(RemoteOnlySkeletalMesh);
 
-	//Camera Settings (Maybe Deprecated)
-	/*
-	sCamera = CreateDefaultSubobject<UAlsCameraComponent>(TEXT("Camera"));
-	sCamera->SetupAttachment(GetMesh()); // Spring Arm에 카메라를 붙임
-	sCamera->SetRelativeRotation_Direct(FRotator::ZeroRotator);
-	sCamera->MovementBaseBoneName = FName("Pelvis");
-	*/
-
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->SetupAttachment(GetMesh(), TEXT("FirstPersonCamera"));
 
@@ -858,20 +850,23 @@ void ABaseCharacter::Handle_ViewMode()
 	{
 		return;
 	}
+	bIsFPSCamera = !bIsFPSCamera;
+	SetCameraMode(bIsFPSCamera);
+}
 
-	if (bIsFPSCamera)
-	{
-		bIsFPSCamera = !bIsFPSCamera;
-		SpringArm->TargetArmLength = 400.0f;
-	}
-	else
+
+void ABaseCharacter::SetCameraMode(bool bIsFirstPersonView)
+{
+	if (bIsFirstPersonView)
 	{
 		SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 		SpringArm->TargetArmLength = 0.0f;
-		bIsFPSCamera = !bIsFPSCamera;
+	}
+	else
+	{
+		SpringArm->TargetArmLength = 200.0f;
 	}
 }
-
 
 void ABaseCharacter::Handle_Strafe(const FInputActionValue& ActionValue)
 {
@@ -1359,13 +1354,13 @@ void ABaseCharacter::HandlePlayerDeath()
 	{
 		return;
 	}
-	PC->OnCharacterDied();
-	Multicast_SetPlayerInGameState();
+	PC->OnPlayerExitActivePlay();
+	Multicast_SetPlayerInGameStateOnDie();
 	UnequipCurrentItem();
 	StartRagdolling();
 }
 
-void ABaseCharacter::Multicast_SetPlayerInGameState_Implementation()
+void ABaseCharacter::Multicast_SetPlayerInGameStateOnDie_Implementation()
 {
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
@@ -1373,6 +1368,7 @@ void ABaseCharacter::Multicast_SetPlayerInGameState_Implementation()
 		return;
 	}
 	MyPlayerState->CurrentState = EPlayerState::Dead;
+	MyPlayerState->InGameState = EPlayerInGameStatus::Spectating; // 관전 상태 돌입
 }
 
 float ABaseCharacter::CalculateTakeDamage(float DamageAmount)
@@ -1396,6 +1392,29 @@ float ABaseCharacter::CalculateFallDamage(float Velocity)
 	float AdditionalCalculatedDamage = AppliedFallDamage / 10;
 	//TODO: 여기에다가 추가로 뭔가 장비나 방어력이 추가 되면 여기서 계산하고 넘겨도 됨.
 	return AdditionalCalculatedDamage;
+}
+
+void ABaseCharacter::EscapeThroughGate()
+{
+	ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+	if (!IsValid(PC))
+	{
+		return;
+	}
+
+	PC->OnPlayerExitActivePlay();
+	Multicast_SetPlayerInGameStateOnEscapeGate();
+}
+
+void ABaseCharacter::Multicast_SetPlayerInGameStateOnEscapeGate_Implementation()
+{
+	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
+	if (!IsValid(MyPlayerState))
+	{
+		return;
+	}
+	MyPlayerState->CurrentState = EPlayerState::Escape;
+	MyPlayerState->InGameState = EPlayerInGameStatus::Spectating; // 관전 상태 돌입
 }
 
 bool ABaseCharacter::CheckHardLandState()
@@ -1840,7 +1859,8 @@ bool ABaseCharacter::UseEquippedItem()
 		if (PC)
 		{
 			PC->SpawnDrone();
-			ToolbarInventoryComponent->DropCurrentEquippedItem();
+			//현재 들고 있는 인벤토리에서 제거하기
+			UnequipCurrentItem();
 			RefreshOverlayObject(0);
 			return true;
 		}
