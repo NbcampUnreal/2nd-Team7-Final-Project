@@ -86,7 +86,73 @@ public:
     UFUNCTION(BlueprintPure, Category = "Monster")
     bool IsDead() const { return bIsDead; }*/
 
+    // 사운드들
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+    USoundBase* AttackSound1;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+    USoundBase* AttackSound2;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+    USoundBase* AttackSound3;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+    USoundBase* DeathSound1;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+    USoundBase* DeathSound2;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+    USoundBase* IdleSound;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+    USoundBase* MoveSound;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+    USoundBase* ChaseSound;
+
+    /*UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+    USoundBase* IdleSound;*/
+
+    /*UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+    USoundBase* HitSound;*/
+
+    UFUNCTION(BlueprintCallable, Category = "Audio")
+    void PlayAttackSound1();
+
+    UFUNCTION(BlueprintCallable, Category = "Audio")
+    void PlayAttackSound2();
+
+    UFUNCTION(BlueprintCallable, Category = "Audio")
+    void PlayAttackSound3();
+
+    UFUNCTION(BlueprintCallable, Category = "Audio")
+    void PlayDeathSound1();
+
+    UFUNCTION(BlueprintCallable, Category = "Audio")
+    void PlayDeathSound2();
+
+    UFUNCTION(BlueprintCallable, Category = "Audio")
+    void PlayIdleSound();
+
+    UFUNCTION(BlueprintCallable, Category = "Audio")
+    void PlayMoveSound();
+
+    UFUNCTION(BlueprintCallable, Category = "Audio")
+    void PlayChaseSound();
+
+    /*UFUNCTION(BlueprintCallable, Category = "Audio")
+    void PlayIdleSound();*/
+
+    /*UFUNCTION(BlueprintCallable, Category = "Audio")
+    void PlayHitSound();*/
+
 protected:
+    // 네트워크 사운드 재생 함수들
+    UFUNCTION(NetMulticast, Reliable)
+    void MulticastPlaySound(USoundBase* Sound);
+    void MulticastPlaySound_Implementation(USoundBase* Sound);
+
     virtual void BeginPlay() override;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
@@ -100,9 +166,6 @@ protected:
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Monster|Combat")
     float AttackCooldown = 1.f;
-
-    /*UPROPERTY(BlueprintReadOnly, Category = "Monster|Combat")
-    bool bIsAttacking;*/
 
     FTimerHandle AttackTimerHandle;
     FTimerHandle DeathTimerHandle;

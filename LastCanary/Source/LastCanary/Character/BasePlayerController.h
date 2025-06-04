@@ -166,11 +166,6 @@ public:
 
 	virtual void Input_OnSprint(const FInputActionValue& ActionValue);
 
-	virtual void End_OnSprint(const FInputActionValue& ActionValue);
-
-	UFUNCTION()
-	void Complete_OnSprint();
-
 	virtual void Input_OnWalk(const FInputActionValue& ActionValue);
 
 	virtual void Input_OnCrouch(const FInputActionValue& ActionValue);
@@ -230,25 +225,17 @@ public:
 	ABaseCharacter* GetControlledBaseCharacter() const;
 
 public:
-	UFUNCTION()
-	void OnCharacterDamaged(float CurrentHP);
 
 	UFUNCTION()
-	void OnCharacterDied();
+	void OnPlayerExitActivePlay();
 
 	UFUNCTION(Client, Reliable)
-	void Client_OnCharacterDied();
-	void Client_OnCharacterDied_Implementation();
-
-
-
-
-	//SpectatorMode
-	UFUNCTION(BlueprintImplementableEvent)
-	void TEST_CallSpectatorWidget();
+	void Client_OnPlayerExitActivePlay();
+	void Client_OnPlayerExitActivePlay_Implementation();
 
 	UPROPERTY(BlueprintReadWrite)
 	int32 CurrentSpectatedCharacterIndex = 0;
+
 
 	void SpectateNextPlayer();
 	void SpectatePreviousPlayer();
@@ -258,17 +245,6 @@ public:
 
 public:
 	bool bIsSprinting = false;
-
-public:
-	UPROPERTY(BlueprintReadWrite, Category = "Test")
-	float TestStamina = 100.0f;
-
-	UFUNCTION()
-	void OnStaminaUpdated(float NewStamina);
-
-	UPROPERTY(BlueprintReadWrite, Category = "Test")
-	float TestHP = 100.0f;
-
 
 public:
 	void SetHardLandStateToPlayerState(bool flag);
@@ -291,13 +267,6 @@ public:
 	void ApplyRecoilStep();
 
 	void CameraSetOnScope();
-
-
-	UFUNCTION(BlueprintCallable)
-	void SetPlayerMovementSetting();
-
-	UFUNCTION(BlueprintCallable)
-	void ChangePlayerMovementSetting(float _WalkForwardSpeed, float _WalkBackwardSpeed, float _RunForwardSpeed, float _RunBackwardSpeed, float _SprintSpeed);
 
 public:
 	//총기 발사 세팅(단발 or 점사 or 연사)

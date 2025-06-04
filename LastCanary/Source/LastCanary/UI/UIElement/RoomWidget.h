@@ -15,6 +15,7 @@ class LASTCANARY_API URoomWidget : public ULCUserWidgetBase
 	GENERATED_BODY()
 
 protected:
+
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
 
@@ -36,6 +37,8 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void UpdatePlayerLists(const TArray<FSessionPlayerInfo>& PlayerInfos);
+
+	void UpdatePlayerSlots(const TArray<FSessionPlayerInfo>& PlayerInfos);
 
 protected:
 	UFUNCTION()

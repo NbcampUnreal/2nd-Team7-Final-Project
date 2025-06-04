@@ -28,8 +28,8 @@ public:
 	bool bIsInHardLandingState = false;
 	void TriggerHardLanding(float DisableDuration);
 	void EndHardLanding();
-	virtual float GetFallDamage(float Velocity);
-
+	virtual void GetFallDamage(float Velocity);
+	FVector GetLocomotionStateMovementSpeed();
 
 
 	UPROPERTY(BlueprintReadOnly, Category = "Als Character")

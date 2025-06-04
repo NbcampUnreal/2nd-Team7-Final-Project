@@ -15,14 +15,12 @@ void URoomWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	CreatePlayerSlots();
-
 	if (InviteButton)
 	{
 		InviteButton->OnClicked.AddUniqueDynamic(this, &URoomWidget::OnInviteButtonClicked);
 	}
 
-	UpdatePlayerLists(SessionPlayerInfos);
+	UpdatePlayerSlots(SessionPlayerInfos);
 }
 
 void URoomWidget::NativeDestruct()
@@ -35,14 +33,21 @@ void URoomWidget::NativeDestruct()
 	}
 }
 
+
 void URoomWidget::CreatePlayerSlots()
 {
-	// 기존 슬롯 지우기
-	if (!IsValid(PlayerListContainer))
-	{
-		LOG_Server_ERROR(TEXT("Player List Container Is Null!!"));
-		return;
-	}
+	//if (!PlayerSlotClass)
+	//{
+	//	LOG_Frame_ERROR(TEXT("URoomWidget::CreatePlayerSlots: PlayerSlotClass가 바인드되어 있지 않습니다!"));
+	//	return;
+	//}
+
+	//// 기존 슬롯 지우기
+	//if (!IsValid(PlayerListContainer))
+	//{
+	//	LOG_Server_ERROR(TEXT("Player List Container Is Null!!"));
+	//	return;
+	//}
 
 	PlayerListContainer->ClearChildren();
 	PlayerSlots.Empty();
@@ -50,9 +55,9 @@ void URoomWidget::CreatePlayerSlots()
 	// 슬롯 개수만큼 Player Slot 생성
 	for (int32 i = 0; i < MaxPlayerNum; ++i)
 	{
-		UPlayerSlot* NewPlayerSlot = CreateWidget<UPlayerSlot>(this->GetOwningPlayer(), PlayerSlotClass);
-		NewPlayerSlot->SetSlotIndex(i + 1);
+		UPlayerSlot* NewPlayerSlot = CreateWidget<UPlayerSlot>(this, PlayerSlotClass);
 
+		NewPlayerSlot->SetSlotIndex(i + 1);
 		PlayerListContainer->AddChild(NewPlayerSlot);
 		PlayerSlots.Add(NewPlayerSlot);
 	}
@@ -64,9 +69,15 @@ void URoomWidget::UpdatePlayerLists(const TArray<FSessionPlayerInfo>& PlayerInfo
 
 	if (!IsInViewport())
 	{
+		LOG_Server_WARNING(TEXT("UpdatePlayerLists: 위젯이 뷰포트에 없음 → 리턴"));
 		return;
 	}
 
+	UpdatePlayerSlots(PlayerInfos);
+}
+
+void URoomWidget::UpdatePlayerSlots(const TArray<FSessionPlayerInfo>& PlayerInfos)
+{
 	if (!IsValid(PlayerListContainer))
 	{
 		LOG_Server_WARNING(TEXT("PlayerList Container is Not Valid!"));
@@ -92,9 +103,3 @@ void URoomWidget::OnInviteButtonClicked()
 {
 	LOG_Frame_WARNING(TEXT("OnClick Invite Button"));
 }
-
-//void URoomWidget::OnBackButtonClicked()
-//{
-//	LOG_Frame_WARNING(TEXT("OnClick Back Button"));
-//
-//}

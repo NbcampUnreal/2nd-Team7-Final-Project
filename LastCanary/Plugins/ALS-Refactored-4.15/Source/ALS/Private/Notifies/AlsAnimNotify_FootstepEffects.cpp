@@ -81,6 +81,10 @@ void UAlsAnimNotify_FootstepEffects::Notify(USkeletalMeshComponent* Mesh, UAnimS
 	{
 		return;
 	}
+	if (Mesh->GetName().Contains(TEXT("FPSSkeletalMesh")))
+	{
+		return;
+	}
 
 	const auto* Character{Cast<AAlsCharacter>(Mesh->GetOwner())};
 

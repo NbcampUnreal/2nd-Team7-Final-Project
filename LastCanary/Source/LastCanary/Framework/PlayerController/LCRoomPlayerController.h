@@ -22,6 +22,7 @@ protected:
 
 public:
 	void Client_UpdatePlayerList_Implementation(const TArray<FSessionPlayerInfo>& PlayerInfos) override;
+	void UpdatePlayerList(const TArray<FSessionPlayerInfo>& PlayerInfos);
 
 	UPROPERTY(EditDefaultsOnly, Category = "Shop")
 	TSubclassOf<class ALCDroneDelivery> DroneDeliveryClass;
@@ -45,7 +46,8 @@ protected:
 
 private:
 	void CreateRoomWidget();
-	void ToggleShowRoomWidget();
+	UFUNCTION()
+	virtual void ToggleShowRoomWidget();
 	bool bIsShowRoomUI = false;
 ;
 	float RePeatRate = 0.1f;
