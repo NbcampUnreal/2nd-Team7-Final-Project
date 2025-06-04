@@ -2,7 +2,11 @@
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "GameFramework/PlayerController.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "Character/BasePlayerController.h"
+#include "Framework/GameState/LCGameState.h"
 #include "Framework/GameMode/BaseGameMode.h"
+
+#include "Net/UnrealNetwork.h"
 
 #include "LastCanary.h"
 
@@ -35,11 +39,41 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 		{
 		case EGateTravelType::ToBaseCamp:
 		{
+			if (ALCGameState* GS = GetWorld()->GetGameState<ALCGameState>())
+			{
+				if (HasAuthority())
+				{
+					if (APlayerState* PS = Controller->GetPlayerState<APlayerState>())
+					{
+						GS->MarkPlayerAsEscaped(PS);
+					}
+				}
+				else
+				{
+					GS->Server_MarkPlayerAsEscaped(Controller);
+				}
+			}
 
+			// HUD 숨기고 관전 모드 전환
+			if(ULCUIManager* UIManager = GISubsystem->GetUIManager())
+			{
+				UIManager->HideInGameHUD();
+			}
+			ABasePlayerController* BasePlayerController = Cast<ABasePlayerController>(Controller);
+			BasePlayerController->SpectateNextPlayer();
+
+			// 일정 시간 후 Pawn 제거
+			APawn* Pawn = Controller->GetPawn();
+			if (Pawn)
+			{
+				Pawn->DetachFromControllerPendingDestroy();
+				Pawn->SetLifeSpan(5.f); // 또는 Custom Fade Out
+			}
+			
 			// TODO : 탈출, 체크리스트 띄우고 전부 작성하면 결과 UI-> 호스트가 버튼 눌러서 베이스캠프로 이동
-			사망->시체 스켈레탈메시남고 ->관전(컨트롤러)
-			관전으로 넘기는 함수
-			탈출시 PS로 아이템 아이디넘김 타이머로 캐릭터 Destroy
+			// 사망->시체 스켈레탈메시남고->관전(컨트롤러)
+			// 관전으로 넘기는 함수
+			// 탈출시 PS로 아이템 아이디넘김 타이머로 캐릭터 Destroy
 		}
 		case EGateTravelType::ToInGame:
 		{
@@ -123,17 +157,23 @@ FString ALCGateActor::GetInteractMessage_Implementation() const
 	{
 		if (HasAuthority())
 		{
-			return TEXT("Press [F] to Use Gate");
+			return TEXT("Press [F] to Explore Gate");
 		}
 		else
 		{
 			return TEXT("");
 		}
 	}
+	default:
+	{
+		return TEXT("Unknown Gate Type");
+	}
 	}
 }
 
-void ALCGateActor::SetTargetMapID(const int32& InMapID)
+void ALCGateActor::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
-	TargetMapID = InMapID;
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ALCGateActor, TravelType);
 }

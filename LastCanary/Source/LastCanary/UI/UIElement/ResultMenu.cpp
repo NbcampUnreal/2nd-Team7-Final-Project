@@ -9,6 +9,7 @@
 
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Framework/PlayerController/LCRoomPlayerController.h"
+#include "Framework/Manager/ChecklistManager.h"
 
 #include "LastCanary.h"
 
@@ -154,22 +155,56 @@ void UResultMenu::OnAcceptClicked()
 {
 	RemoveFromParent();
 
-	LOG_Frame_WARNING(TEXT("ResultMenu - AcceptClicked → Returning to BaseCamp"));
-
-	// TODO : 호스트가 클릭하면 레벨 전환
-	ALCRoomPlayerController* PC = Cast<ALCRoomPlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0));
-	if (PC && PC->GetNetMode() == NM_ListenServer)
+	APlayerController* PC = GetOwningPlayer();
+	if (!PC)
 	{
-		if (ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
-		{
-			const FName BaseCampMapName = TEXT("BaseCamp");
-			const int32 BaseCampID = FCrc::StrCrc32(*BaseCampMapName.ToString());
-			GISubsystem->ChangeLevelByMapID(BaseCampID);
-		}
+		LOG_Frame_WARNING(TEXT("ResultMenu - AcceptClicked → PlayerController 없음"));
+		return;
+	}
+
+	// 클라이언트면 무시
+	if (PC->GetNetMode() != NM_ListenServer)
+	{
+		LOG_Frame_WARNING(TEXT("ResultMenu - AcceptClicked → 클라이언트이므로 무시"));
+		return;
+	}
+
+	LOG_Frame_WARNING(TEXT("ResultMenu - AcceptClicked → 호스트이므로 BaseCamp로 이동"));
+
+	// 호스트만 처리
+	if (ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+	{
+		const FName BaseCampMapName = TEXT("BaseCamp");
+		const int32 BaseCampID = FCrc::StrCrc32(*BaseCampMapName.ToString());
+		GISubsystem->ChangeLevelByMapID(BaseCampID);
 	}
 }
 
 void UResultMenu::ActivateResultCamera()
 {
 	// 선택 사항: 카메라 ViewTarget 변경 또는 SceneCapture 등
+}
+
+void UResultMenu::SetChecklistResult(const FChecklistResultData& Result)
+{
+	// 보상 항목
+	TArray<FResultRewardEntry> RewardList;
+
+	RewardList.Add({ FText::FromString("Checklist Accuracy"),
+					 FText::Format(FText::FromString("Accuracy: {0}%"),
+								   FText::AsNumber(Result.CorrectRate * 100.f)),
+					 static_cast<int32>(Result.CorrectRate * 100) });
+
+	RewardList.Add({ FText::FromString("Survival"),
+					 FText::FromString(Result.bIsSurvived ? TEXT("Survived") : TEXT("Dead")),
+					 Result.bIsSurvived ? 50 : 0 });
+
+	RewardList.Add({ FText::FromString("Checklist Score"),
+					 FText::FromString(TEXT("Score Based on Answers")),
+					 Result.Score });
+
+	SetRewardEntries(RewardList);
+	SetResourceScoreDetails(Result.ResourceDetails);
+	SetTotalGold(Result.Score); // 점수를 골드처럼 보여줌
+	SetRankText(Result.Rank);
 }

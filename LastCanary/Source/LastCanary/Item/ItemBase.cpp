@@ -153,8 +153,8 @@ void AItemBase::ApplyItemDataFromTable()
 	if (ItemData.bIsResourceItem)
 	{
 		// 점수 시스템에서 사용
-		LOG_Frame_WARNING(TEXT("이 아이템은 자원입니다. 카테고리: %d, 점수: %d"),
-			static_cast<int32>(ItemData.Category), ItemData.BaseScore);
+		// LOG_Frame_WARNING(TEXT("이 아이템은 자원입니다. 카테고리: %d, 점수: %d"),
+		//	static_cast<int32>(ItemData.Category), ItemData.BaseScore);
 	}
 
 	// 상태 변경 브로드캐스트
