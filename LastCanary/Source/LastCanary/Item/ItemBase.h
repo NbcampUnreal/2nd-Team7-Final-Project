@@ -25,16 +25,17 @@ public:
     // 컴포넌트
     //-----------------------------------------------------
 
-    /** 아이템의 기본 메시 컴포넌트 */
-    UPROPERTY(VisibleAnywhere)
+    /** 루트 씬 컴포넌트 */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+    USceneComponent* RootSceneComponent;
+
+    /** 아이템의 스태틱 메시 컴포넌트 */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
     UStaticMeshComponent* MeshComponent;
 
-    UPROPERTY(VisibleAnywhere)
+    /** 아이템의 스켈레탈 메시 컴포넌트 */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
     USkeletalMeshComponent* SkeletalMeshComponent;
-
-    /** 아이템 상호작용 감지용 구체 컴포넌트 */
-    UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
-    class USphereComponent* SphereComponent;
 
     //-----------------------------------------------------
     // 메시 관리
@@ -184,4 +185,10 @@ public:
     bool bIgnoreCharacterCollision = false;
 
     void ApplyCollisionSettings();
+
+//public:
+//    /** 클라이언트에 시각적 효과만 전달 (물리 시뮬레이션 없음) */
+//    UFUNCTION(NetMulticast, Reliable)
+//    void Multicast_SetupVisualEffects(FVector ThrowDirection, float ThrowVelocity, FVector ThrowImpulse);
+//    void Multicast_SetupVisualEffects_Implementation(FVector ThrowDirection, float ThrowVelocity, FVector ThrowImpulse);
 };

@@ -79,14 +79,8 @@ AItemBase* UItemSpawnerComponent::CreateItemWithCustomData(FName ItemRowName, co
 
     if (SpawnedItem)
     {
-        // ⭐ 기존 함수들만 사용
         ApplyItemSettings(SpawnedItem, ItemRowName, Quantity, Durability);
-
-        // ⭐ 충돌 설정도 EnablePhysicsSimulation에서 처리
         EnablePhysicsSimulation(SpawnedItem);
-
-        LOG_Item_WARNING(TEXT("[CreateItemWithCustomData] 아이템 생성 완료: %s (Q:%d, D:%.1f)"),
-            *ItemRowName.ToString(), Quantity, Durability);
     }
 
     return SpawnedItem;
@@ -200,10 +194,6 @@ void UItemSpawnerComponent::EnablePhysicsSimulation(AItemBase* Item)
         }
     }
 
-    // 네트워크 설정
-    Item->SetReplicateMovement(true);
-    Item->SetReplicates(true);
-
     // 아이템의 충돌 설정 업데이트
     Item->bIgnoreCharacterCollision = bIgnoreCharacterCollision;
     Item->ApplyCollisionSettings();
@@ -212,19 +202,26 @@ void UItemSpawnerComponent::EnablePhysicsSimulation(AItemBase* Item)
     FVector ThrowDirection = CalculateThrowDirection();
     FVector ThrowImpulse = ThrowDirection * ThrowVelocity;
 
-    if (UPrimitiveComponent* ActiveMeshComp = Item->GetActiveMeshComponent())
+    // 서버에서만 물리 시뮬레이션 실행
+    if (GetOwner()->HasAuthority())
     {
-        SetupMeshPhysics(ActiveMeshComp, ThrowDirection, ThrowVelocity, ThrowImpulse);
-    }
-    else
-    {
-        LOG_Item_WARNING(TEXT("[EnablePhysicsSimulation] 활성화된 메시 컴포넌트를 찾을 수 없음: %s"), *Item->GetName());
-        return;
-    }
+        if (UPrimitiveComponent* ActiveMeshComp = Item->GetActiveMeshComponent())
+        {
+            SetupMeshPhysics(ActiveMeshComp, ThrowDirection, ThrowVelocity, ThrowImpulse);
+        }
+        else
+        {
+            LOG_Item_WARNING(TEXT("[EnablePhysicsSimulation] 활성화된 메시 컴포넌트를 찾을 수 없음"));
+            return;
+        }
 
-    // 강제 네트워크 업데이트
-    Item->ForceNetUpdate();
+        // 물리 적용 후 움직임 복제만 활성화
+        Item->SetReplicateMovement(true);
+        Item->SetReplicates(true);
 
+        // 강제 네트워크 업데이트
+        Item->ForceNetUpdate();
+    }
 
     // 디버그 시각화
     if (AActor* Owner = GetOwner())
@@ -250,6 +247,12 @@ void UItemSpawnerComponent::SetupMeshPhysics(UPrimitiveComponent* MeshComponent,
         return;
     }
 
+    if (!GetOwner()->HasAuthority())
+    {
+        LOG_Item_WARNING(TEXT("[UItemSpawnerComponent::SetupMeshPhysics] 클라이언트에서는 물리 설정하지 않음"));
+        return;
+    }
+
     // 스켈레탈 메시인 경우 애니메이션 인스턴스만 제거
     if (USkeletalMeshComponent* SkeletalMeshComp = Cast<USkeletalMeshComponent>(MeshComponent))
     {
@@ -260,9 +263,19 @@ void UItemSpawnerComponent::SetupMeshPhysics(UPrimitiveComponent* MeshComponent,
     }
 
     MeshComponent->SetSimulatePhysics(true);
-    MeshComponent->SetPhysicsLinearVelocity(ThrowDirection * ThrowVelocity * 0.01f);
-    MeshComponent->AddImpulse(ThrowImpulse, NAME_None, true);
 
-    MeshComponent->SetLinearDamping(0.1f);
-    MeshComponent->SetAngularDamping(0.1f);
+    // 물리 활성화 확인 후 속도/임펄스 적용
+    if (MeshComponent->IsSimulatingPhysics())
+    {
+        MeshComponent->SetPhysicsLinearVelocity(ThrowDirection * ThrowVelocity * 0.01f);
+        MeshComponent->AddImpulse(ThrowImpulse, NAME_None, true);
+
+        // 안정성 설정
+        MeshComponent->SetLinearDamping(0.1f);
+        MeshComponent->SetAngularDamping(0.1f);
+    }
+    else
+    {
+        LOG_Item_WARNING(TEXT("[UItemSpawnerComponent::SetupMeshPhysics] 물리 시뮬레이션 활성화 실패"));
+    }
 }

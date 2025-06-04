@@ -11,33 +11,25 @@ AItemBase::AItemBase()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
-	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
-	RootComponent = MeshComponent;
+	RootSceneComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootSceneComponent"));
+	RootComponent = RootSceneComponent;
+
+	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMeshComponent"));
+	MeshComponent->SetupAttachment(RootSceneComponent);
 
 	SkeletalMeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("SkeletalMeshComponent"));
-	SkeletalMeshComponent->SetupAttachment(RootComponent);
+	SkeletalMeshComponent->SetupAttachment(RootSceneComponent);
 
 	SkeletalMeshComponent->SetVisibility(false);
 	SkeletalMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	SphereComponent = CreateDefaultSubobject<USphereComponent>(TEXT("Collision"));
-	SphereComponent->InitSphereRadius(50.0f);
-	SphereComponent->SetCollisionProfileName(TEXT("Trigger"));
-	SphereComponent->SetupAttachment(MeshComponent);
-
-	SphereComponent->OnComponentBeginOverlap.AddDynamic(this, & AItemBase::OnOverlapBegin);
-	SphereComponent->OnComponentEndOverlap.AddDynamic(this, &AItemBase::OnOverlapEnd);
-
-	SphereComponent->SetCollisionObjectType(ECC_GameTraceChannel1);
-	SphereComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-
 	bReplicates = true;
-	bNetUseOwnerRelevancy = true;
+	bNetUseOwnerRelevancy = false;
 
 	SetReplicatingMovement(true);
 
 	bIsEquipped = false;
-
+	bUsingSkeletalMesh = false;
 	Quantity = 1;
 	Durability = 100.f;
 }
@@ -81,6 +73,16 @@ void AItemBase::BeginPlay()
 			ApplyItemDataFromTable();
 		}
 	}
+
+	//if (HasAuthority() && bUsingSkeletalMesh && SkeletalMeshComponent)
+	//{
+	//	// 물리 시뮬레이션 시 액터 위치 동기화
+	//	SkeletalMeshComponent->SetNotifyRigidBodyCollision(true);
+
+	//	// 주기적으로 위치 동기화 (타이머 사용)
+	//	GetWorld()->GetTimerManager().SetTimer(PhysicsSyncTimer,
+	//		this, &AItemBase::SyncPhysicsToActor, 0.05f, true);
+	//}
 }
 
 void AItemBase::OnRepDurability()
@@ -195,11 +197,19 @@ void AItemBase::SetMeshComponentActive(UPrimitiveComponent* ActiveComponent, UPr
 		ActiveComponent->SetVisibility(true);
 		ActiveComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	}
+	else
+	{
+		LOG_Item_WARNING(TEXT("[AItemBase::SetMeshComponentActive] 활성화할 컴포넌트가 유효하지 않음"));
+	}
 
 	if (InactiveComponent)
 	{
 		InactiveComponent->SetVisibility(false);
 		InactiveComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+	else
+	{
+		LOG_Item_WARNING(TEXT("[SetMeshComponentActive] 비활성화할 컴포넌트가 유효하지 않음"));
 	}
 }
 
@@ -430,3 +440,35 @@ void AItemBase::ApplyCollisionSettings()
 		bUsingSkeletalMesh ? TEXT("SkeletalMesh") : TEXT("StaticMesh"),
 		(int32)PawnResponse);
 }
+
+//void AItemBase::Multicast_SetupVisualEffects_Implementation(FVector ThrowDirection, float ThrowVelocity, FVector ThrowImpulse)
+//{
+//	// 서버에서는 실행하지 않음 (이미 물리 적용됨)
+//	if (HasAuthority())
+//	{
+//		return;
+//	}
+//
+//	if (UPrimitiveComponent* ActiveMeshComp = GetActiveMeshComponent())
+//	{
+//		// 클라이언트에서는 물리 시뮬레이션 비활성화
+//		ActiveMeshComp->SetSimulatePhysics(false);
+//
+//		// 스켈레탈 메시인 경우 애니메이션 인스턴스만 제거
+//		if (USkeletalMeshComponent* SkeletalMeshComp = Cast<USkeletalMeshComponent>(ActiveMeshComp))
+//		{
+//			if (UAnimInstance* AnimInstance = SkeletalMeshComp->GetAnimInstance())
+//			{
+//				SkeletalMeshComp->SetAnimInstanceClass(nullptr);
+//			}
+//		}
+//
+//		ActiveMeshComp->SetSimulatePhysics(true);
+//		ActiveMeshComp->SetLinearDamping(0.1f);
+//		ActiveMeshComp->SetAngularDamping(0.1f);
+//	}
+//	else
+//	{
+//		LOG_Item_WARNING(TEXT("[AItemBase::Multicast_SetupVisualEffects] 클라이언트에서 활성화된 메시 컴포넌트를 찾을 수 없음"));
+//	}
+//}
