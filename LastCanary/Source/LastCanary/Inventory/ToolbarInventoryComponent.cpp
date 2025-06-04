@@ -358,7 +358,7 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
         );
 
         EquippedItemComponent->SetChildActorClass(ItemData->ItemActorClass);
-
+        
         AItemBase* EquippedItem = Cast<AItemBase>(EquippedItemComponent->GetChildActor());
         if (!EquippedItem)
         {

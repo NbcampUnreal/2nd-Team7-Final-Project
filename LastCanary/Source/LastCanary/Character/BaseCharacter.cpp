@@ -269,6 +269,7 @@ void ABaseCharacter::Handle_Move(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 {
+	const float Value = ActionValue.Get<float>();
 	if (CheckPlayerCurrentState() == EPlayerState::Dead)
 	{
 		return;
@@ -282,35 +283,65 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 	{
 		return;
 	}
+
 	//만약 지친 상태라면 불가
 	if (MyPlayerState->MovementState == ECharacterMovementState::Exhausted)
 	{
 		return;
 	}
-	//입력이 떼지는 거면 어차피 뛰는 거 아님..
-	if (ActionValue.Get<bool>() == false)
-	{
-		SetDesiredGait(AlsGaitTags::Running);
-		StopStaminaDrain(); 
-		StartStaminaRecoverAfterDelay();
-		return;
-	}
-	//입력이 눌렸을 때 처리
-	// 
-	//만약 스테미나가 0이어도 불가
+	//만약 스테미나가 0이어도 불가 // 위에 조건이랑 같긴 할텐데 혹시 모르니까
 	if (!HasStamina())
 	{
 		return;
 	}
-	//달리기 시작하면서 스테미나 소모 시작
-	SetDesiredGait(ActionValue.Get<bool>() ? AlsGaitTags::Sprinting : AlsGaitTags::Running);
-	StopStaminaRecovery();
-	StopStaminaRecoverAfterDelay();
-	StartStaminaDrain();
+	if (MyPlayerState->SprintInputMode == EInputMode::Hold)
+	{
+		//입력이 떼지는 거면 어차피 뛰는 거 아님..
+		if (Value < 0.5f)
+		{
+			SetDesiredGait(AlsGaitTags::Running);
+			StopStaminaDrain();
+			StartStaminaRecoverAfterDelay();
+			return;
+		}
+
+		//달리기 시작하면서 스테미나 소모 시작
+		SetDesiredGait(ActionValue.Get<bool>() ? AlsGaitTags::Sprinting : AlsGaitTags::Running);
+		StopStaminaRecovery();
+		StopStaminaRecoverAfterDelay();
+		StartStaminaDrain();
+	}
+	else if (MyPlayerState->SprintInputMode == EInputMode::Toggle)
+	{
+		if (Value > 0.5f)
+		{
+			if (GetDesiredGait() == AlsGaitTags::Sprinting)
+			{
+				SetDesiredGait(AlsGaitTags::Running);
+				StopStaminaDrain();
+				StartStaminaRecoverAfterDelay();
+			}
+			else if (GetDesiredGait() == AlsGaitTags::Running)
+			{
+				StopStaminaRecovery();
+				StopStaminaRecoverAfterDelay();
+				StartStaminaDrain();
+				SetDesiredGait(AlsGaitTags::Sprinting);
+			}
+			else
+			{
+				StopStaminaRecovery();
+				StopStaminaRecoverAfterDelay();
+				StartStaminaDrain();
+				SetDesiredGait(AlsGaitTags::Sprinting);
+			}
+		}
+	}
 }
 
 void ABaseCharacter::Handle_Walk(const FInputActionValue& ActionValue)
 {
+	const float Value = ActionValue.Get<float>();
 	if (CheckPlayerCurrentState() == EPlayerState::Dead)
 	{
 		return;
@@ -319,11 +350,46 @@ void ABaseCharacter::Handle_Walk(const FInputActionValue& ActionValue)
 	{
 		return;
 	}
-	SetDesiredGait(ActionValue.Get<bool>() ? AlsGaitTags::Walking : AlsGaitTags::Running);
+	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
+	if (!IsValid(MyPlayerState))
+	{
+		return;
+	}
+
+	if (MyPlayerState->WalkInputMode == EInputMode::Hold)
+	{
+		if(Value > 0.5f)
+		{
+			SetDesiredGait(AlsGaitTags::Walking);
+		}
+		else
+		{
+			SetDesiredGait(AlsGaitTags::Running);
+		}
+	}
+	else if (MyPlayerState->WalkInputMode == EInputMode::Toggle)
+	{
+		if (Value > 0.5f)
+		{
+			if (GetDesiredGait() == AlsGaitTags::Walking)
+			{
+				SetDesiredGait(AlsGaitTags::Running);
+			}
+			else if (GetDesiredGait() == AlsGaitTags::Running)
+			{
+				SetDesiredGait(AlsGaitTags::Walking);
+			}
+			else
+			{
+				SetDesiredGait(AlsGaitTags::Running);
+			}
+		}
+	}
 }
 
-void ABaseCharacter::Handle_Crouch()
+void ABaseCharacter::Handle_Crouch(const FInputActionValue& ActionValue)
 {
+	const float Value = ActionValue.Get<float>();
 	if (CheckPlayerCurrentState() == EPlayerState::Dead)
 	{
 		return;
@@ -332,14 +398,38 @@ void ABaseCharacter::Handle_Crouch()
 	{
 		return;
 	}
-	if (GetDesiredStance() == AlsStanceTags::Standing)
+	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
+	if (!IsValid(MyPlayerState))
 	{
-		SetDesiredStance(AlsStanceTags::Crouching);
+		return;
 	}
-	else if (GetDesiredStance() == AlsStanceTags::Crouching)
+	if (MyPlayerState->CrouchInputMode == EInputMode::Hold)
 	{
-		SetDesiredStance(AlsStanceTags::Standing);
+		if (Value > 0.5f)
+		{
+			SetDesiredStance(AlsStanceTags::Crouching);
+		}
+		else
+		{
+			SetDesiredStance(AlsStanceTags::Standing);
+		}
 	}
+	else if (MyPlayerState->CrouchInputMode == EInputMode::Toggle)
+	{
+		if (Value > 0.5f)
+		{
+			if (GetDesiredStance() == AlsStanceTags::Standing)
+			{
+				SetDesiredStance(AlsStanceTags::Crouching);
+			}
+			else if (GetDesiredStance() == AlsStanceTags::Crouching)
+			{
+				SetDesiredStance(AlsStanceTags::Standing);
+			}
+		}
+	}
+
+	
 }
 
 void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
@@ -1231,7 +1321,6 @@ void ABaseCharacter::EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex)
 	//TODO: 툴바 index로 읽어서 있는 아이템이 뭔지 받아오고, 그걸 토대로 장착 및 애니메이션 변경하지
 	ToolbarInventoryComponent->EquipItemAtSlot(QuickSlotIndex);
 
-
 	RefreshOverlayObject(QuickSlotIndex);
 }
 
@@ -1653,7 +1742,6 @@ void ABaseCharacter::AttachOverlayObject(UStaticMesh* NewStaticMesh, USkeletalMe
 	RemoteOnlyOverlaySkeletalMesh->SetSkinnedAssetAndUpdate(NewSkeletalMesh, true);
 	RemoteOnlyOverlaySkeletalMesh->SetAnimInstanceClass(NewAnimationClass);
 	RemoteOnlyOverlaySkeletalMesh->AttachToComponent(RemoteOnlySkeletalMesh, AttachRules, ResultSocketName);
-
 }
 
 void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(int index)

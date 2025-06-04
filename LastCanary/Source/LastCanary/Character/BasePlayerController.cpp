@@ -341,39 +341,19 @@ void ABasePlayerController::Input_OnWalk(const FInputActionValue& ActionValue)
 	{
 		return;
 	}
-	/*Hold 방식*/
 	// APawn 타입에 맞는 처리를 실행
 	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
 	{
 		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
 		if (IsValid(PlayerCharacter))
 		{
-			if (WalkInputMode == EInputMode::Hold)
-			{
-				PlayerCharacter->Handle_Walk(ActionValue);
-			}
-			else if (WalkInputMode == EInputMode::Toggle)
-			{
-				if (bIsWalkToggled == false && ActionValue.IsNonZero())
-				{
-					PlayerCharacter->Handle_Walk(ActionValue);
-					bIsWalkToggled = true;
-				}
-				else if(bIsWalkToggled == true && ActionValue.IsNonZero())
-				{
-					PlayerCharacter->Handle_Walk(FInputActionValue());
-					bIsWalkToggled = false;
-				}
-			}
+			PlayerCharacter->Handle_Walk(ActionValue);
 		}
 	}
-	
-	
 }
 
 void ABasePlayerController::Input_OnCrouch(const FInputActionValue& ActionValue)
 {
-	const float Value = ActionValue.Get<float>();
 	if (!IsValid(CurrentPossessedPawn))
 	{
 		return;
@@ -384,33 +364,7 @@ void ABasePlayerController::Input_OnCrouch(const FInputActionValue& ActionValue)
 		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
 		if (IsValid(PlayerCharacter)) 
 		{
-			if (CrouchInputMode == EInputMode::Hold)
-			{
-				PlayerCharacter->Handle_Crouch();
-			}
-			else if (CrouchInputMode == EInputMode::Toggle)
-			{
-				if (bIsWalkToggled == false && bIsCrouchKeyReleased == true)
-				{
-					PlayerCharacter->Handle_Crouch();
-					bIsCrouchKeyReleased = false;
-					bIsWalkToggled = true;
-				}
-				else if (bIsWalkToggled == true && bIsCrouchKeyReleased == false)
-				{
-					bIsCrouchKeyReleased = true;
-				}
-				else if (bIsWalkToggled == true && bIsCrouchKeyReleased == true)
-				{
-					bIsCrouchKeyReleased = false;
-					PlayerCharacter->Handle_Crouch();
-					bIsWalkToggled = false;
-				}
-				else
-				{
-					bIsCrouchKeyReleased = true;
-				}
-			}
+			PlayerCharacter->Handle_Crouch(ActionValue);
 		}
 	}
 	if (CurrentPossessedPawn->IsA<ABaseDrone>())

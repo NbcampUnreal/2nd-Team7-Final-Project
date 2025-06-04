@@ -102,6 +102,17 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	float JumpStaminaCost{ InitialStats.JumpStaminaCost };
 
+	//InputMode
+	//인풋모드 변경(Toggle, Hold)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InputSettings")
+	EInputMode SprintInputMode = EInputMode::Hold;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InputSettings")
+	EInputMode WalkInputMode = EInputMode::Hold;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InputSettings")
+	EInputMode CrouchInputMode = EInputMode::Hold;
+
 
 
 

@@ -161,7 +161,7 @@ public:
 	virtual void Handle_Move(const FInputActionValue& ActionValue);
 	virtual void Handle_Sprint(const FInputActionValue& ActionValue);
 	virtual void Handle_Walk(const FInputActionValue& ActionValue);
-	virtual void Handle_Crouch();
+	virtual void Handle_Crouch(const FInputActionValue& ActionValue);
 	virtual void Handle_Jump(const FInputActionValue& ActionValue);
 	virtual void Handle_Strafe(const FInputActionValue& ActionValue);
 	virtual void Handle_Aim(const FInputActionValue& ActionValue);
