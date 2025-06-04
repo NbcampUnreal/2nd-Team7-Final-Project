@@ -23,7 +23,7 @@ class LASTCANARY_API ABaseCharacter : public AAlsCharacter
 {
 	GENERATED_BODY()
 
-//Character Mesh and Component
+	//Character Mesh and Component
 public:
 	/*1인칭 전용 메시 (자신만 보이는)*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
@@ -49,7 +49,7 @@ public:
 	// Camera 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	UCameraComponent* Camera;
-	
+
 	// SpringArm 컴포넌트 for ADS
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	USpringArmComponent* ADSSpringArm; //Aim Down Sight
@@ -67,7 +67,15 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	TObjectPtr<UArrowComponent> ThirdPersonArrow;
-	
+
+
+	// 관전용 스프링암
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+	USpringArmComponent* SpectatorSpringArm;
+
+	// 관전용 카메라
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+	UCameraComponent* SpectatorCamera;
 
 
 	void Tick(float DeltaSeconds)
@@ -82,7 +90,7 @@ public:
 	float CapsuleWallRatio = 0.0f;
 	void UpdateGunWallClipOffset(float DeltaTime);
 
-//Character Default Settings
+	//Character Default Settings
 protected:
 	/*Character Default Settings*/
 	ABaseCharacter();
@@ -91,7 +99,7 @@ protected:
 	virtual void BeginPlay() override;
 
 
-// Camera Settings
+	// Camera Settings
 protected:
 	/*Camera Settings*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|MouseSensitivity", Meta = (ClampMin = 0, ForceUnits = "x"))
@@ -108,6 +116,8 @@ protected:
 	float MinPitchAngle{ -60.0f };
 
 	void CalcCameraLocation();
+
+	void CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo);
 
 	FTimerHandle MoveTimerHandle;
 	FVector StartLocation;
@@ -137,9 +147,14 @@ protected:
 	bool bADS = false; // 현재 정조준 상태인가?
 
 
-// Character Input Handle Function
-	
-public: 
+
+public:
+	void SetCameraMode(bool bIsFirstPersonView);
+
+
+	// Character Input Handle Function
+
+public:
 	/*Function called by the controller*/
 	virtual void Handle_LookMouse(const FInputActionValue& ActionValue);
 	virtual void Handle_Look(const FInputActionValue& ActionValue);
@@ -154,9 +169,9 @@ public:
 	virtual void Handle_ViewMode();
 	virtual void Handle_Reload();
 
+	void EscapeThroughGate();
 
-
-//Character State
+	//Character State
 
 public:
 	bool bIsScoped = false;
@@ -167,7 +182,7 @@ public:
 	void SetPossess(bool IsPossessed);
 
 
-//About Character Animation Montage and Animation Class
+	//About Character Animation Montage and Animation Class
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	bool UseGunBoneforOverlayObjects;
@@ -224,10 +239,10 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_PlayMontage(UAnimMontage* MontageToPlay);
 	void Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay);
-	
 
-	
-//Check Player Focus Everytime
+
+
+	//Check Player Focus Everytime
 public:
 	/*About Interact*/
 
@@ -243,15 +258,24 @@ public:
 	void TraceInteractableActor();
 
 
-//Player Take Damage
+	//Player Take Damage
 public:
 	/*Player Damage, Death*/
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	void HandlePlayerDeath();
-	virtual float GetFallDamage(float Velocity) override;
+	
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_SetPlayerInGameStateOnDie();
+	void Multicast_SetPlayerInGameStateOnDie_ImplementationOnDie();
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dmaage")
-	float FallDamageThreshold = 1000.0f;
+	virtual void GetFallDamage(float Velocity) override;
+
+	float CalculateTakeDamage(float DamageAmount);
+	float CalculateFallDamage(float Velocity);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_SetPlayerInGameStateOnEscapeGate();
+	void Multicast_SetPlayerInGameStateOnEscapeGateImplementationOnDie();
 
 
 	UFUNCTION(Server, Reliable)
@@ -306,9 +330,35 @@ public:
 
 	EPlayerState CheckPlayerCurrentState();
 
-	void SetMovementSetting(float _WalkForwardSpeed, float _WalkBackwardSpeed, float _RunForwardSpeed, float _RunBackwardSpeed, float _SprintSpeed);
+	UFUNCTION(Client, Reliable)
+	void Client_SetMovementSetting();
+	void Client_SetMovementSetting_Implementation();
 
+	void SetMovementSetting();
+	TArray<float> CalculateMovementSpeedWithWeigth();
 	void ResetMovementSetting();
+
+
+
+	//달리기 관련 로직
+	float GetPlayerMovementSpeed();
+
+	void ConsumeStamina();
+	void TickStaminaDrain();
+	void StartStaminaDrain();
+	void StopStaminaDrain();
+	void StartStaminaRecovery();
+	void StopStaminaRecovery();
+	void StartStaminaRecoverAfterDelay();
+	void StartStaminaRecoverAfterDelayOnJump();
+	void StopStaminaRecoverAfterDelay();
+	void TickStaminaRecovery();
+	bool HasStamina() const;
+	bool IsStaminaFull() const;
+private:
+	FTimerHandle StaminaDrainHandle;
+	FTimerHandle StaminaRecoveryHandle;
+	FTimerHandle StaminaRecoveryDelayHandle;
 
 	// 인벤토리 아이템 관련 변수 및 함수
 public:
@@ -390,11 +440,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Character|Inventory")
 	void DropItemAtSlot(int32 SlotIndex, int32 Quantity = 1);
 
-#pragma region Editor Test Settings
-public:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "TEST")
-	bool bIsGetFallDownDamage = false;
-#pragma endregion
 public:
 	//-----------------------------------------------------
 	// 가방 관리 (간소화)
