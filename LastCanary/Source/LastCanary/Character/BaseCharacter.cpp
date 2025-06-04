@@ -37,15 +37,19 @@ ABaseCharacter::ABaseCharacter()
 	bReplicates = true;
 	UseGunBoneforOverlayObjects = true;
 
+
+	RemoteOnlySkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FPSSkeletalMesh"));
+	RemoteOnlySkeletalMesh->SetupAttachment(RootComponent);
+	
 	/*Overlay Skeletal/Static Mesh for change animation bluprint and item mesh*/
+	
+
+
 	OverlayStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("OverlayStaticMesh"));
 	OverlayStaticMesh->SetupAttachment(GetMesh());
 
 	OverlaySkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("OverlaySkeletalMesh"));
 	OverlaySkeletalMesh->SetupAttachment(GetMesh());
-
-	RemoteOnlySkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FPSSkeletalMesh"));
-	RemoteOnlySkeletalMesh->SetupAttachment(RootComponent);
 
 	RemoteOnlyOverlayStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RemoteOnlyOverlayStaticMesh"));
 	RemoteOnlyOverlayStaticMesh->SetupAttachment(RemoteOnlySkeletalMesh);
@@ -97,7 +101,6 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& Out
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(ABaseCharacter, CurrentQuickSlotIndex);
 	DOREPLIFETIME(ABaseCharacter, EquippedTags);
 	DOREPLIFETIME(ABaseCharacter, bInventoryOpen);
 }
@@ -115,9 +118,8 @@ void ABaseCharacter::BeginPlay()
 		UE_LOG(LogTemp, Warning, TEXT("Character BeginPlay - Complete  This is Client."));
 	}
 
-	CurrentQuickSlotIndex = 0;
 	//애니메이션 오버레이 활성화.
-	RefreshOverlayObject(CurrentQuickSlotIndex);
+	RefreshOverlayObject(0);
 
 	GetWorld()->GetTimerManager().SetTimer(
 		InteractionTraceTimerHandle,
@@ -1227,10 +1229,6 @@ void ABaseCharacter::GetHeldItem()
 	return;
 }
 
-int32 ABaseCharacter::GetCurrentQuickSlotIndex()
-{
-	return CurrentQuickSlotIndex;
-}
 void ABaseCharacter::SetCurrentQuickSlotIndex(int32 NewIndex)
 {
 	if (CheckPlayerCurrentState() == EPlayerState::Dead)
@@ -1250,13 +1248,13 @@ void ABaseCharacter::Server_SetQuickSlotIndex_Implementation(int32 NewIndex)
 		return;
 	}
 	int32 AdjustedIndex = NewIndex;
-	if (AdjustedIndex > MaxQuickSlotIndex) // 툴바의 최대 슬롯 개수 가져오는 함수는?
+	if (AdjustedIndex > 3) // 툴바의 최대 슬롯 개수 가져오는 함수는?
 	{
 		AdjustedIndex = 0;
 	}
 	else if (AdjustedIndex < 0)
 	{
-		AdjustedIndex = MaxQuickSlotIndex;
+		AdjustedIndex = 3;
 	}
 
 	//if(ToolbarInventoryComponent->GetCurrentEquippedSlotIndex() == AdjustedIndex )  //  인덱스에 변화가 없으면 할 필요가 X
@@ -1264,8 +1262,6 @@ void ABaseCharacter::Server_SetQuickSlotIndex_Implementation(int32 NewIndex)
 	//	 retturn;
 	// }
 	//ToolbarInventoryComponent->SetCurrentEquippedSlotIndex(AdjustedIndex);
-	CurrentQuickSlotIndex = AdjustedIndex;
-
 	// 동기화된 장착 요청
 	Multicast_EquipItemFromQuickSlot(AdjustedIndex);
 }
@@ -1330,6 +1326,38 @@ void ABaseCharacter::Server_EquipItemFromCurrentQuickSlot_Implementation(int32 Q
 	EquipItemFromCurrentQuickSlot(QuickSlotIndex);
 }
 
+int32 ABaseCharacter::GetCurrentQuickSlotIndex()
+{
+	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	{
+		return 0;
+	}
+	if (!IsValid(ToolbarInventoryComponent))
+	{
+		return 0;
+	}
+	return ToolbarInventoryComponent->GetCurrentEquippedSlotIndex();
+}
+
+void ABaseCharacter::StopCurrentPlayingMontage()
+{
+	UE_LOG(LogTemp, Warning, TEXT("애님 몽타주 강종"));
+	//Mesh의 애니메이션 인스턴스 가져오기
+	UAnimInstance* FPSAnimInstance = GetMesh()->GetAnimInstance();
+	if (FPSAnimInstance && FPSAnimInstance->IsAnyMontagePlaying())
+	{
+		//만약 재생중인 몽타주가 있으면(예시: 장전모션) 강제로 해제
+		FPSAnimInstance->Montage_Stop(0.25f); // 페이드 아웃 시간: 0.25초 //AnimInstance->Montage_Stop(0.25f, ReloadMontage);이런 것도 가능
+	}
+
+	UAnimInstance* TPSAnimInstance = RemoteOnlySkeletalMesh->GetAnimInstance();
+	if (TPSAnimInstance && TPSAnimInstance->IsAnyMontagePlaying())
+	{
+		TPSAnimInstance->Montage_Stop(0.25f);
+	}
+
+}
+
 void ABaseCharacter::HandleInventoryUpdated()
 {
 	UE_LOG(LogTemp, Log, TEXT("Inventory updated!"));
@@ -1337,14 +1365,6 @@ void ABaseCharacter::HandleInventoryUpdated()
 
 	RefreshOverlayObject(0);
 	// 여기서 UI 갱신 등 원하는 작업 수행
-}
-
-void ABaseCharacter::EquipItem(UObject* Item)
-{
-	HeldItem = Item;
-	//TODO: 메시 부착, 무기 생성, 이펙트 적용 등 추가 로직 필요
-	UE_LOG(LogTemp, Log, TEXT("Equipped item: %s"), *GetNameSafe(Item));
-	//TODO: ALS의 attach Component 함수를 참고 혹은 불러오기... 혹은 Overlay모드 변화
 }
 
 void ABaseCharacter::UnequipCurrentItem()
@@ -1729,19 +1749,14 @@ void ABaseCharacter::AttachOverlayObject(UStaticMesh* NewStaticMesh, USkeletalMe
 		EAttachmentRule::SnapToTarget,  // Scale
 		true                            // bWeldSimulatedBodies
 	);
-	OverlayStaticMesh->SetStaticMesh(NewStaticMesh);
-	OverlayStaticMesh->AttachToComponent(GetMesh(), AttachRules, ResultSocketName);
 
-	OverlaySkeletalMesh->SetSkinnedAssetAndUpdate(NewSkeletalMesh, true);
-	OverlaySkeletalMesh->SetAnimInstanceClass(NewAnimationClass);
-	OverlaySkeletalMesh->AttachToComponent(GetMesh(), AttachRules, ResultSocketName);
+	//EquippedItemComponent->SetMesh()
+	//EquippedItemComponent->AttachToComponent(GetMesh(), AttachRules, ResultSocketName);
+	//EquippedItemComponent->SetAnimInstanceClass(NewAnimationClass);
 
-	RemoteOnlyOverlayStaticMesh->SetStaticMesh(NewStaticMesh);
-	RemoteOnlyOverlayStaticMesh->AttachToComponent(RemoteOnlySkeletalMesh, AttachRules, ResultSocketName);
-
-	RemoteOnlyOverlaySkeletalMesh->SetSkinnedAssetAndUpdate(NewSkeletalMesh, true);
-	RemoteOnlyOverlaySkeletalMesh->SetAnimInstanceClass(NewAnimationClass);
-	RemoteOnlyOverlaySkeletalMesh->AttachToComponent(RemoteOnlySkeletalMesh, AttachRules, ResultSocketName);
+	//RemoteOnlyEquippedItemComponent->SetMesh()
+	//RemoteOnlyEquippedItemComponent->AttachToComponent(RemoteOnlySkeletalMesh, AttachRules, ResultSocketName);
+	//RemoteOnlyOverlayStaticMesh->SetAnimInstanceClass(NewAnimationClass);
 }
 
 void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(int index)

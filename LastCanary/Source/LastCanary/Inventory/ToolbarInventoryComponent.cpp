@@ -301,7 +301,7 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
         {
             CachedOwnerCharacter->SetEquipped(false); // 빈 손 상태
         }
-
+        
         OnInventoryUpdated.Broadcast();
         return;
     }
@@ -354,14 +354,12 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
         {
             TargetSocket = TEXT("Rifle");
         }
+        
+        //SetupEquippedItem(EquippedItemComponent, CachedOwnerCharacter->GetMesh(), TargetSocket, ItemData, SlotData);
 
-        SetupEquippedItem(EquippedItemComponent, CachedOwnerCharacter->GetMesh(),
-            TargetSocket, ItemData, SlotData);
 
-
-        SetupEquippedItem(RemoteOnlyEquippedItemComponent, CachedOwnerCharacter->RemoteOnlySkeletalMesh,
-            TargetSocket, ItemData, SlotData);
-
+        SetupEquippedItem(RemoteOnlyEquippedItemComponent, CachedOwnerCharacter->RemoteOnlySkeletalMesh, TargetSocket, ItemData, SlotData);
+            
         ItemSlots[SlotIndex].bIsEquipped = true;
         CurrentEquippedSlotIndex = SlotIndex;
     }
@@ -464,7 +462,7 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
         }
 
         // 아이템 제거
-        EquippedItemComponent->DestroyChildActor();
+        //EquippedItemComponent->DestroyChildActor();
         RemoteOnlyEquippedItemComponent->DestroyChildActor();
     }
     else
@@ -481,7 +479,7 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
             }
         }
 
-        EquippedItemComponent->DestroyChildActor();
+        //EquippedItemComponent->DestroyChildActor();
         RemoteOnlyEquippedItemComponent->DestroyChildActor();
 
         CurrentEquippedSlotIndex = -1;
@@ -514,7 +512,7 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
 
 AItemBase* UToolbarInventoryComponent::GetCurrentEquippedItem() const
 {
-    return Cast<AItemBase>(EquippedItemComponent->GetChildActor());
+    return Cast<AItemBase>(RemoteOnlyEquippedItemComponent->GetChildActor());
 }
 
 FBaseItemSlotData* UToolbarInventoryComponent::GetItemDataAtSlot(int32 SlotIndex)

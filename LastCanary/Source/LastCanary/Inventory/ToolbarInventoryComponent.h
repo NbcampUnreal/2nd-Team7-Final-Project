@@ -34,6 +34,9 @@ private:
     UPROPERTY(Replicated)
     int32 CurrentEquippedSlotIndex;
 
+public:
+    FORCEINLINE int32 GetCurrentEquippedSlotIndex() { return CurrentEquippedSlotIndex; }
+    void SetCurrentEquippedSlotIndex(int32 NewIndex);
     //-----------------------------------------------------
     // 인벤토리 오버라이드
     //-----------------------------------------------------
