@@ -27,9 +27,6 @@ public:
     // 컴포넌트
     //-----------------------------------------------------
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gun|Components")
-    USkeletalMeshComponent* GunMesh;
-
     /** 총구 위치를 나타내는 씬 컴포넌트 */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gun|Components")
     USceneComponent* MuzzleLocation;
@@ -215,6 +212,4 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Debug")
     bool bDrawImpactDebug = false;
-
-    USkeletalMeshComponent* GetGunMesh();
 };

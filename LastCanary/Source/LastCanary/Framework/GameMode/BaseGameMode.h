@@ -12,8 +12,6 @@ class LASTCANARY_API ABaseGameMode : public AGameModeBase
 	GENERATED_BODY()
 
 public:
-	ABaseGameMode();
-
 	virtual void BeginPlay() override;
 
 	virtual void SpawnPlayerCharacter(APlayerController* Controller);
@@ -27,7 +25,7 @@ public:
 
 	void UpdatePlayers();
 
-	void SetPlayerInfo(FSessionPlayerInfo RequestInfo);
+	void SetPlayerInfo(const FSessionPlayerInfo& RequestInfo);
 
 	UFUNCTION(BlueprintCallable, Category = "Session")
 	void TravelMapBySoftPath(FString SoftPath);
@@ -37,6 +35,6 @@ public:
 	TArray<APlayerController*> AllPlayerControllers;
 	TArray<FSessionPlayerInfo> SessionPlayerInfos;
 
-	//TMap<int32, FSessionPlayerInfo> SessionPlayerInfos;
+	bool IsAllPlayersReady() const;
 
 };

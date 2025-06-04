@@ -5,6 +5,7 @@
 #include "UI/UIElement/LobbyMenu.h"
 #include "UI/UIElement/EnterPasswordWidget.h"
 #include "UI/UIElement/OptionWidget.h"
+#include "UI/UIElement/PauseMenu.h"
 #include "UI/UIElement/InGameHUD.h"
 #include "UI/UIElement/ShopWidget.h"
 #include "UI/UIElement/MapSelectWidget.h"
@@ -47,6 +48,7 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			LobbyMenuClass = Settings->FromBPLobbyMenuClass;
 			EnterPasswordWidgetClass = Settings->FromBPEnterPasswordWidgetClass;
 			OptionWidgetClass = Settings->FromBPOptionWidgetClass;
+			PauseMenuClass = Settings->FromBPPauseMenuClass;
 			InGameHUDWidgetClass = Settings->FromBPInGameHUDClass;
 			ShopWidgetClass = Settings->FromBPShopWidgetClass;
 			MapSelectWidgetClass = Settings->FromBPMapSelectWidgetClass;
@@ -55,6 +57,8 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			PopUpNoticeClass = Settings->FromBPPopupNoticeClass;
 			PopUpLoadingClass = Settings->FromBPPopupLoadingClass;
 			LoadingLevelClass = Settings->FromBPLoadingLevelClass;
+			ConfirmPopupClass = Settings->FromBPConfirmPopupClass;
+
 			if ((CachedTitleMenu == nullptr) && TitleMenuClass)
 			{
 				CachedTitleMenu = CreateWidget<UTitleMenu>(PlayerController, TitleMenuClass);
@@ -70,6 +74,10 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			if ((CachedOptionWidget == nullptr) && OptionWidgetClass)
 			{
 				CachedOptionWidget = CreateWidget<UOptionWidget>(PlayerController, OptionWidgetClass);
+			}
+			if ((CachedPauseMenu == nullptr) && PauseMenuClass)
+			{
+				CachedPauseMenu = CreateWidget<UPauseMenu>(PlayerController, PauseMenuClass);
 			}
 			if ((CachedInGameHUD == nullptr) && InGameHUDWidgetClass)
 			{
@@ -211,16 +219,16 @@ void ULCUIManager::ShowPauseMenu()
 	{
 		return;
 	}
-
+	CurrentWidget = CachedPauseMenu;
 	LOG_Frame_WARNING(TEXT("ShowPauseMenu"));
-	if (CachedOptionWidget)
+	if (CachedPauseMenu)
 	{
-		CachedOptionWidget->AddToViewport(1);
+		CachedPauseMenu->AddToViewport(1);
 	}
 
 	if (OwningPlayer)
 	{
-		SetInputModeUIOnly(CachedOptionWidget);
+		SetInputModeUIOnly(CachedPauseMenu);
 	}
 }
 
@@ -238,7 +246,12 @@ void ULCUIManager::HidePauseMenu()
 	SetInputModeGameOnly();
 }
 
-void ULCUIManager::ShowConfirmPopup(TFunction<void()> OnConfirm)
+bool ULCUIManager::IsPauseMenuOpen() const
+{
+	return CachedPauseMenu && CachedPauseMenu->IsInViewport();
+}
+
+void ULCUIManager::ShowConfirmPopup(TFunction<void()> OnConfirm, const FText& Message)
 {
 	if (OwningPlayer == nullptr)
 	{
@@ -258,7 +271,7 @@ void ULCUIManager::ShowConfirmPopup(TFunction<void()> OnConfirm)
 	UConfirmPopup* ConfirmPopup = CreateWidget<UConfirmPopup>(OwningPlayer, ConfirmPopupClass);
 	if (ConfirmPopup)
 	{
-		ConfirmPopup->Init(MoveTemp(OnConfirm));
+		ConfirmPopup->Init(MoveTemp(OnConfirm), Message);
 		ConfirmPopup->AddToViewport(10);
 	}
 }
@@ -586,6 +599,7 @@ void ULCUIManager::SetInputModeUIOnly(UUserWidget* FocusWidget)
 	}
 
 	LOG_Frame_WARNING(TEXT("SetInputModeUIOnly: %s"), *GetNameSafe(FocusWidget ? FocusWidget : CurrentWidget));
+	LOG_Frame_WARNING(TEXT("SetWidgetFocus: %s"), *FocusWidget->GetName());
 }
 
 void ULCUIManager::SetInputModeGameOnly()
@@ -606,4 +620,34 @@ void ULCUIManager::SetLastShopInteractor(AShopInteractor* Interactor)
 void ULCUIManager::SetLastMapSelectInteractor(AMapSelectInteractor* Interactor)
 {
 	LastMapSelectInteractor = Interactor;
+}
+
+void ULCUIManager::UpdateInputModeByContext()
+{
+	if (OwningPlayer == nullptr)
+	{
+		LOG_Frame_WARNING(TEXT("OwningPlayer is nullptr in SetInputModeByContext."));
+		return;
+	}
+	
+	switch(CurrentContext)
+	{
+	case ELCUIContext::Title:
+		SetInputModeUIOnly(CachedTitleMenu);
+		break;
+	case ELCUIContext::Room:
+		SetInputModeGameOnly();
+		break;
+	case ELCUIContext::InGame:
+		SetInputModeGameOnly();
+		break;
+	default:
+		SetInputModeGameOnly();
+		break;
+	}
+}
+
+void ULCUIManager::SetUIContext(ELCUIContext NewContext)
+{
+	CurrentContext = NewContext;
 }

@@ -5,33 +5,16 @@
 #include "Item/Drone/BaseDrone.h"
 #include "Kismet/GameplayStatics.h"
 #include "BasePlayerState.h"
-
+#include "Framework/GameState/LCGameState.h"
 #include "Net/UnrealNetwork.h"
 #include "UI/Manager/LCUIManager.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "Actor/Gimmick/LCBaseGimmick.h"
+
 
 void ABasePlayerController::BeginPlay()
 {
 	Super::BeginPlay();
-	UE_LOG(LogTemp, Warning, TEXT("Controller Begin Play"));
-
-	if (IsLocalController())
-	{
-		UE_LOG(LogTemp, Warning, TEXT("로컬 클라이언트 컨트롤러입니다."));
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("서버 또는 다른 클라이언트의 컨트롤러입니다."));
-	}
-
-	if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
-	{
-		PS->OnDamaged.AddDynamic(this, &ABasePlayerController::OnCharacterDamaged);
-		PS->OnDied.AddDynamic(this, &ABasePlayerController::OnCharacterDied);
-		PS->OnExhausted.AddDynamic(this, &ABasePlayerController::Complete_OnSprint);
-		PS->OnStaminaChanged.AddDynamic(this, &ABasePlayerController::OnStaminaUpdated);
-	}
-
 	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 	{
 		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
@@ -66,22 +49,14 @@ void ABasePlayerController::SetupInputComponent()
 	//InitInputComponent();
 }
 
-void ABasePlayerController::OnCharacterDamaged(float CurrentHP)
+void ABasePlayerController::OnPlayerExitActivePlay()
 {
-	// HUD 갱신하거나 효과 표시 등
-	UE_LOG(LogTemp, Warning, TEXT("Player took damage!"));
-	TestHP = CurrentHP;
+	//클라이언트에서 해야할 것.
+	Client_OnPlayerExitActivePlay();
 }
 
-void ABasePlayerController::OnCharacterDied()
+void ABasePlayerController::Client_OnPlayerExitActivePlay_Implementation()
 {
-	// HUD 갱신하거나 효과 표시 등
-	UE_LOG(LogTemp, Warning, TEXT("Player die!"));
-	
-	//
-	//TODO: 사망 전용 UI 띄우기
-		//TODO: 입력 막기 등 처리
-
 	if (!IsValid(CurrentPossessedPawn))
 	{
 		return;
@@ -97,11 +72,11 @@ void ABasePlayerController::OnCharacterDied()
 		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
 		if (IsValid(PlayerCharacter))
 		{
-			PlayerCharacter->SetViewMode(AlsViewModeTags::ThirdPerson);
-			PlayerCharacter->HandlePlayerDeath(); //플레이어 사망처리
+			PlayerCharacter->SetCameraMode(false);
 		}
 	}
-	
+	//CreateWidget();
+	//addtoviewport
 }
 
 APawn* ABasePlayerController::GetMyPawn()
@@ -158,22 +133,16 @@ void ABasePlayerController::OnPossess(APawn* InPawn)
 	{
 		SpanwedPlayerCharacter = Cast<ABaseCharacter>(InPawn);
 		CurrentPossessedPawn = InPawn;
-		UE_LOG(LogTemp, Warning, TEXT("OnPossess: 캐릭터 저장 완료"));
 	}
-
-	UE_LOG(LogTemp, Warning, TEXT("Player Possessed"));
-
 	// Pawn의 타입에 따라 MappingContext를 자동 변경
 	if (InPawn->IsA(ABaseCharacter::StaticClass()))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("CurrentIMC is Player"));
 		CurrentIMC = InputMappingContext;
 		Cast<ABaseCharacter>(InPawn)->SetPossess(true);
 		SpanwedPlayerCharacter = Cast<ABaseCharacter>(InPawn);
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Be possessed by something other than a character"));
 		//SpawnedPlayerDrone = Cast<ABaseDrone>(InPawn);
 	}
 
@@ -191,14 +160,12 @@ void ABasePlayerController::OnRep_Pawn()
 	if (NewPawn)
 	{
 		SpanwedPlayerCharacter = Cast<ABaseCharacter>(NewPawn);
-		UE_LOG(LogTemp, Warning, TEXT("OnRep_Pawn: 클라이언트에서 캐릭터 저장 완료"));
 	}
 }
 
 void ABasePlayerController::OnUnPossess()
 {
 	RemoveInputMappingContext(CurrentIMC);
-	UE_LOG(LogTemp, Warning, TEXT("Player Unpossessed"));
 	if (GetPawn()->IsA(ABaseCharacter::StaticClass()))
 	{
 		Cast<ABaseCharacter>(GetPawn())->SetPossess(false);
@@ -213,19 +180,14 @@ void ABasePlayerController::OnUnPossess()
 void ABasePlayerController::ClientRestart(APawn* NewPawn)
 {
 	Super::ClientRestart(NewPawn);
-
-	UE_LOG(LogTemp, Warning, TEXT("ClientRestart 호출 - 클라이언트에서 빙의됨!"));
-	// 여기에 빙의 완료 후 초기화 작업 가능
 }
 
 void ABasePlayerController::InitInputComponent()
 {
 	EnhancedInput = Cast<UEnhancedInputComponent>(InputComponent);
-	UE_LOG(LogTemp, Warning, TEXT("InputComponent class: %s"), *GetNameSafe(InputComponent));
 
 	if (!IsValid(EnhancedInput))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("There is no EnhancedInputComponent"));
 		return;
 	}
 
@@ -241,7 +203,7 @@ void ABasePlayerController::InitInputComponent()
 		EnhancedInput->BindAction(MoveAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnMove);
 
 		EnhancedInput->BindAction(SprintAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnSprint);
-		EnhancedInput->BindAction(SprintAction, ETriggerEvent::Canceled, this, &ABasePlayerController::End_OnSprint);
+		EnhancedInput->BindAction(SprintAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnSprint);
 
 		EnhancedInput->BindAction(WalkAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnWalk);
 		EnhancedInput->BindAction(WalkAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnWalk);
@@ -260,7 +222,6 @@ void ABasePlayerController::InitInputComponent()
 		EnhancedInput->BindAction(InteractAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnInteract);
 
 		EnhancedInput->BindAction(StrafeAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnStrafe);
-		EnhancedInput->BindAction(StrafeAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnStrafe);
 
 		EnhancedInput->BindAction(ItemUseAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_OnItemUse);
 
@@ -359,7 +320,6 @@ void ABasePlayerController::Input_OnMove(const FInputActionValue& ActionValue)
 
 void ABasePlayerController::Input_OnSprint(const FInputActionValue& ActionValue)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Sprint Triggered"));
 	if (!IsValid(CurrentPossessedPawn))
 	{
 		return;
@@ -371,104 +331,12 @@ void ABasePlayerController::Input_OnSprint(const FInputActionValue& ActionValue)
 		if (IsValid(PlayerCharacter))
 		{
 			PlayerCharacter->Handle_Sprint(ActionValue);
-			if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
-			{
-				if (PlayerCharacter->GetDesiredGait() != AlsGaitTags::Sprinting)
-				{
-					bIsSprinting = false;
-					PS->StopStaminaDrain();
-					PS->StartStaminaRecoverAfterDelay();
-				}
-				else
-				{
-					if (PS->GetPlayerMovementState() == ECharacterMovementState::Exhausted) // 스태미나 확인 후 Running 상태로 전환
-					{
-						PlayerCharacter->SetDesiredGait(AlsGaitTags::Running);
-						return;
-					}
-					PS->StopStaminaRecovery();
-					PS->StopStaminaRecoverAfterDelay();
-					PS->StartStaminaDrain();
-
-					bIsSprinting = true;
-				}
-			}
 		}
 	}
 }
-
-void ABasePlayerController::End_OnSprint(const FInputActionValue& ActionValue)
-{
-	UE_LOG(LogTemp, Warning, TEXT("Sprint End"));
-	if (!IsValid(CurrentPossessedPawn))
-	{
-		return;
-	}
-	// APawn 타입에 맞는 처리를 실행
-	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
-	{
-		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-		if (IsValid(PlayerCharacter))
-		{
-			PlayerCharacter->Handle_Sprint(ActionValue);
-			if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
-			{
-				if (bIsSprinting)
-				{
-					bIsSprinting = false;
-					PS->StopStaminaDrain();
-					PS->StartStaminaRecoverAfterDelay();
-				}
-				else
-				{
-					if (PS->GetPlayerMovementState() == ECharacterMovementState::Exhausted) // 스태미나 확인 후 Running 상태로 전환
-					{
-						PlayerCharacter->SetDesiredGait(AlsGaitTags::Running);
-						return;
-					}
-					PS->StopStaminaRecovery();
-					PS->StopStaminaRecoverAfterDelay();
-					PS->StartStaminaDrain();
-
-					bIsSprinting = true;
-				}
-			}
-		}
-	}
-}
-
-// 플레이어의 스태미너가 다 닳았을 때 처리되는 함수
-void ABasePlayerController::Complete_OnSprint()
-{
-	UE_LOG(LogTemp, Warning, TEXT("Sprint Complete"));
-	if (!IsValid(CurrentPossessedPawn))
-	{
-		return;
-	}
-
-	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
-	{
-		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-		if (IsValid(PlayerCharacter))
-		{
-			//플레이어의 상태를 바꿈으로써 강제로 달리기 멈춤
-			PlayerCharacter->SetDesiredGait(AlsGaitTags::Running);
-			if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
-			{
-				//스태미너 소비 중지, 스태미너 회복
-				PS->SetPlayerMovementState(ECharacterMovementState::Walking);
-				PS->StopStaminaDrain();
-				PS->StartStaminaRecoverAfterDelay();
-			}
-		}
-	}
-}
-
 
 void ABasePlayerController::Input_OnWalk(const FInputActionValue& ActionValue)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Walk "));
-	
 	if (!IsValid(CurrentPossessedPawn))
 	{
 		return;
@@ -505,10 +373,7 @@ void ABasePlayerController::Input_OnWalk(const FInputActionValue& ActionValue)
 
 void ABasePlayerController::Input_OnCrouch(const FInputActionValue& ActionValue)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Crouch"));
 	const float Value = ActionValue.Get<float>();
-	UE_LOG(LogTemp, Log, TEXT("Input_OnCrouch: Value = %.2f"), Value);
-
 	if (!IsValid(CurrentPossessedPawn))
 	{
 		return;
@@ -560,10 +425,6 @@ void ABasePlayerController::Input_OnCrouch(const FInputActionValue& ActionValue)
 
 void ABasePlayerController::Input_OnJump(const FInputActionValue& ActionValue)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Jump"));
-	const float Value = ActionValue.Get<float>();
-
-	UE_LOG(LogTemp, Log, TEXT("Input_OnJump: Value = %.2f"), Value);
 	if (!IsValid(CurrentPossessedPawn))
 	{
 		return;
@@ -649,15 +510,11 @@ void ABasePlayerController::Input_OnInteract()
 
 void ABasePlayerController::Input_Reload()
 {
-
-	UE_LOG(LogTemp, Warning, TEXT("input Reload"));
 	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
 	{
 		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
 		if (IsValid(PlayerCharacter))
 		{
-
-			UE_LOG(LogTemp, Warning, TEXT("Reload"));
 			PlayerCharacter->Handle_Reload();
 		}
 	}
@@ -669,7 +526,25 @@ void ABasePlayerController::Input_OnStrafe(const FInputActionValue& ActionValue)
 	{
 		return;
 	}
+	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
+	if (MyPlayerState)
+	{
+		if (MyPlayerState->InGameState == EPlayerInGameStatus::Spectating)
+		{
+			const float Input = ActionValue.Get<float>();
+			if (Input > 0.5f)
+			{
+				SpectateNextPlayer();
+			}
+			else
+			{
+				SpectatePreviousPlayer();
+			}
+		}
+		return;
+	}
 
+	//나중에 사용으로 빼긴 할 건데 일단 테스트용으로 넣어놔서 아쉽게도 호출이 되는 그런 코드.
 	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Toggle Inventory"));
@@ -679,18 +554,77 @@ void ABasePlayerController::Input_OnStrafe(const FInputActionValue& ActionValue)
 			PlayerCharacter->ToggleInventory();
 		}
 	}
-	
-	//Deprecated//
-	// APawn 타입에 맞는 처리를 실행
-	if (CurrentPossessedPawn->IsA<ABaseDrone>())
-	{
-		ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn);
-		if (IsValid(Drone))
-		{
+}
 
+
+void ABasePlayerController::SpectatePreviousPlayer()
+{
+	TArray<ABasePlayerState*> PlayerList = GetPlayerArray();
+	int32 PlayerListLength = PlayerList.Num();
+	if (PlayerListLength <= 0)
+	{
+		return;
+	}
+
+	CurrentSpectatedCharacterIndex--;
+	if (CurrentSpectatedCharacterIndex < 0)
+	{
+		CurrentSpectatedCharacterIndex = PlayerListLength - 1;
+	}
+	SetViewTargetWithBlend(PlayerList[CurrentSpectatedCharacterIndex]->GetPawn());
+}
+void ABasePlayerController::SpectateNextPlayer()
+{
+	TArray<ABasePlayerState*> PlayerList = GetPlayerArray();
+	int32 PlayerListLength = PlayerList.Num();
+	if (PlayerListLength <= 0)
+	{
+		return;
+	}
+
+	CurrentSpectatedCharacterIndex++;
+	CurrentSpectatedCharacterIndex %= PlayerListLength;
+	SetViewTargetWithBlend(PlayerList[CurrentSpectatedCharacterIndex]->GetPawn());
+}
+TArray<ABasePlayerState*> ABasePlayerController::GetPlayerArray()
+{
+	ALCGameState* GameState = GetWorld()->GetGameState<ALCGameState>();
+	if (!IsValid(GameState))
+	{
+		return SpectatorTargets;
+	}
+
+	//아마 처음 죽었을 때 이 분기를 타게 될 것임
+	if (SpectatorTargets.IsEmpty())
+	{
+		for (APlayerState* PS : GameState->PlayerArray)
+		{
+			ABasePlayerState* MyPS = Cast<ABasePlayerState>(PS);
+			if (MyPS && MyPS->InGameState != EPlayerInGameStatus::Spectating)  // 실제 게임 진행 중인 플레이어 관전
+			{
+				SpectatorTargets.Add(MyPS);
+			}
 		}
+		return SpectatorTargets;
+	}
+	else
+	{
+		TArray<ABasePlayerState*> ToRemove;
+		for (ABasePlayerState* MyPS : SpectatorTargets)
+		{
+			if (MyPS && MyPS->InGameState == EPlayerInGameStatus::Spectating)
+			{
+				ToRemove.Add(MyPS);
+			}
+		}
+		for (ABasePlayerState* MyPS : ToRemove)
+		{
+			SpectatorTargets.Remove(MyPS);
+		}
+		return SpectatorTargets;
 	}
 }
+
 
 void ABasePlayerController::Input_OnItemUse()
 {
@@ -742,9 +676,7 @@ void ABasePlayerController::Input_OnCanceledVoiceChat()
 
 void ABasePlayerController::Input_ChangeShootingSetting()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Change Gun Setting"));
 	//TODO: 총기 클래스 연사 단발 설정
-
 }
 
 void ABasePlayerController::SetShootingSetting()
@@ -757,10 +689,8 @@ void ABasePlayerController::SetShootingSetting()
 
 void ABasePlayerController::Input_ChangeQuickSlot(const FInputActionValue& ActionValue)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Change Quick Slot"));
 	// 휠의 Y 방향만 사용 (위: +1, 아래: -1)
 	const float ScrollValue = ActionValue.Get<float>();
-	UE_LOG(LogTemp, Warning, TEXT("Scroll Value : %f"), ScrollValue);
 	if (ScrollValue > 0.f)
 	{
 		// 휠 위로 → 다음 슬롯
@@ -902,7 +832,6 @@ void ABasePlayerController::UpdateQuickSlotUI()
 	{
 		return;
 	}
-	UE_LOG(LogTemp, Warning, TEXT("Current Slot Index : %d"), PlayerCharacter->GetCurrentQuickSlotIndex());
 	//To Do: ...실제로 UI가 바뀌면서....
 	//
 }
@@ -910,10 +839,20 @@ void ABasePlayerController::UpdateQuickSlotUI()
 
 void ABasePlayerController::Input_OpenPauseMenu()
 {
-	//To Do...
-	//Open Pause Menu,
-	//Set mouse Cursor on
-	//
+	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+	{
+		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+		{
+			if (UIManager->IsPauseMenuOpen())
+			{
+				UIManager->HidePauseMenu();				
+			}
+			else
+			{
+				UIManager->ShowPauseMenu();
+			}
+		}
+	}
 }
 
 //To DO...
@@ -958,13 +897,6 @@ ABaseCharacter* ABasePlayerController::GetControlledBaseCharacter() const
 	return Cast<ABaseCharacter>(GetPawn());
 }
 
-
-
-//TestFunction 추후 삭제
-void ABasePlayerController::OnStaminaUpdated(float NewStamina)
-{
-	TestStamina = NewStamina;
-}
 
 void ABasePlayerController::SetHardLandStateToPlayerState(bool flag)
 {
@@ -1014,48 +946,8 @@ void ABasePlayerController::ApplyRecoilStep()
 	}
 }
 
-
-void ABasePlayerController::SetPlayerMovementSetting()
-{
-	UE_LOG(LogTemp, Warning, TEXT("SetPlayerMovementSetting"));
-	if (!IsValid(CurrentPossessedPawn))
-	{
-		return;
-	}
-	// APawn 타입에 맞는 처리를 실행
-	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
-	{
-		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-		if (!IsValid(PlayerCharacter))
-		{
-			return;
-		}
-		ABasePlayerState* PS = GetPlayerState<ABasePlayerState>();
-		if (!IsValid(PS))
-		{
-			return;
-		}
-		PlayerCharacter->SetMovementSetting(PS->WalkForwardSpeed, PS->WalkBackwardSpeed, PS->RunForwardSpeed, PS->RunBackwardSpeed, PS->SprintSpeed);
-	}
-}
-
-void ABasePlayerController::ChangePlayerMovementSetting(float _WalkForwardSpeed, float _WalkBackwardSpeed, float _RunForwardSpeed, float _RunBackwardSpeed, float _SprintSpeed)
-{
-	ABasePlayerState* PS = GetPlayerState<ABasePlayerState>();
-	if (!IsValid(PS))
-	{
-		return;
-	}
-	PS->WalkForwardSpeed = _WalkForwardSpeed;
-	PS->WalkBackwardSpeed = _WalkBackwardSpeed;
-	PS->RunForwardSpeed = _RunForwardSpeed;
-	PS->RunBackwardSpeed = _RunBackwardSpeed;
-	PS->SprintSpeed = _SprintSpeed;
-}
-
 void ABasePlayerController::Input_DroneExit()
 {
-	UE_LOG(LogTemp, Warning, TEXT("DroneExit"));
 	if (!IsValid(CurrentPossessedPawn))
 	{
 		return;
@@ -1075,7 +967,6 @@ void ABasePlayerController::Input_DroneExit()
 
 void ABasePlayerController::SpawnDrone()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Spawn Drone"));
 	//TODO: 플레이어 인벤토리와 아이템 구현되면...
 	//	if (!IsValid(PlayerCharacter->HeldItem)) return;
 	Server_SpawnDrone();
@@ -1084,7 +975,7 @@ void ABasePlayerController::SpawnDrone()
 void ABasePlayerController::Server_SpawnDrone_Implementation()
 {
 	FVector Location = GetPawn()->GetActorLocation() + FVector(0, 0, 200);
-	FRotator Rotation = FRotator::ZeroRotator;
+	FRotator Rotation = GetPawn()->GetActorRotation();
 	FActorSpawnParameters Params;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 	Params.TransformScaleMethod = ESpawnActorScaleMethod::OverrideRootScale;
@@ -1132,4 +1023,36 @@ void ABasePlayerController::PossessOnDrone()
 void ABasePlayerController::CameraSetOnScope()
 {
 
+}
+
+void ABasePlayerController::InteractGimmick(ALCBaseGimmick* Target)
+{
+	if (!IsValid(Target))
+	{
+		return;		
+	}
+	if (!IsValid(CurrentPossessedPawn))
+	{
+		return;
+	}
+	if (!(CurrentPossessedPawn->IsA<ABaseCharacter>()))
+	{
+		return;
+	}
+	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
+	Server_InteractWithGimmick(Target);
+	PlayerCharacter->PlayInteractionMontage(Target);
+}
+
+void ABasePlayerController::Server_InteractWithGimmick_Implementation(ALCBaseGimmick* Target)
+{
+	if (!IsValid(Target))
+	{
+		return;
+	}
+
+
+	Target->SetOwner(this);
+
+	IInteractableInterface::Execute_Interact(Target, this);
 }

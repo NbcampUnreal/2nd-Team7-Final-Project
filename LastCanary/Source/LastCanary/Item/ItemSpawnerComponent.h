@@ -114,4 +114,8 @@ public:
     /** 던지기 방향 벡터 계산 */
     UFUNCTION(BlueprintPure, Category = "Throw Settings")
     FVector CalculateThrowDirection() const;
+
+protected:
+    /** 메시 물리 설정 */
+    void SetupMeshPhysics(UPrimitiveComponent* MeshComponent, const FVector& ThrowDirection, float ThrowVelocity, const FVector& ThrowImpulse);
 };

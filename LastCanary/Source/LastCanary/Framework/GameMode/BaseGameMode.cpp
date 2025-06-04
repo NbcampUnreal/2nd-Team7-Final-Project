@@ -6,10 +6,6 @@
 #include "LastCanary.h"
 #include "GameFramework/GameSession.h"
 
-ABaseGameMode::ABaseGameMode()
-{
-}
-
 void ABaseGameMode::BeginPlay()
 {
 	Super::BeginPlay();
@@ -26,9 +22,9 @@ void ABaseGameMode::PostLogin(APlayerController* NewPlayer)
 
 		AllPlayerControllers.Add(NewPlayer);
 
-		FSessionPlayerInfo SessionInfo;
 		if (APlayerState* PS = NewPlayer->PlayerState)
 		{
+			FSessionPlayerInfo SessionInfo;
 			SessionInfo.PlayerName = PS->GetPlayerName();
 			SessionInfo.bIsPlayerReady = false;
 			SessionPlayerInfos.Add(SessionInfo);
@@ -111,7 +107,7 @@ void ABaseGameMode::UpdatePlayers()
 	}
 }
 
-void ABaseGameMode::SetPlayerInfo(FSessionPlayerInfo RequestInfo)
+void ABaseGameMode::SetPlayerInfo(const FSessionPlayerInfo& RequestInfo)
 {
 	for (FSessionPlayerInfo& Info : SessionPlayerInfos)
 	{
@@ -157,4 +153,19 @@ void ABaseGameMode::TravelMapByPath(FString Path)
 	UE_LOG(LogTemp, Log, TEXT("Try Server Travel By Path. Traveling to: %s"), *TravelURL);
 
 	GetWorld()->ServerTravel(TravelURL, true);
+}
+
+bool ABaseGameMode::IsAllPlayersReady() const
+{
+	if (SessionPlayerInfos.Num() == 0)
+		return false;
+
+	for (const FSessionPlayerInfo& Info : SessionPlayerInfos)
+	{
+		if (!Info.bIsPlayerReady)
+		{
+			return false;
+		}
+	}
+	return true;
 }

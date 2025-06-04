@@ -93,3 +93,5 @@ void UBTTask_Move::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory
         }
     }
 }
+
+//BaseMonsterCharacter->ChaseSound sound 플레이 하기

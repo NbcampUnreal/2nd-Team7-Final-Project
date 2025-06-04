@@ -2,10 +2,15 @@
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
 
-void UConfirmPopup::Init(TFunction<void()> OnConfirm)
+void UConfirmPopup::Init(TFunction<void()> OnConfirm, const FText& Message)
 {
 	//외부에서 받은 함수 콜백을 멤버 변수에 저장
 	ConfirmCallback = MoveTemp(OnConfirm);
+
+	if (MessageText)
+	{
+		MessageText->SetText(Message);
+	}
 }
 
 void UConfirmPopup::NativeConstruct()

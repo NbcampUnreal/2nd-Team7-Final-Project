@@ -5,6 +5,7 @@
 #include "DataTable/MapDataRow.h"
 #include "DataTable/ItemDataRow.h"
 #include "DataTable/GunDataRow.h"
+#include "DataType/SessionInfo.h"
 #include "AdvancedSessions/Classes/AdvancedFriendsGameInstance.h"
 #include "LCGameInstance.generated.h"
 
@@ -38,9 +39,9 @@ public:
 
 public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Session")
-	void CreateSession(const FString& ServerName, int AmountOfSlots);
+	void CreateSession(const FSessionInfo& SessionInfo);
 
-	virtual void CreateSession_Implementation(const FString& ServerName, int AmountOfSlots);
+	virtual void CreateSession_Implementation(const FSessionInfo& SessionInfo);
 
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Session")

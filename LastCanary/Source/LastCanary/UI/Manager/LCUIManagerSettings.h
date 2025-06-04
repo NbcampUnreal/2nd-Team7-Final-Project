@@ -12,6 +12,7 @@ class ULobbyMenu;
 class URoomListEntry;
 class UEnterPasswordWidget;
 class UOptionWidget;
+class UPauseMenu;
 class UInGameHUD;
 class UShopWidget;
 class UMapSelectWidget;
@@ -22,6 +23,7 @@ class ULoadingLevel;
 class UInventoryMainWidget;
 class UBackpackInventoryWidget;
 class UToolbarInventoryWidget;
+class UConfirmPopup;
 
 UCLASS(BlueprintType)
 class LASTCANARY_API ULCUIManagerSettings : public UDataAsset
@@ -40,6 +42,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UOptionWidget> FromBPOptionWidgetClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UPauseMenu> FromBPPauseMenuClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UInGameHUD> FromBPInGameHUDClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UShopWidget> FromBPShopWidgetClass;
@@ -55,4 +59,6 @@ public:
 	TSubclassOf<ULoadingLevel> FromBPLoadingLevelClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UInventoryMainWidget> FromBPInventoryMainUIClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UConfirmPopup> FromBPConfirmPopupClass;
 };

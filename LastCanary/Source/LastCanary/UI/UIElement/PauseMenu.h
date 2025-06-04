@@ -23,8 +23,6 @@ private:
 	UPROPERTY(meta = (BindWidget))
 	UButton* ResumeButton;
 	UPROPERTY(meta = (BindWidget))
-	UButton* LobbyButton;
-	UPROPERTY(meta = (BindWidget))
 	UButton* OptionButton;
 	UPROPERTY(meta = (BindWidget))
 	UButton* ExitButton;
@@ -34,9 +32,13 @@ private:
 	UFUNCTION()
 	void OnResumeButtonClicked();
 	UFUNCTION()
-	void OnLobbyButtonClicked();
-	UFUNCTION()
 	void OnOptionButtonClicked();
 	UFUNCTION()
 	void OnExitButtonClicked();
+
+public:
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Session")
+	void DestroySessionAndGoTitleMenu();
+
+	virtual void DestroySessionAndGoTitleMenu_Implementation();
 };

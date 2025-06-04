@@ -26,6 +26,13 @@ UToolbarInventoryComponent::UToolbarInventoryComponent()
     EquippedItemComponent->SetUsingAbsoluteLocation(false);
     EquippedItemComponent->SetUsingAbsoluteRotation(false);
     EquippedItemComponent->SetUsingAbsoluteScale(false);
+
+    RemoteOnlyEquippedItemComponent = CreateDefaultSubobject<UChildActorComponent>(TEXT("RemoteOnlyEquippedItemComponent"));
+
+    RemoteOnlyEquippedItemComponent->SetIsReplicated(false);
+    RemoteOnlyEquippedItemComponent->SetUsingAbsoluteLocation(false);
+    RemoteOnlyEquippedItemComponent->SetUsingAbsoluteRotation(false);
+    RemoteOnlyEquippedItemComponent->SetUsingAbsoluteScale(false);
 }
 
 void UToolbarInventoryComponent::BeginPlay()
@@ -47,6 +54,12 @@ void UToolbarInventoryComponent::BeginPlay()
 
     EquippedItemComponent->AttachToComponent(
         CachedOwnerCharacter->GetMesh(),
+        AttachRules,
+        TEXT("Rifle")
+    );
+
+    RemoteOnlyEquippedItemComponent->AttachToComponent(
+        CachedOwnerCharacter->RemoteOnlySkeletalMesh,
         AttachRules,
         TEXT("Rifle")
     );
@@ -342,54 +355,11 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
             TargetSocket = TEXT("Rifle");
         }
 
-        EquippedItemComponent->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+        SetupEquippedItem(EquippedItemComponent, CachedOwnerCharacter->GetMesh(),
+            TargetSocket, ItemData, SlotData);
 
-        FAttachmentTransformRules AttachRules(
-            EAttachmentRule::SnapToTarget,
-            EAttachmentRule::SnapToTarget,
-            EAttachmentRule::KeepWorld,
-            false
-        );
-
-        EquippedItemComponent->AttachToComponent(
-            CachedOwnerCharacter->GetMesh(),
-            AttachRules,
-            TargetSocket
-        );
-
-        EquippedItemComponent->SetChildActorClass(ItemData->ItemActorClass);
-
-        AItemBase* EquippedItem = Cast<AItemBase>(EquippedItemComponent->GetChildActor());
-        if (!EquippedItem)
-        {
-            LOG_Item_ERROR(TEXT("[ToolbarInventoryComponent::EquipItemAtSlot] ChildActor 생성 실패 또는 Cast 실패"));
-            return;
-        }
-
-        EquippedItem->SetOwner(GetOwner());
-        if (APawn* OwnerPawn = Cast<APawn>(GetOwner()))
-        {
-            EquippedItem->SetInstigator(OwnerPawn);
-        }
-
-        EquippedItem->ItemRowName = SlotData->ItemRowName;
-        EquippedItem->Quantity = SlotData->Quantity;
-        EquippedItem->Durability = SlotData->Durability;
-        EquippedItem->SetActorEnableCollision(false);
-
-        EquippedItem->ApplyItemDataFromTable();
-
-        if (AGunBase* Gun = Cast<AGunBase>(EquippedItem))
-        {
-            Gun->ApplyGunDataFromDataTable();
-        }
-
-        if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem))
-        {
-            EquipmentItem->SetEquipped(true);
-        }
-
-        EquippedItem->ForceNetUpdate();
+        SetupEquippedItem(RemoteOnlyEquippedItemComponent, CachedOwnerCharacter->RemoteOnlySkeletalMesh,
+            TargetSocket, ItemData, SlotData);
 
         ItemSlots[SlotIndex].bIsEquipped = true;
         CurrentEquippedSlotIndex = SlotIndex;
@@ -494,6 +464,7 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
 
         // 아이템 제거
         EquippedItemComponent->DestroyChildActor();
+        RemoteOnlyEquippedItemComponent->DestroyChildActor();
     }
     else
     {
@@ -510,6 +481,7 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
         }
 
         EquippedItemComponent->DestroyChildActor();
+        RemoteOnlyEquippedItemComponent->DestroyChildActor();
 
         CurrentEquippedSlotIndex = -1;
 
@@ -556,6 +528,61 @@ FBaseItemSlotData* UToolbarInventoryComponent::GetItemDataAtSlot(int32 SlotIndex
 int32 UToolbarInventoryComponent::GetCurrentEquippedSlotIndex() const
 {
     return CurrentEquippedSlotIndex;
+}
+
+void UToolbarInventoryComponent::SetupEquippedItem(UChildActorComponent* ItemComponent, USkeletalMeshComponent* TargetMesh, FName SocketName, FItemDataRow* ItemData, FBaseItemSlotData* SlotData)
+{
+    if (!ItemComponent || !TargetMesh || !ItemData || !SlotData)
+    {
+        return;
+    }
+
+    // 기존 아이템 해제
+    ItemComponent->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+
+    // 새 소켓에 연결
+    FAttachmentTransformRules AttachRules(
+        EAttachmentRule::SnapToTarget,
+        EAttachmentRule::SnapToTarget,
+        EAttachmentRule::KeepWorld,
+        false
+    );
+
+    ItemComponent->AttachToComponent(TargetMesh, AttachRules, SocketName);
+    ItemComponent->SetChildActorClass(ItemData->ItemActorClass);
+
+    // 아이템 설정
+    AItemBase* EquippedItem = Cast<AItemBase>(ItemComponent->GetChildActor());
+    if (!EquippedItem)
+    {
+        LOG_Item_ERROR(TEXT("[SetupEquippedItem] ChildActor 생성 실패"));
+        return;
+    }
+
+    EquippedItem->SetOwner(GetOwner());
+    if (APawn* OwnerPawn = Cast<APawn>(GetOwner()))
+    {
+        EquippedItem->SetInstigator(OwnerPawn);
+    }
+
+    EquippedItem->ItemRowName = SlotData->ItemRowName;
+    EquippedItem->Quantity = SlotData->Quantity;
+    EquippedItem->Durability = SlotData->Durability;
+    EquippedItem->SetActorEnableCollision(false);
+
+    EquippedItem->ApplyItemDataFromTable();
+
+    if (AGunBase* Gun = Cast<AGunBase>(EquippedItem))
+    {
+        Gun->ApplyGunDataFromDataTable();
+    }
+
+    if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem))
+    {
+        EquipmentItem->SetEquipped(true);
+    }
+
+    EquippedItem->ForceNetUpdate();
 }
 
 bool UToolbarInventoryComponent::CanAddItem(AItemBase* ItemActor)
@@ -720,6 +747,11 @@ void UToolbarInventoryComponent::PostAddProcess()
     OnInventoryUpdated.Broadcast();
 }
 
+void UToolbarInventoryComponent::Server_DropEquippedItemAtSlot_Implementation(int32 SlotIndex, int32 Quantity)
+{
+    Internal_DropEquippedItemAtSlot(SlotIndex, Quantity);
+}
+
 bool UToolbarInventoryComponent::DropCurrentEquippedItem()
 {
     if (GetOwner() && GetOwner()->HasAuthority())
@@ -742,67 +774,79 @@ bool UToolbarInventoryComponent::TryDropItemAtSlot(int32 SlotIndex, int32 Quanti
 {
     if (SlotIndex == CurrentEquippedSlotIndex && CurrentEquippedSlotIndex >= 0)
     {
-        LOG_Item_WARNING(TEXT("[TryDropItemAtSlot] 장착된 아이템 드롭: 슬롯 %d"), SlotIndex);
-
         if (!GetOwner() || !GetOwner()->HasAuthority())
         {
-            LOG_Item_WARNING(TEXT("[TryDropItemAtSlot] Authority가 없습니다."));
-            return false;
+            Server_DropEquippedItemAtSlot(SlotIndex, Quantity);
+            return true;
         }
+        return Internal_DropEquippedItemAtSlot(SlotIndex, Quantity);
+    }
 
-        // ⭐ 가방 아이템인지 확인
-        FBaseItemSlotData* SlotData = GetItemDataAtSlot(SlotIndex);
-        if (!SlotData)
-        {
-            LOG_Item_WARNING(TEXT("[TryDropItemAtSlot] 슬롯 데이터가 없습니다."));
-            return false;
-        }
+    return Super::TryDropItemAtSlot(SlotIndex, Quantity);
+}
 
-        ULCGameInstanceSubsystem* GISubsystem = GetOwner()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
-        if (GISubsystem)
+bool UToolbarInventoryComponent::Internal_DropCurrentEquippedItem()
+{
+    if (CurrentEquippedSlotIndex < 0 || !ItemSlots.IsValidIndex(CurrentEquippedSlotIndex))
+    {
+        LOG_Item_WARNING(TEXT("[Internal_DropCurrentEquippedItem] 현재 장착된 아이템이 없습니다."));
+        return false;
+    }
+
+    if (!GetOwner() || !GetOwner()->HasAuthority())
+    {
+        LOG_Item_WARNING(TEXT("[Internal_DropCurrentEquippedItem] Authority가 없습니다."));
+        return false;
+    }
+
+    // ⭐ 간소화: Internal_DropEquippedItemAtSlot 재사용
+    return Internal_DropEquippedItemAtSlot(CurrentEquippedSlotIndex, 1);
+}
+
+bool UToolbarInventoryComponent::Internal_DropEquippedItemAtSlot(int32 SlotIndex, int32 Quantity)
+{
+    if (!GetOwner() || !GetOwner()->HasAuthority())
+    {
+        LOG_Item_WARNING(TEXT("[Internal_DropEquippedItemAtSlot] Authority가 없습니다."));
+        return false;
+    }
+
+    FBaseItemSlotData* SlotData = GetItemDataAtSlot(SlotIndex);
+    if (!SlotData)
+    {
+        LOG_Item_WARNING(TEXT("[Internal_DropEquippedItemAtSlot] 슬롯 데이터가 없습니다."));
+        return false;
+    }
+
+    // ⭐ 가방 아이템 특별 처리 (기존 Internal_DropCurrentEquippedItem 로직 활용)
+    ULCGameInstanceSubsystem* GISubsystem = GetOwner()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
+    if (GISubsystem)
+    {
+        const FItemDataRow* ItemData = GISubsystem->GetItemDataByRowName(SlotData->ItemRowName);
+        if (ItemData)
         {
-            const FItemDataRow* ItemData = GISubsystem->GetItemDataByRowName(SlotData->ItemRowName);
-            if (ItemData)
+            static const FGameplayTag BackpackTag = FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Backpack"));
+
+            if (ItemData->ItemType.MatchesTag(BackpackTag))
             {
-                static const FGameplayTag BackpackTag = FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Backpack"));
+                LOG_Item_WARNING(TEXT("[Internal_DropEquippedItemAtSlot] 가방 아이템 드롭 - 가방 해제"));
 
-                if (ItemData->ItemType.MatchesTag(BackpackTag))
+                // ⭐ 기존 방식: 가방 해제 후 데이터 가져오기
+                TArray<FBaseItemSlotData> BackpackData = CachedOwnerCharacter->UnequipBackpack();
+
+                FVector DropLocation = CalculateDropLocation();
+                FBaseItemSlotData DropItemData = *SlotData;
+                DropItemData.Quantity = FMath::Min(Quantity, SlotData->Quantity);
+                DropItemData.bIsEquipped = false;
+
+                AItemBase* DroppedItem = ItemSpawner->CreateItemFromData(DropItemData, DropLocation);
+                if (DroppedItem)
                 {
-                    LOG_Item_WARNING(TEXT("[TryDropItemAtSlot] 가방 아이템 드롭 - 실제 가방 해제 진행"));
-
-                    // ⭐ 가방 드롭 시에만 실제 가방 해제
-                    TArray<FBaseItemSlotData> BackpackData;
-                    if (CachedOwnerCharacter && CachedOwnerCharacter->HasBackpackEquipped())
-                    {
-                        BackpackData = CachedOwnerCharacter->UnequipBackpack();
-                        LOG_Item_WARNING(TEXT("[TryDropItemAtSlot] 가방 해제 완료, 백팩 데이터: %d개"), BackpackData.Num());
-                    }
-
-                    // ⭐ 가방 데이터와 함께 드롭
-                    FVector DropLocation = CalculateDropLocation();
-
-                    FBaseItemSlotData DropItemData = *SlotData;
-                    DropItemData.Quantity = FMath::Min(Quantity, SlotData->Quantity);
-                    DropItemData.bIsEquipped = false;
-
-                    if (!ItemSpawner)
-                    {
-                        LOG_Item_WARNING(TEXT("[TryDropItemAtSlot] ItemSpawner is null"));
-                        return false;
-                    }
-
-                    AItemBase* DroppedItem = ItemSpawner->CreateItemFromData(DropItemData, DropLocation);
-                    if (!DroppedItem)
-                    {
-                        LOG_Item_WARNING(TEXT("[TryDropItemAtSlot] 가방 아이템 스폰 실패"));
-                        return false;
-                    }
-
-                    // ⭐ 가방에 데이터 설정
+                    // ⭐ 기존 방식: 드롭된 가방에 데이터 설정
                     if (ABackpackItem* DroppedBackpack = Cast<ABackpackItem>(DroppedItem))
                     {
                         DroppedBackpack->SetBackpackData(BackpackData);
-                        LOG_Item_WARNING(TEXT("[TryDropItemAtSlot] 드롭된 가방에 데이터 설정 완료"));
+                        LOG_Item_WARNING(TEXT("[Internal_DropEquippedItemAtSlot] 드롭된 가방에 데이터 설정 완료: %d개"), BackpackData.Num());
                     }
 
                     // 슬롯에서 제거
@@ -819,7 +863,6 @@ bool UToolbarInventoryComponent::TryDropItemAtSlot(int32 SlotIndex, int32 Quanti
                     // 캐릭터 상태 변경
                     if (CachedOwnerCharacter)
                     {
-                        // 가방이 해제되었으므로 다른 장비가 없으면 SetEquipped(false)
                         bool bHasOtherEquipment = false;
                         for (int32 i = 0; i < ItemSlots.Num(); ++i)
                         {
@@ -832,154 +875,61 @@ bool UToolbarInventoryComponent::TryDropItemAtSlot(int32 SlotIndex, int32 Quanti
                         }
 
                         CachedOwnerCharacter->SetEquipped(bHasOtherEquipment);
-                        LOG_Item_WARNING(TEXT("[TryDropItemAtSlot] 캐릭터 장착 상태: %s"),
-                            bHasOtherEquipment ? TEXT("장착됨") : TEXT("해제됨"));
                     }
 
                     UpdateWeight();
                     OnInventoryUpdated.Broadcast();
 
-                    LOG_Item_WARNING(TEXT("[TryDropItemAtSlot] ✅ 가방 드롭 성공"));
+                    LOG_Item_WARNING(TEXT("[Internal_DropEquippedItemAtSlot] ✅ 가방 드롭 성공"));
                     return true;
                 }
-            }
-        }
-
-        // ⭐ 일반 아이템 드롭 처리 (기존 로직)
-        // 현재 장착된 아이템 정보 백업 (bIsEquipped는 false로 설정)
-        FBaseItemSlotData OriginalSlotData = ItemSlots[SlotIndex];
-        OriginalSlotData.bIsEquipped = false;
-
-        // 일반 장착 해제 처리
-        if (AItemBase* CurrentItem = Cast<AItemBase>(EquippedItemComponent->GetChildActor()))
-        {
-            if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(CurrentItem))
-            {
-                EquipmentItem->SetEquipped(false);
-            }
-        }
-        EquippedItemComponent->DestroyChildActor();
-
-        // 캐릭터 상태 변경
-        if (CachedOwnerCharacter)
-        {
-            // 가방이 있는지 확인
-            bool bHasBackpack = CachedOwnerCharacter->HasBackpackEquipped();
-            bool bHasOtherEquipment = false;
-
-            for (int32 i = 0; i < ItemSlots.Num(); ++i)
-            {
-                if (i != SlotIndex && ItemSlots[i].bIsEquipped &&
-                    !IsDefaultItem(ItemSlots[i].ItemRowName))
+                else
                 {
-                    bHasOtherEquipment = true;
-                    break;
-                }
-            }
-
-            CachedOwnerCharacter->SetEquipped(bHasBackpack || bHasOtherEquipment);
-        }
-
-        // 슬롯의 bIsEquipped도 false로 설정
-        ItemSlots[SlotIndex].bIsEquipped = false;
-        CurrentEquippedSlotIndex = -1;
-
-        // 수정된 슬롯 데이터로 복원한 후 드롭 진행
-        ItemSlots[SlotIndex] = OriginalSlotData;
-
-        // 일반 드롭 로직 실행
-        return Super::TryDropItemAtSlot(SlotIndex, Quantity);
-    }
-
-    // 장착되지 않은 아이템은 일반 드롭
-    return Super::TryDropItemAtSlot(SlotIndex, Quantity);
-}
-
-bool UToolbarInventoryComponent::Internal_DropCurrentEquippedItem()
-{
-    if (CurrentEquippedSlotIndex < 0 || !ItemSlots.IsValidIndex(CurrentEquippedSlotIndex))
-    {
-        LOG_Item_WARNING(TEXT("[UToolbarInventoryComponent::Internal_DropCurrentEquippedItem] 현재 장착된 아이템이 없습니다."));
-        return false;
-    }
-
-    if (!GetOwner() || !GetOwner()->HasAuthority())
-    {
-        LOG_Item_WARNING(TEXT("[UToolbarInventoryComponent::Internal_DropCurrentEquippedItem] Authority가 없습니다."));
-        return false;
-    }
-
-    if (!IsOwnerCharacterValid())
-    {
-        LOG_Item_WARNING(TEXT("[UToolbarInventoryComponent::Internal_DropCurrentEquippedItem] CachedOwnerCharacter가 유효하지 않습니다."));
-        return false;
-    }
-
-    int32 DropSlotIndex = CurrentEquippedSlotIndex;
-    FBaseItemSlotData& SlotData = ItemSlots[DropSlotIndex];
-
-    if (SlotData.ItemRowName.IsNone() || SlotData.Quantity <= 0)
-    {
-        LOG_Item_WARNING(TEXT("[UToolbarInventoryComponent::Internal_DropCurrentEquippedItem] 장착된 슬롯이 비어있습니다."));
-        return false;
-    }
-
-    FVector DropLocation = CalculateDropLocation();
-
-    FBaseItemSlotData DropItemData = SlotData;
-    DropItemData.Quantity = 1;
-
-    ULCGameInstanceSubsystem* GameSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
-    if (GameSubsystem)
-    {
-        if (const FItemDataRow* ItemData = GameSubsystem->GetItemDataByRowName(SlotData.ItemRowName))
-        {
-            static const FGameplayTag BackpackTag = FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Backpack"));
-
-            if (ItemData->ItemType.MatchesTag(BackpackTag))
-            {
-                TArray<FBaseItemSlotData> BackpackData = CachedOwnerCharacter->UnequipBackpack();
-
-                AItemBase* DroppedItem = ItemSpawner->CreateItemFromData(DropItemData, DropLocation);
-                if (DroppedItem)
-                {
-                    if (ABackpackItem* DroppedBackpack = Cast<ABackpackItem>(DroppedItem))
-                    {
-                        DroppedBackpack->SetBackpackData(BackpackData);
-                    }
-
-                    SlotData.Quantity -= 1;
-                    if (SlotData.Quantity <= 0)
-                    {
-                        SlotData = FBaseItemSlotData();
-                    }
-
-                    CurrentEquippedSlotIndex = -1;
-                    OnInventoryUpdated.Broadcast();
-
-                    return true;
+                    LOG_Item_WARNING(TEXT("[Internal_DropEquippedItemAtSlot] 가방 아이템 스폰 실패"));
+                    return false;
                 }
             }
         }
     }
 
-    UnequipCurrentItem();
+    // ⭐ 일반 아이템의 경우: 장착 해제 후 베이스 클래스 드롭 로직 사용
+    LOG_Item_WARNING(TEXT("[Internal_DropEquippedItemAtSlot] 일반 아이템 드롭 처리"));
 
-    AItemBase* DroppedItem = ItemSpawner->CreateItemFromData(DropItemData, DropLocation);
-    if (!DroppedItem)
+    // 장착 해제 (bIsEquipped만 false로 설정, 실제 해제는 베이스 클래스에서)
+    SlotData->bIsEquipped = false;
+    CurrentEquippedSlotIndex = -1;
+
+    // 장착된 액터 해제
+    if (AItemBase* CurrentItem = Cast<AItemBase>(EquippedItemComponent->GetChildActor()))
     {
-        LOG_Item_WARNING(TEXT("[UToolbarInventoryComponent::Internal_DropCurrentEquippedItem] 아이템 스폰 실패"));
-        return false;
+        if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(CurrentItem))
+        {
+            EquipmentItem->SetEquipped(false);
+        }
+    }
+    EquippedItemComponent->DestroyChildActor();
+
+    // 캐릭터 상태 변경
+    if (CachedOwnerCharacter)
+    {
+        bool bHasBackpack = CachedOwnerCharacter->HasBackpackEquipped();
+        bool bHasOtherEquipment = false;
+
+        for (int32 i = 0; i < ItemSlots.Num(); ++i)
+        {
+            if (i != SlotIndex && ItemSlots[i].bIsEquipped &&
+                !IsDefaultItem(ItemSlots[i].ItemRowName))
+            {
+                bHasOtherEquipment = true;
+                break;
+            }
+        }
+
+        CachedOwnerCharacter->SetEquipped(bHasBackpack || bHasOtherEquipment);
     }
 
-    SlotData.Quantity -= 1;
-    if (SlotData.Quantity <= 0)
-    {
-        SlotData = FBaseItemSlotData();
-    }
-
-    OnInventoryUpdated.Broadcast();
-    return true;
+    // ⭐ 베이스 클래스의 드롭 로직 실행
+    return Super::Internal_TryDropItemAtSlot(SlotIndex, Quantity);
 }
 
 void UToolbarInventoryComponent::Server_DropItemAtSlot_Implementation(int32 SlotIndex, int32 Quantity)

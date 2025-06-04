@@ -3,6 +3,7 @@
 #include "Framework/GameMode/BaseGameMode.h"
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "Framework/Manager/LCCheatManager.h"
 
 #include "OnlineSubsystem.h"
 #include "Interfaces/OnlineSessionInterface.h"
@@ -11,6 +12,10 @@
 #include "Blueprint/UserWidget.h"
 #include "UI/Manager/LCUIManager.h"
 
+ALCPlayerController::ALCPlayerController()
+{
+    CheatClass = ULCCheatManager::StaticClass();
+}
 
 void ALCPlayerController::BeginPlay()
 {
@@ -70,11 +75,6 @@ void ALCPlayerController::ClientWasKicked_Implementation_Implementation(const FT
     // BluePrint 에서 DestroySession => 새로운 세션에 Join하기 위해
 }
 
-
-void ALCPlayerController::Client_UpdatePlayers_Implementation()
-{
-
-}
 
 void ALCPlayerController::StartGame(FString SoftPath)
 {

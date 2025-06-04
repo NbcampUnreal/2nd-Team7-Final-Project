@@ -1965,7 +1965,13 @@ void AAlsCharacter::RefreshViewRelativeTargetYawAngle()
 
 
 
-float AAlsCharacter::GetFallDamage(float Velocity)
+void AAlsCharacter::GetFallDamage(float Velocity)
 {
-	return Velocity;
+	return;
+}
+
+
+FVector AAlsCharacter::GetLocomotionStateMovementSpeed()
+{
+	return LocomotionState.Velocity;
 }

@@ -5,16 +5,35 @@
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "UI/Manager/LCUIManager.h"
 #include "UI/UIElement/InGameHUD.h"
+
 #include "LastCanary.h"
 
 ABasePlayerState::ABasePlayerState()
 {
 	bReplicates = true;
+	LOG_Frame_WARNING(TEXT("ABasePlayerState::Constructor"));
 }
 
 void ABasePlayerState::BeginPlay()
 {
-	InitializeStats();
+	Super::BeginPlay();
+	
+	if (bAlreadyInitialized)
+	{
+		LOG_Frame_WARNING(TEXT("ABasePlayerState::BeginPlay - 중복 호출 차단"));
+		return;
+	}
+	bAlreadyInitialized = true;
+
+	LOG_Frame_WARNING(TEXT("ABasePlayerState::BeginPlay()"));
+	
+	if (CurrentHP <= 0.f && InitialStats.MaxHP > 0.f)  // 새 생성일 경우만
+	{
+		LOG_Frame_WARNING(TEXT("ABasePlayerState::Should InitializeStats"));
+
+		InitializeStats();
+		
+	}
 	UpdateHPUI();
 	UpdateStaminaUI();
 }
@@ -23,18 +42,30 @@ void ABasePlayerState::InitializeStats()
 {
 	CurrentHP = InitialStats.MaxHP;
 	CurrentStamina = InitialStats.MaxStamina;
+
+}
+void ABasePlayerState::SetStamina(float NewStamina)
+{
+	CurrentStamina = NewStamina; 
+	UpdateStaminaUI(); 
+}
+void ABasePlayerState::SetHP(float NewHP) 
+{
+	if (HasAuthority())
+	{	//서버는 바로 바꾸기
+		CurrentHP = NewHP; 
+		Client_UpdateHP(NewHP);
+	}
 }
 
-void ABasePlayerState::OnRep_CurrentHP()
+void ABasePlayerState::Client_UpdateHP_Implementation(float NewHP)
 {
-	OnDamaged.Broadcast(CurrentHP);
-	LOG_Char_WARNING(TEXT("OnRep_CurrentHP"));
+	CurrentHP = NewHP;
 	UpdateHPUI();
 }
 
 void ABasePlayerState::OnRep_CurrentStamina()
 {
-	OnStaminaChanged.Broadcast(CurrentStamina);
 	LOG_Char_WARNING(TEXT("OnRep_CurrentStamina"));
 	UpdateStaminaUI();
 }
@@ -77,6 +108,16 @@ void ABasePlayerState::UpdateStaminaUI()
 void ABasePlayerState::UpdateDeathUI()
 {
 	// TODO: implement HUD->OnPlayerDeath(); if needed
+	if (APlayerController* PC = Cast<APlayerController>(GetOwner()))
+	{
+		if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+		{
+			if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+			{
+
+			}
+		}
+	}
 }
 
 void ABasePlayerState::UpdateExhaustedUI()
@@ -86,46 +127,15 @@ void ABasePlayerState::UpdateExhaustedUI()
 
 void ABasePlayerState::ApplyDamage(float Damage)
 {
-	CurrentHP = FMath::Clamp(CurrentHP - Damage, 0.f, InitialStats.MaxHP);
-
-	if (IsOwnedBy(GetWorld()->GetFirstPlayerController()))
-	{
-		UpdateHPUI();
-	}
-
-	Multicast_OnDamaged();
-
-	if (CurrentHP <= 0.f)
-	{
-		CurrentState = EPlayerState::Dead;
-
-		if (IsOwnedBy(GetWorld()->GetFirstPlayerController()))
-		{
-			UpdateDeathUI();
-		}
-
-		Multicast_OnDied();
-	}
+	////여기는 서버에서 처리
+	CurrentHP = FMath::Clamp(CurrentHP - Damage, 0.f, MaxHP);
+	Client_UpdateHP(CurrentHP);
 }
 
-void ABasePlayerState::Multicast_OnDamaged_Implementation()
+void ABasePlayerState::OnRep_CurrentState()
 {
-	OnDamaged.Broadcast(CurrentHP);
-	if (!IsOwnedBy(GetWorld()->GetFirstPlayerController()))
-	{
-		UpdateHPUI();
-	}
-}
 
-void ABasePlayerState::Multicast_OnDied_Implementation()
-{
-	OnDied.Broadcast();
-	if (!IsOwnedBy(GetWorld()->GetFirstPlayerController()))
-	{
-		UpdateDeathUI();
-	}
 }
-
 ECharacterMovementState ABasePlayerState::GetPlayerMovementState()
 {
 	return MovementState;
@@ -134,113 +144,6 @@ ECharacterMovementState ABasePlayerState::GetPlayerMovementState()
 void ABasePlayerState::SetPlayerMovementState(ECharacterMovementState NewState)
 {
 	MovementState = NewState;
-}
-
-void ABasePlayerState::TickStaminaDrain()
-{
-	ConsumeStamina(InitialStats.StaminaDrainRate * 0.1f);
-}
-
-void ABasePlayerState::StartStaminaDrain()
-{
-	if (!GetWorldTimerManager().IsTimerActive(StaminaDrainHandle))
-	{
-		GetWorldTimerManager().SetTimer(
-			StaminaDrainHandle,
-			this,
-			&ABasePlayerState::TickStaminaDrain,
-			0.1f,
-			true);
-	}
-	StopStaminaRecovery();
-}
-
-void ABasePlayerState::StopStaminaDrain()
-{
-	GetWorldTimerManager().ClearTimer(StaminaDrainHandle);
-}
-
-void ABasePlayerState::StartStaminaRecovery()
-{
-	if (!GetWorldTimerManager().IsTimerActive(StaminaRecoveryHandle))
-	{
-		GetWorldTimerManager().SetTimer(
-			StaminaRecoveryHandle,
-			this,
-			&ABasePlayerState::TickStaminaRecovery,
-			0.1f,
-			true);
-	}
-}
-
-void ABasePlayerState::StopStaminaRecovery()
-{
-	GetWorldTimerManager().ClearTimer(StaminaRecoveryHandle);
-	SetPlayerMovementState(ECharacterMovementState::Walking);
-}
-
-void ABasePlayerState::StartStaminaRecoverAfterDelay()
-{
-	GetWorldTimerManager().SetTimer(StaminaRecoveryDelayHandle, this, &ABasePlayerState::StartStaminaRecovery, RecoverDelayTime, false);
-}
-
-void ABasePlayerState::StopStaminaRecoverAfterDelay()
-{
-	GetWorldTimerManager().ClearTimer(StaminaRecoveryDelayHandle);
-}
-
-void ABasePlayerState::TickStaminaRecovery()
-{
-	if (IsStaminaFull())
-	{
-		StopStaminaRecovery();
-		return;
-	}
-	CurrentStamina = FMath::Clamp(CurrentStamina + InitialStats.StaminaRecoveryRate * 0.1f, 0.f, InitialStats.MaxStamina);
-	
-	if (IsOwnedBy(GetWorld()->GetFirstPlayerController()))
-	{
-		UpdateStaminaUI();
-	}
-	OnStaminaChanged.Broadcast(CurrentStamina);
-}
-
-void ABasePlayerState::ConsumeStamina(float Amount)
-{
-	if (bIsCharacterInHardLandingState || !bIsCharacterInSprintingState)
-	{
-		return;
-	}
-
-	CurrentStamina = FMath::Clamp(CurrentStamina - Amount, 0.f, InitialStats.MaxStamina);
-	UE_LOG(LogTemp, Warning, TEXT("stamina : %f"), CurrentStamina);
-	if (IsOwnedBy(GetWorld()->GetFirstPlayerController()))
-	{
-		UpdateStaminaUI();
-	}
-	OnStaminaChanged.Broadcast(CurrentStamina);
-
-	if (CurrentStamina <= 0.f)
-	{
-		SetPlayerMovementState(ECharacterMovementState::Exhausted);
-		StartStaminaRecovery();
-
-		if (IsOwnedBy(GetWorld()->GetFirstPlayerController()))
-		{
-			UpdateExhaustedUI();
-		}
-		OnExhausted.Broadcast();
-	}
-}
-
-bool ABasePlayerState::HasStamina() const
-{
-	return CurrentStamina > 0.f;
-}
-
-bool ABasePlayerState::IsStaminaFull() const
-{
-	return CurrentStamina >= InitialStats.MaxStamina;
 }
 
 int32 ABasePlayerState::GetTotalGold() const
@@ -290,7 +193,24 @@ void ABasePlayerState::SetPlayerMovementSetting(float _WalkForwardSpeed, float _
 			_WalkBackwardSpeed,
 			_RunForwardSpeed,
 			_RunBackwardSpeed,
-			_SprintSpeed);
+			_SprintSpeed,
+			_RunForwardSpeed / 2);
+	}
+}
+
+
+void ABasePlayerState::CopyProperties(APlayerState* PlayerState)
+{
+	Super::CopyProperties(PlayerState);
+	LOG_Frame_WARNING(TEXT("CopyProperties called for ABasePlayerState"));
+	if (ABasePlayerState* TargetState = Cast<ABasePlayerState>(PlayerState))
+	{
+		TargetState->AquiredItemIDs = AquiredItemIDs;
+		TargetState->TotalGold = TotalGold;
+		TargetState->TotalExp = TotalExp;
+		// 필요한 데이터 더 복사 가능
+		TargetState->CurrentHP = CurrentHP; // 테스트용으로 추가
+		LOG_Frame_WARNING(TEXT("TotalGold: %d, TotalExp: %d"), TotalGold, TotalExp);
 	}
 }
 
@@ -302,4 +222,7 @@ void ABasePlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME(ABasePlayerState, CurrentStamina);
 	DOREPLIFETIME(ABasePlayerState, TotalGold);
 	DOREPLIFETIME(ABasePlayerState, TotalExp);
+	DOREPLIFETIME(ABasePlayerState, CurrentState);
+	DOREPLIFETIME(ABasePlayerState, AquiredItemIDs);
+
 }

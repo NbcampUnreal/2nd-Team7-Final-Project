@@ -12,10 +12,6 @@ void UPauseMenu::NativeConstruct()
 	{
 		ResumeButton->OnClicked.AddUniqueDynamic(this, &UPauseMenu::OnResumeButtonClicked);
 	}
-	if (LobbyButton)
-	{
-		LobbyButton->OnClicked.AddUniqueDynamic(this, &UPauseMenu::OnLobbyButtonClicked);
-	}
 	if (OptionButton)
 	{
 		OptionButton->OnClicked.AddUniqueDynamic(this, &UPauseMenu::OnOptionButtonClicked);
@@ -33,10 +29,6 @@ void UPauseMenu::NativeDestruct()
 	{
 		ResumeButton->OnClicked.RemoveDynamic(this, &UPauseMenu::OnResumeButtonClicked);
 	}
-	if (LobbyButton)
-	{
-		LobbyButton->OnClicked.RemoveDynamic(this, &UPauseMenu::OnLobbyButtonClicked);
-	}
 	if (OptionButton)
 	{
 		OptionButton->OnClicked.RemoveDynamic(this, &UPauseMenu::OnOptionButtonClicked);
@@ -50,28 +42,15 @@ void UPauseMenu::NativeDestruct()
 void UPauseMenu::OnResumeButtonClicked()
 {
 	LOG_Frame_WARNING(TEXT("Resume Button Clicked"));
-}
-
-void UPauseMenu::OnLobbyButtonClicked()
-{
-	LOG_Frame_WARNING(TEXT("Lobby Button Clicked"));
-	ULCUIManager* LCUIManager = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>()->GetUIManager();
-	if (LCUIManager)
-	{
-		// 확인 팝업을 띄우고, 예를 눌렀을 경우에만 로비 메뉴로 전환)
-		LCUIManager->ShowConfirmPopup(
-			[]()
-			{
-				//TODO : 로비 메뉴로 전환
-			}
-		);
-	}
+	RemoveFromParent();
+	ULCUIManager* UIManager = ResolveUIManager();
+	UIManager->SetInputModeGameOnly();
 }
 
 void UPauseMenu::OnOptionButtonClicked()
 {
 	LOG_Frame_WARNING(TEXT("Option Button Clicked"));
-	ULCUIManager* LCUIManager = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>()->GetUIManager();
+	ULCUIManager* LCUIManager = ResolveUIManager();
 	if (LCUIManager)
 	{
 		LCUIManager->ShowOptionPopup();
@@ -82,15 +61,22 @@ void UPauseMenu::OnExitButtonClicked()
 {
 	LOG_Frame_WARNING(TEXT("Exit Button Clicked"));
 	// UI 매니저 획득
-	ULCUIManager* LCUIManager = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>()->GetUIManager();
+	ULCUIManager* LCUIManager = ResolveUIManager();
 	if (LCUIManager)
 	{
 		// 확인 팝업을 띄우고, 예를 눌렀을 경우에만 타이틀 메뉴로 전환
 		LCUIManager->ShowConfirmPopup(
-			[]()
+			[this]()
 			{
 				//TODO : 타이틀 메뉴로 전환
-			}
+				DestroySessionAndGoTitleMenu();
+			},
+			FText::FromString(TEXT("정말로 종료(타이틀 메뉴로)\r\n 하시겠습니까?"))
 		);
 	}
+}
+
+void UPauseMenu::DestroySessionAndGoTitleMenu_Implementation()
+{
+
 }

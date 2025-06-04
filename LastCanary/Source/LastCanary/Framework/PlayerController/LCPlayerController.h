@@ -14,6 +14,8 @@ class LASTCANARY_API ALCPlayerController : public APlayerController
 	GENERATED_BODY()
 	
 public:
+	ALCPlayerController();
+
 	virtual void BeginPlay() override;
 
 	UFUNCTION()
@@ -32,11 +34,6 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Session")
 	void ClientWasKicked_Implementation(const FText& KickReason);
 	void ClientWasKicked_Implementation_Implementation(const FText& KickReason);
-
-	UFUNCTION(Client, Reliable)
-	void Client_UpdatePlayers();
-
-	virtual void Client_UpdatePlayers_Implementation();
 
 	void StartGame(FString SoftPath);
 

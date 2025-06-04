@@ -221,7 +221,7 @@ bool UBackpackInventoryComponent::CanAddItem(AItemBase* ItemActor)
 		const FBaseItemSlotData& Slot = ItemSlots[i];
 
 		// 빈 슬롯 확인
-		if (Slot.ItemRowName.IsNone() || Slot.Quantity <= 0)
+		if (IsDefaultItem(Slot.ItemRowName) || Slot.Quantity <= 0)
 		{
 			LOG_Item_WARNING(TEXT("[BackpackInventoryComponent::CanAddItem] ✅ 빈 슬롯 발견: 인덱스 %d"), i);
 			return true;
@@ -291,7 +291,7 @@ bool UBackpackInventoryComponent::TryStoreItem(AItemBase* ItemActor)
 	{
 		FBaseItemSlotData& Slot = ItemSlots[i];
 
-		if (Slot.ItemRowName.IsNone() || Slot.Quantity <= 0)
+		if (IsDefaultItem(Slot.ItemRowName) || Slot.Quantity <= 0)
 		{
 			Slot.ItemRowName = ItemActor->ItemRowName;
 			Slot.Quantity = 1;
