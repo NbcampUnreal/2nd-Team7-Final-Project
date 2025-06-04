@@ -25,10 +25,6 @@ public:
     // 컴포넌트
     //-----------------------------------------------------
 
-    /** 루트 씬 컴포넌트 */
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-    USceneComponent* RootSceneComponent;
-
     /** 아이템의 스태틱 메시 컴포넌트 */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
     UStaticMeshComponent* MeshComponent;
@@ -143,23 +139,9 @@ protected:
     bool Internal_TryPickupByPlayer(APlayerController* PlayerController);
 
     //-----------------------------------------------------
-    // 충돌 이벤트 핸들러
-    //-----------------------------------------------------
-public:
-    /** 아이템과 다른 액터 간의 오버랩 시작 시 호출 */
-    UFUNCTION()
-    void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-        UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
-
-    /** 아이템과 다른 액터 간의 오버랩 종료 시 호출 */
-    UFUNCTION()
-    void OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-        UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
-
-    //-----------------------------------------------------
     // 유틸리티 함수
     //-----------------------------------------------------
-
+public:
     /** 데이터 테이블에서 아이템 데이터를 로드하여 적용 */
     UFUNCTION(BlueprintCallable, Category = "Item|Initialization")
     void ApplyItemDataFromTable();
@@ -186,9 +168,15 @@ public:
 
     void ApplyCollisionSettings();
 
-//public:
-//    /** 클라이언트에 시각적 효과만 전달 (물리 시뮬레이션 없음) */
-//    UFUNCTION(NetMulticast, Reliable)
-//    void Multicast_SetupVisualEffects(FVector ThrowDirection, float ThrowVelocity, FVector ThrowImpulse);
-//    void Multicast_SetupVisualEffects_Implementation(FVector ThrowDirection, float ThrowVelocity, FVector ThrowImpulse);
+protected:
+    /** 물리 위치 동기화 타이머 */
+    FTimerHandle PhysicsLocationSyncTimer;
+
+    /** 물리 컴포넌트 위치를 액터 위치로 동기화 */
+    UFUNCTION()
+    void SyncPhysicsLocationToActor();
+
+protected:
+    /** 타이머 제거를 위해 사용 */ 
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 };

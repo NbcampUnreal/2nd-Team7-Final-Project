@@ -149,18 +149,11 @@ FVector UItemSpawnerComponent::CalculateThrowDirection() const
     FRotator CameraRotation;
     Controller->GetPlayerViewPoint(CameraLocation, CameraRotation);
 
-    LOG_Item_WARNING(TEXT("[UItemSpawnerComponent::CalculateThrowDirection] Camera Location: (%f, %f, %f)"),
-        CameraLocation.X, CameraLocation.Y, CameraLocation.Z);
-    LOG_Item_WARNING(TEXT("[UItemSpawnerComponent::CalculateThrowDirection] Camera Rotation: (%f, %f, %f)"),
-        CameraRotation.Pitch, CameraRotation.Yaw, CameraRotation.Roll);
-
     // 던지기 각도 추가 (위쪽으로)
     FRotator ThrowRotation = CameraRotation;
     ThrowRotation.Pitch += ThrowAngleDegrees;
 
     FVector ThrowDirection = ThrowRotation.Vector();
-    LOG_Item_WARNING(TEXT("[UItemSpawnerComponent::CalculateThrowDirection] Final ThrowDirection: (%f, %f, %f)"),
-        ThrowDirection.X, ThrowDirection.Y, ThrowDirection.Z);
 
     return ThrowDirection;
 }
