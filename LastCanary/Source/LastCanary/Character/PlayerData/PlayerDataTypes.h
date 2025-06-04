@@ -27,8 +27,8 @@ enum class ECharacterMovementState : uint8
 UENUM(BlueprintType)
 enum class EInputMode : uint8
 {
-    Hold,
-    Toggle
+    Hold UMETA(DisplayName = "Hold"),
+    Toggle UMETA(DisplayName = "Toggle")
 };
 
 UENUM(BlueprintType)
