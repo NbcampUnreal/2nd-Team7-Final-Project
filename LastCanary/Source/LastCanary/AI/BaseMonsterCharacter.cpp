@@ -50,6 +50,10 @@ ABaseMonsterCharacter::ABaseMonsterCharacter()
     NavInvoker->SetGenerationRadii(NavGenerationradius, NavRemovalradius);
 
     GameplayTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Character.Enemy")));
+    if (GetMesh())
+    {
+        GetMesh()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+    }
 }
 
 float ABaseMonsterCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,

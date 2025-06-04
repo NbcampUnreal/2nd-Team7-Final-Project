@@ -65,6 +65,10 @@ public:
     //-----------------------------------------------------
     // 드랍 기능
     //-----------------------------------------------------
+    UFUNCTION(Server, Reliable)
+    void Server_DropEquippedItemAtSlot(int32 SlotIndex, int32 Quantity);
+    void Server_DropEquippedItemAtSlot_Implementation(int32 SlotIndex, int32 Quantity);
+
     UFUNCTION(BlueprintCallable, Category = "Toolbar|Drop")
     bool DropCurrentEquippedItem();
 
