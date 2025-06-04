@@ -32,16 +32,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
 	USkeletalMeshComponent* OverlaySkeletalMesh;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* RemoteOnlySkeletalMesh;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	UStaticMeshComponent* RemoteOnlyOverlayStaticMesh;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* RemoteOnlyOverlaySkeletalMesh;
-
-
 	// SpringArm 컴포넌트 (카메라 거리와 회전 보정용)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	USpringArmComponent* SpringArm;

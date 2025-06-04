@@ -37,25 +37,11 @@ ABaseCharacter::ABaseCharacter()
 	bReplicates = true;
 	UseGunBoneforOverlayObjects = true;
 
-
-	RemoteOnlySkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FPSSkeletalMesh"));
-	RemoteOnlySkeletalMesh->SetupAttachment(RootComponent);
-	
-	/*Overlay Skeletal/Static Mesh for change animation bluprint and item mesh*/
-	
-
-
 	OverlayStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("OverlayStaticMesh"));
 	OverlayStaticMesh->SetupAttachment(GetMesh());
 
 	OverlaySkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("OverlaySkeletalMesh"));
 	OverlaySkeletalMesh->SetupAttachment(GetMesh());
-
-	RemoteOnlyOverlayStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RemoteOnlyOverlayStaticMesh"));
-	RemoteOnlyOverlayStaticMesh->SetupAttachment(RemoteOnlySkeletalMesh);
-
-	RemoteOnlyOverlaySkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("RemoteOnlyOverlaySkeletalMesh"));
-	RemoteOnlyOverlaySkeletalMesh->SetupAttachment(RemoteOnlySkeletalMesh);
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->SetupAttachment(GetMesh(), TEXT("FirstPersonCamera"));
@@ -117,7 +103,11 @@ void ABaseCharacter::BeginPlay()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Character BeginPlay - Complete  This is Client."));
 	}
-
+	if (IsLocallyControlled())
+	{
+		// "head"는 스켈레탈 메시의 머리 본에 해당하는 이름
+		GetMesh()->HideBoneByName(TEXT("head"), EPhysBodyOp::PBO_None);
+	}
 	//애니메이션 오버레이 활성화.
 	RefreshOverlayObject(0);
 
@@ -201,14 +191,22 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 		// 내가 조종 중이라면 → 1인칭 시점
 		Camera->GetCameraView(DeltaTime, ViewInfo);
 		GetMesh()->SetOwnerNoSee(false);
-		RemoteOnlySkeletalMesh->SetOwnerNoSee(true);
+		if (IsLocallyControlled())
+		{
+			// "head"는 스켈레탈 메시의 머리 본에 해당하는 이름
+			GetMesh()->HideBoneByName(TEXT("head"), EPhysBodyOp::PBO_None);
+		}
 	}
 	else
 	{
 		// 관전자가 바라볼 경우 → 3인칭 시점
 		SpectatorCamera->GetCameraView(DeltaTime, ViewInfo);
 		GetMesh()->SetOwnerNoSee(true);
-		RemoteOnlySkeletalMesh->SetOwnerNoSee(false);
+		if (IsLocallyControlled())
+		{
+			// "head"는 스켈레탈 메시의 머리 본에 해당하는 이름
+			GetMesh()->UnHideBoneByName(TEXT("head"));
+		}
 	}
 }
 
@@ -920,13 +918,7 @@ void ABaseCharacter::Multicast_PlayReload_Implementation()
 		FOnMontageEnded EndDelegate;
 		EndDelegate.BindUObject(this, &ABaseCharacter::OnGunReloadAnimComplete);
 		AnimInstance->Montage_SetEndDelegate(EndDelegate, MontageToPlay);
-	}	
-	UAnimInstance* RemoteAnimInstance = RemoteOnlySkeletalMesh->GetAnimInstance();
-	if (!IsValid(RemoteAnimInstance))
-	{
-		return;
 	}
-	RemoteAnimInstance->Montage_Play(MontageToPlay, 1.0f);
 }
 
 void ABaseCharacter::OnGunReloadAnimComplete(UAnimMontage* CompletedMontage, bool bInterrupted)
@@ -1349,13 +1341,6 @@ void ABaseCharacter::StopCurrentPlayingMontage()
 		//만약 재생중인 몽타주가 있으면(예시: 장전모션) 강제로 해제
 		FPSAnimInstance->Montage_Stop(0.25f); // 페이드 아웃 시간: 0.25초 //AnimInstance->Montage_Stop(0.25f, ReloadMontage);이런 것도 가능
 	}
-
-	UAnimInstance* TPSAnimInstance = RemoteOnlySkeletalMesh->GetAnimInstance();
-	if (TPSAnimInstance && TPSAnimInstance->IsAnyMontagePlaying())
-	{
-		TPSAnimInstance->Montage_Stop(0.25f);
-	}
-
 }
 
 void ABaseCharacter::HandleInventoryUpdated()
@@ -1787,12 +1772,10 @@ void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(int index)
 	if (IsValid(OverlayAnimationInstanceClass))
 	{
 		GetMesh()->LinkAnimClassLayers(OverlayAnimationInstanceClass);
-		RemoteOnlySkeletalMesh->LinkAnimClassLayers(OverlayAnimationInstanceClass);
 	}
 	else
 	{
 		GetMesh()->LinkAnimClassLayers(DefaultAnimationClass);
-		RemoteOnlySkeletalMesh->LinkAnimClassLayers(DefaultAnimationClass);
 	}
 }
 
@@ -1819,14 +1802,7 @@ void ABaseCharacter::Multicast_PlayMontage_Implementation(UAnimMontage* MontageT
 {
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	AnimInstance->Montage_Play(MontageToPlay);
-
-
-	AnimInstance = RemoteOnlySkeletalMesh->GetAnimInstance();
-	AnimInstance->Montage_Play(MontageToPlay);
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 UToolbarInventoryComponent* ABaseCharacter::GetToolbarInventoryComponent() const
 {
