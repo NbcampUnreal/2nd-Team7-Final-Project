@@ -12,7 +12,6 @@
 #include "Actor/Gimmick/LCBaseGimmick.h"
 
 
-
 void ABasePlayerController::BeginPlay()
 {
 	Super::BeginPlay();
@@ -1040,6 +1039,7 @@ void ABasePlayerController::Server_InteractWithGimmick_Implementation(ALCBaseGim
 	{
 		return;
 	}
+
 
 	Target->SetOwner(this);
 
