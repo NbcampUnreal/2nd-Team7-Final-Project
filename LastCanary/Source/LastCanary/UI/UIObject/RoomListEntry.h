@@ -32,9 +32,15 @@ public:
 	UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
 	UTextBlock* RoomNameText;
 	UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
-	UTextBlock* PlayerCountText;
+	UImage* LockIconImage;
 	UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
-	UTextBlock* PingText;
+	UTextBlock* PlayerCountText;
+	//UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
+	//UTextBlock* PingText;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSoftObjectPtr<UTexture2D> LockIcon;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSoftObjectPtr<UTexture2D> UnLockIcon;
 	
 private:
 	//UPROPERTY(meta = (BindWidget))

@@ -1,5 +1,6 @@
 #include "UI/UIElement/OptionWidget.h"
 #include "UI/UIObject/GeneralOptionWidget.h"
+#include "UI/Manager/LCUIManager.h"
 
 #include "Components/WidgetSwitcher.h"
 #include "Components/Button.h"
@@ -8,6 +9,9 @@
 #include "Framework/GameInstance/LCOptionManager.h"
 
 #include "LastCanary.h"
+
+#include "UI/UIObject/KeySettingWidget.h"
+
 
 void UOptionWidget::NativeConstruct()
 {
@@ -92,8 +96,13 @@ void UOptionWidget::OnKeySettingTabButtonClicked()
 	{
 		LOG_Frame_ERROR(TEXT("Key Setting Widget is nullptr"));
 	}
+
+
+	KeySettingWidget->InitialMappings();
+
 	//SetTabButtonStyle(GeneralTabButton, false);
 	//SetTabButtonStyle(KeySettingTabButton, true);
+
 }
 
 //void UOptionWidget::SetTabButtonStyle(UButton* Button, bool bIsSelected)

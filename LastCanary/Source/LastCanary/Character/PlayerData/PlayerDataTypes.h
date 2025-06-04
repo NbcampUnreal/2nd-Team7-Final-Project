@@ -56,7 +56,6 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
     float JumpPower = 420.f;
 
-
     //스태미나 관련 추가
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stamina")
     float MaxStamina = 100.f;
@@ -65,13 +64,12 @@ public:
     float StaminaDrainRate = 15.f; // 초당 15 소모
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stamina")
-    float StaminaRecoveryRate = 10.f; // 초당 10 회복
+    float StaminaRecoveryRate = 30.f; // 초당 30 회복
 
     // 필요 시 탈진 상태 확인용 변수도 추가 가능
     UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Stamina")
     bool bIsExhausted = false;
 };
-
 
 // ------------------------------
 // 게임 끝나고 얻을 Struct

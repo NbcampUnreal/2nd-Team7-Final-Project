@@ -12,14 +12,18 @@ class ULobbyMenu;
 class URoomListEntry;
 class UEnterPasswordWidget;
 class UOptionWidget;
+class UPauseMenu;
 class UInGameHUD;
 class UShopWidget;
 class UMapSelectWidget;
-class UUIElementCreateSession;
+class UPopupCreateSession;
 class UPopupLoading;
+class UPopupNotice;
+class ULoadingLevel;
 class UInventoryMainWidget;
 class UBackpackInventoryWidget;
 class UToolbarInventoryWidget;
+class UConfirmPopup;
 
 UCLASS(BlueprintType)
 class LASTCANARY_API ULCUIManagerSettings : public UDataAsset
@@ -38,15 +42,23 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UOptionWidget> FromBPOptionWidgetClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UPauseMenu> FromBPPauseMenuClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UInGameHUD> FromBPInGameHUDClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UShopWidget> FromBPShopWidgetClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UMapSelectWidget> FromBPMapSelectWidgetClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
-	TSubclassOf<UUIElementCreateSession> FromBPCreateSessionWidgetClass;
+	TSubclassOf<UPopupCreateSession> FromBPCreateSessionWidgetClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UPopupLoading> FromBPPopupLoadingClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UPopupNotice> FromBPPopupNoticeClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<ULoadingLevel> FromBPLoadingLevelClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UInventoryMainWidget> FromBPInventoryMainUIClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UConfirmPopup> FromBPConfirmPopupClass;
 };

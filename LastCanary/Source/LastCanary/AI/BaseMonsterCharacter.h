@@ -5,12 +5,13 @@
 #include "Perception/AIPerceptionComponent.h"
 #include "NavigationInvokerComponent.h" 
 #include "Net/UnrealNetwork.h"
+#include "GameplayTagAssetInterface.h"
 #include "BaseMonsterCharacter.generated.h"
 
 class USphereComponent;
 
 UCLASS()
-class LASTCANARY_API ABaseMonsterCharacter : public ACharacter
+class LASTCANARY_API ABaseMonsterCharacter : public ACharacter, public IGameplayTagAssetInterface
 {
     GENERATED_BODY()
 
@@ -190,4 +191,10 @@ private:
 
 public:
     FORCEINLINE class UNavigationInvokerComponent* GetNavInvoker() const { return NavInvoker; }
+
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tags")
+    FGameplayTagContainer GameplayTags;
+
+    virtual void GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) const override;
 };

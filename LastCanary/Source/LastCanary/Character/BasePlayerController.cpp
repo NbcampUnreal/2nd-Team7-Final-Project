@@ -5,10 +5,12 @@
 #include "Item/Drone/BaseDrone.h"
 #include "Kismet/GameplayStatics.h"
 #include "BasePlayerState.h"
-
+#include "Framework/GameState/LCGameState.h"
 #include "Net/UnrealNetwork.h"
 #include "UI/Manager/LCUIManager.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "Actor/Gimmick/LCBaseGimmick.h"
+
 
 void ABasePlayerController::BeginPlay()
 {
@@ -75,13 +77,15 @@ void ABasePlayerController::OnCharacterDamaged(float CurrentHP)
 
 void ABasePlayerController::OnCharacterDied()
 {
+	//서버에서 실행
 	// HUD 갱신하거나 효과 표시 등
-	UE_LOG(LogTemp, Warning, TEXT("Player die!"));
-	
-	//
-	//TODO: 사망 전용 UI 띄우기
-		//TODO: 입력 막기 등 처리
+	UE_LOG(LogTemp, Warning, TEXT("Player die!"));	
+	//클라이언트에서 해야할 것.
+	Client_OnCharacterDied();
+}
 
+void ABasePlayerController::Client_OnCharacterDied_Implementation()
+{
 	if (!IsValid(CurrentPossessedPawn))
 	{
 		return;
@@ -101,7 +105,9 @@ void ABasePlayerController::OnCharacterDied()
 			PlayerCharacter->HandlePlayerDeath(); //플레이어 사망처리
 		}
 	}
-	
+
+	//CreateWidget();
+	//addtoviewport
 }
 
 APawn* ABasePlayerController::GetMyPawn()
@@ -669,7 +675,25 @@ void ABasePlayerController::Input_OnStrafe(const FInputActionValue& ActionValue)
 	{
 		return;
 	}
+	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
+	if (MyPlayerState)
+	{
+		if (MyPlayerState->CurrentState == EPlayerState::Dead)
+		{
+			const float Input = ActionValue.Get<float>();
+			if (Input > 0.5f)
+			{
+				SpectateNextPlayer();
+			}
+			else
+			{
+				SpectatePreviousPlayer();
+			}
+		}
+		return;
+	}
 
+	//나중에 사용으로 빼긴 할 건데 일단 테스트용으로 넣어놔서 아쉽게도 호출이 되는 그런 코드.
 	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Toggle Inventory"));
@@ -679,18 +703,58 @@ void ABasePlayerController::Input_OnStrafe(const FInputActionValue& ActionValue)
 			PlayerCharacter->ToggleInventory();
 		}
 	}
-	
-	//Deprecated//
-	// APawn 타입에 맞는 처리를 실행
-	if (CurrentPossessedPawn->IsA<ABaseDrone>())
-	{
-		ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn);
-		if (IsValid(Drone))
-		{
+}
 
+
+void ABasePlayerController::SpectatePreviousPlayer()
+{
+	TArray<ABasePlayerState*> PlayerList = GetPlayerArray();
+	int32 PlayerListLength = PlayerList.Num();
+	if (PlayerListLength <= 0)
+	{
+		return;
+	}
+
+	CurrentSpectatedCharacterIndex--;
+	if (CurrentSpectatedCharacterIndex < 0)
+	{
+		CurrentSpectatedCharacterIndex = PlayerListLength - 1;
+	}
+	SetViewTargetWithBlend(PlayerList[CurrentSpectatedCharacterIndex]->GetPawn());
+}
+void ABasePlayerController::SpectateNextPlayer()
+{
+	TArray<ABasePlayerState*> PlayerList = GetPlayerArray();
+	int32 PlayerListLength = PlayerList.Num();
+	if (PlayerListLength <= 0)
+	{
+		return;
+	}
+
+	CurrentSpectatedCharacterIndex++;
+	CurrentSpectatedCharacterIndex %= PlayerListLength;
+	SetViewTargetWithBlend(PlayerList[CurrentSpectatedCharacterIndex]->GetPawn());
+}
+TArray<ABasePlayerState*> ABasePlayerController::GetPlayerArray()
+{
+	SpectatorTargets.Empty();
+	ALCGameState* GameState = GetWorld()->GetGameState<ALCGameState>();
+	if (!IsValid(GameState))
+	{
+		return SpectatorTargets;
+	}
+
+	for (APlayerState* PS : GameState->PlayerArray)
+	{
+		ABasePlayerState* MyPS = Cast<ABasePlayerState>(PS);
+		if (MyPS && MyPS->CurrentState != EPlayerState::Dead)  // 살아있는 플레이어 필터
+		{
+			SpectatorTargets.Add(MyPS);
 		}
 	}
+	return SpectatorTargets;
 }
+
 
 void ABasePlayerController::Input_OnItemUse()
 {
@@ -709,30 +773,8 @@ void ABasePlayerController::Input_OnItemUse()
 	{
 		return;
 	}
-
-	// 임시로 넣은 코드이니 꼭 삭제할 것!
+	
 	PlayerCharacter->UseEquippedItem();
-	//To Do: 아이템 추가 되고 나서...
-	//if(GetHeldItem()->IsA<ABaseDrone>())
-	//{
-	//SpawnDrone();
-	//}
-	//TODO: AItem 타입에 맞는 처리를 실행
-	/*
-	아이템이 무언가를 상속받는 인터페이스 클래스가 있다면
-	ItemInterface->UseItem();
-	*/
-	//test
-	if (PlayerCharacter->GetCurrentQuickSlotIndex() == 0)
-	{
-		//CameraShake();
-	}
-	if (PlayerCharacter->GetCurrentQuickSlotIndex() == 2)
-	{
-		//SpawnDrone();
-	}
-	//만약 총기라면
-	//CameraShake();
 }
 
 void ABasePlayerController::Input_OnItemThrow()
@@ -757,9 +799,9 @@ void ABasePlayerController::Input_OnStartedVoiceChat()
 
 void ABasePlayerController::Input_OnCanceledVoiceChat()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Voice On"));
+	UE_LOG(LogTemp, Warning, TEXT("Voice Off"));
 	//TODO: Voice 기능을 잘 추가해보기
-	ConsoleCommand(TEXT("ToggleSpeaking 1"), true);
+	ConsoleCommand(TEXT("ToggleSpeaking 0"), true);
 }
 
 void ABasePlayerController::Input_ChangeShootingSetting()
@@ -932,10 +974,20 @@ void ABasePlayerController::UpdateQuickSlotUI()
 
 void ABasePlayerController::Input_OpenPauseMenu()
 {
-	//To Do...
-	//Open Pause Menu,
-	//Set mouse Cursor on
-	//
+	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+	{
+		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+		{
+			if (UIManager->IsPauseMenuOpen())
+			{
+				UIManager->HidePauseMenu();				
+			}
+			else
+			{
+				UIManager->ShowPauseMenu();
+			}
+		}
+	}
 }
 
 //To DO...
@@ -1105,7 +1157,7 @@ void ABasePlayerController::SpawnDrone()
 
 void ABasePlayerController::Server_SpawnDrone_Implementation()
 {
-	FVector Location = GetPawn()->GetActorLocation() + FVector(200, 0, 100);
+	FVector Location = GetPawn()->GetActorLocation() + FVector(0, 0, 200);
 	FRotator Rotation = FRotator::ZeroRotator;
 	FActorSpawnParameters Params;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
@@ -1155,3 +1207,22 @@ void ABasePlayerController::CameraSetOnScope()
 {
 
 }
+
+void ABasePlayerController::InteractGimmick(ALCBaseGimmick* Target)
+{
+	if (IsValid(Target))
+	{
+		Server_InteractWithGimmick(Target);
+	}
+}
+
+void ABasePlayerController::Server_InteractWithGimmick_Implementation(ALCBaseGimmick* Target)
+{
+	if (!IsValid(Target))
+	{
+		return;
+	}
+	Target->SetOwner(this);
+	IInteractableInterface::Execute_Interact(Target, this);
+}
+

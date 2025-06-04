@@ -2,41 +2,53 @@
 
 #include "CoreMinimal.h"
 #include "LCPlayerController.h"
+#include "DataType/SessionPlayerInfo.h"
 #include "Character/BasePlayerController.h"
 #include "DataType/ItemDropData.h"
 #include "LCRoomPlayerController.generated.h"
 
 class URoomWidget;
+
 UCLASS()
 class LASTCANARY_API ALCRoomPlayerController : public ABasePlayerController
 {
 	GENERATED_BODY()
 
 protected:
+	ALCRoomPlayerController();
+
 	virtual void BeginPlay() override;
-
-protected:
-	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	TSubclassOf<UUserWidget> StartGameWidgetClass;
-
-	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	TSubclassOf<URoomWidget> RoomWidgetClass;
-	URoomWidget* RoomWidgetInstance;
+	virtual void PostSeamlessTravel() override;
 
 public:
-	void Client_UpdatePlayers_Implementation() override;
-
-	// 서버에서만 호출
-	//void StartGame();
+	void Client_UpdatePlayerList_Implementation(const TArray<FSessionPlayerInfo>& PlayerInfos) override;
+	void UpdatePlayerList(const TArray<FSessionPlayerInfo>& PlayerInfos);
 
 	UPROPERTY(EditDefaultsOnly, Category = "Shop")
 	TSubclassOf<class ALCDroneDelivery> DroneDeliveryClass;
 
 	UFUNCTION(Server, Reliable)
+	void Server_SetReady(bool bIsReady);
+	void Server_SetReady_Implementation(bool bIsReady);
+
+	UFUNCTION(Server, Reliable)
 	void Server_RequestPurchase(const TArray<FItemDropData>& DropList);
 	void Server_RequestPurchase_Implementation(const TArray<FItemDropData>& DropList);
 
+protected:
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<URoomWidget> RoomWidgetClass;
+	URoomWidget* RoomWidgetInstance;
+
+	void InitInputComponent() override;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|RoomPC", Meta = (DisplayThumbnail = false))
+	TObjectPtr<UInputAction> RoomUIAction;
+
 private:
-	void CreateAndShowSelecetGameUI();
-	void CreateAndShowRoomUI();
+	void CreateRoomWidget();
+	UFUNCTION()
+	virtual void ToggleShowRoomWidget();
+	bool bIsShowRoomUI = false;
+;
+	float RePeatRate = 0.1f;
 };

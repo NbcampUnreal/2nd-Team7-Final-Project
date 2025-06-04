@@ -366,7 +366,7 @@ void UAlsAnimationInstance::RefreshView(const float DeltaTime)
 	if (!LocomotionAction.IsValid())
 	{
 		ViewState.YawAngle = FMath::UnwindDegrees(UE_REAL_TO_FLOAT(ViewState.Rotation.Yaw - LocomotionState.Rotation.Yaw));
-		ViewState.PitchAngle = FMath::UnwindDegrees(UE_REAL_TO_FLOAT(ViewState.Rotation.Pitch - LocomotionState.Rotation.Pitch));
+		ViewState.PitchAngle = FMath::UnwindDegrees(UE_REAL_TO_FLOAT(ViewState.Rotation.Pitch - LocomotionState.Rotation.Pitch)) + WallClipAimOffsetPitch;
 
 		ViewState.PitchAmount = 0.5f - ViewState.PitchAngle / 180.0f;
 	}
@@ -375,8 +375,10 @@ void UAlsAnimationInstance::RefreshView(const float DeltaTime)
 	const auto AimingAmount{GetCurveValueClamped01(UAlsConstants::AllowAimingCurveName())};
 
 	ViewState.LookAmount = ViewAmount * (1.0f - AimingAmount);
+	
+	RefreshSpine(ViewAmount * 1, DeltaTime);
 
-	RefreshSpine(ViewAmount * AimingAmount, DeltaTime);
+	//RefreshSpine(ViewAmount * AimingAmount, DeltaTime);
 }
 
 bool UAlsAnimationInstance::IsSpineRotationAllowed()

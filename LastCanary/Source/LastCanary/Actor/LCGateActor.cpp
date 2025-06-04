@@ -2,46 +2,111 @@
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "GameFramework/PlayerController.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "Framework/GameMode/BaseGameMode.h"
 
 #include "LastCanary.h"
 
 ALCGateActor::ALCGateActor()
 {
-    PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = false;
 
-    RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
-    TravelType = EGateTravelType::ToInGame;
+	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+	TravelType = EGateTravelType::ToInGame;
 }
 
 void ALCGateActor::BeginPlay()
 {
-    Super::BeginPlay();
+	Super::BeginPlay();
 }
 
 void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 {
 	LOG_Frame_WARNING(TEXT("Gate actor %s is being interacted with."), *GetName());
-	if (HasAuthority() ==false)
+	if (HasAuthority() == false)
 	{
 		LOG_Frame_WARNING(TEXT("Gate interaction failed: no authority."));
 		return;
 	}
-	if (Controller==nullptr)
+	if (Controller == nullptr)
 	{
 		LOG_Frame_WARNING(TEXT("Gate interaction failed: no controller."));
 		return;
 	}
 
+	if (ABaseGameMode* BaseGM = Cast<ABaseGameMode>(GetWorld()->GetAuthGameMode()))
+	{
+		if (!BaseGM->IsAllPlayersReady())
+		{
+			LOG_Server_ERROR(TEXT("All Client is Not Ready!!"));
+			return;
+		}
+	}
+	else
+	{
+		LOG_Server_ERROR(TEXT("Cast Fail GameMode : Not Server!!"));
+		return;
+	}
+
+	LOG_Server_WARNING(TEXT("All Client is Ready!! Try To Server Travel"));
+
+
 	if (ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 	{
-		if (TargetMapID != 0)
+		switch (TravelType)
 		{
+		case EGateTravelType::ToBaseCamp:
+		{
+			// TODO : 베이스캠프로 이동
+			const FName BaseCampMapName = TEXT("BaseCamp");
+			const int32 BaseCampID = FCrc::StrCrc32(*BaseCampMapName.ToString());
+			TargetMapID = BaseCampID;
 			GISubsystem->ChangeLevelByMapID(TargetMapID);
-			LOG_Frame_WARNING(TEXT("Gate actor %s is changing level to map ID %d."), *GetName(), TargetMapID);
+			break;
 		}
-		else
+		case EGateTravelType::ToInGame:
 		{
-			LOG_Frame_WARNING(TEXT("No valid target map set on GateActor."));
+			// 랜덤 맵 지정이 아직 안 된 경우
+			if (TargetMapID == 0)
+			{
+				// MapDataTable에서 인게임 맵만 추출
+				if (UDataTable* MapTable = GISubsystem->GetMapDataTable())
+				{
+					TArray<FMapDataRow*> AllMaps;
+					static const FString Ctx = TEXT("GateActor-SelectRandomMap");
+					MapTable->GetAllRows(Ctx, AllMaps);
+
+					TArray<int32> InGameMapIDs;
+
+					for (const FMapDataRow* Row : AllMaps)
+					{
+						if (Row && Row->MapInfo.MapName != TEXT("BaseCamp"))
+						{
+							InGameMapIDs.Add(Row->MapID);
+						}
+					}
+
+					if (InGameMapIDs.Num() > 0)
+					{
+						int32 RandomIdx = FMath::RandRange(0, InGameMapIDs.Num() - 1);
+						TargetMapID = InGameMapIDs[RandomIdx];
+						LOG_Frame_WARNING(TEXT("Gate assigned random InGame TargetMapID: %d"), TargetMapID);
+					}
+					else
+					{
+						LOG_Frame_WARNING(TEXT("No InGame maps found in MapDataTable."));
+						return;
+					}
+				}
+				else
+				{
+					LOG_Frame_WARNING(TEXT("MapDataTable is null in GameInstanceSubsystem."));
+					return;
+				}
+			}
+
+			GISubsystem->ChangeLevelByMapID(TargetMapID);
+			break;
+		}
 		}
 	}
 }

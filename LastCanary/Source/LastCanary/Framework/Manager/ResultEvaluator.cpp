@@ -1,6 +1,6 @@
 #include "Framework/Manager/ResultEvaluator.h"
 
-#include "DataTable/ResourceItemRow.h"
+#include "DataTable/ItemDataRow.h"
 #include "DataTable/ResourceCategoryRow.h"
 #include "DataType/GameResultData.h"
 #include "DataTable/RankThresholdRow.h"
@@ -46,8 +46,8 @@ FGameResultData UResultEvaluator::EvaluateResult(
         int32 Amount = Pair.Value;
         LOG_Frame_WARNING(TEXT("Checking resource: %s × %d"), *ResourceID.ToString(), Amount);
 
-        const FResourceItemRow* ItemRow = ResourceItemTable
-            ? ResourceItemTable->FindRow<FResourceItemRow>(ResourceID, Context)
+        const FItemDataRow* ItemRow = ResourceItemTable
+            ? ResourceItemTable->FindRow<FItemDataRow>(ResourceID, Context)
             : nullptr;
 
         if (ItemRow == nullptr)

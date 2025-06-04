@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "LCPlayerController.h"
-#include "GameFramework/PlayerController.h"
+#include "Framework/PlayerController/LCRoomPlayerController.h"
 #include "LCTitlePlayerController.generated.h"
 
 UCLASS()

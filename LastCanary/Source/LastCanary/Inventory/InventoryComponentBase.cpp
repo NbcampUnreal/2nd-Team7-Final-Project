@@ -12,7 +12,7 @@ UInventoryComponentBase::UInventoryComponentBase()
     PrimaryComponentTick.bCanEverTick = false;
     SetIsReplicatedByDefault(true);
 
-    ItemSpawner = CreateDefaultSubobject<UItemSpawnerComponent>(TEXT("ItemSpawner"));
+    ItemSpawner = nullptr;
 }
 
 void UInventoryComponentBase::BeginPlay()
@@ -49,6 +49,11 @@ void UInventoryComponentBase::BeginPlay()
         return;
     }
 
+    if (ABaseCharacter* Character = GetCachedOwnerCharacter())
+    {
+        ItemSpawner = Character->ItemSpawner;
+    }
+
     // 서버에서만 슬롯 초기화
     if (GetOwner() && GetOwner()->HasAuthority())
     {
@@ -65,14 +70,19 @@ void UInventoryComponentBase::InitializeSlots()
         return;
     }
 
-    // MaxSlots 크기만큼 빈 슬롯 생성
     ItemSlots.Empty();
     ItemSlots.Reserve(MaxSlots);
 
     for (int32 i = 0; i < MaxSlots; ++i)
     {
-        FBaseItemSlotData EmptySlot;
-        ItemSlots.Add(EmptySlot);
+        FBaseItemSlotData DefaultSlot;
+        DefaultSlot.ItemRowName = DefaultItemRowName;
+        DefaultSlot.Quantity = 1;
+        DefaultSlot.Durability = 100.0f;
+        DefaultSlot.bIsValid = true;
+        DefaultSlot.bIsEquipped = false;
+
+        ItemSlots.Add(DefaultSlot);
     }
 
     // UI 업데이트
@@ -151,136 +161,149 @@ int32 UInventoryComponentBase::GetMaxSlots() const
 
 FVector UInventoryComponentBase::CalculateDropLocation() const
 {
-    if (!IsOwnerCharacterValid())
+    AActor* OwnerActor = GetOwner();
+    if (!OwnerActor)
     {
-        LOG_Item_WARNING(TEXT("[CalculateDropLocation] CachedOwnerCharacter가 유효하지 않습니다."));
+        LOG_Item_WARNING(TEXT("[CalculateDropLocation] Owner is null"));
         return FVector::ZeroVector;
     }
 
-    // ⭐ ItemSpawner 설정값 사용
-    if (!ItemSpawner)
+    ABaseCharacter* Character = Cast<ABaseCharacter>(OwnerActor);
+    if (!Character)
     {
-        return CachedOwnerCharacter->GetActorLocation() + CachedOwnerCharacter->GetActorForwardVector() * 200.0f;
+        LOG_Item_WARNING(TEXT("[CalculateDropLocation] Owner is not BaseCharacter"));
+        return FVector::ZeroVector;
     }
 
-    // 캐릭터의 위치와 방향 가져오기
-    FVector CharacterLocation = CachedOwnerCharacter->GetActorLocation();
-    FVector ForwardVector = CachedOwnerCharacter->GetActorForwardVector();
+    // ⭐ 카메라 시점 기준으로 던지기 위치 계산
+    AController* Controller = Character->GetController();
+    if (!Controller)
+    {
+        LOG_Item_WARNING(TEXT("[CalculateDropLocation] Controller is null"));
+        return Character->GetActorLocation();
+    }
 
-    // ItemSpawner의 설정값을 사용하여 위치 계산
-    float DropDistance = 200.0f; // ItemSpawner에서 설정 가능하도록 수정 예정
-    FVector DropLocation = CharacterLocation + ForwardVector * DropDistance;
+    FVector CameraLocation;
+    FRotator CameraRotation;
+    Controller->GetPlayerViewPoint(CameraLocation, CameraRotation);
 
-    // 높이 오프셋 적용
-    DropLocation.Z += 50.0f;
+    // ⭐ 카메라 앞쪽 일정 거리에서 생성 (손에서 던지는 느낌)
+    FVector ThrowStartOffset = CameraRotation.Vector() * 150.0f; // 카메라 앞 150cm
+    FVector HandOffset = Character->GetActorUpVector() * -20.0f; // 살짝 아래쪽 (손 높이)
 
-    // 바닥에 라인 트레이스로 정확한 위치 찾기
+    FVector ThrowStartLocation = CameraLocation + ThrowStartOffset + HandOffset;
+
+    // 바닥과 너무 가까우면 조정
     FHitResult HitResult;
-    FVector TraceStart = DropLocation + FVector(0, 0, 500.0f);
-    FVector TraceEnd = DropLocation - FVector(0, 0, 1000.0f);
+    FVector TraceStart = ThrowStartLocation + FVector(0, 0, 100.0f);
+    FVector TraceEnd = ThrowStartLocation - FVector(0, 0, 200.0f);
 
     FCollisionQueryParams QueryParams;
-    QueryParams.AddIgnoredActor(CachedOwnerCharacter);
+    QueryParams.AddIgnoredActor(Character);
     QueryParams.bTraceComplex = true;
 
     if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_WorldStatic, QueryParams))
     {
-        DropLocation = HitResult.ImpactPoint + FVector(0, 0, 10.0f);
+        float MinHeight = HitResult.ImpactPoint.Z + 80.0f; // 바닥에서 80cm 위
+        ThrowStartLocation.Z = FMath::Max(ThrowStartLocation.Z, MinHeight);
     }
 
-    return DropLocation;
+    LOG_Item_WARNING(TEXT("[CalculateDropLocation] 던지기 시작 위치: %s"), *ThrowStartLocation.ToString());
+    return ThrowStartLocation;
 }
 
 bool UInventoryComponentBase::TryDropItemAtSlot(int32 SlotIndex, int32 Quantity)
 {
-    // ⭐ 서버라면 직접 실행, 클라이언트라면 RPC 호출
-    if (GetOwner() && GetOwner()->HasAuthority())
-    {
-        // 서버에서 직접 실행
-        UE_LOG(LogTemp, Warning, TEXT("[TryDropItemAtSlot] 서버에서 직접 실행: 슬롯 %d"), SlotIndex);
-        return Internal_TryDropItemAtSlot(SlotIndex, Quantity);
-    }
-    else
-    {
-        // 클라이언트에서 서버 RPC 호출
-        UE_LOG(LogTemp, Warning, TEXT("[TryDropItemAtSlot] 클라이언트에서 서버 RPC 호출: 슬롯 %d"), SlotIndex);
-        Server_TryDropItemAtSlot(SlotIndex, Quantity);
-        return true; // RPC 호출 성공 (실제 결과는 서버에서 처리)
-    }
+    return Internal_TryDropItemAtSlot(SlotIndex, Quantity);
 }
 
 void UInventoryComponentBase::Server_TryDropItemAtSlot_Implementation(int32 SlotIndex, int32 Quantity)
 {
-    UE_LOG(LogTemp, Warning, TEXT("[Server_TryDropItemAtSlot] 서버에서 실행: 슬롯 %d"), SlotIndex);
-
-    // 서버에서 실제 드랍 로직 실행
     Internal_TryDropItemAtSlot(SlotIndex, Quantity);
 }
 
 bool UInventoryComponentBase::Internal_TryDropItemAtSlot(int32 SlotIndex, int32 Quantity)
 {
-    if (!GetOwner() || !GetOwner()->HasAuthority())
+    AActor* Owner = GetOwner();
+    if (!Owner)
     {
-        LOG_Item_WARNING(TEXT("[TryDropItemAtSlot_Internal] Authority가 없습니다. 서버에서만 실행하세요."));
+        LOG_Item_WARNING(TEXT("[UInventoryComponentBase::Internal_TryDropItemAtSlot] Owner is null"));
         return false;
+    }
+
+    if (!Owner->HasAuthority())
+    {
+        LOG_Item_WARNING(TEXT("[UInventoryComponentBase::Internal_TryDropItemAtSlot] Authority가 없습니다. 서버 RPC를 통해 요청하세요."));
+        LOG_Item_WARNING(TEXT("[UInventoryComponentBase::Internal_TryDropItemAtSlot] Owner: %s, HasAuthority: %s"),
+            *Owner->GetName(), Owner->HasAuthority() ? TEXT("true") : TEXT("false"));
+
+        // ⭐ 클라이언트에서는 자동으로 서버 RPC 호출
+        Server_TryDropItemAtSlot(SlotIndex, Quantity);
+        return true; // 클라이언트에서는 요청 성공으로 처리
     }
 
     if (!ItemSlots.IsValidIndex(SlotIndex))
     {
-        LOG_Item_WARNING(TEXT("[TryDropItemAtSlot_Internal] 유효하지 않은 슬롯 인덱스: %d"), SlotIndex);
+        LOG_Item_WARNING(TEXT("[UInventoryComponentBase::Internal_TryDropItemAtSlot] 유효하지 않은 슬롯 인덱스: %d"), SlotIndex);
         return false;
     }
 
     if (!IsOwnerCharacterValid())
     {
-        LOG_Item_WARNING(TEXT("[TryDropItemAtSlot_Internal] CachedOwnerCharacter가 유효하지 않습니다."));
+        LOG_Item_WARNING(TEXT("[UInventoryComponentBase::Internal_TryDropItemAtSlot] CachedOwnerCharacter가 유효하지 않습니다."));
         return false;
     }
 
     FBaseItemSlotData& SlotData = ItemSlots[SlotIndex];
 
-    // 빈 슬롯인지 확인
-    if (SlotData.ItemRowName.IsNone() || SlotData.Quantity <= 0)
+    // ⭐ Default 아이템 체크를 실제 드롭 전으로 이동
+    if (IsDefaultItem(SlotData.ItemRowName))
     {
-        LOG_Item_WARNING(TEXT("[TryDropItemAtSlot_Internal] 빈 슬롯입니다: %d"), SlotIndex);
+        LOG_Item_WARNING(TEXT("[Internal_TryDropItemAtSlot] Default 아이템은 드롭할 수 없습니다: 슬롯 %d"), SlotIndex);
         return false;
     }
 
-    // 드랍할 수량 확인
+    if (SlotData.ItemRowName.IsNone() || SlotData.Quantity <= 0)
+    {
+        LOG_Item_WARNING(TEXT("[Internal_TryDropItemAtSlot] 빈 슬롯입니다: %d"), SlotIndex);
+        return false;
+    }
+
     int32 DropQuantity = FMath::Min(Quantity, SlotData.Quantity);
     if (DropQuantity <= 0)
     {
-        LOG_Item_WARNING(TEXT("[TryDropItemAtSlot_Internal] 드랍할 수량이 0 이하입니다."));
+        LOG_Item_WARNING(TEXT("[Internal_TryDropItemAtSlot] 드랍할 수량이 0 이하입니다."));
         return false;
     }
 
-    // 드랍 위치 계산
     FVector DropLocation = CalculateDropLocation();
-
-    // 드랍할 아이템 데이터 준비
     FBaseItemSlotData DropItemData = SlotData;
     DropItemData.Quantity = DropQuantity;
 
-    // ⭐ ItemSpawner를 이용한 아이템 생성
-    AItemBase* DroppedItem = ItemSpawner->CreateItemFromData(DropItemData, DropLocation);
-    if (!DroppedItem)
+    if (!ItemSpawner)
     {
-        LOG_Item_WARNING(TEXT("[TryDropItemAtSlot_Internal] 아이템 스폰 실패"));
+        LOG_Item_WARNING(TEXT("[Internal_TryDropItemAtSlot] ItemSpawner is null"));
         return false;
     }
 
-    // 인벤토리에서 아이템 제거
+    AItemBase* DroppedItem = ItemSpawner->CreateItemFromData(DropItemData, DropLocation);
+    if (!DroppedItem)
+    {
+        LOG_Item_WARNING(TEXT("[Internal_TryDropItemAtSlot] 아이템 스폰 실패"));
+        return false;
+    }
+
+    // ⭐ 중복 제거 및 정리
     SlotData.Quantity -= DropQuantity;
     if (SlotData.Quantity <= 0)
     {
-        // 슬롯 초기화
-        SlotData = FBaseItemSlotData();
+        SetSlotToDefault(SlotIndex); // ⭐ 여기서만 Default 설정
     }
 
-    // UI 업데이트 (복제되므로 모든 클라이언트에 자동 전파)
+    UpdateWeight(); // ⭐ 무게 갱신 추가
     OnInventoryUpdated.Broadcast();
 
-    LOG_Item_WARNING(TEXT("[TryDropItemAtSlot_Internal] 아이템 드랍 성공: %s (수량: %d)"),
+    LOG_Item_WARNING(TEXT("[Internal_TryDropItemAtSlot] ✅ 드롭 성공: %s (수량: %d)"),
         *DropItemData.ItemRowName.ToString(), DropQuantity);
 
     return true;
@@ -288,27 +311,19 @@ bool UInventoryComponentBase::Internal_TryDropItemAtSlot(int32 SlotIndex, int32 
 
 bool UInventoryComponentBase::TryDropItem(FName ItemRowName, int32 Quantity)
 {
-    // ⭐ 서버라면 직접 실행, 클라이언트라면 RPC 호출
     if (GetOwner() && GetOwner()->HasAuthority())
     {
-        // 서버에서 직접 실행
-        UE_LOG(LogTemp, Warning, TEXT("[TryDropItem] 서버에서 직접 실행: %s"), *ItemRowName.ToString());
         return TryDropItem_Internal(ItemRowName, Quantity);
     }
     else
     {
-        // 클라이언트에서 서버 RPC 호출
-        UE_LOG(LogTemp, Warning, TEXT("[TryDropItem] 클라이언트에서 서버 RPC 호출: %s"), *ItemRowName.ToString());
         Server_TryDropItem(ItemRowName, Quantity);
-        return true; // RPC 호출 성공
+        return true;
     }
 }
 
 void UInventoryComponentBase::Server_TryDropItem_Implementation(FName ItemRowName, int32 Quantity)
 {
-    UE_LOG(LogTemp, Warning, TEXT("[Server_TryDropItem] 서버에서 실행: %s"), *ItemRowName.ToString());
-
-    // 서버에서 실제 드랍 로직 실행
     TryDropItem_Internal(ItemRowName, Quantity);
 }
 
@@ -316,17 +331,16 @@ bool UInventoryComponentBase::TryDropItem_Internal(FName ItemRowName, int32 Quan
 {
     if (!GetOwner() || !GetOwner()->HasAuthority())
     {
-        LOG_Item_WARNING(TEXT("[TryDropItem_Internal] Authority가 없습니다."));
+        LOG_Item_WARNING(TEXT("[UInventoryComponentBase::TryDropItem_Internal] Authority가 없습니다."));
         return false;
     }
 
     if (ItemRowName.IsNone() || Quantity <= 0)
     {
-        LOG_Item_WARNING(TEXT("[TryDropItem_Internal] 유효하지 않은 매개변수"));
+        LOG_Item_WARNING(TEXT("[UInventoryComponentBase::TryDropItem_Internal] 유효하지 않은 매개변수"));
         return false;
     }
 
-    // 해당 아이템을 가진 슬롯 찾기
     for (int32 i = 0; i < ItemSlots.Num(); ++i)
     {
         if (ItemSlots[i].ItemRowName == ItemRowName && ItemSlots[i].Quantity > 0)
@@ -336,6 +350,238 @@ bool UInventoryComponentBase::TryDropItem_Internal(FName ItemRowName, int32 Quan
         }
     }
 
-    LOG_Item_WARNING(TEXT("[TryDropItem_Internal] 아이템을 찾을 수 없습니다: %s"), *ItemRowName.ToString());
+    LOG_Item_WARNING(TEXT("[UInventoryComponentBase::TryDropItem_Internal] 아이템을 찾을 수 없습니다: %s"), *ItemRowName.ToString());
     return false;
+}
+
+void UInventoryComponentBase::UpdateWeight()
+{
+    float OldWeight = CurrentTotalWeight;
+    float NewWeight = 0.0f;
+
+    // ⭐ 간단하게 전체 슬롯 순회해서 무게 계산
+    for (const FBaseItemSlotData& Slot : ItemSlots)
+    {
+        if (!Slot.ItemRowName.IsNone() && Slot.Quantity > 0)
+        {
+            float ItemWeight = GetItemWeight(Slot.ItemRowName);
+            NewWeight += ItemWeight * Slot.Quantity;
+        }
+    }
+
+    CurrentTotalWeight = NewWeight;
+    float WeightDifference = NewWeight - OldWeight;
+
+    // 유의미한 변화가 있을 때만 알림
+    if (FMath::Abs(WeightDifference) > 0.01f)
+    {
+        LOG_Item_WARNING(TEXT("[UpdateWeight] %s 무게 변경: %.2f -> %.2f (차이: %.2f)"),
+            *GetClass()->GetName(), OldWeight, NewWeight, WeightDifference);
+
+        OnWeightChanged.Broadcast(NewWeight, WeightDifference);
+
+        // 캐릭터에 알림
+        if (AActor* Owner = GetOwner())
+        {
+            if (ABaseCharacter* Character = Cast<ABaseCharacter>(Owner))
+            {
+                Character->OnInventoryWeightChanged(WeightDifference);
+            }
+        }
+    }
+}
+
+float UInventoryComponentBase::GetItemWeight(FName ItemRowName) const
+{
+    if (ItemRowName.IsNone())
+        return 0.0f;
+
+    if (!ItemDataTable)
+    {
+        return 1.0f; // 기본 무게
+    }
+
+    const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("GetItemWeight"));
+    if (!ItemData)
+    {
+        return 1.0f; // 기본 무게
+    }
+
+    return ItemData->Weight;
+}
+
+bool UInventoryComponentBase::IsDefaultItem(FName ItemRowName) const
+{
+    return ItemRowName == DefaultItemRowName;
+}
+
+void UInventoryComponentBase::SetSlotToDefault(int32 SlotIndex)
+{
+    if (!ItemSlots.IsValidIndex(SlotIndex))
+    {
+        LOG_Item_WARNING(TEXT("[SetSlotToDefault] 유효하지 않은 슬롯 인덱스: %d"), SlotIndex);
+        return;
+    }
+
+    FBaseItemSlotData& Slot = ItemSlots[SlotIndex];
+    Slot.ItemRowName = DefaultItemRowName;
+    Slot.Quantity = 1;
+    Slot.Durability = 100.0f;
+    Slot.bIsValid = true;
+    Slot.bIsEquipped = false;
+
+    LOG_Item_WARNING(TEXT("[SetSlotToDefault] 슬롯 %d를 Default 아이템으로 설정"), SlotIndex);
+}
+
+UItemSpawnerComponent* UInventoryComponentBase::GetItemSpawner() const
+{
+    if (ABaseCharacter* Character = GetCachedOwnerCharacter())
+    {
+        return Character->ItemSpawner;
+    }
+    return nullptr;
+}
+
+TArray<int32> UInventoryComponentBase::GetInventoryItemIDs() const
+{
+    TArray<int32> ItemIDs;
+    ItemIDs.Reserve(ItemSlots.Num());
+
+    for (int32 i = 0; i < ItemSlots.Num(); ++i)
+    {
+        const FBaseItemSlotData& SlotData = ItemSlots[i];
+
+        int32 ItemID = GetItemIDFromRowName(SlotData.ItemRowName);
+        ItemIDs.Add(ItemID);
+    }
+
+    return ItemIDs;
+}
+
+int32 UInventoryComponentBase::GetItemIDFromRowName(FName ItemRowName) const
+{
+    if (ItemRowName.IsNone())
+    {
+        return -1;
+    }
+
+    if (!ItemDataTable)
+    {
+        LOG_Item_WARNING(TEXT("[GetItemIDFromRowName] ItemDataTable을 찾을 수 없음: %s"), *ItemRowName.ToString());
+        return -1;
+    }
+
+    const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("GetItemIDFromRowName"));
+    if (ItemData)
+    {
+        return ItemData->ItemID;
+    }
+
+    LOG_Item_WARNING(TEXT("[GetItemIDFromRowName] ItemID를 찾을 수 없음: %s"), *ItemRowName.ToString());
+    return -1;
+}
+
+void UInventoryComponentBase::SetInventoryFromItemIDs(const TArray<int32>& ItemIDs)
+{
+    LOG_Item_WARNING(TEXT("[SetInventoryFromItemIDs] === 시작 === 받은 ItemID 수: %d"), ItemIDs.Num());
+
+    // ⭐ 기존 인벤토리 초기화
+    ClearInventorySlots();
+
+    // ⭐ 슬롯 수를 ItemID 배열 크기로 맞추기
+    if (ItemIDs.Num() > MaxSlots)
+    {
+        LOG_Item_WARNING(TEXT("[SetInventoryFromItemIDs] ItemID 수(%d)가 MaxSlots(%d)보다 큽니다. MaxSlots로 제한합니다."),
+            ItemIDs.Num(), MaxSlots);
+    }
+
+    int32 SlotsToRestore = FMath::Min(ItemIDs.Num(), MaxSlots);
+    ItemSlots.SetNum(SlotsToRestore);
+
+    // ⭐ 각 슬롯에 ItemID 기반 데이터 설정
+    for (int32 i = 0; i < SlotsToRestore; ++i)
+    {
+        int32 ItemID = ItemIDs[i];
+
+        // ⭐ ItemID를 ItemRowName으로 변환
+        FName ItemRowName = GetItemRowNameFromID(ItemID);
+
+        if (ItemRowName.IsNone())
+        {
+            LOG_Item_WARNING(TEXT("[SetInventoryFromItemIDs] 슬롯 %d: ItemID %d에 해당하는 아이템을 찾을 수 없음 -> Default로 설정"), i, ItemID);
+            SetSlotToDefault(i);
+        }
+        else
+        {
+            // 유효한 아이템 설정
+            FBaseItemSlotData& SlotData = ItemSlots[i];
+            SlotData.ItemRowName = ItemRowName;
+            SlotData.Quantity = 1;
+            SlotData.Durability = 100.0f;
+            SlotData.bIsValid = true;
+            SlotData.bIsEquipped = false;
+
+            LOG_Item_WARNING(TEXT("[SetInventoryFromItemIDs] 슬롯 %d: ItemID %d -> %s 복원 성공"),
+                i, ItemID, *ItemRowName.ToString());
+        }
+    }
+
+    // ⭐ 남은 슬롯들은 Default로 채우기
+    for (int32 i = SlotsToRestore; i < MaxSlots; ++i)
+    {
+        if (i < ItemSlots.Num())
+        {
+            SetSlotToDefault(i);
+        }
+        else
+        {
+            // 새 슬롯 추가
+            FBaseItemSlotData DefaultSlot;
+            DefaultSlot.ItemRowName = DefaultItemRowName;
+            DefaultSlot.Quantity = 1;
+            DefaultSlot.Durability = 100.0f;
+            DefaultSlot.bIsValid = true;
+            DefaultSlot.bIsEquipped = false;
+            ItemSlots.Add(DefaultSlot);
+        }
+    }
+
+    // 무게 갱신 및 UI 새로고침
+    UpdateWeight();
+    OnInventoryUpdated.Broadcast();
+
+    LOG_Item_WARNING(TEXT("[SetInventoryFromItemIDs] ✅ 인벤토리 복원 완료 - 총 %d개 슬롯"), ItemSlots.Num());
+}
+
+FName UInventoryComponentBase::GetItemRowNameFromID(int32 ItemID) const
+{
+    if (!ItemDataTable)
+    {
+        LOG_Item_WARNING(TEXT("[GetItemRowNameFromID] ItemDataTable을 찾을 수 없음"));
+        return NAME_None;
+    }
+
+    // ⭐ 모든 행을 검색해서 ItemID 매칭
+    TArray<FName> RowNames = ItemDataTable->GetRowNames();
+    for (const FName& RowName : RowNames)
+    {
+        const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(RowName, TEXT("GetItemRowNameFromID"));
+        if (ItemData && ItemData->ItemID == ItemID)
+        {
+            return RowName;
+        }
+    }
+
+    LOG_Item_WARNING(TEXT("[GetItemRowNameFromID] ItemID %d에 해당하는 RowName을 찾을 수 없음"), ItemID);
+    return NAME_None;
+}
+
+void UInventoryComponentBase::ClearInventorySlots()
+{
+    LOG_Item_WARNING(TEXT("[ClearInventorySlots] 인벤토리 초기화 시작"));
+
+    ItemSlots.Empty();
+    CurrentTotalWeight = 0.0f;
+
+    LOG_Item_WARNING(TEXT("[ClearInventorySlots] 인벤토리 초기화 완료"));
 }

@@ -7,7 +7,7 @@
 #include "LCUIManager.generated.h"
 
 /**
- *
+ * 
  */
 class ULCUIManagerSettings;
 class UTitleMenu;
@@ -17,9 +17,23 @@ class UOptionWidget;
 class UInGameHUD;
 class UShopWidget;
 class UMapSelectWidget;
-class UUIElementCreateSession;
+class UPopupCreateSession;
 class UPopupLoading;
+class UPopupNotice;
+class ULoadingLevel;
 class UInventoryMainWidget;
+class UPauseMenu;
+class UConfirmPopup;
+
+UENUM(BlueprintType)
+enum class ELCUIContext : uint8
+{
+	None,
+	Title,
+	Room,
+	InGame,
+};
+
 UCLASS(BlueprintType)
 class LASTCANARY_API ULCUIManager : public UObject
 {
@@ -42,21 +56,31 @@ public:
 	void ShowOptionPopup();
 	void ShowPauseMenu();
 	void HidePauseMenu();
-	void ShowConfirmPopup(TFunction<void()> OnConfirm);
+	bool IsPauseMenuOpen() const;
+	void ShowConfirmPopup(TFunction<void()> OnConfirm, const FText& Message);
 	void ShowShopPopup();
 	void HideShopPopup();
 	void ShowMapSelectPopup();
 	void HideMapSelectPopup();
-	void ShowCreateSession();
+	//void ShowCreateSession();
 	void ToggleInventory();
 
 	void SwitchToWidget(UUserWidget* Widget);
 
-	// TO DO : 로딩 팝업 표시
+	/* 팝업 */
+	void ShowCreateSession();
 	UFUNCTION(BlueprintCallable)
 	void ShowPopUpLoading();
 	UFUNCTION(BlueprintCallable)
 	void HidePopUpLoading();
+
+	UFUNCTION(BlueprintCallable)
+	void ShowPopupNotice(FString Notice);
+	UFUNCTION(BlueprintCallable)
+	void HidePopUpNotice();
+
+	void ShowLoadingLevel();
+	void HideLoadingLevel();
 
 	/* 입력 모드 제어 */
 	void SetInputModeUIOnly(UUserWidget* FocusWidget = nullptr);
@@ -67,12 +91,16 @@ public:
 	ULobbyMenu* GetLobbyMenu() const { return CachedLobbyMenu; }
 	UEnterPasswordWidget* GetEnterPasswordWidget() const { return CachedEnterPasswordWidget; }
 	UOptionWidget* GetOptionWidget() const { return CachedOptionWidget; }
+	UPauseMenu* GetPauseMenu() const { return CachedPauseMenu; }
 	UInGameHUD* GetInGameHUD() const { return CachedInGameHUD; }
 	UInventoryMainWidget* GetInventoryMainWidget() const { return CachedInventoryMainWidget; }
 
 
 	void SetLastShopInteractor(AShopInteractor* Interactor);
 	void SetLastMapSelectInteractor(AMapSelectInteractor* Interactor);
+
+	void UpdateInputModeByContext();
+	void SetUIContext(ELCUIContext NewContext);
 
 private:
 	UPROPERTY()
@@ -97,18 +125,24 @@ private:
 	UPROPERTY()
 	TSubclassOf<UOptionWidget> OptionWidgetClass;
 	UPROPERTY()
-	TSubclassOf<UOptionWidget> ConfirmPopupClass;
+	TSubclassOf<UConfirmPopup> ConfirmPopupClass;
 	UPROPERTY()
 	TSubclassOf<UInGameHUD> InGameHUDWidgetClass;
 	UPROPERTY()
 	TSubclassOf<UShopWidget> ShopWidgetClass;
 	UPROPERTY()
 	TSubclassOf<UMapSelectWidget> MapSelectWidgetClass;
+	UPROPERTY()
+	TSubclassOf<UPauseMenu> PauseMenuClass;
 
 	UPROPERTY()
-	TSubclassOf<UUIElementCreateSession> CreateSessionClass;
+	TSubclassOf<UPopupCreateSession> CreateSessionClass;
 	UPROPERTY()
 	TSubclassOf<UPopupLoading> PopUpLoadingClass;
+	UPROPERTY()
+	TSubclassOf<UPopupNotice> PopUpNoticeClass;
+	UPROPERTY()
+	TSubclassOf<ULoadingLevel> LoadingLevelClass;
 	UPROPERTY()
 	TSubclassOf<UInventoryMainWidget> InventoryMainWidgetClass;
 
@@ -127,12 +161,20 @@ private:
 	UShopWidget* CachedShopWidget;
 	UPROPERTY()
 	UMapSelectWidget* CachedMapSelectWidget;
-
 	UPROPERTY()
-	UUIElementCreateSession* CachedCreateSession;
+	UPauseMenu* CachedPauseMenu;
+
+	//UPROPERTY()
+	//UPopupCreateSession* CachedCreateSession;
 	UPROPERTY()
 	UPopupLoading* CachedPopupLoading;
 	UPROPERTY()
+	UPopupNotice* CachedPopupNotice;
+	UPROPERTY()
+	ULoadingLevel* CachedLoadingLevel;
+	UPROPERTY()
 	UInventoryMainWidget* CachedInventoryMainWidget;
 
+	UPROPERTY()
+	ELCUIContext CurrentContext;
 };

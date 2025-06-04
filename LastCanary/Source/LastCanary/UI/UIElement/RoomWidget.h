@@ -1,33 +1,51 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
+#include "DataType/SessionPlayerInfo.h"
 #include "UI/LCUserWidgetBase.h"
 #include "RoomWidget.generated.h"
 
+class UVerticalBox;
 class UTextBlock;
+class UButton;
+class UPlayerSlot;
 UCLASS()
 class LASTCANARY_API URoomWidget : public ULCUserWidgetBase
 {
 	GENERATED_BODY()
 
 protected:
+
 	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
 
 public:
-	// TODO : 별도의 Widget을 최대 인원수 만큼 만들기
-	UPROPERTY(meta = (BindWidget))
-	UTextBlock* PlayerNameText_0;
+	UFUNCTION(BlueprintCallable, Category="Room")
+	void CreatePlayerSlots();
 
-	UPROPERTY(meta = (BindWidget))
-	UTextBlock* PlayerNameText_1;
+	UPROPERTY(meta=(BindWidget))
+	TObjectPtr<UVerticalBox> PlayerListContainer;
 
-	UPROPERTY(meta = (BindWidget))
-	UTextBlock* PlayerNameText_2;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSubclassOf<UPlayerSlot> PlayerSlotClass;
 
-	UPROPERTY(meta = (BindWidget))
-	UTextBlock* PlayerNameText_3;
+	UPROPERTY()
+	TArray<TObjectPtr<UPlayerSlot>> PlayerSlots;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
+	UButton* InviteButton;
 
 	UFUNCTION(BlueprintCallable)
-	void UpdatePlayerNames();
+	void UpdatePlayerLists(const TArray<FSessionPlayerInfo>& PlayerInfos);
+
+	void UpdatePlayerSlots(const TArray<FSessionPlayerInfo>& PlayerInfos);
+
+protected:
+	UFUNCTION()
+	void OnInviteButtonClicked();
+
+private:
+	TArray<FSessionPlayerInfo> SessionPlayerInfos;
+	int MaxPlayerNum = 4;
 	
 };

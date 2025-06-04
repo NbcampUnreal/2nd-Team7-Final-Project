@@ -3,10 +3,8 @@
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "GameFramework/PlayerStart.h"
 #include "Framework/PlayerController/LCPlayerController.h"
-
-ABaseGameMode::ABaseGameMode()
-{
-}
+#include "LastCanary.h"
+#include "GameFramework/GameSession.h"
 
 void ABaseGameMode::BeginPlay()
 {
@@ -20,15 +18,19 @@ void ABaseGameMode::PostLogin(APlayerController* NewPlayer)
 
 	if (const auto CastedGameInstance = Cast<ULCGameInstance>(GetGameInstance()))
 	{
-		SpawnPlayerCharacter(NewPlayer);
+		//SpawnPlayerCharacter(NewPlayer);
 
-		for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
+		AllPlayerControllers.Add(NewPlayer);
+
+		if (APlayerState* PS = NewPlayer->PlayerState)
 		{
-			if (ALCPlayerController* PlayerController = Cast<ALCPlayerController>(Iterator->Get()))
-			{
-				PlayerController->Client_UpdatePlayers();
-			}
+			FSessionPlayerInfo SessionInfo;
+			SessionInfo.PlayerName = PS->GetPlayerName();
+			SessionInfo.bIsPlayerReady = false;
+			SessionPlayerInfos.Add(SessionInfo);
 		}
+
+		UpdatePlayers();
 	}
 	else
 	{
@@ -36,14 +38,100 @@ void ABaseGameMode::PostLogin(APlayerController* NewPlayer)
 	}
 }
 
+void ABaseGameMode::Logout(AController* Exiting)
+{
+	Super::Logout(Exiting);
+
+	if (APlayerController* PC = Cast<APlayerController>(Exiting))
+	{
+		AllPlayerControllers.Remove(PC);
+
+		FString LeavingPlayerName = PC->PlayerState->GetPlayerName();
+		SessionPlayerInfos.RemoveAll(
+			[&](const FSessionPlayerInfo& Info)
+			{
+				return Info.PlayerName == LeavingPlayerName;
+			}
+		);
+	}
+
+	UpdatePlayers();
+}
+
+void ABaseGameMode::KickPlayer(const FSessionPlayerInfo& SessionInfo)
+{
+	APlayerController* TargetPC = nullptr;
+	for (APlayerController* PC : AllPlayerControllers)
+	{
+		if (!PC || !PC->PlayerState)
+		{
+			continue;
+		}
+
+		if (PC->PlayerState->GetPlayerName() == SessionInfo.PlayerName)
+		{
+			TargetPC = PC;
+			break;
+		}
+	}
+
+	if (!TargetPC)
+	{
+		LOG_Server_ERROR(TEXT("KickPlayer: 이름이 %s 인 플레이어를 찾을 수 없습니다."), *SessionInfo.PlayerName);
+		return;
+	}
+
+	const FText KickReason = FText::FromString(TEXT("호스트에 의해 강퇴되었습니다."));
+	GameSession->KickPlayer(TargetPC, KickReason);
+
+	AllPlayerControllers.Remove(TargetPC);
+
+	SessionPlayerInfos.RemoveAll(
+		[&](const FSessionPlayerInfo& Info)
+		{
+			return Info.PlayerName == SessionInfo.PlayerName;
+		}
+	);
+
+	UpdatePlayers();
+}
+
+void ABaseGameMode::UpdatePlayers()
+{
+	for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
+	{
+		if (ALCPlayerController* PlayerController = Cast<ALCPlayerController>(Iterator->Get()))
+		{
+			PlayerController->Client_UpdatePlayerList(SessionPlayerInfos);
+		}
+	}
+}
+
+void ABaseGameMode::SetPlayerInfo(const FSessionPlayerInfo& RequestInfo)
+{
+	for (FSessionPlayerInfo& Info : SessionPlayerInfos)
+	{
+		if (RequestInfo.PlayerName == Info.PlayerName)
+		{
+			Info = RequestInfo;
+
+			LOG_Server_ERROR(
+				TEXT("PlayerInfo Changed Name : %s, Ready : %s"),
+				*RequestInfo.PlayerName,
+				RequestInfo.bIsPlayerReady ? TEXT("True") : TEXT("False")
+			);
+		}
+	}
+
+	UpdatePlayers();
+}
+
+
 void ABaseGameMode::SpawnPlayerCharacter(APlayerController* Controller)
 {
 	// 하위 게임모드에서 구현
 }
 
-void ABaseGameMode::Logout(AController* Exiting)
-{
-}
 
 void ABaseGameMode::TravelMapBySoftPath(FString SoftPath)
 {
@@ -65,4 +153,19 @@ void ABaseGameMode::TravelMapByPath(FString Path)
 	UE_LOG(LogTemp, Log, TEXT("Try Server Travel By Path. Traveling to: %s"), *TravelURL);
 
 	GetWorld()->ServerTravel(TravelURL, true);
+}
+
+bool ABaseGameMode::IsAllPlayersReady() const
+{
+	if (SessionPlayerInfos.Num() == 0)
+		return false;
+
+	for (const FSessionPlayerInfo& Info : SessionPlayerInfos)
+	{
+		if (!Info.bIsPlayerReady)
+		{
+			return false;
+		}
+	}
+	return true;
 }

@@ -2,12 +2,14 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataTable.h"
+#include "DataType/ResourceCategory.h"
 #include "GameplayTagContainer.h"
 #include "ItemDataRow.generated.h"
 
 /**
  * 
  */
+class AItemBase;
 USTRUCT(BlueprintType)
 struct FItemDataRow : public FTableRowBase
 {
@@ -27,7 +29,6 @@ struct FItemDataRow : public FTableRowBase
 	bool bSellInShop = true;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bCanBuy = true;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 MaxStack = 1;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (Categories = "Item"))
@@ -43,5 +44,15 @@ struct FItemDataRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	USkeletalMesh* SkeletalMesh = nullptr;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TSubclassOf<class AItemBase> ItemActorClass;
+	TSubclassOf<AItemBase> ItemActorClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resource")
+	bool bIsResourceItem = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resource")
+	int32 BaseScore = 1;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resource")
+	EResourceCategory Category;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
+	bool bIgnoreCharacterCollision = false;
 };
