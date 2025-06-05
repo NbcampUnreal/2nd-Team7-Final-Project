@@ -54,8 +54,20 @@ void ALCRotationGimmick::ActivateGimmick_Implementation()
 
 bool ALCRotationGimmick::CanActivate_Implementation()
 {
+	if (bIsRotatingServer || bIsReturningServer)
+	{
+		LOG_Art_WARNING(TEXT("회전 기믹 ▶ 현재 회전 중이라 CanActivate 거부됨"));
+		return false;
+	}
+
 	return Super::CanActivate_Implementation();
 }
+
+bool ALCRotationGimmick::IsGimmickBusy_Implementation()
+{
+	return bIsRotatingServer || bIsReturningServer;
+}
+
 
 #pragma endregion
 
@@ -100,6 +112,11 @@ void ALCRotationGimmick::CompleteRotation()
 {
 	bIsRotatingServer = false;
 	VisualMesh->SetWorldRotation(TargetRotation);
+
+	AttachedActors.RemoveAll([this](AActor* Actor)
+		{
+			return !DetectionArea->IsOverlappingActor(Actor);
+		});
 
 	if (!bToggleState)
 	{
@@ -147,7 +164,13 @@ void ALCRotationGimmick::CompleteReturn()
 	VisualMesh->SetWorldRotation(OriginalRotation);
 	TargetRotation = OriginalRotation;
 	RotationIndex = 0;
+
+	AttachedActors.RemoveAll([this](AActor* Actor)
+		{
+			return !DetectionArea->IsOverlappingActor(Actor);
+		});
 }
+
 
 #pragma endregion
 
@@ -187,15 +210,56 @@ void ALCRotationGimmick::StepServerRotation()
 	}
 }
 
+void ALCRotationGimmick::StartServerAttachedRotation(const FRotator& DeltaRot, float Duration)
+{
+	for (AActor* Target : AttachedActors)
+	{
+		if (!IsValid(Target)) continue;
+
+		if (AttachedRotationTimers.Contains(Target))
+		{
+			GetWorld()->GetTimerManager().ClearTimer(AttachedRotationTimers[Target]);
+			AttachedRotationTimers.Remove(Target);
+		}
+
+		const FRotator StartRot = Target->GetActorRotation();
+		const FRotator EndRot = StartRot + DeltaRot;
+		TSharedPtr<float> ElapsedTime = MakeShared<float>(0.f);
+
+		FTimerDelegate RotateDelegate;
+		RotateDelegate.BindLambda([=]()
+			{
+				if (!IsValid(Target)) return;
+
+				*ElapsedTime += 0.02f;
+				const float Alpha = FMath::Clamp(*ElapsedTime / Duration, 0.f, 1.f);
+				const FRotator NewRot = FMath::Lerp(StartRot, EndRot, Alpha);
+				Target->SetActorRotation(NewRot);
+			});
+
+		FTimerHandle TimerHandle;
+		GetWorld()->GetTimerManager().SetTimer(TimerHandle, RotateDelegate, 0.02f, true);
+
+		AttachedRotationTimers.Add(Target, TimerHandle);
+	}
+}
+
 #pragma endregion
 
 #pragma region Rotation - Client Interpolation
 
 void ALCRotationGimmick::Multicast_StartRotation_Implementation(const FRotator& From, const FRotator& To, float Duration)
 {
+	const FRotator DeltaRot = To - From;
+
 	if (!HasAuthority())
 	{
 		StartClientRotation(From, To, Duration);
+		StartClientAttachedRotation(DeltaRot, Duration);
+	}
+	else
+	{
+		StartServerAttachedRotation(DeltaRot, Duration); 
 	}
 }
 
@@ -228,6 +292,42 @@ void ALCRotationGimmick::StepClientRotation()
 	if (Alpha >= 1.f)
 	{
 		GetWorldTimerManager().ClearTimer(ClientRotationTimer);
+	}
+}
+
+void ALCRotationGimmick::StartClientAttachedRotation(const FRotator& DeltaRot, float Duration)
+{
+	if (HasAuthority()) return;
+
+	for (AActor* Target : AttachedActors)
+	{
+		if (!IsValid(Target)) continue;
+
+		if (AttachedRotationTimers.Contains(Target))
+		{
+			GetWorld()->GetTimerManager().ClearTimer(AttachedRotationTimers[Target]);
+			AttachedRotationTimers.Remove(Target);
+		}
+
+		const FRotator StartRot = Target->GetActorRotation();
+		const FRotator EndRot = StartRot + DeltaRot;
+		TSharedPtr<float> ElapsedTime = MakeShared<float>(0.f);
+
+		FTimerDelegate RotateDelegate;
+		RotateDelegate.BindLambda([=]()
+			{
+				if (!IsValid(Target)) return;
+
+				*ElapsedTime += 0.02f;
+				const float Alpha = FMath::Clamp(*ElapsedTime / Duration, 0.f, 1.f);
+				const FRotator NewRot = FMath::Lerp(StartRot, EndRot, Alpha);
+				Target->SetActorRotation(NewRot);
+			});
+
+		FTimerHandle TimerHandle;
+		GetWorld()->GetTimerManager().SetTimer(TimerHandle, RotateDelegate, 0.02f, true);
+
+		AttachedRotationTimers.Add(Target, TimerHandle);
 	}
 }
 
