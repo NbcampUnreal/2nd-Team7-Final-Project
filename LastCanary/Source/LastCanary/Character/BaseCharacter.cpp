@@ -345,12 +345,15 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 		//입력이 떼지는 거면 어차피 뛰는 거 아님..
 		if (Value < 0.5f)
 		{
+			bIsSprinting = false;
 			SetDesiredGait(AlsGaitTags::Running);
 			StopStaminaDrain();
 			StartStaminaRecoverAfterDelay();
 			return;
 		}
-
+		bIsSprinting = true;
+		SetDesiredAiming(false);
+		SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 		//달리기 시작하면서 스테미나 소모 시작
 		StartStaminaDrain();
 		StopStaminaRecovery();
@@ -363,12 +366,17 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 		{
 			if (GetDesiredGait() == AlsGaitTags::Sprinting)
 			{
+				bIsSprinting = false;
 				SetDesiredGait(AlsGaitTags::Running);
 				StopStaminaDrain();
 				StartStaminaRecoverAfterDelay();
 			}
 			else if (GetDesiredGait() == AlsGaitTags::Running)
 			{
+				bIsSprinting = true;
+				SetDesiredAiming(false);
+
+				SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 				StopStaminaRecovery();
 				StopStaminaRecoverAfterDelay();
 				StartStaminaDrain();
@@ -376,6 +384,9 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 			}
 			else
 			{
+				bIsSprinting = true;
+				SetDesiredAiming(false);
+				SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 				StopStaminaRecovery();
 				StopStaminaRecoverAfterDelay();
 				StartStaminaDrain();
@@ -545,7 +556,6 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 	{
 		return;
 	}
-
 	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
 	if (!EquippedItem)
 	{
@@ -561,6 +571,10 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 		return; // 리로드 중이므로 줌 입력 무시
 	}
 	if (bIsClose)
+	{
+		return;
+	}
+	if (bIsSprinting)
 	{
 		return;
 	}
@@ -718,6 +732,8 @@ void ABaseCharacter::ConsumeStamina()
 	float CurrentPlayerSpeed = GetPlayerMovementSpeed();
 	if (FrontInput < 0.05f)
 	{
+		bIsSprinting = false;
+		SetDesiredAiming(false);
 		//일단 회복 시키기는 해
 		StartStaminaRecoverAfterDelay();
 		return;
@@ -732,6 +748,7 @@ void ABaseCharacter::ConsumeStamina()
 	if (MyPlayerState->CurrentStamina <= 0.f)
 	{
 		MyPlayerState->SetPlayerMovementState(ECharacterMovementState::Exhausted);
+		bIsSprinting = false;
 		SetDesiredGait(AlsGaitTags::Running);
 		StopStaminaDrain();
 		StartStaminaRecoverAfterDelay();
