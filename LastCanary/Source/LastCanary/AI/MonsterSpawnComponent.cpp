@@ -5,8 +5,11 @@
 #include "AI/Navigation/NavigationTypes.h"
 #include "NavMesh/NavMeshBoundsVolume.h"
 #include "Components/BrushComponent.h"
+#include "AI/BaseMonsterCharacter.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "Kismet/GameplayStatics.h"
+#include "DataTable/MonsterDataTable.h"
 
 UMonsterSpawnComponent::UMonsterSpawnComponent()
 {
@@ -18,6 +21,11 @@ UMonsterSpawnComponent::UMonsterSpawnComponent()
 void UMonsterSpawnComponent::BeginPlay()
 {
     Super::BeginPlay();
+
+    MonsterClasses.Empty();
+
+    CurrentMap();
+
     if (bAutoStart)
     {
         StartSpawning();
@@ -183,6 +191,37 @@ FVector UMonsterSpawnComponent::GetValidSpawnLocationInNavVolume(const FVector& 
     return FVector::ZeroVector;
 }
 
+void UMonsterSpawnComponent::CurrentMap()
+{
+    if (!MonsterDataTable)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Monsterrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr is null!"));
+        return;
+    }
+
+    FString CurrentLevelName = UGameplayStatics::GetCurrentLevelName(GetWorld(), true);
+
+    for (const auto& Row : MonsterDataTable->GetRowMap())
+    {
+        const FMonsterDataTable* MonsterData = (FMonsterDataTable*)Row.Value;
+
+        if (!MonsterData->Level.IsNull())
+        {
+            FString RowLevelName = FPackageName::GetShortName(MonsterData->Level.GetAssetName());
+
+            if (RowLevelName == CurrentLevelName)
+            {
+                if (MonsterData->MonsterActor)
+                {
+                    MonsterClasses.Add(MonsterData->MonsterActor);
+                }
+            }
+        }
+    }
+
+    UE_LOG(LogTemp, Log, TEXT("MonsterrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrComplete"));
+}
+
 void UMonsterSpawnComponent::SpawnMonsters()
 {
     DestroyAllMonsters();
@@ -216,20 +255,11 @@ void UMonsterSpawnComponent::SpawnMonsters()
     }
 
     FVector OwnerLocation = Owner->GetActorLocation();
-    FMath::RandInit(FMath::Rand() + FPlatformTime::Seconds());
 
     TArray<FVector> UsedLocations;
 
-    for (ACharacter* ExistingMonster : SpawnedMonsters)
-    {
-        if (IsValid(ExistingMonster))
-        {
-            UsedLocations.Add(ExistingMonster->GetActorLocation());
-        }
-    }
-
     int32 SpawnedCount = 0;
-    int32 MaxAttempts = MonstersToSpawn * 15;
+    int32 MaxAttempts = MonstersToSpawn * 10;
 
     for (int32 Attempt = 0; Attempt < MaxAttempts && SpawnedCount < MonstersToSpawn; Attempt++)
     {
@@ -240,7 +270,7 @@ void UMonsterSpawnComponent::SpawnMonsters()
             continue;
         }
 
-        bool TooClose = false;
+        bool TooClose = false;//뭉쳐서 스폰되지 않도록
         for (const FVector& UsedLocation : UsedLocations)
         {
             float DistSq = FVector::DistSquared2D(SpawnLocation, UsedLocation);
@@ -257,25 +287,22 @@ void UMonsterSpawnComponent::SpawnMonsters()
         }
 
         int32 MonsterIndex = FMath::RandRange(0, MonsterClasses.Num() - 1);
-        TSubclassOf<ACharacter> MonsterClass = MonsterClasses[MonsterIndex];
+        TSubclassOf<ABaseMonsterCharacter> MonsterClass = MonsterClasses[MonsterIndex];
 
         if (!MonsterClass)
         {
             continue;
         }
 
-        FVector DirectionToCenter = OwnerLocation - SpawnLocation;
-        DirectionToCenter.Z = 0;
-        FRotator Rotation = DirectionToCenter.Rotation();
-        Rotation.Yaw += FMath::FRandRange(-45.0f, 45.0f);
+        FRotator RandomRotation(0.0f, FMath::FRandRange(0.0f, 360.0f), 0.0f);
 
         FActorSpawnParameters SpawnParams;
-        SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+        SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;//몬스터 안끼게, 안겹치게 해주는 안전장치
 
         ACharacter* SpawnedMonster = World->SpawnActor<ACharacter>(
             MonsterClass,
             SpawnLocation,
-            Rotation,
+            RandomRotation,
             SpawnParams
         );
 
@@ -332,20 +359,11 @@ void UMonsterSpawnComponent::SpawnNightMonsters()
     }
 
     FVector OwnerLocation = Owner->GetActorLocation();
-    FMath::RandInit(FMath::Rand() + FPlatformTime::Seconds());
 
     TArray<FVector> UsedLocations;
 
-    for (ACharacter* ExistingMonster : SpawnedMonsters)
-    {
-        if (IsValid(ExistingMonster))
-        {
-            UsedLocations.Add(ExistingMonster->GetActorLocation());
-        }
-    }
-
     int32 SpawnedCount = 0;
-    int32 MaxAttempts = MonstersToSpawn * 15;
+    int32 MaxAttempts = MonstersToSpawn * 10;
 
     for (int32 Attempt = 0; Attempt < MaxAttempts && SpawnedCount < MonstersToSpawn; Attempt++)
     {
@@ -373,27 +391,24 @@ void UMonsterSpawnComponent::SpawnNightMonsters()
         }
 
         int32 MonsterIndex = FMath::RandRange(0, MonsterClasses.Num() - 1);
-        TSubclassOf<ACharacter> MonsterClass = MonsterClasses[MonsterIndex];
+        TSubclassOf<ABaseMonsterCharacter> MonsterClass = MonsterClasses[MonsterIndex];
 
         if (!MonsterClass)
         {
             continue;
         }
 
-        FVector DirectionToCenter = OwnerLocation - SpawnLocation;
-        DirectionToCenter.Z = 0;
-        FRotator Rotation = DirectionToCenter.Rotation();
-        Rotation.Yaw += FMath::FRandRange(-45.0f, 45.0f);
+        FRotator RandomRotation(0.0f, FMath::FRandRange(0.0f, 360.0f), 0.0f);
 
         FActorSpawnParameters SpawnParams;
-        SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+        SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;//몬스터 안끼게, 안겹치게 해주는 안전장치
 
         ACharacter* SpawnedMonster = World->SpawnActor<ACharacter>(
             MonsterClass,
             SpawnLocation,
-            Rotation,
+            RandomRotation,
             SpawnParams
-        );
+        ); 
 
         if (SpawnedMonster)
         {
@@ -416,7 +431,7 @@ void UMonsterSpawnComponent::SpawnNightMonsters()
 
 void UMonsterSpawnComponent::DestroyAllMonsters()
 {
-    SpawnedMonsters.RemoveAll([](ACharacter* Monster) 
+    SpawnedMonsters.RemoveAll([](ACharacter* Monster)
     {
         return !IsValid(Monster);
     });
