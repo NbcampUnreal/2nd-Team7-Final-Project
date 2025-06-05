@@ -454,27 +454,39 @@ bool ALCBossEoduksini::RequestAttack()
 
 void ALCBossEoduksini::PlayNormalWithRage()
 {
-    // 몽타주 재생 속도를 광폭화 시 빠르게
     if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
     {
+        // 1) 바인딩을 추가하기 전에, 이미 등록된 중복 바인딩을 모두 제거
+        Anim->OnMontageEnded.RemoveDynamic(this, &ALCBossEoduksini::OnAttackMontageEnded);
+
+        // 2) 몽타주 재생
         float PlayRate = bIsBerserk ? BerserkPlayRateMultiplier : 1.0f;
         Anim->Montage_Play(NormalAttackMontage, PlayRate);
+
+        // 3) 재생이 시작된 몽타주가 끝날 때를 위해 델리게이트 바인딩
         Anim->OnMontageEnded.AddDynamic(this, &ALCBossEoduksini::OnAttackMontageEnded);
     }
+
     // 기본 Rage 증가
     Rage = FMath::Clamp(Rage + RageGain_Normal, 0.f, MaxRage);
 }
 
 void ALCBossEoduksini::PlayStrongWithRage()
 {
-    // 몽타주 재생 속도를 광폭화 시 빠르게
     if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
     {
+        // 1) 이전에 바인딩됐던 델리게이트 제거
+        Anim->OnMontageEnded.RemoveDynamic(this, &ALCBossEoduksini::OnAttackMontageEnded);
+
+        // 2) 몽타주 재생
         float PlayRate = bIsBerserk ? BerserkPlayRateMultiplier : 1.0f;
         Anim->Montage_Play(StrongAttackMontage, PlayRate);
+
+        // 3) 몽타주 종료 콜백 바인딩
         Anim->OnMontageEnded.AddDynamic(this, &ALCBossEoduksini::OnAttackMontageEnded);
     }
-    // Rage 소비량도 광폭화 시 약간 감소(더 자주 강공격을 시도할 수 있게)
+
+    // 광폭화 시 소비량을 줄여 자주 쓸 수 있게
     float ConsumedRage = bIsBerserk ? RageLoss_Strong * 0.8f : RageLoss_Strong;
     Rage = FMath::Clamp(Rage - ConsumedRage, 0.f, MaxRage);
 }
