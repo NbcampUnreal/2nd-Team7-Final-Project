@@ -23,10 +23,16 @@ private:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment", meta = (AllowPrivateAccess = "true"))
     UChildActorComponent* EquippedItemComponent;
 
+    /** 특정 메시에 아이템 설정 */
+    void SetupEquippedItem(UChildActorComponent* ItemComponent, USkeletalMeshComponent* TargetMesh, FName SocketName, FItemDataRow* ItemData, FBaseItemSlotData* SlotData);
+
     /** 현재 장착된 슬롯 인덱스 */
     UPROPERTY(Replicated)
     int32 CurrentEquippedSlotIndex;
 
+public:
+    FORCEINLINE int32 GetCurrentEquippedSlotIndex() { return CurrentEquippedSlotIndex; }
+    void SetCurrentEquippedSlotIndex(int32 NewIndex);
     //-----------------------------------------------------
     // 인벤토리 오버라이드
     //-----------------------------------------------------
@@ -61,6 +67,11 @@ public:
     int32 GetCurrentEquippedSlotIndex() const;
 
     FBaseItemSlotData* GetItemDataAtSlot(int32 SlotIndex);
+
+public:
+    /** 장착된 아이템의 내구도를 슬롯에 동기화 */
+    UFUNCTION(BlueprintCallable, Category = "Toolbar|Sync")
+    void SyncEquippedItemDurabilityToSlot();
 
     //-----------------------------------------------------
     // 드랍 기능

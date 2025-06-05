@@ -2,11 +2,11 @@
 
 #include "CoreMinimal.h"
 #include "LCPlayerController.h"
-#include "Framework/PlayerController/LCRoomPlayerController.h"
+#include "GameFramework/PlayerController.h"
 #include "LCTitlePlayerController.generated.h"
 
 UCLASS()
-class LASTCANARY_API ALCTitlePlayerController : public ALCPlayerController
+class LASTCANARY_API ALCTitlePlayerController : public APlayerController
 {
 	GENERATED_BODY()
 

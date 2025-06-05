@@ -11,7 +11,6 @@
 ABasePlayerState::ABasePlayerState()
 {
 	bReplicates = true;
-	LOG_Frame_WARNING(TEXT("ABasePlayerState::Constructor"));
 }
 
 void ABasePlayerState::BeginPlay()
@@ -20,19 +19,13 @@ void ABasePlayerState::BeginPlay()
 	
 	if (bAlreadyInitialized)
 	{
-		LOG_Frame_WARNING(TEXT("ABasePlayerState::BeginPlay - 중복 호출 차단"));
 		return;
 	}
 	bAlreadyInitialized = true;
 
-	LOG_Frame_WARNING(TEXT("ABasePlayerState::BeginPlay()"));
-	
 	if (CurrentHP <= 0.f && InitialStats.MaxHP > 0.f)  // 새 생성일 경우만
 	{
-		LOG_Frame_WARNING(TEXT("ABasePlayerState::Should InitializeStats"));
-
 		InitializeStats();
-		
 	}
 	UpdateHPUI();
 	UpdateStaminaUI();
@@ -132,6 +125,22 @@ void ABasePlayerState::ApplyDamage(float Damage)
 	Client_UpdateHP(CurrentHP);
 }
 
+void ABasePlayerState::OnRep_bHasEscaped()
+{
+	LOG_Frame_WARNING(TEXT("[OnRep_bHasEscaped] Replicated value: %s"), bHasEscaped ? TEXT("TRUE") : TEXT("FALSE"));
+
+	// 여기서 UI 업데이트 등도 가능
+	if (bHasEscaped)
+	{
+		LOG_Frame_WARNING(TEXT("탈출 성공 상태 클라이언트 반영됨!"));
+	}
+}
+
+void ABasePlayerState::MarkAsEscaped()
+{
+	bHasEscaped = true;
+}
+
 void ABasePlayerState::OnRep_CurrentState()
 {
 
@@ -198,7 +207,6 @@ void ABasePlayerState::SetPlayerMovementSetting(float _WalkForwardSpeed, float _
 	}
 }
 
-
 void ABasePlayerState::CopyProperties(APlayerState* PlayerState)
 {
 	Super::CopyProperties(PlayerState);
@@ -224,5 +232,6 @@ void ABasePlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME(ABasePlayerState, TotalExp);
 	DOREPLIFETIME(ABasePlayerState, CurrentState);
 	DOREPLIFETIME(ABasePlayerState, AquiredItemIDs);
+	DOREPLIFETIME(ABasePlayerState, CollectedResources);
 
 }

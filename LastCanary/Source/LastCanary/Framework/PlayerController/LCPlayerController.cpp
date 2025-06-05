@@ -1,6 +1,6 @@
 ﻿#include "Framework/PlayerController/LCPlayerController.h"
 
-#include "Framework/GameMode/BaseGameMode.h"
+#include "Framework/GameMode/LCGameMode.h"
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Framework/Manager/LCCheatManager.h"
@@ -11,6 +11,7 @@
 
 #include "Blueprint/UserWidget.h"
 #include "UI/Manager/LCUIManager.h"
+#include "LastCanary.h"
 
 ALCPlayerController::ALCPlayerController()
 {
@@ -30,19 +31,14 @@ void ALCPlayerController::BeginPlay()
         }
     }
 
-    Login();
 }
 
-void ALCPlayerController::Login()
-{
-
-}
 
 void ALCPlayerController::Server_SetPlayerInfo_Implementation(const FSessionPlayerInfo& PlayerInfo)
 {
     if (UWorld* World = GetWorld())
     {
-        if (ABaseGameMode* LCGM = Cast<ABaseGameMode>(World->GetAuthGameMode()))
+        if (ALCGameMode* LCGM = Cast<ALCGameMode>(World->GetAuthGameMode()))
         {
             LCGM->SetPlayerInfo(PlayerInfo);
         }
@@ -52,6 +48,17 @@ void ALCPlayerController::Server_SetPlayerInfo_Implementation(const FSessionPlay
 void ALCPlayerController::Client_UpdatePlayerList_Implementation(const TArray<FSessionPlayerInfo>& PlayerInfos)
 {
 
+}
+
+void ALCPlayerController::Client_ShowLoading_Implementation()
+{
+    LCUIManager->ShowLoadingLevel();
+}
+
+
+void ALCPlayerController::Client_ReceiveMessageFromGM_Implementation(const FString& Message)
+{
+    LOG_Server_WARNING(TEXT("%s"), *Message);
 }
 
 void ALCPlayerController::ClientReturnToMainMenuWithTextReason_Implementation(const FText& ReturnReason)
@@ -83,7 +90,7 @@ void ALCPlayerController::StartGame(FString SoftPath)
     UE_LOG(LogTemp, Warning, TEXT("Try Start Game!!"));
     if (UWorld* World = GetWorld())
     {
-        if (ABaseGameMode* LCGM = Cast<ABaseGameMode>(World->GetAuthGameMode()))
+        if (ALCGameMode* LCGM = Cast<ALCGameMode>(World->GetAuthGameMode()))
         {
             LCGM->TravelMapBySoftPath(SoftPath);
         }

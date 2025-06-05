@@ -117,7 +117,6 @@ FGameResultData UResultEvaluator::EvaluateResult(
         LOG_Frame_WARNING(TEXT("RankThresholdTable이 설정되지 않았습니다. 기본 랭크 C로 설정됩니다."));
     }
 
-
     // 6. 결과 패킹
     FGameResultData Result;
     Result.CorrectChecklistCount = CorrectCount;
