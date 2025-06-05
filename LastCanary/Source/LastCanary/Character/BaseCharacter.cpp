@@ -185,17 +185,10 @@ void ABaseCharacter::NotifyControllerChanged()
 
 void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo)
 {
-
 	if (Controller && Controller->IsLocalPlayerController())
 	{
 		// 내가 조종 중이라면 → 1인칭 시점
 		Camera->GetCameraView(DeltaTime, ViewInfo);
-		GetMesh()->SetOwnerNoSee(false);
-		if (IsLocallyControlled())
-		{
-			// "head"는 스켈레탈 메시의 머리 본에 해당하는 이름
-			GetMesh()->HideBoneByName(TEXT("head"), EPhysBodyOp::PBO_None);
-		}
 	}
 	else
 	{
@@ -203,11 +196,6 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 		SpectatorCamera->GetCameraView(DeltaTime, ViewInfo);
 		GetMesh()->SetOwnerNoSee(false);
 		GetMesh()->UnHideBoneByName(TEXT("head"));
-		if (IsLocallyControlled())
-		{
-			// "head"는 스켈레탈 메시의 머리 본에 해당하는 이름
-
-		}
 	}
 }
 
@@ -954,10 +942,7 @@ void ABaseCharacter::SetCameraMode(bool bIsFirstPersonView)
 {
 	if (bIsFirstPersonView)
 	{
-		if (IsLocallyControlled())
-		{
-			GetMesh()->HideBoneByName(TEXT("head"), EPhysBodyOp::PBO_None);
-		}
+		GetMesh()->HideBoneByName(TEXT("head"), EPhysBodyOp::PBO_None);
 		SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 		SpringArm->TargetArmLength = 0.0f;
 	}
