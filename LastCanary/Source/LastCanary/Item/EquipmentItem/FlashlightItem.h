@@ -19,7 +19,8 @@ public:
     
 protected:
     virtual void BeginPlay() override;
-    
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
     //-----------------------------------------------------
     // 컴포넌트
     //-----------------------------------------------------
@@ -80,6 +81,10 @@ public:
     /** 배터리 소모 처리 */
     UFUNCTION(BlueprintCallable, Category = "Flashlight|Battery")
     void ConsumeBattery();
+
+    UFUNCTION(Server, Reliable)
+    void Server_SetBatteryDepleted();
+    void Server_SetBatteryDepleted_Implementation();
 
     //-----------------------------------------------------
     // 사운드 효과

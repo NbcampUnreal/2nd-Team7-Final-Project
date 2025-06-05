@@ -30,10 +30,6 @@ public:
 	TSubclassOf<class ALCDroneDelivery> DroneDeliveryClass;
 
 	UFUNCTION(Server, Reliable)
-	void Server_SetReady(bool bIsReady);
-	void Server_SetReady_Implementation(bool bIsReady);
-
-	UFUNCTION(Server, Reliable)
 	void Server_RequestPurchase(const TArray<FItemDropData>& DropList);
 	void Server_RequestPurchase_Implementation(const TArray<FItemDropData>& DropList);
 
@@ -63,4 +59,13 @@ public:
 	UFUNCTION(Client, Reliable)
 	void Client_StartChecklist();
 	void Client_StartChecklist_Implementation();
+
+	UFUNCTION(Server, Reliable)
+	void Server_MarkPlayerAsEscaped();
+	void Server_MarkPlayerAsEscaped_Implementation();
+
+	UFUNCTION(Server, Reliable)
+	void Server_RequestSubmitChecklist(const TArray<FChecklistQuestion>& PlayerAnswers);
+	void Server_RequestSubmitChecklist_Implementation(const TArray<FChecklistQuestion>& PlayerAnswers);
+
 };

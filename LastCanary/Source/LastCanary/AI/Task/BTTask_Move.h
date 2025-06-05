@@ -18,4 +18,10 @@ public:
 protected:
     UPROPERTY(EditAnywhere, Category = "Movement")
     float MyAcceptableRadius = 50.0f;
+
+private:
+    UPROPERTY(EditAnywhere)
+    float SoundTimer = 2.5f;
+
+    float LastSoundTime = 0.0f;
 };

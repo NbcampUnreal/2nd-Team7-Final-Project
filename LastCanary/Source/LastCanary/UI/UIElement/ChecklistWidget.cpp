@@ -1,6 +1,7 @@
 #include "UI/UIElement/ChecklistWidget.h"
 #include "UI/UIObject/ChecklistQuestionEntryWidget.h"
 #include "Framework/Manager/ChecklistManager.h"
+#include "Framework/PlayerController/LCRoomPlayerController.h"
 #include "Components/ScrollBox.h"
 #include "Components/Button.h"
 #include "Algo/AllOf.h"
@@ -112,8 +113,15 @@ void UChecklistWidget::SubmitChecklist()
 
 	if (APlayerController* PC = GetOwningPlayer())
 	{
-		LOG_Frame_WARNING(TEXT("ChecklistWidget - 서버에 제출 요청"));
-		ChecklistManager->Server_SubmitChecklist(PC, Questions); // 결과 계산은 서버에서
+		if (ALCRoomPlayerController* RPC = Cast<ALCRoomPlayerController>(PC))
+		{
+			LOG_Frame_WARNING(TEXT("ChecklistWidget → 컨트롤러 통해 서버에 제출 요청"));
+			RPC->Server_RequestSubmitChecklist(Questions);
+		}
+		else
+		{
+			LOG_Frame_WARNING(TEXT("ChecklistWidget → 컨트롤러 캐스팅 실패"));
+		}
 	}
 
 	PlayRevealAnimation(); // 제출 후 연출
@@ -139,5 +147,5 @@ void UChecklistWidget::PlayRevealAnimation()
 void UChecklistWidget::OnRevealAnimationFinished()
 {
 	LOG_Frame_WARNING(TEXT("ChecklistWidget - RevealAnimationFinished 호출 → 위젯 제거"));
-	RemoveFromParent();  // 끝
+	// RemoveFromParent();  // 끝
 }

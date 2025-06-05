@@ -5,6 +5,7 @@
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Components/SplineComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/PointLightComponent.h"
 #include "TimerManager.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -35,6 +36,9 @@ void ALCDroneDelivery::BeginPlay()
 	{
 		DropBoxMesh->OnComponentHit.AddDynamic(this, &ALCDroneDelivery::OnDropBoxHit);
 	}
+
+	InitializeLights(); 
+
 }
 
 void ALCDroneDelivery::StartDelivery()
@@ -93,6 +97,14 @@ void ALCDroneDelivery::BeginDelivery()
 	ElapsedTime = 0.0f;
 
 	GetWorldTimerManager().SetTimer(
+		LightBlinkTimerHandle,
+		this,
+		&ALCDroneDelivery::ToggleLights,
+		LightBlinkInterval,
+		true
+	);
+
+	GetWorldTimerManager().SetTimer(
 		MoveTimerHandle,
 		this,
 		&ALCDroneDelivery::UpdateLocationOnSpline,
@@ -130,6 +142,8 @@ void ALCDroneDelivery::UpdateLocationOnSpline()
 void ALCDroneDelivery::DropBox()
 {
 	Multicast_PlayDropEffect();
+
+	GetWorldTimerManager().ClearTimer(LightBlinkTimerHandle);
 
 	if (HasAuthority() == true)
 	{
@@ -307,4 +321,22 @@ FName ALCDroneDelivery::FindItemRowNameByID(int32 ItemID)
 
 	LOG_Frame_WARNING(TEXT("[FindItemRowNameByID] Failed to get GameSubsystem"));
 	return NAME_None;
+}
+
+void ALCDroneDelivery::InitializeLights()
+{
+	DroneLights.Empty();
+
+	GetComponents<UPointLightComponent>(DroneLights);
+}
+
+void ALCDroneDelivery::ToggleLights()
+{
+	for (UPointLightComponent* Light : DroneLights)
+	{
+		if (Light)
+		{
+			Light->ToggleVisibility();
+		}
+	}
 }

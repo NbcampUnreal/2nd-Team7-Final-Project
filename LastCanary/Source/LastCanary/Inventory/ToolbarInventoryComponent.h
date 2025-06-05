@@ -68,6 +68,11 @@ public:
 
     FBaseItemSlotData* GetItemDataAtSlot(int32 SlotIndex);
 
+public:
+    /** 장착된 아이템의 내구도를 슬롯에 동기화 */
+    UFUNCTION(BlueprintCallable, Category = "Toolbar|Sync")
+    void SyncEquippedItemDurabilityToSlot();
+
     //-----------------------------------------------------
     // 드랍 기능
     //-----------------------------------------------------
