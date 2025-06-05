@@ -6,6 +6,7 @@
 
 class UImage;
 class UTextBlock;
+class UTexture2D;
 
 UCLASS()
 class LASTCANARY_API ULoadingLevel : public ULCUserWidgetBase
