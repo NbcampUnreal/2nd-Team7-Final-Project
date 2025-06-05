@@ -871,10 +871,16 @@ void AAlsCharacter::RefreshRagdolling(const float DeltaTime)
 		RagdollingState.PullForce = FMath::FInterpTo(RagdollingState.PullForce, PullForce, DeltaTime, InterpolationSpeed);
 
 		const auto HorizontalSpeedSquared{RagdollingState.Velocity.SizeSquared2D()};
+		
+		const auto PullForceBoneName{
+			HorizontalSpeedSquared > FMath::Square(300.0f) ? (GetMesh()->DoesSocketExist(TEXT("spine_05")) ? FName(TEXT("spine_05")) : (UAlsConstants::Spine03BoneName())) : UAlsConstants::PelvisBoneName()
+		};
 
+		/*
 		const auto PullForceBoneName{
 			HorizontalSpeedSquared > FMath::Square(300.0f) ? UAlsConstants::Spine03BoneName() : UAlsConstants::PelvisBoneName()
 		};
+		*/
 
 		auto* PullForceBody{GetMesh()->GetBodyInstance(PullForceBoneName)};
 

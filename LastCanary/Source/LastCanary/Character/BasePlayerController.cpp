@@ -489,13 +489,14 @@ void ABasePlayerController::Input_OnStrafe(const FInputActionValue& ActionValue)
 			if (Input > 0.5f)
 			{
 				SpectateNextPlayer();
+				return;
 			}
 			else
 			{
 				SpectatePreviousPlayer();
+				return;
 			}
 		}
-		return;
 	}
 
 	//나중에 사용으로 빼긴 할 건데 일단 테스트용으로 넣어놔서 아쉽게도 호출이 되는 그런 코드.
@@ -870,35 +871,6 @@ void ABasePlayerController::SetSprintingStateToPlayerState(bool flag)
 	}
 }
 
-void ABasePlayerController::CameraShake()
-{
-	// 새로운 반동량을 기존 값에 누적
-	RecoilStepPitch += 1.5f / RecoilMaxSteps;
-	RecoilStepYaw += FMath::RandRange(-YawRecoilRange, YawRecoilRange) / RecoilMaxSteps;
-
-	// 타이머가 안 돌고 있을 때만 시작
-	if (!GetWorld()->GetTimerManager().IsTimerActive(RecoilTimerHandle))
-	{
-		RecoilStep = 0;
-		GetWorld()->GetTimerManager().SetTimer(RecoilTimerHandle, this, &ABasePlayerController::ApplyRecoilStep, 0.02f, true);
-	}
-}
-
-void ABasePlayerController::ApplyRecoilStep()
-{
-	AddPitchInput(RecoilStepPitch);
-	AddYawInput(RecoilStepYaw);
-
-	RecoilStep++;
-
-	if (RecoilStep >= RecoilMaxSteps)
-	{
-		// 마지막 단계에서 값을 0으로 초기화
-		RecoilStepPitch = 0.0f;
-		RecoilStepYaw = 0.0f;
-		GetWorld()->GetTimerManager().ClearTimer(RecoilTimerHandle);
-	}
-}
 
 void ABasePlayerController::Input_DroneExit()
 {
