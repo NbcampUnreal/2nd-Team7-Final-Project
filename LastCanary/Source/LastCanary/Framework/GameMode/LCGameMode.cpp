@@ -138,6 +138,17 @@ void ALCGameMode::ShowLoading()
 	}
 }
 
+void ALCGameMode::SendMessageToAllPC(const FString& Message)
+{
+	for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
+	{
+		if (ALCPlayerController* PlayerController = Cast<ALCPlayerController>(Iterator->Get()))
+		{
+			PlayerController->Client_ReceiveMessageFromGM(Message);
+		}
+	}
+}
+
 
 void ALCGameMode::SpawnPlayerCharacter(APlayerController* Controller)
 {

@@ -25,27 +25,33 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void KickPlayer(const FSessionPlayerInfo& SessionInfo, const FText& KickReason);
 
-	void UpdatePlayers();
 
 	void SetPlayerInfo(const FSessionPlayerInfo& RequestInfo);
 
-	void ShowLoading();
-
-	UFUNCTION(BlueprintCallable, Category = "Session")
-	void TravelMapBySoftPath(FString SoftPath);
-	UFUNCTION(BlueprintCallable, Category = "Session")
-	void TravelMapByPath(FString Path);
+	void UpdatePlayers();
 
 	bool IsAllPlayersReady() const;
 
-protected:
+private:
 	TArray<APlayerController*> AllPlayerControllers;
 	TArray<FSessionPlayerInfo> SessionPlayerInfos;
 
 	void CachingNewPlayer(APlayerController* NewPlayer);
 	void RemoveCachedPlayer(APlayerController* PC);
 
-private:
 	int MaxPlayerNum = 4;
 	int CurrentPlayerNum = 0;
+
+public:
+	// Server Travel Logic
+	UFUNCTION(BlueprintCallable, Category = "Session")
+	void TravelMapBySoftPath(FString SoftPath);
+	UFUNCTION(BlueprintCallable, Category = "Session")
+	void TravelMapByPath(FString Path);
+
+	void ShowLoading();
+
+protected:
+	void SendMessageToAllPC(const FString& Message);
+
 };

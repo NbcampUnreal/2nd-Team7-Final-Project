@@ -56,6 +56,11 @@ void ALCPlayerController::Client_ShowLoading_Implementation()
 }
 
 
+void ALCPlayerController::Client_ReceiveMessageFromGM_Implementation(const FString& Message)
+{
+    LOG_Server_WARNING(TEXT("%s"), *Message);
+}
+
 void ALCPlayerController::ClientReturnToMainMenuWithTextReason_Implementation(const FText& ReturnReason)
 {
     Super::ClientReturnToMainMenuWithTextReason_Implementation(ReturnReason);
