@@ -26,6 +26,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	USoundClass* EffectSoundClass;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	USoundClass* MyMicSoundClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	USoundClass* VoiceSoundClass;
