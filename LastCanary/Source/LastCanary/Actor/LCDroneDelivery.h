@@ -8,6 +8,7 @@
 class USplineComponent;
 class ALCDronePath;
 class UStaticMeshComponent;
+class UPointLightComponent;
 UCLASS()
 class LASTCANARY_API ALCDroneDelivery : public AActor
 {
@@ -113,4 +114,17 @@ private:
     class UItemSpawnerComponent* ItemSpawner;
 
     FName FindItemRowNameByID(int32 ItemID);
+
+public:
+    // 라이트 깜빡임 관련
+    UPROPERTY(EditAnywhere)
+    float LightBlinkInterval = 0.2f;
+
+    FTimerHandle LightBlinkTimerHandle;
+
+    TArray<UPointLightComponent*> DroneLights;
+
+    void ToggleLights();
+    void InitializeLights();
+
 };

@@ -147,5 +147,5 @@ void UChecklistWidget::PlayRevealAnimation()
 void UChecklistWidget::OnRevealAnimationFinished()
 {
 	LOG_Frame_WARNING(TEXT("ChecklistWidget - RevealAnimationFinished 호출 → 위젯 제거"));
-	RemoveFromParent();  // 끝
+	// RemoveFromParent();  // 끝
 }

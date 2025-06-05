@@ -198,4 +198,7 @@ public:
 	TArray<int32> AquiredItemIDs;
 
 	virtual void CopyProperties(APlayerState* PlayerState) override;
+
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	TArray<int32> CollectedResources;
 };
