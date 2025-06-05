@@ -12,9 +12,13 @@ void ALCTitlePlayerController::BeginPlay()
 	SetInputMode(InputMode);
 	bShowMouseCursor = true;
 
-	if (IsValid(LCUIManager))
+	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 	{
-		LCUIManager->ShowTitleMenu();
-		LCUIManager->SetUIContext(ELCUIContext::Title);
+		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+		{
+			UIManager->InitUIManager(this);
+			UIManager->ShowTitleMenu();
+			UIManager->SetUIContext(ELCUIContext::Title);
+		}
 	}
 }
