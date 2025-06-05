@@ -1,4 +1,4 @@
-﻿#include "Framework/GameMode/BaseGameMode.h"
+﻿#include "Framework/GameMode/LCGameMode.h"
 
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "GameFramework/PlayerStart.h"
@@ -6,13 +6,13 @@
 #include "LastCanary.h"
 #include "GameFramework/GameSession.h"
 
-void ABaseGameMode::BeginPlay()
+void ALCGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 
 }
 
-void ABaseGameMode::PostLogin(APlayerController* NewPlayer)
+void ALCGameMode::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
 
@@ -25,7 +25,7 @@ void ABaseGameMode::PostLogin(APlayerController* NewPlayer)
 	CachingNewPlayer(NewPlayer);
 }
 
-void ABaseGameMode::Logout(AController* Exiting)
+void ALCGameMode::Logout(AController* Exiting)
 {
 	Super::Logout(Exiting);
 
@@ -35,7 +35,7 @@ void ABaseGameMode::Logout(AController* Exiting)
 	}
 }
 
-void ABaseGameMode::KickPlayer(const FSessionPlayerInfo& SessionInfo, const FText& KickReason)
+void ALCGameMode::KickPlayer(const FSessionPlayerInfo& SessionInfo, const FText& KickReason)
 {
 	APlayerController* TargetPC = nullptr;
 	for (APlayerController* PC : AllPlayerControllers)
@@ -63,7 +63,7 @@ void ABaseGameMode::KickPlayer(const FSessionPlayerInfo& SessionInfo, const FTex
 	//RemoveCachedPlayer(TargetPC);
 }
 
-void ABaseGameMode::CachingNewPlayer(APlayerController* NewPlayer)
+void ALCGameMode::CachingNewPlayer(APlayerController* NewPlayer)
 {
 	CurrentPlayerNum++;
 
@@ -80,7 +80,7 @@ void ABaseGameMode::CachingNewPlayer(APlayerController* NewPlayer)
 	UpdatePlayers();
 }
 
-void ABaseGameMode::RemoveCachedPlayer(APlayerController* PC)
+void ALCGameMode::RemoveCachedPlayer(APlayerController* PC)
 {
 	CurrentPlayerNum--;
 
@@ -97,7 +97,7 @@ void ABaseGameMode::RemoveCachedPlayer(APlayerController* PC)
 	UpdatePlayers();
 }
 
-void ABaseGameMode::UpdatePlayers()
+void ALCGameMode::UpdatePlayers()
 {
 	for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
 	{
@@ -108,7 +108,7 @@ void ABaseGameMode::UpdatePlayers()
 	}
 }
 
-void ABaseGameMode::SetPlayerInfo(const FSessionPlayerInfo& RequestInfo)
+void ALCGameMode::SetPlayerInfo(const FSessionPlayerInfo& RequestInfo)
 {
 	for (FSessionPlayerInfo& Info : SessionPlayerInfos)
 	{
@@ -127,7 +127,7 @@ void ABaseGameMode::SetPlayerInfo(const FSessionPlayerInfo& RequestInfo)
 	UpdatePlayers();
 }
 
-void ABaseGameMode::ShowLoading()
+void ALCGameMode::ShowLoading()
 {
 	for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
 	{
@@ -138,13 +138,24 @@ void ABaseGameMode::ShowLoading()
 	}
 }
 
+void ALCGameMode::SendMessageToAllPC(const FString& Message)
+{
+	for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
+	{
+		if (ALCPlayerController* PlayerController = Cast<ALCPlayerController>(Iterator->Get()))
+		{
+			PlayerController->Client_ReceiveMessageFromGM(Message);
+		}
+	}
+}
 
-void ABaseGameMode::SpawnPlayerCharacter(APlayerController* Controller)
+
+void ALCGameMode::SpawnPlayerCharacter(APlayerController* Controller)
 {
 	// 하위 게임모드에서 구현
 }
 
-void ABaseGameMode::PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
+void ALCGameMode::PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
 {
 	Super::PreLogin(Options, Address, UniqueId, ErrorMessage);
 
@@ -155,7 +166,7 @@ void ABaseGameMode::PreLogin(const FString& Options, const FString& Address, con
 }
 
 
-void ABaseGameMode::TravelMapBySoftPath(FString SoftPath)
+void ALCGameMode::TravelMapBySoftPath(FString SoftPath)
 {
 	// 1) SoftObjectPath: "/Game/.../MainLevel.MainLevel"
 
@@ -169,7 +180,7 @@ void ABaseGameMode::TravelMapBySoftPath(FString SoftPath)
 	GetWorld()->ServerTravel(TravelURL, true);
 }
 
-void ABaseGameMode::TravelMapByPath(FString Path)
+void ALCGameMode::TravelMapByPath(FString Path)
 {
 	const FString TravelURL = Path + TEXT("?listen");
 	UE_LOG(LogTemp, Log, TEXT("Try Server Travel By Path. Traveling to: %s"), *TravelURL);
@@ -177,7 +188,7 @@ void ABaseGameMode::TravelMapByPath(FString Path)
 	GetWorld()->ServerTravel(TravelURL, true);
 }
 
-bool ABaseGameMode::IsAllPlayersReady() const
+bool ALCGameMode::IsAllPlayersReady() const
 {
 	if (SessionPlayerInfos.Num() == 0)
 		return false;

@@ -1,14 +1,13 @@
-﻿#include "Framework/GameMode/LCRoomGameMode.h"
-#include "Framework/PlayerController/LCRoomPlayerController.h"
+﻿#include "Framework/GameMode/LCInGameModeBase.h"
+
 #include "Framework/GameState/LCGameState.h"
 #include "Framework/PlayerState/LCPlayerState.h"
 #include "Framework/Manager/ChecklistManager.h"
 
 #include "Kismet/GameplayStatics.h"
 
-ALCRoomGameMode::ALCRoomGameMode()
+ALCInGameModeBase::ALCInGameModeBase()
 {
-	//SelectedMap = EMapType::LuinsMap;
 	static ConstructorHelpers::FClassFinder<AChecklistManager> ChecklistBPClass(TEXT("/Game/_LastCanary/Blueprint/Framework/Manager/BP_ChecklistManager.BP_ChecklistManager"));
 	if (ChecklistBPClass.Succeeded())
 	{
@@ -16,7 +15,7 @@ ALCRoomGameMode::ALCRoomGameMode()
 	}
 }
 
-void ALCRoomGameMode::BeginPlay()
+void ALCInGameModeBase::BeginPlay()
 {
 	Super::BeginPlay();
 
@@ -50,7 +49,7 @@ void ALCRoomGameMode::BeginPlay()
 	}
 }
 
-void ALCRoomGameMode::PostLogin(APlayerController* NewPlayer)
+void ALCInGameModeBase::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
 
@@ -61,13 +60,7 @@ void ALCRoomGameMode::PostLogin(APlayerController* NewPlayer)
 	}
 }
 
-APlayerController* ALCRoomGameMode::Login(UPlayer* NewPlayer, ENetRole InRemoteRole, const FString& Portal, const FString& Options, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
-{
-	return Super::Login(NewPlayer, InRemoteRole, Portal, Options, UniqueId, ErrorMessage);
-
-}
-
-void ALCRoomGameMode::Logout(AController* Exiting)
+void ALCInGameModeBase::Logout(AController* Exiting)
 {
 	Super::Logout(Exiting);
 

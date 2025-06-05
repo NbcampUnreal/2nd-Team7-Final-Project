@@ -2,21 +2,20 @@
 
 #include "CoreMinimal.h"
 #include "Framework/GameMode/LCGameMode.h"
-#include "GameFramework/GameModeBase.h"
-#include "LCRoomGameMode.generated.h"
+#include "LCInGameModeBase.generated.h"
 
 class AChecklistManager;
+
 UCLASS()
-class LASTCANARY_API ALCRoomGameMode : public ALCGameMode
+class LASTCANARY_API ALCInGameModeBase : public ALCGameMode
 {
 	GENERATED_BODY()
 	
 public:
-	ALCRoomGameMode();
+	ALCInGameModeBase();
 
 	virtual void BeginPlay() override;
 	virtual void PostLogin(APlayerController* NewPlayer) override;
-	virtual APlayerController* Login(UPlayer* NewPlayer, ENetRole InRemoteRole, const FString& Portal, const FString& Options, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage) override;
 	virtual void Logout(AController* Exiting) override;
 
 protected:
