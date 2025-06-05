@@ -138,12 +138,10 @@ void ABaseBossMonsterCharacter::OnRep_IsBerserk()
     if (bIsBerserk)
     {
         UE_LOG(LogTemp, Warning, TEXT("[Berserk] 클라이언트: Berserk 시작"));
-        // → 예: 파티클, 머티리얼 색 변경, 사운드 재생 등 추가
     }
     else
     {
         UE_LOG(LogTemp, Warning, TEXT("[Berserk] 클라이언트: Berserk 종료"));
-        // → 예: 이펙트 해제, 머티리얼 복구 등 추가
     }
 }
 
