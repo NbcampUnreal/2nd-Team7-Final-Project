@@ -32,6 +32,10 @@ void UOptionWidget::NativeConstruct()
 	{
 		KeySettingTabButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnKeySettingTabButtonClicked);
 	}
+	if (VoiceOptionTabButton)
+	{
+		VoiceOptionTabButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnKeyVoiceOptionTabButtonClicked);
+	}
 	if (OptionSwitcher)
 	{
 		OnGeneralTabButtonClicked();
@@ -56,6 +60,10 @@ void UOptionWidget::NativeDestruct()
 	if (KeySettingTabButton)
 	{
 		KeySettingTabButton->OnClicked.RemoveDynamic(this, &UOptionWidget::OnKeySettingTabButtonClicked);
+	}
+	if (VoiceOptionTabButton)
+	{
+		VoiceOptionTabButton->OnClicked.RemoveDynamic(this, &UOptionWidget::OnKeyVoiceOptionTabButtonClicked);
 	}
 }
 
@@ -103,6 +111,20 @@ void UOptionWidget::OnKeySettingTabButtonClicked()
 	//SetTabButtonStyle(GeneralTabButton, false);
 	//SetTabButtonStyle(KeySettingTabButton, true);
 
+}
+
+void UOptionWidget::OnKeyVoiceOptionTabButtonClicked()
+{
+	if (OptionSwitcher)
+	{
+		OptionSwitcher->SetActiveWidgetIndex(2);
+	}
+	else
+	{
+		LOG_Frame_ERROR(TEXT("Voice Option Widget is nullptr"));
+	}
+	//SetTabButtonStyle(GeneralTabButton, false);
+	//SetTabButtonStyle(KeySettingTabButton, false);
 }
 
 //void UOptionWidget::SetTabButtonStyle(UButton* Button, bool bIsSelected)

@@ -20,8 +20,8 @@ void UKeySettingWidget::NativeConstruct()
 	InitRow(TEXT("Move Backward"), IA_MoveBackward, ActionLabelMoveBackward, CurrentKeyMoveBackward, SelectorMoveBackward);
 	InitRow(TEXT("Move Left"), IA_MoveLeft, ActionLabelMoveLeft, CurrentKeyMoveLeft, SelectorMoveLeft);
 	InitRow(TEXT("Move Right"), IA_MoveRight, ActionLabelMoveRight, CurrentKeyMoveRight, SelectorMoveRight);
-	InitRow(TEXT("Strafe Left"), IA_StrafeLeft, ActionLabelStrafeLeft, CurrentKeyStrafeLeft, SelectorStrafeLeft);
-	InitRow(TEXT("Strafe Right"), IA_StrafeRight, ActionLabelStrafeRight, CurrentKeyStrafeRight, SelectorStrafeRight);
+	//InitRow(TEXT("Strafe Left"), IA_StrafeLeft, ActionLabelStrafeLeft, CurrentKeyStrafeLeft, SelectorStrafeLeft);
+	//InitRow(TEXT("Strafe Right"), IA_StrafeRight, ActionLabelStrafeRight, CurrentKeyStrafeRight, SelectorStrafeRight);
 	InitRow(TEXT("Walk"), IA_Walk, ActionLabelWalk, CurrentKeyWalk, SelectorWalk);
 	InitRow(TEXT("Sprint"), IA_Sprint, ActionLabelSprint, CurrentKeySprint, SelectorSprint);
 	InitRow(TEXT("Jump"), IA_Jump, ActionLabelJump, CurrentKeyJump, SelectorJump);
@@ -42,8 +42,8 @@ void UKeySettingWidget::NativeConstruct()
 	SelectorMoveBackward->OnKeySelected.AddUniqueDynamic(this, &UKeySettingWidget::OnKeySelectedMoveBackward);
 	SelectorMoveLeft->OnKeySelected.AddUniqueDynamic(this, &UKeySettingWidget::OnKeySelectedMoveLeft);
 	SelectorMoveRight->OnKeySelected.AddUniqueDynamic(this, &UKeySettingWidget::OnKeySelectedMoveRight);
-	SelectorStrafeLeft->OnKeySelected.AddUniqueDynamic(this, &UKeySettingWidget::OnKeySelectedStrafeLeft);
-	SelectorStrafeRight->OnKeySelected.AddUniqueDynamic(this, &UKeySettingWidget::OnKeySelectedStrafeRight);
+	//SelectorStrafeLeft->OnKeySelected.AddUniqueDynamic(this, &UKeySettingWidget::OnKeySelectedStrafeLeft);
+	//SelectorStrafeRight->OnKeySelected.AddUniqueDynamic(this, &UKeySettingWidget::OnKeySelectedStrafeRight);
 	SelectorWalk->OnKeySelected.AddUniqueDynamic(this, &UKeySettingWidget::OnKeySelectedWalk);
 	SelectorSprint->OnKeySelected.AddUniqueDynamic(this, &UKeySettingWidget::OnKeySelectedSprint);
 	SelectorJump->OnKeySelected.AddUniqueDynamic(this, &UKeySettingWidget::OnKeySelectedJump);
@@ -151,30 +151,30 @@ void UKeySettingWidget::OnKeySelectedMoveRight(FInputChord SelectedKey)
 	CurrentKeyMoveRight->SetText(FText::FromName(SelectedKey.Key.GetFName()));
 	UpdateMappings("MoveRight", PressedKey);
 }
-void UKeySettingWidget::OnKeySelectedStrafeLeft(FInputChord SelectedKey)
-{
-	if (!SelectedKey.Key.IsValid())
-	{
-		UE_LOG(LogTemp, Warning, TEXT("InValid Selected Key."));
-		return;
-	}
-
-	FKey PressedKey = SelectedKey.Key;
-	CurrentKeyStrafeLeft->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("DroneStrafeLeft_Keyboard", PressedKey);
-}
-void UKeySettingWidget::OnKeySelectedStrafeRight(FInputChord SelectedKey)
-{
-	if (!SelectedKey.Key.IsValid())
-	{
-		UE_LOG(LogTemp, Warning, TEXT("InValid Selected Key."));
-		return;
-	}
-
-	FKey PressedKey = SelectedKey.Key;
-	CurrentKeyStrafeRight->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("DroneStrafeRight_Keyboard", PressedKey);
-}
+//void UKeySettingWidget::OnKeySelectedStrafeLeft(FInputChord SelectedKey)
+//{
+//	if (!SelectedKey.Key.IsValid())
+//	{
+//		UE_LOG(LogTemp, Warning, TEXT("InValid Selected Key."));
+//		return;
+//	}
+//
+//	FKey PressedKey = SelectedKey.Key;
+//	CurrentKeyStrafeLeft->SetText(FText::FromName(SelectedKey.Key.GetFName()));
+//	UpdateMappings("DroneStrafeLeft_Keyboard", PressedKey);
+//}
+//void UKeySettingWidget::OnKeySelectedStrafeRight(FInputChord SelectedKey)
+//{
+//	if (!SelectedKey.Key.IsValid())
+//	{
+//		UE_LOG(LogTemp, Warning, TEXT("InValid Selected Key."));
+//		return;
+//	}
+//
+//	FKey PressedKey = SelectedKey.Key;
+//	CurrentKeyStrafeRight->SetText(FText::FromName(SelectedKey.Key.GetFName()));
+//	UpdateMappings("DroneStrafeRight_Keyboard", PressedKey);
+//}
 void UKeySettingWidget::OnKeySelectedWalk(FInputChord SelectedKey)
 {
 	if (!SelectedKey.Key.IsValid())
@@ -385,7 +385,7 @@ void UKeySettingWidget::RefreshMappings(const TArray<FEnhancedActionKeyMapping>&
 			SelectorMoveRight->SetSelectedKey(Mapping.Key);
 		}
 
-		if (MappingName.EqualTo(FText::FromString("DroneStrafeLeft_Keyboard")) && SelectorStrafeLeft)
+		/*if (MappingName.EqualTo(FText::FromString("DroneStrafeLeft_Keyboard")) && SelectorStrafeLeft)
 		{
 			SelectorStrafeLeft->SetSelectedKey(Mapping.Key);
 		}
@@ -393,7 +393,7 @@ void UKeySettingWidget::RefreshMappings(const TArray<FEnhancedActionKeyMapping>&
 		if (MappingName.EqualTo(FText::FromString("DroneStrafeRight_Keyboard")) && SelectorStrafeRight)
 		{
 			SelectorStrafeRight->SetSelectedKey(Mapping.Key);
-		}
+		}*/
 
 		if (MappingName.EqualTo(FText::FromString("Jump_Keyboard")) && SelectorJump)
 		{
