@@ -288,7 +288,7 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
         {
             CachedOwnerCharacter->SetEquipped(false); // 빈 손 상태
         }
-
+        
         OnInventoryUpdated.Broadcast();
         return;
     }
@@ -341,56 +341,9 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
         {
             TargetSocket = TEXT("Rifle");
         }
-
-        EquippedItemComponent->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
-
-        FAttachmentTransformRules AttachRules(
-            EAttachmentRule::SnapToTarget,
-            EAttachmentRule::SnapToTarget,
-            EAttachmentRule::KeepWorld,
-            false
-        );
-
-        EquippedItemComponent->AttachToComponent(
-            CachedOwnerCharacter->GetMesh(),
-            AttachRules,
-            TargetSocket
-        );
-
-        EquippedItemComponent->SetChildActorClass(ItemData->ItemActorClass);
-
-        AItemBase* EquippedItem = Cast<AItemBase>(EquippedItemComponent->GetChildActor());
-        if (!EquippedItem)
-        {
-            LOG_Item_ERROR(TEXT("[ToolbarInventoryComponent::EquipItemAtSlot] ChildActor 생성 실패 또는 Cast 실패"));
-            return;
-        }
-
-        EquippedItem->SetOwner(GetOwner());
-        if (APawn* OwnerPawn = Cast<APawn>(GetOwner()))
-        {
-            EquippedItem->SetInstigator(OwnerPawn);
-        }
-
-        EquippedItem->ItemRowName = SlotData->ItemRowName;
-        EquippedItem->Quantity = SlotData->Quantity;
-        EquippedItem->Durability = SlotData->Durability;
-        EquippedItem->SetActorEnableCollision(false);
-
-        EquippedItem->ApplyItemDataFromTable();
-
-        if (AGunBase* Gun = Cast<AGunBase>(EquippedItem))
-        {
-            Gun->ApplyGunDataFromDataTable();
-        }
-
-        if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem))
-        {
-            EquipmentItem->SetEquipped(true);
-        }
-
-        EquippedItem->ForceNetUpdate();
-
+        
+        SetupEquippedItem(EquippedItemComponent, CachedOwnerCharacter->GetMesh(), TargetSocket, ItemData, SlotData);
+            
         ItemSlots[SlotIndex].bIsEquipped = true;
         CurrentEquippedSlotIndex = SlotIndex;
     }
@@ -558,6 +511,61 @@ int32 UToolbarInventoryComponent::GetCurrentEquippedSlotIndex() const
     return CurrentEquippedSlotIndex;
 }
 
+void UToolbarInventoryComponent::SetupEquippedItem(UChildActorComponent* ItemComponent, USkeletalMeshComponent* TargetMesh, FName SocketName, FItemDataRow* ItemData, FBaseItemSlotData* SlotData)
+{
+    if (!ItemComponent || !TargetMesh || !ItemData || !SlotData)
+    {
+        return;
+    }
+
+    // 기존 아이템 해제
+    ItemComponent->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+
+    // 새 소켓에 연결
+    FAttachmentTransformRules AttachRules(
+        EAttachmentRule::SnapToTarget,
+        EAttachmentRule::SnapToTarget,
+        EAttachmentRule::KeepWorld,
+        false
+    );
+
+    ItemComponent->AttachToComponent(TargetMesh, AttachRules, SocketName);
+    ItemComponent->SetChildActorClass(ItemData->ItemActorClass);
+
+    // 아이템 설정
+    AItemBase* EquippedItem = Cast<AItemBase>(ItemComponent->GetChildActor());
+    if (!EquippedItem)
+    {
+        LOG_Item_ERROR(TEXT("[SetupEquippedItem] ChildActor 생성 실패"));
+        return;
+    }
+
+    EquippedItem->SetOwner(GetOwner());
+    if (APawn* OwnerPawn = Cast<APawn>(GetOwner()))
+    {
+        EquippedItem->SetInstigator(OwnerPawn);
+    }
+
+    EquippedItem->ItemRowName = SlotData->ItemRowName;
+    EquippedItem->Quantity = SlotData->Quantity;
+    EquippedItem->Durability = SlotData->Durability;
+    EquippedItem->SetActorEnableCollision(false);
+
+    EquippedItem->ApplyItemDataFromTable();
+
+    if (AGunBase* Gun = Cast<AGunBase>(EquippedItem))
+    {
+        Gun->ApplyGunDataFromDataTable();
+    }
+
+    if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem))
+    {
+        EquipmentItem->SetEquipped(true);
+    }
+
+    EquippedItem->ForceNetUpdate();
+}
+
 bool UToolbarInventoryComponent::CanAddItem(AItemBase* ItemActor)
 {
     if (!ItemActor)
@@ -720,6 +728,11 @@ void UToolbarInventoryComponent::PostAddProcess()
     OnInventoryUpdated.Broadcast();
 }
 
+void UToolbarInventoryComponent::Server_DropEquippedItemAtSlot_Implementation(int32 SlotIndex, int32 Quantity)
+{
+    Internal_DropEquippedItemAtSlot(SlotIndex, Quantity);
+}
+
 bool UToolbarInventoryComponent::DropCurrentEquippedItem()
 {
     if (GetOwner() && GetOwner()->HasAuthority())
@@ -742,20 +755,14 @@ bool UToolbarInventoryComponent::TryDropItemAtSlot(int32 SlotIndex, int32 Quanti
 {
     if (SlotIndex == CurrentEquippedSlotIndex && CurrentEquippedSlotIndex >= 0)
     {
-        LOG_Item_WARNING(TEXT("[TryDropItemAtSlot] 장착된 아이템 드롭: 슬롯 %d"), SlotIndex);
-
-        // ⭐ 클라이언트에서는 부모 클래스의 서버 RPC를 통해 처리
         if (!GetOwner() || !GetOwner()->HasAuthority())
         {
-            LOG_Item_WARNING(TEXT("[TryDropItemAtSlot] 클라이언트에서 서버 RPC 호출"));
-            return Super::TryDropItemAtSlot(SlotIndex, Quantity); // ⭐ 부모 클래스 호출
+            Server_DropEquippedItemAtSlot(SlotIndex, Quantity);
+            return true;
         }
-
-        // ⭐ 서버에서만 장착 해제 처리 후 드롭
         return Internal_DropEquippedItemAtSlot(SlotIndex, Quantity);
     }
 
-    // 장착되지 않은 아이템은 일반 드롭
     return Super::TryDropItemAtSlot(SlotIndex, Quantity);
 }
 

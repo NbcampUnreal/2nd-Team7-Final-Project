@@ -16,26 +16,13 @@ void ABaseGameMode::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
 
-	if (const auto CastedGameInstance = Cast<ULCGameInstance>(GetGameInstance()))
+	if (CurrentPlayerNum >= MaxPlayerNum)
 	{
-		//SpawnPlayerCharacter(NewPlayer);
-
-		AllPlayerControllers.Add(NewPlayer);
-
-		FSessionPlayerInfo SessionInfo;
-		if (APlayerState* PS = NewPlayer->PlayerState)
-		{
-			SessionInfo.PlayerName = PS->GetPlayerName();
-			SessionInfo.bIsPlayerReady = false;
-			SessionPlayerInfos.Add(SessionInfo);
-		}
-
-		UpdatePlayers();
+		GameSession->KickPlayer(NewPlayer, FText::FromString("Room Is Full !!"));
+		return;
 	}
-	else
-	{
-		UE_LOG(LogTemp, Error, TEXT("ABaseGameMode::PostLogin : GameInstance Cast Failed."))
-	}
+
+	CachingNewPlayer(NewPlayer);
 }
 
 void ABaseGameMode::Logout(AController* Exiting)
@@ -44,21 +31,11 @@ void ABaseGameMode::Logout(AController* Exiting)
 
 	if (APlayerController* PC = Cast<APlayerController>(Exiting))
 	{
-		AllPlayerControllers.Remove(PC);
-
-		FString LeavingPlayerName = PC->PlayerState->GetPlayerName();
-		SessionPlayerInfos.RemoveAll(
-			[&](const FSessionPlayerInfo& Info)
-			{
-				return Info.PlayerName == LeavingPlayerName;
-			}
-		);
+		RemoveCachedPlayer(PC);
 	}
-
-	UpdatePlayers();
 }
 
-void ABaseGameMode::KickPlayer(const FSessionPlayerInfo& SessionInfo)
+void ABaseGameMode::KickPlayer(const FSessionPlayerInfo& SessionInfo, const FText& KickReason)
 {
 	APlayerController* TargetPC = nullptr;
 	for (APlayerController* PC : AllPlayerControllers)
@@ -81,15 +58,39 @@ void ABaseGameMode::KickPlayer(const FSessionPlayerInfo& SessionInfo)
 		return;
 	}
 
-	const FText KickReason = FText::FromString(TEXT("호스트에 의해 강퇴되었습니다."));
 	GameSession->KickPlayer(TargetPC, KickReason);
 
-	AllPlayerControllers.Remove(TargetPC);
+	//RemoveCachedPlayer(TargetPC);
+}
 
-	SessionPlayerInfos.RemoveAll(
+void ABaseGameMode::CachingNewPlayer(APlayerController* NewPlayer)
+{
+	CurrentPlayerNum++;
+
+	AllPlayerControllers.Add(NewPlayer);
+
+	if (APlayerState* PS = NewPlayer->PlayerState)
+	{
+		FSessionPlayerInfo SessionInfo;
+		SessionInfo.PlayerName = PS->GetPlayerName();
+		SessionInfo.bIsPlayerReady = false;
+		SessionPlayerInfos.Add(SessionInfo);
+	}
+
+	UpdatePlayers();
+}
+
+void ABaseGameMode::RemoveCachedPlayer(APlayerController* PC)
+{
+	CurrentPlayerNum--;
+
+	AllPlayerControllers.Remove(PC);
+
+	SessionPlayerInfos.RemoveAll
+	(
 		[&](const FSessionPlayerInfo& Info)
 		{
-			return Info.PlayerName == SessionInfo.PlayerName;
+			return Info.PlayerName == PC->PlayerState->GetPlayerName();
 		}
 	);
 
@@ -107,7 +108,7 @@ void ABaseGameMode::UpdatePlayers()
 	}
 }
 
-void ABaseGameMode::SetPlayerInfo(FSessionPlayerInfo RequestInfo)
+void ABaseGameMode::SetPlayerInfo(const FSessionPlayerInfo& RequestInfo)
 {
 	for (FSessionPlayerInfo& Info : SessionPlayerInfos)
 	{
@@ -132,6 +133,16 @@ void ABaseGameMode::SpawnPlayerCharacter(APlayerController* Controller)
 	// 하위 게임모드에서 구현
 }
 
+void ABaseGameMode::PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
+{
+	Super::PreLogin(Options, Address, UniqueId, ErrorMessage);
+
+	if (CurrentPlayerNum >= MaxPlayerNum)
+	{
+		ErrorMessage = TEXT("Room Is Full !!");
+	}
+}
+
 
 void ABaseGameMode::TravelMapBySoftPath(FString SoftPath)
 {
@@ -153,4 +164,19 @@ void ABaseGameMode::TravelMapByPath(FString Path)
 	UE_LOG(LogTemp, Log, TEXT("Try Server Travel By Path. Traveling to: %s"), *TravelURL);
 
 	GetWorld()->ServerTravel(TravelURL, true);
+}
+
+bool ABaseGameMode::IsAllPlayersReady() const
+{
+	if (SessionPlayerInfos.Num() == 0)
+		return false;
+
+	for (const FSessionPlayerInfo& Info : SessionPlayerInfos)
+	{
+		if (!Info.bIsPlayerReady)
+		{
+			return false;
+		}
+	}
+	return true;
 }

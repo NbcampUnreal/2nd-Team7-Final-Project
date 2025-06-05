@@ -11,6 +11,7 @@
 
 #include "Blueprint/UserWidget.h"
 #include "UI/Manager/LCUIManager.h"
+#include "LastCanary.h"
 
 ALCPlayerController::ALCPlayerController()
 {
@@ -54,6 +55,21 @@ void ALCPlayerController::Client_UpdatePlayerList_Implementation(const TArray<FS
 
 }
 
+//void ALCPlayerController::ClientWasKicked_Implemetnation(const FText& KickReason)
+//{
+//    //LOG_Server_WARNING(KickReason);
+//
+//    IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get();
+//    if (OnlineSub)
+//    {
+//        IOnlineSessionPtr Sessions = OnlineSub->GetSessionInterface();
+//        if (Sessions.IsValid())
+//        {
+//            Sessions->DestroySession(NAME_GameSession);
+//        }
+//    }
+//}
+
 void ALCPlayerController::ClientReturnToMainMenuWithTextReason_Implementation(const FText& ReturnReason)
 {
     Super::ClientReturnToMainMenuWithTextReason_Implementation(ReturnReason);
@@ -75,11 +91,6 @@ void ALCPlayerController::ClientWasKicked_Implementation_Implementation(const FT
     // BluePrint 에서 DestroySession => 새로운 세션에 Join하기 위해
 }
 
-
-void ALCPlayerController::Client_UpdatePlayers_Implementation()
-{
-
-}
 
 void ALCPlayerController::StartGame(FString SoftPath)
 {

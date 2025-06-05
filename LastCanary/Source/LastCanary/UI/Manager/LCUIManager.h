@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
+#include "DataType/GameResultData.h"
 #include "Actor/ShopInteractor.h"
 #include "Actor/MapSelectInteractor.h"
 #include "LCUIManager.generated.h"
@@ -12,7 +13,6 @@
 class ULCUIManagerSettings;
 class UTitleMenu;
 class ULobbyMenu;
-class UEnterPasswordWidget;
 class UOptionWidget;
 class UInGameHUD;
 class UShopWidget;
@@ -23,6 +23,9 @@ class UPopupNotice;
 class ULoadingLevel;
 class UInventoryMainWidget;
 class UPauseMenu;
+class UConfirmPopup;
+class UChecklistWidget;
+class UResultMenu;
 
 UENUM(BlueprintType)
 enum class ELCUIContext : uint8
@@ -47,7 +50,6 @@ public:
 	void ShowTitleMenu();
 	void ShowLobbyMenu();
 	void ShowRoomListMenu();
-	void ShowEnterPasswordWidget(const FString& RoomID);
 	void ShowInGameHUD();
 	void HideInGameHUD();
 	void ShowInventoryMainWidget();
@@ -56,13 +58,15 @@ public:
 	void ShowPauseMenu();
 	void HidePauseMenu();
 	bool IsPauseMenuOpen() const;
-	void ShowConfirmPopup(TFunction<void()> OnConfirm);
+	void ShowConfirmPopup(TFunction<void()> OnConfirm, const FText& Message);
 	void ShowShopPopup();
 	void HideShopPopup();
 	void ShowMapSelectPopup();
 	void HideMapSelectPopup();
 	//void ShowCreateSession();
 	void ToggleInventory();
+	void ShowChecklistWidget();
+	UResultMenu* ShowResultMenu();
 
 	void SwitchToWidget(UUserWidget* Widget);
 
@@ -86,14 +90,14 @@ public:
 	void SetInputModeGameOnly();
 
 	/* 위젯 게터 */
-	UTitleMenu* GetTitleMenu() const { return CachedTitleMenu; }
-	ULobbyMenu* GetLobbyMenu() const { return CachedLobbyMenu; }
-	UEnterPasswordWidget* GetEnterPasswordWidget() const { return CachedEnterPasswordWidget; }
-	UOptionWidget* GetOptionWidget() const { return CachedOptionWidget; }
-	UPauseMenu* GetPauseMenu() const { return CachedPauseMenu; }
-	UInGameHUD* GetInGameHUD() const { return CachedInGameHUD; }
-	UInventoryMainWidget* GetInventoryMainWidget() const { return CachedInventoryMainWidget; }
-
+	FORCEINLINE UTitleMenu* GetTitleMenu() const { return CachedTitleMenu; }
+	FORCEINLINE ULobbyMenu* GetLobbyMenu() const { return CachedLobbyMenu; }
+	FORCEINLINE UOptionWidget* GetOptionWidget() const { return CachedOptionWidget; }
+	FORCEINLINE UPauseMenu* GetPauseMenu() const { return CachedPauseMenu; }
+	FORCEINLINE UInGameHUD* GetInGameHUD() const { return CachedInGameHUD; }
+	FORCEINLINE UInventoryMainWidget* GetInventoryMainWidget() const { return CachedInventoryMainWidget; }
+	FORCEINLINE UChecklistWidget* GetChecklistWidget() const { return CachedChecklistWidget; }
+	FORCEINLINE UResultMenu* GetResultMenuClass() const { return CachedResultMenu; }
 
 	void SetLastShopInteractor(AShopInteractor* Interactor);
 	void SetLastMapSelectInteractor(AMapSelectInteractor* Interactor);
@@ -118,13 +122,11 @@ private:
 	TSubclassOf<UTitleMenu> TitleMenuClass;
 	UPROPERTY()
 	TSubclassOf<ULobbyMenu> LobbyMenuClass;
-	UPROPERTY()
-	TSubclassOf<UEnterPasswordWidget> EnterPasswordWidgetClass;
-
+	
 	UPROPERTY()
 	TSubclassOf<UOptionWidget> OptionWidgetClass;
 	UPROPERTY()
-	TSubclassOf<UOptionWidget> ConfirmPopupClass;
+	TSubclassOf<UConfirmPopup> ConfirmPopupClass;
 	UPROPERTY()
 	TSubclassOf<UInGameHUD> InGameHUDWidgetClass;
 	UPROPERTY()
@@ -144,14 +146,17 @@ private:
 	TSubclassOf<ULoadingLevel> LoadingLevelClass;
 	UPROPERTY()
 	TSubclassOf<UInventoryMainWidget> InventoryMainWidgetClass;
+	UPROPERTY()
+	TSubclassOf<UChecklistWidget> ChecklistWidgetClass;
+	UPROPERTY()
+	TSubclassOf<UResultMenu> ResultMenuClass;
+
 
 	// 위젯 캐싱
 	UPROPERTY()
 	UTitleMenu* CachedTitleMenu;
 	UPROPERTY()
 	ULobbyMenu* CachedLobbyMenu;
-	UPROPERTY()
-	UEnterPasswordWidget* CachedEnterPasswordWidget;
 	UPROPERTY()
 	UOptionWidget* CachedOptionWidget;
 	UPROPERTY()
@@ -173,6 +178,10 @@ private:
 	ULoadingLevel* CachedLoadingLevel;
 	UPROPERTY()
 	UInventoryMainWidget* CachedInventoryMainWidget;
+	UPROPERTY()
+	UChecklistWidget* CachedChecklistWidget;
+	UPROPERTY()
+	UResultMenu* CachedResultMenu;
 
 	UPROPERTY()
 	ELCUIContext CurrentContext;

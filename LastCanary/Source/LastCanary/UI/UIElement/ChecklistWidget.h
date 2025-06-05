@@ -32,6 +32,7 @@ protected:
     UWidgetAnimation* FadeInSubmitAnim;
 
     FTimerHandle SubmitDelayTimerHandle;
+    FTimerHandle EntryAddTimerHandle;
 
     UPROPERTY()
     TArray<FChecklistQuestion> Questions;
@@ -43,21 +44,20 @@ protected:
     UFUNCTION()
     void OnRevealAnimationFinished();
 
-    void FinalizeSubmitChecklist();
-
     void UpdateSubmitButtonVisibility();
+    void AddNextEntry();
 
 public:
-    UFUNCTION(BlueprintCallable)
     void InitWithQuestions(const TArray<FChecklistQuestion>& InQuestions, AChecklistManager* InManager);
-    UFUNCTION(BlueprintCallable)
+
+    UFUNCTION()
     void SubmitChecklist();
+
+    void PlayRevealAnimation();
+
     UFUNCTION(BlueprintCallable)
     void UpdateAnswer(int32 QuestionIndex, bool bAnswer);
     
-    void AddNextEntry();
 private:
-    TArray<FChecklistQuestion> QueuedQuestions;
     int32 CurrentRevealIndex = 0;
-    FTimerHandle EntryAddTimerHandle;
 };

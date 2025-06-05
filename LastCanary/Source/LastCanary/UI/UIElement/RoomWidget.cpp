@@ -15,16 +15,12 @@ void URoomWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	CreatePlayerSlots();
-
 	if (InviteButton)
 	{
 		InviteButton->OnClicked.AddUniqueDynamic(this, &URoomWidget::OnInviteButtonClicked);
 	}
-	if (BackButton)
-	{
-		BackButton->OnClicked.AddUniqueDynamic(this, &URoomWidget::OnBackButtonClicked);
-	}
+
+	UpdatePlayerSlots(SessionPlayerInfos);
 }
 
 void URoomWidget::NativeDestruct()
@@ -35,54 +31,57 @@ void URoomWidget::NativeDestruct()
 	{
 		InviteButton->OnClicked.RemoveDynamic(this, &URoomWidget::OnInviteButtonClicked);
 	}
-	if (BackButton)
-	{
-		BackButton->OnClicked.RemoveDynamic(this, &URoomWidget::OnBackButtonClicked);
-	}
 }
+
 
 void URoomWidget::CreatePlayerSlots()
 {
-	// 기존 슬롯 지우기
+	//if (!PlayerSlotClass)
+	//{
+	//	LOG_Frame_ERROR(TEXT("URoomWidget::CreatePlayerSlots: PlayerSlotClass가 바인드되어 있지 않습니다!"));
+	//	return;
+	//}
+
+	//// 기존 슬롯 지우기
+	//if (!IsValid(PlayerListContainer))
+	//{
+	//	LOG_Server_ERROR(TEXT("Player List Container Is Null!!"));
+	//	return;
+	//}
+
 	PlayerListContainer->ClearChildren();
 	PlayerSlots.Empty();
 
-	// 슬롯 개수만큼 TextBlock 생성
+	// 슬롯 개수만큼 Player Slot 생성
 	for (int32 i = 0; i < MaxPlayerNum; ++i)
 	{
-		UPlayerSlot* NewPlayerSlot = CreateWidget<UPlayerSlot>(this->GetOwningPlayer(), PlayerSlotClass);
-		NewPlayerSlot->SetSlotIndex(i + 1);
+		UPlayerSlot* NewPlayerSlot = CreateWidget<UPlayerSlot>(this, PlayerSlotClass);
 
+		NewPlayerSlot->SetSlotIndex(i + 1);
 		PlayerListContainer->AddChild(NewPlayerSlot);
 		PlayerSlots.Add(NewPlayerSlot);
 	}
 }
 
-
-void URoomWidget::UpdatePlayerNames()
+void URoomWidget::UpdatePlayerLists(const TArray<FSessionPlayerInfo>& PlayerInfos)
 {
-	if (AGameStateBase* GS = UGameplayStatics::GetGameState(this))
+	SessionPlayerInfos = PlayerInfos;
+
+	if (!IsInViewport())
 	{
-		const TArray<APlayerState*>& PlayerArray = GS->PlayerArray;
-
-		// 임시로 최대 4명만 표시
-		for (int32 i = 0; i < 4; ++i)
-		{
-			FString Name = TEXT("Empty Slot");
-
-			if (i < PlayerArray.Num() && PlayerArray[i])
-			{
-				Name = PlayerArray[i]->GetPlayerName();
-			}
-		}
+		LOG_Server_WARNING(TEXT("UpdatePlayerLists: 위젯이 뷰포트에 없음 → 리턴"));
+		return;
 	}
+
+	UpdatePlayerSlots(PlayerInfos);
 }
 
-void URoomWidget::UpdatePlayerLists(const TArray<FSessionPlayerInfo>& PlayerInfos)
+void URoomWidget::UpdatePlayerSlots(const TArray<FSessionPlayerInfo>& PlayerInfos)
 {
 	if (!IsValid(PlayerListContainer))
 	{
 		LOG_Server_WARNING(TEXT("PlayerList Container is Not Valid!"));
+		return;
 	}
 
 	for (int32 i = 0; i < MaxPlayerNum; i++)
@@ -103,10 +102,4 @@ void URoomWidget::UpdatePlayerLists(const TArray<FSessionPlayerInfo>& PlayerInfo
 void URoomWidget::OnInviteButtonClicked()
 {
 	LOG_Frame_WARNING(TEXT("OnClick Invite Button"));
-}
-
-void URoomWidget::OnBackButtonClicked()
-{
-	LOG_Frame_WARNING(TEXT("OnClick Back Button"));
-
 }

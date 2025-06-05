@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "LCPlayerController.h"
 #include "DataType/SessionPlayerInfo.h"
+#include "DataType/GameResultData.h"
+#include "Framework/Manager/ChecklistManager.h"
 #include "Character/BasePlayerController.h"
 #include "DataType/ItemDropData.h"
 #include "LCRoomPlayerController.generated.h"
@@ -20,30 +22,41 @@ protected:
 	virtual void BeginPlay() override;
 	virtual void PostSeamlessTravel() override;
 
-protected:
-	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	TSubclassOf<URoomWidget> RoomWidgetClass;
-	URoomWidget* RoomWidgetInstance;
-
 public:
 	void Client_UpdatePlayerList_Implementation(const TArray<FSessionPlayerInfo>& PlayerInfos) override;
-	void Client_UpdatePlayers_Implementation() override;
-
-	// 서버에서만 호출
-	//void StartGame();
+	void UpdatePlayerList(const TArray<FSessionPlayerInfo>& PlayerInfos);
 
 	UPROPERTY(EditDefaultsOnly, Category = "Shop")
 	TSubclassOf<class ALCDroneDelivery> DroneDeliveryClass;
 
 	UFUNCTION(Server, Reliable)
-	void Server_SetReady(bool bIsReady);
-	void Server_SetReady_Implementation(bool bIsReady);
-
-	UFUNCTION(Server, Reliable)
 	void Server_RequestPurchase(const TArray<FItemDropData>& DropList);
 	void Server_RequestPurchase_Implementation(const TArray<FItemDropData>& DropList);
 
+protected:
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<URoomWidget> RoomWidgetClass;
+	URoomWidget* RoomWidgetInstance;
+
+	void InitInputComponent() override;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|RoomPC", Meta = (DisplayThumbnail = false))
+	TObjectPtr<UInputAction> RoomUIAction;
+
 private:
-	void CreateAndShowRoomUI();
+	void CreateRoomWidget();
+	UFUNCTION()
+	virtual void ToggleShowRoomWidget();
+
+	bool bIsShowRoomUI = false;
+
 	float RePeatRate = 0.1f;
+
+public:
+	UFUNCTION(Client, Reliable)
+	void Client_NotifyResultReady(const FChecklistResultData& ResultData);
+	void Client_NotifyResultReady_Implementation(const FChecklistResultData& ResultData);
+
+	UFUNCTION(Client, Reliable)
+	void Client_StartChecklist();
+	void Client_StartChecklist_Implementation();
 };

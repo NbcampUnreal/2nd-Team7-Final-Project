@@ -10,7 +10,6 @@ ABaseAIController::ABaseAIController()
 	BehaviorTreeComponent = CreateDefaultSubobject<UBehaviorTreeComponent>(TEXT("BehaviorTreeComponent"));
 	BlackboardComponent = CreateDefaultSubobject<UBlackboardComponent>(TEXT("BlackboardComponent"));
 }
-//navmesh 둘러주기
 
 void ABaseAIController::BeginPlay()
 {
@@ -88,7 +87,6 @@ void ABaseAIController::SetAttacking()
 {
 	if (BlackboardComponent && MonsterCharacter)
 	{
-		//UE_LOG(LogTemp, Warning, TEXT("Attack"));
 		//공격
 		BlackboardComponent->SetValueAsInt(StateKeyName, 2);
 

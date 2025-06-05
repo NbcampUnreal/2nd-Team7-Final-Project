@@ -25,21 +25,44 @@ public:
     // 컴포넌트
     //-----------------------------------------------------
 
-    /** 아이템의 기본 메시 컴포넌트 */
-    UPROPERTY(VisibleAnywhere)
+    /** 아이템의 스태틱 메시 컴포넌트 */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
     UStaticMeshComponent* MeshComponent;
 
-    UPROPERTY(VisibleAnywhere)
+    /** 아이템의 스켈레탈 메시 컴포넌트 */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
     USkeletalMeshComponent* SkeletalMeshComponent;
 
-    /** 아이템 상호작용 감지용 구체 컴포넌트 */
-    UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
-    class USphereComponent* SphereComponent;
+    //-----------------------------------------------------
+    // 메시 관리
+    //-----------------------------------------------------
+
+    /** 현재 활성화된 메시 타입 */
+    UPROPERTY(BlueprintReadOnly, Category = "Mesh")
+    bool bUsingSkeletalMesh = false;
+
+    /** 활성화된 메시 컴포넌트 반환 (StaticMesh 또는 SkeletalMesh) */
+    UFUNCTION(BlueprintPure, Category = "Mesh")
+    UPrimitiveComponent* GetActiveMeshComponent() const;
+
+    /** 스태틱 메시 컴포넌트 반환 */
+    UStaticMeshComponent* GetMeshComponent() const;
+
+    /** 스켈레탈 메시 컴포넌트 반환 */
+    UFUNCTION(BlueprintPure, Category = "Mesh")
+    USkeletalMeshComponent* GetSkeletalMeshComponent() const;
+
+protected:
+    /** 메시 타입 설정 및 적용 */
+    void SetupMeshComponents();
+
+    /** 메시 컴포넌트 활성화/비활성화 */
+    void SetMeshComponentActive(UPrimitiveComponent* ActiveComponent, UPrimitiveComponent* InactiveComponent);
 
     //-----------------------------------------------------
     // 아이템 데이터
     //-----------------------------------------------------
-
+public:
     /** 아이템 데이터 테이블에서의 행 이름 */
     UPROPERTY(ReplicatedUsing = OnRepItemRowName, EditAnywhere, BlueprintReadWrite, Category = Item)
     FName ItemRowName;
@@ -116,28 +139,12 @@ protected:
     bool Internal_TryPickupByPlayer(APlayerController* PlayerController);
 
     //-----------------------------------------------------
-    // 충돌 이벤트 핸들러
-    //-----------------------------------------------------
-public:
-    /** 아이템과 다른 액터 간의 오버랩 시작 시 호출 */
-    UFUNCTION()
-    void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-        UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
-
-    /** 아이템과 다른 액터 간의 오버랩 종료 시 호출 */
-    UFUNCTION()
-    void OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-        UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
-
-    //-----------------------------------------------------
     // 유틸리티 함수
     //-----------------------------------------------------
-
+public:
     /** 데이터 테이블에서 아이템 데이터를 로드하여 적용 */
     UFUNCTION(BlueprintCallable, Category = "Item|Initialization")
     void ApplyItemDataFromTable();
-
-    UStaticMeshComponent* GetMeshComponent() const;
 
     //-----------------------------------------------------
     // 네트워크 & 에디터 기능
@@ -155,4 +162,21 @@ public:
     virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
     // virtual void OnConstruction(const FTransform& Transform) override;
 #endif
+
+    UPROPERTY(Replicated)
+    bool bIgnoreCharacterCollision = false;
+
+    void ApplyCollisionSettings();
+
+protected:
+    /** 물리 위치 동기화 타이머 */
+    FTimerHandle PhysicsLocationSyncTimer;
+
+    /** 물리 컴포넌트 위치를 액터 위치로 동기화 */
+    UFUNCTION()
+    void SyncPhysicsLocationToActor();
+
+protected:
+    /** 타이머 제거를 위해 사용 */ 
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 };

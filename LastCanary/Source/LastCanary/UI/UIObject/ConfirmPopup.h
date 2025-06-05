@@ -4,9 +4,6 @@
 #include "UI/LCUserWidgetBase.h"
 #include "ConfirmPopup.generated.h"
 
-/**
- * 
- */
 class UButton;
 class UTextBlock;
 UCLASS()
@@ -15,7 +12,7 @@ class LASTCANARY_API UConfirmPopup : public ULCUserWidgetBase
 	GENERATED_BODY()
 	
 public:
-	void Init(TFunction<void()> OnConfirm);
+	void Init(TFunction<void()> OnConfirm, const FText& Message);
 
 protected:
 	virtual void NativeConstruct() override;
@@ -25,6 +22,7 @@ protected:
 	UButton* YesButton;
 	UPROPERTY(meta = (BindWidget))
 	UButton* NoButton;
+
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* MessageText;
 
@@ -33,6 +31,6 @@ private:
 
 	UFUNCTION()
 	void OnYesClicked();
-	UFUNCTION()
+	UFUNCTION(BlueprintCallable)
 	void OnNoClicked();
 };
