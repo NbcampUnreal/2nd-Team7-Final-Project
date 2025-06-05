@@ -4,7 +4,7 @@
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
 
-#include "Framework/GameMode/BaseGameMode.h"
+#include "Framework/GameMode/LCGameMode.h"
 #include "DataType/SessionPlayerInfo.h"
 
 // Sets default values
@@ -54,7 +54,7 @@ void APlayerChecker::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor*
                 UWorld* World = GetWorld();
                 if (World && World->GetAuthGameMode())
                 {
-                    ABaseGameMode* GM = Cast<ABaseGameMode>(World->GetAuthGameMode());
+                    ALCGameMode* GM = Cast<ALCGameMode>(World->GetAuthGameMode());
                     if (GM)
                     {
                         // 준비 상태로 변경 (bIsReady = true)
@@ -86,7 +86,7 @@ void APlayerChecker::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* O
                 UWorld* World = GetWorld();
                 if (World && World->GetAuthGameMode())
                 {
-                    ABaseGameMode* GM = Cast<ABaseGameMode>(World->GetAuthGameMode());
+                    ALCGameMode* GM = Cast<ALCGameMode>(World->GetAuthGameMode());
                     if (GM)
                     {
                         // 준비 해제 상태로 변경 (bIsReady = false)

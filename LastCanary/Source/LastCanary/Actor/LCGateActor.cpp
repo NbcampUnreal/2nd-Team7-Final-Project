@@ -4,7 +4,7 @@
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Character/BasePlayerController.h"
 #include "Framework/GameState/LCGameState.h"
-#include "Framework/GameMode/BaseGameMode.h"
+#include "Framework/GameMode/LCGameMode.h"
 #include "Framework/PlayerController/LCRoomPlayerController.h"
 
 #include "Net/UnrealNetwork.h"
@@ -34,7 +34,7 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 		return;
 	}
 
-	ABaseGameMode* BaseGM = Cast<ABaseGameMode>(GetWorld()->GetAuthGameMode());
+	ALCGameMode* LCGM = Cast<ALCGameMode>(GetWorld()->GetAuthGameMode());
 
 	if (ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 	{
@@ -87,9 +87,9 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 			}
 			else
 			{
-				if (BaseGM)
+				if (LCGM)
 				{
-					if (!BaseGM->IsAllPlayersReady())
+					if (!LCGM->IsAllPlayersReady())
 					{
 						LOG_Server_ERROR(TEXT("All Client is Not Ready!!"));
 						return;
@@ -144,9 +144,9 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 			}
 			GISubsystem->ChangeLevelByMapID(TargetMapID);
 
-			if (BaseGM)
+			if (LCGM)
 			{
-				BaseGM->ShowLoading();
+				LCGM->ShowLoading();
 			}
 			else
 			{

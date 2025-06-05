@@ -39,6 +39,8 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	USoundClass* EffectSoundClass;
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	USoundClass* MyMicSoundClass;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	USoundClass* VoiceSoundClass;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Option")
@@ -47,6 +49,8 @@ public:
 	float BGMVolume = 0.5f;
 	UPROPERTY(BlueprintReadWrite, Category = "Option")
 	float EffectVolume = 0.5f;
+	UPROPERTY(BlueprintReadWrite, Category = "Option")
+	float MyMicVolume = 0.5f;
 	UPROPERTY(BlueprintReadWrite, Category = "Option")
 	float VoiceVolume = 0.5f;
 
@@ -61,6 +65,10 @@ public:
 	int32 ResolutionIndex = 2;
 	UPROPERTY(BlueprintReadWrite, Category = "Option")
 	FIntPoint ScreenResolution = FIntPoint(1920, 1080);
+
+	//마이크 장치 목록
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FString SelectedMicDeviceName;
 
 	UFUNCTION()
 	void ChangeScreen(EScreenMode Mode);
