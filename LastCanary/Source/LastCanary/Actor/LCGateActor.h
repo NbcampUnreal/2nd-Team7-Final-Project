@@ -8,8 +8,8 @@
 UENUM(BlueprintType)
 enum class EGateTravelType : uint8
 {
-	ToInGame,
-	ToBaseCamp
+	ToBaseCamp,
+	ToInGame
 };
 
 UCLASS()
@@ -33,13 +33,12 @@ public:
     FText InteractionPromptText;
 
     /** 목적지 유형 */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gate")
+    UPROPERTY(Replicated, EditAnywhere, BlueprintReadOnly, Category = "Gate")
     EGateTravelType TravelType;
 
     /** 상호작용 처리 */
     virtual void Interact_Implementation(APlayerController* Controller) override;
     virtual FString GetInteractMessage_Implementation() const override;
 
-    /** 외부에서 목적지 맵 설정 */
-    void SetTargetMapID(const int32& InMapID);
+    void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
 };

@@ -7,20 +7,21 @@
 #include "Framework/Manager/LCCheatManager.h"
 
 #include "Actor/LCDroneDelivery.h"
-
 #include "Item/ItemBase.h"
 
 #include "UI/UIElement/RoomWidget.h"
+#include "UI/UIElement/ResultMenu.h"
 
 #include "Engine/World.h"
 #include "Misc/PackageName.h"
+#include "EngineUtils.h"
 
 #include "UI/Manager/LCUIManager.h"
 #include "Blueprint/UserWidget.h"
 #include "DataType/SessionPlayerInfo.h"
 
-#include "LastCanary.h"
 #include "EnhancedInputComponent.h"
+#include "LastCanary.h"
 
 ALCRoomPlayerController::ALCRoomPlayerController()
 {
@@ -98,11 +99,6 @@ void ALCRoomPlayerController::UpdatePlayerList(const TArray<FSessionPlayerInfo>&
 	}
 }
 
-void ALCRoomPlayerController::Server_SetReady_Implementation(bool bIsReady)
-{
-
-}
-
 void ALCRoomPlayerController::Server_RequestPurchase_Implementation(const TArray<FItemDropData>& DropList)
 {
 	if (DropList.IsEmpty())
@@ -158,7 +154,7 @@ void ALCRoomPlayerController::Server_RequestPurchase_Implementation(const TArray
 
 	for (const FItemDropData& DropData : DropList)
 	{
-		if (DropData.ItemClass==nullptr)
+		if (DropData.ItemClass == nullptr)
 		{
 			LOG_Frame_WARNING(TEXT("DropData.ItemClass is NULL"));
 			continue;
@@ -224,8 +220,9 @@ void ALCRoomPlayerController::CreateRoomWidget()
 		{
 			RoomWidgetInstance = CreateWidget<URoomWidget>(this, RoomWidgetClass);
 			RoomWidgetInstance->CreatePlayerSlots();
-			RoomWidgetInstance->AddToViewport();
-			bIsShowRoomUI = true;
+			RoomWidgetInstance->AddToViewport(10);
+			RoomWidgetInstance->SetVisibility(ESlateVisibility::Hidden);
+			bIsShowRoomUI = false;
 		}
 	}
 }
@@ -234,21 +231,57 @@ void ALCRoomPlayerController::ToggleShowRoomWidget()
 {
 	bIsShowRoomUI = !bIsShowRoomUI;
 
+	if (!IsLocalPlayerController())
+	{
+		return;
+	}
+
 	if (IsValid(RoomWidgetInstance))
 	{
 		if (bIsShowRoomUI)
 		{
-			RoomWidgetInstance->AddToViewport(10);
+			//RoomWidgetInstance->AddToViewport(10);
+			RoomWidgetInstance->SetVisibility(ESlateVisibility::Visible);
 			FInputModeGameAndUI GameAndUIInputMode;
 			SetInputMode(GameAndUIInputMode);
 		}
 		else
 		{
-			RoomWidgetInstance->RemoveFromParent();
+			//RoomWidgetInstance->RemoveFromParent();
+			RoomWidgetInstance->SetVisibility(ESlateVisibility::Hidden);
 			FInputModeGameOnly GameInputMode;
 			SetInputMode(GameInputMode);
 		}
 
 		bShowMouseCursor = bIsShowRoomUI;
+	}
+}
+
+void ALCRoomPlayerController::Client_NotifyResultReady_Implementation(const FChecklistResultData& ResultData)
+{
+	LOG_Frame_WARNING(TEXT("[Client] 결과 수신 → 결과 UI 출력 시작"));
+
+	if (ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+	{
+		if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
+		{
+			UIManager->ShowResultMenu();
+			if (UResultMenu* Menu = UIManager->GetResultMenuClass())
+			{
+				Menu->SetChecklistResult(ResultData); 
+			}
+		}
+	}
+}
+
+void ALCRoomPlayerController::Client_StartChecklist_Implementation()
+{
+	for (TActorIterator<AChecklistManager> It(GetWorld()); It; ++It)
+	{
+		if (AChecklistManager* ChecklistManager = *It)
+		{
+			ChecklistManager->StartChecklist();
+			break;
+		}
 	}
 }

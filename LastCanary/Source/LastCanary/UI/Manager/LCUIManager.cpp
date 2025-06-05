@@ -3,7 +3,6 @@
 
 #include "UI/UIElement/TitleMenu.h"
 #include "UI/UIElement/LobbyMenu.h"
-#include "UI/UIElement/EnterPasswordWidget.h"
 #include "UI/UIElement/OptionWidget.h"
 #include "UI/UIElement/PauseMenu.h"
 #include "UI/UIElement/InGameHUD.h"
@@ -14,10 +13,11 @@
 #include "UI/Popup/PopupNotice.h"
 #include "UI/Popup/PopupLoading.h"
 #include "UI/UIElement/LoadingLevel.h"
+#include "UI/UIElement/ChecklistWidget.h"
+#include "UI/UIElement/ResultMenu.h"
 
 #include "UI/UIObject/ConfirmPopup.h"
 
-//#include "Framework/PlayerController/LCLobbyPlayerController.h"
 #include "Framework/PlayerController/LCRoomPlayerController.h"
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
@@ -33,10 +33,8 @@ ULCUIManager::ULCUIManager()
 
 void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 {
-	//LOG_Frame_WARNING(TEXT("InitUIManager Called."));
 	if (OwningPlayer == nullptr)
 	{
-		//LOG_Frame_WARNING(TEXT("PlayerController is nullptr in InitUIManager."));
 		OwningPlayer = PlayerController;
 	}
 
@@ -46,7 +44,6 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 		{
 			TitleMenuClass = Settings->FromBPTitleMenuClass;
 			LobbyMenuClass = Settings->FromBPLobbyMenuClass;
-			EnterPasswordWidgetClass = Settings->FromBPEnterPasswordWidgetClass;
 			OptionWidgetClass = Settings->FromBPOptionWidgetClass;
 			PauseMenuClass = Settings->FromBPPauseMenuClass;
 			InGameHUDWidgetClass = Settings->FromBPInGameHUDClass;
@@ -58,6 +55,8 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			PopUpLoadingClass = Settings->FromBPPopupLoadingClass;
 			LoadingLevelClass = Settings->FromBPLoadingLevelClass;
 			ConfirmPopupClass = Settings->FromBPConfirmPopupClass;
+			ChecklistWidgetClass = Settings->FromBPChecklistWidgetClass;
+			ResultMenuClass = Settings->FromBPResultMenuClass;
 
 			if ((CachedTitleMenu == nullptr) && TitleMenuClass)
 			{
@@ -66,10 +65,6 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			if ((CachedLobbyMenu == nullptr) && LobbyMenuClass)
 			{
 				CachedLobbyMenu = CreateWidget<ULobbyMenu>(PlayerController, LobbyMenuClass);
-			}
-			if ((CachedEnterPasswordWidget == nullptr) && EnterPasswordWidgetClass)
-			{
-				CachedEnterPasswordWidget = CreateWidget<UEnterPasswordWidget>(PlayerController, EnterPasswordWidgetClass);
 			}
 			if ((CachedOptionWidget == nullptr) && OptionWidgetClass)
 			{
@@ -106,6 +101,10 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			if ((CachedInventoryMainWidget == nullptr) && InventoryMainWidgetClass)
 			{
 				CachedInventoryMainWidget = CreateWidget<UInventoryMainWidget>(PlayerController, InventoryMainWidgetClass);
+			}
+			if ((CachedChecklistWidget == nullptr) && ChecklistWidgetClass)
+			{
+				CachedChecklistWidget = CreateWidget<UChecklistWidget>(PlayerController, ChecklistWidgetClass);
 			}
 		}
 	}
@@ -161,26 +160,6 @@ void ULCUIManager::ShowRoomListMenu()
 	}
 
 	LOG_Frame_WARNING(TEXT("ShowRoomListMenu"));
-}
-
-void ULCUIManager::ShowEnterPasswordWidget(const FString& RoomID)
-{
-	if (OwningPlayer == nullptr)
-	{
-		return;
-	}
-	if (OwningPlayer->IsLocalPlayerController() == false)
-	{
-		return;
-	}
-
-	LOG_Frame_WARNING(TEXT("ShowEnterPasswordWidget"));
-	if (CachedEnterPasswordWidget)
-	{
-		CachedEnterPasswordWidget->Init(RoomID);
-	}
-	SwitchToWidget(CachedEnterPasswordWidget);
-	SetInputModeUIOnly(CurrentWidget);
 }
 
 void ULCUIManager::ShowOptionPopup()
@@ -408,6 +387,56 @@ void ULCUIManager::ToggleInventory()
 			OwningPlayer->bShowMouseCursor = false;
 		}
 	}
+}
+
+void ULCUIManager::ShowChecklistWidget()
+{
+	if (OwningPlayer == nullptr)
+	{
+		return;
+	}
+	if (OwningPlayer->IsLocalPlayerController() == false)
+	{
+		return;
+	}
+
+	LOG_Frame_WARNING(TEXT("ShowChecklistWidget"));
+	// HideInGameHUD();
+
+	SwitchToWidget(CachedChecklistWidget);
+	HideInventoryMainWidget();
+
+	if (OwningPlayer)
+	{
+		if (APawn* Pawn = OwningPlayer->GetPawn())
+		{
+			LOG_Frame_WARNING(TEXT("Pawn : %s"), *Pawn->GetActorNameOrLabel());
+
+			Pawn->DisableInput(OwningPlayer);
+		}
+
+		FInputModeUIOnly InputMode;
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		LOG_Frame_WARNING(TEXT("InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock"));
+	}
+
+	SetInputModeUIOnly(CurrentWidget);
+}
+
+UResultMenu* ULCUIManager::ShowResultMenu()
+{
+	if (!CachedResultMenu && ResultMenuClass)
+	{
+		CachedResultMenu = CreateWidget<UResultMenu>(OwningPlayer, ResultMenuClass);
+	}
+
+	if (CachedResultMenu && !CachedResultMenu->IsInViewport())
+	{
+		CachedResultMenu->AddToViewport(999);
+	}
+
+	SetInputModeUIOnly(CachedResultMenu);
+	return CachedResultMenu;
 }
 
 void ULCUIManager::ShowPopUpLoading()

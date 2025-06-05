@@ -32,16 +32,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
 	USkeletalMeshComponent* OverlaySkeletalMesh;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* RemoteOnlySkeletalMesh;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	UStaticMeshComponent* RemoteOnlyOverlayStaticMesh;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* RemoteOnlyOverlaySkeletalMesh;
-
-
 	// SpringArm 컴포넌트 (카메라 거리와 회전 보정용)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	USpringArmComponent* SpringArm;
@@ -161,7 +151,7 @@ public:
 	virtual void Handle_Move(const FInputActionValue& ActionValue);
 	virtual void Handle_Sprint(const FInputActionValue& ActionValue);
 	virtual void Handle_Walk(const FInputActionValue& ActionValue);
-	virtual void Handle_Crouch();
+	virtual void Handle_Crouch(const FInputActionValue& ActionValue);
 	virtual void Handle_Jump(const FInputActionValue& ActionValue);
 	virtual void Handle_Strafe(const FInputActionValue& ActionValue);
 	virtual void Handle_Aim(const FInputActionValue& ActionValue);
@@ -266,7 +256,7 @@ public:
 	
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_SetPlayerInGameStateOnDie();
-	void Multicast_SetPlayerInGameStateOnDie_ImplementationOnDie();
+	void Multicast_SetPlayerInGameStateOnDie_Implementation();
 
 	virtual void GetFallDamage(float Velocity) override;
 
@@ -275,7 +265,7 @@ public:
 
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_SetPlayerInGameStateOnEscapeGate();
-	void Multicast_SetPlayerInGameStateOnEscapeGateImplementationOnDie();
+	void Multicast_SetPlayerInGameStateOnEscapeGate_Implementation();
 
 
 	UFUNCTION(Server, Reliable)
@@ -291,9 +281,6 @@ public:
 
 	void PickupItem();
 
-	// 아이템 퀵슬롯 및 변경 관련 로직
-	void EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex);
-
 	// 퀵슬롯 아이템들 (타입은 아이템 구조에 따라 UObject*, AItemBase*, UItemData* 등)
 	//TArray<UObject*> QuickSlots;
 
@@ -302,23 +289,27 @@ public:
 
 	//TODO: 아이템 클래스 들어오면 반환 값 바꾸기
 	void GetHeldItem();
-	void EquipItem(UObject* Item);
-	void UnequipCurrentItem();
 
-	//퀵슬롯 칸 최대 칸 수
-	int32 MaxQuickSlotIndex = 3;
-	//현재 퀵슬롯 인덱스
-	UPROPERTY(Replicated)
-	int32 CurrentQuickSlotIndex = 0;
+	void UnequipCurrentItem();
 
 	UFUNCTION(Server, Reliable)
 	void Server_SetQuickSlotIndex(int32 NewIndex);
+	void Server_SetQuickSlotIndex_Implementation(int32 NewIndex);
 
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_EquipItemFromQuickSlot(int32 Index);
+	void Multicast_EquipItemFromQuickSlot_Implementation(int32 Index);
 
 	int32 GetCurrentQuickSlotIndex();
 	void SetCurrentQuickSlotIndex(int32 NewIndex);
+	void EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex);
+
+	UFUNCTION(Server, Reliable)
+	void Server_EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex);
+	void Server_EquipItemFromCurrentQuickSlot_Implementation(int32 QuickSlotIndex);
+
+
+	void StopCurrentPlayingMontage();
 
 	UFUNCTION()
 	void HandleInventoryUpdated();
@@ -406,10 +397,6 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_UnequipCurrentItem();
 	void Server_UnequipCurrentItem_Implementation();
-
-	UFUNCTION(Server, Reliable)
-	void Server_EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex);
-	void Server_EquipItemFromCurrentQuickSlot_Implementation(int32 QuickSlotIndex);
 
 	UFUNCTION(BlueprintCallable, Category = "Equipment")
 	bool UseEquippedItem();
