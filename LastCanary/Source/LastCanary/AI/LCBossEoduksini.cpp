@@ -382,7 +382,24 @@ void ALCBossEoduksini::BP_EndDarknessEffect_Implementation()
             if (!PC || !PC->IsLocalController())
                 continue;
 
-            // 각 로컬 플레이어 화면에 Fade Out 적용
+            APawn* Pawn = PC->GetPawn();
+            if (!Pawn)
+                continue;
+
+            // 보스와 플레이어 간의 거리 계산
+            float DistToBoss = FVector::Dist(
+                Pawn->GetActorLocation(),
+                GetActorLocation());
+
+            // 보스의 DarknessRadius보다 작으면 페이드 아웃을 하지 않고 건너뜀
+            if (DistToBoss < DarknessRadius)
+            {
+                UE_LOG(LogTemp, Log, TEXT("[Darkness] 페이드 아웃 스킵 (거리 %.1f < Radius %.1f)"),
+                    DistToBoss, DarknessRadius);
+                continue;
+            }
+
+            // 해당 플레이어에 대해서만 Fade Out 적용
             PC->PlayerCameraManager->StartCameraFade(
                 DarknessFadeAlpha, // 시작 Alpha
                 0.f,               // 목표 Alpha

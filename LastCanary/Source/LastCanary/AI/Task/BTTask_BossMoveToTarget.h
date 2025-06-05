@@ -31,7 +31,24 @@ public:
     virtual void TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds) override;
 
 protected:
+    /** 보스가 목표보다 얼마나 멀어지면 텔레포트할지 */
+    UPROPERTY(EditAnywhere, Category = "Teleport")
+    float TeleportDistance = 2000.f;
+
+    /** 목표와 높이 차이가 얼마나 나면 점프 대신 점프+앞으로 이동할지 */
+    UPROPERTY(EditAnywhere, Category = "Jump")
+    float JumpHeightThreshold = 100.f;
+
+    /** 점프 시 앞으로 밀어줄 속도 (XY 평면 크기) */
+    UPROPERTY(EditAnywhere, Category = "Jump")
+    float JumpForwardStrength = 600.f;
+
+    /** 점프 시 위로 띄우는 속도 (Z축 크기) */
+    UPROPERTY(EditAnywhere, Category = "Jump")
+    float JumpUpStrength = 800.f;
+
+    /** AcceptableRadius */
     UPROPERTY(EditAnywhere, Category = "Movement")
-    float MyAcceptableRadius = 50.0f;
+    float MyAcceptableRadius = 100.f;
 	
 };  
