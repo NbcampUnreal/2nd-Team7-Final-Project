@@ -93,12 +93,8 @@ void ALCBossEoduksini::OnDarknessSphereBeginOverlap(
     bool bFromSweep,
     const FHitResult& SweepResult)
 {
-    UE_LOG(LogTemp, Log, TEXT("[OverlapBegin] 호출됨, bDarknessActive=%s"),
-        bDarknessActive ? TEXT("true") : TEXT("false"));
-
     if (bDarknessActive)
     {
-        UE_LOG(LogTemp, Warning, TEXT("[OverlapBegin] bDarknessActive=true → 리턴"));
         return;  // 어둠 상태가 활성화된 뒤에만 처리
     }
 
@@ -106,7 +102,6 @@ void ALCBossEoduksini::OnDarknessSphereBeginOverlap(
     APawn* Pawn = Cast<APawn>(OtherActor);
     if (!Pawn)
     {
-        UE_LOG(LogTemp, Warning, TEXT("[OverlapBegin] OtherActor가 Pawn이 아님 → 리턴"));
         return;
     }
 
@@ -114,12 +109,10 @@ void ALCBossEoduksini::OnDarknessSphereBeginOverlap(
     APlayerController* PC = Cast<APlayerController>(Pawn->GetController());
     if (!PC)
     {
-        UE_LOG(LogTemp, Warning, TEXT("[OverlapBegin] Pawn->GetController()가 PlayerController 아님 → 리턴"));
         return;
     }
     if (!PC->IsLocalController())
     {
-        UE_LOG(LogTemp, Warning, TEXT("[OverlapBegin] PC->IsLocalController()==false(원격 클라이언트) → 리턴"));
         return;
     }
 
@@ -131,7 +124,6 @@ void ALCBossEoduksini::OnDarknessSphereBeginOverlap(
     }
 
     // Fade In 적용
-    UE_LOG(LogTemp, Log, TEXT("[OverlapBegin] Fade In 처리 시작: PlayerController=%s"), *PC->GetName());
     PC->PlayerCameraManager->StartCameraFade(
         0.f, DarknessFadeAlpha,
         FadeDuration, FLinearColor::Black,
@@ -152,7 +144,6 @@ void ALCBossEoduksini::OnDarknessSphereEndOverlap(
     // 전역 어둠 중이라면 로컬 어둠 해제 무시
     if (bDarknessActive)
     {
-        UE_LOG(LogTemp, Warning, TEXT("[OverlapEnd] bDarknessActive==true → 로컬 어둠 무시"));
         return;
     }
 
@@ -372,7 +363,6 @@ void ALCBossEoduksini::BP_StartDarknessEffect_Implementation()
 
 void ALCBossEoduksini::BP_EndDarknessEffect_Implementation()
 {
-    UE_LOG(LogTemp, Warning, TEXT("[Darkness] 클라이언트: 화면 어둡기 해제 시작"));
 
     if (UWorld* World = GetWorld())
     {
