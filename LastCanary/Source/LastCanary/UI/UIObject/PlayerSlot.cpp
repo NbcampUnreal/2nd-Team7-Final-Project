@@ -1,6 +1,7 @@
 ﻿#include "UI/UIObject/PlayerSlot.h"
 #include "Components/TextBlock.h"
 #include "Components/Button.h"
+#include "Components/Slider.h"
 #include "DataType/SessionPlayerInfo.h"
 #include "GameFramework/PlayerState.h"
 #include "Framework/GameMode/BaseGameMode.h"
@@ -14,6 +15,14 @@ void UPlayerSlot::NativeConstruct()
     {
         KickButton->OnClicked.AddUniqueDynamic(this, &UPlayerSlot::OnKickButtonClicked);
     }
+    //if (MuteButton)
+    //{
+    //    MuteButton->OnClicked.AddUniqueDynamic(this, &UPlayerSlot::OnMuteButtonClicked);
+    //}
+    //if (VolumeSlider)
+    //{
+    //    VolumeSlider->OnValueChanged.AddUniqueDynamic(this, &UPlayerSlot::OnVolumeSliderValueChanged);
+    //}
 }
 
 void UPlayerSlot::NativeDestruct()
@@ -24,6 +33,14 @@ void UPlayerSlot::NativeDestruct()
     {
         KickButton->OnClicked.RemoveDynamic(this, &UPlayerSlot::OnKickButtonClicked);
     }
+    //if (MuteButton)
+    //{
+    //    MuteButton->OnClicked.RemoveDynamic(this, &UPlayerSlot::OnMuteButtonClicked);
+    //}
+    //if (VolumeSlider)
+    //{
+    //    VolumeSlider->OnValueChanged.RemoveDynamic(this, &UPlayerSlot::OnVolumeSliderValueChanged);
+    //}
 }
 
 void UPlayerSlot::SetSlotIndex(const int Index)
@@ -43,12 +60,19 @@ void UPlayerSlot::SetPlayerInfo(const FSessionPlayerInfo& PlayerInfo)
         NickNameText->SetText(FText::FromString(PlayerInfo.PlayerName));
     }
 
-    if (ReadyText)
-    {
-        FString IsReady = PlayerInfo.bIsPlayerReady ? "Ready" : "Not Ready";
-        ReadyText->SetText(FText::FromString(IsReady));
-    }
+    //if (ReadyText)
+    //{
+    //    FString IsReady = PlayerInfo.bIsPlayerReady ? "Ready" : "Not Ready";
+    //    ReadyText->SetText(FText::FromString(IsReady));
+    //}
 
+    SetVisibleKickButton(PlayerInfo);
+
+    SetVisibleVoiceChat(PlayerInfo);
+}
+
+void UPlayerSlot::SetVisibleKickButton(const FSessionPlayerInfo& PlayerInfo)
+{
     if (!GetOwningPlayer()->HasAuthority())
     {
         KickButton->SetVisibility(ESlateVisibility::Hidden);
@@ -69,6 +93,23 @@ void UPlayerSlot::SetPlayerInfo(const FSessionPlayerInfo& PlayerInfo)
     }
 }
 
+void UPlayerSlot::SetVisibleVoiceChat(const FSessionPlayerInfo& PlayerInfo)
+{
+    if (APlayerState* PS = GetOwningPlayer()->PlayerState)
+    {
+        if (PlayerInfo.PlayerName == PS->GetPlayerName())
+        {
+            MuteButton->SetVisibility(ESlateVisibility::Hidden);
+            VolumeSlider->SetVisibility(ESlateVisibility::Hidden);
+        }
+        else
+        {
+            MuteButton->SetVisibility(ESlateVisibility::Visible);
+            VolumeSlider->SetVisibility(ESlateVisibility::Visible);
+        }
+    }
+}
+
 void UPlayerSlot::OnKickButtonClicked()
 {
     UWorld* World = GetWorld();
@@ -84,8 +125,21 @@ void UPlayerSlot::OnKickButtonClicked()
     GM->KickPlayer(MySessionPlayerInfo, FText::FromString("호스트에 의해 강퇴되었습니다!!"));
 }
 
+//
+//void UPlayerSlot::OnMuteButtonClicked_Implementation()
+//{
+//}
+//
+//void UPlayerSlot::OnVolumeSliderValueChanged_Implementation(float Value)
+//{
+//}
+
+
+
 void UPlayerSlot::ClearPlayerInfo()
 {
     NickNameText->SetText(FText::FromString("Empty Slot"));
     KickButton->SetVisibility(ESlateVisibility::Hidden);
+    MuteButton->SetVisibility(ESlateVisibility::Hidden);
+    VolumeSlider->SetVisibility(ESlateVisibility::Hidden);
 }
