@@ -5,6 +5,7 @@
 #include "Character/BasePlayerController.h"
 #include "Framework/GameState/LCGameState.h"
 #include "Framework/GameMode/BaseGameMode.h"
+#include "Framework/PlayerController/LCRoomPlayerController.h"
 
 #include "Net/UnrealNetwork.h"
 
@@ -33,33 +34,36 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 		return;
 	}
 
+	ABaseGameMode* BaseGM = Cast<ABaseGameMode>(GetWorld()->GetAuthGameMode());
+
 	if (ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 	{
 		switch (TravelType)
 		{
 		case EGateTravelType::ToBaseCamp:
 		{
-			if (ALCGameState* GS = GetWorld()->GetGameState<ALCGameState>())
+			if (ALCRoomPlayerController* RoomPC = Cast<ALCRoomPlayerController>(Controller))
 			{
-				if (HasAuthority())
+				if (RoomPC->HasAuthority())
 				{
-					if (APlayerState* PS = Controller->GetPlayerState<APlayerState>())
+					if (ALCGameState* GS = GetWorld()->GetGameState<ALCGameState>())
 					{
-						GS->MarkPlayerAsEscaped(PS);
+						GS->MarkPlayerAsEscaped(RoomPC->PlayerState);
 					}
 				}
 				else
 				{
-					GS->Server_MarkPlayerAsEscaped(Controller);
+					RoomPC->Server_MarkPlayerAsEscaped();
 				}
 			}
 
 			// HUD 숨기고 관전 모드 전환
-			if(ULCUIManager* UIManager = GISubsystem->GetUIManager())
+			if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
 			{
 				UIManager->HideInGameHUD();
 			}
 			ABasePlayerController* BasePlayerController = Cast<ABasePlayerController>(Controller);
+			BasePlayerController->UnPossess();
 			BasePlayerController->SpectateNextPlayer();
 
 			// 일정 시간 후 Pawn 제거
@@ -69,7 +73,7 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 				Pawn->DetachFromControllerPendingDestroy();
 				Pawn->SetLifeSpan(5.f); // 또는 Custom Fade Out
 			}
-			
+
 			// TODO : 탈출, 체크리스트 띄우고 전부 작성하면 결과 UI-> 호스트가 버튼 눌러서 베이스캠프로 이동
 			// 사망->시체 스켈레탈메시남고->관전(컨트롤러)
 			// 관전으로 넘기는 함수
@@ -83,7 +87,7 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 			}
 			else
 			{
-				if (ABaseGameMode* BaseGM = Cast<ABaseGameMode>(GetWorld()->GetAuthGameMode()))
+				if (BaseGM)
 				{
 					if (!BaseGM->IsAllPlayersReady())
 					{
@@ -139,6 +143,17 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 				}
 			}
 			GISubsystem->ChangeLevelByMapID(TargetMapID);
+
+			if (BaseGM)
+			{
+				BaseGM->ShowLoading();
+			}
+			else
+			{
+				LOG_Server_ERROR(TEXT("Base GameMode Is Null"));
+				return;
+			}
+
 			break;
 		}
 		}

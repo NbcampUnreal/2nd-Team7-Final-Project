@@ -127,6 +127,17 @@ void ABaseGameMode::SetPlayerInfo(const FSessionPlayerInfo& RequestInfo)
 	UpdatePlayers();
 }
 
+void ABaseGameMode::ShowLoading()
+{
+	for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
+	{
+		if (ALCPlayerController* PlayerController = Cast<ALCPlayerController>(Iterator->Get()))
+		{
+			PlayerController->Client_ShowLoading();
+		}
+	}
+}
+
 
 void ABaseGameMode::SpawnPlayerCharacter(APlayerController* Controller)
 {

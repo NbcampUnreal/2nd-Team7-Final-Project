@@ -114,18 +114,44 @@ void AChecklistManager::Server_SubmitChecklist_Implementation(APlayerController*
 	}
 
 	// 자원 데이터 수집 (Submitter가 가진 CollectedResources 사용, 예시)
-	TMap<FName, int32> CollectedResources;
-	if (const ABasePlayerState* PS = Cast<ABasePlayerState>(Submitter->PlayerState))
+	// TMap<FName, int32> CollectedResources;
+
+	const TArray<FName> ResourceIDMapping = {
+	TEXT("AncientRuneStone"),
+	TEXT("RadiantFragment"),
+	TEXT("SealedMask")
+	};
+
+	TMap<FName, int32> ParsedResources;
+
+	if (ABasePlayerState* PS = Cast<ABasePlayerState>(Submitter->PlayerState))
 	{
 		// TODO : 실제 자원 데이터 가져오기
-		// CollectedResources = PS->CollectedResources; 
+		// 아이템 획득 시 CollectedResources에 추가되도록 구현 필요
+		// 예시로 몇 가지 자원 추가
+		if (PS->CollectedResources.Num() == 0)
+		{
+			PS->CollectedResources.Init(0, ResourceIDMapping.Num());
+			PS->CollectedResources[0] = 100;
+			PS->CollectedResources[1] = 5;
+			PS->CollectedResources[2] = 30;
+		}
+
+		for (int32 i = 0; i < PS->CollectedResources.Num(); ++i)
+		{
+			if (ResourceIDMapping.IsValidIndex(i))
+			{
+				ParsedResources.Add(ResourceIDMapping[i], PS->CollectedResources[i]);
+			}
+		}
 	}
 
 	FGameResultData GameResult = Evaluator->EvaluateResult(
 		PlayerAnswers,
 		CorrectAnswers,
 		SurvivingCount,
-		CollectedResources
+		ParsedResources
+//		CollectedResources
 	);
 
 	// 결과 저장

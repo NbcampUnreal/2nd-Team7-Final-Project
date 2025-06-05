@@ -29,6 +29,8 @@ public:
 
 	void SetPlayerInfo(const FSessionPlayerInfo& RequestInfo);
 
+	void ShowLoading();
+
 	UFUNCTION(BlueprintCallable, Category = "Session")
 	void TravelMapBySoftPath(FString SoftPath);
 	UFUNCTION(BlueprintCallable, Category = "Session")

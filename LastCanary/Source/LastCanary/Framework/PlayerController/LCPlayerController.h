@@ -18,8 +18,6 @@ public:
 
 	virtual void BeginPlay() override;
 
-	UFUNCTION()
-	void Login();
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_SetPlayerInfo(const FSessionPlayerInfo& PlayerInfo);
@@ -28,6 +26,10 @@ public:
 	UFUNCTION(Client, Reliable)
 	void Client_UpdatePlayerList(const TArray<FSessionPlayerInfo>& PlayerInfos);
 	virtual void Client_UpdatePlayerList_Implementation(const TArray<FSessionPlayerInfo>& PlayerInfos);
+
+	UFUNCTION(Client, Reliable)
+	void Client_ShowLoading();
+	void Client_ShowLoading_Implementation();
 
 	virtual void ClientReturnToMainMenuWithTextReason_Implementation(const FText& ReturnReason) override;
 

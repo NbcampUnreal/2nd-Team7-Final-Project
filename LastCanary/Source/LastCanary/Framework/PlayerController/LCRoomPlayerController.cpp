@@ -3,6 +3,7 @@
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "Framework/PlayerState/LCPlayerState.h"
 #include "Framework/GameMode/LCRoomGameMode.h"
+#include "Framework/GameState/LCGameState.h"
 #include "Character/BasePlayerState.h"
 #include "Framework/Manager/LCCheatManager.h"
 
@@ -270,6 +271,10 @@ void ALCRoomPlayerController::Client_NotifyResultReady_Implementation(const FChe
 			{
 				Menu->SetChecklistResult(ResultData); 
 			}
+			else
+			{
+				LOG_Frame_WARNING(TEXT("[Client] GetCachedResultMenu가 null을 반환함"));
+			}
 		}
 	}
 }
@@ -284,4 +289,31 @@ void ALCRoomPlayerController::Client_StartChecklist_Implementation()
 			break;
 		}
 	}
+}
+
+void ALCRoomPlayerController::Server_MarkPlayerAsEscaped_Implementation()
+{
+	LOG_Frame_WARNING(TEXT("== Server_MarkPlayerAsEscaped_Implementation Called =="));
+
+	if (GetWorld()->GetGameState<ALCGameState>())
+	{
+		GetWorld()->GetGameState<ALCGameState>()->MarkPlayerAsEscaped(PlayerState);
+	}
+}
+
+void ALCRoomPlayerController::Server_RequestSubmitChecklist_Implementation(const TArray<FChecklistQuestion>& PlayerAnswers)
+{
+	LOG_Frame_WARNING(TEXT("Server_RequestSubmitChecklist_Implementation called"));
+
+	for (TActorIterator<AChecklistManager> It(GetWorld()); It; ++It)
+	{
+		if (AChecklistManager* Manager = *It)
+		{
+			LOG_Frame_WARNING(TEXT("ChecklistManager found → Submitting"));
+			Manager->Server_SubmitChecklist(this, PlayerAnswers); 
+			return;
+		}
+	}
+
+	LOG_Frame_WARNING(TEXT("ChecklistManager not found on server"));
 }
