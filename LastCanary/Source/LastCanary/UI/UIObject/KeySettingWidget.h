@@ -311,13 +311,23 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void RefreshMappings(const TArray<FEnhancedActionKeyMapping>& KeyMappings);
 
+	UPROPERTY()
+	TMap<FName, UTextBlock*> MappingNameToLabel;
 
 	UFUNCTION(BlueprintCallable)
 	void UpdateMappings(FName DisplayName, FKey Key);
 
 	UFUNCTION(BlueprintCallable)
 	void InitialMappings();
-	//TMap<FName, FKey> PendingMappings;
+
+	//중복 키 검사
+	void CheckForConflicts();
+
+	TMap<FName, FKey> PendingMappings;
+	TMap<FName, FKey> InitialMapping;
+	TMap<FName, UInputKeySelector*> MappingNameToSelector;
+	UTextBlock* GetKeyLabelByMappingName(FName MappingName);
+	void RestoreToInitialMappings();
 
 	//void QueueMapping(FName MappingName, FKey Key);
 	//void ApplyPendingMappings();

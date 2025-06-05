@@ -12,6 +12,8 @@
 #include "InputCoreTypes.h"
 #include "UserSettings/EnhancedInputUserSettings.h"
 
+#include "UI/UIElement/OptionWidget.h"
+
 void UKeySettingWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
@@ -59,6 +61,26 @@ void UKeySettingWidget::NativeConstruct()
 	SelectorSelectQuickSlot4->OnKeySelected.AddUniqueDynamic(this, &UKeySettingWidget::OnKeySelectedChangeQuickSlot4);
 	SelectorOpenPauseMenu->OnKeySelected.AddUniqueDynamic(this, &UKeySettingWidget::OnKeySelectedOpenPauseMenu);
 	SelectorExitDrone->OnKeySelected.AddUniqueDynamic(this, &UKeySettingWidget::OnKeySelectedExitDrone);
+
+	MappingNameToLabel.Add("MoveFront", CurrentKeyMoveForward);
+	MappingNameToLabel.Add("MoveBack", CurrentKeyMoveBackward);
+	MappingNameToLabel.Add("MoveLeft", CurrentKeyMoveLeft);
+	MappingNameToLabel.Add("MoveRight", CurrentKeyMoveRight);
+	MappingNameToLabel.Add("Walk_Keyboard", CurrentKeyWalk);
+	MappingNameToLabel.Add("Sprint_Keyboard", CurrentKeySprint);
+	MappingNameToLabel.Add("Jump_Keyboard", CurrentKeyJump);
+	MappingNameToLabel.Add("Crouch_Keyboard", CurrentKeyCrouch);
+	MappingNameToLabel.Add("Interact_Keyboard", CurrentKeyInteract);
+	MappingNameToLabel.Add("Aim_Keyboard", CurrentKeyAim);
+	MappingNameToLabel.Add("ThrowItem_Keyboard", CurrentKeyThrowItem);
+	MappingNameToLabel.Add("VoiceChat_Keyboard", CurrentKeyVoice);
+	MappingNameToLabel.Add("ChangeShootingMode_Keyboard", CurrentKeyChangeShootingMode);
+	MappingNameToLabel.Add("SelectQuickSlot1_Keyboard", CurrentKeySelectQuickSlot1);
+	MappingNameToLabel.Add("SelectQuickSlot2_Keyboard", CurrentKeySelectQuickSlot2);
+	MappingNameToLabel.Add("SelectQuickSlot3_Keyboard", CurrentKeySelectQuickSlot3);
+	MappingNameToLabel.Add("SelectQuickSlot4_Keyboard", CurrentKeySelectQuickSlot4);
+	MappingNameToLabel.Add("OpenPauseMenu_Keyboard", CurrentKeyOpenPauseMenu);
+	MappingNameToLabel.Add("ExitDrone_Keyboard", CurrentKeyExitDrone);
 }
 
 void UKeySettingWidget::InitRow(const FString& DisplayName, UInputAction* Action, UTextBlock* Label, UTextBlock* KeyText, UInputKeySelector* Selector)
@@ -114,6 +136,7 @@ void UKeySettingWidget::OnKeySelectedMoveForward(FInputChord SelectedKey)
 	CurrentKeyMoveForward->SetText(FText::FromName(SelectedKey.Key.GetFName()));
 
 	UpdateMappings("MoveFront", PressedKey);
+	CheckForConflicts();
 }
 void UKeySettingWidget::OnKeySelectedMoveBackward(FInputChord SelectedKey)
 {
@@ -126,6 +149,7 @@ void UKeySettingWidget::OnKeySelectedMoveBackward(FInputChord SelectedKey)
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyMoveBackward->SetText(FText::FromName(SelectedKey.Key.GetFName()));
 	UpdateMappings("MoveBack", PressedKey);
+	CheckForConflicts();
 }
 void UKeySettingWidget::OnKeySelectedMoveLeft(FInputChord SelectedKey)
 {
@@ -138,6 +162,7 @@ void UKeySettingWidget::OnKeySelectedMoveLeft(FInputChord SelectedKey)
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyMoveLeft->SetText(FText::FromName(SelectedKey.Key.GetFName()));
 	UpdateMappings("MoveLeft", PressedKey);
+	CheckForConflicts();
 }
 void UKeySettingWidget::OnKeySelectedMoveRight(FInputChord SelectedKey)
 {
@@ -150,6 +175,7 @@ void UKeySettingWidget::OnKeySelectedMoveRight(FInputChord SelectedKey)
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyMoveRight->SetText(FText::FromName(SelectedKey.Key.GetFName()));
 	UpdateMappings("MoveRight", PressedKey);
+	CheckForConflicts();
 }
 //void UKeySettingWidget::OnKeySelectedStrafeLeft(FInputChord SelectedKey)
 //{
@@ -186,6 +212,7 @@ void UKeySettingWidget::OnKeySelectedWalk(FInputChord SelectedKey)
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyWalk->SetText(FText::FromName(SelectedKey.Key.GetFName()));
 	UpdateMappings("Walk_Keyboard", PressedKey);
+	CheckForConflicts();
 }
 void UKeySettingWidget::OnKeySelectedSprint(FInputChord SelectedKey)
 {
@@ -198,6 +225,7 @@ void UKeySettingWidget::OnKeySelectedSprint(FInputChord SelectedKey)
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeySprint->SetText(FText::FromName(SelectedKey.Key.GetFName()));
 	UpdateMappings("Sprint_Keyboard", PressedKey);
+	CheckForConflicts();
 }
 void UKeySettingWidget::OnKeySelectedJump(FInputChord SelectedKey)
 {
@@ -210,6 +238,7 @@ void UKeySettingWidget::OnKeySelectedJump(FInputChord SelectedKey)
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyJump->SetText(FText::FromName(SelectedKey.Key.GetFName()));
 	UpdateMappings("Jump_Keyboard", PressedKey);
+	CheckForConflicts();
 }
 void UKeySettingWidget::OnKeySelectedCrouch(FInputChord SelectedKey)
 {
@@ -222,6 +251,7 @@ void UKeySettingWidget::OnKeySelectedCrouch(FInputChord SelectedKey)
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyCrouch->SetText(FText::FromName(SelectedKey.Key.GetFName()));
 	UpdateMappings("Crouch_Keyboard", PressedKey);
+	CheckForConflicts();
 }
 
 void UKeySettingWidget::OnKeySelectedInteract(FInputChord SelectedKey)
@@ -235,6 +265,7 @@ void UKeySettingWidget::OnKeySelectedInteract(FInputChord SelectedKey)
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyInteract->SetText(FText::FromName(SelectedKey.Key.GetFName()));
 	UpdateMappings("Interact_Keyboard", PressedKey);
+	CheckForConflicts();
 }
 void UKeySettingWidget::OnKeySelectedAim(FInputChord SelectedKey)
 {
@@ -247,6 +278,7 @@ void UKeySettingWidget::OnKeySelectedAim(FInputChord SelectedKey)
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyAim->SetText(FText::FromName(SelectedKey.Key.GetFName()));
 	UpdateMappings("Aim_Keyboard", PressedKey);
+	CheckForConflicts();
 }
 void UKeySettingWidget::OnKeySelectedThrowItem(FInputChord SelectedKey)
 {
@@ -259,6 +291,7 @@ void UKeySettingWidget::OnKeySelectedThrowItem(FInputChord SelectedKey)
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyThrowItem->SetText(FText::FromName(SelectedKey.Key.GetFName()));
 	UpdateMappings("ThrowItem_Keyboard", PressedKey);
+	CheckForConflicts();
 }
 void UKeySettingWidget::OnKeySelectedVoice(FInputChord SelectedKey)
 {
@@ -271,6 +304,7 @@ void UKeySettingWidget::OnKeySelectedVoice(FInputChord SelectedKey)
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyVoice->SetText(FText::FromName(SelectedKey.Key.GetFName()));
 	UpdateMappings("VoiceChat_Keyboard", PressedKey);
+	CheckForConflicts();
 }
 void UKeySettingWidget::OnKeySelectedChangeShootingMode(FInputChord SelectedKey)
 {
@@ -283,6 +317,7 @@ void UKeySettingWidget::OnKeySelectedChangeShootingMode(FInputChord SelectedKey)
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyChangeShootingMode->SetText(FText::FromName(SelectedKey.Key.GetFName()));
 	UpdateMappings("ChangeShootingMode_Keyboard", PressedKey);
+	CheckForConflicts();
 }
 void UKeySettingWidget::OnKeySelectedChangeQuickSlot1(FInputChord SelectedKey)
 {
@@ -295,6 +330,7 @@ void UKeySettingWidget::OnKeySelectedChangeQuickSlot1(FInputChord SelectedKey)
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeySelectQuickSlot1->SetText(FText::FromName(SelectedKey.Key.GetFName()));
 	UpdateMappings("SelectQuickSlot1_Keyboard", PressedKey);
+	CheckForConflicts();
 }
 void UKeySettingWidget::OnKeySelectedChangeQuickSlot2(FInputChord SelectedKey)
 {
@@ -307,6 +343,7 @@ void UKeySettingWidget::OnKeySelectedChangeQuickSlot2(FInputChord SelectedKey)
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeySelectQuickSlot2->SetText(FText::FromName(SelectedKey.Key.GetFName()));
 	UpdateMappings("SelectQuickSlot2_Keyboard", PressedKey);
+	CheckForConflicts();
 }
 void UKeySettingWidget::OnKeySelectedChangeQuickSlot3(FInputChord SelectedKey)
 {
@@ -319,6 +356,7 @@ void UKeySettingWidget::OnKeySelectedChangeQuickSlot3(FInputChord SelectedKey)
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeySelectQuickSlot3->SetText(FText::FromName(SelectedKey.Key.GetFName()));
 	UpdateMappings("SelectQuickSlot3_Keyboard", PressedKey);
+	CheckForConflicts();
 }
 void UKeySettingWidget::OnKeySelectedChangeQuickSlot4(FInputChord SelectedKey)
 {
@@ -331,6 +369,7 @@ void UKeySettingWidget::OnKeySelectedChangeQuickSlot4(FInputChord SelectedKey)
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeySelectQuickSlot4->SetText(FText::FromName(SelectedKey.Key.GetFName()));
 	UpdateMappings("SelectQuickSlot4_Keyboard", PressedKey);
+	CheckForConflicts();
 }
 void UKeySettingWidget::OnKeySelectedOpenPauseMenu(FInputChord SelectedKey)
 {
@@ -343,6 +382,7 @@ void UKeySettingWidget::OnKeySelectedOpenPauseMenu(FInputChord SelectedKey)
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyOpenPauseMenu->SetText(FText::FromName(SelectedKey.Key.GetFName()));
 	UpdateMappings("OpenPauseMenu_Keyboard", PressedKey);
+	CheckForConflicts();
 }
 void UKeySettingWidget::OnKeySelectedExitDrone(FInputChord SelectedKey)
 {
@@ -355,6 +395,7 @@ void UKeySettingWidget::OnKeySelectedExitDrone(FInputChord SelectedKey)
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyExitDrone->SetText(FText::FromName(SelectedKey.Key.GetFName()));
 	UpdateMappings("ExitDrone_Keyboard", PressedKey);
+	CheckForConflicts();
 }
 
 
@@ -512,6 +553,9 @@ void UKeySettingWidget::UpdateMappings(FName DisplayName, FKey Key)
 			RefreshMappings(Mappings);
 
 		}, 0.2f, false);
+
+	// 매핑 업데이트
+	PendingMappings.Add(DisplayName, Key);
 }
 
 
@@ -539,4 +583,90 @@ void UKeySettingWidget::InitialMappings()
 	}
 	const TArray<FEnhancedActionKeyMapping> Mappings = Subsystem->GetAllPlayerMappableActionKeyMappings();
 	RefreshMappings(Mappings);
+
+	// 복사본 저장
+	InitialMapping.Empty();
+	for (const FEnhancedActionKeyMapping& Mapping : Mappings)
+	{
+		InitialMapping.Add(FName(*Mapping.GetDisplayName().ToString()), Mapping.Key);
+	}
+}
+
+void UKeySettingWidget::CheckForConflicts()
+{
+	TMap<FKey, TArray<FName>> KeyToMappingsNames;
+	TSet<FKey> DuplicateKeys;
+
+	for (const auto& Pair : PendingMappings)
+	{
+		KeyToMappingsNames.FindOrAdd(Pair.Value).Add(Pair.Key);
+	}
+
+	for (const auto& Pair : KeyToMappingsNames)
+	{
+		if (Pair.Value.Num() > 1) // 중복된 키가 있는 경우
+		{
+			DuplicateKeys.Add(Pair.Key);
+		}
+	}
+
+	//Apply 버튼 비활성화
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		UOptionWidget* OptionWidget = GetTypedOuter<UOptionWidget>();
+		if (OptionWidget)
+		{
+			OptionWidget->SetApplyButtonEnabled(DuplicateKeys.IsEmpty());
+		}
+	}
+
+	// 중복 키 시각적 표시
+	for (const auto& Pair : PendingMappings)
+	{
+		FName MappingName = Pair.Key;
+		FKey Key = Pair.Value;
+
+		UTextBlock* Label = GetKeyLabelByMappingName(MappingName);
+		if (Label)
+		{
+			Label->SetColorAndOpacity(
+				DuplicateKeys.Contains(Key) ? FSlateColor(FLinearColor::Red) : FSlateColor(FLinearColor::White)
+			);
+		}
+	}
+}
+
+UTextBlock* UKeySettingWidget::GetKeyLabelByMappingName(FName MappingName)
+{
+	UTextBlock** Found = MappingNameToLabel.Find(MappingName);
+	return Found ? *Found : nullptr;
+}
+
+void UKeySettingWidget::RestoreToInitialMappings()
+{
+	PendingMappings = InitialMapping;
+
+	for (const auto& Pair : InitialMapping)
+	{
+		const FName& MappingName = Pair.Key;
+		const FKey& Key = Pair.Value;
+
+		UTextBlock* Label = GetKeyLabelByMappingName(MappingName);
+		if (Label)
+		{
+			Label->SetText(FText::FromName(Key.GetFName()));
+			Label->SetColorAndOpacity(FSlateColor(FLinearColor::White)); // 시각 효과도 원복
+		}
+
+		if (UInputKeySelector** SelectorPtr = MappingNameToSelector.Find(MappingName))
+		{
+			if (UInputKeySelector* Selector = *SelectorPtr)
+			{
+				Selector->SetSelectedKey(Key);
+			}
+		}
+	}
+
+	// Apply 비활성화 (중복 없으므로)
+	CheckForConflicts();
 }
