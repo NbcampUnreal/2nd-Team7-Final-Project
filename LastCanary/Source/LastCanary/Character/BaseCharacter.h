@@ -137,6 +137,7 @@ protected:
 	bool bADS = false; // 현재 정조준 상태인가?
 
 	bool bIsCloseToWall = false;
+	bool bIsSprinting = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
 	UMaterialInterface* DefaultHeadMaterial_HelmBoots;
@@ -212,7 +213,6 @@ public:
 	bool bIsPossessed;
 	bool bIsReloading = false;
 	bool bIsClose = false;
-	bool bIsSprinting = false;
 	void SetPossess(bool IsPossessed);
 
 
