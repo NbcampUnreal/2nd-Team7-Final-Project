@@ -65,7 +65,7 @@ protected:
     /** ── 광폭화(Berserk) 상태 ── */
 
     /** 현재 Berserk 활성 여부 (Replicated) */
-    UPROPERTY(ReplicatedUsing = OnRep_IsBerserk, BlueprintReadOnly, Category = "Boss|Berserk")
+    UPROPERTY(ReplicatedUsing = OnRep_IsBerserk, BlueprintReadWrite, EditAnywhere, Category = "Boss|Berserk") // 임시로 ReadWrite
     bool bIsBerserk = false;
 
     /** Berserk 지속 시간(초) */
