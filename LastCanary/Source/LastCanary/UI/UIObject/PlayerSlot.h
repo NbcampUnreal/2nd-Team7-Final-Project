@@ -7,6 +7,7 @@
 
 class UTextBlock;
 class UButton;
+class USlider;
 
 UCLASS()
 class LASTCANARY_API UPlayerSlot : public UUserWidget
@@ -25,15 +26,21 @@ public:
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* NickNameText;
 
-	UPROPERTY(meta = (BindWidget))
-	UTextBlock* ReadyText;
+	//UPROPERTY(meta = (BindWidget))
+	//UTextBlock* ReadyText;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
 	UButton* KickButton;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
+	UButton* MuteButton;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
+	USlider* VolumeSlider;
 
 	void SetSlotIndex(const int Index);
 	void ClearPlayerInfo();
 	void SetPlayerInfo(const FSessionPlayerInfo& PlayerInfo);
+	void SetVisibleKickButton(const FSessionPlayerInfo& PlayerInfo);
+	void SetVisibleVoiceChat(const FSessionPlayerInfo& PlayerInfo);
 
 	UFUNCTION()
 	void OnKickButtonClicked();

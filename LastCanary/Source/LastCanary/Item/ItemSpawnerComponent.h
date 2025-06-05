@@ -116,6 +116,6 @@ public:
     FVector CalculateThrowDirection() const;
 
 protected:
-    /** 컴포넌트에 충돌 설정 적용 */
-    void ApplyCollisionSettings(UPrimitiveComponent* MeshComponent, bool bIgnoreCharacterCollision);
+    /** 메시 물리 설정 */
+    void SetupMeshPhysics(UPrimitiveComponent* MeshComponent, const FVector& ThrowDirection, float ThrowVelocity, const FVector& ThrowImpulse);
 };

@@ -47,15 +47,6 @@ void UGeneralOptionWidget::NativeConstruct()
 			}
 			EffectVolumeSlider->OnValueChanged.AddUniqueDynamic(this, &UGeneralOptionWidget::OnEffectVolumeChanged);
 		}
-		if (VoiceVolumeSlider)
-		{
-			VoiceVolumeSlider->SetValue(OptionManager->VoiceVolume);
-			if (VoiceVolumeText)
-			{
-				VoiceVolumeText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), OptionManager->VoiceVolume * 100.f)));
-			}
-			VoiceVolumeSlider->OnValueChanged.AddUniqueDynamic(this, &UGeneralOptionWidget::OnVoiceVolumeChanged);
-		}
 		if (MouseSensitivitySlider)
 		{
 			MouseSensitivitySlider->SetValue(OptionManager->MouseSensitivity);
@@ -122,7 +113,7 @@ void UGeneralOptionWidget::NativeDestruct()
 
 void UGeneralOptionWidget::OnMasterVolumeChanged(float Value)
 {
-	LOG_Frame_WARNING(TEXT("Master Volume Changed"));
+	// LOG_Frame_WARNING(TEXT("Master Volume Changed"));
 
 	if (MasterVolumeText)
 	{
@@ -138,7 +129,7 @@ void UGeneralOptionWidget::OnMasterVolumeChanged(float Value)
 
 void UGeneralOptionWidget::OnBGMVolumeChanged(float Value)
 {
-	LOG_Frame_WARNING(TEXT("BGM Volume Changed"));
+	// LOG_Frame_WARNING(TEXT("BGM Volume Changed"));
 
 	if (BGMVolumeText)
 	{
@@ -154,7 +145,7 @@ void UGeneralOptionWidget::OnBGMVolumeChanged(float Value)
 
 void UGeneralOptionWidget::OnEffectVolumeChanged(float Value)
 {
-	LOG_Frame_WARNING(TEXT("Effect Volume Changed"));
+	// LOG_Frame_WARNING(TEXT("Effect Volume Changed"));
 
 	if (EffectVolumeText)
 	{
@@ -168,25 +159,9 @@ void UGeneralOptionWidget::OnEffectVolumeChanged(float Value)
 	}
 }
 
-void UGeneralOptionWidget::OnVoiceVolumeChanged(float Value)
-{
-	LOG_Frame_WARNING(TEXT("Voice Volume Changed"));
-
-	if (VoiceVolumeText)
-	{
-		VoiceVolumeText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), Value * 100.f)));
-	}
-
-	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
-	{
-		OptionManager->VoiceVolume = Value;
-		OptionManager->ApplyAudio(); // 볼륨은 바로 적용
-	}
-}
-
 void UGeneralOptionWidget::OnSensitivityChanged(float Value)
 {
-	LOG_Frame_WARNING(TEXT("SenSitivity Changed"));
+	// LOG_Frame_WARNING(TEXT("SenSitivity Changed"));
 
 	if (MouseSensitivityText)
 	{

@@ -138,25 +138,6 @@ public:
 	TObjectPtr<UInputAction> ExitDroneAction;
 	// ... 필요한 입력들 추가
 
-
-	//인풋모드 변경(Toggle, Hold)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-	EInputMode SprintInputMode = EInputMode::Hold;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-	EInputMode WalkInputMode = EInputMode::Hold;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-	EInputMode CrouchInputMode = EInputMode::Hold;
-
-	bool bIsWalkToggled = false;
-
-	bool bIsCrouchToggled = false;
-	bool bIsCrouchKeyReleased = true;
-
-	bool bIsRunKeyHeld = false;
-	bool bWantsToRun = false;
-
 public:
 	virtual void Input_OnLookMouse(const FInputActionValue& ActionValue);
 
@@ -165,11 +146,6 @@ public:
 	virtual void Input_OnMove(const FInputActionValue& ActionValue);
 
 	virtual void Input_OnSprint(const FInputActionValue& ActionValue);
-
-	virtual void End_OnSprint(const FInputActionValue& ActionValue);
-
-	UFUNCTION()
-	void Complete_OnSprint();
 
 	virtual void Input_OnWalk(const FInputActionValue& ActionValue);
 
@@ -230,25 +206,17 @@ public:
 	ABaseCharacter* GetControlledBaseCharacter() const;
 
 public:
-	UFUNCTION()
-	void OnCharacterDamaged(float CurrentHP);
 
 	UFUNCTION()
-	void OnCharacterDied();
+	void OnPlayerExitActivePlay();
 
 	UFUNCTION(Client, Reliable)
-	void Client_OnCharacterDied();
-	void Client_OnCharacterDied_Implementation();
-
-
-
-
-	//SpectatorMode
-	UFUNCTION(BlueprintImplementableEvent)
-	void TEST_CallSpectatorWidget();
+	void Client_OnPlayerExitActivePlay();
+	void Client_OnPlayerExitActivePlay_Implementation();
 
 	UPROPERTY(BlueprintReadWrite)
 	int32 CurrentSpectatedCharacterIndex = 0;
+
 
 	void SpectateNextPlayer();
 	void SpectatePreviousPlayer();
@@ -260,44 +228,10 @@ public:
 	bool bIsSprinting = false;
 
 public:
-	UPROPERTY(BlueprintReadWrite, Category = "Test")
-	float TestStamina = 100.0f;
-
-	UFUNCTION()
-	void OnStaminaUpdated(float NewStamina);
-
-	UPROPERTY(BlueprintReadWrite, Category = "Test")
-	float TestHP = 100.0f;
-
-
-public:
 	void SetHardLandStateToPlayerState(bool flag);
 	void SetSprintingStateToPlayerState(bool flag);
 
-public:
-
-	// Recoil 상태
-	FTimerHandle RecoilTimerHandle;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite);
-	float YawRecoilRange = 1.0f;
-
-	int32 RecoilStep = 0;
-	int32 RecoilMaxSteps = 5;
-	float RecoilStepPitch = 0.f;
-	float RecoilStepYaw = 0.f;
-
-	void CameraShake();
-	void ApplyRecoilStep();
-
 	void CameraSetOnScope();
-
-
-	UFUNCTION(BlueprintCallable)
-	void SetPlayerMovementSetting();
-
-	UFUNCTION(BlueprintCallable)
-	void ChangePlayerMovementSetting(float _WalkForwardSpeed, float _WalkBackwardSpeed, float _RunForwardSpeed, float _RunBackwardSpeed, float _SprintSpeed);
 
 public:
 	//총기 발사 세팅(단발 or 점사 or 연사)

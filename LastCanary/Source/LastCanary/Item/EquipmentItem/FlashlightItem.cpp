@@ -165,6 +165,11 @@ void AFlashlightItem::SetEquipped(bool bNewEquipped)
     {
         bIsLightOn = false;
         SpotLightComponent->SetVisibility(false);
+
+        if (GetWorld() && BatteryTimerHandle.IsValid())
+        {
+            GetWorld()->GetTimerManager().ClearTimer(BatteryTimerHandle);
+        }
     }
 }
 
@@ -192,26 +197,50 @@ void AFlashlightItem::ConsumeBattery()
         return;
     }
 
-    // 서버 권한 확인
-    if (GetLocalRole() != ROLE_Authority)
+    bool bShouldConsume = false;
+
+    if (GetLocalRole() == ROLE_Authority)
     {
-        return;
+        // 서버에서는 소유자가 로컬인지 확인
+        if (APawn* OwnerPawn = Cast<APawn>(GetOwner()))
+        {
+            bShouldConsume = OwnerPawn->IsLocallyControlled();
+        }
+    }
+    else if (GetLocalRole() == ROLE_AutonomousProxy)
+    {
+        // 클라이언트에서는 자신의 아이템인지 확인
+        bShouldConsume = true;
     }
 
-    Durability = FMath::Clamp(Durability - (BatteryConsumptionRate * 0.1f), 0.0f, 100.0f);
-
-    // 화면에도 배터리 상태 표시 (디버깅용)
-    if (GEngine)
+    if (bShouldConsume)
     {
-        GEngine->AddOnScreenDebugMessage(-1, 0.5f, FColor::Yellow,
-            FString::Printf(TEXT("배터리: %.1f%%"), Durability));
-    }
+        Durability = FMath::Clamp(Durability - (BatteryConsumptionRate * 0.1f), 0.0f, 100.0f);
 
-    if (Durability <= 0.0f)
-    {
-        Multicast_UpdateLightState(false);
-        OnItemStateChanged.Broadcast();
+        LOG_Item_WARNING(TEXT("[AFlashlightItem::ConsumeBattery] 배터리: %.1f%%"), Durability);
+
+        // 배터리가 완전히 소모될 때만 서버에 알림
+        if (Durability <= 0.0f)
+        {
+            if (GetLocalRole() != ROLE_Authority)
+            {
+                Server_SetBatteryDepleted();
+            }
+            else
+            {
+                // 서버에서는 직접 처리
+                Multicast_UpdateLightState(false);
+                OnItemStateChanged.Broadcast();
+            }
+        }
     }
+}
+
+void AFlashlightItem::Server_SetBatteryDepleted_Implementation()
+{
+    Durability = 0.0f;
+    Multicast_UpdateLightState(false);
+    OnItemStateChanged.Broadcast();
 }
 
 void AFlashlightItem::Multicast_PlayFlashlightSound_Implementation(bool bTurnOn)
@@ -285,4 +314,14 @@ void AFlashlightItem::BeginPlay()
         UE_LOG(LogTemp, Warning, TEXT("[AFlashlightItem::BeginPlay] SpotLightComponent 복제 활성화"));
         SpotLightComponent->SetIsReplicated(true);
     }
+}
+
+void AFlashlightItem::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    if (GetWorld() && BatteryTimerHandle.IsValid())
+    {
+        GetWorld()->GetTimerManager().ClearTimer(BatteryTimerHandle);
+    }
+
+    Super::EndPlay(EndPlayReason);
 }

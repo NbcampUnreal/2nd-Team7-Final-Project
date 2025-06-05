@@ -23,7 +23,7 @@ class LASTCANARY_API ABaseCharacter : public AAlsCharacter
 {
 	GENERATED_BODY()
 
-//Character Mesh and Component
+	//Character Mesh and Component
 public:
 	/*1인칭 전용 메시 (자신만 보이는)*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
@@ -32,16 +32,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
 	USkeletalMeshComponent* OverlaySkeletalMesh;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* RemoteOnlySkeletalMesh;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	UStaticMeshComponent* RemoteOnlyOverlayStaticMesh;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* RemoteOnlyOverlaySkeletalMesh;
-
-
 	// SpringArm 컴포넌트 (카메라 거리와 회전 보정용)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	USpringArmComponent* SpringArm;
@@ -49,7 +39,7 @@ public:
 	// Camera 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	UCameraComponent* Camera;
-	
+
 	// SpringArm 컴포넌트 for ADS
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	USpringArmComponent* ADSSpringArm; //Aim Down Sight
@@ -67,7 +57,15 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	TObjectPtr<UArrowComponent> ThirdPersonArrow;
-	
+
+
+	// 관전용 스프링암
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+	USpringArmComponent* SpectatorSpringArm;
+
+	// 관전용 카메라
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+	UCameraComponent* SpectatorCamera;
 
 
 	void Tick(float DeltaSeconds)
@@ -82,7 +80,7 @@ public:
 	float CapsuleWallRatio = 0.0f;
 	void UpdateGunWallClipOffset(float DeltaTime);
 
-//Character Default Settings
+	//Character Default Settings
 protected:
 	/*Character Default Settings*/
 	ABaseCharacter();
@@ -91,7 +89,7 @@ protected:
 	virtual void BeginPlay() override;
 
 
-// Camera Settings
+	// Camera Settings
 protected:
 	/*Camera Settings*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|MouseSensitivity", Meta = (ClampMin = 0, ForceUnits = "x"))
@@ -108,6 +106,8 @@ protected:
 	float MinPitchAngle{ -60.0f };
 
 	void CalcCameraLocation();
+
+	void CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo);
 
 	FTimerHandle MoveTimerHandle;
 	FVector StartLocation;
@@ -136,17 +136,66 @@ protected:
 	void SmoothADSCamera(float DeltaTime);
 	bool bADS = false; // 현재 정조준 상태인가?
 
+	bool bIsCloseToWall = false;
 
-// Character Input Handle Function
-	
-public: 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_HelmBoots;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_HelmBoots_Glassess;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_Glassess;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_Teeth;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_Body;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_Eyelash;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_CORNEA;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_EYEBALL;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* TransparentHeadMaterial;
+
+	void SwapHeadMaterialTransparent(bool bUseTransparent);
+
+
+public:
+	void SetCameraMode(bool bIsFirstPersonView);
+
+	void ApplyRecoilStep();
+	void CameraShake();
+
+public:
+
+	// Recoil 상태
+	FTimerHandle RecoilTimerHandle;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite);
+	float YawRecoilRange = 1.0f;
+
+	int32 RecoilStep = 0;
+	int32 RecoilMaxSteps = 5;
+	float RecoilStepPitch = 0.f;
+	float RecoilStepYaw = 0.f;
+	// Character Input Handle Function
+
+public:
 	/*Function called by the controller*/
 	virtual void Handle_LookMouse(const FInputActionValue& ActionValue);
 	virtual void Handle_Look(const FInputActionValue& ActionValue);
 	virtual void Handle_Move(const FInputActionValue& ActionValue);
 	virtual void Handle_Sprint(const FInputActionValue& ActionValue);
 	virtual void Handle_Walk(const FInputActionValue& ActionValue);
-	virtual void Handle_Crouch();
+	virtual void Handle_Crouch(const FInputActionValue& ActionValue);
 	virtual void Handle_Jump(const FInputActionValue& ActionValue);
 	virtual void Handle_Strafe(const FInputActionValue& ActionValue);
 	virtual void Handle_Aim(const FInputActionValue& ActionValue);
@@ -154,9 +203,9 @@ public:
 	virtual void Handle_ViewMode();
 	virtual void Handle_Reload();
 
+	void EscapeThroughGate();
 
-
-//Character State
+	//Character State
 
 public:
 	bool bIsScoped = false;
@@ -167,7 +216,7 @@ public:
 	void SetPossess(bool IsPossessed);
 
 
-//About Character Animation Montage and Animation Class
+	//About Character Animation Montage and Animation Class
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	bool UseGunBoneforOverlayObjects;
@@ -224,10 +273,10 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_PlayMontage(UAnimMontage* MontageToPlay);
 	void Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay);
-	
 
-	
-//Check Player Focus Everytime
+
+
+	//Check Player Focus Everytime
 public:
 	/*About Interact*/
 
@@ -243,15 +292,24 @@ public:
 	void TraceInteractableActor();
 
 
-//Player Take Damage
+	//Player Take Damage
 public:
 	/*Player Damage, Death*/
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	void HandlePlayerDeath();
-	virtual float GetFallDamage(float Velocity) override;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dmaage")
-	float FallDamageThreshold = 1000.0f;
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_SetPlayerInGameStateOnDie();
+	void Multicast_SetPlayerInGameStateOnDie_Implementation();
+
+	virtual void GetFallDamage(float Velocity) override;
+
+	float CalculateTakeDamage(float DamageAmount);
+	float CalculateFallDamage(float Velocity);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_SetPlayerInGameStateOnEscapeGate();
+	void Multicast_SetPlayerInGameStateOnEscapeGate_Implementation();
 
 
 	UFUNCTION(Server, Reliable)
@@ -267,9 +325,6 @@ public:
 
 	void PickupItem();
 
-	// 아이템 퀵슬롯 및 변경 관련 로직
-	void EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex);
-
 	// 퀵슬롯 아이템들 (타입은 아이템 구조에 따라 UObject*, AItemBase*, UItemData* 등)
 	//TArray<UObject*> QuickSlots;
 
@@ -278,23 +333,27 @@ public:
 
 	//TODO: 아이템 클래스 들어오면 반환 값 바꾸기
 	void GetHeldItem();
-	void EquipItem(UObject* Item);
-	void UnequipCurrentItem();
 
-	//퀵슬롯 칸 최대 칸 수
-	int32 MaxQuickSlotIndex = 3;
-	//현재 퀵슬롯 인덱스
-	UPROPERTY(Replicated)
-	int32 CurrentQuickSlotIndex = 0;
+	void UnequipCurrentItem();
 
 	UFUNCTION(Server, Reliable)
 	void Server_SetQuickSlotIndex(int32 NewIndex);
+	void Server_SetQuickSlotIndex_Implementation(int32 NewIndex);
 
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_EquipItemFromQuickSlot(int32 Index);
+	void Multicast_EquipItemFromQuickSlot_Implementation(int32 Index);
 
 	int32 GetCurrentQuickSlotIndex();
 	void SetCurrentQuickSlotIndex(int32 NewIndex);
+	void EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex);
+
+	UFUNCTION(Server, Reliable)
+	void Server_EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex);
+	void Server_EquipItemFromCurrentQuickSlot_Implementation(int32 QuickSlotIndex);
+
+
+	void StopCurrentPlayingMontage();
 
 	UFUNCTION()
 	void HandleInventoryUpdated();
@@ -304,11 +363,37 @@ public:
 public:
 	bool CheckHardLandState();
 
-	EPlayerState CheckPlayerCurrentState();
+	EPlayerInGameStatus CheckPlayerCurrentState();
 
-	void SetMovementSetting(float _WalkForwardSpeed, float _WalkBackwardSpeed, float _RunForwardSpeed, float _RunBackwardSpeed, float _SprintSpeed);
+	UFUNCTION(Client, Reliable)
+	void Client_SetMovementSetting();
+	void Client_SetMovementSetting_Implementation();
 
+	void SetMovementSetting();
+	TArray<float> CalculateMovementSpeedWithWeigth();
 	void ResetMovementSetting();
+
+	float FrontInput = 0.0f;
+
+	//달리기 관련 로직
+	float GetPlayerMovementSpeed();
+
+	void ConsumeStamina();
+	void TickStaminaDrain();
+	void StartStaminaDrain();
+	void StopStaminaDrain();
+	void StartStaminaRecovery();
+	void StopStaminaRecovery();
+	void StartStaminaRecoverAfterDelay();
+	void StartStaminaRecoverAfterDelayOnJump();
+	void StopStaminaRecoverAfterDelay();
+	void TickStaminaRecovery();
+	bool HasStamina() const;
+	bool IsStaminaFull() const;
+private:
+	FTimerHandle StaminaDrainHandle;
+	FTimerHandle StaminaRecoveryHandle;
+	FTimerHandle StaminaRecoveryDelayHandle;
 
 	// 인벤토리 아이템 관련 변수 및 함수
 public:
@@ -357,10 +442,6 @@ public:
 	void Server_UnequipCurrentItem();
 	void Server_UnequipCurrentItem_Implementation();
 
-	UFUNCTION(Server, Reliable)
-	void Server_EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex);
-	void Server_EquipItemFromCurrentQuickSlot_Implementation(int32 QuickSlotIndex);
-
 	UFUNCTION(BlueprintCallable, Category = "Equipment")
 	bool UseEquippedItem();
 	UFUNCTION(Server, Reliable)
@@ -390,11 +471,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Character|Inventory")
 	void DropItemAtSlot(int32 SlotIndex, int32 Quantity = 1);
 
-#pragma region Editor Test Settings
-public:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "TEST")
-	bool bIsGetFallDownDamage = false;
-#pragma endregion
 public:
 	//-----------------------------------------------------
 	// 가방 관리 (간소화)

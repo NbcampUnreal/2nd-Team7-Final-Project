@@ -9,12 +9,7 @@
 #include "LastCanary.h"
 
 AGunBase::AGunBase()
-{
-    // 스켈레탈 메시 컴포넌트 생성 및 설정
-    GunMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("GunMesh"));
-    RootComponent = GunMesh;
-
-    // 기본 속성 초기화
+{;
     FireRange = 10000.0f;
     BaseDamage = 20.0f;
     FireRate = 0.2f;
@@ -26,9 +21,8 @@ AGunBase::AGunBase()
     DecalSize = FVector(5.0f, 5.0f, 5.0f);
     DecalLifeSpan = 10.0f;
 
-    // 무기 컴포넌트 초기화
     MuzzleLocation = CreateDefaultSubobject<USceneComponent>(TEXT("MuzzleLocation"));
-    MuzzleLocation->SetupAttachment(GunMesh);
+    MuzzleLocation->SetupAttachment(RootComponent);
     MuzzleLocation->SetRelativeLocation(FVector(0, 50, 10));
 
     bDrawDebugLine = true;
@@ -60,8 +54,6 @@ void AGunBase::UseItem()
         return;
     }
 
-    LOG_Item_WARNING(TEXT("UseItem: Firing weapon"));
-
     LastFireTime = CurrentTime;
 
     Multicast_PlayFireEffects();
@@ -71,19 +63,16 @@ void AGunBase::UseItem()
     // 클라이언트에서 호출된 경우 서버에 알림
     if (GetLocalRole() < ROLE_Authority)
     {
-        LOG_Item_WARNING(TEXT("UseItem: Calling Server_Fire() from client"));
         Server_Fire();
     }
     else
-    {
-        LOG_Item_WARNING(TEXT("UseItem: Handling fire locally with HandleFire()"));
+    {;
         HandleFire();
 
         // 서버에서는 즉시 모든 클라이언트에 효과 전파
         Multicast_SpawnImpactEffects(RecentHits);
     }
 
-    LOG_Item_WARNING(TEXT("UseItem: Broadcasting OnItemStateChanged"));
     OnItemStateChanged.Broadcast();
 }
 
@@ -97,8 +86,12 @@ void AGunBase::Server_Fire_Implementation()
 
 void AGunBase::HandleFire()
 {
+    float OldDurability = Durability;
     Durability = FMath::Max(0.0f, Durability - 1.0f);
     UpdateAmmoState();
+
+    LOG_Item_WARNING(TEXT("[HandleFire] 총알 소모: %.0f → %.0f (남은 총알: %.0f/%.0f)"),
+        OldDurability, Durability, Durability, MaxAmmo);
 
     // 최근 히트 결과 초기화
     RecentHits.Empty();
@@ -121,13 +114,7 @@ void AGunBase::HandleFire()
 bool AGunBase::PerformLineTrace(FHitResult& OutHit, FVector& StartLocation, FVector& EndLocation)
 {
     AActor* OwnerActor = GetOwner();
-    if (OwnerActor)
-    {
-        LOG_Item_WARNING(TEXT("PerformLineTrace: Owner exists - Name: %s, Class: %s"),
-            *OwnerActor->GetName(),
-            *OwnerActor->GetClass()->GetName());
-    }
-    else
+    if (!OwnerActor)
     {
         LOG_Item_WARNING(TEXT("PerformLineTrace: Owner is NULL"));
         return false;
@@ -158,24 +145,14 @@ bool AGunBase::PerformLineTrace(FHitResult& OutHit, FVector& StartLocation, FVec
     FRotator CameraRotation;
     OwnerCharacter->GetController()->GetPlayerViewPoint(CameraLocation, CameraRotation);
 
-    LOG_Item_WARNING(TEXT("PerformLineTrace: Camera Location = (%f, %f, %f), Rotation = (%f, %f, %f)"),
-        CameraLocation.X, CameraLocation.Y, CameraLocation.Z,
-        CameraRotation.Pitch, CameraRotation.Yaw, CameraRotation.Roll);
-
     FVector ShootDirection = CameraRotation.Vector();
     if (Spread > 0.0f)
     {
         ShootDirection = FMath::VRandCone(ShootDirection, FMath::DegreesToRadians(Spread));
-        LOG_Item_WARNING(TEXT("PerformLineTrace: Applied spread, ShootDirection = (%f, %f, %f)"),
-            ShootDirection.X, ShootDirection.Y, ShootDirection.Z);
     }
 
     StartLocation = MuzzleLocation ? MuzzleLocation->GetComponentLocation() : GetActorLocation();
     EndLocation = StartLocation + ShootDirection * FireRange;
-
-    LOG_Item_WARNING(TEXT("PerformLineTrace: StartLocation = (%f, %f, %f), EndLocation = (%f, %f, %f)"),
-        StartLocation.X, StartLocation.Y, StartLocation.Z,
-        EndLocation.X, EndLocation.Y, EndLocation.Z);
 
     FCollisionQueryParams QueryParams;
     QueryParams.AddIgnoredActor(this);
@@ -210,15 +187,11 @@ bool AGunBase::PerformLineTrace(FHitResult& OutHit, FVector& StartLocation, FVec
             DrawDebugDirectionalArrow(GetWorld(), OutHit.ImpactPoint,
                 OutHit.ImpactPoint + OutHit.ImpactNormal * 50.0f,
                 20.0f, FColor::Blue, false, DebugDrawDuration);
-
-            LOG_Item_WARNING(TEXT("PerformLineTrace: Debug visuals drawn for hit at (%f, %f, %f)"),
-                OutHit.ImpactPoint.X, OutHit.ImpactPoint.Y, OutHit.ImpactPoint.Z);
         }
         else // 명중하지 않은 경우
         {
             // 전체 라인을 빨간색으로 표시
             DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Red, false, DebugDrawDuration, 0, 2.0f);
-            LOG_Item_WARNING(TEXT("PerformLineTrace: Debug line drawn for miss"));
         }
     }
 
@@ -274,11 +247,8 @@ void AGunBase::Multicast_SpawnImpactEffects_Implementation(const TArray<FHitResu
     // 모든 히트 지점에 대해 효과 생성
     for (const FHitResult& Hit : Hits)
     {
-        LOG_Item_WARNING(TEXT("SpawnImpactEffects: Spawning effects at location (%f, %f, %f)"),
-            Hit.ImpactPoint.X, Hit.ImpactPoint.Y, Hit.ImpactPoint.Z);
-
         // 데칼 크기 증가 (더 잘 보이도록)
-        FVector EnhancedDecalSize = DecalSize * 5.0f;  // 5배 크기로 증가
+        FVector EnhancedDecalSize = DecalSize * 5.0f;
 
         // 데칼 생성 위치를 약간 앞으로 이동 (표면 겹침 방지)
         FVector AdjustedLocation = Hit.ImpactPoint + Hit.ImpactNormal * 0.5f;
@@ -293,7 +263,6 @@ void AGunBase::Multicast_SpawnImpactEffects_Implementation(const TArray<FHitResu
                 Hit.ImpactNormal.Rotation(),
                 DecalLifeSpan
             );
-            LOG_Item_WARNING(TEXT("SpawnImpactEffects: Spawned decal with material %s"), *ImpactDecalMaterial->GetName());
         }
         else
         {
@@ -365,14 +334,20 @@ void AGunBase::Multicast_PlayReloadAnimation_Implementation()
 
 void AGunBase::PlayGunAnimation(UAnimMontage* AnimMontage, float PlayRate)
 {
-    if (!AnimMontage || !GunMesh)
+    if (!AnimMontage)
     {
-        LOG_Item_WARNING(TEXT("PlayGunAnimation: AnimMontage or GunMesh is null"));
+        LOG_Item_WARNING(TEXT("PlayGunAnimation: AnimMontage is null"));
         return;
     }
 
-    // 애니메이션 인스턴스 가져오기
-    UAnimInstance* AnimInstance = GunMesh->GetAnimInstance();
+    USkeletalMeshComponent* ActiveMesh = GetSkeletalMeshComponent();
+    if (!ActiveMesh)
+    {
+        LOG_Item_WARNING(TEXT("PlayGunAnimation: No SkeletalMeshComponent found"));
+        return;
+    }
+
+    UAnimInstance* AnimInstance = ActiveMesh->GetAnimInstance();
     if (!AnimInstance)
     {
         LOG_Item_WARNING(TEXT("PlayGunAnimation: No AnimInstance found on GunMesh"));
@@ -408,11 +383,6 @@ void AGunBase::PlayGunAnimation(UAnimMontage* AnimMontage, float PlayRate)
 void AGunBase::BeginPlay()
 {
     Super::BeginPlay();
-    
-    if (Durability <= 0.0f)
-    {
-        Durability = MaxAmmo;
-    }
 
     UWorld* World = GetWorld();
     if (!World)
@@ -445,26 +415,31 @@ void AGunBase::BeginPlay()
         LOG_Item_WARNING(TEXT("[GunBase::BeginPlay] 게임인스턴스 서브시스템의 GunDataTable이 null입니다!"));
     }
 
-    if (Durability <= 0.0f)
+    ApplyGunDataFromDataTable();
+    ApplyItemDataFromTable();
+
+    if (Durability > MaxAmmo || Durability <= 0.0f)
     {
         Durability = MaxAmmo;
     }
 
-    ApplyItemDataFromTable();
-    ApplyGunDataFromDataTable();
     UpdateAmmoState();
 
-    if (GunMesh)
+    if (USkeletalMeshComponent* ActiveMesh = GetSkeletalMeshComponent())
     {
-        UAnimInstance* AnimInstance = GunMesh->GetAnimInstance();
+        UAnimInstance* AnimInstance = ActiveMesh->GetAnimInstance();
         if (AnimInstance)
         {
-            LOG_Item_WARNING(TEXT("GunBase: AnimInstance found on GunMesh"));
+            LOG_Item_WARNING(TEXT("GunBase: AnimInstance found on SkeletalMeshComponent"));
         }
         else
         {
-            LOG_Item_WARNING(TEXT("GunBase: No AnimInstance on GunMesh - animations will not work"));
+            LOG_Item_WARNING(TEXT("GunBase: No AnimInstance on SkeletalMeshComponent - animations will not work"));
         }
+    }
+    else
+    {
+        LOG_Item_WARNING(TEXT("GunBase: No SkeletalMeshComponent found"));
     }
 }
 
@@ -510,6 +485,11 @@ void AGunBase::ApplyGunDataFromDataTable()
     BulletsPerShot = GunData.BulletsPerShot;
     MaxAmmo = GunData.MaxAmmo;
 
+    if (Durability > MaxAmmo)
+    {
+        Durability = MaxAmmo;
+    }
+
     // 이펙트 및 사운드 설정
     MuzzleFlash = GunData.MuzzleFlash;
     ImpactDecalMaterial = GunData.ImpactDecal;
@@ -518,22 +498,6 @@ void AGunBase::ApplyGunDataFromDataTable()
     FireSound = GunData.FireSound;
     EmptySound = GunData.EmptySound;
     ImpactSound = GunData.ImpactSound;
-
-    // 메시 설정 (있을 경우)
-    if (GunData.GunMesh)
-    {
-        GunMesh->SetSkeletalMesh(GunData.GunMesh);
-        GunMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-        GunMesh->SetCollisionObjectType(ECC_WorldDynamic);
-        GunMesh->SetCollisionResponseToAllChannels(ECR_Block);
-
-        // 부모의 MeshComponent 숨기기
-        if (MeshComponent)
-        {
-            MeshComponent->SetVisibility(false);
-            MeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-        }
-    }
 }
 
 void AGunBase::UpdateAmmoState()
@@ -543,6 +507,7 @@ void AGunBase::UpdateAmmoState()
     if (Durability <= 0.0f)
     {
         // TODO : 탄약 부족 UI 표시
+        LOG_Item_WARNING(TEXT("[UpdateAmmoState] 탄약 완전 소진"));
     }
 }
 
@@ -572,9 +537,4 @@ void AGunBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetime
 {
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
     DOREPLIFETIME(AGunBase, RecentHits);
-}
-
-USkeletalMeshComponent* AGunBase::GetGunMesh()
-{
-    return GunMesh;
 }

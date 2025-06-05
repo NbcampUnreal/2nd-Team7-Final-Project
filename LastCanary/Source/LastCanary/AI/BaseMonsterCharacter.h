@@ -9,6 +9,7 @@
 #include "BaseMonsterCharacter.generated.h"
 
 class USphereComponent;
+class ABaseCharacter;
 
 UCLASS()
 class LASTCANARY_API ABaseMonsterCharacter : public ACharacter, public IGameplayTagAssetInterface
@@ -37,9 +38,6 @@ public:
     UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Property")
     int32 MaxHP;
 
-    /*UPROPERTY(EditDefaultsOnly, Category = "Animation")
-    UAnimMontage* Idle;*/
-
     UPROPERTY(EditDefaultsOnly, Category = "Animation")
     UAnimMontage* StartAttack;
 
@@ -48,15 +46,12 @@ public:
 
     UPROPERTY(EditDefaultsOnly, Category = "Animation")
     UAnimMontage* AIDeath;
-    
+
     UFUNCTION(BlueprintCallable, Category = "Attack")
     void EnableAttackCollider();
 
     UFUNCTION(BlueprintCallable, Category = "Attack")
     void DisableAttackCollider();
-
-    /*UFUNCTION(NetMulticast, Reliable)
-    void MulticastIdle();*/
 
     UFUNCTION(NetMulticast, Reliable)
     void MulticastStartAttack();
@@ -77,16 +72,84 @@ public:
     void ServerPerformAttack();
     void ServerPerformAttack_Implementation();
 
-    /*UFUNCTION(BlueprintPure, Category = "Monster")
-    bool bIsAttacking() const { return bIsAttacking; }
+    //공격
+    UFUNCTION()
+    void OnAttackHit(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+        UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
-    UFUNCTION(BlueprintPure, Category = "Monster")
-    int32 GetCurrentHP() const { return CurrentHP; }
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
+    float AttackDamage;
 
-    UFUNCTION(BlueprintPure, Category = "Monster")
-    bool IsDead() const { return bIsDead; }*/
+    //사운드
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+    USoundBase* AttackSound1;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+    USoundBase* AttackSound2;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+    USoundBase* AttackSound3;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+    USoundBase* DeathSound1;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+    USoundBase* DeathSound2;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+    USoundBase* IdleSound;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+    USoundBase* MoveSound;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+    USoundBase* ChaseSound1;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+    USoundBase* ChaseSound2;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+    USoundBase* ChaseSound3;
+
+    UFUNCTION(BlueprintCallable, Category = "Audio")
+    void PlayAttackSound1();
+
+    UFUNCTION(BlueprintCallable, Category = "Audio")
+    void PlayAttackSound2();
+
+    UFUNCTION(BlueprintCallable, Category = "Audio")
+    void PlayAttackSound3();
+
+    UFUNCTION(BlueprintCallable, Category = "Audio")
+    void PlayDeathSound1();
+
+    UFUNCTION(BlueprintCallable, Category = "Audio")
+    void PlayDeathSound2();
+
+    UFUNCTION(BlueprintCallable, Category = "Audio")
+    void PlayIdleSound();
+
+    UFUNCTION(BlueprintCallable, Category = "Audio")
+    void PlayMoveSound();
+
+    UFUNCTION(BlueprintCallable, Category = "Audio")
+    void PlayChaseSound();
+
+    UFUNCTION(BlueprintCallable, Category = "Audio")
+    void PlayChaseSound1();
+
+    UFUNCTION(BlueprintCallable, Category = "Audio")
+    void PlayChaseSound2();
+
+    UFUNCTION(BlueprintCallable, Category = "Audio")
+    void PlayChaseSound3();
 
 protected:
+    //멀티 사운드 재생
+    UFUNCTION(NetMulticast, Reliable)
+    void MulticastPlaySound(USoundBase* Sound);
+    void MulticastPlaySound_Implementation(USoundBase* Sound);
+
     virtual void BeginPlay() override;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
@@ -101,18 +164,15 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Monster|Combat")
     float AttackCooldown = 1.f;
 
-    /*UPROPERTY(BlueprintReadOnly, Category = "Monster|Combat")
-    bool bIsAttacking;*/
-
     FTimerHandle AttackTimerHandle;
     FTimerHandle DeathTimerHandle;
+    FTimerHandle AttackEnableTimerHandle;
 
     UFUNCTION()
     void OnAttackFinished();
 
     UFUNCTION()
     void DestroyActor();
-    //void OnAttackHit(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 private:
     float LastAttackTime = 0.f;
@@ -128,7 +188,6 @@ private:
 
 public:
     FORCEINLINE class UNavigationInvokerComponent* GetNavInvoker() const { return NavInvoker; }
-
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tags")
     FGameplayTagContainer GameplayTags;

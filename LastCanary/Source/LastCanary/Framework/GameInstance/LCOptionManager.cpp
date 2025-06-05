@@ -3,12 +3,23 @@
 #include "Framework/GameInstance/LCOptionSettingAsset.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/GameEngine.h"
+#include "Framework/GameInstance/LCGameInstance.h"
 
 #include "LastCanary.h"
 
 void ULCOptionManager::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
+	ULCGameInstance* GI = GetWorld()->GetGameInstance<ULCGameInstance>();
+	if (!GI)
+	{
+		return;
+	}
+	else
+	{
+		SoundClassSettings = GI->GetOptionSettings();
+	}
+
 	if (SoundClassSettings)
 	{
 		AudioMix = SoundClassSettings->AudioMix;
@@ -16,6 +27,7 @@ void ULCOptionManager::Initialize(FSubsystemCollectionBase& Collection)
 		BGMSoundClass = SoundClassSettings->BGMSoundClass;
 		EffectSoundClass = SoundClassSettings->EffectSoundClass;
 		VoiceSoundClass = SoundClassSettings->VoiceSoundClass;
+		MyMicSoundClass = SoundClassSettings->MyMicSoundClass;
 	}
 }
 

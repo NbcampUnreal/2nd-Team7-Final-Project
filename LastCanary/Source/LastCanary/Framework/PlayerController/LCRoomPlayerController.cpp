@@ -3,24 +3,26 @@
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "Framework/PlayerState/LCPlayerState.h"
 #include "Framework/GameMode/LCRoomGameMode.h"
+#include "Framework/GameState/LCGameState.h"
 #include "Character/BasePlayerState.h"
 #include "Framework/Manager/LCCheatManager.h"
 
 #include "Actor/LCDroneDelivery.h"
-
 #include "Item/ItemBase.h"
 
 #include "UI/UIElement/RoomWidget.h"
+#include "UI/UIElement/ResultMenu.h"
 
 #include "Engine/World.h"
 #include "Misc/PackageName.h"
+#include "EngineUtils.h"
 
 #include "UI/Manager/LCUIManager.h"
 #include "Blueprint/UserWidget.h"
 #include "DataType/SessionPlayerInfo.h"
 
-#include "LastCanary.h"
 #include "EnhancedInputComponent.h"
+#include "LastCanary.h"
 
 ALCRoomPlayerController::ALCRoomPlayerController()
 {
@@ -98,11 +100,6 @@ void ALCRoomPlayerController::UpdatePlayerList(const TArray<FSessionPlayerInfo>&
 	}
 }
 
-void ALCRoomPlayerController::Server_SetReady_Implementation(bool bIsReady)
-{
-
-}
-
 void ALCRoomPlayerController::Server_RequestPurchase_Implementation(const TArray<FItemDropData>& DropList)
 {
 	if (DropList.IsEmpty())
@@ -158,7 +155,7 @@ void ALCRoomPlayerController::Server_RequestPurchase_Implementation(const TArray
 
 	for (const FItemDropData& DropData : DropList)
 	{
-		if (DropData.ItemClass==nullptr)
+		if (DropData.ItemClass == nullptr)
 		{
 			LOG_Frame_WARNING(TEXT("DropData.ItemClass is NULL"));
 			continue;
@@ -224,8 +221,9 @@ void ALCRoomPlayerController::CreateRoomWidget()
 		{
 			RoomWidgetInstance = CreateWidget<URoomWidget>(this, RoomWidgetClass);
 			RoomWidgetInstance->CreatePlayerSlots();
-			RoomWidgetInstance->AddToViewport();
-			bIsShowRoomUI = true;
+			RoomWidgetInstance->AddToViewport(10);
+			RoomWidgetInstance->SetVisibility(ESlateVisibility::Hidden);
+			bIsShowRoomUI = false;
 		}
 	}
 }
@@ -234,21 +232,88 @@ void ALCRoomPlayerController::ToggleShowRoomWidget()
 {
 	bIsShowRoomUI = !bIsShowRoomUI;
 
+	if (!IsLocalPlayerController())
+	{
+		return;
+	}
+
 	if (IsValid(RoomWidgetInstance))
 	{
 		if (bIsShowRoomUI)
 		{
-			RoomWidgetInstance->AddToViewport(10);
+			//RoomWidgetInstance->AddToViewport(10);
+			RoomWidgetInstance->SetVisibility(ESlateVisibility::Visible);
 			FInputModeGameAndUI GameAndUIInputMode;
 			SetInputMode(GameAndUIInputMode);
 		}
 		else
 		{
-			RoomWidgetInstance->RemoveFromParent();
+			//RoomWidgetInstance->RemoveFromParent();
+			RoomWidgetInstance->SetVisibility(ESlateVisibility::Hidden);
 			FInputModeGameOnly GameInputMode;
 			SetInputMode(GameInputMode);
 		}
 
 		bShowMouseCursor = bIsShowRoomUI;
 	}
+}
+
+void ALCRoomPlayerController::Client_NotifyResultReady_Implementation(const FChecklistResultData& ResultData)
+{
+	LOG_Frame_WARNING(TEXT("[Client] 결과 수신 → 결과 UI 출력 시작"));
+
+	if (ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+	{
+		if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
+		{
+			UIManager->ShowResultMenu();
+			if (UResultMenu* Menu = UIManager->GetResultMenuClass())
+			{
+				Menu->SetChecklistResult(ResultData); 
+			}
+			else
+			{
+				LOG_Frame_WARNING(TEXT("[Client] GetCachedResultMenu가 null을 반환함"));
+			}
+		}
+	}
+}
+
+void ALCRoomPlayerController::Client_StartChecklist_Implementation()
+{
+	for (TActorIterator<AChecklistManager> It(GetWorld()); It; ++It)
+	{
+		if (AChecklistManager* ChecklistManager = *It)
+		{
+			ChecklistManager->StartChecklist();
+			break;
+		}
+	}
+}
+
+void ALCRoomPlayerController::Server_MarkPlayerAsEscaped_Implementation()
+{
+	LOG_Frame_WARNING(TEXT("== Server_MarkPlayerAsEscaped_Implementation Called =="));
+
+	if (GetWorld()->GetGameState<ALCGameState>())
+	{
+		GetWorld()->GetGameState<ALCGameState>()->MarkPlayerAsEscaped(PlayerState);
+	}
+}
+
+void ALCRoomPlayerController::Server_RequestSubmitChecklist_Implementation(const TArray<FChecklistQuestion>& PlayerAnswers)
+{
+	LOG_Frame_WARNING(TEXT("Server_RequestSubmitChecklist_Implementation called"));
+
+	for (TActorIterator<AChecklistManager> It(GetWorld()); It; ++It)
+	{
+		if (AChecklistManager* Manager = *It)
+		{
+			LOG_Frame_WARNING(TEXT("ChecklistManager found → Submitting"));
+			Manager->Server_SubmitChecklist(this, PlayerAnswers); 
+			return;
+		}
+	}
+
+	LOG_Frame_WARNING(TEXT("ChecklistManager not found on server"));
 }

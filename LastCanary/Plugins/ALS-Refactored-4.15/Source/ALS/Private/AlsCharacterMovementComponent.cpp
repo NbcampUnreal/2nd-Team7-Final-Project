@@ -1013,7 +1013,7 @@ void UAlsCharacterMovementComponent::RefreshGroundedMovementSettings()
 		MaxWalkSpeed = RunForwardSpeed;
 	}
 
-	MaxWalkSpeedCrouched = MaxWalkSpeed / 2;
+	MaxWalkSpeedCrouched = CrouchSpeed;
 
 	// Get acceleration, deceleration and ground friction using a curve. This
 	// allows us to precisely control the movement behavior at each speed.
@@ -1062,9 +1062,9 @@ float UAlsCharacterMovementComponent::GetSprintSpeed()
 	return SprintSpeed;
 }
 
-void UAlsCharacterMovementComponent::SetGaitSettings(float _WalkForwardSpeed, float _WalkBackwardSpeed, float _RunForwardSpeed, float _RunBackwardSpeed, float _SprintSpeed)
+void UAlsCharacterMovementComponent::SetGaitSettings(float _WalkForwardSpeed, float _WalkBackwardSpeed, float _RunForwardSpeed, float _RunBackwardSpeed, float _SprintSpeed, float _CrouchSpeed)
 {
-	UE_LOG(LogTemp, Warning, TEXT("GaitSetting has Changed, %f, %f, %f, %f, %f"), _WalkForwardSpeed, _WalkBackwardSpeed, _RunForwardSpeed, _RunBackwardSpeed, _SprintSpeed);
+	UE_LOG(LogTemp, Warning, TEXT("GaitSetting has Changed, %f, %f, %f, %f, %f, %f"), _WalkForwardSpeed, _WalkBackwardSpeed, _RunForwardSpeed, _RunBackwardSpeed, _SprintSpeed, _CrouchSpeed);
 	
 	WalkForwardSpeed = _WalkForwardSpeed;
 
@@ -1075,7 +1075,8 @@ void UAlsCharacterMovementComponent::SetGaitSettings(float _WalkForwardSpeed, fl
 	GaitSettings.RunBackwardSpeed = _RunBackwardSpeed;
 
 	SprintSpeed = _SprintSpeed;
-
+	
+	CrouchSpeed = _CrouchSpeed;
 }
 
 void UAlsCharacterMovementComponent::ResetGaitSettings()
@@ -1091,6 +1092,8 @@ void UAlsCharacterMovementComponent::ResetGaitSettings()
 	RunBackwardSpeed = GaitSettings.RunBackwardSpeed;
 
 	SprintSpeed = GaitSettings.SprintSpeed;
+
+	CrouchSpeed = GaitSettings.RunForwardSpeed / 2;
 }
 
 

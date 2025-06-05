@@ -5,11 +5,6 @@
 #include "Character/PlayerData/PlayerDataTypes.h"
 #include "BasePlayerState.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPlayerDamaged, float, CurrentHP);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPlayerDeath);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPlayerExhausted);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStaminaChanged, float, CurrentStamina);
-
 class UAlsCharacterMovementComponent;
 
 UCLASS()
@@ -27,23 +22,114 @@ protected:
 	bool bAlreadyInitialized;
 
 public:
-	// Stats
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stats")
+	////////* Default Stats *////////
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
 	FPlayerStats InitialStats;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
-	float WalkForwardSpeed{ 175.0f };
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
-	float WalkBackwardSpeed{ 175.0f };
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
-	float RunForwardSpeed{ 375.0f };
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
-	float RunBackwardSpeed{ 375.0f };
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
-	float SprintSpeed{ 650.0f };
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float MaxHP{ InitialStats.MaxHP };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float DefaultWalkSpeed{ InitialStats.WalkSpeed };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float DefaultRunSpeed{ InitialStats.RunSpeed };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float DefaultSprintSpeed{ InitialStats.SptintSpeed };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float DefaultCrouchSpeed{ InitialStats.CrouchSpeed };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float DefaultJumpZVelocity{ InitialStats.JumpPower };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float DefaultExhaustionRecoveryThreshold{ InitialStats.ExhaustionRecoveryThreshold };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float DefaultStaminaDrainRate{ InitialStats.StaminaDrainRate }; // 초당 15 소모
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float DefaultStaminaRecoveryRate{ InitialStats.StaminaRecoveryRate }; // 초당 30 회복
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float DefaultRecoverDelayTime{ InitialStats.RecoverDelayTime };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float DefaultJumpStaminaCost{ InitialStats.JumpStaminaCost };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	bool bInfiniteStamina{ false };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	bool bInfiniteHP{ false };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float FallDamageThreshold{ InitialStats.FallDamageThreshold };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float WeightSlowdownMultiplier{ InitialStats.WeightSlowdownMultiplier };
+
+	////////* InGame Stats *////////
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float WalkSpeed{ InitialStats.WalkSpeed };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float RunSpeed{ InitialStats.RunSpeed };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float SprintSpeed{ InitialStats.SptintSpeed };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float CrouchSpeed{ InitialStats.CrouchSpeed };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float JumpZVelocity{ InitialStats.JumpPower };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float ExhaustionRecoveryThreshold{ InitialStats.ExhaustionRecoveryThreshold };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float StaminaDrainRate{ InitialStats.StaminaDrainRate }; // 초당 15 소모
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float StaminaRecoveryRate{ InitialStats.StaminaRecoveryRate }; // 초당 30 회복
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float RecoverDelayTime{ InitialStats.RecoverDelayTime };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float JumpStaminaCost{ InitialStats.JumpStaminaCost };
+
+	//InputMode
+	//인풋모드 변경(Toggle, Hold)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InputSettings")
+	EInputMode SprintInputMode = EInputMode::Hold;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InputSettings")
+	EInputMode WalkInputMode = EInputMode::Hold;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InputSettings")
+	EInputMode CrouchInputMode = EInputMode::Hold;
+
+
+
+
+public:
 	// State
+	UPROPERTY(ReplicatedUsing = OnRep_bHasEscaped)
+	bool bHasEscaped = false;
+
+	UFUNCTION()
+	void OnRep_bHasEscaped();
+
+	void MarkAsEscaped();
+
 	UPROPERTY(ReplicatedUsing = OnRep_CurrentState, VisibleAnywhere, BlueprintReadOnly, Category = "State")
 	EPlayerState CurrentState = EPlayerState::Idle;
+
+	EPlayerInGameStatus InGameState = EPlayerInGameStatus::Alive;
 
 	UFUNCTION()
 	void OnRep_CurrentState();
@@ -52,43 +138,28 @@ public:
 	ECharacterMovementState MovementState = ECharacterMovementState::Idle;
 	ECharacterMovementState GetPlayerMovementState();
 	void SetPlayerMovementState(ECharacterMovementState NewState);
-
+	void SetPlayerMovementSetting(float _WalkForwardSpeed, float _WalkBackwardSpeed, float _RunForwardSpeed, float _RunBackwardSpeed, float _SprintSpeed);
 	// Health & Stamina
-	UPROPERTY(ReplicatedUsing = OnRep_CurrentHP)
+	UPROPERTY(Replicated)
 	float CurrentHP;
 	UPROPERTY(ReplicatedUsing = OnRep_CurrentStamina)
 	float CurrentStamina;
 
-	UFUNCTION()
-	void OnRep_CurrentHP();
 	UFUNCTION()
 	void OnRep_CurrentStamina();
 
 	UFUNCTION()
 	void ApplyDamage(float Damage);
 
-	void ConsumeStamina(float Amount);
-	void TickStaminaDrain();
-	void StartStaminaDrain();
-	void StopStaminaDrain();
-	void StartStaminaRecovery();
-	void StopStaminaRecovery();
-	void StartStaminaRecoverAfterDelay();
-	void StopStaminaRecoverAfterDelay();
-	void TickStaminaRecovery();
-	bool HasStamina() const;
-	bool IsStaminaFull() const;
-
 	FORCEINLINE float GetStamina() const { return CurrentStamina; }
 	FORCEINLINE float GetHP() const { return CurrentHP; }
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stats")
-	float RecoverDelayTime = 3.0f;
+	void SetStamina(float NewStamina);
+	void SetHP(float NewHP);
 
-private:
-	FTimerHandle StaminaDrainHandle;
-	FTimerHandle StaminaRecoveryHandle;
-	FTimerHandle StaminaRecoveryDelayHandle;
+	UFUNCTION(Client, Reliable)
+	void Client_UpdateHP(float NewHP);
+	void Client_UpdateHP_Implementation(float NewHP);
 
 public:
 	// UI Update
@@ -98,24 +169,6 @@ public:
 	void UpdateExhaustedUI();
 
 public:
-	// Events
-	UPROPERTY(BlueprintAssignable, Category = "Events")
-	FOnPlayerDamaged OnDamaged;
-	UPROPERTY(BlueprintAssignable, Category = "Events")
-	FOnPlayerDeath OnDied;
-	UPROPERTY(BlueprintAssignable, Category = "Events")
-	FOnPlayerExhausted OnExhausted;
-	UPROPERTY(BlueprintAssignable, Category = "Events")
-	FOnStaminaChanged OnStaminaChanged;
-
-	// Multicast
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_OnDamaged(float HP);
-	void Multicast_OnDamaged_Implementation(float HP);
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_OnDied();
-	void Multicast_OnDied_Implementation();
-
 	// Gold & Exp
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	int32 TotalGold = 500;
@@ -132,9 +185,6 @@ public:
 	void Server_SpendGold(int32 Amount);
 	void Server_SpendGold_Implementation(int32 Amount);
 
-	UFUNCTION(BlueprintCallable)
-	void SetPlayerMovementSetting(float _WalkForwardSpeed, float _WalkBackwardSpeed, float _RunForwardSpeed, float _RunBackwardSpeed, float _SprintSpeed);
-
 public:
 	bool bIsCharacterInHardLandingState = false;
 	bool bIsCharacterInSprintingState = false;
@@ -148,4 +198,7 @@ public:
 	TArray<int32> AquiredItemIDs;
 
 	virtual void CopyProperties(APlayerState* PlayerState) override;
+
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	TArray<int32> CollectedResources;
 };
