@@ -6,6 +6,8 @@
 #include "Framework/GameState/LCGameState.h"
 #include "Character/BasePlayerState.h"
 #include "Framework/Manager/LCCheatManager.h"
+#include "Character/BaseCharacter.h"
+#include "Inventory/ToolbarInventoryComponent.h"
 
 #include "Actor/LCDroneDelivery.h"
 #include "Item/ItemBase.h"
@@ -40,6 +42,25 @@ void ALCRoomPlayerController::BeginPlay()
 		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
 		{
 			UIManager->SetUIContext(ELCUIContext::Room);
+		}
+	}
+
+	// 복구 타이머
+	FTimerHandle InventoryRestoreHandle;
+	GetWorld()->GetTimerManager().SetTimer(InventoryRestoreHandle, this, &ALCRoomPlayerController::TryRestoreInventory, 0.3f, false);
+}
+
+void ALCRoomPlayerController::TryRestoreInventory()
+{
+	if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+	{
+		if (ABaseCharacter* Char = Cast<ABaseCharacter>(GetPawn()))
+		{
+			if (UToolbarInventoryComponent* Toolbar = Char->GetToolbarInventoryComponent())
+			{
+				Toolbar->SetInventoryFromItemIDs(PS->AquiredItemIDs);
+				LOG_Frame_WARNING(TEXT("[TryRestoreInventory] 복원 시도 완료. 아이템 수: %d"), PS->AquiredItemIDs.Num());
+			}
 		}
 	}
 }
@@ -269,7 +290,7 @@ void ALCRoomPlayerController::Client_NotifyResultReady_Implementation(const FChe
 			UIManager->ShowResultMenu();
 			if (UResultMenu* Menu = UIManager->GetResultMenuClass())
 			{
-				Menu->SetChecklistResult(ResultData); 
+				Menu->SetChecklistResult(ResultData);
 			}
 			else
 			{
@@ -310,7 +331,7 @@ void ALCRoomPlayerController::Server_RequestSubmitChecklist_Implementation(const
 		if (AChecklistManager* Manager = *It)
 		{
 			LOG_Frame_WARNING(TEXT("ChecklistManager found → Submitting"));
-			Manager->Server_SubmitChecklist(this, PlayerAnswers); 
+			Manager->Server_SubmitChecklist(this, PlayerAnswers);
 			return;
 		}
 	}
