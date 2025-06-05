@@ -111,6 +111,29 @@ protected:
     /** Rage 업데이트 시 Berserk 배수를 적용하고 싶으면 이 함수를 오버라이드하여 사용 */
     virtual void UpdateRage(float DeltaSeconds);
 
+    /** ── 단서(Clue) 관련 멤버들 ── */
+
+/** 단서를 남길 최소/최대 간격 (초) */
+    UPROPERTY(EditAnywhere, Category = "Clue", meta = (ClampMin = "1.0", ClampMax = "30.0"))
+    float ClueSpawnIntervalMin = 5.0f;
+
+    UPROPERTY(EditAnywhere, Category = "Clue", meta = (ClampMin = "1.0", ClampMax = "30.0"))
+    float ClueSpawnIntervalMax = 12.0f;
+
+    /** 단서로 스폰할 액터 클래스들을 배열로 선언 */
+    UPROPERTY(EditAnywhere, Category = "Clue", meta = (EditFixedOrder))
+    TArray<TSubclassOf<AActor>> ClueClasses;
+
+    /** SpawnRandomClue용: 남은 단서 클래스들만 담아두는 배열 */
+    UPROPERTY()
+    TArray<TSubclassOf<AActor>> RemainingClueClasses;
+
+    /** 클루 스폰 타이머 핸들 */
+    FTimerHandle ClueTimerHandle;
+
+    /** 실제 단서를 스폰하는 함수 */
+    void SpawnRandomClue();
+
     // Replication 설정
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 };
