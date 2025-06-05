@@ -230,6 +230,60 @@ void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue)
 	Controller->SetControlRotation(NewRotation);
 }
 
+void ABaseCharacter::CameraShake()
+{
+	// 새로운 반동량을 기존 값에 누적
+	RecoilStepPitch += 1.5f / RecoilMaxSteps;
+	RecoilStepYaw += FMath::RandRange(-YawRecoilRange, YawRecoilRange) / RecoilMaxSteps;
+
+	// 타이머가 안 돌고 있을 때만 시작
+	if (!GetWorld()->GetTimerManager().IsTimerActive(RecoilTimerHandle))
+	{
+		RecoilStep = 0;
+		GetWorld()->GetTimerManager().SetTimer(RecoilTimerHandle, this, &ABaseCharacter::ApplyRecoilStep, 0.02f, true);
+	}
+}
+
+void ABaseCharacter::ApplyRecoilStep()
+{
+	if (!Controller) return;
+
+	FRotator ControlRotation = Controller->GetControlRotation();
+	float CurrentPitch = ControlRotation.Pitch;
+
+	// Unreal에서는 Pitch가 0~360도로 표현될 수 있으므로 정규화
+	if (CurrentPitch > 180.f)
+		CurrentPitch -= 360.f;
+
+	// Pitch 제한 확인
+	if (CurrentPitch + RecoilStepPitch < MaxPitchAngle)
+	{
+		AddControllerPitchInput(RecoilStepPitch);
+	}
+	else
+	{
+		// 최대 각도를 초과하지 않도록 필요한 만큼만 보정하여 추가
+		float RemainingPitch = MaxPitchAngle - CurrentPitch;
+		if (RemainingPitch > 0.0f)
+		{
+			AddControllerPitchInput(RemainingPitch);
+		}
+	}
+
+	// Yaw는 제한 없이 계속 적용
+	AddControllerYawInput(RecoilStepYaw);
+
+	RecoilStep++;
+
+	if (RecoilStep >= RecoilMaxSteps)
+	{
+		RecoilStepPitch = 0.0f;
+		RecoilStepYaw = 0.0f;
+		GetWorld()->GetTimerManager().ClearTimer(RecoilTimerHandle);
+	}
+}
+
+
 void ABaseCharacter::Handle_Look(const FInputActionValue& ActionValue)
 {
 	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
@@ -249,7 +303,7 @@ void ABaseCharacter::Handle_Move(const FInputActionValue& ActionValue)
 		return;
 	}
 	const auto Value{ UAlsVector::ClampMagnitude012D(ActionValue.Get<FVector2D>()) };
-
+	FrontInput = Value.Y;
 	const auto ForwardDirection{ UAlsVector::AngleToDirectionXY(UE_REAL_TO_FLOAT(GetViewState().Rotation.Yaw)) };
 	const auto RightDirection{ UAlsVector::PerpendicularCounterClockwiseXY(ForwardDirection) };
 	if (CheckHardLandState())
@@ -298,10 +352,10 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 		}
 
 		//달리기 시작하면서 스테미나 소모 시작
-		SetDesiredGait(ActionValue.Get<bool>() ? AlsGaitTags::Sprinting : AlsGaitTags::Running);
+		StartStaminaDrain();
 		StopStaminaRecovery();
 		StopStaminaRecoverAfterDelay();
-		StartStaminaDrain();
+		SetDesiredGait(ActionValue.Get<bool>() ? AlsGaitTags::Sprinting : AlsGaitTags::Running);
 	}
 	else if (MyPlayerState->SprintInputMode == EInputMode::Toggle)
 	{
@@ -548,6 +602,7 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::StartStaminaDrain()
 {
+	TickStaminaDrain();
 	if (!GetWorldTimerManager().IsTimerActive(StaminaDrainHandle))
 	{
 		GetWorldTimerManager().SetTimer(
@@ -661,7 +716,7 @@ void ABaseCharacter::ConsumeStamina()
 		return;
 	}
 	float CurrentPlayerSpeed = GetPlayerMovementSpeed();
-	if (CurrentPlayerSpeed <= MyPlayerState->RunSpeed + 10.0f)
+	if (FrontInput < 0.05f)
 	{
 		//일단 회복 시키기는 해
 		StartStaminaRecoverAfterDelay();
@@ -2020,18 +2075,12 @@ bool ABaseCharacter::UseEquippedItem()
 	if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
 	{
 		AGunBase* RifleItem = Cast<AGunBase>(EquippedItem);
-		ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
-		if (PC)
+		if (RifleItem)
 		{
-			if (RifleItem)
+			if (RifleItem->CurrentAmmo > 0)
 			{
-				if (RifleItem->CurrentAmmo > 0)
-				{
-					PC->CameraShake();
-				}
-
+				CameraShake();
 			}
-
 		}
 	}
 	return true;
