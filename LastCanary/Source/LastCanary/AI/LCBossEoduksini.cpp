@@ -67,7 +67,7 @@ void ALCBossEoduksini::Tick(float DeltaSeconds)
     // 분노·스케일 자동 업데이트
     UpdateRageAndScale(DeltaSeconds);
 
-	if (bIsBerserk && !bDarknessActive)
+	if (bIsBerserk && Rage >= MaxRage && !bDarknessActive)
 	{
 		// 광폭화 상태에서 Darkness가 활성화되지 않았다면 자동으로 트리거
 		TryTriggerDarkness();
@@ -93,20 +93,45 @@ void ALCBossEoduksini::OnDarknessSphereBeginOverlap(
     bool bFromSweep,
     const FHitResult& SweepResult)
 {
-    if (!bDarknessActive) return;  // 어둠 상태가 활성화된 뒤에만 처리
+    UE_LOG(LogTemp, Log, TEXT("[OverlapBegin] 호출됨, bDarknessActive=%s"),
+        bDarknessActive ? TEXT("true") : TEXT("false"));
+
+    if (bDarknessActive)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[OverlapBegin] bDarknessActive=true → 리턴"));
+        return;  // 어둠 상태가 활성화된 뒤에만 처리
+    }
 
     // ① OtherActor를 Pawn으로 캐스트
     APawn* Pawn = Cast<APawn>(OtherActor);
-    if (!Pawn) return;
+    if (!Pawn)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[OverlapBegin] OtherActor가 Pawn이 아님 → 리턴"));
+        return;
+    }
 
     // ② Pawn에서 PlayerController를 얻음
     APlayerController* PC = Cast<APlayerController>(Pawn->GetController());
-    if (!PC || !PC->IsLocalController()) return;
+    if (!PC)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[OverlapBegin] Pawn->GetController()가 PlayerController 아님 → 리턴"));
+        return;
+    }
+    if (!PC->IsLocalController())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[OverlapBegin] PC->IsLocalController()==false(원격 클라이언트) → 리턴"));
+        return;
+    }
 
-	// ③ 이미 어둠 효과가 적용된 플레이어는 무시
-	if (DarkenedPlayers.Contains(PC)) return;
+    // ③ 이미 어둠 효과가 적용된 플레이어는 무시
+    if (DarkenedPlayers.Contains(PC))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[OverlapBegin] 이미 DarkenedPlayers에 있음 → 리턴"));
+        return;
+    }
 
     // Fade In 적용
+    UE_LOG(LogTemp, Log, TEXT("[OverlapBegin] Fade In 처리 시작: PlayerController=%s"), *PC->GetName());
     PC->PlayerCameraManager->StartCameraFade(
         0.f, DarknessFadeAlpha,
         FadeDuration, FLinearColor::Black,
@@ -114,6 +139,7 @@ void ALCBossEoduksini::OnDarknessSphereBeginOverlap(
     );
 
     DarkenedPlayers.Add(PC);
+    UE_LOG(LogTemp, Log, TEXT("[OverlapBegin] DarkenedPlayers에 추가: %s"), *PC->GetName());
 }
 
 void ALCBossEoduksini::OnDarknessSphereEndOverlap(
@@ -122,11 +148,24 @@ void ALCBossEoduksini::OnDarknessSphereEndOverlap(
     UPrimitiveComponent* OtherComp,
     int32 OtherBodyIndex)
 {
-    // 플레이어 컨트롤러인지 확인
-    APlayerController* PC = Cast<APlayerController>(OtherActor->GetInstigatorController());
+
+    // 전역 어둠 중이라면 로컬 어둠 해제 무시
+    if (bDarknessActive)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[OverlapEnd] bDarknessActive==true → 로컬 어둠 무시"));
+        return;
+    }
+
+    APawn* Pawn = Cast<APawn>(OtherActor);
+    if (!Pawn) return;
+
+    APlayerController* PC = Cast<APlayerController>(Pawn->GetController());
     if (!PC || !PC->IsLocalController()) return;
 
-    // Fade Out 적용
+    if (!DarkenedPlayers.Contains(PC)) return;
+
+    // Fade Out 처리
+    UE_LOG(LogTemp, Log, TEXT("[OverlapEnd] 로컬 Fade Out: %s"), *PC->GetName());
     PC->PlayerCameraManager->StartCameraFade(
         DarknessFadeAlpha, 0.f,
         FadeDuration, FLinearColor::Black,
@@ -273,8 +312,6 @@ void ALCBossEoduksini::UpdateRageAndScale(float DeltaSeconds)
 
 void ALCBossEoduksini::TryTriggerDarkness()
 {
-    if (bDarknessActive || Rage < MaxRage) return;
-
     // 1) Darkness 상태 활성화
     bDarknessActive = true;
     Multicast_StartDarkness();
