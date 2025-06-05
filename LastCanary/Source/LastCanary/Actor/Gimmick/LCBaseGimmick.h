@@ -4,6 +4,7 @@
 #include "GameFramework/Actor.h"
 #include "Interface/LCGimmickInterface.h"
 #include "Interface/InteractableInterface.h"
+#include "Components/BoxComponent.h"
 #include "Sound/SoundBase.h"
 #include "LCBaseGimmick.generated.h"
 
@@ -16,6 +17,8 @@ public:
 	ALCBaseGimmick();
 
 public:
+	virtual void BeginPlay() override;
+
 	/** ===== 시각 및 사운드 설정 ===== */
 
 	/** 시각적 메쉬 (회전 / 이동 대상) */
@@ -33,6 +36,30 @@ public:
 	/** 연결된 효과 액터들 (IGimmickEffectInterface 구현체) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Target")
 	TArray<AActor*> LinkedTargets;
+
+	/** ==== 감지 영역 ==== */
+
+	// 감지 기능 활성화 여부
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Detection")
+	bool bEnableActorDetection;
+
+	/** 감지 영역 컴포넌트  */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gimmick|Detection")
+	UBoxComponent* DetectionArea;
+
+	/** 감지된 액터들 (회전/이동 대상) */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gimmick|Detection")
+	TArray<AActor*> AttachedActors;
+
+	/** 감지 영역 진입 이벤트 */
+	UFUNCTION()
+	virtual void OnActorEnter(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	/** 감지 영역 이탈 이벤트 */
+	UFUNCTION()
+	virtual void OnActorExit(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
 	/** ===== 쿨타임 설정 ===== */
 
@@ -76,6 +103,9 @@ public:
 	/** 기믹 사용 가능 여부 판단 */
 	virtual bool CanActivate_Implementation() override;
 
+	/** 동작 중 여부 판단 */
+	virtual bool IsGimmickBusy_Implementation() override;
+
 	/** ===== 네트워크 함수 ===== */
 
 	/** 기믹 활성화 요청 (서버 전용) */
@@ -87,4 +117,9 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_PlaySound();
 	void Multicast_PlaySound_Implementation();
+
+public:
+	FORCEINLINE const TArray<AActor*>& GetAttachedActors() const { return AttachedActors; }
+
+
 };
