@@ -1,13 +1,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Framework/GameMode/BaseGameMode.h"
+#include "Framework/GameMode/LCGameMode.h"
 #include "GameFramework/GameModeBase.h"
 #include "LCRoomGameMode.generated.h"
 
 class AChecklistManager;
 UCLASS()
-class LASTCANARY_API ALCRoomGameMode : public ABaseGameMode
+class LASTCANARY_API ALCRoomGameMode : public ALCGameMode
 {
 	GENERATED_BODY()
 	

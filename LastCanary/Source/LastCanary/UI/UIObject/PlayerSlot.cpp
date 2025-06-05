@@ -4,7 +4,7 @@
 #include "Components/Slider.h"
 #include "DataType/SessionPlayerInfo.h"
 #include "GameFramework/PlayerState.h"
-#include "Framework/GameMode/BaseGameMode.h"
+#include "Framework/GameMode/LCGameMode.h"
 #include "Kismet/GameplayStatics.h"
 
 void UPlayerSlot::NativeConstruct()
@@ -115,10 +115,10 @@ void UPlayerSlot::OnKickButtonClicked()
     UWorld* World = GetWorld();
     if (!World) return;
 
-    ABaseGameMode* GM = World->GetAuthGameMode<ABaseGameMode>();
+    ALCGameMode* GM = World->GetAuthGameMode<ALCGameMode>();
     if (!GM)
     {
-        UE_LOG(LogTemp, Warning, TEXT("OnKickButtonClicked: ABaseGameMode을(를) 찾을 수 없습니다."));
+        UE_LOG(LogTemp, Warning, TEXT("OnKickButtonClicked: ALCGameMode을(를) 찾을 수 없습니다."));
         return;
     }
 

@@ -38,6 +38,7 @@ void ALCDroneDelivery::BeginPlay()
 	}
 
 	InitializeLights(); 
+
 }
 
 void ALCDroneDelivery::StartDelivery()
