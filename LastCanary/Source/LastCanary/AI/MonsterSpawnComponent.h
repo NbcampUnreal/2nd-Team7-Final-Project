@@ -8,6 +8,7 @@
 #include "MonsterSpawnComponent.generated.h"
 
 class ANavMeshBoundsVolume;
+class ABaseMonsterCharacter;
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class LASTCANARY_API UMonsterSpawnComponent : public UActorComponent
@@ -26,9 +27,13 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Monster Spawner")
     void StopSpawning();
 
+    void CurrentMap();
 protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Spawner")
-    TArray<TSubclassOf<ACharacter>> MonsterClasses;
+    TArray<TSubclassOf<ABaseMonsterCharacter>> MonsterClasses;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UDataTable* MonsterDataTable;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Spawner", meta = (ClampMin = "1"))
     int32 MaxMonsterCount = 5;

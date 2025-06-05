@@ -10,6 +10,8 @@ UBTTask_Move::UBTTask_Move()
 {
     NodeName = TEXT("Move to Target");
     bNotifyTick = true; 
+    SoundTimer = 2.5f;
+    LastSoundTime = 0.0f;
 }
 
 EBTNodeResult::Type UBTTask_Move::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
@@ -34,9 +36,11 @@ EBTNodeResult::Type UBTTask_Move::ExecuteTask(UBehaviorTreeComponent& OwnerComp,
 
     ABaseMonsterCharacter* Monster = Cast<ABaseMonsterCharacter>(AIController->GetPawn());
     if (Monster)
+    {
         Monster->MulticastAIMove();
-
-    AIController->MoveToActor(TargetActor, MyAcceptableRadius);
+        Monster->PlayChaseSound();
+        LastSoundTime = GetWorld()->GetTimeSeconds();
+    }
 
     return EBTNodeResult::InProgress;
 }
@@ -52,6 +56,18 @@ void UBTTask_Move::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory
         return;
     }
 
+    // 주기적으로 사운드 재생
+    float CurrentTime = GetWorld()->GetTimeSeconds();
+
+    if (CurrentTime - LastSoundTime >= SoundTimer)
+    {
+        if (ABaseMonsterCharacter* Monster = Cast<ABaseMonsterCharacter>(AIController->GetPawn()))
+        {
+            Monster->PlayChaseSound();
+            LastSoundTime = CurrentTime;
+        }
+    }
+
     AActor* TargetActor = Cast<AActor>(BlackboardComp->GetValueAsObject("TargetActor"));
     if (!TargetActor)
     {
@@ -61,8 +77,6 @@ void UBTTask_Move::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory
             AIController->StopMovement();
 
             BaseAIController->SetPatrolling();
-
-            //UE_LOG(LogTemp, Warning, TEXT("Miss Target"));
 
             FinishLatentTask(OwnerComp, EBTNodeResult::Failed);
             return;
@@ -93,5 +107,3 @@ void UBTTask_Move::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory
         }
     }
 }
-
-//BaseMonsterCharacter->ChaseSound sound 플레이 하기
