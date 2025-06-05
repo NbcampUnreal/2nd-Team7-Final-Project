@@ -153,7 +153,7 @@ void UResultMenu::SetRankText(const FString& InRank)
 
 void UResultMenu::OnAcceptClicked()
 {
-	RemoveFromParent();
+	// RemoveFromParent();
 
 	APlayerController* PC = GetOwningPlayer();
 	if (!PC)
@@ -163,7 +163,8 @@ void UResultMenu::OnAcceptClicked()
 	}
 
 	// 클라이언트면 무시
-	if (PC->GetNetMode() != NM_ListenServer)
+	//if (PC->GetNetMode() != NM_ListenServer)
+	if (PC->HasAuthority() == false)
 	{
 		LOG_Frame_WARNING(TEXT("ResultMenu - AcceptClicked → 클라이언트이므로 무시"));
 		return;
@@ -199,12 +200,20 @@ void UResultMenu::SetChecklistResult(const FChecklistResultData& Result)
 					 FText::FromString(Result.bIsSurvived ? TEXT("Survived") : TEXT("Dead")),
 					 Result.bIsSurvived ? 50 : 0 });
 
-	RewardList.Add({ FText::FromString("Checklist Score"),
-					 FText::FromString(TEXT("Score Based on Answers")),
-					 Result.Score });
+	int32 ResourceScoreSum = 0;
+	for (const FResourceScoreInfo& Info : Result.ResourceDetails)
+	{
+		ResourceScoreSum += Info.TotalScore;
+	}
+
+	RewardList.Add({
+		FText::FromString("Resource Score"),
+		FText::Format(FText::FromString("Resources gathered: {0} pts"), FText::AsNumber(ResourceScoreSum)),
+		ResourceScoreSum
+		});
 
 	SetRewardEntries(RewardList);
 	SetResourceScoreDetails(Result.ResourceDetails);
-	SetTotalGold(Result.Score); // 점수를 골드처럼 보여줌
+	SetTotalGold(Result.Score);
 	SetRankText(Result.Rank);
 }

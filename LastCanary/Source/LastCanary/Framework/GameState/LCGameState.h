@@ -32,9 +32,4 @@ public:
 
 	void MarkPlayerAsEscaped(APlayerState* EscapedPlayer);
 	void CheckGameEndCondition();
-
-	UFUNCTION(Server, Reliable)
-	void Server_MarkPlayerAsEscaped(APlayerController* Controller);
-	void Server_MarkPlayerAsEscaped_Implementation(APlayerController* Controller);
-
 };

@@ -81,28 +81,6 @@ void ALCGameState::MarkPlayerAsEscaped(APlayerState* EscapedPlayer)
 	CheckGameEndCondition();
 }
 
-void ALCGameState::Server_MarkPlayerAsEscaped_Implementation(APlayerController* Controller)
-{
-	LOG_Frame_WARNING(TEXT("== Server_MarkPlayerAsEscaped_Implementation Called =="));
-
-	if (!Controller)
-	{
-		LOG_Frame_WARNING(TEXT("Controller is NULL!"));
-		return;
-	}
-
-	APlayerState* PS = Controller->GetPlayerState<APlayerState>();
-	if (!PS)
-	{
-		LOG_Frame_WARNING(TEXT("PlayerState is NULL!"));
-		return;
-	}
-
-	LOG_Frame_WARNING(TEXT("Server_MarkPlayerAsEscaped: Executing for %s"), *PS->GetPlayerName());
-
-	MarkPlayerAsEscaped(PS);
-}
-
 void ALCGameState::CheckGameEndCondition()
 {
 	if (!HasAuthority())
