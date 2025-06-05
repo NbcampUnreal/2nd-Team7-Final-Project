@@ -2,12 +2,12 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
-#include "BaseGameMode.generated.h"
+#include "LCGameMode.generated.h"
 
 struct FSessionPlayerInfo;
 
 UCLASS()
-class LASTCANARY_API ABaseGameMode : public AGameModeBase
+class LASTCANARY_API ALCGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
 
