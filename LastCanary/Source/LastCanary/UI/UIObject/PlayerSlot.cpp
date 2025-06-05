@@ -81,7 +81,7 @@ void UPlayerSlot::OnKickButtonClicked()
         return;
     }
 
-    GM->KickPlayer(MySessionPlayerInfo);
+    GM->KickPlayer(MySessionPlayerInfo, FText::FromString("호스트에 의해 강퇴되었습니다!!"));
 }
 
 void UPlayerSlot::ClearPlayerInfo()
