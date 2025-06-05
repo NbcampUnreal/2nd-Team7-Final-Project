@@ -30,10 +30,6 @@ public:
 	TSubclassOf<class ALCDroneDelivery> DroneDeliveryClass;
 
 	UFUNCTION(Server, Reliable)
-	void Server_SetReady(bool bIsReady);
-	void Server_SetReady_Implementation(bool bIsReady);
-
-	UFUNCTION(Server, Reliable)
 	void Server_RequestPurchase(const TArray<FItemDropData>& DropList);
 	void Server_RequestPurchase_Implementation(const TArray<FItemDropData>& DropList);
 
