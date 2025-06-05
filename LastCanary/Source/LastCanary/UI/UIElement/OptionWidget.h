@@ -8,6 +8,7 @@ class UWidgetSwitcher;
 class UButton;
 class UGeneralOptionWidget;
 class UKeySettingWidget;
+class UVoiceOptionWidget;
 class UTextBlock;
 UCLASS()
 class LASTCANARY_API UOptionWidget : public ULCUserWidgetBase
@@ -26,6 +27,8 @@ private:
 	UPROPERTY(meta = (BindWidget)) 
 	UButton* KeySettingTabButton;
 	UPROPERTY(meta = (BindWidget)) 
+	UButton* VoiceOptionTabButton;
+	UPROPERTY(meta = (BindWidget)) 
 	UButton* ApplyButton;
 	UPROPERTY(meta = (BindWidget)) 
 	UButton* CloseButton;
@@ -39,6 +42,8 @@ private:
 	UGeneralOptionWidget* GeneralOptionWidget;
 	UPROPERTY(meta = (BindWidget))
 	UKeySettingWidget* KeySettingWidget;
+	UPROPERTY(meta = (BindWidget))
+	UVoiceOptionWidget* VoiceOptionWidget;
 	
 	//FLinearColor SelectedColor = FLinearColor(0.87f, 0.87f, 0.87f);   
 	//FLinearColor UnselectedColor = FLinearColor(0.5f, 0.5f, 0.5f);    
@@ -51,6 +56,8 @@ private:
 	void OnGeneralTabButtonClicked();
 	UFUNCTION()
 	void OnKeySettingTabButtonClicked();
+	UFUNCTION()
+	void OnKeyVoiceOptionTabButtonClicked();
 
 public:
 	/* 위젯 게터 */

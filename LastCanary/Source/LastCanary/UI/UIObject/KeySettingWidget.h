@@ -26,8 +26,8 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input") UInputAction* IA_MoveBackward;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input") UInputAction* IA_MoveLeft;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input") UInputAction* IA_MoveRight;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input") UInputAction* IA_StrafeLeft;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input") UInputAction* IA_StrafeRight;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input") UInputAction* IA_StrafeLeft;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input") UInputAction* IA_StrafeRight;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input") UInputAction* IA_Walk;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input") UInputAction* IA_Sprint;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input") UInputAction* IA_Jump;
@@ -76,21 +76,21 @@ protected:
 	UInputKeySelector* SelectorMoveRight;
 #pragma endregion 
 
-#pragma region StrafeActionWidget
-	UPROPERTY(meta = (BindWidget))
-	UTextBlock* ActionLabelStrafeLeft;
-	UPROPERTY(meta = (BindWidget))
-	UTextBlock* CurrentKeyStrafeLeft;
-	UPROPERTY(meta = (BindWidget))
-	UInputKeySelector* SelectorStrafeLeft;
-
-	UPROPERTY(meta = (BindWidget))
-	UTextBlock* ActionLabelStrafeRight;
-	UPROPERTY(meta = (BindWidget))
-	UTextBlock* CurrentKeyStrafeRight;
-	UPROPERTY(meta = (BindWidget))
-	UInputKeySelector* SelectorStrafeRight;
-#pragma endregion 
+//#pragma region StrafeActionWidget
+//	UPROPERTY(meta = (BindWidget))
+//	UTextBlock* ActionLabelStrafeLeft;
+//	UPROPERTY(meta = (BindWidget))
+//	UTextBlock* CurrentKeyStrafeLeft;
+//	UPROPERTY(meta = (BindWidget))
+//	UInputKeySelector* SelectorStrafeLeft;
+//
+//	UPROPERTY(meta = (BindWidget))
+//	UTextBlock* ActionLabelStrafeRight;
+//	UPROPERTY(meta = (BindWidget))
+//	UTextBlock* CurrentKeyStrafeRight;
+//	UPROPERTY(meta = (BindWidget))
+//	UInputKeySelector* SelectorStrafeRight;
+//#pragma endregion 
 
 #pragma region WalkActionWidget
 	UPROPERTY(meta = (BindWidget))
@@ -271,10 +271,10 @@ protected:
 	void OnKeySelectedMoveLeft(FInputChord SelectedKey);
 	UFUNCTION()
 	void OnKeySelectedMoveRight(FInputChord SelectedKey);
-	UFUNCTION()
-	void OnKeySelectedStrafeLeft(FInputChord SelectedKey);
-	UFUNCTION()
-	void OnKeySelectedStrafeRight(FInputChord SelectedKey);
+	//UFUNCTION()
+	//void OnKeySelectedStrafeLeft(FInputChord SelectedKey);
+	//UFUNCTION()
+	//void OnKeySelectedStrafeRight(FInputChord SelectedKey);
 	UFUNCTION()
 	void OnKeySelectedWalk(FInputChord SelectedKey);
 	UFUNCTION()
