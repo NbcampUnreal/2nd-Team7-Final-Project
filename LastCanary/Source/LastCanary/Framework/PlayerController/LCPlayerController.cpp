@@ -11,6 +11,7 @@
 
 #include "Blueprint/UserWidget.h"
 #include "UI/Manager/LCUIManager.h"
+#include "LastCanary.h"
 
 ALCPlayerController::ALCPlayerController()
 {
@@ -30,13 +31,8 @@ void ALCPlayerController::BeginPlay()
         }
     }
 
-    Login();
 }
 
-void ALCPlayerController::Login()
-{
-
-}
 
 void ALCPlayerController::Server_SetPlayerInfo_Implementation(const FSessionPlayerInfo& PlayerInfo)
 {
@@ -53,6 +49,12 @@ void ALCPlayerController::Client_UpdatePlayerList_Implementation(const TArray<FS
 {
 
 }
+
+void ALCPlayerController::Client_ShowLoading_Implementation()
+{
+    LCUIManager->ShowLoadingLevel();
+}
+
 
 void ALCPlayerController::ClientReturnToMainMenuWithTextReason_Implementation(const FText& ReturnReason)
 {

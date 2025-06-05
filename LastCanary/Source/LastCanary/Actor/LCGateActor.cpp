@@ -34,6 +34,8 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 		return;
 	}
 
+	ABaseGameMode* BaseGM = Cast<ABaseGameMode>(GetWorld()->GetAuthGameMode());
+
 	if (ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 	{
 		switch (TravelType)
@@ -85,7 +87,7 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 			}
 			else
 			{
-				if (ABaseGameMode* BaseGM = Cast<ABaseGameMode>(GetWorld()->GetAuthGameMode()))
+				if (BaseGM)
 				{
 					if (!BaseGM->IsAllPlayersReady())
 					{
@@ -141,6 +143,17 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 				}
 			}
 			GISubsystem->ChangeLevelByMapID(TargetMapID);
+
+			if (BaseGM)
+			{
+				BaseGM->ShowLoading();
+			}
+			else
+			{
+				LOG_Server_ERROR(TEXT("Base GameMode Is Null"));
+				return;
+			}
+
 			break;
 		}
 		}

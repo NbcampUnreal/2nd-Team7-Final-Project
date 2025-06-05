@@ -100,11 +100,6 @@ void ALCRoomPlayerController::UpdatePlayerList(const TArray<FSessionPlayerInfo>&
 	}
 }
 
-void ALCRoomPlayerController::Server_SetReady_Implementation(bool bIsReady)
-{
-
-}
-
 void ALCRoomPlayerController::Server_RequestPurchase_Implementation(const TArray<FItemDropData>& DropList)
 {
 	if (DropList.IsEmpty())
@@ -226,7 +221,7 @@ void ALCRoomPlayerController::CreateRoomWidget()
 		{
 			RoomWidgetInstance = CreateWidget<URoomWidget>(this, RoomWidgetClass);
 			RoomWidgetInstance->CreatePlayerSlots();
-			RoomWidgetInstance->AddToViewport();
+			RoomWidgetInstance->AddToViewport(10);
 			RoomWidgetInstance->SetVisibility(ESlateVisibility::Hidden);
 			bIsShowRoomUI = false;
 		}
@@ -236,6 +231,11 @@ void ALCRoomPlayerController::CreateRoomWidget()
 void ALCRoomPlayerController::ToggleShowRoomWidget()
 {
 	bIsShowRoomUI = !bIsShowRoomUI;
+
+	if (!IsLocalPlayerController())
+	{
+		return;
+	}
 
 	if (IsValid(RoomWidgetInstance))
 	{

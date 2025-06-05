@@ -16,6 +16,7 @@ void ULCOptionManager::Initialize(FSubsystemCollectionBase& Collection)
 		BGMSoundClass = SoundClassSettings->BGMSoundClass;
 		EffectSoundClass = SoundClassSettings->EffectSoundClass;
 		VoiceSoundClass = SoundClassSettings->VoiceSoundClass;
+		MyMicSoundClass = SoundClassSettings->MyMicSoundClass;
 	}
 }
 

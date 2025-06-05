@@ -19,8 +19,5 @@ public:
 	virtual void UnregisterPlayer(const APlayerController* ExitingPlayer) override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
-	int MaxNumberOfPlayersInSession = 4;
-	int NumberOfPlayersInSession;
-
-
+	bool KickPlayer(APlayerController* KickedPlayer, const FText& KickReason) override;
 };
