@@ -370,6 +370,8 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
         //return;
     }
 
+    SyncEquippedItemDurabilityToSlot();
+
     FBaseItemSlotData* SlotData = GetItemDataAtSlot(CurrentEquippedSlotIndex);
     if (!SlotData)
     {
@@ -377,7 +379,7 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
         return;
     }
 
-    // ⭐ 모든 아이템에 대해 bIsEquipped = false 설정
+    // 모든 아이템에 대해 bIsEquipped = false 설정
     int32 UnequipSlotIndex = CurrentEquippedSlotIndex; // 백업
     ItemSlots[UnequipSlotIndex].bIsEquipped = false;
 
@@ -418,7 +420,7 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
 
     if (ItemData->ItemType.MatchesTag(BackpackTag))
     {
-        // ⭐ 가방 아이템인 경우 실제 해제하지 않고 슬롯 상태만 변경
+        // 가방 아이템인 경우 실제 해제하지 않고 슬롯 상태만 변경
         LOG_Item_WARNING(TEXT("[UnequipCurrentItem] 가방 아이템 해제 - 실제 가방은 유지, 슬롯 상태만 변경"));
 
         CurrentEquippedSlotIndex = -1;
@@ -504,6 +506,39 @@ FBaseItemSlotData* UToolbarInventoryComponent::GetItemDataAtSlot(int32 SlotIndex
         return &ItemSlots[SlotIndex];
     }
     return nullptr;
+}
+
+void UToolbarInventoryComponent::SyncEquippedItemDurabilityToSlot()
+{
+    if (CurrentEquippedSlotIndex < 0 || !ItemSlots.IsValidIndex(CurrentEquippedSlotIndex))
+    {
+        return;
+    }
+
+    AItemBase* EquippedItem = GetCurrentEquippedItem();
+    if (!EquippedItem)
+    {
+        return;
+    }
+
+    bool bShouldSync = false;
+
+    if (GetOwner() && GetOwner()->HasAuthority())
+    {
+        bShouldSync = true; // 서버에서는 항상 동기화
+    }
+    else if (APawn* OwnerPawn = Cast<APawn>(GetOwner()))
+    {
+        bShouldSync = OwnerPawn->IsLocallyControlled(); // 클라이언트에서는 로컬만
+    }
+
+    if (bShouldSync)
+    {
+        float OldDurability = ItemSlots[CurrentEquippedSlotIndex].Durability;
+        ItemSlots[CurrentEquippedSlotIndex].Durability = EquippedItem->Durability;
+
+        OnInventoryUpdated.Broadcast();
+    }
 }
 
 int32 UToolbarInventoryComponent::GetCurrentEquippedSlotIndex() const
@@ -797,6 +832,11 @@ bool UToolbarInventoryComponent::Internal_DropEquippedItemAtSlot(int32 SlotIndex
     {
         LOG_Item_WARNING(TEXT("[Internal_DropEquippedItemAtSlot] 슬롯 데이터가 없습니다."));
         return false;
+    }
+
+    if (SlotIndex == CurrentEquippedSlotIndex)
+    {
+        SyncEquippedItemDurabilityToSlot();
     }
 
     // ⭐ 가방 아이템 특별 처리 (기존 Internal_DropCurrentEquippedItem 로직 활용)
