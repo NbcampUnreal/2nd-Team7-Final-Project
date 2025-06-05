@@ -66,7 +66,7 @@ ABaseCharacter::ABaseCharacter()
 
 	SpectatorCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("SpectatorCamera"));
 	SpectatorCamera->SetupAttachment(SpectatorSpringArm);  // SpringArm에 카메라 부착
-
+	
 	// 캐릭터 클래스의 생성자 함수 내부 
 	FieldOfView = Camera->FieldOfView;
 
@@ -106,10 +106,13 @@ void ABaseCharacter::BeginPlay()
 	if (IsLocallyControlled())
 	{
 		// "head"는 스켈레탈 메시의 머리 본에 해당하는 이름
-		GetMesh()->HideBoneByName(TEXT("head"), EPhysBodyOp::PBO_None);
+
+		//GetMesh()->HideBoneByName(TEXT("head"), EPhysBodyOp::PBO_None);
+		SwapHeadMaterialTransparent(true);
 	}
 	//애니메이션 오버레이 활성화.
 	RefreshOverlayObject(0);
+
 
 	GetWorld()->GetTimerManager().SetTimer(
 		InteractionTraceTimerHandle,
@@ -194,8 +197,8 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 	{
 		// 관전자가 바라볼 경우 → 3인칭 시점
 		SpectatorCamera->GetCameraView(DeltaTime, ViewInfo);
-		GetMesh()->SetOwnerNoSee(false);
-		GetMesh()->UnHideBoneByName(TEXT("head"));
+		//GetMesh()->SetOwnerNoSee(false);
+		//GetMesh()->UnHideBoneByName(TEXT("head"));
 	}
 }
 
@@ -521,7 +524,7 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 					return;
 				}
 
-				if (ActionValue.Get<float>() > 0.5f)
+				if (ActionValue.Get<float>() > 0.5f && bIsCloseToWall == false)
 				{
 					UE_LOG(LogTemp, Warning, TEXT("Scope on"));
 					SpringArm->AttachToComponent(RifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
@@ -942,15 +945,46 @@ void ABaseCharacter::SetCameraMode(bool bIsFirstPersonView)
 {
 	if (bIsFirstPersonView)
 	{
-		GetMesh()->HideBoneByName(TEXT("head"), EPhysBodyOp::PBO_None);
+		//GetMesh()->HideBoneByName(TEXT("head"), EPhysBodyOp::PBO_None);
+		SwapHeadMaterialTransparent(true);
 		SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 		SpringArm->TargetArmLength = 0.0f;
 	}
 	else
 	{
-		GetMesh()->UnHideBoneByName(TEXT("head"));
+		//GetMesh()->UnHideBoneByName(TEXT("head"));
+		SwapHeadMaterialTransparent(false);
 		SpringArm->TargetArmLength = 200.0f;
 	}
+}
+
+void ABaseCharacter::SwapHeadMaterialTransparent(bool bUseTransparent)
+{
+	if (!GetMesh()) return;
+
+	if (bUseTransparent && TransparentHeadMaterial)
+	{
+		GetMesh()->SetMaterial(7, TransparentHeadMaterial);
+		GetMesh()->SetMaterial(9, TransparentHeadMaterial);
+		GetMesh()->SetMaterial(10, TransparentHeadMaterial);
+		GetMesh()->SetMaterial(11, TransparentHeadMaterial);
+		GetMesh()->SetMaterial(12, TransparentHeadMaterial);
+		GetMesh()->SetMaterial(13, TransparentHeadMaterial);
+		GetMesh()->SetMaterial(14, TransparentHeadMaterial);
+		GetMesh()->SetMaterial(15, TransparentHeadMaterial);
+	}
+	else
+	{
+		GetMesh()->SetMaterial(7, DefaultHeadMaterial_HelmBoots);
+		GetMesh()->SetMaterial(9, DefaultHeadMaterial_HelmBoots_Glassess);
+		GetMesh()->SetMaterial(11, DefaultHeadMaterial_Teeth);
+		GetMesh()->SetMaterial(12, DefaultHeadMaterial_Body);
+		GetMesh()->SetMaterial(13, DefaultHeadMaterial_Eyelash);
+		GetMesh()->SetMaterial(14, DefaultHeadMaterial_CORNEA);
+		GetMesh()->SetMaterial(15, DefaultHeadMaterial_EYEBALL);
+
+	}
+	// 7 10 11  13  14 15 
 }
 
 void ABaseCharacter::Handle_Strafe(const FInputActionValue& ActionValue)
@@ -1053,14 +1087,26 @@ void ABaseCharacter::TraceInteractableActor()
 
 	bool bHit = GetWorld()->LineTraceSingleByChannel(
 		Hit, Start, End, ECC_GameTraceChannel1, Params);
-	/*
+	
 	if (bHit)
 	{
 		float DistanceToHit = Hit.Distance;
 		LOG_Item_WARNING(TEXT("Hit Actor: %s, Distance: %.2f"),
 			*Hit.GetActor()->GetName(), DistanceToHit);
+		if (Hit.Distance < 100.0f)
+		{
+			bIsCloseToWall = true;
+		}
+		else
+		{
+			bIsCloseToWall = false;
+		}
 	}
-	*/
+	else
+	{
+		bIsCloseToWall = false;
+	}
+	
 
 	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 0.1f);
 	//여기가 로그가 안찍힘 수정해야됨

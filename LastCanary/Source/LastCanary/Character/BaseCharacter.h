@@ -136,6 +136,36 @@ protected:
 	void SmoothADSCamera(float DeltaTime);
 	bool bADS = false; // 현재 정조준 상태인가?
 
+	bool bIsCloseToWall = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_HelmBoots;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_HelmBoots_Glassess;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_Glassess;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_Teeth;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_Body;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_Eyelash;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_CORNEA;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_EYEBALL;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* TransparentHeadMaterial;
+	
+	void SwapHeadMaterialTransparent(bool bUseTransparent);
 
 
 public:

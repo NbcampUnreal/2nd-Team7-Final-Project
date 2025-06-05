@@ -489,13 +489,14 @@ void ABasePlayerController::Input_OnStrafe(const FInputActionValue& ActionValue)
 			if (Input > 0.5f)
 			{
 				SpectateNextPlayer();
+				return;
 			}
 			else
 			{
 				SpectatePreviousPlayer();
+				return;
 			}
 		}
-		return;
 	}
 
 	//나중에 사용으로 빼긴 할 건데 일단 테스트용으로 넣어놔서 아쉽게도 호출이 되는 그런 코드.
