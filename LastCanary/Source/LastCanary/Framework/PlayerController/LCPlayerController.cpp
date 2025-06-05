@@ -31,13 +31,8 @@ void ALCPlayerController::BeginPlay()
         }
     }
 
-    Login();
 }
 
-void ALCPlayerController::Login()
-{
-
-}
 
 void ALCPlayerController::Server_SetPlayerInfo_Implementation(const FSessionPlayerInfo& PlayerInfo)
 {
@@ -55,20 +50,11 @@ void ALCPlayerController::Client_UpdatePlayerList_Implementation(const TArray<FS
 
 }
 
-//void ALCPlayerController::ClientWasKicked_Implemetnation(const FText& KickReason)
-//{
-//    //LOG_Server_WARNING(KickReason);
-//
-//    IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get();
-//    if (OnlineSub)
-//    {
-//        IOnlineSessionPtr Sessions = OnlineSub->GetSessionInterface();
-//        if (Sessions.IsValid())
-//        {
-//            Sessions->DestroySession(NAME_GameSession);
-//        }
-//    }
-//}
+void ALCPlayerController::Client_ShowLoading_Implementation()
+{
+    LCUIManager->ShowLoadingLevel();
+}
+
 
 void ALCPlayerController::ClientReturnToMainMenuWithTextReason_Implementation(const FText& ReturnReason)
 {
