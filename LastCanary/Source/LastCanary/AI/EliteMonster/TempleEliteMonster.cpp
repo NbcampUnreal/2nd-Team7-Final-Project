@@ -3,5 +3,5 @@
 
 ATempleEliteMonster::ATempleEliteMonster()
 {
-    GetCharacterMovement()->MaxWalkSpeed = 300.0f;
+    GetCharacterMovement()->MaxWalkSpeed = 200.0f;
 }

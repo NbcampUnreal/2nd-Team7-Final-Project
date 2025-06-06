@@ -28,17 +28,11 @@ void ASpawnerTriggerVolume::BeginPlay()
                     if (BaseChar->FindComponentByClass<UMonsterSpawnComponent>())
                     {
                         Target = BaseChar;
-                        UE_LOG(LogTemp, Warning, TEXT("Auto-found BaseCharacter target!"));
                         break;
                     }
                 }
             }
         }
-    }
-
-    if (!Target)
-    {
-        UE_LOG(LogTemp, Error, TEXT("No suitable BaseCharacter found!"));
     }
 }
 
@@ -50,7 +44,7 @@ void ASpawnerTriggerVolume::NotifyActorBeginOverlap(AActor* OtherActor)
     {
         Spawning = true;
         UpdateSpawnerState();
-        UE_LOG(LogTemp, Warning, TEXT("1111111111111111111111111111111111111111111111111111111111111111111111111111111"));
+        //UE_LOG(LogTemp, Warning, TEXT("1111111111111111111111111111111111111111111111111111111111111111111111111111111"));
     }
 }
 
@@ -62,7 +56,7 @@ void ASpawnerTriggerVolume::NotifyActorEndOverlap(AActor* OtherActor)
     {
         Spawning = false;
         UpdateSpawnerState();
-        UE_LOG(LogTemp, Warning, TEXT("2222222222222222222222222222222222222222222222222222222222222222222222222222222222"));
+        //UE_LOG(LogTemp, Warning, TEXT("2222222222222222222222222222222222222222222222222222222222222222222222222222222222"));
     }
 }
 
@@ -70,25 +64,23 @@ void ASpawnerTriggerVolume::UpdateSpawnerState()
 {
     if (!Target)
     {
-        UE_LOG(LogTemp, Error, TEXT("Target is NULL!"));
         return;
     }
 
     UMonsterSpawnComponent* SpawnComponent = Target->FindComponentByClass<UMonsterSpawnComponent>();
     if (!SpawnComponent)
     {
-        UE_LOG(LogTemp, Error, TEXT("MonsterSpawnComponent not found!"));
         return;
     }
 
     if (Spawning)
     {
-        UE_LOG(LogTemp, Warning, TEXT("33333333333333333333333333333333333333333333333"));
+        //UE_LOG(LogTemp, Warning, TEXT("33333333333333333333333333333333333333333333333"));
         SpawnComponent->StartSpawning();
     }
     else
     {
-        UE_LOG(LogTemp, Warning, TEXT("444444444444444444444444444444444444444444444444"));
+        //UE_LOG(LogTemp, Warning, TEXT("444444444444444444444444444444444444444444444444"));
         SpawnComponent->StopSpawning();
     }
 }

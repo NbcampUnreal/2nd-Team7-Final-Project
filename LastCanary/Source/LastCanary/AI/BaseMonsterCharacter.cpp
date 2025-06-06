@@ -47,7 +47,7 @@ ABaseMonsterCharacter::ABaseMonsterCharacter()
     SetReplicateMovement(true);
 
     GetCharacterMovement()->bOrientRotationToMovement = true;
-    GetCharacterMovement()->MaxWalkSpeed = 300.f;
+    GetCharacterMovement()->MaxWalkSpeed = 200.f;
 
     NavGenerationradius = 200.0f;
     NavRemovalradius = 300.0f;
