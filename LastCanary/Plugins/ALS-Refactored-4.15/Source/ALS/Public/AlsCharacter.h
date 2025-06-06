@@ -30,6 +30,7 @@ public:
 	void EndHardLanding();
 	virtual void GetFallDamage(float Velocity);
 	FVector GetLocomotionStateMovementSpeed();
+	float FootSoundModifier = 1.0f;
 
 
 	UPROPERTY(BlueprintReadOnly, Category = "Als Character")
