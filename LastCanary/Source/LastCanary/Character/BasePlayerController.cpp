@@ -151,32 +151,6 @@ void ABasePlayerController::OnPossess(APawn* InPawn)
 	
 }
 
-void ABasePlayerController::OnPossess(APawn* InPawn)
-{
-	Super::OnPossess(InPawn);
-
-	if (InPawn)
-	{
-		SpanwedPlayerCharacter = Cast<ABaseCharacter>(InPawn);
-		CurrentPossessedPawn = InPawn;
-	}
-	// Pawn의 타입에 따라 MappingContext를 자동 변경
-	if (InPawn->IsA(ABaseCharacter::StaticClass()))
-	{
-		CurrentIMC = InputMappingContext;
-		Cast<ABaseCharacter>(InPawn)->SetPossess(true);
-		SpanwedPlayerCharacter = Cast<ABaseCharacter>(InPawn);
-	}
-	else
-	{
-		//SpawnedPlayerDrone = Cast<ABaseDrone>(InPawn);
-	}
-
-
-	ApplyInputMappingContext(CurrentIMC);
-
-}
-
 
 void ABasePlayerController::OnRep_Pawn()
 {
@@ -192,22 +166,25 @@ void ABasePlayerController::OnRep_Pawn()
 
 void ABasePlayerController::OnUnPossess()
 {
+	APawn* PossessedPawn = GetPawn();  // Possess 해제 전에 캐싱
+
 	Super::OnUnPossess();
+
 	CachedPawn = nullptr;
 	CurrentPossessedPawn = nullptr;
-	SpanwedPlayerCharacter = nullptr;
+
+	// SpanwedPlayerCharacter 초기화 여부는 프로젝트 설계에 따라 결정
+	// SpanwedPlayerCharacter = nullptr;
 	SpawnedPlayerDrone = nullptr;
 
 	RemoveInputMappingContext(CurrentIMC);
-	if (GetPawn()->IsA(ABaseCharacter::StaticClass()))
-	{
-		Cast<ABaseCharacter>(GetPawn())->SetPossess(false);
-	}
-	else
-	{
 
+	if (PossessedPawn && PossessedPawn->IsA(ABaseCharacter::StaticClass()))
+	{
+		Cast<ABaseCharacter>(PossessedPawn)->SetPossess(false);
 	}
 }
+
 
 void ABasePlayerController::ClientRestart(APawn* NewPawn)
 {
