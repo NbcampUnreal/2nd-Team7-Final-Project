@@ -8,6 +8,8 @@
 #include "UI/UIElement/ResultMenu.h"
 #include "Net/UnrealNetwork.h"
 #include "Kismet/GameplayStatics.h"
+#include "DataTable/ItemDataRow.h"
+
 #include "LastCanary.h"
 
 AChecklistManager::AChecklistManager()
@@ -113,31 +115,31 @@ void AChecklistManager::Server_SubmitChecklist_Implementation(APlayerController*
 		}
 	}
 
-	const TArray<FName> ResourceIDMapping = {
-	TEXT("AncientRuneStone"),
-	TEXT("RadiantFragment"),
-	TEXT("SealedMask")
-	};
-
 	TMap<FName, int32> ParsedResources;
 
-	if (ABasePlayerState* PS = Cast<ABasePlayerState>(Submitter->PlayerState))
+	if (ResourceItemTable)
 	{
-		// 예시로 몇 가지 자원 추가
-		//if (PS->CollectedResources.Num() == 0)
-		//{
-		//	PS->CollectedResources.Init(0, ResourceIDMapping.Num());
-
-		//	PS->CollectedResources[0] = 100;
-		//	PS->CollectedResources[1] = 5;
-		//	PS->CollectedResources[2] = 30;
-		//}
-
-		for (int32 i = 0; i < PS->CollectedResources.Num(); ++i)
+		if (ABasePlayerState* PS = Cast<ABasePlayerState>(Submitter->PlayerState))
 		{
-			if (ResourceIDMapping.IsValidIndex(i))
+			TArray<FItemDataRow*> AllRows;
+			ResourceItemTable->GetAllRows(TEXT("Checklist Resource Parse"), AllRows);
+
+			for (int32 i = 0; i < AllRows.Num(); ++i)
 			{
-				ParsedResources.Add(ResourceIDMapping[i], PS->CollectedResources[i]);
+				const FItemDataRow* Row = AllRows[i];
+				if (Row == nullptr || Row->bIsResourceItem == false)
+				{
+					continue;
+				}
+
+				if (PS->CollectedResources.IsValidIndex(i))
+				{
+					int32 CollectedCount = PS->CollectedResources[i];
+					if (CollectedCount > 0)
+					{
+						ParsedResources.Add(Row->ItemName, CollectedCount);
+					}
+				}
 			}
 		}
 	}
@@ -147,7 +149,6 @@ void AChecklistManager::Server_SubmitChecklist_Implementation(APlayerController*
 		CorrectAnswers,
 		SurvivingCount,
 		ParsedResources
-//		CollectedResources
 	);
 
 	// 결과 저장

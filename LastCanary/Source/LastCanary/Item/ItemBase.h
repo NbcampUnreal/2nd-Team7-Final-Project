@@ -27,7 +27,7 @@ public:
 
     /** 아이템의 스태틱 메시 컴포넌트 */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-    UStaticMeshComponent* MeshComponent;
+    UStaticMeshComponent* StaticMeshComponent;
 
     /** 아이템의 스켈레탈 메시 컴포넌트 */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
