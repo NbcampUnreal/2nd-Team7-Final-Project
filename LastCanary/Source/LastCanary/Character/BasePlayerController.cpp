@@ -151,6 +151,33 @@ void ABasePlayerController::OnPossess(APawn* InPawn)
 	
 }
 
+void ABasePlayerController::OnPossess(APawn* InPawn)
+{
+	Super::OnPossess(InPawn);
+
+	if (InPawn)
+	{
+		SpanwedPlayerCharacter = Cast<ABaseCharacter>(InPawn);
+		CurrentPossessedPawn = InPawn;
+	}
+	// Pawn의 타입에 따라 MappingContext를 자동 변경
+	if (InPawn->IsA(ABaseCharacter::StaticClass()))
+	{
+		CurrentIMC = InputMappingContext;
+		Cast<ABaseCharacter>(InPawn)->SetPossess(true);
+		SpanwedPlayerCharacter = Cast<ABaseCharacter>(InPawn);
+	}
+	else
+	{
+		//SpawnedPlayerDrone = Cast<ABaseDrone>(InPawn);
+	}
+
+
+	ApplyInputMappingContext(CurrentIMC);
+
+}
+
+
 void ABasePlayerController::OnRep_Pawn()
 {
 	Super::OnRep_Pawn();
@@ -165,6 +192,12 @@ void ABasePlayerController::OnRep_Pawn()
 
 void ABasePlayerController::OnUnPossess()
 {
+	Super::OnUnPossess();
+	CachedPawn = nullptr;
+	CurrentPossessedPawn = nullptr;
+	SpanwedPlayerCharacter = nullptr;
+	SpawnedPlayerDrone = nullptr;
+
 	RemoveInputMappingContext(CurrentIMC);
 	if (GetPawn()->IsA(ABaseCharacter::StaticClass()))
 	{
@@ -174,7 +207,6 @@ void ABasePlayerController::OnUnPossess()
 	{
 
 	}
-	Super::OnUnPossess();
 }
 
 void ABasePlayerController::ClientRestart(APawn* NewPawn)
@@ -293,27 +325,23 @@ void ABasePlayerController::Input_OnLook(const FInputActionValue& ActionValue)
 
 void ABasePlayerController::Input_OnMove(const FInputActionValue& ActionValue)
 {
-
 	if (!IsValid(CurrentPossessedPawn))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_OnMove"));
 		return;
 	}
 	// APawn 타입에 맞는 처리를 실행
-	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
+	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
-		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-		if (IsValid(PlayerCharacter))
-		{
-			PlayerCharacter->Handle_Move(ActionValue);
-		}
+		PlayerCharacter->Handle_Move(ActionValue);
 	}
-	if (CurrentPossessedPawn->IsA<ABaseDrone>())
+	else if (ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn))
 	{
-		ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn);
-		if (IsValid(Drone))
-		{
-			Drone->Input_Move(ActionValue);
-		}
+		Drone->Input_Move(ActionValue);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Unknown pawn type in Input_OnMove: %s"), *CurrentPossessedPawn->GetName());
 	}
 }
 
@@ -322,16 +350,17 @@ void ABasePlayerController::Input_OnSprint(const FInputActionValue& ActionValue)
 {
 	if (!IsValid(CurrentPossessedPawn))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_OnSprint"));
 		return;
 	}
-	// APawn 타입에 맞는 처리를 실행
-	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
+
+	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
-		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-		if (IsValid(PlayerCharacter))
-		{
-			PlayerCharacter->Handle_Sprint(ActionValue);
-		}
+		PlayerCharacter->Handle_Sprint(ActionValue);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is not an ABaseCharacter: %s"), *CurrentPossessedPawn->GetName());
 	}
 }
 
@@ -339,16 +368,17 @@ void ABasePlayerController::Input_OnWalk(const FInputActionValue& ActionValue)
 {
 	if (!IsValid(CurrentPossessedPawn))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_OnWalk"));
 		return;
 	}
-	// APawn 타입에 맞는 처리를 실행
-	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
+
+	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
-		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-		if (IsValid(PlayerCharacter))
-		{
-			PlayerCharacter->Handle_Walk(ActionValue);
-		}
+		PlayerCharacter->Handle_Walk(ActionValue);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is not an ABaseCharacter: %s"), *CurrentPossessedPawn->GetName());
 	}
 }
 
@@ -356,24 +386,21 @@ void ABasePlayerController::Input_OnCrouch(const FInputActionValue& ActionValue)
 {
 	if (!IsValid(CurrentPossessedPawn))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_OnCrouch"));
 		return;
 	}
-	// APawn 타입에 맞는 처리를 실행
-	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
+
+	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
-		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-		if (IsValid(PlayerCharacter)) 
-		{
-			PlayerCharacter->Handle_Crouch(ActionValue);
-		}
+		PlayerCharacter->Handle_Crouch(ActionValue);
 	}
-	if (CurrentPossessedPawn->IsA<ABaseDrone>())
+	else if (ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn))
 	{
-		ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn);
-		if (IsValid(Drone))
-		{
-			Drone->Input_MoveDown(ActionValue);
-		}
+		Drone->Input_MoveDown(ActionValue);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn has no valid input handler for crouch: %s"), *CurrentPossessedPawn->GetName());
 	}
 }
 
@@ -381,24 +408,21 @@ void ABasePlayerController::Input_OnJump(const FInputActionValue& ActionValue)
 {
 	if (!IsValid(CurrentPossessedPawn))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_OnJump"));
 		return;
 	}
-	// APawn 타입에 맞는 처리를 실행
-	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
+
+	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
-		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-		if (IsValid(PlayerCharacter))
-		{
-			PlayerCharacter->Handle_Jump(ActionValue);
-		}
+		PlayerCharacter->Handle_Jump(ActionValue);
 	}
-	if (CurrentPossessedPawn->IsA<ABaseDrone>())
+	else if (ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn))
 	{
-		ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn);
-		if (IsValid(Drone))
-		{
-			Drone->Input_MoveUp(ActionValue);
-		}
+		Drone->Input_MoveUp(ActionValue);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn has no valid input handler for jump: %s"), *CurrentPossessedPawn->GetName());
 	}
 }
 
@@ -406,71 +430,81 @@ void ABasePlayerController::Input_OnAim(const FInputActionValue& ActionValue)
 {
 	if (!IsValid(CurrentPossessedPawn))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_OnAim"));
 		return;
 	}
-	// APawn 타입에 맞는 처리를 실행
-	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
+
+	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
-		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-		if (IsValid(PlayerCharacter))
-		{
-			PlayerCharacter->Handle_Aim(ActionValue);
-		}
+		PlayerCharacter->Handle_Aim(ActionValue);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is not an ABaseCharacter: %s"), *CurrentPossessedPawn->GetName());
 	}
 }
+
 
 void ABasePlayerController::Input_OnViewMode()
 {
 	if (!IsValid(CurrentPossessedPawn))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_OnViewMode"));
 		return;
 	}
-	// APawn 타입에 맞는 처리를 실행
-	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
+
+	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
-		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-		if (IsValid(PlayerCharacter))
-		{
-			PlayerCharacter->Handle_ViewMode();
-		}
+		PlayerCharacter->Handle_ViewMode();
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is not an ABaseCharacter: %s"), *CurrentPossessedPawn->GetName());
 	}
 }
+
 
 void ABasePlayerController::Input_OnInteract()
 {
 	if (!IsValid(CurrentPossessedPawn))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_OnInteract"));
 		return;
 	}
 
 	AActor* HitActor = TraceInteractable(1000.0f);
-
 	if (!HitActor)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("No interactable actor found in trace."));
 		return;
 	}
-	
-	/**/
-	// APawn 타입에 맞는 처리를 실행
-	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
+
+	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
-		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-		if (IsValid(PlayerCharacter))
-		{
-			PlayerCharacter->Handle_Interact();
-		}
+		PlayerCharacter->Handle_Interact();
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is not an ABaseCharacter: %s"), *CurrentPossessedPawn->GetName());
 	}
 }
 
+
 void ABasePlayerController::Input_Reload()
 {
-	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
+	if (!IsValid(CurrentPossessedPawn))
 	{
-		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-		if (IsValid(PlayerCharacter))
-		{
-			PlayerCharacter->Handle_Reload();
-		}
+		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_Reload"));
+		return;
+	}
+
+	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
+	{
+		PlayerCharacter->Handle_Reload();
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is not an ABaseCharacter: %s"), *CurrentPossessedPawn->GetName());
 	}
 }
 
@@ -480,34 +514,27 @@ void ABasePlayerController::Input_OnStrafe(const FInputActionValue& ActionValue)
 	{
 		return;
 	}
+
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
-	if (MyPlayerState)
+	if (MyPlayerState && MyPlayerState->InGameState == EPlayerInGameStatus::Spectating)
 	{
-		if (MyPlayerState->InGameState == EPlayerInGameStatus::Spectating)
+		const float Input = ActionValue.Get<float>();
+		if (Input > 0.5f)
 		{
-			const float Input = ActionValue.Get<float>();
-			if (Input > 0.5f)
-			{
-				SpectateNextPlayer();
-				return;
-			}
-			else
-			{
-				SpectatePreviousPlayer();
-				return;
-			}
+			SpectateNextPlayer();
 		}
+		else
+		{
+			SpectatePreviousPlayer();
+		}
+		return;
 	}
 
-	//나중에 사용으로 빼긴 할 건데 일단 테스트용으로 넣어놔서 아쉽게도 호출이 되는 그런 코드.
-	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
+	// TODO: 추후 테스트용 코드 제거 필요
+	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Toggle Inventory"));
-		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-		if (IsValid(PlayerCharacter))
-		{			
-			PlayerCharacter->ToggleInventory();
-		}
+		PlayerCharacter->ToggleInventory();
 	}
 }
 
@@ -528,6 +555,7 @@ void ABasePlayerController::SpectatePreviousPlayer()
 	}
 	SetViewTargetWithBlend(PlayerList[CurrentSpectatedCharacterIndex]->GetPawn());
 }
+
 void ABasePlayerController::SpectateNextPlayer()
 {
 	TArray<ABasePlayerState*> PlayerList = GetPlayerArray();
@@ -541,6 +569,7 @@ void ABasePlayerController::SpectateNextPlayer()
 	CurrentSpectatedCharacterIndex %= PlayerListLength;
 	SetViewTargetWithBlend(PlayerList[CurrentSpectatedCharacterIndex]->GetPawn());
 }
+
 TArray<ABasePlayerState*> ABasePlayerController::GetPlayerArray()
 {
 	ALCGameState* GameState = GetWorld()->GetGameState<ALCGameState>();
@@ -584,36 +613,34 @@ TArray<ABasePlayerState*> ABasePlayerController::GetPlayerArray()
 void ABasePlayerController::Input_OnItemUse()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Use Item"));
-	//캐릭터로 빙의가 되어서 컨트롤 되고 있는 것인지 체크
+
 	if (!IsValid(CurrentPossessedPawn))
 	{
 		return;
 	}
-	if (!(CurrentPossessedPawn->IsA<ABaseCharacter>()))
+
+	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
-		return;
+		PlayerCharacter->UseEquippedItem();
 	}
-	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-	if (!IsValid(PlayerCharacter))
-	{
-		return;
-	}
-	
-	PlayerCharacter->UseEquippedItem();
 }
+
 
 void ABasePlayerController::Input_OnItemThrow()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Throw Item"));
-	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
+	
+	if (!IsValid(CurrentPossessedPawn))
 	{
-		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-		if (IsValid(PlayerCharacter))
-		{
-			PlayerCharacter->DropCurrentItem();;
-		}
+		return;
+	}
+
+	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
+	{
+		PlayerCharacter->DropCurrentItem();
 	}
 }
+
 
 void ABasePlayerController::Input_OnStartedVoiceChat()
 {
@@ -664,13 +691,12 @@ void ABasePlayerController::ChangeToNextQuickSlot()
 	{
 		return;
 	}
-	
-	if (!(CurrentPossessedPawn->IsA<ABaseCharacter>()))
+
+	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
-		return;
+		PlayerCharacter->SetCurrentQuickSlotIndex(PlayerCharacter->GetCurrentQuickSlotIndex() + 1);
+		UpdateQuickSlotUI();
 	}
-	SpanwedPlayerCharacter->SetCurrentQuickSlotIndex(SpanwedPlayerCharacter->GetCurrentQuickSlotIndex() + 1);
-	UpdateQuickSlotUI();
 }
 
 void ABasePlayerController::ChangeToPreviousQuickSlot()
@@ -680,96 +706,46 @@ void ABasePlayerController::ChangeToPreviousQuickSlot()
 		return;
 	}
 
-	if (!(CurrentPossessedPawn->IsA<ABaseCharacter>()))
+	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
+	{
+		PlayerCharacter->SetCurrentQuickSlotIndex(PlayerCharacter->GetCurrentQuickSlotIndex() - 1);
+		UpdateQuickSlotUI();
+	}
+}
+
+
+void ABasePlayerController::SelectQuickSlot(int32 SlotIndex)
+{
+	if (!IsValid(CurrentPossessedPawn))
 	{
 		return;
 	}
-	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-	if (!IsValid(PlayerCharacter))
+
+	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
-		return;
+		PlayerCharacter->SetCurrentQuickSlotIndex(SlotIndex);
+		UpdateQuickSlotUI();
 	}
-	PlayerCharacter->SetCurrentQuickSlotIndex(PlayerCharacter->GetCurrentQuickSlotIndex() - 1);
-	UpdateQuickSlotUI();
 }
 
 void ABasePlayerController::Input_SelectQuickSlot1()
 {
-	if (!IsValid(CurrentPossessedPawn))
-	{
-		return;
-	}
-
-	if (!(CurrentPossessedPawn->IsA<ABaseCharacter>()))
-	{
-		return;
-	}	
-	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-	if (!IsValid(PlayerCharacter))
-	{
-		return;
-	}
-	PlayerCharacter->SetCurrentQuickSlotIndex(0);
-	UpdateQuickSlotUI();
+	SelectQuickSlot(0);
 }
 
 void ABasePlayerController::Input_SelectQuickSlot2()
 {
-	if (!IsValid(CurrentPossessedPawn))
-	{
-		return;
-	}
-
-	if (!(CurrentPossessedPawn->IsA<ABaseCharacter>()))
-	{
-		return;
-	}
-	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-	if (!IsValid(PlayerCharacter))
-	{
-		return;
-	}
-	PlayerCharacter->SetCurrentQuickSlotIndex(1);
-	UpdateQuickSlotUI();
+	SelectQuickSlot(1);
 }
 
 void ABasePlayerController::Input_SelectQuickSlot3()
 {
-	if (!IsValid(CurrentPossessedPawn))
-	{
-		return;
-	}
-
-	if (!(CurrentPossessedPawn->IsA<ABaseCharacter>()))
-	{
-		return;
-	}
-	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-	if (!IsValid(PlayerCharacter))
-	{
-		return;
-	}
-	PlayerCharacter->SetCurrentQuickSlotIndex(2);
-	UpdateQuickSlotUI();
+	SelectQuickSlot(2);
 }
 
 void ABasePlayerController::Input_SelectQuickSlot4()
 {
-	if (!IsValid(CurrentPossessedPawn))
-	{
-		return;
-	}
-	if (!(CurrentPossessedPawn->IsA<ABaseCharacter>()))
-	{
-		return;
-	}
-	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-	if (!IsValid(PlayerCharacter))
-	{
-		return;
-	}
-	PlayerCharacter->SetCurrentQuickSlotIndex(3);
-	UpdateQuickSlotUI();
+	SelectQuickSlot(3);
 }
 
 void ABasePlayerController::UpdateQuickSlotUI()
@@ -778,17 +754,11 @@ void ABasePlayerController::UpdateQuickSlotUI()
 	{
 		return;
 	}
-	if (!(CurrentPossessedPawn->IsA<ABaseCharacter>()))
+	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
-		return;
+		// To Do: ...실제로 UI가 바뀌면서....
+		//
 	}
-	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-	if (!IsValid(PlayerCharacter))
-	{
-		return;
-	}
-	//To Do: ...실제로 UI가 바뀌면서....
-	//
 }
 
 
@@ -855,11 +825,12 @@ ABaseCharacter* ABasePlayerController::GetControlledBaseCharacter() const
 
 void ABasePlayerController::SetHardLandStateToPlayerState(bool flag)
 {
-	if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+	ABasePlayerState* PS = GetPlayerState<ABasePlayerState>();
+	if (!IsValid(PS))
 	{
-		
-		PS->bIsCharacterInHardLandingState = flag;
+		return;
 	}
+	PS->bIsCharacterInHardLandingState = flag;
 }
 
 void ABasePlayerController::SetSprintingStateToPlayerState(bool flag)
@@ -878,18 +849,23 @@ void ABasePlayerController::Input_DroneExit()
 	{
 		return;
 	}
-	// APawn 타입에 맞는 처리를 실행
-	if (CurrentPossessedPawn->IsA<ABaseDrone>())
+
+	if (ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn))
 	{
 		CurrentPossessedPawn = SpanwedPlayerCharacter;
 		//Possess(SpanwedPlayerCharacter);
 		SetViewTargetWithBlend(SpanwedPlayerCharacter, 0.5f);
-		SpawnedPlayerDrone->ReturnAsItem();
-		SpawnedPlayerDrone = nullptr;
-		
-		//TODO: 아이템 화 시켜서 바닥에 떨구기
+
+		if (SpawnedPlayerDrone)
+		{
+			SpawnedPlayerDrone->ReturnAsItem();
+			SpawnedPlayerDrone = nullptr;
+		}
+
+		// TODO: 아이템화 시켜서 바닥에 떨구기
 	}
 }
+
 
 void ABasePlayerController::SpawnDrone()
 {

@@ -190,7 +190,7 @@ public:
 public:
 	void ChangeToNextQuickSlot();
 	void ChangeToPreviousQuickSlot();
-
+	void SelectQuickSlot(int32 SlotIndex);
 public:
 	// 상호작용 가능한 액터 감지
 	AActor* TraceInteractable(float TraceDistance = 300.f);
