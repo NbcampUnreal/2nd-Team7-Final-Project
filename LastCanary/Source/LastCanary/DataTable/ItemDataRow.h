@@ -42,6 +42,8 @@ struct FItemDataRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	USkeletalMesh* SkeletalMesh = nullptr;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UMaterialInterface* OverrideMaterial = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<AItemBase> ItemActorClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resource")
