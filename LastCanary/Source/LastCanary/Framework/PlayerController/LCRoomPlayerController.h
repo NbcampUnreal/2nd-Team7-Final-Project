@@ -20,6 +20,7 @@ protected:
 	ALCRoomPlayerController();
 
 	virtual void BeginPlay() override;
+	void TryRestoreInventory();
 	virtual void PostSeamlessTravel() override;
 
 public:
