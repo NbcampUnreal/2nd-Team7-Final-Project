@@ -98,12 +98,22 @@ protected:
 	/** 서버 보간 이동 진행 */
 	void StepServerMovement();
 
+	/** 감지된 액터 이동 보간 (서버 전용) */
+	void StartServerAttachedMovement(const FVector& DeltaLocation, float Duration);
+
+	/** 감지된 액터 이동 보간 (클라이언트 전용) */
+	void StartClientAttachedMovement(const FVector& DeltaLocation, float Duration);
+
 	/** 기믹 사용 가능 여부 */
 	virtual bool CanActivate_Implementation() override;
 
 public:
 	/** 기믹 활성화 시 이동 시작 */
 	virtual void ActivateGimmick_Implementation() override;
+
+	/** 이동 타이머 캐시 */
+	UPROPERTY()
+	TMap<AActor*, FTimerHandle> AttachedMovementTimers;
 
 	/** 이동 시작 정보 멀티캐스트 (From, To, Duration) */
 	UFUNCTION(NetMulticast, Reliable)

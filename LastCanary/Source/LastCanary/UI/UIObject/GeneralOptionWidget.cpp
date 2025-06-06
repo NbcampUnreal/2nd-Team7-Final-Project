@@ -113,7 +113,7 @@ void UGeneralOptionWidget::NativeDestruct()
 
 void UGeneralOptionWidget::OnMasterVolumeChanged(float Value)
 {
-	LOG_Frame_WARNING(TEXT("Master Volume Changed"));
+	// LOG_Frame_WARNING(TEXT("Master Volume Changed"));
 
 	if (MasterVolumeText)
 	{
@@ -129,7 +129,7 @@ void UGeneralOptionWidget::OnMasterVolumeChanged(float Value)
 
 void UGeneralOptionWidget::OnBGMVolumeChanged(float Value)
 {
-	LOG_Frame_WARNING(TEXT("BGM Volume Changed"));
+	// LOG_Frame_WARNING(TEXT("BGM Volume Changed"));
 
 	if (BGMVolumeText)
 	{
@@ -145,7 +145,7 @@ void UGeneralOptionWidget::OnBGMVolumeChanged(float Value)
 
 void UGeneralOptionWidget::OnEffectVolumeChanged(float Value)
 {
-	LOG_Frame_WARNING(TEXT("Effect Volume Changed"));
+	// LOG_Frame_WARNING(TEXT("Effect Volume Changed"));
 
 	if (EffectVolumeText)
 	{
@@ -161,7 +161,7 @@ void UGeneralOptionWidget::OnEffectVolumeChanged(float Value)
 
 void UGeneralOptionWidget::OnSensitivityChanged(float Value)
 {
-	LOG_Frame_WARNING(TEXT("SenSitivity Changed"));
+	// LOG_Frame_WARNING(TEXT("SenSitivity Changed"));
 
 	if (MouseSensitivityText)
 	{

@@ -504,14 +504,8 @@ void UKeySettingWidget::UpdateMappings(FName DisplayName, FKey Key)
 
 
 	UE_LOG(LogTemp, Warning, TEXT("Refresh"));
-	// 딜레이 후 키 매핑 가져오기
-	FTimerHandle TimerHandle;
-	GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this, Subsystem]()
-		{
-			const TArray<FEnhancedActionKeyMapping> Mappings = Subsystem->GetAllPlayerMappableActionKeyMappings();
-			RefreshMappings(Mappings);
-
-		}, 0.2f, false);
+	const TArray<FEnhancedActionKeyMapping> Mappings = Subsystem->GetAllPlayerMappableActionKeyMappings();
+	RefreshMappings(Mappings);
 }
 
 
