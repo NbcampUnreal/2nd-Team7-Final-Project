@@ -307,6 +307,32 @@ void ABasePlayerController::Input_OnMove(const FInputActionValue& ActionValue)
 		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_OnMove"));
 		return;
 	}
+	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
+	if (IsValid(MyPlayerState) && MyPlayerState->InGameState == EPlayerInGameStatus::Spectating)
+	{
+		const auto Value{ ActionValue.Get<FVector2D>() };
+		if (Value.X != 0.0f)
+		{
+			if (bIsSpectatingButtonClicked == true)
+			{
+				return;
+			}
+			bIsSpectatingButtonClicked = true;
+			if (Value.X > 0.0f)
+			{
+				SpectateNextPlayer();
+			}
+			else
+			{
+				SpectatePreviousPlayer();
+			}
+		}
+		else
+		{
+			bIsSpectatingButtonClicked = false;
+		}
+		return;
+	}
 	// APawn 타입에 맞는 처리를 실행
 	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
@@ -489,21 +515,6 @@ void ABasePlayerController::Input_OnStrafe(const FInputActionValue& ActionValue)
 {
 	if (!IsValid(CurrentPossessedPawn))
 	{
-		return;
-	}
-
-	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
-	if (MyPlayerState && MyPlayerState->InGameState == EPlayerInGameStatus::Spectating)
-	{
-		const float Input = ActionValue.Get<float>();
-		if (Input > 0.5f)
-		{
-			SpectateNextPlayer();
-		}
-		else
-		{
-			SpectatePreviousPlayer();
-		}
 		return;
 	}
 

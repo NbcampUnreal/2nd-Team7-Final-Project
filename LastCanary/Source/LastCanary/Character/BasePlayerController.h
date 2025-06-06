@@ -224,6 +224,8 @@ public:
 
 	TArray<ABasePlayerState*> SpectatorTargets;
 
+	//관전 컨트롤 전용 변수
+	bool bIsSpectatingButtonClicked = false;
 public:
 	bool bIsSprinting = false;
 

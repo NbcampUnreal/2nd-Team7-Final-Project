@@ -302,11 +302,12 @@ void ABaseCharacter::Handle_Look(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::Handle_Move(const FInputActionValue& ActionValue)
 {
+	const auto Value{ UAlsVector::ClampMagnitude012D(ActionValue.Get<FVector2D>()) };
 	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
-	const auto Value{ UAlsVector::ClampMagnitude012D(ActionValue.Get<FVector2D>()) };
+	
 	FrontInput = Value.Y;
 	const auto ForwardDirection{ UAlsVector::AngleToDirectionXY(UE_REAL_TO_FLOAT(GetViewState().Rotation.Yaw)) };
 	const auto RightDirection{ UAlsVector::PerpendicularCounterClockwiseXY(ForwardDirection) };
@@ -1103,6 +1104,7 @@ void ABaseCharacter::Handle_Interact()
 			IInteractableInterface::Execute_Interact(CurrentFocusedActor, PC);
 			UE_LOG(LogTemp, Log, TEXT("Handle_Interact: Called Interact on %s"), *CurrentFocusedActor->GetName());
 			UE_LOG(LogTemp, Log, TEXT("Equipped item on slot"));
+			PlayInteractionMontage(CurrentFocusedActor);
 		}
 		else
 		{
@@ -1112,7 +1114,6 @@ void ABaseCharacter::Handle_Interact()
 	else
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Handle_Interact: %s does not implement IInteractableInterface"), *CurrentFocusedActor->GetName());
-		PlayInteractionMontage(CurrentFocusedActor);
 	}
 
 	UE_LOG(LogTemp, Log, TEXT("Interact Ended"));
@@ -1604,6 +1605,7 @@ void ABaseCharacter::Multicast_SetPlayerInGameStateOnDie_Implementation()
 	}
 	MyPlayerState->CurrentState = EPlayerState::Dead;
 	MyPlayerState->InGameState = EPlayerInGameStatus::Spectating; // 관전 상태 돌입
+	SwapHeadMaterialTransparent(false);
 }
 
 float ABaseCharacter::CalculateTakeDamage(float DamageAmount)
@@ -1908,15 +1910,26 @@ void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(int index)
 
 void ABaseCharacter::PlayInteractionMontage(AActor* Target)
 {
-	UAnimMontage* MontageToPlay = InteractMontage;
+	UAnimMontage* MontageToPlay;
 	//TODO: 게임 플레이 태그 비교
 	//if(Target->GetGamePlayTag)
-	// 2. 몽타주 재생
-	if (MontageToPlay)
+		
+	
+	
+	/*
+	if(Target->Tags.Contains("Gimmick"))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Anim Montage"));
-		Server_PlayMontage(MontageToPlay);
+		
 	}
+	*/
+	MontageToPlay = InteractMontage;
+	if (!IsValid(MontageToPlay))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Anim Montage does not exist."));
+		return;
+	}
+	UE_LOG(LogTemp, Warning, TEXT("Anim Montage"));
+	Server_PlayMontage(MontageToPlay);
 }
 
 void ABaseCharacter::Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay)

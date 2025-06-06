@@ -855,7 +855,7 @@ void AAlsCharacter::RefreshRagdolling(const float DeltaTime)
 	// While we could get rid of the line trace here and just use RagdollTargetLocation
 	// as the character's location, we don't do that because the camera depends on the
 	// capsule's bottom location, so its removal will cause the camera to behave erratically.
-
+	return;
 	bool bGrounded;
 	SetActorLocation(RagdollTraceGround(bGrounded), false, nullptr, ETeleportType::TeleportPhysics);
 
@@ -912,7 +912,7 @@ void AAlsCharacter::RefreshRagdolling(const float DeltaTime)
 	static constexpr auto Stiffness{25000.0f};
 
 	const auto SpeedAmount{UAlsMath::Clamp01(UE_REAL_TO_FLOAT(RagdollingState.Velocity.Size() / ReferenceSpeed))};
-
+		
 	GetMesh()->SetAllMotorsAngularDriveParams(SpeedAmount * Stiffness, 0.0f, 0.0f);
 
 	// Limit the speed of ragdoll bodies.
