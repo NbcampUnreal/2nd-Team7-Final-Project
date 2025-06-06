@@ -855,7 +855,7 @@ void AAlsCharacter::RefreshRagdolling(const float DeltaTime)
 	// While we could get rid of the line trace here and just use RagdollTargetLocation
 	// as the character's location, we don't do that because the camera depends on the
 	// capsule's bottom location, so its removal will cause the camera to behave erratically.
-	return;
+	//return;
 	bool bGrounded;
 	SetActorLocation(RagdollTraceGround(bGrounded), false, nullptr, ETeleportType::TeleportPhysics);
 
@@ -871,16 +871,16 @@ void AAlsCharacter::RefreshRagdolling(const float DeltaTime)
 		RagdollingState.PullForce = FMath::FInterpTo(RagdollingState.PullForce, PullForce, DeltaTime, InterpolationSpeed);
 
 		const auto HorizontalSpeedSquared{RagdollingState.Velocity.SizeSquared2D()};
-		
+		/*
 		const auto PullForceBoneName{
 			HorizontalSpeedSquared > FMath::Square(300.0f) ? (GetMesh()->DoesSocketExist(TEXT("spine_05")) ? FName(TEXT("spine_05")) : (UAlsConstants::Spine03BoneName())) : UAlsConstants::PelvisBoneName()
 		};
-
-		/*
+		*/
+		
 		const auto PullForceBoneName{
 			HorizontalSpeedSquared > FMath::Square(300.0f) ? UAlsConstants::Spine03BoneName() : UAlsConstants::PelvisBoneName()
 		};
-		*/
+		
 
 		auto* PullForceBody{GetMesh()->GetBodyInstance(PullForceBoneName)};
 

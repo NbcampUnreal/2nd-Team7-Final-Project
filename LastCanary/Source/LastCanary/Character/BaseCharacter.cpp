@@ -1119,6 +1119,47 @@ void ABaseCharacter::Handle_Interact()
 	UE_LOG(LogTemp, Log, TEXT("Interact Ended"));
 }
 
+void ABaseCharacter::InteractAfterPlayMontage()
+{
+	UAnimMontage* MontageToPlay;
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (!IsValid(AnimInstance))
+	{
+		return;
+	}
+	//아이템이면 ... 
+	//줍기 모션
+
+	// 기믹이면
+	// 해당 기믹에 맞는 모션
+
+	MontageToPlay = InteractMontage;
+	float Duration = AnimInstance->Montage_Play(MontageToPlay, 1.0f);
+	if (Duration > 0.f)
+	{
+		SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+		FOnMontageEnded EndDelegate;
+		EndDelegate.BindUObject(this, &ABaseCharacter::OnInteractAnimComplete);
+		AnimInstance->Montage_SetEndDelegate(EndDelegate, MontageToPlay);
+	}
+}
+
+void ABaseCharacter::OnInteractAnimComplete(UAnimMontage* CompletedMontage, bool bInterrupted)
+{
+	if (bInterrupted)
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::OnGunReloadAnimComplete] 애니메이션이 중단되었습니다."));
+		return;
+	}
+
+	//재생 후 notify로
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC)
+	{
+		IInteractableInterface::Execute_Interact(CurrentFocusedActor, PC);
+	}
+}
+
 void ABaseCharacter::PickupItem()
 {
 	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
