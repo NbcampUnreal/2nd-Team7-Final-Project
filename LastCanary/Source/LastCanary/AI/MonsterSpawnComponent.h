@@ -62,7 +62,7 @@ private:
     void DestroyAllMonsters();
 
     // NavMeshBoundsVolume 관련 함수들
-    bool IsLocationInNavMeshBounds(const FVector& Location);
+    //bool IsLocationInNavMeshBounds(const FVector& Location);
     FVector GetValidSpawnLocationInNavVolume(const FVector& OwnerLocation);
 
     UPROPERTY()
