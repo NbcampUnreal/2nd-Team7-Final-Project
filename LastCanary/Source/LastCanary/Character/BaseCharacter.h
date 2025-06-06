@@ -68,6 +68,9 @@ public:
 	UCameraComponent* SpectatorCamera;
 
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* HeadMesh;
+
 	void Tick(float DeltaSeconds)
 	{
 		Super::Tick(DeltaSeconds);
