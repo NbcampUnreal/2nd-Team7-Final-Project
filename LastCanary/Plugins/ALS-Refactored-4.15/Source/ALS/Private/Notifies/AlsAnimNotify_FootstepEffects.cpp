@@ -198,12 +198,18 @@ void UAlsAnimNotify_FootstepEffects::SpawnSound(USkeletalMeshComponent* Mesh, co
 	{
 		VolumeMultiplier *= 1.0f - UAlsMath::Clamp01(Mesh->GetAnimInstance()->GetCurveValue(UAlsConstants::FootstepSoundBlockCurveName()));
 	}
-
+	AAlsCharacter* Character{ Cast<AAlsCharacter>(Mesh->GetOwner()) };
+	if (!IsValid(Character))
+	{
+		return;
+	}
+		
 	if (!FAnimWeight::IsRelevant(VolumeMultiplier) || !IsValid(SoundSettings.Sound.LoadSynchronous()))
 	{
 		return;
 	}
-
+	auto FinalVolumeMultiplier{ Character->FootSoundModifier * VolumeMultiplier };
+	
 	UAudioComponent* Audio{nullptr};
 
 	if (SoundSettings.SpawnMode == EAlsFootstepSoundSpawnMode::SpawnAtTraceHitLocation)
@@ -213,13 +219,13 @@ void UAlsAnimNotify_FootstepEffects::SpawnSound(USkeletalMeshComponent* Mesh, co
 		if (World->WorldType == EWorldType::EditorPreview)
 		{
 			UGameplayStatics::PlaySoundAtLocation(World, SoundSettings.Sound.Get(), FootstepLocation,
-			                                      VolumeMultiplier, SoundPitchMultiplier);
+				FinalVolumeMultiplier, SoundPitchMultiplier);
 		}
 		else
 		{
 			Audio = UGameplayStatics::SpawnSoundAtLocation(World, SoundSettings.Sound.Get(), FootstepLocation,
 			                                               FootstepRotation.Rotator(),
-			                                               VolumeMultiplier, SoundPitchMultiplier);
+				FinalVolumeMultiplier, SoundPitchMultiplier);
 		}
 	}
 	else if (SoundSettings.SpawnMode == EAlsFootstepSoundSpawnMode::SpawnAttachedToFootBone)
@@ -230,7 +236,7 @@ void UAlsAnimNotify_FootstepEffects::SpawnSound(USkeletalMeshComponent* Mesh, co
 
 		Audio = UGameplayStatics::SpawnSoundAttached(SoundSettings.Sound.Get(), Mesh, FootBoneName, FVector::ZeroVector,
 		                                             FRotator::ZeroRotator, EAttachLocation::SnapToTarget,
-		                                             true, VolumeMultiplier, SoundPitchMultiplier);
+		                                             true, FinalVolumeMultiplier, SoundPitchMultiplier);
 	}
 
 	if (IsValid(Audio))

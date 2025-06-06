@@ -6,6 +6,10 @@
 #include "Framework/GameState/LCGameState.h"
 #include "Framework/GameMode/LCGameMode.h"
 #include "Framework/PlayerController/LCRoomPlayerController.h"
+#include "Character/BaseCharacter.h"
+#include "Character/BasePlayerState.h"
+#include "Inventory/ToolbarInventoryComponent.h"
+#include "Inventory/BackpackInventoryComponent.h"
 
 #include "Net/UnrealNetwork.h"
 
@@ -55,6 +59,14 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 				{
 					RoomPC->Server_MarkPlayerAsEscaped();
 				}
+
+				if (ABasePlayerState* PlayerState = RoomPC->GetPlayerState<ABasePlayerState>())
+				{
+					// 플레이어 상태 업데이트
+					ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(RoomPC->GetPawn());
+					PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetToolbarInventoryComponent()->GetInventoryItemIDs());
+					PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetBackpackInventoryComponent()->GetInventoryItemIDs());
+				}
 			}
 
 			// HUD 숨기고 관전 모드 전환
@@ -78,9 +90,19 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 			// 사망->시체 스켈레탈메시남고->관전(컨트롤러)
 			// 관전으로 넘기는 함수
 			// 탈출시 PS로 아이템 아이디넘김 타이머로 캐릭터 Destroy
+			break;
 		}
 		case EGateTravelType::ToInGame:
 		{
+			if (ALCRoomPlayerController* RoomPC = Cast<ALCRoomPlayerController>(Controller))
+			{
+				if (ABasePlayerState* PlayerState = RoomPC->GetPlayerState<ABasePlayerState>())
+				{
+					ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(RoomPC->GetPawn());
+					PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetToolbarInventoryComponent()->GetInventoryItemIDs());
+				}
+			}
+
 			if (HasAuthority() == false)
 			{
 				return;

@@ -20,7 +20,60 @@ ALCBaseGimmick::ALCBaseGimmick()
 
 	VisualMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("VisualMesh"));
 	SetRootComponent(VisualMesh);
+
+	DetectionArea = CreateDefaultSubobject<UBoxComponent>(TEXT("DetectionArea"));
+	DetectionArea->SetupAttachment(RootComponent);
+	DetectionArea->SetBoxExtent(FVector(100.f));
+	DetectionArea->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	DetectionArea->SetCollisionResponseToAllChannels(ECR_Ignore);
+	DetectionArea->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	DetectionArea->SetHiddenInGame(false); 
+
+	bEnableActorDetection = false;
 }
+
+void ALCBaseGimmick::BeginPlay()
+{
+	Super::BeginPlay();
+
+	if (bEnableActorDetection && IsValid(DetectionArea))
+	{
+		DetectionArea->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		DetectionArea->OnComponentBeginOverlap.AddDynamic(this, &ALCBaseGimmick::OnActorEnter);
+		DetectionArea->OnComponentEndOverlap.AddDynamic(this, &ALCBaseGimmick::OnActorExit);
+	}
+}
+
+#pragma region Overlap
+
+void ALCBaseGimmick::OnActorEnter(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (!AttachedActors.Contains(OtherActor))
+	{
+		AttachedActors.Add(OtherActor);
+	}
+	LOG_Art(Log, TEXT("%s ▶ 감지 영역 진입: %s"), *GetName(), *GetNameSafe(OtherActor));
+}
+
+void ALCBaseGimmick::OnActorExit(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	// 회전/이동 중일 때는 제거하지 않음
+	const bool bIsBusy = ILCGimmickInterface::Execute_IsGimmickBusy(this);
+
+	if (!bIsBusy)
+	{
+		AttachedActors.Remove(OtherActor);
+		LOG_Art(Log, TEXT("%s ▶ 감지 영역 이탈: %s"), *GetName(), *GetNameSafe(OtherActor));
+	}
+	else
+	{
+		LOG_Art(Log, TEXT("%s ▶ 감지 영역 이탈 시도 → 기믹 동작 중이므로 유지: %s"), *GetName(), *GetNameSafe(OtherActor));
+	}
+}
+
+#pragma endregion
 
 #pragma region Interact
 
@@ -45,6 +98,11 @@ void ALCBaseGimmick::Interact_Implementation(APlayerController* Interactor)
 			}
 		}
 	}
+}
+
+bool ALCBaseGimmick::IsGimmickBusy_Implementation()
+{
+	return false;
 }
 
 FString ALCBaseGimmick::GetInteractMessage_Implementation() const

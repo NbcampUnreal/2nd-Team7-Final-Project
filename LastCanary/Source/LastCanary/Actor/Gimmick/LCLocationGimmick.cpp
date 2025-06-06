@@ -52,6 +52,12 @@ void ALCLocationGimmick::ActivateGimmick_Implementation()
 
 bool ALCLocationGimmick::CanActivate_Implementation()
 {
+	if (bIsMovingServer || bIsReturningServer)
+	{
+		LOG_Art_WARNING(TEXT("이동 기믹 ▶ 현재 이동 중이라 CanActivate 거부됨"));
+		return false;
+	}
+
 	return Super::CanActivate_Implementation();
 }
 
@@ -183,15 +189,56 @@ void ALCLocationGimmick::StepServerMovement()
 	}
 }
 
+void ALCLocationGimmick::StartServerAttachedMovement(const FVector& DeltaLocation, float Duration)
+{
+	for (AActor* Target : AttachedActors)
+	{
+		if (!IsValid(Target)) continue;
+
+		if (AttachedMovementTimers.Contains(Target))
+		{
+			GetWorld()->GetTimerManager().ClearTimer(AttachedMovementTimers[Target]);
+			AttachedMovementTimers.Remove(Target);
+		}
+
+		const FVector StartLoc = Target->GetActorLocation();
+		const FVector EndLoc = StartLoc + DeltaLocation;
+		TSharedPtr<float> Elapsed = MakeShared<float>(0.f);
+
+		FTimerDelegate Delegate;
+		Delegate.BindLambda([=]()
+			{
+				if (!IsValid(Target)) return;
+
+				*Elapsed += 0.02f;
+				const float Alpha = FMath::Clamp(*Elapsed / Duration, 0.f, 1.f);
+				const FVector NewLoc = FMath::Lerp(StartLoc, EndLoc, Alpha);
+				Target->SetActorLocation(NewLoc);
+			});
+
+		FTimerHandle Handle;
+		GetWorld()->GetTimerManager().SetTimer(Handle, Delegate, 0.02f, true);
+
+		AttachedMovementTimers.Add(Target, Handle);
+	}
+}
+
 #pragma endregion
 
 #pragma region Movement - Client Interpolation
 
 void ALCLocationGimmick::Multicast_StartMovement_Implementation(const FVector& From, const FVector& To, float Duration)
 {
+	const FVector DeltaLocation = To - From;
+
 	if (!HasAuthority())
 	{
-		StartClientMovement(From, To, Duration);
+		StartClientMovement(From, To, Duration); 
+		StartClientAttachedMovement(DeltaLocation, Duration);
+	}
+	else
+	{
+		StartServerAttachedMovement(DeltaLocation, Duration); 
 	}
 }
 
@@ -224,6 +271,42 @@ void ALCLocationGimmick::StepClientMovement()
 	if (Alpha >= 1.f)
 	{
 		GetWorldTimerManager().ClearTimer(ClientMoveTimer);
+	}
+}
+
+void ALCLocationGimmick::StartClientAttachedMovement(const FVector& DeltaLocation, float Duration)
+{
+	if (HasAuthority()) return;
+
+	for (AActor* Target : AttachedActors)
+	{
+		if (!IsValid(Target)) continue;
+
+		if (AttachedMovementTimers.Contains(Target))
+		{
+			GetWorld()->GetTimerManager().ClearTimer(AttachedMovementTimers[Target]);
+			AttachedMovementTimers.Remove(Target);
+		}
+
+		const FVector StartLoc = Target->GetActorLocation();
+		const FVector EndLoc = StartLoc + DeltaLocation;
+		TSharedPtr<float> Elapsed = MakeShared<float>(0.f);
+
+		FTimerDelegate Delegate;
+		Delegate.BindLambda([=]()
+			{
+				if (!IsValid(Target)) return;
+
+				*Elapsed += 0.02f;
+				const float Alpha = FMath::Clamp(*Elapsed / Duration, 0.f, 1.f);
+				const FVector NewLoc = FMath::Lerp(StartLoc, EndLoc, Alpha);
+				Target->SetActorLocation(NewLoc);
+			});
+
+		FTimerHandle Handle;
+		GetWorld()->GetTimerManager().SetTimer(Handle, Delegate, 0.02f, true);
+
+		AttachedMovementTimers.Add(Target, Handle);
 	}
 }
 

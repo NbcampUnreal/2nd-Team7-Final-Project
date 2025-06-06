@@ -66,7 +66,7 @@ ABaseCharacter::ABaseCharacter()
 
 	SpectatorCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("SpectatorCamera"));
 	SpectatorCamera->SetupAttachment(SpectatorSpringArm);  // SpringArm에 카메라 부착
-
+	
 	// 캐릭터 클래스의 생성자 함수 내부 
 	FieldOfView = Camera->FieldOfView;
 
@@ -106,10 +106,13 @@ void ABaseCharacter::BeginPlay()
 	if (IsLocallyControlled())
 	{
 		// "head"는 스켈레탈 메시의 머리 본에 해당하는 이름
-		GetMesh()->HideBoneByName(TEXT("head"), EPhysBodyOp::PBO_None);
+
+		//GetMesh()->HideBoneByName(TEXT("head"), EPhysBodyOp::PBO_None);
+		SwapHeadMaterialTransparent(true);
 	}
 	//애니메이션 오버레이 활성화.
 	RefreshOverlayObject(0);
+
 
 	GetWorld()->GetTimerManager().SetTimer(
 		InteractionTraceTimerHandle,
@@ -185,28 +188,17 @@ void ABaseCharacter::NotifyControllerChanged()
 
 void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo)
 {
-
 	if (Controller && Controller->IsLocalPlayerController())
 	{
 		// 내가 조종 중이라면 → 1인칭 시점
 		Camera->GetCameraView(DeltaTime, ViewInfo);
-		GetMesh()->SetOwnerNoSee(false);
-		if (IsLocallyControlled())
-		{
-			// "head"는 스켈레탈 메시의 머리 본에 해당하는 이름
-			GetMesh()->HideBoneByName(TEXT("head"), EPhysBodyOp::PBO_None);
-		}
 	}
 	else
 	{
 		// 관전자가 바라볼 경우 → 3인칭 시점
 		SpectatorCamera->GetCameraView(DeltaTime, ViewInfo);
-		GetMesh()->SetOwnerNoSee(true);
-		if (IsLocallyControlled())
-		{
-			// "head"는 스켈레탈 메시의 머리 본에 해당하는 이름
-			GetMesh()->UnHideBoneByName(TEXT("head"));
-		}
+		//GetMesh()->SetOwnerNoSee(false);
+		//GetMesh()->UnHideBoneByName(TEXT("head"));
 	}
 }
 
@@ -238,9 +230,63 @@ void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue)
 	Controller->SetControlRotation(NewRotation);
 }
 
+void ABaseCharacter::CameraShake()
+{
+	// 새로운 반동량을 기존 값에 누적
+	RecoilStepPitch += 1.5f / RecoilMaxSteps;
+	RecoilStepYaw += FMath::RandRange(-YawRecoilRange, YawRecoilRange) / RecoilMaxSteps;
+
+	// 타이머가 안 돌고 있을 때만 시작
+	if (!GetWorld()->GetTimerManager().IsTimerActive(RecoilTimerHandle))
+	{
+		RecoilStep = 0;
+		GetWorld()->GetTimerManager().SetTimer(RecoilTimerHandle, this, &ABaseCharacter::ApplyRecoilStep, 0.02f, true);
+	}
+}
+
+void ABaseCharacter::ApplyRecoilStep()
+{
+	if (!Controller) return;
+
+	FRotator ControlRotation = Controller->GetControlRotation();
+	float CurrentPitch = ControlRotation.Pitch;
+
+	// Unreal에서는 Pitch가 0~360도로 표현될 수 있으므로 정규화
+	if (CurrentPitch > 180.f)
+		CurrentPitch -= 360.f;
+
+	// Pitch 제한 확인
+	if (CurrentPitch + RecoilStepPitch < MaxPitchAngle)
+	{
+		AddControllerPitchInput(RecoilStepPitch);
+	}
+	else
+	{
+		// 최대 각도를 초과하지 않도록 필요한 만큼만 보정하여 추가
+		float RemainingPitch = MaxPitchAngle - CurrentPitch;
+		if (RemainingPitch > 0.0f)
+		{
+			AddControllerPitchInput(RemainingPitch);
+		}
+	}
+
+	// Yaw는 제한 없이 계속 적용
+	AddControllerYawInput(RecoilStepYaw);
+
+	RecoilStep++;
+
+	if (RecoilStep >= RecoilMaxSteps)
+	{
+		RecoilStepPitch = 0.0f;
+		RecoilStepYaw = 0.0f;
+		GetWorld()->GetTimerManager().ClearTimer(RecoilTimerHandle);
+	}
+}
+
+
 void ABaseCharacter::Handle_Look(const FInputActionValue& ActionValue)
 {
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -252,12 +298,12 @@ void ABaseCharacter::Handle_Look(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::Handle_Move(const FInputActionValue& ActionValue)
 {
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
 	const auto Value{ UAlsVector::ClampMagnitude012D(ActionValue.Get<FVector2D>()) };
-
+	FrontInput = Value.Y;
 	const auto ForwardDirection{ UAlsVector::AngleToDirectionXY(UE_REAL_TO_FLOAT(GetViewState().Rotation.Yaw)) };
 	const auto RightDirection{ UAlsVector::PerpendicularCounterClockwiseXY(ForwardDirection) };
 	if (CheckHardLandState())
@@ -270,7 +316,7 @@ void ABaseCharacter::Handle_Move(const FInputActionValue& ActionValue)
 void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 {
 	const float Value = ActionValue.Get<float>();
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -299,17 +345,22 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 		//입력이 떼지는 거면 어차피 뛰는 거 아님..
 		if (Value < 0.5f)
 		{
+			bIsSprinting = false;
+			FootSoundModifier = MyPlayerState->RunningFootSoundModifier;
 			SetDesiredGait(AlsGaitTags::Running);
 			StopStaminaDrain();
 			StartStaminaRecoverAfterDelay();
 			return;
 		}
-
+		bIsSprinting = true;
+		FootSoundModifier = MyPlayerState->SprintingFootSoundModifier;
+		SetDesiredAiming(false);
+		SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 		//달리기 시작하면서 스테미나 소모 시작
-		SetDesiredGait(ActionValue.Get<bool>() ? AlsGaitTags::Sprinting : AlsGaitTags::Running);
+		StartStaminaDrain();
 		StopStaminaRecovery();
 		StopStaminaRecoverAfterDelay();
-		StartStaminaDrain();
+		SetDesiredGait(ActionValue.Get<bool>() ? AlsGaitTags::Sprinting : AlsGaitTags::Running);
 	}
 	else if (MyPlayerState->SprintInputMode == EInputMode::Toggle)
 	{
@@ -317,12 +368,18 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 		{
 			if (GetDesiredGait() == AlsGaitTags::Sprinting)
 			{
+				bIsSprinting = false;
+				FootSoundModifier = MyPlayerState->RunningFootSoundModifier;
 				SetDesiredGait(AlsGaitTags::Running);
 				StopStaminaDrain();
 				StartStaminaRecoverAfterDelay();
 			}
 			else if (GetDesiredGait() == AlsGaitTags::Running)
 			{
+				bIsSprinting = true;
+				FootSoundModifier = MyPlayerState->SprintingFootSoundModifier;
+				SetDesiredAiming(false);
+				SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 				StopStaminaRecovery();
 				StopStaminaRecoverAfterDelay();
 				StartStaminaDrain();
@@ -330,6 +387,10 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 			}
 			else
 			{
+				bIsSprinting = true;
+				FootSoundModifier = MyPlayerState->SprintingFootSoundModifier;
+				SetDesiredAiming(false);
+				SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 				StopStaminaRecovery();
 				StopStaminaRecoverAfterDelay();
 				StartStaminaDrain();
@@ -342,7 +403,7 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 void ABaseCharacter::Handle_Walk(const FInputActionValue& ActionValue)
 {
 	const float Value = ActionValue.Get<float>();
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -360,10 +421,12 @@ void ABaseCharacter::Handle_Walk(const FInputActionValue& ActionValue)
 	{
 		if(Value > 0.5f)
 		{
+			FootSoundModifier = MyPlayerState->WalkingFootSoundModifier;
 			SetDesiredGait(AlsGaitTags::Walking);
 		}
 		else
 		{
+			FootSoundModifier = MyPlayerState->RunningFootSoundModifier;
 			SetDesiredGait(AlsGaitTags::Running);
 		}
 	}
@@ -373,14 +436,17 @@ void ABaseCharacter::Handle_Walk(const FInputActionValue& ActionValue)
 		{
 			if (GetDesiredGait() == AlsGaitTags::Walking)
 			{
+				FootSoundModifier = MyPlayerState->RunningFootSoundModifier;
 				SetDesiredGait(AlsGaitTags::Running);
 			}
 			else if (GetDesiredGait() == AlsGaitTags::Running)
 			{
+				FootSoundModifier = MyPlayerState->WalkingFootSoundModifier;
 				SetDesiredGait(AlsGaitTags::Walking);
 			}
 			else
 			{
+				FootSoundModifier = MyPlayerState->WalkingFootSoundModifier;
 				SetDesiredGait(AlsGaitTags::Running);
 			}
 		}
@@ -390,7 +456,7 @@ void ABaseCharacter::Handle_Walk(const FInputActionValue& ActionValue)
 void ABaseCharacter::Handle_Crouch(const FInputActionValue& ActionValue)
 {
 	const float Value = ActionValue.Get<float>();
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -434,7 +500,7 @@ void ABaseCharacter::Handle_Crouch(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
 {
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -491,7 +557,7 @@ void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 {
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -499,7 +565,6 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 	{
 		return;
 	}
-
 	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
 	if (!EquippedItem)
 	{
@@ -518,6 +583,10 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 	{
 		return;
 	}
+	if (bIsSprinting)
+	{
+		return;
+	}
 	if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem))
 	{
 		if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
@@ -532,7 +601,7 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 					return;
 				}
 
-				if (ActionValue.Get<float>() > 0.5f)
+				if (ActionValue.Get<float>() > 0.5f && bIsCloseToWall == false)
 				{
 					UE_LOG(LogTemp, Warning, TEXT("Scope on"));
 					SpringArm->AttachToComponent(RifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
@@ -556,6 +625,7 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::StartStaminaDrain()
 {
+	TickStaminaDrain();
 	if (!GetWorldTimerManager().IsTimerActive(StaminaDrainHandle))
 	{
 		GetWorldTimerManager().SetTimer(
@@ -669,8 +739,10 @@ void ABaseCharacter::ConsumeStamina()
 		return;
 	}
 	float CurrentPlayerSpeed = GetPlayerMovementSpeed();
-	if (CurrentPlayerSpeed <= MyPlayerState->RunSpeed + 10.0f)
+	if (FrontInput < 0.05f)
 	{
+		bIsSprinting = false;
+		SetDesiredAiming(false);
 		//일단 회복 시키기는 해
 		StartStaminaRecoverAfterDelay();
 		return;
@@ -685,6 +757,7 @@ void ABaseCharacter::ConsumeStamina()
 	if (MyPlayerState->CurrentStamina <= 0.f)
 	{
 		MyPlayerState->SetPlayerMovementState(ECharacterMovementState::Exhausted);
+		bIsSprinting = false;
 		SetDesiredGait(AlsGaitTags::Running);
 		StopStaminaDrain();
 		StartStaminaRecoverAfterDelay();
@@ -863,7 +936,7 @@ void ABaseCharacter::CalcCameraLocation()
 
 void ABaseCharacter::Handle_Reload()
 {
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -940,7 +1013,7 @@ void ABaseCharacter::OnGunReloadAnimComplete(UAnimMontage* CompletedMontage, boo
 
 void ABaseCharacter::Handle_ViewMode()
 {
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -953,18 +1026,51 @@ void ABaseCharacter::SetCameraMode(bool bIsFirstPersonView)
 {
 	if (bIsFirstPersonView)
 	{
+		//GetMesh()->HideBoneByName(TEXT("head"), EPhysBodyOp::PBO_None);
+		SwapHeadMaterialTransparent(true);
 		SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 		SpringArm->TargetArmLength = 0.0f;
 	}
 	else
 	{
+		//GetMesh()->UnHideBoneByName(TEXT("head"));
+		SwapHeadMaterialTransparent(false);
 		SpringArm->TargetArmLength = 200.0f;
 	}
 }
 
+void ABaseCharacter::SwapHeadMaterialTransparent(bool bUseTransparent)
+{
+	if (!GetMesh()) return;
+
+	if (bUseTransparent && TransparentHeadMaterial)
+	{
+		GetMesh()->SetMaterial(7, TransparentHeadMaterial);
+		GetMesh()->SetMaterial(9, TransparentHeadMaterial);
+		GetMesh()->SetMaterial(10, TransparentHeadMaterial);
+		GetMesh()->SetMaterial(11, TransparentHeadMaterial);
+		GetMesh()->SetMaterial(12, TransparentHeadMaterial);
+		GetMesh()->SetMaterial(13, TransparentHeadMaterial);
+		GetMesh()->SetMaterial(14, TransparentHeadMaterial);
+		GetMesh()->SetMaterial(15, TransparentHeadMaterial);
+	}
+	else
+	{
+		GetMesh()->SetMaterial(7, DefaultHeadMaterial_HelmBoots);
+		GetMesh()->SetMaterial(9, DefaultHeadMaterial_HelmBoots_Glassess);
+		GetMesh()->SetMaterial(11, DefaultHeadMaterial_Teeth);
+		GetMesh()->SetMaterial(12, DefaultHeadMaterial_Body);
+		GetMesh()->SetMaterial(13, DefaultHeadMaterial_Eyelash);
+		GetMesh()->SetMaterial(14, DefaultHeadMaterial_CORNEA);
+		GetMesh()->SetMaterial(15, DefaultHeadMaterial_EYEBALL);
+
+	}
+	// 7 10 11  13  14 15 
+}
+
 void ABaseCharacter::Handle_Strafe(const FInputActionValue& ActionValue)
 {
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -972,7 +1078,7 @@ void ABaseCharacter::Handle_Strafe(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::Handle_Interact()
 {
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -1010,7 +1116,7 @@ void ABaseCharacter::Handle_Interact()
 
 void ABaseCharacter::PickupItem()
 {
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -1022,7 +1128,7 @@ void ABaseCharacter::TraceInteractableActor()
 
 	SetDesiredAiming(true);
 	SetRotationMode(AlsRotationModeTags::Aiming);
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -1062,14 +1168,26 @@ void ABaseCharacter::TraceInteractableActor()
 
 	bool bHit = GetWorld()->LineTraceSingleByChannel(
 		Hit, Start, End, ECC_GameTraceChannel1, Params);
-	/*
+	
 	if (bHit)
 	{
 		float DistanceToHit = Hit.Distance;
 		LOG_Item_WARNING(TEXT("Hit Actor: %s, Distance: %.2f"),
 			*Hit.GetActor()->GetName(), DistanceToHit);
+		if (Hit.Distance < 100.0f)
+		{
+			bIsCloseToWall = true;
+		}
+		else
+		{
+			bIsCloseToWall = false;
+		}
 	}
-	*/
+	else
+	{
+		bIsCloseToWall = false;
+	}
+	
 
 	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 0.1f);
 	//여기가 로그가 안찍힘 수정해야됨
@@ -1223,7 +1341,7 @@ void ABaseCharacter::GetHeldItem()
 
 void ABaseCharacter::SetCurrentQuickSlotIndex(int32 NewIndex)
 {
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -1320,7 +1438,7 @@ void ABaseCharacter::Server_EquipItemFromCurrentQuickSlot_Implementation(int32 Q
 
 int32 ABaseCharacter::GetCurrentQuickSlotIndex()
 {
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return 0;
 	}
@@ -1418,6 +1536,7 @@ float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageE
 	float MaxHP = MyPlayerState->MaxHP;
 	float CalCulatedHP = FMath::Clamp(CurrentHP - FinalDamage, 0.0f, MaxHP);
 	MyPlayerState->SetHP(CalCulatedHP);
+	UE_LOG(LogTemp, Warning, TEXT("Current HP : %f"), CalCulatedHP);
 	if (CalCulatedHP <= 0.f)
 	{
 		HandlePlayerDeath(); // 사망 처리
@@ -1446,6 +1565,7 @@ void ABaseCharacter::GetFallDamage(float Velocity)
 	float CurrentHP = MyPlayerState->GetHP();
 	float MaxHP = MyPlayerState->MaxHP;
 	float CalCulatedHP = FMath::Clamp(CurrentHP - FinalDamage, 0.0f, MaxHP);
+	UE_LOG(LogTemp, Warning, TEXT("Current HP : %f"), CalCulatedHP);
 	MyPlayerState->SetHP(CalCulatedHP);
 	if (CalCulatedHP <= 0.f)
 	{
@@ -1455,7 +1575,8 @@ void ABaseCharacter::GetFallDamage(float Velocity)
 
 void ABaseCharacter::HandlePlayerDeath()
 {
-	if (CheckPlayerCurrentState() == EPlayerState::Dead)
+	UE_LOG(LogTemp, Log, TEXT("Character Died"));
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -1512,6 +1633,7 @@ void ABaseCharacter::EscapeThroughGate()
 		return;
 	}
 
+	UE_LOG(LogTemp, Log, TEXT("Character EscapeThroughGate"));
 	PC->OnPlayerExitActivePlay();
 	Multicast_SetPlayerInGameStateOnEscapeGate();
 }
@@ -1550,14 +1672,14 @@ bool ABaseCharacter::CheckHardLandState()
 }
 
 
-EPlayerState ABaseCharacter::CheckPlayerCurrentState()
+EPlayerInGameStatus ABaseCharacter::CheckPlayerCurrentState()
 {
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
 	{
-		return EPlayerState::None;
+		return EPlayerInGameStatus::None;
 	}
-	return MyPlayerState->CurrentState;
+	return MyPlayerState->InGameState;
 }
 
 
@@ -1979,18 +2101,12 @@ bool ABaseCharacter::UseEquippedItem()
 	if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
 	{
 		AGunBase* RifleItem = Cast<AGunBase>(EquippedItem);
-		ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
-		if (PC)
+		if (RifleItem)
 		{
-			if (RifleItem)
+			if (RifleItem->CurrentAmmo > 0)
 			{
-				if (RifleItem->CurrentAmmo > 0)
-				{
-					PC->CameraShake();
-				}
-
+				CameraShake();
 			}
-
 		}
 	}
 	return true;

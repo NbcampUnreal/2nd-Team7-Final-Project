@@ -53,11 +53,9 @@ void ALCBaseBossAIController::OnTargetPerceptionUpdated(
     if (!Stimulus.WasSuccessfullySensed())
     {
         BlackboardComp->ClearValue(TEXT("TargetActor"));
-        UE_LOG(LogTemp, Log, TEXT("[BossAI] 타겟 상실: %s"), *Actor->GetName());
     }
     else
     {
         BlackboardComp->SetValueAsObject(TEXT("TargetActor"), Actor);
-        UE_LOG(LogTemp, Log, TEXT("[BossAI] 감지: %s"), *Actor->GetName());
     }
 }

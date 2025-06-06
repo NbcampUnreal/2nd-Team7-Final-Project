@@ -10,7 +10,7 @@
 #include "LCGameInstance.generated.h"
 
 class ULCUIManagerSettings;
-
+class ULCOptionSettingAsset;
 UCLASS()
 class LASTCANARY_API ULCGameInstance : public UAdvancedFriendsGameInstance
 {
@@ -18,9 +18,12 @@ class LASTCANARY_API ULCGameInstance : public UAdvancedFriendsGameInstance
 private:
 	UPROPERTY(EditAnywhere, Category = "UI")
 	ULCUIManagerSettings* UIManagerSettings;
+	UPROPERTY(EditAnywhere, Category = "UI")
+	ULCOptionSettingAsset* OptionSettingAsset;
 
 public:
 	ULCUIManagerSettings* GetUIManagerSettings() const;
+	ULCOptionSettingAsset* GetOptionSettings() const;
 
 	FMapDataRow CurrentMapInfoRow;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data")
