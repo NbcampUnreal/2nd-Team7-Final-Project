@@ -70,32 +70,6 @@ void UMonsterSpawnComponent::StopSpawning()
     DestroyAllMonsters();
 }
 
-bool UMonsterSpawnComponent::IsLocationInNavMeshBounds(const FVector& Location)
-{
-    UWorld* World = GetWorld();
-    if (!World)
-    {
-        return false;
-    }
-
-    for (TActorIterator<ANavMeshBoundsVolume> ActorItr(World); ActorItr; ++ActorItr)
-    {
-        ANavMeshBoundsVolume* NavMeshVolume = *ActorItr;
-        if (NavMeshVolume && NavMeshVolume->GetBrushComponent())
-        {
-            FBoxSphereBounds Bounds = NavMeshVolume->GetBrushComponent()->Bounds;
-            FBox VolumeBox = Bounds.GetBox();
-
-            if (VolumeBox.IsInside(Location))
-            {
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
-
 FVector UMonsterSpawnComponent::GetValidSpawnLocationInNavVolume(const FVector& OwnerLocation)
 {
     UWorld* World = GetWorld();

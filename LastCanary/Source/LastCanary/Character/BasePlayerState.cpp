@@ -211,14 +211,17 @@ void ABasePlayerState::CopyProperties(APlayerState* PlayerState)
 {
 	Super::CopyProperties(PlayerState);
 	LOG_Frame_WARNING(TEXT("CopyProperties called for ABasePlayerState"));
+
 	if (ABasePlayerState* TargetState = Cast<ABasePlayerState>(PlayerState))
 	{
+		// 유지할 데이터
 		TargetState->AquiredItemIDs = AquiredItemIDs;
 		TargetState->TotalGold = TotalGold;
 		TargetState->TotalExp = TotalExp;
-		// 필요한 데이터 더 복사 가능
-		TargetState->CurrentHP = CurrentHP; // 테스트용으로 추가
-		LOG_Frame_WARNING(TEXT("TotalGold: %d, TotalExp: %d"), TotalGold, TotalExp);
+
+		// 초기화할 데이터
+		TargetState->CurrentHP = TargetState->MaxHP; 
+		TargetState->CurrentStamina = TargetState->InitialStats.MaxStamina;
 	}
 }
 
@@ -233,5 +236,4 @@ void ABasePlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME(ABasePlayerState, CurrentState);
 	DOREPLIFETIME(ABasePlayerState, AquiredItemIDs);
 	DOREPLIFETIME(ABasePlayerState, CollectedResources);
-
 }

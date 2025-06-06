@@ -31,7 +31,7 @@ void UShopWidget::NativeConstruct()
 	{
 		ItemInfoWidget->SetShoppingCartWidget(ShoppingCartWidget);
 	}
-	
+
 	if (ShoppingCartWidget)
 	{
 		// 골드 가져오기 
@@ -85,7 +85,7 @@ void UShopWidget::PopulateShopItems()
 	{
 		if (const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(RowName, TEXT("Shop Load")))
 		{
-			if (!ItemData->bSellInShop)
+			if (ItemData->bCanBuy == false)
 			{
 				continue;
 			}
