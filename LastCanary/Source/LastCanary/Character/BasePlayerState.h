@@ -114,7 +114,14 @@ public:
 	EInputMode CrouchInputMode = EInputMode::Hold;
 
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SoundSettings")
+	float RunningFootSoundModifier = 1.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SoundSettings")
+	float WalkingFootSoundModifier = 0.3f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SoundSettings")
+	float SprintingFootSoundModifier = 1.5f;
 
 public:
 	// State
