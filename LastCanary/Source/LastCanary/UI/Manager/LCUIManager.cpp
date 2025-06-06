@@ -106,6 +106,10 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			{
 				CachedChecklistWidget = CreateWidget<UChecklistWidget>(PlayerController, ChecklistWidgetClass);
 			}
+			if ((CachedResultMenu == nullptr) && ResultMenuClass)
+			{
+				CachedResultMenu = CreateWidget<UResultMenu>(PlayerController, ResultMenuClass);
+			}
 		}
 	}
 }
@@ -400,7 +404,6 @@ void ULCUIManager::ShowChecklistWidget()
 		return;
 	}
 
-	LOG_Frame_WARNING(TEXT("ShowChecklistWidget"));
 	// HideInGameHUD();
 
 	SwitchToWidget(CachedChecklistWidget);
