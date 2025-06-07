@@ -11,11 +11,11 @@ AItemBase::AItemBase()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
-	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMeshComponent"));
-	RootComponent = MeshComponent;
+	StaticMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMeshComponent"));
+	RootComponent = StaticMeshComponent;
 
 	SkeletalMeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("SkeletalMeshComponent"));
-	SkeletalMeshComponent->SetupAttachment(MeshComponent);
+	SkeletalMeshComponent->SetupAttachment(StaticMeshComponent);
 
 	SkeletalMeshComponent->SetVisibility(false);
 	SkeletalMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -148,14 +148,23 @@ void AItemBase::SetupMeshComponents()
 		bUsingSkeletalMesh = true;
 		SkeletalMeshComponent->SetSkeletalMesh(ItemData.SkeletalMesh);
 
-		SetMeshComponentActive(SkeletalMeshComponent, MeshComponent);
+		SetMeshComponentActive(SkeletalMeshComponent, StaticMeshComponent);
 	}
 	else if (ItemData.StaticMesh)
 	{
 		bUsingSkeletalMesh = false;
-		MeshComponent->SetStaticMesh(ItemData.StaticMesh);
+		StaticMeshComponent->SetStaticMesh(ItemData.StaticMesh);
 
-		SetMeshComponentActive(MeshComponent, SkeletalMeshComponent);
+		// ItemData 적용 후, 메시가 세팅된 다음 머티리얼 적용
+		if (ItemData.OverrideMaterial)
+		{
+			if (StaticMeshComponent && StaticMeshComponent->GetStaticMesh())
+			{
+				StaticMeshComponent->SetMaterial(0, ItemData.OverrideMaterial);
+			}
+		}
+
+		SetMeshComponentActive(StaticMeshComponent, SkeletalMeshComponent);
 	}
 	else
 	{
@@ -192,9 +201,9 @@ UPrimitiveComponent* AItemBase::GetActiveMeshComponent() const
 	{
 		return SkeletalMeshComponent;
 	}
-	else if (MeshComponent)
+	else if (StaticMeshComponent)
 	{
-		return MeshComponent;
+		return StaticMeshComponent;
 	}
 	return nullptr;
 }
@@ -205,7 +214,7 @@ UStaticMeshComponent* AItemBase::GetMeshComponent() const
 	{
 		return nullptr;
 	}
-	return MeshComponent;
+	return StaticMeshComponent;
 }
 
 USkeletalMeshComponent* AItemBase::GetSkeletalMeshComponent() const
@@ -241,9 +250,9 @@ void AItemBase::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEve
 			{
 				ItemData = *Found;
 
-				if (ItemData.StaticMesh && MeshComponent)
+				if (ItemData.StaticMesh && StaticMeshComponent)
 				{
-					MeshComponent->SetStaticMesh(ItemData.StaticMesh);
+					StaticMeshComponent->SetStaticMesh(ItemData.StaticMesh);
 				}
 			}
 			else

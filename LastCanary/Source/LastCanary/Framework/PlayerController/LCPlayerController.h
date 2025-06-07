@@ -31,6 +31,10 @@ public:
 	void Client_ShowLoading();
 	void Client_ShowLoading_Implementation();
 
+	UFUNCTION(Client, Unreliable)
+	void Client_ReceiveMessageFromGM(const FString& Message);
+	void Client_ReceiveMessageFromGM_Implementation(const FString& Message);
+
 	virtual void ClientReturnToMainMenuWithTextReason_Implementation(const FText& ReturnReason) override;
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Session")

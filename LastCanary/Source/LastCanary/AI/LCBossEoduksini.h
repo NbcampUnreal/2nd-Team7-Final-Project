@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "AI/BaseBossMonsterCharacter.h"
+#include "Components/SphereComponent.h"
 #include "LCBossEoduksini.generated.h"
 
 UCLASS()
@@ -17,6 +18,28 @@ public:
 protected:
     virtual void BeginPlay() override;
     virtual void Tick(float DeltaSeconds) override;
+
+    /** 어둠 범위를 나타내는 SphereComponent */
+    UPROPERTY(VisibleAnywhere, Category = "Darkness")
+    USphereComponent* DarknessSphere;
+
+    /** 플레이어가 Sphere에 들어왔을 때 호출 */
+    UFUNCTION()
+    void OnDarknessSphereBeginOverlap(
+        UPrimitiveComponent* OverlappedComp,
+        AActor* OtherActor,
+        UPrimitiveComponent* OtherComp,
+        int32 OtherBodyIndex,
+        bool bFromSweep,
+        const FHitResult& SweepResult);
+
+    /** 플레이어가 Sphere에서 나갔을 때 호출 */
+    UFUNCTION()
+    void OnDarknessSphereEndOverlap(
+        UPrimitiveComponent* OverlappedComp,
+        AActor* OtherActor,
+        UPrimitiveComponent* OtherComp,
+        int32 OtherBodyIndex);
 
     /** ── 플레이어 시선 체크 ── */
     bool IsLookedAtByAnyPlayer() const;

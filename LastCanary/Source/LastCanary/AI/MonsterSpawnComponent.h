@@ -8,6 +8,7 @@
 #include "MonsterSpawnComponent.generated.h"
 
 class ANavMeshBoundsVolume;
+class ABaseMonsterCharacter;
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class LASTCANARY_API UMonsterSpawnComponent : public UActorComponent
@@ -26,24 +27,28 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Monster Spawner")
     void StopSpawning();
 
+    void CurrentMap();
 protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Spawner")
-    TArray<TSubclassOf<ACharacter>> MonsterClasses;
+    TArray<TSubclassOf<ABaseMonsterCharacter>> MonsterClasses;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UDataTable* MonsterDataTable;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Spawner", meta = (ClampMin = "1"))
-    int32 MaxMonsterCount = 5;
+    int32 MaxMonsterCount = 4;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Spawner", meta = (ClampMin = "1"))
-    float MonsterLifeTime = 100.0f;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Spawner", meta = (ClampMin = "0"))
-    float MinSpawnRadius = 100.0f;
+    /*UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Spawner", meta = (ClampMin = "1"))
+    float MonsterLifeTime = 100.0f;*/
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Spawner", meta = (ClampMin = "0"))
-    float MaxSpawnRadius = 500.0f;
+    float MinSpawnRadius = 1200.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Spawner", meta = (ClampMin = "0"))
-    float SpawnCooldown = 110.0f;
+    float MaxSpawnRadius = 1500.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Spawner", meta = (ClampMin = "0"))
+    float SpawnCooldown = 15.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Spawner")
     bool bAutoStart = false;
@@ -56,8 +61,7 @@ private:
     void SpawnNightMonsters();
     void DestroyAllMonsters();
 
-    // NavMeshBoundsVolume 관련 함수들
-    bool IsLocationInNavMeshBounds(const FVector& Location);
+    //NavMeshBoundsVolume
     FVector GetValidSpawnLocationInNavVolume(const FVector& OwnerLocation);
 
     UPROPERTY()

@@ -39,10 +39,6 @@ void ALCDroneDelivery::BeginPlay()
 
 	InitializeLights(); 
 
-	if (HasAuthority() && DropBoxMesh)
-	{
-		DropBoxMesh->OnComponentHit.AddDynamic(this, &ALCDroneDelivery::OnDropBoxHit);
-	}
 }
 
 void ALCDroneDelivery::StartDelivery()

@@ -401,8 +401,8 @@ void AGunBase::BeginPlay()
         LOG_Item_WARNING(TEXT("[GunBase::BeginPlay] 게임인스턴스 서브시스템의 GunDataTable이 null입니다!"));
     }
 
-    ApplyGunDataFromDataTable();
-    ApplyItemDataFromTable();
+    /*ApplyGunDataFromDataTable();
+    ApplyItemDataFromTable();*/
 
     if (Durability > MaxAmmo || Durability <= 0.0f)
     {

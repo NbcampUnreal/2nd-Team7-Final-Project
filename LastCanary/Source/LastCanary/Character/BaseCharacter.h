@@ -68,6 +68,9 @@ public:
 	UCameraComponent* SpectatorCamera;
 
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* HeadMesh;
+
 	void Tick(float DeltaSeconds)
 	{
 		Super::Tick(DeltaSeconds);
@@ -136,12 +139,59 @@ protected:
 	void SmoothADSCamera(float DeltaTime);
 	bool bADS = false; // 현재 정조준 상태인가?
 
+	bool bIsCloseToWall = false;
+	bool bIsSprinting = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_HelmBoots;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_HelmBoots_Glassess;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_Glassess;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_Teeth;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_Body;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_Eyelash;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_CORNEA;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_EYEBALL;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* TransparentHeadMaterial;
+
+
 
 
 public:
 	void SetCameraMode(bool bIsFirstPersonView);
 
+	void ApplyRecoilStep();
+	void CameraShake();
 
+
+	void SwapHeadMaterialTransparent(bool bUseTransparent);
+public:
+
+	// Recoil 상태
+	FTimerHandle RecoilTimerHandle;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite);
+	float YawRecoilRange = 1.0f;
+
+	int32 RecoilStep = 0;
+	int32 RecoilMaxSteps = 5;
+	float RecoilStepPitch = 0.f;
+	float RecoilStepYaw = 0.f;
 	// Character Input Handle Function
 
 public:
@@ -168,7 +218,6 @@ public:
 	bool bIsPossessed;
 	bool bIsReloading = false;
 	bool bIsClose = false;
-	bool bIsSprinting = false;
 	void SetPossess(bool IsPossessed);
 
 
@@ -211,10 +260,26 @@ public:
 public:
 	//애니메이션 몽타주
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
-	UAnimMontage* InteractMontage;
+	UAnimMontage* InteractMontageOnUpperObject;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UAnimMontage* InteractMontageOnUnderObject;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
 	UAnimMontage* ReloadMontage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UAnimMontage* KickMontage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UAnimMontage* PressButtonMontage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UAnimMontage* OpeningValveMontage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UAnimMontage* PickAxeMontage;
+
 
 	UFUNCTION()
 	void OnGunReloadAnimComplete(UAnimMontage* CompletedMontage, bool bInterrupted);
@@ -230,7 +295,10 @@ public:
 	void Multicast_PlayMontage(UAnimMontage* MontageToPlay);
 	void Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay);
 
+	UPROPERTY()
+	UAnimMontage* CurrentInteractMontage;
 
+	void CancelInteraction();
 
 	//Check Player Focus Everytime
 public:
@@ -247,13 +315,17 @@ public:
 
 	void TraceInteractableActor();
 
+	void InteractAfterPlayMontage(AActor* TargetActor);
+	void OnInteractAnimComplete(UAnimMontage* CompletedMontage, bool bInterrupted);
 
+	UPROPERTY()
+	AActor* InteractTargetActor;
 	//Player Take Damage
 public:
 	/*Player Damage, Death*/
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	void HandlePlayerDeath();
-	
+
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_SetPlayerInGameStateOnDie();
 	void Multicast_SetPlayerInGameStateOnDie_Implementation();
@@ -319,7 +391,7 @@ public:
 public:
 	bool CheckHardLandState();
 
-	EPlayerState CheckPlayerCurrentState();
+	EPlayerInGameStatus CheckPlayerCurrentState();
 
 	UFUNCTION(Client, Reliable)
 	void Client_SetMovementSetting();
@@ -329,7 +401,7 @@ public:
 	TArray<float> CalculateMovementSpeedWithWeigth();
 	void ResetMovementSetting();
 
-
+	float FrontInput = 0.0f;
 
 	//달리기 관련 로직
 	float GetPlayerMovementSpeed();

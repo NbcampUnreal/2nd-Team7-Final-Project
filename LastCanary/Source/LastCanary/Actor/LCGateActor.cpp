@@ -4,8 +4,12 @@
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Character/BasePlayerController.h"
 #include "Framework/GameState/LCGameState.h"
-#include "Framework/GameMode/BaseGameMode.h"
+#include "Framework/GameMode/LCGameMode.h"
 #include "Framework/PlayerController/LCRoomPlayerController.h"
+#include "Character/BaseCharacter.h"
+#include "Character/BasePlayerState.h"
+#include "Inventory/ToolbarInventoryComponent.h"
+#include "Inventory/BackpackInventoryComponent.h"
 
 #include "Net/UnrealNetwork.h"
 
@@ -34,7 +38,7 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 		return;
 	}
 
-	ABaseGameMode* BaseGM = Cast<ABaseGameMode>(GetWorld()->GetAuthGameMode());
+	ALCGameMode* LCGM = Cast<ALCGameMode>(GetWorld()->GetAuthGameMode());
 
 	if (ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 	{
@@ -55,6 +59,14 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 				{
 					RoomPC->Server_MarkPlayerAsEscaped();
 				}
+
+				if (ABasePlayerState* PlayerState = RoomPC->GetPlayerState<ABasePlayerState>())
+				{
+					// 플레이어 상태 업데이트
+					ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(RoomPC->GetPawn());
+					PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetToolbarInventoryComponent()->GetInventoryItemIDs());
+					PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetBackpackInventoryComponent()->GetInventoryItemIDs());
+				}
 			}
 
 			// HUD 숨기고 관전 모드 전환
@@ -63,8 +75,8 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 				UIManager->HideInGameHUD();
 			}
 			ABasePlayerController* BasePlayerController = Cast<ABasePlayerController>(Controller);
+			BasePlayerController->OnExitGate();
 			BasePlayerController->UnPossess();
-			BasePlayerController->SpectateNextPlayer();
 
 			// 일정 시간 후 Pawn 제거
 			APawn* Pawn = Controller->GetPawn();
@@ -78,18 +90,28 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 			// 사망->시체 스켈레탈메시남고->관전(컨트롤러)
 			// 관전으로 넘기는 함수
 			// 탈출시 PS로 아이템 아이디넘김 타이머로 캐릭터 Destroy
+			break;
 		}
 		case EGateTravelType::ToInGame:
 		{
+			if (ALCRoomPlayerController* RoomPC = Cast<ALCRoomPlayerController>(Controller))
+			{
+				if (ABasePlayerState* PlayerState = RoomPC->GetPlayerState<ABasePlayerState>())
+				{
+					ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(RoomPC->GetPawn());
+					PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetToolbarInventoryComponent()->GetInventoryItemIDs());
+				}
+			}
+
 			if (HasAuthority() == false)
 			{
 				return;
 			}
 			else
 			{
-				if (BaseGM)
+				if (LCGM)
 				{
-					if (!BaseGM->IsAllPlayersReady())
+					if (!LCGM->IsAllPlayersReady())
 					{
 						LOG_Server_ERROR(TEXT("All Client is Not Ready!!"));
 						return;
@@ -144,9 +166,9 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 			}
 			GISubsystem->ChangeLevelByMapID(TargetMapID);
 
-			if (BaseGM)
+			if (LCGM)
 			{
-				BaseGM->ShowLoading();
+				LCGM->ShowLoading();
 			}
 			else
 			{
