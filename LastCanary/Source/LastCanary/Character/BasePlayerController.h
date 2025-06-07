@@ -206,6 +206,13 @@ public:
 	ABaseCharacter* GetControlledBaseCharacter() const;
 
 public:
+	void OnExitGate();
+
+	UFUNCTION(Server, Reliable)
+	void Server_OnExitGate();
+	void Server_OnExitGate_Implementation();
+
+	void HandleExitGate();
 
 	UFUNCTION()
 	void OnPlayerExitActivePlay();
@@ -224,6 +231,8 @@ public:
 
 	TArray<ABasePlayerState*> SpectatorTargets;
 
+	//관전 컨트롤 전용 변수
+	bool bIsSpectatingButtonClicked = false;
 public:
 	bool bIsSprinting = false;
 
