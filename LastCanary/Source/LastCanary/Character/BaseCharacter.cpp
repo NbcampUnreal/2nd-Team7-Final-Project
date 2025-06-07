@@ -38,7 +38,7 @@ ABaseCharacter::ABaseCharacter()
 	UseGunBoneforOverlayObjects = true;
 
 	HeadMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("HeadMesh"));
-	HeadMesh->SetupAttachment(RootComponent);
+	HeadMesh->SetupAttachment(GetMesh());
 	HeadMesh->SetMasterPoseComponent(GetMesh()); // GetMesh()는 전체 메시
 
 	OverlayStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("OverlayStaticMesh"));
@@ -294,6 +294,10 @@ void ABaseCharacter::Handle_Look(const FInputActionValue& ActionValue)
 	{
 		return;
 	}
+	if (IsValid(CurrentInteractMontage))
+	{
+		return;
+	}
 	const FVector2f Value{ ActionValue.Get<FVector2D>() };
 
 	AddControllerPitchInput(Value.Y * LookUpRate);
@@ -307,7 +311,7 @@ void ABaseCharacter::Handle_Move(const FInputActionValue& ActionValue)
 	{
 		return;
 	}
-	
+	CancelInteraction();
 	FrontInput = Value.Y;
 	const auto ForwardDirection{ UAlsVector::AngleToDirectionXY(UE_REAL_TO_FLOAT(GetViewState().Rotation.Yaw)) };
 	const auto RightDirection{ UAlsVector::PerpendicularCounterClockwiseXY(ForwardDirection) };
@@ -460,6 +464,7 @@ void ABaseCharacter::Handle_Walk(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::Handle_Crouch(const FInputActionValue& ActionValue)
 {
+	CancelInteraction();
 	const float Value = ActionValue.Get<float>();
 	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
@@ -469,6 +474,7 @@ void ABaseCharacter::Handle_Crouch(const FInputActionValue& ActionValue)
 	{
 		return;
 	}
+
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
 	{
@@ -513,6 +519,7 @@ void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
 	{
 		return;
 	}
+	CancelInteraction();
 	if (ActionValue.Get<bool>())
 	{
 		if (StopRagdolling())
@@ -609,6 +616,7 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 				if (ActionValue.Get<float>() > 0.5f && bIsCloseToWall == false)
 				{
 					UE_LOG(LogTemp, Warning, TEXT("Scope on"));
+					CancelInteraction();
 					SpringArm->AttachToComponent(RifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
 					//ToADSCamera(true);
 					return;
@@ -945,6 +953,7 @@ void ABaseCharacter::Handle_Reload()
 	{
 		return;
 	}
+	CancelInteraction();
 	Server_PlayReload();
 }
 void ABaseCharacter::Server_PlayReload_Implementation()
@@ -1100,10 +1109,11 @@ void ABaseCharacter::Handle_Interact()
 		APlayerController* PC = Cast<APlayerController>(GetController());
 		if (PC)
 		{
-			IInteractableInterface::Execute_Interact(CurrentFocusedActor, PC);
+			CancelInteraction();
+			//IInteractableInterface::Execute_Interact(CurrentFocusedActor, PC);
 			UE_LOG(LogTemp, Log, TEXT("Handle_Interact: Called Interact on %s"), *CurrentFocusedActor->GetName());
 			UE_LOG(LogTemp, Log, TEXT("Equipped item on slot"));
-			PlayInteractionMontage(CurrentFocusedActor);
+			InteractAfterPlayMontage(CurrentFocusedActor);
 		}
 		else
 		{
@@ -1118,7 +1128,7 @@ void ABaseCharacter::Handle_Interact()
 	UE_LOG(LogTemp, Log, TEXT("Interact Ended"));
 }
 
-void ABaseCharacter::InteractAfterPlayMontage()
+void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 {
 	UAnimMontage* MontageToPlay;
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
@@ -1126,13 +1136,21 @@ void ABaseCharacter::InteractAfterPlayMontage()
 	{
 		return;
 	}
+	InteractTargetActor = TargetActor;
 	//아이템이면 ... 
 	//줍기 모션
 
+	/*
+	if(Target->Tags.Contains("Gimmick"))
+	{
+
+	}
+	*/
 	// 기믹이면
 	// 해당 기믹에 맞는 모션
 
-	MontageToPlay = InteractMontage;
+	MontageToPlay = InteractMontageOnUnderObject;
+	CurrentInteractMontage = MontageToPlay;
 	float Duration = AnimInstance->Montage_Play(MontageToPlay, 1.0f);
 	if (Duration > 0.f)
 	{
@@ -1143,11 +1161,13 @@ void ABaseCharacter::InteractAfterPlayMontage()
 	}
 }
 
-void ABaseCharacter::OnInteractAnimComplete(UAnimMontage* CompletedMontage, bool bInterrupted)
+void ABaseCharacter::OnInteractAnimComplete(UAnimMontage* CompletedMontage ,bool bInterrupted)
 {
 	if (bInterrupted)
 	{
-		LOG_Item_WARNING(TEXT("[ABaseCharacter::OnGunReloadAnimComplete] 애니메이션이 중단되었습니다."));
+		UE_LOG(LogTemp, Warning, TEXT("애니메이션 진행이 중단되었습니다."));
+		InteractTargetActor = nullptr;
+		CurrentInteractMontage = nullptr;
 		return;
 	}
 
@@ -1155,9 +1175,22 @@ void ABaseCharacter::OnInteractAnimComplete(UAnimMontage* CompletedMontage, bool
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (PC)
 	{
-		IInteractableInterface::Execute_Interact(CurrentFocusedActor, PC);
+		IInteractableInterface::Execute_Interact(InteractTargetActor, PC);
+		InteractTargetActor = nullptr;
+		CurrentInteractMontage = nullptr;
 	}
 }
+
+void ABaseCharacter::CancelInteraction()
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && CurrentInteractMontage)
+	{
+		AnimInstance->Montage_Stop(0.2f, CurrentInteractMontage); // 부드럽게 블렌드 아웃
+		CurrentInteractMontage = nullptr;
+	}
+}
+
 
 void ABaseCharacter::PickupItem()
 {
@@ -1970,7 +2003,7 @@ void ABaseCharacter::PlayInteractionMontage(AActor* Target)
 		
 	}
 	*/
-	MontageToPlay = InteractMontage;
+	MontageToPlay = InteractMontageOnUnderObject;
 	if (!IsValid(MontageToPlay))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Anim Montage does not exist."));

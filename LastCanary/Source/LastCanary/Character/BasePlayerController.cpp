@@ -744,6 +744,10 @@ void ABasePlayerController::SelectQuickSlot(int32 SlotIndex)
 
 	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
+		if (IsValid(PlayerCharacter->CurrentInteractMontage))
+		{
+			return;
+		}
 		PlayerCharacter->SetCurrentQuickSlotIndex(SlotIndex);
 		UpdateQuickSlotUI();
 	}
