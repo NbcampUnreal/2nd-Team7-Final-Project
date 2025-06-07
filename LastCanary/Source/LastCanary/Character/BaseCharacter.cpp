@@ -754,14 +754,13 @@ void ABaseCharacter::ConsumeStamina()
 	if (FrontInput < 0.1f)
 	{
 		bIsSprinting = false;
-		SetDesiredAiming(false);
 		SetDesiredGait(AlsGaitTags::Running);
 		//일단 회복 시키기는 해
 		StartStaminaRecoverAfterDelay();
 		return;
 	}	
 	bIsSprinting = true;
-	SetDesiredAiming(true);	
+	SetDesiredAiming(false);	
 	SetDesiredGait(AlsGaitTags::Sprinting);
 	SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 	StopStaminaRecovery();
