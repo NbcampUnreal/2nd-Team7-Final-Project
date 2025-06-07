@@ -76,15 +76,7 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 			}
 			ABasePlayerController* BasePlayerController = Cast<ABasePlayerController>(Controller);
 			BasePlayerController->OnExitGate();
-			BasePlayerController->UnPossess();
 
-			// 일정 시간 후 Pawn 제거
-			APawn* Pawn = Controller->GetPawn();
-			if (Pawn)
-			{
-				Pawn->DetachFromControllerPendingDestroy();
-				Pawn->SetLifeSpan(5.f); // 또는 Custom Fade Out
-			}
 
 			// TODO : 탈출, 체크리스트 띄우고 전부 작성하면 결과 UI-> 호스트가 버튼 눌러서 베이스캠프로 이동
 			// 사망->시체 스켈레탈메시남고->관전(컨트롤러)
