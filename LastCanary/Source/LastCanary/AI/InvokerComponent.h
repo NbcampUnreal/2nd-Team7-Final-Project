@@ -17,11 +17,11 @@ class LASTCANARY_API UInvokerComponent : public UActorComponent
 public:	
 	UInvokerComponent();
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Nav")
-	float NavGenerationradius;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Nav")
+	float NavGenerationradius = 10.f;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Nav")
-	float NavRemovalradius;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Nav")
+	float NavRemovalradius = 15.f;
 
 
 protected:
