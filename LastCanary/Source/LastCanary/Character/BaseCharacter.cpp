@@ -1172,7 +1172,7 @@ void ABaseCharacter::OnInteractAnimComplete(UAnimMontage* CompletedMontage ,bool
 	if (bInterrupted)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("애니메이션 진행이 중단되었습니다."));
-		InteractTargetActor = nullptr;
+//		InteractTargetActor = nullptr;
 		CurrentInteractMontage = nullptr;
 		return;
 	}
@@ -1186,7 +1186,7 @@ void ABaseCharacter::OnInteractAnimComplete(UAnimMontage* CompletedMontage ,bool
 			return;
 		}
 		IInteractableInterface::Execute_Interact(InteractTargetActor, PC);
-		InteractTargetActor = nullptr;
+//		InteractTargetActor = nullptr;
 		CurrentInteractMontage = nullptr;
 	}
 }
