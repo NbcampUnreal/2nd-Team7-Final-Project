@@ -21,6 +21,19 @@ void ULCGameInstanceSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		GI->LoadItemData();
 		GI->LoadGunData();
 	}
+
+
+#if WITH_EDITOR
+	if (GEngine)
+	{
+		UWorld* World = GetWorld();
+		if (World)
+		{
+			GEngine->Exec(World, TEXT("net.AllowPIESeamlessTravel 1"));
+			UE_LOG(LogTemp, Warning, TEXT("[LCGameInstanceSubsystem] PIE SeamlessTravel enabled."));
+		}
+	}
+#endif
 }
 
 ULCUIManager* ULCGameInstanceSubsystem::GetUIManager() const

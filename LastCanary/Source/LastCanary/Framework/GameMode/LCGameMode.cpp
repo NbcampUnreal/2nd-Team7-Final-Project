@@ -5,6 +5,8 @@
 #include "Framework/PlayerController/LCPlayerController.h"
 #include "LastCanary.h"
 #include "GameFramework/GameSession.h"
+#include "EngineUtils.h"
+#include "Actor/PlayerChecker.h"
 
 void ALCGameMode::BeginPlay()
 {
@@ -23,6 +25,23 @@ void ALCGameMode::PostLogin(APlayerController* NewPlayer)
 	}
 
 	CachingNewPlayer(NewPlayer);
+
+	// 신규 플레이어에 대한 SessionPlayerInfo 추가
+	if (NewPlayer && NewPlayer->PlayerState)
+	{
+		FSessionPlayerInfo Info;
+		Info.PlayerName = NewPlayer->PlayerState->GetPlayerName();
+		Info.bIsPlayerReady = false;
+
+		SessionPlayerInfos.Add(Info);
+		UpdatePlayers();
+
+		// 문 상태 재검사
+		for (TActorIterator<APlayerChecker> It(GetWorld()); It; ++It)
+		{
+			It->Server_OpenDoors(); // 강제로 다시 열어줌
+		}
+	}
 }
 
 void ALCGameMode::Logout(AController* Exiting)
@@ -125,6 +144,34 @@ void ALCGameMode::SetPlayerInfo(const FSessionPlayerInfo& RequestInfo)
 	}
 
 	UpdatePlayers();
+
+	// 준비 상태 확인 및 문 열고 닫기 처리
+	int32 Connected = 0;
+	int32 Ready = 0;
+
+	for (const FSessionPlayerInfo& Info : SessionPlayerInfos)
+	{
+		if (!Info.PlayerName.IsEmpty())
+		{
+			Connected++;
+			if (Info.bIsPlayerReady)
+			{
+				Ready++;
+			}
+		}
+	}
+
+	for (TActorIterator<APlayerChecker> It(GetWorld()); It; ++It)
+	{
+		if (Connected > 0 && Connected == Ready)
+		{
+			It->Server_CloseDoors();
+		}
+		else
+		{
+			It->Server_OpenDoors();
+		}
+	}
 }
 
 void ALCGameMode::ShowLoading()
