@@ -59,10 +59,12 @@ void ABasePlayerController::OnExitGate()
 
 	if (HasAuthority())
 	{
+		UE_LOG(LogTemp, Warning, TEXT("OnExitGate : is on Server"));
 		HandleExitGate(); // 서버 전용 로직 실행
 	}
 	else
 	{
+		UE_LOG(LogTemp, Warning, TEXT("OnExitGate : is on Client"));
 		Server_OnExitGate(); // 클라에서는 서버 RPC만 호출
 	}
 }
