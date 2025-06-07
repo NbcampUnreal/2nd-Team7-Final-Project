@@ -1,6 +1,6 @@
 #include "Actor/Gimmick/Trigger/LCUnifiedPlate.h"
 #include "Components/BoxComponent.h"
-#include "GameFramework/Character.h"
+#include "Character/BaseCharacter.h"
 #include "Interface/GimmickEffectInterface.h"
 #include "Interface/LCGimmickInterface.h"
 
@@ -41,7 +41,7 @@ void ALCUnifiedPlate::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, A
 	{
 		return;
 	}
-	if (Cast<ACharacter>(OtherActor) == nullptr)
+	if (Cast<ABaseCharacter>(OtherActor) == nullptr)
 	{
 		return;
 	}
