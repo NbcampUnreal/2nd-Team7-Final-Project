@@ -322,6 +322,8 @@ public:
 	void InteractAfterPlayMontage(AActor* TargetActor);
 	void OnInteractAnimComplete(UAnimMontage* CompletedMontage, bool bInterrupted);
 
+	void OnNotified();
+
 	UPROPERTY()
 	AActor* InteractTargetActor;
 	//Player Take Damage
