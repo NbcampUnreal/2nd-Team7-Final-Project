@@ -11,7 +11,7 @@ AFlashlightItem::AFlashlightItem()
 {
     // 스포트라이트 컴포넌트 생성
     SpotLightComponent = CreateDefaultSubobject<USpotLightComponent>(TEXT("SpotLight"));
-    SpotLightComponent->SetupAttachment(MeshComponent);
+    SpotLightComponent->SetupAttachment(StaticMeshComponent);
 
     // 네트워크 복제 활성화
     SpotLightComponent->SetIsReplicated(true);
