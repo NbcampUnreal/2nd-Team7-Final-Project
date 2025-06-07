@@ -67,7 +67,7 @@ void AItemBase::BeginPlay()
 
 		if (!ItemRowName.IsNone() && GetOwner() != GetAttachParentActor())
 		{
-			ApplyItemDataFromTable();
+			//ApplyItemDataFromTable();
 		}
 	}
 
