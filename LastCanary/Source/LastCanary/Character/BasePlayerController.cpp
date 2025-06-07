@@ -882,8 +882,14 @@ void ABasePlayerController::Input_DroneExit()
 			SpawnedPlayerDrone->ReturnAsItem();
 			SpawnedPlayerDrone = nullptr;
 		}
-
-		// TODO: 아이템화 시켜서 바닥에 떨구기
+	}
+	if (!IsValid(CurrentPossessedPawn))
+	{
+		return;
+	}
+	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
+	{
+		PlayerCharacter->SwapHeadMaterialTransparent(true);
 	}
 }
 
@@ -935,10 +941,20 @@ void ABasePlayerController::PossessOnDrone()
 	if (!IsValid(SpawnedPlayerDrone))
 		return;
 
+	if (!IsValid(CurrentPossessedPawn))
+	{
+		return;
+	}
+	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
+	{
+		PlayerCharacter->SwapHeadMaterialTransparent(false);
+	}
 
 	CurrentPossessedPawn = SpawnedPlayerDrone;
 
 	SpawnedPlayerDrone->SetCharacterLocation(SpanwedPlayerCharacter->GetActorLocation());
+	
+
 	
 	SetViewTargetWithBlend(SpawnedPlayerDrone, 0.5f);
 }

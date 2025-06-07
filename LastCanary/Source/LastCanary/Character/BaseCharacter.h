@@ -169,7 +169,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
 	UMaterialInterface* TransparentHeadMaterial;
 
-	void SwapHeadMaterialTransparent(bool bUseTransparent);
+
 
 
 public:
@@ -178,6 +178,8 @@ public:
 	void ApplyRecoilStep();
 	void CameraShake();
 
+
+	void SwapHeadMaterialTransparent(bool bUseTransparent);
 public:
 
 	// Recoil 상태

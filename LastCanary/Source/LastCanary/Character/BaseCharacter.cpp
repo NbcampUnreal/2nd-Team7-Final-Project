@@ -1068,7 +1068,6 @@ void ABaseCharacter::SwapHeadMaterialTransparent(bool bUseTransparent)
 		GetMesh()->SetMaterial(13, DefaultHeadMaterial_Eyelash);
 		GetMesh()->SetMaterial(14, DefaultHeadMaterial_CORNEA);
 		GetMesh()->SetMaterial(15, DefaultHeadMaterial_EYEBALL);
-
 	}
 	// 7 10 11  13  14 15 
 }
@@ -1856,6 +1855,14 @@ void ABaseCharacter::RefreshOverlayObject(int index)
 		return;
 	}
 
+	if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))
+	{
+		SetDesiredGait(AlsOverlayModeTags::PistolOneHanded);
+		SetOverlayMode(AlsOverlayModeTags::PistolOneHanded);
+		RefreshOverlayLinkedAnimationLayer(1);
+		//AttachOverlayObject(FlashLightMesh, NULL, NULL, "Torch", true);
+		return; 
+	}
 	//아이템은 있는데 매치가 아무것도 안되면
 	UE_LOG(LogTemp, Warning, TEXT("Equipped Item is Valid but doesn`t match any tag"));
 	SetDesiredGait(AlsOverlayModeTags::Default);
@@ -2135,7 +2142,14 @@ bool ABaseCharacter::UseEquippedItem()
 		{
 			PC->SpawnDrone();
 			//현재 들고 있는 인벤토리에서 제거하기
+			
+			ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].ItemRowName = "Default";
+			ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].Quantity = 1;
+			ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].Durability = 100;
+			ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].bIsEquipped = false;
+			ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].bIsValid = true;
 			UnequipCurrentItem();
+			ToolbarInventoryComponent->EquippedItemComponent->DestroyChildActor();
 			RefreshOverlayObject(0);
 			return true;
 		}
