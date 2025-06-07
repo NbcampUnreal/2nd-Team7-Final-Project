@@ -18,7 +18,7 @@ public:
 protected:
     virtual void BeginPlay() override;
 
-private:
+public:
     /** 장착된 아이템 컴포넌트 (일반 장비용) */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment", meta = (AllowPrivateAccess = "true"))
     UChildActorComponent* EquippedItemComponent;

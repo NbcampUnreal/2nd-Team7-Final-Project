@@ -49,6 +49,41 @@ void ABasePlayerController::SetupInputComponent()
 	//InitInputComponent();
 }
 
+void ABasePlayerController::OnExitGate()
+{
+	if (!IsValid(CurrentPossessedPawn))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in OnExitGate"));
+		return;
+	}
+
+	if (HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("OnExitGate : is on Server"));
+		HandleExitGate(); // 서버 전용 로직 실행
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("OnExitGate : is on Client"));
+		Server_OnExitGate(); // 클라에서는 서버 RPC만 호출
+	}
+}
+
+void ABasePlayerController::Server_OnExitGate_Implementation()
+{
+	HandleExitGate(); // 서버에서 실행
+}
+
+void ABasePlayerController::HandleExitGate()
+{
+	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
+	if (!IsValid(PlayerCharacter))
+	{
+		return;
+	}
+	PlayerCharacter->EscapeThroughGate();
+}
+
 void ABasePlayerController::OnPlayerExitActivePlay()
 {
 	//클라이언트에서 해야할 것.
@@ -307,6 +342,32 @@ void ABasePlayerController::Input_OnMove(const FInputActionValue& ActionValue)
 		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_OnMove"));
 		return;
 	}
+	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
+	if (IsValid(MyPlayerState) && MyPlayerState->InGameState == EPlayerInGameStatus::Spectating)
+	{
+		const auto Value{ ActionValue.Get<FVector2D>() };
+		if (Value.X != 0.0f)
+		{
+			if (bIsSpectatingButtonClicked == true)
+			{
+				return;
+			}
+			bIsSpectatingButtonClicked = true;
+			if (Value.X > 0.0f)
+			{
+				SpectateNextPlayer();
+			}
+			else
+			{
+				SpectatePreviousPlayer();
+			}
+		}
+		else
+		{
+			bIsSpectatingButtonClicked = false;
+		}
+		return;
+	}
 	// APawn 타입에 맞는 처리를 실행
 	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
@@ -489,21 +550,6 @@ void ABasePlayerController::Input_OnStrafe(const FInputActionValue& ActionValue)
 {
 	if (!IsValid(CurrentPossessedPawn))
 	{
-		return;
-	}
-
-	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
-	if (MyPlayerState && MyPlayerState->InGameState == EPlayerInGameStatus::Spectating)
-	{
-		const float Input = ActionValue.Get<float>();
-		if (Input > 0.5f)
-		{
-			SpectateNextPlayer();
-		}
-		else
-		{
-			SpectatePreviousPlayer();
-		}
 		return;
 	}
 
@@ -700,6 +746,10 @@ void ABasePlayerController::SelectQuickSlot(int32 SlotIndex)
 
 	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
+		if (IsValid(PlayerCharacter->CurrentInteractMontage))
+		{
+			return;
+		}
 		PlayerCharacter->SetCurrentQuickSlotIndex(SlotIndex);
 		UpdateQuickSlotUI();
 	}
@@ -838,8 +888,14 @@ void ABasePlayerController::Input_DroneExit()
 			SpawnedPlayerDrone->ReturnAsItem();
 			SpawnedPlayerDrone = nullptr;
 		}
-
-		// TODO: 아이템화 시켜서 바닥에 떨구기
+	}
+	if (!IsValid(CurrentPossessedPawn))
+	{
+		return;
+	}
+	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
+	{
+		PlayerCharacter->SwapHeadMaterialTransparent(true);
 	}
 }
 
@@ -891,10 +947,20 @@ void ABasePlayerController::PossessOnDrone()
 	if (!IsValid(SpawnedPlayerDrone))
 		return;
 
+	if (!IsValid(CurrentPossessedPawn))
+	{
+		return;
+	}
+	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
+	{
+		PlayerCharacter->SwapHeadMaterialTransparent(false);
+	}
 
 	CurrentPossessedPawn = SpawnedPlayerDrone;
 
 	SpawnedPlayerDrone->SetCharacterLocation(SpanwedPlayerCharacter->GetActorLocation());
+	
+
 	
 	SetViewTargetWithBlend(SpawnedPlayerDrone, 0.5f);
 }
