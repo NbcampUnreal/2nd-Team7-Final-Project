@@ -75,8 +75,8 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 				UIManager->HideInGameHUD();
 			}
 			ABasePlayerController* BasePlayerController = Cast<ABasePlayerController>(Controller);
+			BasePlayerController->OnExitGate();
 			BasePlayerController->UnPossess();
-			BasePlayerController->SpectateNextPlayer();
 
 			// 일정 시간 후 Pawn 제거
 			APawn* Pawn = Controller->GetPawn();
