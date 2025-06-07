@@ -37,6 +37,8 @@ EBTNodeResult::Type UBTTask_Move::ExecuteTask(UBehaviorTreeComponent& OwnerComp,
     ABaseMonsterCharacter* Monster = Cast<ABaseMonsterCharacter>(AIController->GetPawn());
     if (Monster)
     {
+        MyAcceptableRadius = Monster->GetAttackRange();
+
         Monster->MulticastAIMove();
         Monster->PlayChaseSound();
         LastSoundTime = GetWorld()->GetTimeSeconds();
@@ -98,6 +100,10 @@ void UBTTask_Move::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory
         float DistanceToTarget = FVector::Distance(ControlledPawn->GetActorLocation(), TargetActor->GetActorLocation());
         if (DistanceToTarget <= MyAcceptableRadius+50)
         {
+            FVector DirectionToTarget = (TargetActor->GetActorLocation() - ControlledPawn->GetActorLocation()).GetSafeNormal();
+            FRotator TargetRotation = DirectionToTarget.Rotation();
+            ControlledPawn->SetActorRotation(TargetRotation);
+
             ABaseAIController* BaseAIController = Cast<ABaseAIController>(OwnerComp.GetAIOwner());
             if (BaseAIController)
             {

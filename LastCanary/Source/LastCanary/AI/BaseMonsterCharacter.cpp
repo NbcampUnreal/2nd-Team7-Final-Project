@@ -22,7 +22,7 @@ ABaseMonsterCharacter::ABaseMonsterCharacter()
     CurrentHP = MaxHP;
     bIsDead = false;
 
-    AttackDamage = 30.0f;
+    AttackDamage = 10.0f;
 
     AIPerceptionComponent = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("PerceptionComponent"));
 
@@ -105,8 +105,6 @@ void ABaseMonsterCharacter::OnAttackHit(UPrimitiveComponent* OverlappedComponent
         //데미지
         FDamageEvent DamageEvent;
         HitCharacter->TakeDamage(AttackDamage, DamageEvent, GetController(), this);
-
-        UE_LOG(LogTemp, Warning, TEXT("Monster hit player for %f damage!"), AttackDamage);
 
         //콜라이더 비활성화
         DisableAttackCollider();

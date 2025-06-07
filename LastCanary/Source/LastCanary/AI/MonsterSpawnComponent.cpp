@@ -169,7 +169,7 @@ void UMonsterSpawnComponent::CurrentMap()
 {
     if (!MonsterDataTable)
     {
-        UE_LOG(LogTemp, Warning, TEXT("Monsterrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr is null!"));
+        //UE_LOG(LogTemp, Warning, TEXT("Monsterrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr is null!"));
         return;
     }
 
@@ -193,7 +193,7 @@ void UMonsterSpawnComponent::CurrentMap()
         }
     }
 
-    UE_LOG(LogTemp, Log, TEXT("MonsterrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrComplete"));
+    //UE_LOG(LogTemp, Log, TEXT("MonsterrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrComplete"));
 }
 
 void UMonsterSpawnComponent::SpawnMonsters()

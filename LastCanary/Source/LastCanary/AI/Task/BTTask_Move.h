@@ -17,7 +17,7 @@ public:
 
 protected:
     UPROPERTY(EditAnywhere, Category = "Movement")
-    float MyAcceptableRadius = 50.0f;
+    float MyAcceptableRadius;
 
 private:
     UPROPERTY(EditAnywhere)
