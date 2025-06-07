@@ -1106,14 +1106,19 @@ void ABaseCharacter::Handle_Interact()
 
 	if (CurrentFocusedActor->Implements<UInteractableInterface>())
 	{
+		AActor* actor = CurrentFocusedActor;
+		if (!IsValid(actor))
+		{
+			return;
+		}
 		APlayerController* PC = Cast<APlayerController>(GetController());
 		if (PC)
 		{
 			CancelInteraction();
 			//IInteractableInterface::Execute_Interact(CurrentFocusedActor, PC);
-			UE_LOG(LogTemp, Log, TEXT("Handle_Interact: Called Interact on %s"), *CurrentFocusedActor->GetName());
+			UE_LOG(LogTemp, Log, TEXT("Handle_Interact: Called Interact on %s"), *actor->GetName());
 			UE_LOG(LogTemp, Log, TEXT("Equipped item on slot"));
-			InteractAfterPlayMontage(CurrentFocusedActor);
+			InteractAfterPlayMontage(actor);
 		}
 		else
 		{
@@ -1151,6 +1156,7 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 
 	MontageToPlay = InteractMontageOnUnderObject;
 	CurrentInteractMontage = MontageToPlay;
+	Server_PlayMontage(MontageToPlay);
 	float Duration = AnimInstance->Montage_Play(MontageToPlay, 1.0f);
 	if (Duration > 0.f)
 	{
@@ -1175,6 +1181,10 @@ void ABaseCharacter::OnInteractAnimComplete(UAnimMontage* CompletedMontage ,bool
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (PC)
 	{
+		if (!IsValid(InteractTargetActor))
+		{
+			return;
+		}
 		IInteractableInterface::Execute_Interact(InteractTargetActor, PC);
 		InteractTargetActor = nullptr;
 		CurrentInteractMontage = nullptr;
@@ -1182,6 +1192,17 @@ void ABaseCharacter::OnInteractAnimComplete(UAnimMontage* CompletedMontage ,bool
 }
 
 void ABaseCharacter::CancelInteraction()
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && CurrentInteractMontage)
+	{
+		AnimInstance->Montage_Stop(0.2f, CurrentInteractMontage); // 부드럽게 블렌드 아웃
+		CurrentInteractMontage = nullptr;
+		Server_CancelInteraction();
+	}
+}
+
+void ABaseCharacter::Server_CancelInteraction_Implementation()
 {
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && CurrentInteractMontage)
@@ -2022,6 +2043,7 @@ void ABaseCharacter::Multicast_PlayMontage_Implementation(UAnimMontage* MontageT
 {
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	AnimInstance->Montage_Play(MontageToPlay);
+	CurrentInteractMontage = MontageToPlay;
 }
 
 UToolbarInventoryComponent* ABaseCharacter::GetToolbarInventoryComponent() const
