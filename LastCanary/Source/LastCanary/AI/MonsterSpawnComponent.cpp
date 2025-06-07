@@ -78,17 +78,14 @@ FVector UMonsterSpawnComponent::GetValidSpawnLocationInNavVolume(const FVector& 
         return FVector::ZeroVector;
     }
 
-    TArray<ANavMeshBoundsVolume*> NavMeshVolumes;
-    for (TActorIterator<ANavMeshBoundsVolume> ActorItr(World); ActorItr; ++ActorItr)
+    UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(World);
+    if (!NavSys)
     {
-        ANavMeshBoundsVolume* NavMeshVolume = *ActorItr;
-        if (NavMeshVolume && NavMeshVolume->GetBrushComponent())
-        {
-            NavMeshVolumes.Add(NavMeshVolume);
-        }
+        return FVector::ZeroVector;
     }
 
-    if (NavMeshVolumes.Num() == 0)
+    ANavigationData* NavData = NavSys->GetDefaultNavDataInstance();
+    if (!NavData)
     {
         return FVector::ZeroVector;
     }
@@ -113,29 +110,26 @@ FVector UMonsterSpawnComponent::GetValidSpawnLocationInNavVolume(const FVector& 
 
         FVector TestLocation = OwnerLocation + SpawnOffset;
 
-        bool bInNavVolume = false;
-        for (ANavMeshBoundsVolume* NavVolume : NavMeshVolumes)
-        {
-            FBoxSphereBounds Bounds = NavVolume->GetBrushComponent()->Bounds;
-            FBox VolumeBox = Bounds.GetBox();
-            if (VolumeBox.IsInside(TestLocation))
-            {
-                bInNavVolume = true;
-                break;
-            }
-        }
+        FNavLocation NavLocation;
+        bool bFoundNavMesh = NavSys->ProjectPointToNavigation(//navmesh 찾아주는 함수
+            TestLocation,
+            NavLocation,
+            FVector(100.0f, 100.0f, 500.0f)//검색 범위
+        );
 
-        if (!bInNavVolume)
+        if (!bFoundNavMesh)
         {
             continue;
         }
 
-        FHitResult HitResult;
-        FVector TraceStart = TestLocation;
-        TraceStart.Z = OwnerLocation.Z + 500.0f;
+        FVector ValidNavLocation = NavLocation.Location;
 
-        FVector TraceEnd = TestLocation;
-        TraceEnd.Z = OwnerLocation.Z - 500.0f;
+        FHitResult HitResult;
+        FVector TraceStart = ValidNavLocation;
+        TraceStart.Z += 500.0f;
+
+        FVector TraceEnd = ValidNavLocation;
+        TraceEnd.Z -= 100.0f;
 
         FCollisionQueryParams QueryParams;
         QueryParams.AddIgnoredActor(GetOwner());
@@ -150,15 +144,14 @@ FVector UMonsterSpawnComponent::GetValidSpawnLocationInNavVolume(const FVector& 
 
         if (bHit)
         {
-            FVector ValidLocation = HitResult.Location;
-            ValidLocation.Z += 90.0f;
-            return ValidLocation;
+            FVector FinalLocation = HitResult.Location;
+            FinalLocation.Z += 90.0f;
+            return FinalLocation;
         }
         else
         {
-            FVector ValidLocation = TestLocation;
-            ValidLocation.Z = OwnerLocation.Z + 90.0f;
-            return ValidLocation;
+            ValidNavLocation.Z += 90.0f;
+            return ValidNavLocation;
         }
     }
 

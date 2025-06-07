@@ -4,8 +4,8 @@ UInvokerComponent::UInvokerComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
 
-	NavGenerationradius = 10.0f;
-	NavRemovalradius = 15.0f;
+	/*NavGenerationradius = 10.0f;
+	NavRemovalradius = 15.0f;*/
 
 	NavInvoker = CreateDefaultSubobject<UNavigationInvokerComponent>(TEXT("NavInvoker"));
 	NavInvoker->SetGenerationRadii(NavGenerationradius, NavRemovalradius);

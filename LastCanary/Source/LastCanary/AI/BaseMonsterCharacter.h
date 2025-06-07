@@ -35,9 +35,6 @@ public:
 
     virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
 
-    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Property")
-    int32 MaxHP;
-
     UPROPERTY(EditDefaultsOnly, Category = "Animation")
     UAnimMontage* StartAttack;
 
@@ -154,6 +151,9 @@ protected:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
     UAIPerceptionComponent* AIPerceptionComponent;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Combat")
+    int32 MaxHP;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Combat")
     float AttackDamage;
