@@ -1161,7 +1161,18 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 	}
 	else
 	{
-		MontageToPlay = InteractMontageOnUnderObject;
+		APlayerController* PC = Cast<APlayerController>(GetController());
+		if (PC)
+		{
+			if (!IsValid(InteractTargetActor))
+			{
+				return;
+			}
+			UE_LOG(LogTemp, Warning, TEXT("excute interact"));
+			IInteractableInterface::Execute_Interact(InteractTargetActor, PC);
+			//		InteractTargetActor = nullptr;
+		}
+		//MontageToPlay = InteractMontageOnUnderObject;
 	}
 
 	// 기믹이면
@@ -1239,6 +1250,42 @@ void ABaseCharacter::OnNotified()
 	//		InteractTargetActor = nullptr;
 }
 
+
+void ABaseCharacter::PlayInteractionMontage(AActor* Target)
+{
+	UAnimMontage* MontageToPlay;
+	//TODO: 게임 플레이 태그 비교
+	//if(Target->GetGamePlayTag)
+
+
+
+	/*
+	if(Target->Tags.Contains("Gimmick"))
+	{
+
+	}
+	*/
+	MontageToPlay = InteractMontageOnUnderObject;
+	if (!IsValid(MontageToPlay))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Anim Montage does not exist."));
+		return;
+	}
+	UE_LOG(LogTemp, Warning, TEXT("Anim Montage"));
+	Server_PlayMontage(MontageToPlay);
+}
+
+void ABaseCharacter::Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay)
+{
+	Multicast_PlayMontage(MontageToPlay);
+}
+
+void ABaseCharacter::Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay)
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	AnimInstance->Montage_Play(MontageToPlay);
+	CurrentInteractMontage = MontageToPlay;
+}
 
 void ABaseCharacter::PickupItem()
 {
@@ -2039,42 +2086,6 @@ void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(int index)
 	}
 }
 
-
-void ABaseCharacter::PlayInteractionMontage(AActor* Target)
-{
-	UAnimMontage* MontageToPlay;
-	//TODO: 게임 플레이 태그 비교
-	//if(Target->GetGamePlayTag)
-
-
-
-	/*
-	if(Target->Tags.Contains("Gimmick"))
-	{
-
-	}
-	*/
-	MontageToPlay = InteractMontageOnUnderObject;
-	if (!IsValid(MontageToPlay))
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Anim Montage does not exist."));
-		return;
-	}
-	UE_LOG(LogTemp, Warning, TEXT("Anim Montage"));
-	Server_PlayMontage(MontageToPlay);
-}
-
-void ABaseCharacter::Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay)
-{
-	Multicast_PlayMontage(MontageToPlay);
-}
-
-void ABaseCharacter::Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay)
-{
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	AnimInstance->Montage_Play(MontageToPlay);
-	CurrentInteractMontage = MontageToPlay;
-}
 
 UToolbarInventoryComponent* ABaseCharacter::GetToolbarInventoryComponent() const
 {
