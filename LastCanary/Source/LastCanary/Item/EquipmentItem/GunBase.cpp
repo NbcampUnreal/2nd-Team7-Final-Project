@@ -68,7 +68,7 @@ void AGunBase::Server_Fire_Implementation()
 {
     HandleFire();
 
-    Multicast_SpawnImpactEffects(RecentHits);
+    //Multicast_SpawnImpactEffects(RecentHits);
 }
 
 void AGunBase::HandleFire()

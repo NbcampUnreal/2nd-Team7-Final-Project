@@ -86,6 +86,153 @@ AItemBase* UItemSpawnerComponent::CreateItemWithCustomData(FName ItemRowName, co
     return SpawnedItem;
 }
 
+AItemBase* UItemSpawnerComponent::CreateItemAtLocation(FName ItemRowName, const FVector& SpawnLocation, bool bEnablePhysics)
+{
+    // 권한 확인 (서버에서만 실행)
+    if (!GetOwner() || !GetOwner()->HasAuthority())
+    {
+        LOG_Item_WARNING(TEXT("[ItemSpawnerComponent::CreateItemAtLocation] Authority가 없습니다. 서버에서만 실행하세요."));
+        return nullptr;
+    }
+
+    if (ItemRowName.IsNone())
+    {
+        LOG_Item_WARNING(TEXT("[ItemSpawnerComponent::CreateItemAtLocation] ItemRowName이 None입니다."));
+        return nullptr;
+    }
+
+    ULCGameInstanceSubsystem* GameSubsystem = GetGameSubsystem();
+    if (!GameSubsystem)
+    {
+        LOG_Item_WARNING(TEXT("[ItemSpawnerComponent::CreateItemAtLocation] GameInstanceSubsystem이 없습니다."));
+        return nullptr;
+    }
+
+    FItemDataRow* ItemData = GameSubsystem->GetItemDataByRowName(ItemRowName);
+    if (!ItemData || !ItemData->ItemActorClass)
+    {
+        LOG_Item_WARNING(TEXT("[ItemSpawnerComponent::CreateItemAtLocation] ItemData 또는 ItemActorClass가 없습니다: %s"),
+            *ItemRowName.ToString());
+        return nullptr;
+    }
+
+    FActorSpawnParameters SpawnParams;
+    SpawnParams.Owner = nullptr;
+    SpawnParams.Instigator = Cast<APawn>(GetOwner());
+    SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+    // 아이템 액터 스폰
+    AItemBase* SpawnedItem = GetWorld()->SpawnActor<AItemBase>(
+        ItemData->ItemActorClass,
+        SpawnLocation,
+        FRotator::ZeroRotator,
+        SpawnParams
+    );
+
+    if (SpawnedItem)
+    {
+        ApplyItemSettings(SpawnedItem, ItemRowName, DefaultQuantity, DefaultDurability);
+
+        // 자원 아이템용 물리 시뮬레이션 (던지기 없음)
+        if (bEnablePhysics)
+        {
+            EnableBasicPhysicsSimulation(SpawnedItem);
+        }
+    }
+
+    return SpawnedItem;
+}
+
+void UItemSpawnerComponent::EnableBasicPhysicsSimulation(AItemBase* Item)
+{
+    if (!Item)
+    {
+        LOG_Item_WARNING(TEXT("[UItemSpawnerComponent::EnableBasicPhysicsSimulation] 아이템이 null입니다."));
+        return;
+    }
+
+    bool bIgnoreCharacterCollision = false;
+
+    if (UWorld* World = GetWorld())
+    {
+        if (UGameInstance* GI = World->GetGameInstance())
+        {
+            if (ULCGameInstanceSubsystem* GameSubsystem = GI->GetSubsystem<ULCGameInstanceSubsystem>())
+            {
+                if (const FItemDataRow* ItemData = GameSubsystem->GetItemDataByRowName(Item->ItemRowName))
+                {
+                    bIgnoreCharacterCollision = ItemData->bIgnoreCharacterCollision;
+                }
+            }
+        }
+    }
+
+    // 아이템의 충돌 설정 업데이트
+    Item->bIgnoreCharacterCollision = bIgnoreCharacterCollision;
+    Item->ApplyCollisionSettings();
+
+    // 서버에서만 물리 시뮬레이션 실행
+    if (GetOwner()->HasAuthority())
+    {
+        if (UPrimitiveComponent* ActiveMeshComp = Item->GetActiveMeshComponent())
+        {
+            SetupBasicMeshPhysics(ActiveMeshComp);
+        }
+        else
+        {
+            LOG_Item_WARNING(TEXT("[EnableBasicPhysicsSimulation] 활성화된 메시 컴포넌트를 찾을 수 없음"));
+            return;
+        }
+
+        // 물리 적용 후 움직임 복제만 활성화
+        Item->SetReplicateMovement(true);
+        Item->SetReplicates(true);
+
+        // 강제 네트워크 업데이트
+        Item->ForceNetUpdate();
+    }
+}
+
+void UItemSpawnerComponent::SetupBasicMeshPhysics(UPrimitiveComponent* MeshComponent)
+{
+    if (!MeshComponent)
+    {
+        LOG_Item_WARNING(TEXT("[UItemSpawnerComponent::SetupBasicMeshPhysics] MeshComponent is null"));
+        return;
+    }
+
+    if (!GetOwner()->HasAuthority())
+    {
+        LOG_Item_WARNING(TEXT("[UItemSpawnerComponent::SetupBasicMeshPhysics] 클라이언트에서는 물리 설정하지 않음"));
+        return;
+    }
+
+    // 스켈레탈 메시인 경우 애니메이션 인스턴스만 제거
+    if (USkeletalMeshComponent* SkeletalMeshComp = Cast<USkeletalMeshComponent>(MeshComponent))
+    {
+        if (UAnimInstance* AnimInstance = SkeletalMeshComp->GetAnimInstance())
+        {
+            SkeletalMeshComp->SetAnimInstanceClass(nullptr);
+        }
+    }
+
+    MeshComponent->SetSimulatePhysics(true);
+
+    // 물리 활성화 확인 (던지기 임펄스는 적용하지 않음)
+    if (MeshComponent->IsSimulatingPhysics())
+    {
+        // 안정성 설정
+        MeshComponent->SetLinearDamping(0.5f);  // 자원 아이템은 더 빠르게 안정화
+        MeshComponent->SetAngularDamping(0.5f);
+
+        LOG_Item_WARNING(TEXT("[UItemSpawnerComponent::SetupBasicMeshPhysics] 기본 물리 시뮬레이션 활성화 성공"));
+    }
+    else
+    {
+        LOG_Item_WARNING(TEXT("[UItemSpawnerComponent::SetupBasicMeshPhysics] 물리 시뮬레이션 활성화 실패"));
+    }
+}
+
 void UItemSpawnerComponent::ApplyItemSettings(AItemBase* Item, FName ItemRowName, int32 Quantity, float Durability)
 {
     if (!Item)

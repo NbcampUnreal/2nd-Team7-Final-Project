@@ -11,6 +11,8 @@
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Actor/Gimmick/LCBaseGimmick.h"
 
+#include "Inventory/ToolbarInventoryComponent.h"
+
 
 void ABasePlayerController::BeginPlay()
 {
@@ -679,7 +681,11 @@ void ABasePlayerController::Input_OnCanceledVoiceChat()
 
 void ABasePlayerController::Input_ChangeShootingSetting()
 {
-	//TODO: 총기 클래스 연사 단발 설정
+	//TODO: 필요하다면 UI와 연동해야할지도?
+	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
+	{
+		PlayerCharacter->ToggleFireMode();
+	}
 }
 
 void ABasePlayerController::SetShootingSetting()
