@@ -361,15 +361,12 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 			StartStaminaRecoverAfterDelay();
 			return;
 		}
-		bIsSprinting = true;
 		FootSoundModifier = MyPlayerState->SprintingFootSoundModifier;
-		SetDesiredAiming(false);
-		SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+		
 		//달리기 시작하면서 스테미나 소모 시작
 		StartStaminaDrain();
 		StopStaminaRecovery();
 		StopStaminaRecoverAfterDelay();
-		SetDesiredGait(ActionValue.Get<bool>() ? AlsGaitTags::Sprinting : AlsGaitTags::Running);
 	}
 	else if (MyPlayerState->SprintInputMode == EInputMode::Toggle)
 	{
@@ -385,25 +382,25 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 			}
 			else if (GetDesiredGait() == AlsGaitTags::Running)
 			{
-				bIsSprinting = true;
+				//bIsSprinting = true;
 				FootSoundModifier = MyPlayerState->SprintingFootSoundModifier;
-				SetDesiredAiming(false);
+				//SetDesiredAiming(false);
 				SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 				StopStaminaRecovery();
 				StopStaminaRecoverAfterDelay();
 				StartStaminaDrain();
-				SetDesiredGait(AlsGaitTags::Sprinting);
+				//SetDesiredGait(AlsGaitTags::Sprinting);
 			}
 			else
 			{
-				bIsSprinting = true;
+				//bIsSprinting = true;
 				FootSoundModifier = MyPlayerState->SprintingFootSoundModifier;
-				SetDesiredAiming(false);
+				//SetDesiredAiming(false);
 				SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 				StopStaminaRecovery();
 				StopStaminaRecoverAfterDelay();
 				StartStaminaDrain();
-				SetDesiredGait(AlsGaitTags::Sprinting);
+				//SetDesiredGait(AlsGaitTags::Sprinting);
 			}
 		}
 	}
@@ -528,6 +525,8 @@ void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
 		}
 		if (StartMantlingGrounded())
 		{
+			SetDesiredAiming(false);
+			SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 			return;
 		}
 		if (GetStance() == AlsStanceTags::Crouching)
@@ -595,7 +594,7 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 	{
 		return;
 	}
-	if (bIsSprinting)
+	if (bIsMantling)
 	{
 		return;
 	}
@@ -615,7 +614,7 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 
 				if (ActionValue.Get<float>() > 0.5f && bIsCloseToWall == false)
 				{
-					UE_LOG(LogTemp, Warning, TEXT("Scope on"));
+					//UE_LOG(LogTemp, Warning, TEXT("Scope on"));
 					CancelInteraction();
 					SpringArm->AttachToComponent(RifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
 					//ToADSCamera(true);
@@ -623,7 +622,7 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 				}
 				else
 				{
-					UE_LOG(LogTemp, Warning, TEXT("Scope out"));
+					//UE_LOG(LogTemp, Warning, TEXT("Scope out"));
 					SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 					//ToADSCamera(false);
 					return;
@@ -752,14 +751,18 @@ void ABaseCharacter::ConsumeStamina()
 		return;
 	}
 	float CurrentPlayerSpeed = GetPlayerMovementSpeed();
-	if (FrontInput < 0.05f)
+	if (FrontInput < 0.1f)
 	{
 		bIsSprinting = false;
-		SetDesiredAiming(false);
+		SetDesiredGait(AlsGaitTags::Running);
 		//일단 회복 시키기는 해
 		StartStaminaRecoverAfterDelay();
 		return;
 	}	
+	bIsSprinting = true;
+	SetDesiredAiming(false);	
+	SetDesiredGait(AlsGaitTags::Sprinting);
+	SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 	StopStaminaRecovery();
 	StopStaminaRecoverAfterDelay();
 	StartStaminaRecoverAfterDelayOnJump();
@@ -771,6 +774,7 @@ void ABaseCharacter::ConsumeStamina()
 	{
 		MyPlayerState->SetPlayerMovementState(ECharacterMovementState::Exhausted);
 		bIsSprinting = false;
+		SetDesiredAiming(true);
 		SetDesiredGait(AlsGaitTags::Running);
 		StopStaminaDrain();
 		StartStaminaRecoverAfterDelay();
@@ -1224,19 +1228,17 @@ void ABaseCharacter::PickupItem()
 
 void ABaseCharacter::TraceInteractableActor()
 {
-
-	SetDesiredAiming(true);
-	SetRotationMode(AlsRotationModeTags::Aiming);
 	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
-
+	SetDesiredAiming(true);
+	SetRotationMode(AlsRotationModeTags::Aiming);
 	if (!IsLocallyControlled())
 	{
 		return;
 	}
-
+	
 	FVector ViewLocation;
 	FRotator ViewRotation;
 
@@ -1266,7 +1268,7 @@ void ABaseCharacter::TraceInteractableActor()
 	Params.AddIgnoredActor(this);
 
 	bool bHit = GetWorld()->LineTraceSingleByChannel(
-		Hit, Start, End, ECC_GameTraceChannel1, Params);
+		Hit, Start, End, ECC_Visibility, Params);
 	
 	if (bHit)
 	{
@@ -1351,6 +1353,7 @@ void ABaseCharacter::TraceInteractableActor()
 		}
 	}
 }
+
 void ABaseCharacter::UpdateGunWallClipOffset(float DeltaTime)
 {
 	// 1. 총을 들고 있는 상태인지 확인 (OverlayState or 커스텀 상태)
@@ -2189,6 +2192,12 @@ bool ABaseCharacter::UseEquippedItem()
 		LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 현재 장착된 아이템이 없습니다."));
 		return false;
 	}
+
+	if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Backpack")))
+	{
+		ToggleInventory();
+	}
+	
 
 	if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))
 	{
