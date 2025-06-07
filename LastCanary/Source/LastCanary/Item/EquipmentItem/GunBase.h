@@ -252,6 +252,12 @@ public:
     /** 탄약 상태 업데이트 */
     void UpdateAmmoState();
 
+    UFUNCTION()
+    void EnsureGunDataLoaded();
+
+    UFUNCTION()
+    bool IsGunDataLoaded() const;
+
     /** Durability 변경 시 탄약 동기화 */
     virtual void OnRepDurability() override;
 

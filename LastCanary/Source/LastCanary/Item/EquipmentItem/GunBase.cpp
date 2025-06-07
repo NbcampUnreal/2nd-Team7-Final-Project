@@ -66,9 +66,34 @@ void AGunBase::UseItem()
 
 void AGunBase::Server_Fire_Implementation()
 {
+    EnsureGunDataLoaded();
+
     HandleFire();
 
-    //Multicast_SpawnImpactEffects(RecentHits);
+    // ✅ 디버깅 추가
+    LOG_Item_WARNING(TEXT("[Server_Fire] RecentHits 개수: %d"), RecentHits.Num());
+
+    for (int32 i = 0; i < RecentHits.Num(); i++)
+    {
+        LOG_Item_WARNING(TEXT("[Server_Fire] Hit %d: %s at %s"),
+            i,
+            RecentHits[i].GetActor() ? *RecentHits[i].GetActor()->GetName() : TEXT("None"),
+            *RecentHits[i].ImpactPoint.ToString());
+    }
+
+    Multicast_PlayFireEffects();
+
+    if (RecentHits.Num() > 0)
+    {
+        LOG_Item_WARNING(TEXT("[Server_Fire] 멀티캐스트 이펙트 호출 - 히트 개수: %d"), RecentHits.Num());
+        Multicast_SpawnImpactEffects(RecentHits);
+    }
+    else
+    {
+        LOG_Item_WARNING(TEXT("[Server_Fire] 히트 없음 - 이펙트 스킵"));
+    }
+
+    Multicast_PlayFireAnimation();
 }
 
 void AGunBase::HandleFire()
@@ -103,16 +128,6 @@ void AGunBase::HandleFire()
             ProcessHit(HitResult, StartLocation);
         }
     }
-
-    Multicast_PlayFireEffects();
-
-    if (RecentHits.Num() > 0)
-    {
-        Multicast_SpawnImpactEffects(RecentHits);
-    }
-
-    // 애니메이션 재생
-    Multicast_PlayFireAnimation();
 }
 
 bool AGunBase::PerformLineTrace(FHitResult& OutHit, FVector& StartLocation, FVector& EndLocation)
@@ -166,27 +181,27 @@ bool AGunBase::PerformLineTrace(FHitResult& OutHit, FVector& StartLocation, FVec
     bool bHit = GetWorld()->LineTraceSingleByChannel(OutHit, StartLocation, EndLocation, ECC_Visibility, QueryParams);
 
     // 디버그 라인 표시 (개발 모드나 디버그 설정이 활성화된 경우에만)
-    if (bDrawDebugLine)
-    {
-        if (bHit) // 명중한 경우
-        {
-            // 시작점에서 히트 지점까지 녹색 라인
-            DrawDebugLine(GetWorld(), StartLocation, OutHit.ImpactPoint, FColor::Green, false, DebugDrawDuration, 0, 2.0f);
+    //if (bDrawDebugLine)
+    //{
+    //    if (bHit) // 명중한 경우
+    //    {
+    //        // 시작점에서 히트 지점까지 녹색 라인
+    //        DrawDebugLine(GetWorld(), StartLocation, OutHit.ImpactPoint, FColor::Green, false, DebugDrawDuration, 0, 2.0f);
 
-            // 히트 지점에 빨간색 구체 표시 (더 크게 만들어 가시성 향상)
-            DrawDebugSphere(GetWorld(), OutHit.ImpactPoint, 10.0f, 16, FColor::Red, false, DebugDrawDuration);
+    //        // 히트 지점에 빨간색 구체 표시 (더 크게 만들어 가시성 향상)
+    //        DrawDebugSphere(GetWorld(), OutHit.ImpactPoint, 10.0f, 16, FColor::Red, false, DebugDrawDuration);
 
-            // 히트 지점에 법선 방향 표시
-            DrawDebugDirectionalArrow(GetWorld(), OutHit.ImpactPoint,
-                OutHit.ImpactPoint + OutHit.ImpactNormal * 50.0f,
-                20.0f, FColor::Blue, false, DebugDrawDuration);
-        }
-        else // 명중하지 않은 경우
-        {
-            // 전체 라인을 빨간색으로 표시
-            DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Red, false, DebugDrawDuration, 0, 2.0f);
-        }
-    }
+    //        // 히트 지점에 법선 방향 표시
+    //        DrawDebugDirectionalArrow(GetWorld(), OutHit.ImpactPoint,
+    //            OutHit.ImpactPoint + OutHit.ImpactNormal * 50.0f,
+    //            20.0f, FColor::Blue, false, DebugDrawDuration);
+    //    }
+    //    else // 명중하지 않은 경우
+    //    {
+    //        // 전체 라인을 빨간색으로 표시
+    //        DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Red, false, DebugDrawDuration, 0, 2.0f);
+    //    }
+    //}
 
     return bHit;
 }
@@ -231,17 +246,29 @@ void AGunBase::ProcessHit(const FHitResult& HitResult, const FVector& StartLocat
 
 void AGunBase::Multicast_SpawnImpactEffects_Implementation(const TArray<FHitResult>& Hits)
 {
-    // 모든 히트 지점에 대해 효과 생성
-    for (const FHitResult& Hit : Hits)
-    {
-        FVector EnhancedDecalSize = DecalSize * 5.0f;
+    EnsureGunDataLoaded();
 
-        // 데칼 생성 위치를 약간 앞으로 이동 (표면 겹침 방지)
+    // ✅ 클라이언트 디버깅 추가
+    LOG_Item_WARNING(TEXT("[Client] Multicast_SpawnImpactEffects 호출됨 - 히트 개수: %d"), Hits.Num());
+    LOG_Item_WARNING(TEXT("[Client] HasAuthority: %s"), HasAuthority() ? TEXT("true") : TEXT("false"));
+    LOG_Item_WARNING(TEXT("[Client] World: %s"), GetWorld() ? TEXT("Valid") : TEXT("Null"));
+    LOG_Item_WARNING(TEXT("[Client] ImpactDecalMaterial: %s"), ImpactDecalMaterial ? TEXT("Valid") : TEXT("Null"));
+
+    for (int32 i = 0; i < Hits.Num(); i++)
+    {
+        const FHitResult& Hit = Hits[i];
+
+        LOG_Item_WARNING(TEXT("[Client] Processing Hit %d: %s at %s"),
+            i,
+            Hit.GetActor() ? *Hit.GetActor()->GetName() : TEXT("None"),
+            *Hit.ImpactPoint.ToString());
+
+        FVector EnhancedDecalSize = DecalSize * 5.0f;
         FVector AdjustedLocation = Hit.ImpactPoint + Hit.ImpactNormal * 0.5f;
 
         if (ImpactDecalMaterial)
         {
-            UGameplayStatics::SpawnDecalAtLocation(
+            UDecalComponent* SpawnedDecal = UGameplayStatics::SpawnDecalAtLocation(
                 GetWorld(),
                 ImpactDecalMaterial,
                 EnhancedDecalSize,
@@ -249,16 +276,26 @@ void AGunBase::Multicast_SpawnImpactEffects_Implementation(const TArray<FHitResu
                 Hit.ImpactNormal.Rotation(),
                 DecalLifeSpan
             );
+
+            // ✅ 데칼 생성 결과 확인
+            if (SpawnedDecal)
+            {
+                LOG_Item_WARNING(TEXT("[Client] 데칼 생성 성공"));
+            }
+            else
+            {
+                LOG_Item_WARNING(TEXT("[Client] 데칼 생성 실패"));
+            }
         }
         else
         {
-            LOG_Item_WARNING(TEXT("SpawnImpactEffects: No decal material assigned"));
+            LOG_Item_WARNING(TEXT("[Client] ImpactDecalMaterial이 null입니다"));
         }
 
         if (ImpactSound)
         {
             UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, Hit.ImpactPoint);
-            LOG_Item_WARNING(TEXT("SpawnImpactEffects: Played sound %s"), *ImpactSound->GetName());
+            LOG_Item_WARNING(TEXT("[Client] 사운드 재생: %s"), *ImpactSound->GetName());
         }
     }
 }
@@ -294,6 +331,8 @@ void AGunBase::Multicast_PlayFireEffects_Implementation()
 
 void AGunBase::Multicast_PlayFireAnimation_Implementation()
 {
+    EnsureGunDataLoaded();
+
     if (GunData.FireAnimation)
     {
         PlayGunAnimation(GunData.FireAnimation);
@@ -400,9 +439,6 @@ void AGunBase::BeginPlay()
     {
         LOG_Item_WARNING(TEXT("[GunBase::BeginPlay] 게임인스턴스 서브시스템의 GunDataTable이 null입니다!"));
     }
-
-    /*ApplyGunDataFromDataTable();
-    ApplyItemDataFromTable();*/
 
     if (Durability > MaxAmmo || Durability <= 0.0f)
     {
@@ -574,17 +610,8 @@ void AGunBase::FireSingle()
 {
     LOG_Item_WARNING(TEXT("[FireSingle] 단발 사격"));
 
-    // 클라이언트에서는 서버 RPC만 호출
-    if (!HasAuthority())
-    {
-        Server_Fire();
-        return;
-    }
+    Server_Fire();
 
-    // 서버에서 직접 발사 처리
-    HandleFire();
-
-    // 마지막 발사 시간 업데이트
     LastFireTime = GetWorld()->GetTimeSeconds();
 
     if (GEngine)
@@ -608,14 +635,7 @@ void AGunBase::StartAutoFire()
     // 즉시 첫 발 발사
     if (CanFire())
     {
-        if (HasAuthority())
-        {
-            HandleFire();
-        }
-        else
-        {
-            Server_Fire();
-        }
+        Server_Fire();
         LastFireTime = GetWorld()->GetTimeSeconds();
     }
 
@@ -647,15 +667,7 @@ void AGunBase::FireAuto()
 
     LOG_Item_WARNING(TEXT("[FireAuto] 연발 사격 중"));
 
-    // 서버에서 발사 처리
-    if (HasAuthority())
-    {
-        HandleFire();
-    }
-    else
-    {
-        Server_Fire();
-    }
+    Server_Fire();
 
     LastFireTime = GetWorld()->GetTimeSeconds();
 }
@@ -724,5 +736,76 @@ void AGunBase::SetEquipped(bool bNewEquipped)
     {
         StopAutoFire();
         LOG_Item_WARNING(TEXT("[SetEquipped] 장착 해제로 인한 연발 사격 중단"));
+    }
+}
+
+bool AGunBase::IsGunDataLoaded() const
+{
+    // 핵심 데이터들이 로드되었는지 확인
+    return ImpactDecalMaterial != nullptr &&
+        GunData.FireAnimation != nullptr &&
+        !ItemRowName.IsNone();
+}
+
+void AGunBase::EnsureGunDataLoaded()
+{
+    // 이미 로드되었다면 스킵
+    if (IsGunDataLoaded())
+    {
+        LOG_Item_WARNING(TEXT("[EnsureGunDataLoaded] 데이터가 이미 로드됨 - 스킵"));
+        return;
+    }
+
+    LOG_Item_WARNING(TEXT("[EnsureGunDataLoaded] 데이터 로드 시도 - HasAuthority: %s"),
+        HasAuthority() ? TEXT("true") : TEXT("false"));
+
+    // ItemRowName이 설정되었는지 확인
+    if (ItemRowName.IsNone())
+    {
+        LOG_Item_WARNING(TEXT("[EnsureGunDataLoaded] ItemRowName이 설정되지 않음"));
+        return;
+    }
+
+    // 데이터 테이블이 있는지 확인
+    if (!GunDataTable)
+    {
+        LOG_Item_WARNING(TEXT("[EnsureGunDataLoaded] GunDataTable이 null"));
+
+        // 게임인스턴스에서 다시 가져오기 시도
+        UWorld* World = GetWorld();
+        if (World)
+        {
+            UGameInstance* GI = World->GetGameInstance();
+            if (GI)
+            {
+                ULCGameInstanceSubsystem* GISubsystem = GI->GetSubsystem<ULCGameInstanceSubsystem>();
+                if (GISubsystem && GISubsystem->GunDataTable)
+                {
+                    GunDataTable = GISubsystem->GunDataTable;
+                    LOG_Item_WARNING(TEXT("[EnsureGunDataLoaded] GunDataTable 재획득 성공"));
+                }
+            }
+        }
+
+        if (!GunDataTable)
+        {
+            LOG_Item_WARNING(TEXT("[EnsureGunDataLoaded] GunDataTable 재획득 실패"));
+            return;
+        }
+    }
+
+    // 데이터 로드 실행
+    LOG_Item_WARNING(TEXT("[EnsureGunDataLoaded] 데이터 로드 실행"));
+    ApplyGunDataFromDataTable();
+    ApplyItemDataFromTable();
+
+    // 로드 결과 확인
+    if (IsGunDataLoaded())
+    {
+        LOG_Item_WARNING(TEXT("[EnsureGunDataLoaded] 데이터 로드 성공!"));
+    }
+    else
+    {
+        LOG_Item_WARNING(TEXT("[EnsureGunDataLoaded] 데이터 로드 실패"));
     }
 }
