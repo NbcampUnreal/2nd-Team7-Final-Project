@@ -77,7 +77,29 @@ void ALCRoomPlayerController::PostSeamlessTravel()
 		CheatManager = NewObject<ULCCheatManager>(this, CheatClass);
 		CheatManager->InitCheatManager();
 	}
+
+	LOG_Frame_WARNING(TEXT("PostSeamlessTravel: %s 호출 - IsLocalController: %d"), *GetName(), IsLocalController());
+
+	GetWorldTimerManager().SetTimerForNextTick(this, &ALCRoomPlayerController::DelayedPostTravelSetup);
 }
+
+void ALCRoomPlayerController::DelayedPostTravelSetup()
+{
+	LOG_Frame_WARNING(TEXT("PostSeamlessTravel(Delayed): %s - 여전히 IsLocalController: %d"), *GetName(), IsLocalController());
+
+	if (IsLocalController())
+	{
+		if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+		{
+			if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+			{
+				UIManager->SetPlayerController(this);
+				LOG_Frame_WARNING(TEXT("DelayedPostTravelSetup: UIManager에 컨트롤러 연결 완료"));
+			}
+		}
+	}
+}
+
 
 void ALCRoomPlayerController::Client_UpdatePlayerList_Implementation(const TArray<FSessionPlayerInfo>& PlayerInfos)
 {
@@ -300,15 +322,17 @@ void ALCRoomPlayerController::Client_NotifyResultReady_Implementation(const FChe
 	}
 }
 
-void ALCRoomPlayerController::Client_StartChecklist_Implementation()
+void ALCRoomPlayerController::Client_StartChecklist_Implementation(AChecklistManager* ChecklistManager)
 {
-	for (TActorIterator<AChecklistManager> It(GetWorld()); It; ++It)
+	LOG_Frame_WARNING(TEXT("로컬 컨트롤러가 되었고, 체크리스트를 띄울 준비를 하는 중"));
+	if (ChecklistManager)
 	{
-		if (AChecklistManager* ChecklistManager = *It)
-		{
-			ChecklistManager->StartChecklist();
-			break;
-		}
+		ChecklistManager->StartChecklist();
+		LOG_Frame_WARNING(TEXT("체크리스트를 게임모드에서 받아서 띄움"));
+	}
+	else
+	{
+		LOG_Frame_WARNING(TEXT("체크리스트가 클라이언트에서 유효하지 않음"));
 	}
 }
 

@@ -348,7 +348,6 @@ void ABasePlayerController::Input_OnLook(const FInputActionValue& ActionValue)
 
 void ABasePlayerController::Input_OnMove(const FInputActionValue& ActionValue)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Input On Move"));
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
 	{
@@ -357,7 +356,7 @@ void ABasePlayerController::Input_OnMove(const FInputActionValue& ActionValue)
 
 	if (MyPlayerState->InGameState == EPlayerInGameStatus::Spectating)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is Spectating"));
+		//UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is Spectating"));
 		const auto Value{ ActionValue.Get<FVector2D>() };
 		if (Value.X != 0.0f)
 		{
@@ -384,7 +383,7 @@ void ABasePlayerController::Input_OnMove(const FInputActionValue& ActionValue)
 
 	if (!IsValid(CurrentPossessedPawn))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_OnMove"));
+		//UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_OnMove"));
 		return;
 	}
 	
@@ -489,7 +488,6 @@ void ABasePlayerController::Input_OnAim(const FInputActionValue& ActionValue)
 {
 	if (!IsValid(CurrentPossessedPawn))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_OnAim"));
 		return;
 	}
 

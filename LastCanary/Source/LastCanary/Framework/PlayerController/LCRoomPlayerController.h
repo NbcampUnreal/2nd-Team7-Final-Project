@@ -10,6 +10,7 @@
 #include "LCRoomPlayerController.generated.h"
 
 class URoomWidget;
+class AChecklistManager;
 
 UCLASS()
 class LASTCANARY_API ALCRoomPlayerController : public ABasePlayerController
@@ -58,8 +59,8 @@ public:
 	void Client_NotifyResultReady_Implementation(const FChecklistResultData& ResultData);
 
 	UFUNCTION(Client, Reliable)
-	void Client_StartChecklist();
-	void Client_StartChecklist_Implementation();
+	void Client_StartChecklist(AChecklistManager* ChecklistManager);
+	void Client_StartChecklist_Implementation(AChecklistManager* ChecklistManager);
 
 	UFUNCTION(Server, Reliable)
 	void Server_MarkPlayerAsEscaped();
@@ -68,5 +69,6 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_RequestSubmitChecklist(const TArray<FChecklistQuestion>& PlayerAnswers);
 	void Server_RequestSubmitChecklist_Implementation(const TArray<FChecklistQuestion>& PlayerAnswers);
-
+	
+	void DelayedPostTravelSetup();
 };

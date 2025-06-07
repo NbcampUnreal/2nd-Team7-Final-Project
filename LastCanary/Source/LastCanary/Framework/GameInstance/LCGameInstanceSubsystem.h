@@ -44,4 +44,12 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Data")
 	UDataTable* GetGunDataTable() const;
+
+public:
+	int32 UserNum = 0;
+public:
+	void SetUserNum(int NumOfUsers)
+	{
+		UserNum = NumOfUsers;
+	}
 };
