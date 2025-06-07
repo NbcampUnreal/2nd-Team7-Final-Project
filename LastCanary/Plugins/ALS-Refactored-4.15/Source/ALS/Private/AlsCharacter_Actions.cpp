@@ -458,6 +458,9 @@ void AAlsCharacter::StartMantlingImplementation(const FAlsMantlingParameters& Pa
 		return;
 	}
 
+
+	UE_LOG(LogTemp, Warning, TEXT("MantlingStart"));
+	bIsMantling = true;
 	const auto* MantlingSettings{SelectMantlingSettings(Parameters.MantlingType)};
 
 	if (!ALS_ENSURE(IsValid(MantlingSettings)) || !ALS_ENSURE(IsValid(MantlingSettings->Montage)))
@@ -643,6 +646,9 @@ void AAlsCharacter::RefreshMantling()
 
 void AAlsCharacter::StopMantling(const bool bStopMontage)
 {
+	UE_LOG(LogTemp, Warning, TEXT("MantlingStop"));
+
+	bIsMantling = false;
 	if (MantlingState.RootMotionSourceId <= 0)
 	{
 		return;
@@ -671,7 +677,6 @@ void AAlsCharacter::StopMantling(const bool bStopMontage)
 	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
 
 	OnMantlingEnded();
-
 	ForceNetUpdate();
 }
 
