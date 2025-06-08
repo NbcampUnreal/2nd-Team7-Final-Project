@@ -599,8 +599,8 @@ bool AGunBase::CanFire()
 
         if (GEngine)
         {
-            GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Red,
-                FString::Printf(TEXT("탄약 부족! 현재: %.0f/%.0f"), Durability, MaxAmmo));
+            /*GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Red,
+                FString::Printf(TEXT("탄약 부족! 현재: %.0f/%.0f"), Durability, MaxAmmo));*/
         }
 
         if (EmptySound)
@@ -623,8 +623,8 @@ void AGunBase::FireSingle()
 
     if (GEngine)
     {
-        GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green,
-            FString::Printf(TEXT("단발 발사! 남은 탄약: %.0f"), Durability));
+        /*GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green,
+            FString::Printf(TEXT("단발 발사! 남은 탄약: %.0f"), Durability));*/
     }
 }
 
@@ -652,8 +652,8 @@ void AGunBase::StartAutoFire()
 
     if (GEngine)
     {
-        GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Cyan,
-            FString::Printf(TEXT("연발 사격 시작! (%.1f초 간격)"), FireRate));
+       /* GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Cyan,
+            FString::Printf(TEXT("연발 사격 시작! (%.1f초 간격)"), FireRate));*/
     }
 }
 

@@ -91,6 +91,3 @@ void UBTTask_RandomPatrol::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* No
         FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
     }
 }
-
-//BaseMonsterCharacter->MoveSound play하기
-//idle task 제작 및 idlesound플레이?
