@@ -63,7 +63,7 @@ public:
     TArray<FBaseItemSlotData> ItemSlots;
 
     /** 인벤토리의 최대 슬롯 수 */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory|Data")
+    UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Inventory|Data")
     int32 MaxSlots;
 
     /** 아이템 정보 참조용 데이터 테이블 */

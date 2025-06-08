@@ -371,6 +371,7 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
     }
 
     SyncEquippedItemDurabilityToSlot();
+    SyncGunStateToSlot();
 
     FBaseItemSlotData* SlotData = GetItemDataAtSlot(CurrentEquippedSlotIndex);
     if (!SlotData)
@@ -534,11 +535,66 @@ void UToolbarInventoryComponent::SyncEquippedItemDurabilityToSlot()
 
     if (bShouldSync)
     {
-        float OldDurability = ItemSlots[CurrentEquippedSlotIndex].Durability;
         ItemSlots[CurrentEquippedSlotIndex].Durability = EquippedItem->Durability;
+        // 총기인 경우 추가 상태 동기화
+        if (AGunBase* Gun = Cast<AGunBase>(EquippedItem))
+        {
+            FBaseItemSlotData& SlotData = ItemSlots[CurrentEquippedSlotIndex];
+            SlotData.FireMode = static_cast<int32>(Gun->CurrentFireMode);
+            SlotData.bWasAutoFiring = Gun->bIsAutoFiring;
+        }
 
         OnInventoryUpdated.Broadcast();
     }
+}
+
+void UToolbarInventoryComponent::SyncGunStateToSlot()
+{
+    if (CurrentEquippedSlotIndex < 0 || !ItemSlots.IsValidIndex(CurrentEquippedSlotIndex))
+    {
+        return;
+    }
+
+    AItemBase* EquippedItem = GetCurrentEquippedItem();
+    AGunBase* Gun = Cast<AGunBase>(EquippedItem);
+    if (!Gun)
+    {
+        return;
+    }
+
+    bool bShouldSync = false;
+    if (GetOwner() && GetOwner()->HasAuthority())
+    {
+        bShouldSync = true; // 서버에서는 항상 동기화
+    }
+    else if (APawn* OwnerPawn = Cast<APawn>(GetOwner()))
+    {
+        bShouldSync = OwnerPawn->IsLocallyControlled(); // 클라이언트에서는 로컬만
+    }
+
+    if (bShouldSync)
+    {
+        FBaseItemSlotData& SlotData = ItemSlots[CurrentEquippedSlotIndex];
+
+        // 내구도 동기화
+        SlotData.Durability = Gun->Durability;
+        // 총기 상태 동기화 
+        SlotData.FireMode = static_cast<int32>(Gun->CurrentFireMode);
+        SlotData.bWasAutoFiring = Gun->bIsAutoFiring;
+
+        OnInventoryUpdated.Broadcast();
+    }
+}
+
+void UToolbarInventoryComponent::RestoreGunStateFromSlot(AGunBase* Gun, const FBaseItemSlotData& SlotData)
+{
+    if (!Gun)
+    {
+        return;
+    }
+
+    // 총기 상태 복원
+    Gun->CurrentFireMode = static_cast<EFireMode>(SlotData.FireMode);
 }
 
 int32 UToolbarInventoryComponent::GetCurrentEquippedSlotIndex() const
@@ -588,9 +644,11 @@ void UToolbarInventoryComponent::SetupEquippedItem(UChildActorComponent* ItemCom
 
     EquippedItem->ApplyItemDataFromTable();
 
+
     if (AGunBase* Gun = Cast<AGunBase>(EquippedItem))
     {
         Gun->ApplyGunDataFromDataTable();
+        RestoreGunStateFromSlot(Gun, *SlotData);
     }
 
     if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem))
@@ -696,6 +754,15 @@ bool UToolbarInventoryComponent::TryStoreItem(AItemBase* ItemActor)
             NewSlot.Durability = ItemActor->Durability;
             NewSlot.bIsValid = true;
             NewSlot.bIsEquipped = false;
+
+            if (AGunBase* Gun = Cast<AGunBase>(ItemActor))
+            {
+                NewSlot.FireMode = static_cast<int32>(Gun->CurrentFireMode);
+                NewSlot.bWasAutoFiring = Gun->bIsAutoFiring;
+
+                FString FireModeText = Gun->CurrentFireMode == EFireMode::Single ? TEXT("단발") : TEXT("연발");
+                LOG_Item_WARNING(TEXT("[TryStoreItem] 총기 상태 저장: %s 모드"), *FireModeText);
+            }
 
             ItemSlots[i] = NewSlot;
             EmptySlotIndex = i;
@@ -837,6 +904,7 @@ bool UToolbarInventoryComponent::Internal_DropEquippedItemAtSlot(int32 SlotIndex
     if (SlotIndex == CurrentEquippedSlotIndex)
     {
         SyncEquippedItemDurabilityToSlot();
+        SyncGunStateToSlot();
     }
 
     // ⭐ 가방 아이템 특별 처리 (기존 Internal_DropCurrentEquippedItem 로직 활용)
