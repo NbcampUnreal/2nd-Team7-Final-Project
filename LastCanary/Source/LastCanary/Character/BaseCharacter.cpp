@@ -1809,10 +1809,8 @@ void ABaseCharacter::EscapeThroughGate()
 	{
 		return;
 	}
-
-	UE_LOG(LogTemp, Log, TEXT("Character EscapeThroughGate"));
-	PC->OnPlayerExitActivePlay();
 	Multicast_SetPlayerInGameStateOnEscapeGate();
+	PC->OnPlayerExitActivePlay();
 }
 
 void ABaseCharacter::Multicast_SetPlayerInGameStateOnEscapeGate_Implementation()
@@ -1820,6 +1818,7 @@ void ABaseCharacter::Multicast_SetPlayerInGameStateOnEscapeGate_Implementation()
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
 	{
+		UE_LOG(LogTemp, Log, TEXT("PlayerState Isn`t Valid"));
 		return;
 	}
 	MyPlayerState->CurrentState = EPlayerState::Escape;
