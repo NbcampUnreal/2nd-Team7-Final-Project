@@ -204,12 +204,12 @@ public:
     void ProcessHit(const FHitResult& HitResult, const FVector& StartLocation);
 
     /** 피격 지점에 데칼 생성 */
-    UFUNCTION(NetMulticast, Reliable)
+    UFUNCTION(NetMulticast, Unreliable)
     void Multicast_SpawnImpactEffects(const TArray<FHitResult>& Hits);
     void Multicast_SpawnImpactEffects_Implementation(const TArray<FHitResult>& Hits);
 
     /** 사운드 및 이펙트 재생 */
-    UFUNCTION(NetMulticast, Reliable)
+    UFUNCTION(NetMulticast, Unreliable)
     void Multicast_PlayFireEffects();
     void Multicast_PlayFireEffects_Implementation();
 
