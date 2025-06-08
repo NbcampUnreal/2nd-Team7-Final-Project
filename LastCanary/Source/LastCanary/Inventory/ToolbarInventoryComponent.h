@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Inventory/InventoryComponentBase.h"
+#include "Item/EquipmentItem/GunBase.h"
 #include "ToolbarInventoryComponent.generated.h"
 
 class ABaseCharacter;
@@ -72,6 +73,12 @@ public:
     /** 장착된 아이템의 내구도를 슬롯에 동기화 */
     UFUNCTION(BlueprintCallable, Category = "Toolbar|Sync")
     void SyncEquippedItemDurabilityToSlot();
+
+    UFUNCTION()
+    void SyncGunStateToSlot();
+
+    UFUNCTION()
+    void RestoreGunStateFromSlot(AGunBase* Gun, const FBaseItemSlotData& SlotData);
 
     //-----------------------------------------------------
     // 드랍 기능

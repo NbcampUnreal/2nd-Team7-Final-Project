@@ -24,12 +24,20 @@ struct FBaseItemSlotData
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     bool bIsValid;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    int32 FireMode;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    bool bWasAutoFiring;
+
     FBaseItemSlotData()
         : ItemRowName(NAME_None)
         , Quantity(1)
         , Durability(100)
         , bIsEquipped(false)
         , bIsValid(false)
+        , FireMode(0)
+        , bWasAutoFiring(false)
     {
     }
 };

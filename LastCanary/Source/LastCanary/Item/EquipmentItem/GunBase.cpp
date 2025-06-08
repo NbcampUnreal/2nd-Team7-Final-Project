@@ -1,5 +1,6 @@
 #include "Item/EquipmentItem/GunBase.h"
 #include "Item/ItemBase.h"
+#include "Inventory/ToolbarInventoryComponent.h"
 #include "Character/BaseCharacter.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/DamageEvents.h"
@@ -248,12 +249,6 @@ void AGunBase::Multicast_SpawnImpactEffects_Implementation(const TArray<FHitResu
 {
     EnsureGunDataLoaded();
 
-    // ✅ 클라이언트 디버깅 추가
-    LOG_Item_WARNING(TEXT("[Client] Multicast_SpawnImpactEffects 호출됨 - 히트 개수: %d"), Hits.Num());
-    LOG_Item_WARNING(TEXT("[Client] HasAuthority: %s"), HasAuthority() ? TEXT("true") : TEXT("false"));
-    LOG_Item_WARNING(TEXT("[Client] World: %s"), GetWorld() ? TEXT("Valid") : TEXT("Null"));
-    LOG_Item_WARNING(TEXT("[Client] ImpactDecalMaterial: %s"), ImpactDecalMaterial ? TEXT("Valid") : TEXT("Null"));
-
     for (int32 i = 0; i < Hits.Num(); i++)
     {
         const FHitResult& Hit = Hits[i];
@@ -276,16 +271,6 @@ void AGunBase::Multicast_SpawnImpactEffects_Implementation(const TArray<FHitResu
                 Hit.ImpactNormal.Rotation(),
                 DecalLifeSpan
             );
-
-            // ✅ 데칼 생성 결과 확인
-            if (SpawnedDecal)
-            {
-                LOG_Item_WARNING(TEXT("[Client] 데칼 생성 성공"));
-            }
-            else
-            {
-                LOG_Item_WARNING(TEXT("[Client] 데칼 생성 실패"));
-            }
         }
         else
         {
@@ -295,7 +280,6 @@ void AGunBase::Multicast_SpawnImpactEffects_Implementation(const TArray<FHitResu
         if (ImpactSound)
         {
             UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, Hit.ImpactPoint);
-            LOG_Item_WARNING(TEXT("[Client] 사운드 재생: %s"), *ImpactSound->GetName());
         }
     }
 }
@@ -308,17 +292,40 @@ void AGunBase::Multicast_PlayFireEffects_Implementation()
         UGameplayStatics::PlaySoundAtLocation(this, FireSound, GetActorLocation());
     }
 
-    // 총구 화염 이펙트 재생
-    if (MuzzleFlash && MuzzleLocation)
+    // 총구 화염 이펙트 재생 - 소켓 사용
+    if (MuzzleFlash)
     {
-        UGameplayStatics::SpawnEmitterAttached(
-            MuzzleFlash,
-            MuzzleLocation,
-            NAME_None,
-            MuzzleLocation->GetComponentLocation(),
-            MuzzleLocation->GetComponentRotation(),
-            EAttachLocation::KeepWorldPosition
-        );
+        USkeletalMeshComponent* GunMesh = GetSkeletalMeshComponent();
+        if (GunMesh && GunMesh->DoesSocketExist(TEXT("Muzzle")))
+        {
+            // 소켓에 직접 부착
+            UGameplayStatics::SpawnEmitterAttached(
+                MuzzleFlash,
+                GunMesh,
+                TEXT("Muzzle"),
+                FVector::ZeroVector,
+                FRotator::ZeroRotator,
+                EAttachLocation::SnapToTarget
+            );
+
+            LOG_Item_WARNING(TEXT("머즐 플래시 이펙트가 Muzzle 소켓에 생성됨"));
+        }
+        else
+        {
+            // 소켓이 없을 경우 기존 MuzzleLocation 사용
+            if (MuzzleLocation)
+            {
+                UGameplayStatics::SpawnEmitterAttached(
+                    MuzzleFlash,
+                    MuzzleLocation,
+                    NAME_None,
+                    MuzzleLocation->GetComponentLocation(),
+                    MuzzleLocation->GetComponentRotation(),
+                    EAttachLocation::KeepWorldPosition
+                );
+                LOG_Item_WARNING(TEXT("머즐 플래시 이펙트가 MuzzleLocation에 생성됨 (소켓 없음)"));
+            }
+        }
     }
 
     // 플레이어 카메라 흔들림 등 추가 이펙트 (옵션)
