@@ -142,6 +142,9 @@ public:
     float GetAttackRange() const { return AttackRange; }
 
 protected:
+    UFUNCTION()
+    void StopAllCurrentActions();
+
     //멀티 사운드 재생
     UFUNCTION(NetMulticast, Reliable)
     void MulticastPlaySound(USoundBase* Sound);

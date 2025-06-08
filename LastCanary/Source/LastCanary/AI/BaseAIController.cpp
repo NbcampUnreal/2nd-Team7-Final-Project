@@ -93,3 +93,8 @@ void ABaseAIController::SetAttacking()
 		MonsterCharacter->PerformAttack();
 	}
 }
+
+void ABaseAIController::SetDeath()
+{
+	BlackboardComponent->SetValueAsInt(StateKeyName, 4);
+}

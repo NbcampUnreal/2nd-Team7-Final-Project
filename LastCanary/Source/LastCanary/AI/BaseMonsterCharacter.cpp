@@ -83,6 +83,8 @@ float ABaseMonsterCharacter::TakeDamage(float DamageAmount, struct FDamageEvent 
         CurrentHP = 0;
         bIsDead = true;
 
+        StopAllCurrentActions();//몽타주 올 스탑
+
         GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
         GetCharacterMovement()->SetMovementMode(MOVE_None);
 
@@ -112,6 +114,29 @@ void ABaseMonsterCharacter::OnAttackHit(UPrimitiveComponent* OverlappedComponent
 
         DisableAttackCollider();
     }
+}
+
+void ABaseMonsterCharacter::StopAllCurrentActions()
+{
+    if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+    {
+        AnimInstance->StopAllMontages(0.2f);//0.2초에 걸쳐 부드럽게 정지
+    }
+
+    GetWorldTimerManager().ClearTimer(AttackTimerHandle);
+    GetWorldTimerManager().ClearTimer(AttackEnableTimerHandle);
+
+    bIsAttacking = false;
+    DisableAttackCollider();
+
+    if (ABaseAIController* AIController = Cast<ABaseAIController>(GetController()))
+    {
+        AIController->StopMovement();//이동 중지
+        AIController->SetDeath();
+    }
+
+    GetCharacterMovement()->StopMovementImmediately();//이동(관성) 즉시 중지, 물리적인거라 StopMovement랑 다르다고 함
+    GetCharacterMovement()->DisableMovement();//이동 비활성
 }
 
 void ABaseMonsterCharacter::DestroyActor()

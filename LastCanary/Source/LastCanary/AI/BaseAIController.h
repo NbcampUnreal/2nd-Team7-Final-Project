@@ -24,6 +24,8 @@ public:
     void SetChasing(AActor* Target);
     UFUNCTION(BlueprintCallable, Category = "AI")
     void SetAttacking();
+    UFUNCTION(BlueprintCallable, Category = "AI")
+    void SetDeath();
 
 protected:
     virtual void BeginPlay() override;
