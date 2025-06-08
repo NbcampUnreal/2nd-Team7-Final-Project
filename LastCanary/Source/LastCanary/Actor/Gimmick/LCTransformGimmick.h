@@ -19,6 +19,20 @@ protected:
 	virtual void ActivateGimmick_Implementation() override;
 	virtual bool CanActivate_Implementation() override;
 
+public:
+
+	/** 1번 ↔ 2번 위치 토글 모드 사용 여부 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Toggle")
+	bool bUseAlternateToggle;
+
+	/** 위치 토글용 두 번째 위치 */
+	FVector AlternateLocation;
+
+	/** 회전 토글용 두 번째 회전값 */
+	FRotator AlternateRotation;
+
+	virtual void ReturnToInitialState_Implementation() override;
+
 #pragma region Movement Variables
 
 	/** 이동 거리 (bUseAxis = false일 경우 사용됨) */

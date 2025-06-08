@@ -118,7 +118,7 @@ public:
 	/** 기믹 활성화 시 이동 시작 */
 	virtual void ActivateGimmick_Implementation() override;
 
-	virtual void ReturnToInitialState_Implementation(); 
+	virtual void ReturnToInitialState_Implementation() override;
  
 	/** 이동 타이머 캐시 */
 	UPROPERTY()

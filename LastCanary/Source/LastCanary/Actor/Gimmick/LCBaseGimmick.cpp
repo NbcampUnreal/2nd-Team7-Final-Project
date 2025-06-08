@@ -130,7 +130,21 @@ void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor*
 		break;
 
 	case EGimmickActivationType::ActivateAfterDelay:
-		// 추후 구현
+		if (!bActivated && OverlappingActors.Num() >= RequiredCount)
+		{
+			GetWorld()->GetTimerManager().SetTimer(
+				ActivationDelayHandle,
+				[this]()
+				{
+					if (!bActivated && OverlappingActors.Num() >= RequiredCount)
+					{
+						ILCGimmickInterface::Execute_ActivateGimmick(this);
+					}
+				},
+				ActivationDelay,
+				false
+			);
+		}
 		break;
 
 	default:
@@ -162,11 +176,14 @@ void ALCBaseGimmick::OnTriggerExit(UPrimitiveComponent* OverlappedComp, AActor* 
 		}
 		break;
 
+	case EGimmickActivationType::ActivateAfterDelay:
+		GetWorld()->GetTimerManager().ClearTimer(ActivationDelayHandle);
+		break;
+
 	default:
 		break;
 	}
 }
-
 
 #pragma endregion
 
