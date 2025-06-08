@@ -122,6 +122,16 @@ private:
 
     /** === 기믹 추가 === */
 
+    /** 생성할 몬스터 클래스 (에디터에서 설정) */
+    UPROPERTY(EditAnywhere, Category = "Maze|Monster")
+    TSubclassOf<AActor> MonsterClass;
+
+    /** 몬스터 생성 함수 */
+    void SpawnMonsterInMidPath();
+
+    /** 유효 경로 찾기 */
+    TArray<FIntPoint> MainPathCells;
+
     /** 사용할 수 있는 기믹 조합 목록 */
     UPROPERTY(EditAnywhere, Category = "Maze|Gimmick")
     TArray<FGimmickSpawnInfo> GimmickSpawnList;

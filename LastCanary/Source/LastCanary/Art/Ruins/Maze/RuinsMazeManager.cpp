@@ -29,8 +29,8 @@ void ARuinsMazeManager::GenerateMaze()
         return;
     }
 
-    const int32 MaxRetry = 30;
-    const int32 MinValidPaths = 7;
+    const int32 MaxRetry = 80;
+    const int32 MinValidPaths = 10;
     int32 RetryCount = 0;
     int32 PathCount = 0;
 
@@ -99,9 +99,9 @@ void ARuinsMazeManager::GenerateMaze()
         }
     }
 
-    // --- 유효성 검사 및 기믹 배치 ---
     IsPathToExitValid(EntranceCell, ExitCell);
     TryPlaceGimmicks();
+    SpawnMonsterInMidPath();
 
     LOG_Art(Log, TEXT("=== 미로 생성 완료 ==="));
 }
@@ -116,6 +116,9 @@ void ARuinsMazeManager::FindRandomEntranceAndExit()
 void ARuinsMazeManager::GenerateMainPath(const FIntPoint& Start)
 {
     MazeCells[Start.X][Start.Y].bVisited = true;
+
+    MainPathCells.Add(Start);
+
     for (const FIntPoint& Neighbor : GetShuffledUnvisitedNeighbors(Start))
     {
         if (!MazeCells[Neighbor.X][Neighbor.Y].bVisited)
@@ -455,4 +458,75 @@ void ARuinsMazeManager::TryPlaceGimmicks()
     }
 
     LOG_Art(Log, TEXT("[Gimmick] 전체 기믹 배치 완료"));
+}
+
+void ARuinsMazeManager::SpawnMonsterInMidPath()
+{
+    if (!HasAuthority())
+        return;
+
+    if (!MonsterClass)
+    {
+        LOG_Art_WARNING(TEXT("[Monster] MonsterClass 미지정 → 생성 생략"));
+        return;
+    }
+
+    if (MainPathCells.Num() == 0)
+    {
+        LOG_Art_WARNING(TEXT("[Monster] MainPathCells 없음 → 생성 생략"));
+        return;
+    }
+
+    const float CenterX = MazeSizeX / 2.f;
+    const float CenterY = MazeSizeY / 2.f;
+
+    const int32 MinDistFromEntranceX = MazeSizeX / 4;
+    const int32 MinDistFromExitX = MazeSizeX / 4;
+
+    FIntPoint BestCell = MainPathCells[0];
+    float MinDistSq = TNumericLimits<float>::Max();
+    bool bFound = false;
+
+    for (const FIntPoint& Cell : MainPathCells)
+    {
+        // ✅ 입구와 너무 가까운 셀 제외
+        if (FMath::Abs(Cell.X - EntranceCell.X) < MinDistFromEntranceX)
+            continue;
+
+        // ✅ 출구와 너무 가까운 셀 제외
+        if (FMath::Abs(Cell.X - ExitCell.X) < MinDistFromExitX)
+            continue;
+
+        const float Dx = Cell.X - CenterX;
+        const float Dy = Cell.Y - CenterY;
+        const float DistSq = Dx * Dx + Dy * Dy;
+
+        if (DistSq < MinDistSq)
+        {
+            MinDistSq = DistSq;
+            BestCell = Cell;
+            bFound = true;
+        }
+    }
+
+    if (!bFound)
+    {
+        LOG_Art_WARNING(TEXT("[Monster] 조건에 맞는 셀을 찾지 못해 스폰 생략"));
+        return;
+    }
+
+    const FVector SpawnLoc = GetCellWorldPosition(BestCell) + FVector(0, 0, 50.f);
+    FActorSpawnParameters Params;
+    Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+    AActor* Spawned = GetWorld()->SpawnActor<AActor>(MonsterClass, SpawnLoc, FRotator::ZeroRotator, Params);
+
+    if (IsValid(Spawned))
+    {
+        LOG_Art(Log, TEXT("[Monster] 몬스터 스폰 성공 → 셀: (%d, %d)"), BestCell.X, BestCell.Y);
+    }
+    else
+    {
+        LOG_Art_WARNING(TEXT("[Monster] 몬스터 스폰 실패 → 셀: (%d, %d)"), BestCell.X, BestCell.Y);
+    }
 }
