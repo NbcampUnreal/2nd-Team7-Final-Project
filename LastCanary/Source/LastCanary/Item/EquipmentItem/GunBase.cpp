@@ -309,7 +309,7 @@ void AGunBase::Multicast_PlayFireEffects_Implementation()
     }
 
     // 총구 화염 이펙트 재생
-    if (MuzzleFlash && MuzzleLocation)
+    /*if (MuzzleFlash && MuzzleLocation)
     {
         UGameplayStatics::SpawnEmitterAttached(
             MuzzleFlash,
@@ -319,6 +319,41 @@ void AGunBase::Multicast_PlayFireEffects_Implementation()
             MuzzleLocation->GetComponentRotation(),
             EAttachLocation::KeepWorldPosition
         );
+    }*/
+    // 총구 화염 이펙트 재생 - 소켓 사용
+    if (MuzzleFlash)
+    {
+        USkeletalMeshComponent* GunMesh = GetSkeletalMeshComponent();
+        if (GunMesh && GunMesh->DoesSocketExist(TEXT("Muzzle")))
+        {
+            // 소켓에 직접 부착
+            UGameplayStatics::SpawnEmitterAttached(
+                MuzzleFlash,
+                GunMesh,
+                TEXT("Muzzle"),
+                FVector::ZeroVector,
+                FRotator::ZeroRotator,
+                EAttachLocation::SnapToTarget
+            );
+
+            LOG_Item_WARNING(TEXT("머즐 플래시 이펙트가 Muzzle 소켓에 생성됨"));
+        }
+        else
+        {
+            // 소켓이 없을 경우 기존 MuzzleLocation 사용
+            if (MuzzleLocation)
+            {
+                UGameplayStatics::SpawnEmitterAttached(
+                    MuzzleFlash,
+                    MuzzleLocation,
+                    NAME_None,
+                    MuzzleLocation->GetComponentLocation(),
+                    MuzzleLocation->GetComponentRotation(),
+                    EAttachLocation::KeepWorldPosition
+                );
+                LOG_Item_WARNING(TEXT("머즐 플래시 이펙트가 MuzzleLocation에 생성됨 (소켓 없음)"));
+            }
+        }
     }
 
     // 플레이어 카메라 흔들림 등 추가 이펙트 (옵션)
