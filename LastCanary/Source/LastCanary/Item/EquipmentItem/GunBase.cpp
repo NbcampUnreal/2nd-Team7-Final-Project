@@ -1,5 +1,6 @@
 #include "Item/EquipmentItem/GunBase.h"
 #include "Item/ItemBase.h"
+#include "Inventory/ToolbarInventoryComponent.h"
 #include "Character/BaseCharacter.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/DamageEvents.h"
