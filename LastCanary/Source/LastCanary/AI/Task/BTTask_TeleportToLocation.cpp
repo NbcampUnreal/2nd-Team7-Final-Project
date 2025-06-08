@@ -88,7 +88,7 @@ EBTNodeResult::Type UBTTask_TeleportToLocation::ExecuteTask(
     // Z는 이미 지형에 맞게 보정됨
 
     // (옵션) 디버그용 범위 시각화
-    DrawDebugSphere(World, AdjustedDest, 25.f, 8, FColor::Blue, false, 2.f);
+    //DrawDebugSphere(World, AdjustedDest, 25.f, 8, FColor::Blue, false, 2.f);
 
     // 4) Collision 끄고 Teleport
     Pawn->SetActorEnableCollision(false);

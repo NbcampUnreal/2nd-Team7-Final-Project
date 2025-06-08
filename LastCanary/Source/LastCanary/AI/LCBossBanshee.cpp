@@ -11,14 +11,14 @@
 ALCBossBanshee::ALCBossBanshee()
 {
     PrimaryActorTick.bCanEverTick = true;
-    // bCanShriek´Â ¼±¾ð ½Ã ÃÊ±âÈ­
+    // bCanShriekï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Ê±ï¿½È­
 }
 
 void ALCBossBanshee::BeginPlay()
 {
     Super::BeginPlay();
 
-    // ÁÖ±âÀûÀÎ ¹ÝÇâ Á¤Âû ½ÃÀÛ
+    // ï¿½Ö±ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
     GetWorldTimerManager().SetTimer(
         PingTimerHandle,
         this,
@@ -30,15 +30,15 @@ void ALCBossBanshee::BeginPlay()
 
 void ALCBossBanshee::EcholocationPing()
 {
-    // 1) ¹ÝÇâ ¼Ò¸® Àç»ý
+    // 1) ï¿½ï¿½ï¿½ï¿½ ï¿½Ò¸ï¿½ ï¿½ï¿½ï¿½
     if (EcholocationSound)
     {
         UGameplayStatics::PlaySoundAtLocation(
             this, EcholocationSound, GetActorLocation());
     }
 
-    // 2) µð¹ö±×¿ë ¹Ý°æ ½Ã°¢È­
-    DrawDebugSphere(
+    // 2) ï¿½ï¿½ï¿½ï¿½×¿ï¿½ ï¿½Ý°ï¿½ ï¿½Ã°ï¿½È­
+   /* DrawDebugSphere(
         GetWorld(),
         GetActorLocation(),
         PingRadius,
@@ -46,9 +46,9 @@ void ALCBossBanshee::EcholocationPing()
         FColor::Cyan,
         false,
         RevealDuration
-    );
+    );*/
 
-    // 3) ¹Ý°æ ³» ¸ðµç ÇÃ·¹ÀÌ¾î Ä³¸¯ÅÍ Ç¥½Ã
+    // 3) ï¿½Ý°ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Ã·ï¿½ï¿½Ì¾ï¿½ Ä³ï¿½ï¿½ï¿½ï¿½ Ç¥ï¿½ï¿½
     TArray<FOverlapResult> Overlaps;
     FCollisionShape Sphere = FCollisionShape::MakeSphere(PingRadius);
     FCollisionQueryParams Params;
@@ -69,9 +69,9 @@ void ALCBossBanshee::EcholocationPing()
         {
             if (ACharacter* Char = Cast<ACharacter>(Result.GetActor()))
             {
-                // ¿¹½Ã: °¡½Ã¼º Åä±Û
+                // ï¿½ï¿½ï¿½ï¿½: ï¿½ï¿½ï¿½Ã¼ï¿½ ï¿½ï¿½ï¿½
                 Char->SetActorHiddenInGame(false);
-                // RevealDuration ÀÌÈÄ ´Ù½Ã ¼û±â·Á¸é º°µµ ·ÎÁ÷ ÇÊ¿ä
+                // RevealDuration ï¿½ï¿½ï¿½ï¿½ ï¿½Ù½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ê¿ï¿½
             }
         }
     }
@@ -79,7 +79,7 @@ void ALCBossBanshee::EcholocationPing()
 
 void ALCBossBanshee::OnHeardNoise(const FVector& NoiseLocation)
 {
-    // 1) ¼Ò¸® ¹ß»ý ÁöÁ¡ ¹Ù¶óº¸±â
+    // 1) ï¿½Ò¸ï¿½ ï¿½ß»ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ù¶óº¸±ï¿½
     FVector Dir = NoiseLocation - GetActorLocation();
     Dir.Z = 0.f;
     if (!Dir.IsNearlyZero())
@@ -87,17 +87,17 @@ void ALCBossBanshee::OnHeardNoise(const FVector& NoiseLocation)
         SetActorRotation(Dir.Rotation());
     }
 
-    // 2) ¿ïºÎÂ¢±â
+    // 2) ï¿½ï¿½ï¿½Â¢ï¿½ï¿½
     if (bCanShriek)
     {
-        // »ç¿îµå Àç»ý
+        // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
         if (SonicShriekSound)
         {
             UGameplayStatics::PlaySoundAtLocation(
                 this, SonicShriekSound, GetActorLocation());
         }
 
-        // ¹Ý°æ µ¥¹ÌÁö Àû¿ë
+        // ï¿½Ý°ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
         UGameplayStatics::ApplyRadialDamage(
             this,
             ShriekDamage,
@@ -110,8 +110,8 @@ void ALCBossBanshee::OnHeardNoise(const FVector& NoiseLocation)
             true
         );
 
-        // µð¹ö±× ½Ã°¢È­
-        DrawDebugSphere(
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ã°ï¿½È­
+       /* DrawDebugSphere(
             GetWorld(),
             GetActorLocation(),
             ShriekRadius,
@@ -119,9 +119,9 @@ void ALCBossBanshee::OnHeardNoise(const FVector& NoiseLocation)
             FColor::Red,
             false,
             2.f
-        );
+        );*/
 
-        // Äð´Ù¿î ½ÃÀÛ
+        // ï¿½ï¿½Ù¿ï¿½ ï¿½ï¿½ï¿½ï¿½
         bCanShriek = false;
         GetWorldTimerManager().SetTimer(
             ShriekTimerHandle,
