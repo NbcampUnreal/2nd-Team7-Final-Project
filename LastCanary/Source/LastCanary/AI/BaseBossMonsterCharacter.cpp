@@ -8,12 +8,6 @@ ABaseBossMonsterCharacter::ABaseBossMonsterCharacter()
 {
     PrimaryActorTick.bCanEverTick = true;
     bReplicates = true;
-
-    NavGenerationradius = 1000.0f;
-    NavRemovalradius = 500.0f;
-
-    NavInvoker = CreateDefaultSubobject<UNavigationInvokerComponent>(TEXT("NavInvoker"));
-    NavInvoker->SetGenerationRadii(NavGenerationradius, NavRemovalradius);
 }
 
 bool ABaseBossMonsterCharacter::RequestAttack()
@@ -29,7 +23,6 @@ bool ABaseBossMonsterCharacter::RequestAttack()
         (Now - LastStrongTime) >= StrongAttackCooldown)
     {
         LastStrongTime = Now;
-        // Berserk 상태라면 DamageMultiplier_Berserk을 참고하여 공격 세기를 조절할 수 있음
         PlayStrongAttack();
         return true;
     }
@@ -61,9 +54,6 @@ void ABaseBossMonsterCharacter::PlayStrongAttack()
 {
     if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
     {
-        // Berserk 상태라면, 몽타주 재생 속도를 빠르게 할 수도 있습니다. 예시:
-        // float PlayRate = bIsBerserk ? 1.5f : 1.0f;
-        // Anim->Montage_Play(StrongAttackMontage, PlayRate);
         Anim->Montage_Play(StrongAttackMontage);
         Anim->OnMontageEnded.AddDynamic(this, &ABaseBossMonsterCharacter::OnAttackMontageEnded);
     }
@@ -72,7 +62,21 @@ void ABaseBossMonsterCharacter::PlayStrongAttack()
 
 void ABaseBossMonsterCharacter::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 {
-    // 예: 파생 클래스에서 이곳을 override하여 이펙트/다음 행동을 트리거할 수 있음
+    float DamageToApply = 0.f;
+
+    if (Montage == NormalAttackMontage)
+    {
+        DamageToApply = NormalAttackDamage;
+    }
+    else if (Montage == StrongAttackMontage)
+    {
+        DamageToApply = StrongAttackDamage;
+    }
+
+    if (DamageToApply > 0.f)
+    {
+        DealDamageInRange(DamageToApply);
+    }
 }
 
 // Tick이나 다른 타이밍에 호출하여 Rage를 갱신하고 싶다면 여기서 Berserk 배수를 적용
@@ -87,12 +91,6 @@ void ABaseBossMonsterCharacter::EnterBerserkState()
     if (!HasAuthority())
         return;
 
-    // 이미 Berserk 중이거나 쿨타임 중이면 무시
-    if (bIsBerserk || GetWorldTimerManager().IsTimerActive(BerserkCooldownTimerHandle))
-    {
-        return;
-    }
-
     StartBerserk();
 }
 
@@ -103,23 +101,6 @@ void ABaseBossMonsterCharacter::StartBerserk()
 
     // 서버가 결정한 Berserk 시작을 클라이언트 전체에 알림
     Multicast_StartBerserk();
-
-    // Berserk 지속 시간이 지나면 EndBerserk 호출 예약
-    GetWorldTimerManager().SetTimer(
-        BerserkTimerHandle,
-        this,
-        &ABaseBossMonsterCharacter::EndBerserk,
-        BerserkDuration,
-        false
-    );
-
-    // Berserk 종료 후 BerserkCooldown만큼 대기시키기 위한 타이머(콜백 람다 식으로 별도 로직 없음)
-    GetWorldTimerManager().SetTimer(
-        BerserkCooldownTimerHandle,
-        FTimerDelegate::CreateLambda([]() {}),
-        BerserkDuration + BerserkCooldown,
-        false
-    );
 }
 
 
@@ -252,4 +233,44 @@ void ABaseBossMonsterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimePrope
 
     // Berserk 상태 복제
     DOREPLIFETIME(ABaseBossMonsterCharacter, bIsBerserk);
+}
+
+void ABaseBossMonsterCharacter::DealDamageInRange(float DamageAmount)
+{
+    FVector Origin = GetActorLocation();
+    float Radius = AttackRange;
+
+    // (옵션) 디버깅용 범위 시각화
+    DrawDebugSphere(GetWorld(), Origin, Radius, 12, FColor::Red, false, 1.0f);
+
+    // 반경 내 모든 Pawn 검사
+    TArray<FHitResult> HitResults;
+    FCollisionShape Sphere = FCollisionShape::MakeSphere(Radius);
+    bool bHit = GetWorld()->SweepMultiByChannel(
+        HitResults,
+        Origin,
+        Origin,
+        FQuat::Identity,
+        ECC_Pawn,
+        Sphere
+    );
+
+    if (bHit)
+    {
+        for (auto& Hit : HitResults)
+        {
+            APawn* Pawn = Cast<APawn>(Hit.GetActor());
+            if (Pawn && Pawn->IsPlayerControlled())
+            {
+                // 대미지 적용
+                UGameplayStatics::ApplyDamage(
+                    Pawn,
+                    DamageAmount,
+                    GetController(),          // 보스의 컨트롤러
+                    this,                     // 대미지 발생자
+                    UDamageType::StaticClass()
+                );
+            }
+        }
+    }
 }

@@ -1,17 +1,13 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Character.h"
-#include "NavigationInvokerComponent.h" 
+#include "GameFramework/Character.h" 
 #include "BaseBossMonsterCharacter.generated.h"
 
 UCLASS()
 class LASTCANARY_API ABaseBossMonsterCharacter : public ACharacter
 {
     GENERATED_BODY()
-
-    UPROPERTY(BlueprintReadWrite, Category = Navigation, meta = (AllowPrivateAccess = "true"))
-    UNavigationInvokerComponent* NavInvoker;
 
 public:
     ABaseBossMonsterCharacter();
@@ -31,6 +27,18 @@ public:
 
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Attack")
     float StrongAttackCooldown = 6.0f;
+
+    /** 일반 공격 대미지 */
+    UPROPERTY(EditAnywhere, Category = "Attack")
+    float NormalAttackDamage = 20.f;
+
+    /** 강공격 대미지 */
+    UPROPERTY(EditAnywhere, Category = "Attack")
+    float StrongAttackDamage = 50.f;
+
+    /** 공격 범위 (반경) */
+    UPROPERTY(EditAnywhere, Category = "Attack")
+    float AttackRange = 200.f;
 
     /** 현재 보유한 Rage 값 (복제) */
     UPROPERTY(Replicated, BlueprintReadOnly, Category = "Boss|Attack")
@@ -68,14 +76,6 @@ protected:
     UPROPERTY(ReplicatedUsing = OnRep_IsBerserk, BlueprintReadWrite, EditAnywhere, Category = "Boss|Berserk") // 임시로 ReadWrite
     bool bIsBerserk = false;
 
-    /** Berserk 지속 시간(초) */
-    UPROPERTY(EditDefaultsOnly, Category = "Boss|Berserk")
-    float BerserkDuration = 15.f;
-
-    /** Berserk 쿨타임(초) */
-    UPROPERTY(EditDefaultsOnly, Category = "Boss|Berserk")
-    float BerserkCooldown = 60.f;
-
     /** Berserk 상태에서 Rage 증가 속도 배수 */
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Berserk")
     float RageGainMultiplier_Berserk = 2.0f;
@@ -83,12 +83,6 @@ protected:
     /** Berserk 상태에서 데미지 배수 (공격 로직에서 참조) */
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Berserk")
     float DamageMultiplier_Berserk = 1.5f;
-
-    /** Berserk 유지 타이머 핸들 */
-    FTimerHandle BerserkTimerHandle;
-
-    /** Berserk 쿨타임 타이머 핸들 */
-    FTimerHandle BerserkCooldownTimerHandle;
 
     /** Replication 후 처리용 OnRep 함수 */
     UFUNCTION()
@@ -136,4 +130,8 @@ protected:
 
     // Replication 설정
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+private:
+    /** 범위 내 플레이어에게 대미지 적용 */
+    void DealDamageInRange(float DamageAmount);
 };
