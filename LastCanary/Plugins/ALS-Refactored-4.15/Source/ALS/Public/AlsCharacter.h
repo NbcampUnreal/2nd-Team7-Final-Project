@@ -24,6 +24,7 @@ class ALS_API AAlsCharacter : public ACharacter
 	GENERATED_BODY()
 
 public:
+	bool bIsMantling = false;
 	FTimerHandle HardLandingTimerHandle;
 	bool bIsInHardLandingState = false;
 	void TriggerHardLanding(float DisableDuration);

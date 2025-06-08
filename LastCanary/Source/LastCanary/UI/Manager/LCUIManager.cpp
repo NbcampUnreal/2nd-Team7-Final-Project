@@ -116,6 +116,7 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 
 void ULCUIManager::SetPlayerController(APlayerController* PlayerController)
 {
+	UE_LOG(LogTemp, Warning, TEXT("ULCUIManager::SetPlayerController - PlayerController: %s"), PlayerController ? *PlayerController->GetName() : TEXT("nullptr"));
 	OwningPlayer = PlayerController;
 }
 
@@ -397,14 +398,15 @@ void ULCUIManager::ShowChecklistWidget()
 {
 	if (OwningPlayer == nullptr)
 	{
-		return;
-	}
-	if (OwningPlayer->IsLocalPlayerController() == false)
-	{
-		return;
+		APlayerController* PC = GetWorld()->GetFirstPlayerController();
+		if (PC && PC->IsLocalController())
+		{
+			SetPlayerController(PC);
+			LOG_Frame_WARNING(TEXT("UIManager: OwningPlayer를 복구함 -> %s"), *PC->GetName());
+		}
 	}
 
-	// HideInGameHUD();
+	UE_LOG(LogTemp, Warning, TEXT("ShowChecklistWidget: OwningPlayer = %s"), *OwningPlayer->GetName());
 
 	SwitchToWidget(CachedChecklistWidget);
 	HideInventoryMainWidget();

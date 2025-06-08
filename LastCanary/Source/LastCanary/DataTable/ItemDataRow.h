@@ -55,4 +55,9 @@ struct FItemDataRow : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
 	bool bIgnoreCharacterCollision = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawn", Meta = (Categories = "Map"))
+	FGameplayTagContainer AllowedSpawnMaps;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawn", Meta = (Categories = "Time"))
+	FGameplayTagContainer TimeConditions;
 };

@@ -2,7 +2,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "GameplayTagContainer.h"
 #include "ResourceItemSpawnManager.generated.h"
+
+class UItemSpawnerComponent;
 
 UCLASS()
 class LASTCANARY_API AResourceItemSpawnManager : public AActor
@@ -17,7 +20,6 @@ protected:
 
     UFUNCTION()
     void OnDayNightChanged(EDayPhase NewPhase);
-
 public:
     /** 테마별로 스폰할 아이템 목록 */
     TMap<FName, TArray<FName>> ThemeItemMap;
@@ -36,4 +38,23 @@ public:
 
     /** 테마 아이템 초기화 */
     void InitializeThemeItemMap();
+
+    void SpawnItemByRow(FName ItemRowName);
+
+    UPROPERTY(EditAnywhere, Category = "Spawn|Region", Meta = (Categories = "ItemSpawn.Map"))
+    FGameplayTagContainer CurrentRegionTags;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+    UItemSpawnerComponent* ItemSpawnerComponent;
+
+    UFUNCTION(BlueprintCallable, Category = "Spawn")
+    TArray<FName> GetSpawnableItemsByTags() const;
+
+    /** 현재 맵의 지역 태그 설정 */
+    UFUNCTION(BlueprintCallable, Category = "Spawn")
+    void SetCurrentRegionTag(const FString& MapName);
+
+protected:
+    /** 현재 맵에 따른 지역 태그 자동 설정 */
+    void SetCurrentMapRegionTag();
 };

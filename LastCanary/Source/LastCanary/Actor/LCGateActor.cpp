@@ -50,9 +50,10 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 			{
 				if (RoomPC->HasAuthority())
 				{
+					RoomPC->Server_MarkPlayerAsEscaped_Implementation();
 					if (ALCGameState* GS = GetWorld()->GetGameState<ALCGameState>())
 					{
-						GS->MarkPlayerAsEscaped(RoomPC->PlayerState);
+						//GS->MarkPlayerAsEscaped(RoomPC->PlayerState);
 					}
 				}
 				else
@@ -75,16 +76,8 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 				UIManager->HideInGameHUD();
 			}
 			ABasePlayerController* BasePlayerController = Cast<ABasePlayerController>(Controller);
-			BasePlayerController->UnPossess();
-			BasePlayerController->SpectateNextPlayer();
-
-			// 일정 시간 후 Pawn 제거
-			APawn* Pawn = Controller->GetPawn();
-			if (Pawn)
-			{
-				Pawn->DetachFromControllerPendingDestroy();
-				Pawn->SetLifeSpan(5.f); // 또는 Custom Fade Out
-			}
+			BasePlayerController->OnExitGate();
+			
 
 			// TODO : 탈출, 체크리스트 띄우고 전부 작성하면 결과 UI-> 호스트가 버튼 눌러서 베이스캠프로 이동
 			// 사망->시체 스켈레탈메시남고->관전(컨트롤러)

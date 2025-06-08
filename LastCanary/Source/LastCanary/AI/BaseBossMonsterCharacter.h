@@ -113,4 +113,7 @@ protected:
 
     // Replication 설정
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+    /** 스캐너를 위한 스텐실 설정 */
+    void EnableStencilForAllMeshes(int32 StencilValue);
 };

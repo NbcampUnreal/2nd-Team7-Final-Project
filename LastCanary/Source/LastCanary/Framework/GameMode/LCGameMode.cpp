@@ -8,6 +8,7 @@
 #include "EngineUtils.h"
 #include "Actor/PlayerChecker.h"
 
+#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 void ALCGameMode::BeginPlay()
 {
 	Super::BeginPlay();
@@ -118,12 +119,19 @@ void ALCGameMode::RemoveCachedPlayer(APlayerController* PC)
 
 void ALCGameMode::UpdatePlayers()
 {
+
+	UE_LOG(LogTemp, Log, TEXT("UpdatePlayers 유저 수: %d"), SessionPlayerInfos.Num());
+	
 	for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
 	{
 		if (ALCPlayerController* PlayerController = Cast<ALCPlayerController>(Iterator->Get()))
 		{
 			PlayerController->Client_UpdatePlayerList(SessionPlayerInfos);
 		}
+	}
+	if (ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+	{
+		GISubsystem->SetUserNum(SessionPlayerInfos.Num() / 2);
 	}
 }
 

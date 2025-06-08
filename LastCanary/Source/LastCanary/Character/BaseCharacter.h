@@ -68,6 +68,9 @@ public:
 	UCameraComponent* SpectatorCamera;
 
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* HeadMesh;
+
 	void Tick(float DeltaSeconds)
 	{
 		Super::Tick(DeltaSeconds);
@@ -166,7 +169,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
 	UMaterialInterface* TransparentHeadMaterial;
 
-	void SwapHeadMaterialTransparent(bool bUseTransparent);
+
 
 
 public:
@@ -175,6 +178,8 @@ public:
 	void ApplyRecoilStep();
 	void CameraShake();
 
+
+	void SwapHeadMaterialTransparent(bool bUseTransparent);
 public:
 
 	// Recoil 상태
@@ -255,10 +260,26 @@ public:
 public:
 	//애니메이션 몽타주
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
-	UAnimMontage* InteractMontage;
+	UAnimMontage* InteractMontageOnUpperObject;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UAnimMontage* InteractMontageOnUnderObject;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
 	UAnimMontage* ReloadMontage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UAnimMontage* KickMontage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UAnimMontage* PressButtonMontage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UAnimMontage* OpeningValveMontage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UAnimMontage* PickAxeMontage;
+
 
 	UFUNCTION()
 	void OnGunReloadAnimComplete(UAnimMontage* CompletedMontage, bool bInterrupted);
@@ -274,7 +295,14 @@ public:
 	void Multicast_PlayMontage(UAnimMontage* MontageToPlay);
 	void Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay);
 
+	UPROPERTY()
+	UAnimMontage* CurrentInteractMontage;
 
+	void CancelInteraction();
+
+	UFUNCTION(Server, Unreliable)
+	void Server_CancelInteraction();
+	void Server_CancelInteraction_Implementation();
 
 	//Check Player Focus Everytime
 public:
@@ -291,7 +319,13 @@ public:
 
 	void TraceInteractableActor();
 
+	void InteractAfterPlayMontage(AActor* TargetActor);
+	void OnInteractAnimComplete(UAnimMontage* CompletedMontage, bool bInterrupted);
 
+	void OnNotified();
+
+	UPROPERTY()
+	AActor* InteractTargetActor;
 	//Player Take Damage
 public:
 	/*Player Damage, Death*/
@@ -505,4 +539,12 @@ protected:
 	/** 현재 총 무게 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Character|Weight")
 	float CurrentTotalWeight = 0.0f;
+
+public:
+	/** 현재 장착된 총기의 발사 모드 전환 (단발 ↔ 연발) */
+	UFUNCTION(BlueprintCallable, Category = "Character|Weapon")
+	void ToggleFireMode();
+
+	/** 스캐너를 위한 스텐실 설정 */
+	void EnableStencilForAllMeshes(int32 StencilValue);
 };
