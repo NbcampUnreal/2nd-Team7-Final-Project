@@ -142,6 +142,9 @@ public:
     float GetAttackRange() const { return AttackRange; }
 
 protected:
+    UFUNCTION()
+    void StopAllCurrentActions();
+
     //멀티 사운드 재생
     UFUNCTION(NetMulticast, Reliable)
     void MulticastPlaySound(USoundBase* Sound);
@@ -153,7 +156,7 @@ protected:
     UAIPerceptionComponent* AIPerceptionComponent;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Combat")
-    int32 MaxHP;
+    float MaxHP;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Combat")
     float AttackDamage;
@@ -196,4 +199,7 @@ public:
     FGameplayTagContainer GameplayTags;
 
     virtual void GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) const override;
+
+    /** 스캐너를 위한 스텐실 설정 */
+    void EnableStencilForAllMeshes(int32 StencilValue);
 };

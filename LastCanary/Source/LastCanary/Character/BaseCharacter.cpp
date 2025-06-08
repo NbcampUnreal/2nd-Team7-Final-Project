@@ -132,6 +132,8 @@ void ABaseCharacter::BeginPlay()
 		UE_LOG(LogTemp, Warning, TEXT("Inventory Ready"));
 		ToolbarInventoryComponent->OnInventoryUpdated.AddDynamic(this, &ABaseCharacter::HandleInventoryUpdated);
 	}
+
+	EnableStencilForAllMeshes(2);
 }
 
 
@@ -1343,8 +1345,6 @@ void ABaseCharacter::TraceInteractableActor()
 	if (bHit)
 	{
 		float DistanceToHit = Hit.Distance;
-		LOG_Item_WARNING(TEXT("Hit Actor: %s, Distance: %.2f"),
-			*Hit.GetActor()->GetName(), DistanceToHit);
 		if (Hit.Distance < 100.0f)
 		{
 			bIsCloseToWall = true;
@@ -2470,4 +2470,64 @@ void ABaseCharacter::OnInventoryWeightChanged(float WeightDifference)
 float ABaseCharacter::GetTotalCarryingWeight() const
 {
 	return CurrentTotalWeight;
+}
+
+void ABaseCharacter::ToggleFireMode()
+{
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
+	{
+		return;
+	}
+
+	if (!IsValid(ToolbarInventoryComponent))
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::ToggleFireMode] 툴바 컴포넌트가 없습니다."));
+		return;
+	}
+
+	// 현재 장착된 아이템 가져오기
+	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
+	if (!EquippedItem)
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::ToggleFireMode] 현재 장착된 아이템이 없습니다."));
+		return;
+	}
+
+	// 장착된 아이템이 총기인지 확인
+	AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem);
+	if (!IsValid(EquipmentItem))
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::ToggleFireMode] 장착된 아이템이 장비 아이템이 아닙니다."));
+		return;
+	}
+
+	if (EquipmentItem->ItemData.ItemType != FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::ToggleFireMode] 장착된 아이템이 총기가 아닙니다."));
+		return;
+	}
+
+	// 총기로 캐스팅하여 발사 모드 전환
+	AGunBase* Gun = Cast<AGunBase>(EquippedItem);
+	if (IsValid(Gun))
+	{
+		Gun->ToggleFireMode();
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::ToggleFireMode] 총기 발사 모드를 전환했습니다."));
+	}
+	else
+	{
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::ToggleFireMode] 총기로 캐스팅에 실패했습니다."));
+	}
+}
+
+void ABaseCharacter::EnableStencilForAllMeshes(int32 StencilValue)
+{
+	TArray<UMeshComponent*> MeshComponents;
+	GetComponents<UMeshComponent>(MeshComponents);
+
+	for (UMeshComponent* MeshComp : MeshComponents)
+	{
+		MeshComp->SetRenderCustomDepth(true);
+		MeshComp->SetCustomDepthStencilValue(StencilValue);
+	}
 }
