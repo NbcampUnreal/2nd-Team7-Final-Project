@@ -63,16 +63,21 @@ void AChecklistManager::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 
 void AChecklistManager::StartChecklist()
 {
+	LOG_Frame_WARNING(TEXT("StartChecklist."));
 	TotalPlayerCount = GetNumPlayers();
 	SubmittedCount = 0;
 
 	if (ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 	{
+		LOG_Frame_WARNING(TEXT("GISubsystem 있음."));
 		if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
 		{
+			LOG_Frame_WARNING(TEXT("UIManager 있음."));
 			UIManager->ShowChecklistWidget();
 			if (UChecklistWidget* Widget = UIManager->GetChecklistWidget())
 			{
+				LOG_Frame_WARNING(TEXT("Widget->InitWithQuestions(Questions, this);."));
+
 				Widget->InitWithQuestions(Questions, this);
 			}
 		}
