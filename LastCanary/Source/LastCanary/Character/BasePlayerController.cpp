@@ -80,6 +80,10 @@ void ABasePlayerController::Server_OnExitGate_Implementation()
 void ABasePlayerController::HandleExitGate()
 {
 	UE_LOG(LogTemp, Warning, TEXT("HandleExitGate"));
+	if (!IsValid(CurrentPossessedPawn))
+	{
+		return;
+	}
 	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
 	if (!IsValid(PlayerCharacter))
 	{
