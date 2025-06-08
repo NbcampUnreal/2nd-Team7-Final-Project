@@ -153,7 +153,7 @@ protected:
     UAIPerceptionComponent* AIPerceptionComponent;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Combat")
-    int32 MaxHP;
+    float MaxHP;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Combat")
     float AttackDamage;
