@@ -196,4 +196,7 @@ public:
     FGameplayTagContainer GameplayTags;
 
     virtual void GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) const override;
+
+    /** 스캐너를 위한 스텐실 설정 */
+    void EnableStencilForAllMeshes(int32 StencilValue);
 };

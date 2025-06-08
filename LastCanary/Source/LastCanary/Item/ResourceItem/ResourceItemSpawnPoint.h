@@ -13,6 +13,7 @@ enum class ESpawnTimeCondition : uint8
 };
 
 class AItemBase;
+class UItemSpawnerComponent;
 UCLASS()
 class LASTCANARY_API AResourceItemSpawnPoint : public AActor
 {
@@ -51,4 +52,22 @@ public:
 
     /** 외부 매니저가 직접 조건 확인 후 강제 스폰할 수도 있음 */
     void SpawnItemByRow(FName ItemRowName);
+
+    /** Always 조건으로 이미 스폰했는지 여부 */
+    UPROPERTY()
+    bool bHasSpawnedAlwaysItem = false;
+
+    /** 매니저에서 호출하는 스폰 함수 */
+    UFUNCTION(BlueprintCallable)
+    void TrySpawnItemFromManager(const TArray<FName>& AvailableItems, UItemSpawnerComponent* SpawnerComponent);
+
+    /** 현재 스폰된 아이템 제거 */
+    UFUNCTION(BlueprintCallable)
+    void ClearSpawnedItem();
+
+    /** 시간 조건 체크 */
+    bool CheckTimeCondition() const;
+
+    /** 시간 조건에 맞는 아이템 필터링 */
+    TArray<FName> FilterItemsByTimeCondition(const TArray<FName>& AvailableItems) const;
 };

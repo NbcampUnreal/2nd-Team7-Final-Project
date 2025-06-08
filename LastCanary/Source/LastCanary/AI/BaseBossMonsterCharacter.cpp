@@ -170,3 +170,15 @@ void ABaseBossMonsterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimePrope
     // Berserk 상태 복제
     DOREPLIFETIME(ABaseBossMonsterCharacter, bIsBerserk);
 }
+
+void ABaseBossMonsterCharacter::EnableStencilForAllMeshes(int32 StencilValue)
+{
+    TArray<UMeshComponent*> MeshComponents;
+    GetComponents<UMeshComponent>(MeshComponents);
+
+    for (UMeshComponent* MeshComp : MeshComponents)
+    {
+        MeshComp->SetRenderCustomDepth(true);
+        MeshComp->SetCustomDepthStencilValue(StencilValue);
+    }
+}

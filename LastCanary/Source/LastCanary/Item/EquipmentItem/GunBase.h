@@ -13,6 +13,14 @@
  * 라인트레이스 기반 발사 시스템과 탄약 관리를 구현합니다.
  */
 
+ /** 발사 모드 열거형 */
+UENUM(BlueprintType)
+enum class EFireMode : uint8
+{
+    Single      UMETA(DisplayName = "단발"),
+    FullAuto    UMETA(DisplayName = "연발")
+};
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAnimationComplete, UAnimMontage*, CompletedMontage);
 
 UCLASS()
@@ -77,6 +85,15 @@ public:
     UPROPERTY(BlueprintReadOnly, Category = "Gun|Properties")
     float CurrentAmmo;
 
+public:
+    /** 현재 발사 모드 */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|FireMode")
+    EFireMode CurrentFireMode;
+
+    /** 연발 사격 중인지 여부 */
+    UPROPERTY(BlueprintReadOnly, Category = "Gun|FireMode")
+    bool bIsAutoFiring;
+
     //-----------------------------------------------------
     // 이펙트 및 사운드
     //-----------------------------------------------------
@@ -120,14 +137,50 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Gun|Actions")
     virtual bool Reload(float AmmoAmount);
 
+protected:
+    /** 단발 사격 실행 */
+    UFUNCTION(BlueprintCallable, Category = "Gun|Fire")
+    void FireSingle();
+
+    /** 연발 사격 실행 */
+    UFUNCTION(BlueprintCallable, Category = "Gun|Fire")
+    void FireAuto();
+
+    /** 발사 가능 여부 확인 */
+    bool CanFire();
+
 public:
     virtual void BeginPlay() override;
+
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
+    virtual void SetEquipped(bool bNewEquipped) override;
 
     /** 마지막 발사 시간 */
     float LastFireTime;
 
     /** 발사 타이머 핸들 */
     FTimerHandle FireTimerHandle;
+
+    /** 연발 타이머 핸들 */
+    FTimerHandle AutoFireTimerHandle;
+
+    /** 발사 모드 전환 */
+    UFUNCTION(BlueprintCallable, Category = "Gun|FireMode")
+    void ToggleFireMode();
+
+    /** 발사 모드 전환 (서버 RPC) */
+    UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Gun|FireMode")
+    void Server_ToggleFireMode();
+    void Server_ToggleFireMode_Implementation();
+
+    /** 연발 사격 시작 */
+    UFUNCTION(BlueprintCallable, Category = "Gun|FireMode")
+    void StartAutoFire();
+
+    /** 연발 사격 중단 */
+    UFUNCTION(BlueprintCallable, Category = "Gun|FireMode")
+    void StopAutoFire();
 
     //-----------------------------------------------------
     // 라인트레이스 및 피격 판정
@@ -151,20 +204,20 @@ public:
     void ProcessHit(const FHitResult& HitResult, const FVector& StartLocation);
 
     /** 피격 지점에 데칼 생성 */
-    UFUNCTION(NetMulticast, Reliable)
+    UFUNCTION(NetMulticast, Unreliable)
     void Multicast_SpawnImpactEffects(const TArray<FHitResult>& Hits);
     void Multicast_SpawnImpactEffects_Implementation(const TArray<FHitResult>& Hits);
 
     /** 사운드 및 이펙트 재생 */
-    UFUNCTION(NetMulticast, Reliable)
+    UFUNCTION(NetMulticast, Unreliable)
     void Multicast_PlayFireEffects();
     void Multicast_PlayFireEffects_Implementation();
 
-//-----------------------------------------------------
-// 애니메이션 관련
-//-----------------------------------------------------
+    //-----------------------------------------------------
+    // 애니메이션 관련
+    //-----------------------------------------------------
 
-/** 발사 애니메이션 재생 */
+    /** 발사 애니메이션 재생 */
     UFUNCTION(NetMulticast, Reliable)
     void Multicast_PlayFireAnimation();
     void Multicast_PlayFireAnimation_Implementation();
@@ -198,6 +251,12 @@ public:
 
     /** 탄약 상태 업데이트 */
     void UpdateAmmoState();
+
+    UFUNCTION()
+    void EnsureGunDataLoaded();
+
+    UFUNCTION()
+    bool IsGunDataLoaded() const;
 
     /** Durability 변경 시 탄약 동기화 */
     virtual void OnRepDurability() override;

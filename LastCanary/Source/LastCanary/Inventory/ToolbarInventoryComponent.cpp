@@ -560,7 +560,7 @@ void UToolbarInventoryComponent::SetupEquippedItem(UChildActorComponent* ItemCom
     FAttachmentTransformRules AttachRules(
         EAttachmentRule::SnapToTarget,
         EAttachmentRule::SnapToTarget,
-        EAttachmentRule::KeepWorld,
+        EAttachmentRule::SnapToTarget,
         false
     );
 
