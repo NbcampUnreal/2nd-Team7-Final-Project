@@ -6,6 +6,7 @@
 #include "Interface/InteractableInterface.h"
 #include "Components/BoxComponent.h"
 #include "Sound/SoundBase.h"
+#include "DataType/GimmickActivationType.h"
 #include "LCBaseGimmick.generated.h"
 
 UCLASS(Abstract)
@@ -23,7 +24,7 @@ public:
 
 	/** 시각적 메쉬 (회전 / 이동 대상) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gimmick|Visual")
-	UStaticMeshComponent* VisualMesh;
+	USceneComponent* VisualMesh;
 
 	/** 상호작용 사운드 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Sound")
@@ -36,6 +37,43 @@ public:
 	/** 연결된 효과 액터들 (IGimmickEffectInterface 구현체) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Target")
 	TArray<AActor*> LinkedTargets;
+
+	/** ===== 작동 방식 설정 ===== */
+
+	/** 기믹 작동 방식 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Activation")
+	EGimmickActivationType ActivationType;
+
+	/** ==== 오버랩 방식 ==== */
+
+	/** 오버랩 기반 기믹 작동용 트리거 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gimmick|Trigger")
+	UBoxComponent* ActivationTrigger;
+
+	/** 기믹 작동 트리거 영역 진입 */
+	UFUNCTION()
+	virtual void OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	/** 기믹 작동 트리거 영역 이탈 */
+	UFUNCTION()
+	virtual void OnTriggerExit(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+
+	/** 오버랩 감지 캐릭터 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gimmick|Detection")
+	TSet<AActor*> OverlappingActors;
+
+	/**ActivateAfterDelay 전용 타이머 */
+	FTimerHandle ActivationDelayHandle;
+
+	/** 활성화까지 요구되는 오버랩 캐릭터 수 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Activation")
+	int32 RequiredCount;
+
+	/** ActivateAfterDelay 사용 시 지연 시간 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Activation")
+	float ActivationDelay;
 
 	/** ==== 감지 영역 ==== */
 
@@ -105,6 +143,9 @@ public:
 
 	/** 동작 중 여부 판단 */
 	virtual bool IsGimmickBusy_Implementation() override;
+
+	/** 즉시 복귀 활성화 */
+	virtual void ReturnToInitialState_Implementation() override;
 
 	/** ===== 네트워크 함수 ===== */
 

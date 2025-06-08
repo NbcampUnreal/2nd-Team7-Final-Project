@@ -11,15 +11,21 @@ ALCBaseGimmick::ALCBaseGimmick()
 	, CooldownTime(2.f)
 	, bToggleState(true)
 	, ReturnDelay(3.f)
-	, InteractMessage(TEXT("Press F"))
+	, InteractMessage(TEXT("???"))
 	, InteractSound(nullptr)
+	, RequiredCount(1.f)
+	, ActivationDelay(1.5f)
+	, ActivationType(EGimmickActivationType::ActivateOnPress) 
 {
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true;
 	bAlwaysRelevant = true;
 
-	VisualMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("VisualMesh"));
+	VisualMesh = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 	SetRootComponent(VisualMesh);
+
+	VisualMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("VisualMesh"));
+	VisualMesh->SetupAttachment(RootComponent);
 
 	DetectionArea = CreateDefaultSubobject<UBoxComponent>(TEXT("DetectionArea"));
 	DetectionArea->SetupAttachment(RootComponent);
@@ -28,6 +34,14 @@ ALCBaseGimmick::ALCBaseGimmick()
 	DetectionArea->SetCollisionResponseToAllChannels(ECR_Ignore);
 	DetectionArea->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 	DetectionArea->SetHiddenInGame(false); 
+
+	ActivationTrigger = CreateDefaultSubobject<UBoxComponent>(TEXT("ActivationTrigger"));
+	ActivationTrigger->SetupAttachment(RootComponent);
+	ActivationTrigger->SetBoxExtent(FVector(100.f));
+	ActivationTrigger->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	ActivationTrigger->SetCollisionResponseToAllChannels(ECR_Ignore);
+	ActivationTrigger->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	ActivationTrigger->SetHiddenInGame(false);
 
 	bEnableActorDetection = false;
 }
@@ -41,6 +55,12 @@ void ALCBaseGimmick::BeginPlay()
 		DetectionArea->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 		DetectionArea->OnComponentBeginOverlap.AddDynamic(this, &ALCBaseGimmick::OnActorEnter);
 		DetectionArea->OnComponentEndOverlap.AddDynamic(this, &ALCBaseGimmick::OnActorExit);
+	}
+
+	if (IsValid(ActivationTrigger))
+	{
+		ActivationTrigger->OnComponentBeginOverlap.AddDynamic(this, &ALCBaseGimmick::OnTriggerEnter);
+		ActivationTrigger->OnComponentEndOverlap.AddDynamic(this, &ALCBaseGimmick::OnTriggerExit);
 	}
 }
 
@@ -75,6 +95,81 @@ void ALCBaseGimmick::OnActorExit(UPrimitiveComponent* OverlappedComp, AActor* Ot
 
 #pragma endregion
 
+#pragma region TriggerOverlap
+
+void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	LOG_Art(Log, TEXT("%s ▶ Trigger 진입: %s | Role: %s | HasAuthority: %s"),
+		*GetName(),
+		*GetNameSafe(OtherActor),
+		*UEnum::GetValueAsString(GetLocalRole()),
+		HasAuthority() ? TEXT("true") : TEXT("false"));
+
+	if (!HasAuthority() || !IsValid(OtherActor)) return;
+
+	if (!OverlappingActors.Contains(OtherActor))
+	{
+		OverlappingActors.Add(OtherActor);
+	}
+
+	switch (ActivationType)
+	{
+	case EGimmickActivationType::ActivateOnStep:
+		ILCGimmickInterface::Execute_ActivateGimmick(this);
+		break;
+
+	case EGimmickActivationType::ActivateWhileStepping:
+		if (!bActivated && OverlappingActors.Num() >= RequiredCount)
+		{
+			if (ILCGimmickInterface::Execute_CanActivate(this))
+			{
+				ILCGimmickInterface::Execute_ActivateGimmick(this);
+			}
+		}
+		break;
+
+	case EGimmickActivationType::ActivateAfterDelay:
+		// 추후 구현
+		break;
+
+	default:
+		break;
+	}
+}
+
+void ALCBaseGimmick::OnTriggerExit(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	if (!HasAuthority() || !IsValid(OtherActor)) return;
+
+	OverlappingActors.Remove(OtherActor);
+
+	LOG_Art(Log, TEXT("%s ▶ Trigger 이탈: %s"), *GetName(), *GetNameSafe(OtherActor));
+
+	switch (ActivationType)
+	{
+	case EGimmickActivationType::ActivateWhileStepping:
+		if (bActivated && OverlappingActors.Num() < RequiredCount)
+		{
+			ILCGimmickInterface::Execute_DeactivateGimmick(this);
+
+			if (!bToggleState)
+			{
+				LOG_Art(Log, TEXT("%s ▶ Trigger 이탈 - 즉시 복귀 시도"), *GetName());
+				ILCGimmickInterface::Execute_ReturnToInitialState(this);
+			}
+		}
+		break;
+
+	default:
+		break;
+	}
+}
+
+
+#pragma endregion
+
 #pragma region Interact
 
 void ALCBaseGimmick::Interact_Implementation(APlayerController* Interactor)
@@ -86,6 +181,12 @@ void ALCBaseGimmick::Interact_Implementation(APlayerController* Interactor)
 			Cast<ABasePlayerController>(Interactor)->InteractGimmick(this);
 		}
 		return;
+	}
+
+	TArray<AActor*> Targets = LinkedTargets;
+	if (Targets.Num() == 0)
+	{
+		Targets.Add(this);
 	}
 
 	for (AActor* Target : LinkedTargets)
@@ -165,6 +266,11 @@ void ALCBaseGimmick::DeactivateGimmick_Implementation()
 			IGimmickEffectInterface::Execute_StopEffect(Target);
 		}
 	}
+}
+
+void ALCBaseGimmick::ReturnToInitialState_Implementation()
+{
+
 }
 
 #pragma endregion

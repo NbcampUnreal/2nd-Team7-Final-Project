@@ -306,6 +306,7 @@ int32 ARuinsMazeManager::RecursiveCountPaths(const FIntPoint& Current, const FIn
 FGimmickSpawnInfo* ARuinsMazeManager::GetRandomGimmick()
 {
     float TotalWeight = 0.f;
+
     for (const FGimmickSpawnInfo& Info : GimmickSpawnList)
     {
         TotalWeight += Info.Weight;
@@ -313,6 +314,7 @@ FGimmickSpawnInfo* ARuinsMazeManager::GetRandomGimmick()
 
     if (TotalWeight <= 0.f)
     {
+        LOG_Art_WARNING(TEXT("[GetRandomGimmick] 전체 Weight가 0 이하 → 기믹 없음"));
         return nullptr;
     }
 
@@ -324,116 +326,61 @@ FGimmickSpawnInfo* ARuinsMazeManager::GetRandomGimmick()
         Accum += Info.Weight;
         if (Rand <= Accum)
         {
+            if (!Info.GimmickClass)
+            {
+                LOG_Art_WARNING(TEXT("[GetRandomGimmick] 선택된 기믹 클래스가 유효하지 않음"));
+                return nullptr;
+            }
+
             return &Info;
         }
     }
 
+    LOG_Art_WARNING(TEXT("[GetRandomGimmick] 선택 실패 (Rand=%.2f, Total=%.2f)"), Rand, TotalWeight);
     return nullptr;
 }
 
 void ARuinsMazeManager::MaybeSpawnGimmickAtCell(const FIntPoint& Cell)
 {
-    // 권한 확인 (서버 전용)
     if (!HasAuthority())
-    {
-        LOG_Art(Log, TEXT("[Gimmick] (%d, %d) 셀 → 서버 권한 없음 → 스폰 스킵"), Cell.X, Cell.Y);
         return;
-    }
 
-    // 기믹 생성 간격 조건 확인
-    if (GimmickInterval <= 0)
-    {
-        LOG_Art_WARNING(TEXT("[Gimmick] GimmickInterval이 0 이하 → 기믹 생성 비활성화"));
+    if (GimmickInterval <= 0 || (Cell.X + Cell.Y) % GimmickInterval != 0)
         return;
-    }
 
-    if ((Cell.X + Cell.Y) % GimmickInterval != 0)
-    {
-        LOG_Art(Log, TEXT("[Gimmick] (%d, %d) 셀은 간격 조건에 부합하지 않음 → 스킵"), Cell.X, Cell.Y);
-        return;
-    }
-
-    // 기믹 후보 로그 출력
-    LOG_Art(Log, TEXT("[Gimmick] 셀 (%d, %d) 기믹 후보 수: %d"), Cell.X, Cell.Y, GimmickSpawnList.Num());
-    for (const FGimmickSpawnInfo& Info : GimmickSpawnList)
-    {
-        LOG_Art(Log, TEXT(" - 후보: Plate=%s / Target=%s / Weight=%.2f"),
-            *GetNameSafe(Info.PlateClass), *GetNameSafe(Info.TargetClass), Info.Weight);
-    }
-
-    // 랜덤 기믹 선택
     FGimmickSpawnInfo* Chosen = GetRandomGimmick();
+
     if (!Chosen)
     {
-        LOG_Art_WARNING(TEXT("[Gimmick] (%d, %d) 셀에서 기믹 선택 실패 (NULL 반환됨)"), Cell.X, Cell.Y);
+        LOG_Art_WARNING(TEXT("[Gimmick] (%d, %d) 랜덤 기믹 선택 실패"), Cell.X, Cell.Y);
         return;
     }
 
-    if (!Chosen->PlateClass || !Chosen->TargetClass)
+    if (!Chosen->GimmickClass)
     {
-        LOG_Art_WARNING(TEXT("[Gimmick] (%d, %d) 셀에서 기믹 선택 실패 (클래스 없음)"), Cell.X, Cell.Y);
+        LOG_Art_WARNING(TEXT("[Gimmick] (%d, %d) GimmickClass 미지정 → 선택된 구조체: Weight=%.2f"),
+            Cell.X, Cell.Y, Chosen->Weight);
         return;
     }
 
-    // 위치 계산
-    const FVector CellLocation = GetCellWorldPosition(Cell);
-    const float MazeGroundZ = MazeOrigin.Z - CellSize * 0.5f; // 바닥 기준 Z
 
-    // 스폰 파라미터
+    const FVector CellLocation = GetCellWorldPosition(Cell);
+    const float MazeGroundZ = MazeOrigin.Z - CellSize * 0.5f;
+    const FVector SpawnLoc = FVector(CellLocation.X, CellLocation.Y, MazeGroundZ + Chosen->ZOffset);
+
     FActorSpawnParameters Params;
     Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-    // Plate, Target 스폰 (지면 기준으로 Z 보정 적용)
-    const FVector PlateLocation = FVector(CellLocation.X, CellLocation.Y, MazeGroundZ + Chosen->PlateZOffset);
-    const FVector TargetLocation = FVector(
-        CellLocation.X + Chosen->TargetOffset.X,
-        CellLocation.Y + Chosen->TargetOffset.Y,
-        MazeGroundZ + Chosen->TargetOffset.Z + Chosen->TargetZOffset);
+    AActor* Gimmick = GetWorld()->SpawnActor<AActor>(Chosen->GimmickClass, SpawnLoc, Chosen->Rotation, Params);
 
-    AActor* Plate = GetWorld()->SpawnActor<AActor>(
-        Chosen->PlateClass,
-        PlateLocation,
-        Chosen->PlateRotation,
-        Params);
-
-    AActor* Target = GetWorld()->SpawnActor<AActor>(
-        Chosen->TargetClass,
-        TargetLocation,
-        Chosen->TargetRotation,
-        Params);
-
-
-    // 스폰 결과 확인
-    if (!IsValid(Plate))
+    if (IsValid(Gimmick))
     {
-        LOG_Art_WARNING(TEXT("[Gimmick] (%d, %d) 셀에서 Plate 스폰 실패"), Cell.X, Cell.Y);
-    }
-    if (!IsValid(Target))
-    {
-        LOG_Art_WARNING(TEXT("[Gimmick] (%d, %d) 셀에서 Target 스폰 실패"), Cell.X, Cell.Y);
-    }
-
-    // Plate가 유효한 경우 Cast 시도 및 타겟 연결
-    if (IsValid(Plate) && IsValid(Target))
-    {
-        if (ALCUnifiedPlate* AsPlate = Cast<ALCUnifiedPlate>(Plate))
-        {
-            AsPlate->LinkedTargets.Add(Target);
-
-            LOG_Art(Log, TEXT("[Gimmick] (%d, %d) 셀 기믹 생성 성공 → Plate: %s / Target: %s"),
-                Cell.X, Cell.Y,
-                *GetNameSafe(Plate),
-                *GetNameSafe(Target));
-        }
-        else
-        {
-            LOG_Art_WARNING(TEXT("[Gimmick] (%d, %d) 셀 → Plate를 ALCUnifiedPlate로 캐스팅 실패 → 타입 확인 필요 (클래스: %s)"),
-                Cell.X, Cell.Y, *Plate->GetClass()->GetName());
-        }
+        LOG_Art(Log, TEXT("[Gimmick] (%d, %d) 기믹 스폰 완료: %s"), Cell.X, Cell.Y, *GetNameSafe(Gimmick));
+        PlacedGimmickCells.Add(Cell); 
     }
     else
     {
-        LOG_Art_WARNING(TEXT("[Gimmick] (%d, %d) 셀에서 Plate 또는 Target 유효하지 않음 → 생성 실패"), Cell.X, Cell.Y);
+        LOG_Art_WARNING(TEXT("[Gimmick] (%d, %d) 기믹 스폰 실패"), Cell.X, Cell.Y);
     }
 }
 
@@ -441,23 +388,43 @@ void ARuinsMazeManager::TryPlaceGimmicks()
 {
     LOG_Art(Log, TEXT("[Gimmick] 전체 셀 순회 후 기믹 배치 시작"));
 
+    TArray<FIntPoint> Candidates;
+
     for (int32 X = 0; X < MazeSizeX; ++X)
     {
         for (int32 Y = 0; Y < MazeSizeY; ++Y)
         {
-            const FRuinsMazeCell& Cell = MazeCells[X][Y];
+            FIntPoint Coord(X, Y);
 
-            if (!Cell.bVisited)
+            if (IsValidGimmickSpawnCell(Coord))
             {
-                continue; // 방문되지 않은 셀은 제외
+                Candidates.Add(Coord);
             }
-
-            FIntPoint CellCoord(X, Y);
-            MaybeSpawnGimmickAtCell(CellCoord); // 기존 함수 활용
         }
     }
 
+    for (int32 i = 0; i < Candidates.Num(); ++i)
+    {
+        int32 j = FMath::RandRange(i, Candidates.Num() - 1);
+        Candidates.Swap(i, j);
+    }
+
+    for (const FIntPoint& Coord : Candidates)
+    {
+        MaybeSpawnGimmickAtCell(Coord);
+    }
+
     LOG_Art(Log, TEXT("[Gimmick] 전체 기믹 배치 완료"));
+}
+
+
+bool ARuinsMazeManager::IsValidGimmickSpawnCell(const FIntPoint& Cell) const
+{
+    return
+        MazeCells.IsValidIndex(Cell.X) &&
+        MazeCells[Cell.X].IsValidIndex(Cell.Y) &&
+        MazeCells[Cell.X][Cell.Y].bVisited &&
+        ((Cell.X + Cell.Y) % GimmickInterval == 0);
 }
 
 void ARuinsMazeManager::SpawnMonsterInMidPath()
@@ -489,13 +456,13 @@ void ARuinsMazeManager::SpawnMonsterInMidPath()
 
     for (const FIntPoint& Cell : MainPathCells)
     {
-        // ✅ 입구와 너무 가까운 셀 제외
-        if (FMath::Abs(Cell.X - EntranceCell.X) < MinDistFromEntranceX)
-            continue;
+        if (FMath::Abs(Cell.X - EntranceCell.X) < MinDistFromEntranceX) continue;
+        if (FMath::Abs(Cell.X - ExitCell.X) < MinDistFromExitX) continue;
 
-        // ✅ 출구와 너무 가까운 셀 제외
-        if (FMath::Abs(Cell.X - ExitCell.X) < MinDistFromExitX)
-            continue;
+        TSet<FIntPoint> TempVisited;
+        if (!RecursiveCheckPath(Cell, ExitCell, TempVisited)) continue;
+
+        if (PlacedGimmickCells.Contains(Cell)) continue;
 
         const float Dx = Cell.X - CenterX;
         const float Dy = Cell.Y - CenterY;
@@ -511,7 +478,7 @@ void ARuinsMazeManager::SpawnMonsterInMidPath()
 
     if (!bFound)
     {
-        LOG_Art_WARNING(TEXT("[Monster] 조건에 맞는 셀을 찾지 못해 스폰 생략"));
+        LOG_Art_WARNING(TEXT("[Monster] 조건에 맞는 유효 셀을 찾지 못해 스폰 생략"));
         return;
     }
 
@@ -530,3 +497,4 @@ void ARuinsMazeManager::SpawnMonsterInMidPath()
         LOG_Art_WARNING(TEXT("[Monster] 몬스터 스폰 실패 → 셀: (%d, %d)"), BestCell.X, BestCell.Y);
     }
 }
+
