@@ -134,6 +134,8 @@ void ABaseMonsterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 void ABaseMonsterCharacter::BeginPlay()
 {
     Super::BeginPlay();
+
+    EnableStencilForAllMeshes(1);
 }
 
 void ABaseMonsterCharacter::PerformAttack()
@@ -334,5 +336,17 @@ void ABaseMonsterCharacter::PlayChaseSound3()
     if (ChaseSound3)
     {
         MulticastPlaySound(ChaseSound3);
+    }
+}
+
+void ABaseMonsterCharacter::EnableStencilForAllMeshes(int32 StencilValue)
+{
+    TArray<UMeshComponent*> MeshComponents;
+    GetComponents<UMeshComponent>(MeshComponents);
+
+    for (UMeshComponent* MeshComp : MeshComponents)
+    {
+        MeshComp->SetRenderCustomDepth(true);
+        MeshComp->SetCustomDepthStencilValue(StencilValue);
     }
 }

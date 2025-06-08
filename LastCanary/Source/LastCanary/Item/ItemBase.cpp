@@ -76,6 +76,8 @@ void AItemBase::BeginPlay()
 		GetWorld()->GetTimerManager().SetTimer(PhysicsLocationSyncTimer,
 			this, &AItemBase::SyncPhysicsLocationToActor, 0.1f, true);
 	}
+
+	EnableStencilForAllMeshes(3);
 }
 
 void AItemBase::OnRepDurability()
@@ -447,4 +449,16 @@ void AItemBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	}
 
 	Super::EndPlay(EndPlayReason);
+}
+
+void AItemBase::EnableStencilForAllMeshes(int32 StencilValue)
+{
+	TArray<UMeshComponent*> MeshComponents;
+	GetComponents<UMeshComponent>(MeshComponents);
+
+	for (UMeshComponent* MeshComp : MeshComponents)
+	{
+		MeshComp->SetRenderCustomDepth(true);
+		MeshComp->SetCustomDepthStencilValue(StencilValue);
+	}
 }

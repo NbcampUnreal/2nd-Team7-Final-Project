@@ -86,17 +86,6 @@ ABaseCharacter::ABaseCharacter()
 
 	BackpackInventoryComponent = CreateDefaultSubobject<UBackpackInventoryComponent>(TEXT("BackpackInventoryComponent"));
 	BackpackInventoryComponent->MaxSlots = 0;
-
-		HeadMesh->SetRenderCustomDepth(true);
-	HeadMesh->SetCustomDepthStencilValue(2);
-
-	OverlayStaticMesh->SetRenderCustomDepth(true);
-
-	OverlayStaticMesh->SetCustomDepthStencilValue(2);
-	OverlaySkeletalMesh->SetRenderCustomDepth(true);
-	OverlaySkeletalMesh->SetCustomDepthStencilValue(2);
-	GetMesh()->SetRenderCustomDepth(true);
-	GetMesh()->SetCustomDepthStencilValue(2);
 }
 
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
@@ -143,6 +132,8 @@ void ABaseCharacter::BeginPlay()
 		UE_LOG(LogTemp, Warning, TEXT("Inventory Ready"));
 		ToolbarInventoryComponent->OnInventoryUpdated.AddDynamic(this, &ABaseCharacter::HandleInventoryUpdated);
 	}
+
+	EnableStencilForAllMeshes(2);
 }
 
 
@@ -2526,5 +2517,17 @@ void ABaseCharacter::ToggleFireMode()
 	else
 	{
 		LOG_Item_WARNING(TEXT("[ABaseCharacter::ToggleFireMode] 총기로 캐스팅에 실패했습니다."));
+	}
+}
+
+void ABaseCharacter::EnableStencilForAllMeshes(int32 StencilValue)
+{
+	TArray<UMeshComponent*> MeshComponents;
+	GetComponents<UMeshComponent>(MeshComponents);
+
+	for (UMeshComponent* MeshComp : MeshComponents)
+	{
+		MeshComp->SetRenderCustomDepth(true);
+		MeshComp->SetCustomDepthStencilValue(StencilValue);
 	}
 }

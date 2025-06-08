@@ -544,4 +544,7 @@ public:
 	/** 현재 장착된 총기의 발사 모드 전환 (단발 ↔ 연발) */
 	UFUNCTION(BlueprintCallable, Category = "Character|Weapon")
 	void ToggleFireMode();
+
+	/** 스캐너를 위한 스텐실 설정 */
+	void EnableStencilForAllMeshes(int32 StencilValue);
 };
