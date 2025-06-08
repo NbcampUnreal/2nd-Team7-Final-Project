@@ -678,6 +678,7 @@ void ABaseCharacter::StartStaminaRecovery()
 			true);
 	}
 }
+
 void ABaseCharacter::TickStaminaRecovery()
 {
 	//스테미나가 가득 차 있으면 중지
@@ -721,6 +722,7 @@ void ABaseCharacter::StartStaminaRecoverAfterDelay()
 	//몇초 뒤에 실행할 건지
 	GetWorldTimerManager().SetTimer(StaminaRecoveryDelayHandle, this, &ABaseCharacter::StartStaminaRecovery, MyPlayerState->InitialStats.RecoverDelayTime, false);
 }
+
 void ABaseCharacter::StartStaminaRecoverAfterDelayOnJump()
 {
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
@@ -961,6 +963,7 @@ void ABaseCharacter::Handle_Reload()
 	CancelInteraction();
 	Server_PlayReload();
 }
+
 void ABaseCharacter::Server_PlayReload_Implementation()
 {
 	Multicast_PlayReload();
@@ -1147,11 +1150,7 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 		return;
 	}
 	InteractTargetActor = TargetActor;
-	//아이템이면 ... 
-	//줍기 모션
-
-
-	if (InteractTargetActor->Tags.Contains("Gimmick"))
+	if (InteractTargetActor->Tags.Contains("Roll"))
 	{
 		MontageToPlay = OpeningValveMontage;
 	}
@@ -1159,8 +1158,13 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 	{
 		MontageToPlay = KickMontage;
 	}
+	else if (InteractTargetActor->Tags.Contains("Press"))
+	{
+		MontageToPlay = PressButtonMontage;
+	}
 	else
 	{
+		//당장 태그 없는 거 빠르게 테스트 하기 위해서 넣어놨습니다.
 		APlayerController* PC = Cast<APlayerController>(GetController());
 		if (PC)
 		{
@@ -1170,49 +1174,15 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 			}
 			UE_LOG(LogTemp, Warning, TEXT("excute interact"));
 			IInteractableInterface::Execute_Interact(InteractTargetActor, PC);
-			//		InteractTargetActor = nullptr;
 		}
-		//MontageToPlay = InteractMontageOnUnderObject;
 	}
-
-	// 기믹이면
-	// 해당 기믹에 맞는 모션
-
-	//MontageToPlay = InteractMontageOnUnderObject;
-	CurrentInteractMontage = MontageToPlay;
-	Server_PlayMontage(MontageToPlay);
-	float Duration = AnimInstance->Montage_Play(MontageToPlay, 1.0f);
-	if (Duration > 0.f)
+	if (!IsValid(MontageToPlay))
 	{
-		SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
-		FOnMontageEnded EndDelegate;
-		EndDelegate.BindUObject(this, &ABaseCharacter::OnInteractAnimComplete);
-		AnimInstance->Montage_SetEndDelegate(EndDelegate, MontageToPlay);
-	}
-}
-
-void ABaseCharacter::OnInteractAnimComplete(UAnimMontage* CompletedMontage, bool bInterrupted)
-{
-	if (bInterrupted)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("애니메이션 진행이 중단되었습니다."));
-		//		InteractTargetActor = nullptr;
-		CurrentInteractMontage = nullptr;
+		UE_LOG(LogTemp, Warning, TEXT("Anim Montage does not exist."));
 		return;
 	}
-
-	//재생 후 notify로
-	APlayerController* PC = Cast<APlayerController>(GetController());
-	if (PC)
-	{
-		if (!IsValid(InteractTargetActor))
-		{
-			return;
-		}
-		UE_LOG(LogTemp, Warning, TEXT("excute interact"));
-		IInteractableInterface::Execute_Interact(InteractTargetActor, PC);
-		//		InteractTargetActor = nullptr;
-	}
+	CurrentInteractMontage = MontageToPlay;
+	Server_PlayMontage(MontageToPlay);
 }
 
 void ABaseCharacter::CancelInteraction()

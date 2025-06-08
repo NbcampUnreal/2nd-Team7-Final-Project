@@ -287,11 +287,11 @@ public:
 	UFUNCTION()
 	void PlayInteractionMontage(AActor* Target);
 
-	UFUNCTION(Server, Reliable)
+	UFUNCTION(Server, Unreliable)
 	void Server_PlayMontage(UAnimMontage* MontageToPlay);
 	void Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay);
 
-	UFUNCTION(NetMulticast, Reliable)
+	UFUNCTION(NetMulticast, Unreliable)
 	void Multicast_PlayMontage(UAnimMontage* MontageToPlay);
 	void Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay);
 
@@ -320,7 +320,6 @@ public:
 	void TraceInteractableActor();
 
 	void InteractAfterPlayMontage(AActor* TargetActor);
-	void OnInteractAnimComplete(UAnimMontage* CompletedMontage, bool bInterrupted);
 
 	void OnNotified();
 
