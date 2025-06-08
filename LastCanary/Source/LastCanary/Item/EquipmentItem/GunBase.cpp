@@ -249,12 +249,6 @@ void AGunBase::Multicast_SpawnImpactEffects_Implementation(const TArray<FHitResu
 {
     EnsureGunDataLoaded();
 
-    // ✅ 클라이언트 디버깅 추가
-    LOG_Item_WARNING(TEXT("[Client] Multicast_SpawnImpactEffects 호출됨 - 히트 개수: %d"), Hits.Num());
-    LOG_Item_WARNING(TEXT("[Client] HasAuthority: %s"), HasAuthority() ? TEXT("true") : TEXT("false"));
-    LOG_Item_WARNING(TEXT("[Client] World: %s"), GetWorld() ? TEXT("Valid") : TEXT("Null"));
-    LOG_Item_WARNING(TEXT("[Client] ImpactDecalMaterial: %s"), ImpactDecalMaterial ? TEXT("Valid") : TEXT("Null"));
-
     for (int32 i = 0; i < Hits.Num(); i++)
     {
         const FHitResult& Hit = Hits[i];
@@ -277,16 +271,6 @@ void AGunBase::Multicast_SpawnImpactEffects_Implementation(const TArray<FHitResu
                 Hit.ImpactNormal.Rotation(),
                 DecalLifeSpan
             );
-
-            // ✅ 데칼 생성 결과 확인
-            if (SpawnedDecal)
-            {
-                LOG_Item_WARNING(TEXT("[Client] 데칼 생성 성공"));
-            }
-            else
-            {
-                LOG_Item_WARNING(TEXT("[Client] 데칼 생성 실패"));
-            }
         }
         else
         {
@@ -296,7 +280,6 @@ void AGunBase::Multicast_SpawnImpactEffects_Implementation(const TArray<FHitResu
         if (ImpactSound)
         {
             UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, Hit.ImpactPoint);
-            LOG_Item_WARNING(TEXT("[Client] 사운드 재생: %s"), *ImpactSound->GetName());
         }
     }
 }

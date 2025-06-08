@@ -123,6 +123,7 @@ void UInventoryComponentBase::GetLifetimeReplicatedProps(TArray<FLifetimePropert
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(UInventoryComponentBase, ItemSlots);
+	DOREPLIFETIME(UInventoryComponentBase, MaxSlots);
 }
 
 void UInventoryComponentBase::OnRep_ItemSlots()
