@@ -335,22 +335,13 @@ bool ALCBossEoduksini::RequestAttack()
     const float Now = GetWorld()->GetTimeSeconds();
     const float RagePct = Rage / MaxRage;
 
-    bool bStrongOK = false;
-    float CurrentStrongCooldown = StrongAttackCooldown;
-    float CurrentStrongChance = StrongAttackChance;
-
-    // 광폭화라면 쿨다운 짧게, 확률 높게, RagePct 제한을 해제
-    if (bIsBerserk)
-    {
-        CurrentStrongCooldown = StrongAttackCooldown_Berserk;
-        CurrentStrongChance = StrongAttackChance_Berserk;
-    }
+    float CurrentStrongCooldown = bIsBerserk ? StrongAttackCooldown_Berserk : StrongAttackCooldown;
+    float CurrentStrongChance = bIsBerserk ? StrongAttackChance_Berserk : StrongAttackChance;
 
     // (1) 강공격 우선
     if (StrongAttackMontage &&
         FMath::FRand() < CurrentStrongChance &&
         (Now - LastStrongTime) >= CurrentStrongCooldown &&
-        // 광폭화가 아니라면 기존 RagePct 조건 적용
         (bIsBerserk || RagePct >= (DarknessRage / MaxRage)))
     {
         LastStrongTime = Now;
@@ -358,7 +349,7 @@ bool ALCBossEoduksini::RequestAttack()
         return true;
     }
 
-    // (2) 일반 공격 (광폭화 시 쿨다운 단축)
+    // (2) 일반 공격
     float CurrentNormalCooldown = bIsBerserk ? NormalAttackCooldown_Berserk : NormalAttackCooldown;
     if (NormalAttackMontage &&
         (Now - LastNormalTime) >= CurrentNormalCooldown)
@@ -375,18 +366,13 @@ void ALCBossEoduksini::PlayNormalWithRage()
 {
     if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
     {
-        // 1) 바인딩을 추가하기 전에, 이미 등록된 중복 바인딩을 모두 제거
         Anim->OnMontageEnded.RemoveDynamic(this, &ALCBossEoduksini::OnAttackMontageEnded);
-
-        // 2) 몽타주 재생
         float PlayRate = bIsBerserk ? BerserkPlayRateMultiplier : 1.0f;
         Anim->Montage_Play(NormalAttackMontage, PlayRate);
-
-        // 3) 재생이 시작된 몽타주가 끝날 때를 위해 델리게이트 바인딩
         Anim->OnMontageEnded.AddDynamic(this, &ALCBossEoduksini::OnAttackMontageEnded);
     }
 
-    // 기본 Rage 증가
+    // Rage 증가
     Rage = FMath::Clamp(Rage + RageGain_Normal, 0.f, MaxRage);
 }
 
@@ -394,20 +380,15 @@ void ALCBossEoduksini::PlayStrongWithRage()
 {
     if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
     {
-        // 1) 이전에 바인딩됐던 델리게이트 제거
         Anim->OnMontageEnded.RemoveDynamic(this, &ALCBossEoduksini::OnAttackMontageEnded);
-
-        // 2) 몽타주 재생
         float PlayRate = bIsBerserk ? BerserkPlayRateMultiplier : 1.0f;
         Anim->Montage_Play(StrongAttackMontage, PlayRate);
-
-        // 3) 몽타주 종료 콜백 바인딩
         Anim->OnMontageEnded.AddDynamic(this, &ALCBossEoduksini::OnAttackMontageEnded);
     }
 
-    // 광폭화 시 소비량을 줄여 자주 쓸 수 있게
-    float ConsumedRage = bIsBerserk ? RageLoss_Strong * 0.8f : RageLoss_Strong;
-    Rage = FMath::Clamp(Rage - ConsumedRage, 0.f, MaxRage);
+    // Rage 소모
+    float Consumed = bIsBerserk ? RageLoss_Strong * 0.8f : RageLoss_Strong;
+    Rage = FMath::Clamp(Rage - Consumed, 0.f, MaxRage);
 }
 
 void ALCBossEoduksini::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

@@ -143,84 +143,78 @@ void ABaseBossMonsterCharacter::Multicast_EndBerserk_Implementation()
 
 void ABaseBossMonsterCharacter::SpawnRandomClue()
 {
-    // (A) 남은 단서가 아무것도 없으면 더 이상 스폰하지 않음
+    // (A) 남은 단서가 없으면 종료
     if (RemainingClueClasses.Num() == 0)
     {
         UE_LOG(LogTemp, Warning, TEXT("[SpawnRandomClue] 남은 단서 없음 → 스폰 종료"));
         return;
     }
 
-    // (B) RemainingClueClasses에서 랜덤으로 하나 선택
+    // (B) 랜덤 클래스 선택
     int32 Index = FMath::RandRange(0, RemainingClueClasses.Num() - 1);
-    TSubclassOf<AActor> ChosenClass = RemainingClueClasses[Index];
-    if (!ChosenClass)
+    TSubclassOf<AActor> ClueClass = RemainingClueClasses[Index];
+    if (!ClueClass)
     {
-        UE_LOG(LogTemp, Warning, TEXT("[SpawnRandomClue] 선택된 Clue 클래스가 유효하지 않음: Index=%d"), Index);
-
-        // 선택된 항목이 null이면 목록에서 제거만 하고 다음 스폰 예약
         RemainingClueClasses.RemoveAt(Index);
+        return;
+    }
+
+    // (C) 보스 기준 X/Y 랜덤 오프셋
+    const float OffsetF = FMath::RandRange(-200.f, 200.f);
+    const float OffsetR = FMath::RandRange(-200.f, 200.f);
+    FVector BossLoc = GetActorLocation();
+    FVector SpawnXY = BossLoc
+        + GetActorForwardVector() * OffsetF
+        + GetActorRightVector() * OffsetR;
+
+    UWorld* World = GetWorld();
+    if (!World) return;
+
+    // (D) 바닥 레이캐스트 ↓
+    FHitResult Hit;
+    FVector TraceStart = SpawnXY + FVector(0.f, 0.f, 500.f);
+    FVector TraceEnd = SpawnXY + FVector(0.f, 0.f, -1000.f);
+    FCollisionQueryParams Params(NAME_None, false, this);
+
+    float SpawnZ = BossLoc.Z; // fallback
+    if (World->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Visibility, Params))
+    {
+        SpawnZ = Hit.Location.Z;
     }
     else
     {
-        // (C) 보스 주변에 랜덤 오프셋 계산
-        FVector BossLoc = GetActorLocation();
-        FVector Forward = GetActorForwardVector();
-        FVector Right = GetActorRightVector();
-        FVector Up = FVector::UpVector;
-
-        const float OffsetForward = FMath::RandRange(-50.f, 50.f);
-        const float OffsetRight = FMath::RandRange(-100.f, 100.f);
-        const float OffsetUp = FMath::RandRange(-20.f, 20.f);
-
-        FVector SpawnLoc = BossLoc
-            + Forward * OffsetForward
-            + Right * OffsetRight
-            + Up * OffsetUp;
-        FRotator SpawnRot = GetActorRotation();
-
-        // (D) 스폰 파라미터
-        FActorSpawnParameters SpawnParams;
-        SpawnParams.Owner = this;
-        SpawnParams.Instigator = GetInstigator();
-        SpawnParams.SpawnCollisionHandlingOverride =
-            ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-        // (E) 실제 액터 스폰
-        AActor* NewClue = GetWorld()->SpawnActor<AActor>(
-            ChosenClass, SpawnLoc, SpawnRot, SpawnParams);
-
-        if (NewClue)
-        {
-            UE_LOG(LogTemp, Log,
-                TEXT("[SpawnRandomClue] %s 을(를) 인덱스 %d 로 스폰 성공 (위치=%s)"),
-                *NewClue->GetName(),
-                Index,
-                *SpawnLoc.ToCompactString());
-        }
-        else
-        {
-            UE_LOG(LogTemp, Error,
-                TEXT("[SpawnRandomClue] 스폰 실패: 클래스=%s, 인덱스=%d, 위치=%s"),
-                *GetNameSafe(ChosenClass),
-                Index,
-                *SpawnLoc.ToCompactString());
-        }
-
-        // (F) 방금 스폰한 클래스는 “다시 스폰하지 않도록” 목록에서 제거
-        RemainingClueClasses.RemoveAt(Index);
+        UE_LOG(LogTemp, Warning, TEXT("[SpawnRandomClue] 바닥 레이캐스트 실패 → 기본 Z 사용: %f"), SpawnZ);
     }
 
-    // (G) 다음 스폰 예약: 아직 남은 단서가 있으면 랜덤 간격으로 재호출
+    FVector SpawnLoc = FVector(SpawnXY.X, SpawnXY.Y, SpawnZ);
+    FRotator SpawnRot = GetActorRotation();
+
+    // (E) 스폰 파라미터
+    FActorSpawnParameters SpawnParams;
+    SpawnParams.Owner = this;
+    SpawnParams.Instigator = GetInstigator();
+    SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+    // (F) 액터 스폰
+    AActor* NewClue = World->SpawnActor<AActor>(ClueClass, SpawnLoc, SpawnRot, SpawnParams);
+    if (NewClue)
+    {
+        UE_LOG(LogTemp, Log, TEXT("[SpawnRandomClue] Spawn 성공: %s at %s"),
+            *NewClue->GetName(), *SpawnLoc.ToCompactString());
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("[SpawnRandomClue] Spawn 실패: %s"), *GetNameSafe(ClueClass));
+    }
+
+    // (G) 목록에서 제거하고 다음 예약
+    RemainingClueClasses.RemoveAt(Index);
     if (RemainingClueClasses.Num() > 0)
     {
-        float NextDelay = FMath::RandRange(ClueSpawnIntervalMin, ClueSpawnIntervalMax);
-        GetWorldTimerManager().SetTimer(
-            ClueTimerHandle,
-            this,
+        float Delay = FMath::RandRange(ClueSpawnIntervalMin, ClueSpawnIntervalMax);
+        GetWorldTimerManager().SetTimer(ClueTimerHandle, this,
             &ABaseBossMonsterCharacter::SpawnRandomClue,
-            NextDelay,
-            false
-        );
+            Delay, false);
     }
 }
 

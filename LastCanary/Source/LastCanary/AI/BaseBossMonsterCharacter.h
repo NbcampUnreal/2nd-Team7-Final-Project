@@ -108,11 +108,11 @@ protected:
     /** ── 단서(Clue) 관련 멤버들 ── */
 
 /** 단서를 남길 최소/최대 간격 (초) */
-    UPROPERTY(EditAnywhere, Category = "Clue", meta = (ClampMin = "1.0", ClampMax = "30.0"))
-    float ClueSpawnIntervalMin = 5.0f;
+    UPROPERTY(EditAnywhere, Category = "Clue", meta = (ClampMin = "1.0", ClampMax = "60.0"))
+    float ClueSpawnIntervalMin = 120.0f;
 
-    UPROPERTY(EditAnywhere, Category = "Clue", meta = (ClampMin = "1.0", ClampMax = "30.0"))
-    float ClueSpawnIntervalMax = 12.0f;
+    UPROPERTY(EditAnywhere, Category = "Clue", meta = (ClampMin = "1.0", ClampMax = "300.0"))
+    float ClueSpawnIntervalMax = 180.0f;
 
     /** 단서로 스폰할 액터 클래스들을 배열로 선언 */
     UPROPERTY(EditAnywhere, Category = "Clue", meta = (EditFixedOrder))
@@ -128,10 +128,10 @@ protected:
     /** 실제 단서를 스폰하는 함수 */
     void SpawnRandomClue();
 
+    /** 범위 내 플레이어에게 대미지 적용 */
+    void DealDamageInRange(float DamageAmount);
+
     // Replication 설정
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-private:
-    /** 범위 내 플레이어에게 대미지 적용 */
-    void DealDamageInRange(float DamageAmount);
 };
