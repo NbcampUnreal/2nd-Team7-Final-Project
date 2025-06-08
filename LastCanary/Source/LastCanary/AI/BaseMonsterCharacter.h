@@ -153,7 +153,7 @@ protected:
     UAIPerceptionComponent* AIPerceptionComponent;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Combat")
-    int32 MaxHP;
+    float MaxHP;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Combat")
     float AttackDamage;
@@ -196,4 +196,7 @@ public:
     FGameplayTagContainer GameplayTags;
 
     virtual void GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) const override;
+
+    /** 스캐너를 위한 스텐실 설정 */
+    void EnableStencilForAllMeshes(int32 StencilValue);
 };

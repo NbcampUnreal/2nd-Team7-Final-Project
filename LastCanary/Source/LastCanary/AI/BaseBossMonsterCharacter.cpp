@@ -229,7 +229,7 @@ void ABaseBossMonsterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimePrope
     DOREPLIFETIME(ABaseBossMonsterCharacter, bIsBerserk);
 }
 
-void ABaseBossMonsterCharacter::DealDamageInRange(float DamageAmount)
+    void ABaseBossMonsterCharacter::DealDamageInRange(float DamageAmount)
 {
     FVector Origin = GetActorLocation();
     float Radius = AttackRange;
@@ -266,5 +266,17 @@ void ABaseBossMonsterCharacter::DealDamageInRange(float DamageAmount)
                 );
             }
         }
+    }
+}
+
+void ABaseBossMonsterCharacter::EnableStencilForAllMeshes(int32 StencilValue)
+{
+    TArray<UMeshComponent*> MeshComponents;
+    GetComponents<UMeshComponent>(MeshComponents);
+
+    for (UMeshComponent* MeshComp : MeshComponents)
+    {
+        MeshComp->SetRenderCustomDepth(true);
+        MeshComp->SetCustomDepthStencilValue(StencilValue);
     }
 }

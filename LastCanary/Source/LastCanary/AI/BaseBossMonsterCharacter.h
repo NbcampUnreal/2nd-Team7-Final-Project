@@ -131,7 +131,9 @@ protected:
     /** 범위 내 플레이어에게 대미지 적용 */
     void DealDamageInRange(float DamageAmount);
 
+    /** 스캐너를 위한 스텐실 설정 */
+    void EnableStencilForAllMeshes(int32 StencilValue);
+
     // Replication 설정
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
 };
