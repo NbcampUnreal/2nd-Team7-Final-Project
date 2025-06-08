@@ -34,12 +34,15 @@ void UChecklistWidget::InitWithQuestions(const TArray<FChecklistQuestion>& InQue
 
 	if (QuestionScrollBox == nullptr)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("QuestionEntryClass Is NULL"));
 		return;
 	}
 	if (QuestionEntryClass == nullptr)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("QuestionEntryClass Is NULL"));
 		return;
 	}
+	
 
 	QuestionScrollBox->ClearChildren();
 	CurrentRevealIndex = 0;

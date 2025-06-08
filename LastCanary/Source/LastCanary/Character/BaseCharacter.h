@@ -300,6 +300,10 @@ public:
 
 	void CancelInteraction();
 
+	UFUNCTION(Server, Unreliable)
+	void Server_CancelInteraction();
+	void Server_CancelInteraction_Implementation();
+
 	//Check Player Focus Everytime
 public:
 	/*About Interact*/
@@ -317,6 +321,8 @@ public:
 
 	void InteractAfterPlayMontage(AActor* TargetActor);
 	void OnInteractAnimComplete(UAnimMontage* CompletedMontage, bool bInterrupted);
+
+	void OnNotified();
 
 	UPROPERTY()
 	AActor* InteractTargetActor;

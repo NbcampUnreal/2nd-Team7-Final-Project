@@ -30,6 +30,7 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "Components/ArrowComponent.h"
 #include "../Plugins/ALS-Refactored-4.15/Source/ALS/Public/AlsAnimationInstance.h"
+#include "Character/BaseCharacterAnimNotify.h"
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -70,7 +71,7 @@ ABaseCharacter::ABaseCharacter()
 
 	SpectatorCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("SpectatorCamera"));
 	SpectatorCamera->SetupAttachment(SpectatorSpringArm);  // SpringArm에 카메라 부착
-	
+
 	// 캐릭터 클래스의 생성자 함수 내부 
 	FieldOfView = Camera->FieldOfView;
 
@@ -372,15 +373,12 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 			StartStaminaRecoverAfterDelay();
 			return;
 		}
-		bIsSprinting = true;
 		FootSoundModifier = MyPlayerState->SprintingFootSoundModifier;
-		SetDesiredAiming(false);
-		SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+
 		//달리기 시작하면서 스테미나 소모 시작
 		StartStaminaDrain();
 		StopStaminaRecovery();
 		StopStaminaRecoverAfterDelay();
-		SetDesiredGait(ActionValue.Get<bool>() ? AlsGaitTags::Sprinting : AlsGaitTags::Running);
 	}
 	else if (MyPlayerState->SprintInputMode == EInputMode::Toggle)
 	{
@@ -396,25 +394,25 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 			}
 			else if (GetDesiredGait() == AlsGaitTags::Running)
 			{
-				bIsSprinting = true;
+				//bIsSprinting = true;
 				FootSoundModifier = MyPlayerState->SprintingFootSoundModifier;
-				SetDesiredAiming(false);
+				//SetDesiredAiming(false);
 				SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 				StopStaminaRecovery();
 				StopStaminaRecoverAfterDelay();
 				StartStaminaDrain();
-				SetDesiredGait(AlsGaitTags::Sprinting);
+				//SetDesiredGait(AlsGaitTags::Sprinting);
 			}
 			else
 			{
-				bIsSprinting = true;
+				//bIsSprinting = true;
 				FootSoundModifier = MyPlayerState->SprintingFootSoundModifier;
-				SetDesiredAiming(false);
+				//SetDesiredAiming(false);
 				SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 				StopStaminaRecovery();
 				StopStaminaRecoverAfterDelay();
 				StartStaminaDrain();
-				SetDesiredGait(AlsGaitTags::Sprinting);
+				//SetDesiredGait(AlsGaitTags::Sprinting);
 			}
 		}
 	}
@@ -439,7 +437,7 @@ void ABaseCharacter::Handle_Walk(const FInputActionValue& ActionValue)
 
 	if (MyPlayerState->WalkInputMode == EInputMode::Hold)
 	{
-		if(Value > 0.5f)
+		if (Value > 0.5f)
 		{
 			FootSoundModifier = MyPlayerState->WalkingFootSoundModifier;
 			SetDesiredGait(AlsGaitTags::Walking);
@@ -517,7 +515,7 @@ void ABaseCharacter::Handle_Crouch(const FInputActionValue& ActionValue)
 		}
 	}
 
-	
+
 }
 
 void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
@@ -539,6 +537,8 @@ void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
 		}
 		if (StartMantlingGrounded())
 		{
+			SetDesiredAiming(false);
+			SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 			return;
 		}
 		if (GetStance() == AlsStanceTags::Crouching)
@@ -606,7 +606,7 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 	{
 		return;
 	}
-	if (bIsSprinting)
+	if (bIsMantling)
 	{
 		return;
 	}
@@ -626,7 +626,7 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 
 				if (ActionValue.Get<float>() > 0.5f && bIsCloseToWall == false)
 				{
-					UE_LOG(LogTemp, Warning, TEXT("Scope on"));
+					//UE_LOG(LogTemp, Warning, TEXT("Scope on"));
 					CancelInteraction();
 					SpringArm->AttachToComponent(RifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
 					//ToADSCamera(true);
@@ -634,7 +634,7 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 				}
 				else
 				{
-					UE_LOG(LogTemp, Warning, TEXT("Scope out"));
+					//UE_LOG(LogTemp, Warning, TEXT("Scope out"));
 					SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 					//ToADSCamera(false);
 					return;
@@ -763,14 +763,18 @@ void ABaseCharacter::ConsumeStamina()
 		return;
 	}
 	float CurrentPlayerSpeed = GetPlayerMovementSpeed();
-	if (FrontInput < 0.05f)
+	if (FrontInput < 0.1f)
 	{
 		bIsSprinting = false;
-		SetDesiredAiming(false);
+		SetDesiredGait(AlsGaitTags::Running);
 		//일단 회복 시키기는 해
 		StartStaminaRecoverAfterDelay();
 		return;
-	}	
+	}
+	bIsSprinting = true;
+	SetDesiredAiming(false);
+	SetDesiredGait(AlsGaitTags::Sprinting);
+	SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 	StopStaminaRecovery();
 	StopStaminaRecoverAfterDelay();
 	StartStaminaRecoverAfterDelayOnJump();
@@ -782,6 +786,7 @@ void ABaseCharacter::ConsumeStamina()
 	{
 		MyPlayerState->SetPlayerMovementState(ECharacterMovementState::Exhausted);
 		bIsSprinting = false;
+		SetDesiredAiming(true);
 		SetDesiredGait(AlsGaitTags::Running);
 		StopStaminaDrain();
 		StartStaminaRecoverAfterDelay();
@@ -1117,14 +1122,19 @@ void ABaseCharacter::Handle_Interact()
 
 	if (CurrentFocusedActor->Implements<UInteractableInterface>())
 	{
+		AActor* actor = CurrentFocusedActor;
+		if (!IsValid(actor))
+		{
+			return;
+		}
 		APlayerController* PC = Cast<APlayerController>(GetController());
 		if (PC)
 		{
 			CancelInteraction();
 			//IInteractableInterface::Execute_Interact(CurrentFocusedActor, PC);
-			UE_LOG(LogTemp, Log, TEXT("Handle_Interact: Called Interact on %s"), *CurrentFocusedActor->GetName());
+			UE_LOG(LogTemp, Log, TEXT("Handle_Interact: Called Interact on %s"), *actor->GetName());
 			UE_LOG(LogTemp, Log, TEXT("Equipped item on slot"));
-			InteractAfterPlayMontage(CurrentFocusedActor);
+			InteractAfterPlayMontage(actor);
 		}
 		else
 		{
@@ -1141,7 +1151,7 @@ void ABaseCharacter::Handle_Interact()
 
 void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 {
-	UAnimMontage* MontageToPlay;
+	UAnimMontage* MontageToPlay = nullptr;
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (!IsValid(AnimInstance))
 	{
@@ -1151,17 +1161,37 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 	//아이템이면 ... 
 	//줍기 모션
 
-	/*
-	if(Target->Tags.Contains("Gimmick"))
-	{
 
+	if (InteractTargetActor->Tags.Contains("Gimmick"))
+	{
+		MontageToPlay = OpeningValveMontage;
 	}
-	*/
+	else if (InteractTargetActor->Tags.Contains("Kick"))
+	{
+		MontageToPlay = KickMontage;
+	}
+	else
+	{
+		APlayerController* PC = Cast<APlayerController>(GetController());
+		if (PC)
+		{
+			if (!IsValid(InteractTargetActor))
+			{
+				return;
+			}
+			UE_LOG(LogTemp, Warning, TEXT("excute interact"));
+			IInteractableInterface::Execute_Interact(InteractTargetActor, PC);
+			//		InteractTargetActor = nullptr;
+		}
+		//MontageToPlay = InteractMontageOnUnderObject;
+	}
+
 	// 기믹이면
 	// 해당 기믹에 맞는 모션
 
-	MontageToPlay = InteractMontageOnUnderObject;
+	//MontageToPlay = InteractMontageOnUnderObject;
 	CurrentInteractMontage = MontageToPlay;
+	Server_PlayMontage(MontageToPlay);
 	float Duration = AnimInstance->Montage_Play(MontageToPlay, 1.0f);
 	if (Duration > 0.f)
 	{
@@ -1172,12 +1202,12 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 	}
 }
 
-void ABaseCharacter::OnInteractAnimComplete(UAnimMontage* CompletedMontage ,bool bInterrupted)
+void ABaseCharacter::OnInteractAnimComplete(UAnimMontage* CompletedMontage, bool bInterrupted)
 {
 	if (bInterrupted)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("애니메이션 진행이 중단되었습니다."));
-		InteractTargetActor = nullptr;
+		//		InteractTargetActor = nullptr;
 		CurrentInteractMontage = nullptr;
 		return;
 	}
@@ -1186,9 +1216,13 @@ void ABaseCharacter::OnInteractAnimComplete(UAnimMontage* CompletedMontage ,bool
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (PC)
 	{
+		if (!IsValid(InteractTargetActor))
+		{
+			return;
+		}
+		UE_LOG(LogTemp, Warning, TEXT("excute interact"));
 		IInteractableInterface::Execute_Interact(InteractTargetActor, PC);
-		InteractTargetActor = nullptr;
-		CurrentInteractMontage = nullptr;
+		//		InteractTargetActor = nullptr;
 	}
 }
 
@@ -1198,10 +1232,71 @@ void ABaseCharacter::CancelInteraction()
 	if (AnimInstance && CurrentInteractMontage)
 	{
 		AnimInstance->Montage_Stop(0.2f, CurrentInteractMontage); // 부드럽게 블렌드 아웃
-		CurrentInteractMontage = nullptr;
+		Server_CancelInteraction();
 	}
 }
 
+void ABaseCharacter::Server_CancelInteraction_Implementation()
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && CurrentInteractMontage)
+	{
+		AnimInstance->Montage_Stop(0.2f, CurrentInteractMontage); // 부드럽게 블렌드 아웃
+	}
+}
+
+void ABaseCharacter::OnNotified()
+{
+	//재생 후 notify로
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!IsValid(PC))
+	{
+		return;
+	}
+	if (!IsValid(InteractTargetActor))
+	{
+		return;
+	}
+	IInteractableInterface::Execute_Interact(InteractTargetActor, PC);
+	//		InteractTargetActor = nullptr;
+}
+
+
+void ABaseCharacter::PlayInteractionMontage(AActor* Target)
+{
+	UAnimMontage* MontageToPlay;
+	//TODO: 게임 플레이 태그 비교
+	//if(Target->GetGamePlayTag)
+
+
+
+	/*
+	if(Target->Tags.Contains("Gimmick"))
+	{
+
+	}
+	*/
+	MontageToPlay = InteractMontageOnUnderObject;
+	if (!IsValid(MontageToPlay))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Anim Montage does not exist."));
+		return;
+	}
+	UE_LOG(LogTemp, Warning, TEXT("Anim Montage"));
+	Server_PlayMontage(MontageToPlay);
+}
+
+void ABaseCharacter::Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay)
+{
+	Multicast_PlayMontage(MontageToPlay);
+}
+
+void ABaseCharacter::Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay)
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	AnimInstance->Montage_Play(MontageToPlay);
+	CurrentInteractMontage = MontageToPlay;
+}
 
 void ABaseCharacter::PickupItem()
 {
@@ -1214,14 +1309,12 @@ void ABaseCharacter::PickupItem()
 
 void ABaseCharacter::TraceInteractableActor()
 {
-
-	SetDesiredAiming(true);
-	SetRotationMode(AlsRotationModeTags::Aiming);
 	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
-
+	SetDesiredAiming(true);
+	SetRotationMode(AlsRotationModeTags::Aiming);
 	if (!IsLocallyControlled())
 	{
 		return;
@@ -1256,8 +1349,8 @@ void ABaseCharacter::TraceInteractableActor()
 	Params.AddIgnoredActor(this);
 
 	bool bHit = GetWorld()->LineTraceSingleByChannel(
-		Hit, Start, End, ECC_GameTraceChannel1, Params);
-	
+		Hit, Start, End, ECC_Visibility, Params);
+
 	if (bHit)
 	{
 		float DistanceToHit = Hit.Distance;
@@ -1274,7 +1367,7 @@ void ABaseCharacter::TraceInteractableActor()
 	{
 		bIsCloseToWall = false;
 	}
-	
+
 
 	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 0.1f);
 	//여기가 로그가 안찍힘 수정해야됨
@@ -1339,10 +1432,11 @@ void ABaseCharacter::TraceInteractableActor()
 		}
 	}
 }
+
 void ABaseCharacter::UpdateGunWallClipOffset(float DeltaTime)
 {
 	// 1. 총을 들고 있는 상태인지 확인 (OverlayState or 커스텀 상태)
-	
+
 	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
 	if (!IsValid(EquippedItem))
 	{
@@ -1364,7 +1458,7 @@ void ABaseCharacter::UpdateGunWallClipOffset(float DeltaTime)
 	{
 		return;
 	}
-	
+
 	USkeletalMeshComponent* RifleMesh = RifleItem->GetSkeletalMeshComponent();
 	if (!IsValid(RifleMesh))
 	{
@@ -1618,6 +1712,10 @@ float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageE
 	{
 		return 0;
 	}
+	if (MyPlayerState->bInfiniteHP == true)
+	{
+		return 0;
+	}
 	float FinalDamage = CalculateTakeDamage(DamageAmount);
 	float CurrentHP = MyPlayerState->GetHP();
 	float MaxHP = MyPlayerState->MaxHP;
@@ -1647,7 +1745,7 @@ void ABaseCharacter::GetFallDamage(float Velocity)
 	{
 		return;
 	}
-	
+
 	float FinalDamage = CalculateFallDamage(Velocity);
 	float CurrentHP = MyPlayerState->GetHP();
 	float MaxHP = MyPlayerState->MaxHP;
@@ -1720,10 +1818,8 @@ void ABaseCharacter::EscapeThroughGate()
 	{
 		return;
 	}
-
-	UE_LOG(LogTemp, Log, TEXT("Character EscapeThroughGate"));
-	PC->OnPlayerExitActivePlay();
 	Multicast_SetPlayerInGameStateOnEscapeGate();
+	PC->OnPlayerExitActivePlay();
 }
 
 void ABaseCharacter::Multicast_SetPlayerInGameStateOnEscapeGate_Implementation()
@@ -1731,6 +1827,7 @@ void ABaseCharacter::Multicast_SetPlayerInGameStateOnEscapeGate_Implementation()
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
 	{
+		UE_LOG(LogTemp, Log, TEXT("PlayerState Isn`t Valid"));
 		return;
 	}
 	MyPlayerState->CurrentState = EPlayerState::Escape;
@@ -1809,13 +1906,13 @@ void ABaseCharacter::SetMovementSetting()
 	{
 		return;
 	}
-	
+
 	TArray<float> CalculatedSpeedArray = CalculateMovementSpeedWithWeigth();
 	if (CalculatedSpeedArray.Num() < 5)
 	{
 		return;
 	}
-	
+
 	//스테이트에 바뀐 값 저장
 	MyPlayerState->WalkSpeed = CalculatedSpeedArray[0];
 	MyPlayerState->RunSpeed = CalculatedSpeedArray[1];
@@ -1825,7 +1922,7 @@ void ABaseCharacter::SetMovementSetting()
 
 	AlsCharacterMovement->SetGaitSettings(CalculatedSpeedArray[0], CalculatedSpeedArray[0], CalculatedSpeedArray[1], CalculatedSpeedArray[1], CalculatedSpeedArray[2], CalculatedSpeedArray[3]);
 	AlsCharacterMovement->JumpZVelocity = CalculatedSpeedArray[4];
-	
+
 }
 
 TArray<float> ABaseCharacter::CalculateMovementSpeedWithWeigth()
@@ -1903,7 +2000,7 @@ void ABaseCharacter::RefreshOverlayObject(int index)
 		SetOverlayMode(AlsOverlayModeTags::PistolOneHanded);
 		RefreshOverlayLinkedAnimationLayer(1);
 		//AttachOverlayObject(FlashLightMesh, NULL, NULL, "Torch", true);
-		return; 
+		return;
 	}
 	//아이템은 있는데 매치가 아무것도 안되면
 	UE_LOG(LogTemp, Warning, TEXT("Equipped Item is Valid but doesn`t match any tag"));
@@ -1997,41 +2094,6 @@ void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(int index)
 	}
 }
 
-
-void ABaseCharacter::PlayInteractionMontage(AActor* Target)
-{
-	UAnimMontage* MontageToPlay;
-	//TODO: 게임 플레이 태그 비교
-	//if(Target->GetGamePlayTag)
-		
-	
-	
-	/*
-	if(Target->Tags.Contains("Gimmick"))
-	{
-		
-	}
-	*/
-	MontageToPlay = InteractMontageOnUnderObject;
-	if (!IsValid(MontageToPlay))
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Anim Montage does not exist."));
-		return;
-	}
-	UE_LOG(LogTemp, Warning, TEXT("Anim Montage"));
-	Server_PlayMontage(MontageToPlay);
-}
-
-void ABaseCharacter::Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay)
-{
-	Multicast_PlayMontage(MontageToPlay);
-}
-
-void ABaseCharacter::Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay)
-{
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	AnimInstance->Montage_Play(MontageToPlay);
-}
 
 UToolbarInventoryComponent* ABaseCharacter::GetToolbarInventoryComponent() const
 {
@@ -2177,6 +2239,12 @@ bool ABaseCharacter::UseEquippedItem()
 		return false;
 	}
 
+	if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Backpack")))
+	{
+		ToggleInventory();
+	}
+
+
 	if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))
 	{
 		ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
@@ -2184,7 +2252,7 @@ bool ABaseCharacter::UseEquippedItem()
 		{
 			PC->SpawnDrone();
 			//현재 들고 있는 인벤토리에서 제거하기
-			
+
 			ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].ItemRowName = "Default";
 			ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].Quantity = 1;
 			ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].Durability = 100;
