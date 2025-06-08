@@ -41,11 +41,7 @@ void ALCBossEoduksini::BeginPlay()
     // 시작 스케일 적용
     SetActorScale3D(FVector(CurScale));
 
-    // 1) ClueClasses 내용을 RemainingClueClasses로 복사
-    RemainingClueClasses = ClueClasses;
-
-    // 2) 남은 단서가 있을 때만 타이머 시작
-    if (HasAuthority() && RemainingClueClasses.Num() > 0)
+    if (HasAuthority())
     {
         const float InitialDelay = FMath::RandRange(ClueSpawnIntervalMin, ClueSpawnIntervalMax);
         GetWorldTimerManager().SetTimer(
@@ -168,6 +164,98 @@ void ALCBossEoduksini::OnDarknessSphereEndOverlap(
     );
 
     DarkenedPlayers.Remove(PC);
+}
+
+void ALCBossEoduksini::SpawnRandomClue()
+{
+    // 1) ClueClasses가 하나라도 등록되어 있는지 확인
+    if (ClueClasses.Num() == 0)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[SpawnRandomClue] ClueClasses 배열이 비어있음"));
+        // 다음 스폰 예약만 설정 후 리턴
+        float NextDelay = FMath::RandRange(ClueSpawnIntervalMin, ClueSpawnIntervalMax);
+        GetWorldTimerManager().SetTimer(
+            ClueTimerHandle,
+            this,
+            &ALCBossEoduksini::SpawnRandomClue,
+            NextDelay,
+            false
+        );
+        return;
+    }
+
+    // 2) 배열 인덱스를 랜덤하게 뽑아서 스폰할 클래스 선택
+    int32 Index = FMath::RandRange(0, ClueClasses.Num() - 1);
+    TSubclassOf<AActor> ChosenClass = ClueClasses[Index];
+    if (!ChosenClass)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[SpawnRandomClue] 선택된 Clue 클래스가 유효하지 않음: Index=%d"), Index);
+        // 다음 스폰 예약만 설정 후 리턴
+        float NextDelay = FMath::RandRange(ClueSpawnIntervalMin, ClueSpawnIntervalMax);
+        GetWorldTimerManager().SetTimer(
+            ClueTimerHandle,
+            this,
+            &ALCBossEoduksini::SpawnRandomClue,
+            NextDelay,
+            false
+        );
+        return;
+    }
+
+    // 3) 스폰 위치를 보스 주변에 랜덤 오프셋
+    FVector BossLoc = GetActorLocation();
+    FVector Forward = GetActorForwardVector();
+    FVector Right = GetActorRightVector();
+    FVector Up = FVector::UpVector;
+
+    float OffsetForward = FMath::RandRange(-50.f, 50.f);
+    float OffsetRight = FMath::RandRange(-100.f, 100.f);
+    float OffsetUp = FMath::RandRange(-20.f, 20.f);
+
+    FVector SpawnLoc = BossLoc
+        + Forward * OffsetForward
+        + Right * OffsetRight
+        + Up * OffsetUp;
+    FRotator SpawnRot = GetActorRotation();
+
+    // 4) 스폰 파라미터 설정
+    FActorSpawnParameters SpawnParams;
+    SpawnParams.Owner = this;
+    SpawnParams.Instigator = GetInstigator();
+    SpawnParams.SpawnCollisionHandlingOverride =
+        ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+    // 5) 실제 액터 스폰 시도
+    AActor* NewClue = GetWorld()->SpawnActor<AActor>(
+        ChosenClass, SpawnLoc, SpawnRot, SpawnParams);
+
+    if (NewClue)
+    {
+        UE_LOG(LogTemp, Log,
+            TEXT("[SpawnRandomClue] %s 을(를) 인덱스 %d 로 스폰 성공 (위치=%s)"),
+            *NewClue->GetName(),
+            Index,
+            *SpawnLoc.ToCompactString());
+        SpawnedClues.Add(NewClue);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error,
+            TEXT("[SpawnRandomClue] 스폰 실패: 클래스=%s, 인덱스=%d, 위치=%s"),
+            *GetNameSafe(ChosenClass),
+            Index,
+            *SpawnLoc.ToCompactString());
+    }
+
+    // 6) 다음 단서 스폰 예약
+    float NextDelay = FMath::RandRange(ClueSpawnIntervalMin, ClueSpawnIntervalMax);
+    GetWorldTimerManager().SetTimer(
+        ClueTimerHandle,
+        this,
+        &ALCBossEoduksini::SpawnRandomClue,
+        NextDelay,
+        false
+    );
 }
 
 bool ALCBossEoduksini::IsLookedAtByAnyPlayer() const
@@ -335,13 +423,22 @@ bool ALCBossEoduksini::RequestAttack()
     const float Now = GetWorld()->GetTimeSeconds();
     const float RagePct = Rage / MaxRage;
 
-    float CurrentStrongCooldown = bIsBerserk ? StrongAttackCooldown_Berserk : StrongAttackCooldown;
-    float CurrentStrongChance = bIsBerserk ? StrongAttackChance_Berserk : StrongAttackChance;
+    bool bStrongOK = false;
+    float CurrentStrongCooldown = StrongAttackCooldown;
+    float CurrentStrongChance = StrongAttackChance;
+
+    // 광폭화라면 쿨다운 짧게, 확률 높게, RagePct 제한을 해제
+    if (bIsBerserk)
+    {
+        CurrentStrongCooldown = StrongAttackCooldown_Berserk;
+        CurrentStrongChance = StrongAttackChance_Berserk;
+    }
 
     // (1) 강공격 우선
     if (StrongAttackMontage &&
         FMath::FRand() < CurrentStrongChance &&
         (Now - LastStrongTime) >= CurrentStrongCooldown &&
+        // 광폭화가 아니라면 기존 RagePct 조건 적용
         (bIsBerserk || RagePct >= (DarknessRage / MaxRage)))
     {
         LastStrongTime = Now;
@@ -349,7 +446,7 @@ bool ALCBossEoduksini::RequestAttack()
         return true;
     }
 
-    // (2) 일반 공격
+    // (2) 일반 공격 (광폭화 시 쿨다운 단축)
     float CurrentNormalCooldown = bIsBerserk ? NormalAttackCooldown_Berserk : NormalAttackCooldown;
     if (NormalAttackMontage &&
         (Now - LastNormalTime) >= CurrentNormalCooldown)
@@ -366,13 +463,18 @@ void ALCBossEoduksini::PlayNormalWithRage()
 {
     if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
     {
+        // 1) 바인딩을 추가하기 전에, 이미 등록된 중복 바인딩을 모두 제거
         Anim->OnMontageEnded.RemoveDynamic(this, &ALCBossEoduksini::OnAttackMontageEnded);
+
+        // 2) 몽타주 재생
         float PlayRate = bIsBerserk ? BerserkPlayRateMultiplier : 1.0f;
         Anim->Montage_Play(NormalAttackMontage, PlayRate);
+
+        // 3) 재생이 시작된 몽타주가 끝날 때를 위해 델리게이트 바인딩
         Anim->OnMontageEnded.AddDynamic(this, &ALCBossEoduksini::OnAttackMontageEnded);
     }
 
-    // Rage 증가
+    // 기본 Rage 증가
     Rage = FMath::Clamp(Rage + RageGain_Normal, 0.f, MaxRage);
 }
 
@@ -380,15 +482,20 @@ void ALCBossEoduksini::PlayStrongWithRage()
 {
     if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
     {
+        // 1) 이전에 바인딩됐던 델리게이트 제거
         Anim->OnMontageEnded.RemoveDynamic(this, &ALCBossEoduksini::OnAttackMontageEnded);
+
+        // 2) 몽타주 재생
         float PlayRate = bIsBerserk ? BerserkPlayRateMultiplier : 1.0f;
         Anim->Montage_Play(StrongAttackMontage, PlayRate);
+
+        // 3) 몽타주 종료 콜백 바인딩
         Anim->OnMontageEnded.AddDynamic(this, &ALCBossEoduksini::OnAttackMontageEnded);
     }
 
-    // Rage 소모
-    float Consumed = bIsBerserk ? RageLoss_Strong * 0.8f : RageLoss_Strong;
-    Rage = FMath::Clamp(Rage - Consumed, 0.f, MaxRage);
+    // 광폭화 시 소비량을 줄여 자주 쓸 수 있게
+    float ConsumedRage = bIsBerserk ? RageLoss_Strong * 0.8f : RageLoss_Strong;
+    Rage = FMath::Clamp(Rage - ConsumedRage, 0.f, MaxRage);
 }
 
 void ALCBossEoduksini::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

@@ -14,7 +14,7 @@ void ALCDronePath::BeginPlay()
 		const FVector Start = SplinePath->GetLocationAtSplinePoint(i, ESplineCoordinateSpace::World);
 		const FVector End = SplinePath->GetLocationAtSplinePoint(i + 1, ESplineCoordinateSpace::World);
 
-		// DrawDebugLine(GetWorld(), Start, End, FColor::Green, true, 9999.f, 0, 5.f);
+		DrawDebugLine(GetWorld(), Start, End, FColor::Green, true, 9999.f, 0, 5.f);
 	}
 #endif
 }

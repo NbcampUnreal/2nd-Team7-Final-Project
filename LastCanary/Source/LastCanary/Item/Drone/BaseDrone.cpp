@@ -304,7 +304,7 @@ void ABaseDrone::OnDroneHit(UPrimitiveComponent* HitComponent, AActor* OtherActo
 	const float DebugLineLength = 100.0f;
 	FVector Start = Hit.ImpactPoint;
 	FVector End = Start + Normal * DebugLineLength;
-	// DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 1.0f, 0, 2.0f);
+	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 1.0f, 0, 2.0f);
 }
 
 void ABaseDrone::SpawnDroneItemAtCurrentLocation()

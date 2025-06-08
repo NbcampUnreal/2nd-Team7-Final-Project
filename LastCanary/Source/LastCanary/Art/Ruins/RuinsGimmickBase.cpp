@@ -68,7 +68,7 @@ void ARuinsGimmickBase::Server_Interact_Implementation(APlayerController* Intera
 
 FString ARuinsGimmickBase::GetInteractMessage_Implementation() const
 {
-	return 	TEXT("");
+	return InteractionMessage;
 }
 
 void ARuinsGimmickBase::ActivateGimmick_Implementation()

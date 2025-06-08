@@ -1360,7 +1360,7 @@ void ABaseCharacter::TraceInteractableActor()
 	}
 
 
-	//DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 0.1f);
+	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 0.1f);
 	//여기가 로그가 안찍힘 수정해야됨
 
 	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
@@ -1473,7 +1473,7 @@ void ABaseCharacter::UpdateGunWallClipOffset(float DeltaTime)
 
 	bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, MuzzleLoc, TraceEnd, ECC_Visibility, Params);
 
-	//DrawDebugLine(GetWorld(), MuzzleLoc, TraceEnd, FColor::Red, false, 0.1f);
+	DrawDebugLine(GetWorld(), MuzzleLoc, TraceEnd, FColor::Red, false, 0.1f);
 
 	// 3. 벽과의 거리 비율 계산
 	float WallRatio = 0.0f;

@@ -37,7 +37,7 @@ void AResourceItemSpawnManager::BeginPlay()
 
 	if (HasAuthority() == true)
 	{
-		// InitializeThemeItemMap();
+		InitializeThemeItemMap();
 
 		// ⭐ 현재 맵에 따른 지역 태그 설정
 		SetCurrentMapRegionTag();
@@ -124,19 +124,19 @@ void AResourceItemSpawnManager::OnDayNightChanged(EDayPhase NewPhase)
 
 void AResourceItemSpawnManager::InitializeThemeItemMap()
 {
-	//ThemeItemMap.Empty();
+	ThemeItemMap.Empty();
 
-	//ThemeItemMap.Add("Cave", {
-	//	"IronOre", "AdamantiumOre", "RedMercury"
-	//	});
+	ThemeItemMap.Add("Cave", {
+		"IronOre", "AdamantiumOre", "RedMercury"
+		});
 
-	//ThemeItemMap.Add("Forest", {
-	//	"HealingHerb", "LightBloom", "PoisonMushroom"
-	//	});
+	ThemeItemMap.Add("Forest", {
+		"HealingHerb", "LightBloom", "PoisonMushroom"
+		});
 
-	//ThemeItemMap.Add("Ruins", {
-	//	"AncientRuneStone", "RadiantFragment", "SealedMask"
-	//	});
+	ThemeItemMap.Add("Ruins", {
+		"AncientRuneStone", "RadiantFragment", "SealedMask"
+		});
 }
 
 void AResourceItemSpawnManager::SpawnItemByRow(FName ItemRowName)
@@ -263,15 +263,15 @@ void AResourceItemSpawnManager::SetCurrentMapRegionTag()
 	// 현재 맵 이름 가져오기
 	FString CurrentMapName = GetWorld()->GetMapName();
 
-	//FGameplayTag RuinsTag = FGameplayTag::RequestGameplayTag("ItemSpawn.Map.Ruins");
-	//if (RuinsTag.IsValid())
-	//{
-	//	 CurrentRegionTags.AddTag(RuinsTag);
-	//}
-	//else
-	//{
-	//	LOG_Item_WARNING(TEXT("[SetCurrentMapRegionTag] Failed to create ItemSpawn.Map.Ruins tag!"));
-	//}
+	FGameplayTag RuinsTag = FGameplayTag::RequestGameplayTag("ItemSpawn.Map.Ruins");
+	if (RuinsTag.IsValid())
+	{
+		CurrentRegionTags.AddTag(RuinsTag);
+	}
+	else
+	{
+		LOG_Item_WARNING(TEXT("[SetCurrentMapRegionTag] Failed to create ItemSpawn.Map.Ruins tag!"));
+	}
 
 	// 맵 이름을 기반으로 태그 설정
 	if (CurrentMapName.Contains("Cave") || CurrentMapName.Contains("cave"))

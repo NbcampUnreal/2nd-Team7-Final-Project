@@ -1,5 +1,4 @@
 ﻿#include "AI/LCBaseBossAIController.h"
-#include "Character/BaseCharacter.h"
 
 ALCBaseBossAIController::ALCBaseBossAIController()
 {
@@ -49,15 +48,8 @@ void ALCBaseBossAIController::InitializeBehavior()
 void ALCBaseBossAIController::OnTargetPerceptionUpdated(
     AActor* Actor, FAIStimulus Stimulus)
 {
-    if (!Actor || !BlackboardComp)
-        return;
+    if (!Actor || !BlackboardComp) return;
 
-    if (!Actor->IsA(ABaseCharacter::StaticClass()))
-    {
-        return;
-    }
-
-    // 여기까지 왔으면 Actor는 AMyPlayerCharacter 타입
     if (!Stimulus.WasSuccessfullySensed())
     {
         BlackboardComp->ClearValue(TEXT("TargetActor"));

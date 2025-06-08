@@ -44,6 +44,7 @@ void ASpawnerTriggerVolume::NotifyActorBeginOverlap(AActor* OtherActor)
     {
         Spawning = true;
         UpdateSpawnerState();
+        //UE_LOG(LogTemp, Warning, TEXT("1111111111111111111111111111111111111111111111111111111111111111111111111111111"));
     }
 }
 
@@ -55,6 +56,7 @@ void ASpawnerTriggerVolume::NotifyActorEndOverlap(AActor* OtherActor)
     {
         Spawning = false;
         UpdateSpawnerState();
+        //UE_LOG(LogTemp, Warning, TEXT("2222222222222222222222222222222222222222222222222222222222222222222222222222222222"));
     }
 }
 
@@ -73,10 +75,12 @@ void ASpawnerTriggerVolume::UpdateSpawnerState()
 
     if (Spawning)
     {
+        //UE_LOG(LogTemp, Warning, TEXT("33333333333333333333333333333333333333333333333"));
         SpawnComponent->StartSpawning();
     }
     else
     {
+        //UE_LOG(LogTemp, Warning, TEXT("444444444444444444444444444444444444444444444444"));
         SpawnComponent->StopSpawning();
     }
 }
