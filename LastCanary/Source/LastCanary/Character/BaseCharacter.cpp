@@ -1030,7 +1030,7 @@ void ABaseCharacter::OnGunReloadAnimComplete(UAnimMontage* CompletedMontage, boo
 	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
 	if (AGunBase* Gun = Cast<AGunBase>(EquippedItem))
 	{
-		Gun->Reload(30); // 원하는 탄약 수 만큼
+		Gun->Reload();
 	}
 }
 
@@ -2241,17 +2241,18 @@ bool ABaseCharacter::UseEquippedItem()
 
 	EquippedItem->UseItem();
 
-	if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
-	{
-		AGunBase* RifleItem = Cast<AGunBase>(EquippedItem);
-		if (RifleItem)
-		{
-			if (RifleItem->CurrentAmmo > 0)
-			{
-				CameraShake();
-			}
-		}
-	}
+	// 총기에서 CameraShake 사용됨
+	//if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
+	//{
+	//	AGunBase* RifleItem = Cast<AGunBase>(EquippedItem);
+	//	if (RifleItem)
+	//	{
+	//		if (RifleItem->CurrentAmmo > 0)
+	//		{
+	//			CameraShake();
+	//		}
+	//	}
+	//}
 	return true;
 }
 

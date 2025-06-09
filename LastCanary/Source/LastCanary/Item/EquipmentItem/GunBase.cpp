@@ -11,7 +11,6 @@
 
 AGunBase::AGunBase()
 {
-    ;
     FireRange = 10000.0f;
     BaseDamage = 20.0f;
     FireRate = 0.2f;
@@ -95,6 +94,8 @@ void AGunBase::Server_Fire_Implementation()
     }
 
     Multicast_PlayFireAnimation();
+
+    Client_PlayCameraShake();
 }
 
 void AGunBase::HandleFire()
@@ -336,6 +337,15 @@ void AGunBase::Multicast_PlayFireEffects_Implementation()
     }
 }
 
+void AGunBase::Client_PlayCameraShake_Implementation()
+{
+    if (ABaseCharacter* OwnerCharacter = Cast<ABaseCharacter>(GetOwner()))
+    {
+        LOG_Item_WARNING(TEXT("Client_PlayCameraShake called"));
+        OwnerCharacter->CameraShake();
+    }
+}
+
 void AGunBase::Multicast_PlayFireAnimation_Implementation()
 {
     EnsureGunDataLoaded();
@@ -558,15 +568,34 @@ void AGunBase::UpdateAmmoState()
     }
 }
 
-bool AGunBase::Reload(float AmmoAmount)
+bool AGunBase::Reload()
 {
+    AActor* OwnerActor = GetOwner();
+    if (!OwnerActor)
+    {
+        LOG_Item_WARNING(TEXT("[AGunBase::Reload] Owner is NULL"));
+        return false;
+    }
+
+    ABaseCharacter* OwnerCharacter = Cast<ABaseCharacter>(OwnerActor);
+    if (!OwnerCharacter)
+    {
+        LOG_Item_WARNING(TEXT("[AGunBase::Reload] Owner is NULL"));
+        return false;
+    }
+
+    if (OwnerCharacter->bIsReloading)
+    {
+        return false;
+    }
+
     if (FMath::IsNearlyEqual(Durability, MaxAmmo))
     {
         return false;
     }
 
     Multicast_PlayReloadAnimation();
-    Durability = FMath::Min(MaxAmmo, Durability + AmmoAmount);
+    Durability = MaxAmmo;
     UpdateAmmoState();
     OnItemStateChanged.Broadcast();
 
@@ -590,12 +619,30 @@ void AGunBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetime
 
 bool AGunBase::CanFire()
 {
-    float CurrentTime = GetWorld()->GetTimeSeconds();
+    AActor* OwnerActor = GetOwner();
+    if (!OwnerActor)
+    {
+        LOG_Item_WARNING(TEXT("[AGunBase::CanFire] Owner is NULL"));
+        return false;
+    }
+
+    ABaseCharacter* OwnerCharacter = Cast<ABaseCharacter>(OwnerActor);
+    if (!OwnerCharacter)
+    {
+        LOG_Item_WARNING(TEXT("[AGunBase::CanFire] Owner is NULL"));
+        return false;
+    }
+
+    if (OwnerCharacter->bIsReloading)
+    {
+        LOG_Item_WARNING(TEXT("[AGunBase::CanFire] 재장전 중 - 발사 불가"));
+        return false;
+    }
 
     // 탄약 부족 체크
     if (Durability <= 0.0f)
     {
-        LOG_Item_WARNING(TEXT("[CanFire] 탄약 부족"));
+        LOG_Item_WARNING(TEXT("[AGunBase::CanFire] 탄약 부족"));
 
         if (GEngine)
         {
@@ -615,17 +662,9 @@ bool AGunBase::CanFire()
 
 void AGunBase::FireSingle()
 {
-    LOG_Item_WARNING(TEXT("[FireSingle] 단발 사격"));
-
     Server_Fire();
 
     LastFireTime = GetWorld()->GetTimeSeconds();
-
-    if (GEngine)
-    {
-        GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green,
-            FString::Printf(TEXT("단발 발사! 남은 탄약: %.0f"), Durability));
-    }
 }
 
 void AGunBase::StartAutoFire()
