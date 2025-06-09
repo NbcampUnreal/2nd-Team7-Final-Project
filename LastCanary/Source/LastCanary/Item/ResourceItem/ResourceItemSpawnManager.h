@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "GameplayTagContainer.h"
+#include "Item/ResourceItem/ResourceItemSpawnPoint.h"
 #include "ResourceItemSpawnManager.generated.h"
 
 class UItemSpawnerComponent;
@@ -20,14 +21,29 @@ protected:
 
     UFUNCTION()
     void OnDayNightChanged(EDayPhase NewPhase);
+
+    UPROPERTY()
+    int32 CurrentSpawnIndex = 0;
+
+    UPROPERTY()
+    TArray<AResourceItemSpawnPoint*> PendingSpawnPoints;
+
+    UPROPERTY()
+    TArray<FName> CachedSpawnableItems;
+
+    FTimerHandle SpawnDelayTimer;
 public:
     /** 시작 시 자동으로 스폰할지 여부 */
     UPROPERTY(EditAnywhere, Category = "Spawn|Behavior")
     bool bSpawnOnBeginPlay = true;
 
+    UPROPERTY(EditAnywhere, Category = "Spawn|Delay")
+    float ItemSpawnInterval = 0.01f;
+
     /** 현재 테마에 따라 아이템 스폰 */
     UFUNCTION(BlueprintCallable, Category = "Spawn")
     void SpawnItemsForTheme();
+    void SpawnNextPoint();
     void SpawnItemByRow(FName ItemRowName);
 
     UPROPERTY(EditAnywhere, Category = "Spawn|Region", Meta = (Categories = "ItemSpawn.Map"))

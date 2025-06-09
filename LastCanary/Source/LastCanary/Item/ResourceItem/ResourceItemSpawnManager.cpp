@@ -1,5 +1,4 @@
 #include "Item/ResourceItem/ResourceItemSpawnManager.h"
-#include "Item/ResourceItem/ResourceItemSpawnPoint.h"
 #include "Item/ItemBase.h"
 #include "Item/ItemSpawnerComponent.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
@@ -90,23 +89,62 @@ void AResourceItemSpawnManager::SpawnItemByRow(FName ItemRowName)
 void AResourceItemSpawnManager::SpawnItemsForTheme()
 {
 	// 태그 기반으로 스폰 가능한 아이템 목록 가져오기
-	TArray<FName> SpawnableItems = GetSpawnableItemsByTags();
+	CachedSpawnableItems = GetSpawnableItemsByTags();
 
-	if (SpawnableItems.Num() == 0)
+	if (CachedSpawnableItems.Num() == 0)
 	{
 		LOG_Item_WARNING(TEXT("No spawnable items found for current region tags"));
 		return;
 	}
 
+	// 스폰 포인트 수집
 	TArray<AActor*> FoundPoints;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AResourceItemSpawnPoint::StaticClass(), FoundPoints);
 
+	PendingSpawnPoints.Empty();
 	for (AActor* Actor : FoundPoints)
 	{
 		if (AResourceItemSpawnPoint* Point = Cast<AResourceItemSpawnPoint>(Actor))
 		{
-			Point->TrySpawnItemFromManager(SpawnableItems, ItemSpawnerComponent);
+			PendingSpawnPoints.Add(Point);
 		}
+	}
+
+	// 지연 스폰 시작
+	if (PendingSpawnPoints.Num() > 0)
+	{
+		CurrentSpawnIndex = 0;
+		GetWorld()->GetTimerManager().SetTimer(
+			SpawnDelayTimer,
+			this,
+			&AResourceItemSpawnManager::SpawnNextPoint,
+			ItemSpawnInterval,
+			true
+		);
+	}
+}
+
+void AResourceItemSpawnManager::SpawnNextPoint()
+{
+	if (CurrentSpawnIndex < PendingSpawnPoints.Num())
+	{
+		AResourceItemSpawnPoint* Point = PendingSpawnPoints[CurrentSpawnIndex];
+		if (IsValid(Point))
+		{
+			Point->TrySpawnItemFromManager(CachedSpawnableItems, ItemSpawnerComponent);
+		}
+
+		CurrentSpawnIndex++;
+	}
+	else
+	{
+		// 모든 스폰 완료, 타이머 정리
+		GetWorld()->GetTimerManager().ClearTimer(SpawnDelayTimer);
+		PendingSpawnPoints.Empty();
+		CachedSpawnableItems.Empty();
+		CurrentSpawnIndex = 0;
+
+		LOG_Item_WARNING(TEXT("[AResourceItemSpawnManager::SpawnNextPoint] All items spawned with delay completed"));
 	}
 }
 
