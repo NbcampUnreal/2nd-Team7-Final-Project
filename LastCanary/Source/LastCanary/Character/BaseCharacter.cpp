@@ -2241,17 +2241,18 @@ bool ABaseCharacter::UseEquippedItem()
 
 	EquippedItem->UseItem();
 
-	if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
-	{
-		AGunBase* RifleItem = Cast<AGunBase>(EquippedItem);
-		if (RifleItem)
-		{
-			if (RifleItem->CurrentAmmo > 0)
-			{
-				CameraShake();
-			}
-		}
-	}
+	// 총기에서 CameraShake 사용됨
+	//if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
+	//{
+	//	AGunBase* RifleItem = Cast<AGunBase>(EquippedItem);
+	//	if (RifleItem)
+	//	{
+	//		if (RifleItem->CurrentAmmo > 0)
+	//		{
+	//			CameraShake();
+	//		}
+	//	}
+	//}
 	return true;
 }
 

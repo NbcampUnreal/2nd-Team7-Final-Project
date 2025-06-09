@@ -654,6 +654,13 @@ void AGunBase::FireSingle()
     Server_Fire();
 
     LastFireTime = GetWorld()->GetTimeSeconds();
+
+    // 반동 효과 적용
+    if (ABaseCharacter* OwnerCharacter = Cast<ABaseCharacter>(GetOwner()))
+    {
+        LOG_Item_WARNING(TEXT("CameraShake called"));
+        OwnerCharacter->CameraShake();
+    }
 }
 
 void AGunBase::StartAutoFire()
@@ -705,6 +712,13 @@ void AGunBase::FireAuto()
     Server_Fire();
 
     LastFireTime = GetWorld()->GetTimeSeconds();
+
+    // 반동 효과 적용
+    if (ABaseCharacter* OwnerCharacter = Cast<ABaseCharacter>(GetOwner()))
+    {
+        LOG_Item_WARNING(TEXT("CameraShake called"));
+        OwnerCharacter->CameraShake();
+    }
 }
 
 void AGunBase::StopAutoFire()
