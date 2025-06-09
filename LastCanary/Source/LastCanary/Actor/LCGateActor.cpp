@@ -77,7 +77,6 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 			}
 			ABasePlayerController* BasePlayerController = Cast<ABasePlayerController>(Controller);
 			BasePlayerController->OnExitGate();
-			
 
 			// TODO : 탈출, 체크리스트 띄우고 전부 작성하면 결과 UI-> 호스트가 버튼 눌러서 베이스캠프로 이동
 			// 사망->시체 스켈레탈메시남고->관전(컨트롤러)
@@ -104,7 +103,7 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 			{
 				if (LCGM)
 				{
-					if (!LCGM->IsAllPlayersReady())
+					if (LCGM->IsAllPlayersReady() == false)
 					{
 						LOG_Server_ERROR(TEXT("All Client is Not Ready!!"));
 						return;
