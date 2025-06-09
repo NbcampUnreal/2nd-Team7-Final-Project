@@ -17,6 +17,7 @@ class UToolbarInventoryComponent;
 class UBackpackInventoryComponent;
 struct FBaseItemSlotData;
 class UItemSpawnerComponent;
+class UPostProcessComponent;
 
 UCLASS()
 class LASTCANARY_API ABaseCharacter : public AAlsCharacter
@@ -71,6 +72,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
 	USkeletalMeshComponent* HeadMesh;
 
+	UPROPERTY(VisibleAnywhere)
+	UPostProcessComponent* CustomPostProcessComponent;
+
+	float GetBrightness();
+	void SetBrightness(float Value);
+
 	void Tick(float DeltaSeconds)
 	{
 		Super::Tick(DeltaSeconds);
@@ -94,15 +101,6 @@ protected:
 
 	// Camera Settings
 protected:
-	/*Camera Settings*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|MouseSensitivity", Meta = (ClampMin = 0, ForceUnits = "x"))
-	float LookUpMouseSensitivity{ 1.0f };
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|MouseSensitivity", Meta = (ClampMin = 0, ForceUnits = "x"))
-	float LookRightMouseSensitivity{ 1.0f };
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|MouseSensitivity", Meta = (ClampMin = 0, ForceUnits = "deg/s"))
-	float LookUpRate{ 90.0f };
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|MouseSensitivity", Meta = (ClampMin = 0, ForceUnits = "deg/s"))
-	float LookRightRate{ 240.0f };
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Camera", Meta = (ClampMin = 0, ClampMax = 90, ForceUnits = "deg"))
 	float MaxPitchAngle{ 60.0f };
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Camera", Meta = (ClampMin = -80, ClampMax = 0, ForceUnits = "deg"))
@@ -196,7 +194,7 @@ public:
 
 public:
 	/*Function called by the controller*/
-	virtual void Handle_LookMouse(const FInputActionValue& ActionValue);
+	virtual void Handle_LookMouse(const FInputActionValue& ActionValue, float Sensivity);
 	virtual void Handle_Look(const FInputActionValue& ActionValue);
 	virtual void Handle_Move(const FInputActionValue& ActionValue);
 	virtual void Handle_Sprint(const FInputActionValue& ActionValue);

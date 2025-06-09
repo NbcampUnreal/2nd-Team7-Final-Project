@@ -13,6 +13,7 @@
 
 #include "Inventory/ToolbarInventoryComponent.h"
 
+#include "SaveGame/LCLocalPlayerSaveGame.h"
 
 void ABasePlayerController::BeginPlay()
 {
@@ -35,12 +36,49 @@ void ABasePlayerController::BeginPlay()
 			}
 		}
 	}
+
+	LoadMouseSensitivity();
+	LoadBrightness();
 }
 
 void ABasePlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(ABasePlayerController, SpawnedPlayerDrone);
+}
+
+void ABasePlayerController::LoadMouseSensitivity()
+{
+	float LoadedSensitivity = ULCLocalPlayerSaveGame::LoadMouseSensitivity(GetWorld());
+
+	SetMouseSensitivity(LoadedSensitivity);
+}
+
+void ABasePlayerController::SetMouseSensitivity(float Sensitivity)
+{
+	MouseSensivity = Sensitivity;
+}
+
+void ABasePlayerController::LoadBrightness()
+{
+	float Brightness = ULCLocalPlayerSaveGame::LoadBrightness(GetWorld());
+
+	SetBrightness(Brightness);
+}
+
+void ABasePlayerController::SetBrightness(float Brightness)
+{
+	BrightnessSetting = Brightness;
+	if (!IsValid(CurrentPossessedPawn))
+	{
+		return;
+	}
+	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
+	if (!IsValid(PlayerCharacter))
+	{
+		return;
+	}
+	PlayerCharacter->SetBrightness(Brightness);
 }
 
 
@@ -322,7 +360,7 @@ void ABasePlayerController::Input_OnLookMouse(const FInputActionValue& ActionVal
 		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
 		if (IsValid(PlayerCharacter))
 		{
-			PlayerCharacter->Handle_LookMouse(ActionValue);  // ABaseCharacter에 맞는 LookMouse 호출
+			PlayerCharacter->Handle_LookMouse(ActionValue, MouseSensivity);  // ABaseCharacter에 맞는 LookMouse 호출
 		}
 	}
 	if (CurrentPossessedPawn->IsA<ABaseDrone>())

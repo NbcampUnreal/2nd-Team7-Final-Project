@@ -504,8 +504,15 @@ void UKeySettingWidget::UpdateMappings(FName DisplayName, FKey Key)
 
 
 	UE_LOG(LogTemp, Warning, TEXT("Refresh"));
-	const TArray<FEnhancedActionKeyMapping> Mappings = Subsystem->GetAllPlayerMappableActionKeyMappings();
-	RefreshMappings(Mappings);
+	//const TArray<FEnhancedActionKeyMapping> Mappings = Subsystem->GetAllPlayerMappableActionKeyMappings();
+	//RefreshMappings(Mappings);
+	FTimerHandle TimerHandle;
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this, Subsystem]()
+		{
+			const TArray<FEnhancedActionKeyMapping> Mappings = Subsystem->GetAllPlayerMappableActionKeyMappings();
+			RefreshMappings(Mappings);
+
+		}, 0.1f, false);
 }
 
 
