@@ -1078,7 +1078,7 @@ void ABaseCharacter::OnGunReloadAnimComplete(UAnimMontage* CompletedMontage, boo
 	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
 	if (AGunBase* Gun = Cast<AGunBase>(EquippedItem))
 	{
-		Gun->Reload(30); // 원하는 탄약 수 만큼
+		Gun->Reload();
 	}
 }
 

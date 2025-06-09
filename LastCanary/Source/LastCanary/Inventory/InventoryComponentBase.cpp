@@ -1,5 +1,6 @@
 #include "Inventory/InventoryComponentBase.h"
 #include "Item/ItemSpawnerComponent.h"
+#include "Item/EquipmentItem/GunBase.h"
 #include "Character/BaseCharacter.h"
 #include "DataType/BaseItemSlotData.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
@@ -122,6 +123,7 @@ void UInventoryComponentBase::GetLifetimeReplicatedProps(TArray<FLifetimePropert
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(UInventoryComponentBase, ItemSlots);
+	DOREPLIFETIME(UInventoryComponentBase, MaxSlots);
 }
 
 void UInventoryComponentBase::OnRep_ItemSlots()
@@ -291,6 +293,12 @@ bool UInventoryComponentBase::Internal_TryDropItemAtSlot(int32 SlotIndex, int32 
 	{
 		LOG_Item_WARNING(TEXT("[Internal_TryDropItemAtSlot] 아이템 스폰 실패"));
 		return false;
+	}
+
+	if (AGunBase* DroppedGun = Cast<AGunBase>(DroppedItem))
+	{
+		DroppedGun->CurrentFireMode = static_cast<EFireMode>(DropItemData.FireMode);
+		DroppedGun->bIsAutoFiring = false;
 	}
 
 	// ⭐ 중복 제거 및 정리

@@ -17,6 +17,8 @@ class LASTCANARY_API APlayerChecker : public AActor
 public:	
 	APlayerChecker();
 
+    void InitializeChecker();
+
 protected:
 	virtual void BeginPlay() override;
 

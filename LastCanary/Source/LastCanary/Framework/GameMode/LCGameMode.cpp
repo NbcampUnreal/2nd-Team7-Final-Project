@@ -1,5 +1,4 @@
 ﻿#include "Framework/GameMode/LCGameMode.h"
-
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "GameFramework/PlayerStart.h"
 #include "Framework/PlayerController/LCPlayerController.h"
@@ -9,6 +8,9 @@
 #include "Actor/PlayerChecker.h"
 
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+
+#include "LastCanary.h"
+
 void ALCGameMode::BeginPlay()
 {
 	Super::BeginPlay();
@@ -42,6 +44,18 @@ void ALCGameMode::PostLogin(APlayerController* NewPlayer)
 		{
 			It->Server_OpenDoors(); // 강제로 다시 열어줌
 		}
+	}
+}
+
+void ALCGameMode::PostSeamlessTravel()
+{
+	Super::PostSeamlessTravel();
+
+	// 레벨에 존재하는 PlayerChecker 재초기화
+	for (TActorIterator<APlayerChecker> It(GetWorld()); It; ++It)
+	{
+		It->InitializeChecker(); 
+		It->Server_OpenDoors();
 	}
 }
 
@@ -246,7 +260,9 @@ void ALCGameMode::TravelMapByPath(FString Path)
 bool ALCGameMode::IsAllPlayersReady() const
 {
 	if (SessionPlayerInfos.Num() == 0)
+	{
 		return false;
+	}
 
 	for (const FSessionPlayerInfo& Info : SessionPlayerInfos)
 	{

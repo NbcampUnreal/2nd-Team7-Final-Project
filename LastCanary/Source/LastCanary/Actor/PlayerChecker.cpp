@@ -43,8 +43,17 @@ void APlayerChecker::BeginPlay()
         TriggerVolume->OnComponentEndOverlap.AddDynamic(this, &APlayerChecker::OnOverlapEnd);
     }
 
-    if (DoorOpenCurve)
+    InitializeChecker();
+}
+
+void APlayerChecker::InitializeChecker()
+{
+    if (DoorOpenCurve && DoorTimeline)
     {
+        DoorTimeline->Stop(); // 기존 타임라인 초기화
+        DoorTimeline->SetNewTime(0.f);
+        DoorTimeline->SetPlaybackPosition(0.f, false);
+
         FOnTimelineFloat ProgressFunction;
         ProgressFunction.BindUFunction(this, FName("HandleDoorProgress"));
         DoorTimeline->AddInterpFloat(DoorOpenCurve, ProgressFunction);
@@ -57,14 +66,10 @@ void APlayerChecker::BeginPlay()
     InitialLeftRotation = LeftDoorMesh->GetRelativeRotation();
     InitialRightRotation = RightDoorMesh->GetRelativeRotation();
 
-    //if (DoorTimeline && DoorOpenCurve)
-    //{
-    //    DoorTimeline->SetPlaybackPosition(0.f, false); // 열림 상태에서 시작
-    //    DoorTimeline->Stop(); // 처음에는 멈춘 상태
-    //    HandleDoorProgress(0.f); // 위치 보정
-    //}
-
     bIsDoorOpen = true;
+
+    // 직접 열기
+    PlayDoorTimelineForward();
 }
 
 void APlayerChecker::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
