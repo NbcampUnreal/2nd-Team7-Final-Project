@@ -187,7 +187,7 @@ public:
 	float YawRecoilRange = 1.0f;
 
 	int32 RecoilStep = 0;
-	int32 RecoilMaxSteps = 5;
+	int32 RecoilMaxSteps = 10;
 	float RecoilStepPitch = 0.f;
 	float RecoilStepYaw = 0.f;
 	// Character Input Handle Function
@@ -203,7 +203,7 @@ public:
 	virtual void Handle_Jump(const FInputActionValue& ActionValue);
 	virtual void Handle_Strafe(const FInputActionValue& ActionValue);
 	virtual void Handle_Aim(const FInputActionValue& ActionValue);
-	virtual void Handle_Interact();
+	virtual void Handle_Interact(const FInputActionValue& ActionValue);
 	virtual void Handle_ViewMode();
 	virtual void Handle_Reload();
 
@@ -216,8 +216,9 @@ public:
 	bool bIsPossessed;
 	bool bIsReloading = false;
 	bool bIsClose = false;
+	bool bIsUsingItem= false;
 	void SetPossess(bool IsPossessed);
-
+	bool bRecoveringFromRecoil = false;
 
 	//About Character Animation Montage and Animation Class
 public:
@@ -474,10 +475,10 @@ public:
 	void Server_UnequipCurrentItem_Implementation();
 
 	UFUNCTION(BlueprintCallable, Category = "Equipment")
-	bool UseEquippedItem();
+	bool UseEquippedItem(const FInputActionValue& ActionValue);
 	UFUNCTION(Server, Reliable)
-	void Server_UseEquippedItem();
-	void Server_UseEquippedItem_Implementation();
+	void Server_UseEquippedItem(const FInputActionValue& ActionValue);
+	void Server_UseEquippedItem_Implementation(const FInputActionValue& ActionValue);
 
 public:
 	/** 인벤토리 UI를 토글합니다 */

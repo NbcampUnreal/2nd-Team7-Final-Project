@@ -286,7 +286,7 @@ void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue, floa
 void ABaseCharacter::CameraShake()
 {
 	// 새로운 반동량을 기존 값에 누적
-	RecoilStepPitch += 1.5f / RecoilMaxSteps;
+	RecoilStepPitch += 5.0f / RecoilMaxSteps;
 	RecoilStepYaw += FMath::RandRange(-YawRecoilRange, YawRecoilRange) / RecoilMaxSteps;
 
 	// 타이머가 안 돌고 있을 때만 시작
@@ -1010,6 +1010,10 @@ void ABaseCharacter::Handle_Reload()
 	{
 		return;
 	}
+	if (bIsUsingItem)
+	{
+		return;
+	}
 	CancelInteraction();
 	Server_PlayReload();
 }
@@ -1147,7 +1151,7 @@ void ABaseCharacter::Handle_Strafe(const FInputActionValue& ActionValue)
 	}
 }
 
-void ABaseCharacter::Handle_Interact()
+void ABaseCharacter::Handle_Interact(const FInputActionValue& ActionValue)
 {
 	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
@@ -2217,7 +2221,7 @@ void ABaseCharacter::Server_UnequipCurrentItem_Implementation()
 	UnequipCurrentItem();
 }
 
-bool ABaseCharacter::UseEquippedItem()
+bool ABaseCharacter::UseEquippedItem(const FInputActionValue& ActionValue)
 {
 	if (bIsReloading)
 	{
@@ -2237,7 +2241,7 @@ bool ABaseCharacter::UseEquippedItem()
 
 	if (GetLocalRole() < ROLE_Authority)
 	{
-		Server_UseEquippedItem();
+		Server_UseEquippedItem(ActionValue);
 		return true;
 	}
 
@@ -2248,46 +2252,65 @@ bool ABaseCharacter::UseEquippedItem()
 		return false;
 	}
 
-	if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))
+	if (ActionValue.Get<float>() >= 0.5f)
 	{
-		ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
-		if (PC)
+		if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))
 		{
-			PC->SpawnDrone();
-			//현재 들고 있는 인벤토리에서 제거하기
+			ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+			if (PC)
+			{
+				PC->SpawnDrone();
+				//현재 들고 있는 인벤토리에서 제거하기
 
-			ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].ItemRowName = "Default";
-			ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].Quantity = 1;
-			ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].Durability = 100;
-			ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].bIsEquipped = false;
-			ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].bIsValid = true;
-			UnequipCurrentItem();
-			ToolbarInventoryComponent->EquippedItemComponent->DestroyChildActor();
-			RefreshOverlayObject(0);
-			return true;
+				ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].ItemRowName = "Default";
+				ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].Quantity = 1;
+				ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].Durability = 100;
+				ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].bIsEquipped = false;
+				ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].bIsValid = true;
+				UnequipCurrentItem();
+				ToolbarInventoryComponent->EquippedItemComponent->DestroyChildActor();
+				RefreshOverlayObject(0);
+				return true;
+			}
 		}
-	}
 
-	if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
+		if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
+		{
+			if (bIsSprinting)
+			{
+				return true;
+			}
+			if (IsDesiredAiming() == false)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("조준하세요"));
+				return true;
+			}
+
+		}
+		EquippedItem->UseItem();
+		bIsUsingItem = true;
+		return true;
+	}
+	else
 	{
-		if (bIsSprinting)
+		bIsUsingItem = false;
+		AGunBase* Rifle = Cast<AGunBase>(EquippedItem);
+		if (!IsValid(Rifle))
 		{
-			return true;
+			return false;
 		}
-		if (IsDesiredAiming() == false)
+		if (Rifle->CurrentFireMode == EFireMode::FullAuto)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("조준하세요"));
-			return true;
+			Rifle->StopAutoFire();
 		}
+		return true;
 	}
-
-	EquippedItem->UseItem();
-	return true;
+	
 }
 
-void ABaseCharacter::Server_UseEquippedItem_Implementation()
+void ABaseCharacter::Server_UseEquippedItem_Implementation(const FInputActionValue& ActionValue)
 {
-	UseEquippedItem();
+	UseEquippedItem(ActionValue);
 }
 
 void ABaseCharacter::ToggleInventory()

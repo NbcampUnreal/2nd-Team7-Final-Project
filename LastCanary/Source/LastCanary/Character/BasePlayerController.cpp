@@ -319,10 +319,12 @@ void ABasePlayerController::InitInputComponent()
 		EnhancedInput->BindAction(ViewModeAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnViewMode);
 
 		EnhancedInput->BindAction(InteractAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnInteract);
+		EnhancedInput->BindAction(InteractAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnInteract);
 
 		EnhancedInput->BindAction(StrafeAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnStrafe);
 
-		EnhancedInput->BindAction(ItemUseAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_OnItemUse);
+		EnhancedInput->BindAction(ItemUseAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnItemUse);
+		EnhancedInput->BindAction(ItemUseAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnItemUse);
 
 		EnhancedInput->BindAction(ThrowItemAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_OnItemThrow);
 
@@ -565,7 +567,7 @@ void ABasePlayerController::Input_OnViewMode()
 }
 
 
-void ABasePlayerController::Input_OnInteract()
+void ABasePlayerController::Input_OnInteract(const FInputActionValue& ActionValue)
 {
 	if (!IsValid(CurrentPossessedPawn))
 	{
@@ -582,7 +584,7 @@ void ABasePlayerController::Input_OnInteract()
 
 	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
-		PlayerCharacter->Handle_Interact();
+		PlayerCharacter->Handle_Interact(ActionValue);
 	}
 	else
 	{
@@ -696,7 +698,7 @@ TArray<ABasePlayerState*> ABasePlayerController::GetPlayerArray()
 }
 
 
-void ABasePlayerController::Input_OnItemUse()
+void ABasePlayerController::Input_OnItemUse(const FInputActionValue& ActionValue)
 {
 	UE_LOG(LogTemp, Warning, TEXT("Use Item"));
 
@@ -707,7 +709,7 @@ void ABasePlayerController::Input_OnItemUse()
 
 	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
-		PlayerCharacter->UseEquippedItem();
+		PlayerCharacter->UseEquippedItem(ActionValue);
 	}
 }
 

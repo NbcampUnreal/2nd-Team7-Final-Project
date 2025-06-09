@@ -171,11 +171,11 @@ public:
 
 	virtual void Input_OnViewMode();
 
-	virtual void Input_OnInteract();
+	virtual void Input_OnInteract(const FInputActionValue& ActionValue);
 
 	virtual void Input_OnStrafe(const FInputActionValue& ActionValue);
 
-	virtual void Input_OnItemUse();
+	virtual void Input_OnItemUse(const FInputActionValue& ActionValue);
 
 	virtual void Input_OnItemThrow();
 
