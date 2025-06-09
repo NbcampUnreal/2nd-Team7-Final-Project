@@ -216,6 +216,11 @@ public:
     void Multicast_PlayFireEffects();
     void Multicast_PlayFireEffects_Implementation();
 
+    /** 총기 반동 효과 적용 */
+    UFUNCTION(Client, Unreliable)
+    void Client_PlayCameraShake();
+    void Client_PlayCameraShake_Implementation();
+
     //-----------------------------------------------------
     // 애니메이션 관련
     //-----------------------------------------------------

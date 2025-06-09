@@ -94,6 +94,8 @@ void AGunBase::Server_Fire_Implementation()
     }
 
     Multicast_PlayFireAnimation();
+
+    Client_PlayCameraShake();
 }
 
 void AGunBase::HandleFire()
@@ -332,6 +334,15 @@ void AGunBase::Multicast_PlayFireEffects_Implementation()
     if (OwnerPawn && OwnerPawn->IsLocallyControlled())
     {
         // TODO : 카메라 흔들림 효과나 반동 애니메이션 등을 여기서 처리할 수 있음
+    }
+}
+
+void AGunBase::Client_PlayCameraShake_Implementation()
+{
+    if (ABaseCharacter* OwnerCharacter = Cast<ABaseCharacter>(GetOwner()))
+    {
+        LOG_Item_WARNING(TEXT("Client_PlayCameraShake called"));
+        OwnerCharacter->CameraShake();
     }
 }
 
@@ -654,13 +665,6 @@ void AGunBase::FireSingle()
     Server_Fire();
 
     LastFireTime = GetWorld()->GetTimeSeconds();
-
-    // 반동 효과 적용
-    if (ABaseCharacter* OwnerCharacter = Cast<ABaseCharacter>(GetOwner()))
-    {
-        LOG_Item_WARNING(TEXT("CameraShake called"));
-        OwnerCharacter->CameraShake();
-    }
 }
 
 void AGunBase::StartAutoFire()
@@ -712,13 +716,6 @@ void AGunBase::FireAuto()
     Server_Fire();
 
     LastFireTime = GetWorld()->GetTimeSeconds();
-
-    // 반동 효과 적용
-    if (ABaseCharacter* OwnerCharacter = Cast<ABaseCharacter>(GetOwner()))
-    {
-        LOG_Item_WARNING(TEXT("CameraShake called"));
-        OwnerCharacter->CameraShake();
-    }
 }
 
 void AGunBase::StopAutoFire()
