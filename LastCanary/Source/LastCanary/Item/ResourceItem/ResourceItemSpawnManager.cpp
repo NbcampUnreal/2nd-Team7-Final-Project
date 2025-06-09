@@ -19,27 +19,9 @@ void AResourceItemSpawnManager::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// 서버만 아이템 스폰
-	//if (HasAuthority() == true)
-	//{
-	//	InitializeThemeItemMap();
-
-	//	if (ALCTimeManager* TimeManager = Cast<ALCTimeManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ALCTimeManager::StaticClass())))
-	//	{
-	//		TimeManager->OnTimePhaseChanged.AddDynamic(this, &AResourceItemSpawnManager::OnDayNightChanged);
-	//	}
-
-	//	if (bSpawnOnBeginPlay)
-	//	{
-	//		SpawnItemsForTheme();
-	//	}
-	//}
-
 	if (HasAuthority() == true)
 	{
-		InitializeThemeItemMap();
-
-		// ⭐ 현재 맵에 따른 지역 태그 설정
+		// 현재 맵에 따른 지역 태그 설정
 		SetCurrentMapRegionTag();
 
 		if (ALCTimeManager* TimeManager = Cast<ALCTimeManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ALCTimeManager::StaticClass())))
@@ -59,31 +41,6 @@ void AResourceItemSpawnManager::OnDayNightChanged(EDayPhase NewPhase)
 	TArray<AActor*> FoundPoints;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AResourceItemSpawnPoint::StaticClass(), FoundPoints);
 
-	//for (AActor* Actor : FoundPoints)
-	//{
-	//	if (AResourceItemSpawnPoint* Point = Cast<AResourceItemSpawnPoint>(Actor))
-	//	{
-	//		const auto Condition = Point->SpawnTimeCondition;
-
-	//		// 해당 시간에만 스폰
-	//		if ((NewPhase == EDayPhase::Night && Condition == ESpawnTimeCondition::NightOnly) ||
-	//			(NewPhase == EDayPhase::Day && Condition == ESpawnTimeCondition::DayOnly))
-	//		{
-	//			Point->TrySpawnItem();
-	//		}
-
-	//		// 반대 시간대면 디스폰
-	//		if ((NewPhase == EDayPhase::Night && Condition == ESpawnTimeCondition::DayOnly) ||
-	//			(NewPhase == EDayPhase::Day && Condition == ESpawnTimeCondition::NightOnly))
-	//		{
-	//			if (Point->SpawnedResourceItem)
-	//			{
-	//				Point->SpawnedResourceItem->Destroy();
-	//				Point->SpawnedResourceItem = nullptr;
-	//			}
-	//		}
-	//	}
-	//}
 	// 태그 기반으로 스폰 가능한 아이템 목록 가져오기
 	TArray<FName> AvailableItems = GetSpawnableItemsByTags();
 
@@ -122,23 +79,6 @@ void AResourceItemSpawnManager::OnDayNightChanged(EDayPhase NewPhase)
 	}
 }
 
-void AResourceItemSpawnManager::InitializeThemeItemMap()
-{
-	ThemeItemMap.Empty();
-
-	ThemeItemMap.Add("Cave", {
-		"IronOre", "AdamantiumOre", "RedMercury"
-		});
-
-	ThemeItemMap.Add("Forest", {
-		"HealingHerb", "LightBloom", "PoisonMushroom"
-		});
-
-	ThemeItemMap.Add("Ruins", {
-		"AncientRuneStone", "RadiantFragment", "SealedMask"
-		});
-}
-
 void AResourceItemSpawnManager::SpawnItemByRow(FName ItemRowName)
 {
 	if (ItemSpawnerComponent)
@@ -149,26 +89,6 @@ void AResourceItemSpawnManager::SpawnItemByRow(FName ItemRowName)
 
 void AResourceItemSpawnManager::SpawnItemsForTheme()
 {
-	//if (ThemeItemMap.Contains(CurrentThemeTag)==false)
-	//{
-	//	UE_LOG(LogTemp, Warning, TEXT("Theme '%s' not found in ThemeItemMap."), *CurrentThemeTag.ToString());
-	//	return;
-	//}
-
-	//TArray<AActor*> FoundPoints;
-	//UGameplayStatics::GetAllActorsOfClass(GetWorld(), AResourceItemSpawnPoint::StaticClass(), FoundPoints);
-
-	//const TArray<FName>& ItemsToSpawn = ThemeItemMap[CurrentThemeTag];
-
-	//for (AActor* Actor : FoundPoints)
-	//{
-	//	if (AResourceItemSpawnPoint* Point = Cast<AResourceItemSpawnPoint>(Actor))
-	//	{
-	//		Point->PossibleItems = ItemsToSpawn;
-	//		Point->TrySpawnItem();
-	//	}
-	//}
-
 	// 태그 기반으로 스폰 가능한 아이템 목록 가져오기
 	TArray<FName> SpawnableItems = GetSpawnableItemsByTags();
 
@@ -258,20 +178,8 @@ void AResourceItemSpawnManager::SetCurrentRegionTag(const FString& MapName)
 
 void AResourceItemSpawnManager::SetCurrentMapRegionTag()
 {
-	CurrentRegionTags.Reset();
-
 	// 현재 맵 이름 가져오기
 	FString CurrentMapName = GetWorld()->GetMapName();
-
-	FGameplayTag RuinsTag = FGameplayTag::RequestGameplayTag("ItemSpawn.Map.Ruins");
-	if (RuinsTag.IsValid())
-	{
-		CurrentRegionTags.AddTag(RuinsTag);
-	}
-	else
-	{
-		LOG_Item_WARNING(TEXT("[SetCurrentMapRegionTag] Failed to create ItemSpawn.Map.Ruins tag!"));
-	}
 
 	// 맵 이름을 기반으로 태그 설정
 	if (CurrentMapName.Contains("Cave") || CurrentMapName.Contains("cave"))
