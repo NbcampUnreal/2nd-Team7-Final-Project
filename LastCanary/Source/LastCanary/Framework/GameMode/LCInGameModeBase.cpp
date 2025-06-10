@@ -10,10 +10,11 @@
 
 ALCInGameModeBase::ALCInGameModeBase()
 {
-	static ConstructorHelpers::FClassFinder<AChecklistManager> ChecklistBPClass(TEXT("/Game/_LastCanary/Blueprint/Framework/Manager/BP_ChecklistManager.BP_ChecklistManager"));
-	if (ChecklistBPClass.Succeeded())
+	if (ChecklistManagerClass.IsValid())
 	{
-		ChecklistManagerClass = ChecklistBPClass.Class;
+		FActorSpawnParameters SpawnParams;
+		AChecklistManager* Spawned = GetWorld()->SpawnActor<AChecklistManager>(ChecklistManagerClass.Get(), FVector::ZeroVector, FRotator::ZeroRotator, SpawnParams);
+		ChecklistManager = Spawned;
 	}
 }
 
@@ -49,7 +50,16 @@ void ALCInGameModeBase::BeginPlay()
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-		ChecklistManager = GetWorld()->SpawnActor<AChecklistManager>(ChecklistManagerClass, FVector::ZeroVector, FRotator::ZeroRotator, SpawnParams);
+		if (ChecklistManagerClass.IsValid())
+		{
+			ChecklistManager = GetWorld()->SpawnActor<AChecklistManager>(
+				ChecklistManagerClass.Get(),               // UClass*
+				FVector::ZeroVector,
+				FRotator::ZeroRotator,
+				SpawnParams
+			);
+		}
+
 		if (ChecklistManager)
 		{
 			UE_LOG(LogTemp, Warning, TEXT("[Checklist] ChecklistManager Spawned"));

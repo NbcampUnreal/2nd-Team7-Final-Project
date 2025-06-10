@@ -11,13 +11,18 @@ ALCRoomGameMode::ALCRoomGameMode()
 {
 	//SelectedMap = EMapType::LuinsMap;
 	
-	static ConstructorHelpers::FClassFinder<AChecklistManager> ChecklistBPClass(TEXT("/Game/_LastCanary/Blueprint/Framework/Manager/BP_ChecklistManager.BP_ChecklistManager"));
+	/*static ConstructorHelpers::FClassFinder<AChecklistManager> ChecklistBPClass(TEXT("/Game/_LastCanary/Blueprint/Framework/Manager/BP_ChecklistManager.BP_ChecklistManager"));
 	if (ChecklistBPClass.Succeeded())
 	{
 		ChecklistManagerClass = ChecklistBPClass.Class;
+	}*/
+
+	if (ChecklistManagerClass.IsValid())
+	{
+		GetWorld()->SpawnActor<AActor>(ChecklistManagerClass.Get());
 	}
-	
 }
+
 
 void ALCRoomGameMode::BeginPlay()
 {
@@ -96,7 +101,16 @@ void ALCRoomGameMode::StartGame()
 		SpawnParams.bDeferConstruction = false;
 		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-		ChecklistManager = GetWorld()->SpawnActor<AChecklistManager>(ChecklistManagerClass, FVector::ZeroVector, FRotator::ZeroRotator, SpawnParams);
+		if (ChecklistManagerClass.IsValid())
+		{
+			ChecklistManager = GetWorld()->SpawnActor<AChecklistManager>(
+				ChecklistManagerClass.Get(),               // UClass*
+				FVector::ZeroVector,
+				FRotator::ZeroRotator,
+				SpawnParams
+			);
+		}
+		
 		if (ChecklistManager)
 		{
 			ChecklistManager->SetReplicates(true); // 이걸 반드시 해야 클라에도 복제됨
