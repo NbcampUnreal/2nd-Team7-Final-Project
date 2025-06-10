@@ -292,28 +292,8 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
         {
             CachedOwnerCharacter->SetEquipped(false); // 빈 손 상태
         }
-        
+
         OnInventoryUpdated.Broadcast();
-
-        if (CachedOwnerCharacter && CachedOwnerCharacter->IsLocallyControlled())
-        {
-            if (ULCGameInstanceSubsystem* LCGameInstanceSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
-            {
-                if (ULCUIManager* UIManager = LCGameInstanceSubsystem->GetUIManager())
-                {
-                    if (UInventoryMainWidget* InventoryWidget = UIManager->GetInventoryMainWidget())
-                    {
-                        const FItemDataRow* ItemData = LCGameInstanceSubsystem->GetItemDataByRowName(SlotData->ItemRowName);
-                        if (ItemData)
-                        {
-                            FText DisplayText = FText::FromString(ItemData->ItemName.ToString());
-                            InventoryWidget->ShowToolbarSlotItemText(DisplayText);
-                        }
-                    }
-                }
-            }
-        }
-
         return;
     }
 
@@ -365,9 +345,9 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
         {
             TargetSocket = TEXT("Rifle");
         }
-        
+
         SetupEquippedItem(EquippedItemComponent, CachedOwnerCharacter->GetMesh(), TargetSocket, ItemData, SlotData);
-            
+
         ItemSlots[SlotIndex].bIsEquipped = true;
         CurrentEquippedSlotIndex = SlotIndex;
     }
@@ -376,6 +356,24 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
     {
         CachedOwnerCharacter->SetEquipped(true);
     }
+
+    if (CachedOwnerCharacter && CachedOwnerCharacter->IsLocallyControlled())
+    {
+        if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
+        {
+            if (UInventoryMainWidget* InventoryWidget = UIManager->GetInventoryMainWidget())
+            {
+                FText DisplayText = FText::FromString(ItemData->ItemName.ToString());
+                LOG_Item_ERROR(TEXT("[ToolbarInventoryComponent::EquipItemAtSlot] ItemName : %s"), *ItemData->ItemName.ToString());
+                InventoryWidget->ShowToolbarSlotItemText(DisplayText);
+
+                //FText DisplayText = FText::FromString(*SlotData->ItemRowName.ToString());
+                //LOG_Item_ERROR(TEXT("[ToolbarInventoryComponent::EquipItemAtSlot] ItemName : %s"), *SlotData->ItemRowName.ToString());
+                //InventoryWidget->ShowToolbarSlotItemText(DisplayText);
+            }
+        }
+    }
+
 
     OnInventoryUpdated.Broadcast();
 }
