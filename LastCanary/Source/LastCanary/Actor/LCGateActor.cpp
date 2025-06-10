@@ -34,7 +34,6 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 
 	if (Controller == nullptr)
 	{
-		LOG_Frame_WARNING(TEXT("Gate interaction failed: no controller."));
 		return;
 	}
 
@@ -48,25 +47,52 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 		{
 			if (ALCRoomPlayerController* RoomPC = Cast<ALCRoomPlayerController>(Controller))
 			{
-				if (RoomPC->HasAuthority())
-				{
-					RoomPC->Server_MarkPlayerAsEscaped_Implementation();
-					if (ALCGameState* GS = GetWorld()->GetGameState<ALCGameState>())
-					{
-						//GS->MarkPlayerAsEscaped(RoomPC->PlayerState);
-					}
-				}
-				else
-				{
-					RoomPC->Server_MarkPlayerAsEscaped();
-				}
+				RoomPC->Server_MarkPlayerAsEscaped();
+
+				//if (RoomPC->HasAuthority())
+				//{
+				//	RoomPC->Server_MarkPlayerAsEscaped_Implementation();
+				//	if (ALCGameState* GS = GetWorld()->GetGameState<ALCGameState>())
+				//	{
+				//		//GS->MarkPlayerAsEscaped(RoomPC->PlayerState);
+				//	}
+				//}
+				//else
+				//{
+				//	RoomPC->Server_MarkPlayerAsEscaped();
+				//}
 
 				if (ABasePlayerState* PlayerState = RoomPC->GetPlayerState<ABasePlayerState>())
 				{
-					// 플레이어 상태 업데이트
+					// 아이템 ID 복사
 					ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(RoomPC->GetPawn());
 					PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetToolbarInventoryComponent()->GetInventoryItemIDs());
 					PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetBackpackInventoryComponent()->GetInventoryItemIDs());
+
+					// 자원 수집 기록
+					if (HasAuthority()) // 서버에서만 처리
+					{
+						if (ULCGameInstance* LCGameInstance = GetGameInstance<ULCGameInstance>())
+						{
+							if (ULCGameInstanceSubsystem* LCGameInstanceSubsystem = LCGameInstance->GetSubsystem<ULCGameInstanceSubsystem>())
+							{
+								if (UDataTable* ItemTable = LCGameInstanceSubsystem->GetItemDataTable())
+								{
+									for (int32 ItemID : PlayerState->AquiredItemIDs)
+									{
+										FName RowName = *FString::Printf(TEXT("Item_%d"), ItemID);
+										const FItemDataRow* Row = ItemTable->FindRow<FItemDataRow>(RowName, TEXT("Gate Resource Parse"));
+
+										if (Row && Row->bIsResourceItem)
+										{
+											PlayerState->AddCollectedResource(RowName);
+											LOG_Frame_WARNING(TEXT("자원 기록: %s → %d개 누적"), *RowName.ToString(), PlayerState->CollectedResourceMap[RowName]);
+										}
+									}
+								}
+							}
+						}
+					}
 				}
 			}
 
@@ -77,7 +103,6 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 			}
 			ABasePlayerController* BasePlayerController = Cast<ABasePlayerController>(Controller);
 			BasePlayerController->OnExitGate();
-			
 
 			// TODO : 탈출, 체크리스트 띄우고 전부 작성하면 결과 UI-> 호스트가 버튼 눌러서 베이스캠프로 이동
 			// 사망->시체 스켈레탈메시남고->관전(컨트롤러)
@@ -104,7 +129,7 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 			{
 				if (LCGM)
 				{
-					if (!LCGM->IsAllPlayersReady())
+					if (LCGM->IsAllPlayersReady() == false)
 					{
 						LOG_Server_ERROR(TEXT("All Client is Not Ready!!"));
 						return;

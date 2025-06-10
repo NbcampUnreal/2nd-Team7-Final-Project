@@ -10,6 +10,9 @@
 #include "GenericPlatform/GenericPlatformMisc.h"
 #include "Engine/GameEngine.h"
 
+#include "SaveGame/LCLocalPlayerSaveGame.h"
+#include "Character/BasePlayerController.h"
+
 #include "LastCanary.h"
 
 void UGeneralOptionWidget::NativeConstruct()
@@ -75,6 +78,7 @@ void UGeneralOptionWidget::NativeConstruct()
 			FullScreenCheckBox->OnCheckStateChanged.AddUniqueDynamic(this, &UGeneralOptionWidget::OnScreenModeChanged);
 		}
 	}
+	InitializeAllOptions();
 }
 
 void UGeneralOptionWidget::NativeDestruct()
@@ -120,6 +124,8 @@ void UGeneralOptionWidget::OnMasterVolumeChanged(float Value)
 		MasterVolumeText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), Value * 100.f)));
 	}
 
+	ULCLocalPlayerSaveGame::SaveMasterVolume(GetWorld(), Value);
+
 	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
 	{
 		OptionManager->MasterVolume = Value;
@@ -135,6 +141,8 @@ void UGeneralOptionWidget::OnBGMVolumeChanged(float Value)
 	{
 		BGMVolumeText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), Value * 100.f)));
 	}
+
+	ULCLocalPlayerSaveGame::SaveBGMVolume(GetWorld(), Value);
 
 	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
 	{
@@ -152,6 +160,8 @@ void UGeneralOptionWidget::OnEffectVolumeChanged(float Value)
 		EffectVolumeText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), Value * 100.f)));
 	}
 
+	ULCLocalPlayerSaveGame::SaveEffectVolume(GetWorld(), Value);
+
 	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
 	{
 		OptionManager->EffectVolume = Value;
@@ -161,7 +171,7 @@ void UGeneralOptionWidget::OnEffectVolumeChanged(float Value)
 
 void UGeneralOptionWidget::OnSensitivityChanged(float Value)
 {
-	// LOG_Frame_WARNING(TEXT("SenSitivity Changed"));
+	LOG_Frame_WARNING(TEXT("SenSitivity Changed"));
 
 	if (MouseSensitivityText)
 	{
@@ -171,6 +181,16 @@ void UGeneralOptionWidget::OnSensitivityChanged(float Value)
 	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
 	{
 		OptionManager->MouseSensitivity = Value;
+	}
+
+	ULCLocalPlayerSaveGame::SaveMouseSensitivity(GetWorld(), Value);
+
+	if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+	{
+		if (ABasePlayerController* MyPC = Cast<ABasePlayerController>(PC))
+		{
+			MyPC->SetMouseSensitivity(Value);
+		}
 	}
 }
 
@@ -183,9 +203,19 @@ void UGeneralOptionWidget::OnBrightnessChanged(float Value)
 		BrightnessText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), Value * 100.f)));
 	}
 
+	ULCLocalPlayerSaveGame::SaveBrightness(GetWorld(), Value);
+
 	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
 	{
 		OptionManager->Brightness = Value;
+	}
+
+	if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+	{
+		if (ABasePlayerController* MyPC = Cast<ABasePlayerController>(PC))
+		{
+			MyPC->SetBrightness(Value);
+		}
 	}
 }
 
@@ -202,6 +232,7 @@ void UGeneralOptionWidget::OnScreenModeChanged(bool bIsFullscreen)
 		{
 			OptionManager->ChangeScreen(EScreenMode::Window);
 		}
+		ULCLocalPlayerSaveGame::SaveFullScreenMode(GetWorld(), bIsFullscreen);
 	}
 }
 
@@ -282,4 +313,117 @@ void UGeneralOptionWidget::PopulateResolutionOptions()
 	{
 		ResolutionComboBox->SetSelectedIndex(0);
 	}
+}
+
+void UGeneralOptionWidget::InitializeSensitivity()
+{
+	if (UWorld* World = GetWorld())
+	{
+		float SavedSensitivity = ULCLocalPlayerSaveGame::LoadMouseSensitivity(World);
+
+		if (MouseSensitivitySlider)
+		{
+			MouseSensitivitySlider->SetValue(SavedSensitivity);
+		}
+
+		if (MouseSensitivityText)
+		{
+			MouseSensitivityText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), SavedSensitivity * 100.f)));
+		}
+	}
+}
+
+void UGeneralOptionWidget::InitializeMasterVolume() 
+{
+	if (UWorld* World = GetWorld())
+	{
+		float SavedMasterVolume= ULCLocalPlayerSaveGame::LoadMasterVolume(World);
+
+		if (MasterVolumeSlider)
+		{
+			MasterVolumeSlider->SetValue(SavedMasterVolume);
+		}
+
+		if (MasterVolumeText)
+		{
+			MasterVolumeText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), SavedMasterVolume * 100.f)));
+		}
+	}
+}
+
+void UGeneralOptionWidget::InitializeBGMVolume() 
+{
+	if (UWorld* World = GetWorld())
+	{
+		float SavedBGMVolume = ULCLocalPlayerSaveGame::LoadBGMVolume(World);
+
+		if (BGMVolumeSlider)
+		{
+			BGMVolumeSlider->SetValue(SavedBGMVolume);
+		}
+
+		if (BGMVolumeText)
+		{
+			BGMVolumeText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), SavedBGMVolume * 100.f)));
+		}
+	}
+}
+
+void UGeneralOptionWidget::InitializeEffectVolume() 
+{
+	if (UWorld* World = GetWorld())
+	{
+		float SavedEffectVolume = ULCLocalPlayerSaveGame::LoadEffectVolume(World);
+
+		if (EffectVolumeSlider)
+		{
+			EffectVolumeSlider->SetValue(SavedEffectVolume);
+		}
+
+		if (EffectVolumeText)
+		{
+			EffectVolumeText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), SavedEffectVolume * 100.f)));
+		}
+	}
+}
+
+void UGeneralOptionWidget::InitializeBrightness() 
+{
+	if (UWorld* World = GetWorld())
+	{
+		float SavedBrightness = ULCLocalPlayerSaveGame::LoadBrightness(World);
+
+		if (BrightnessSlider)
+		{
+			BrightnessSlider->SetValue(SavedBrightness);
+		}
+
+		if (BrightnessText)
+		{
+			BrightnessText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), SavedBrightness * 100.f)));
+		}
+	}
+}
+
+void UGeneralOptionWidget::InitializeScreenMode() 
+{
+	if (UWorld* World = GetWorld())
+	{
+		bool SavedScreenMode = ULCLocalPlayerSaveGame::LoadFullScreenMode(World);
+
+		if (FullScreenCheckBox)
+		{
+			FullScreenCheckBox->SetIsChecked(SavedScreenMode);
+		}
+	}
+}
+
+void UGeneralOptionWidget::InitializeAllOptions() 
+{
+	InitializeSensitivity();
+	InitializeMasterVolume();
+	InitializeBGMVolume();
+	InitializeEffectVolume();
+	InitializeBrightness();
+	InitializeScreenMode();
 }

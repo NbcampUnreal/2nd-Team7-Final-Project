@@ -14,13 +14,14 @@ class LASTCANARY_API ALCInGameModeBase : public ALCGameMode
 public:
 	ALCInGameModeBase();
 
+	virtual void StartPlay() override;
 	virtual void BeginPlay() override;
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 	virtual void Logout(AController* Exiting) override;
 
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Checklist")
-	TSubclassOf<AChecklistManager> ChecklistManagerClass;
+	TSoftClassPtr<AChecklistManager> ChecklistManagerClass;
 
 	UPROPERTY()
 	AChecklistManager* ChecklistManager;
