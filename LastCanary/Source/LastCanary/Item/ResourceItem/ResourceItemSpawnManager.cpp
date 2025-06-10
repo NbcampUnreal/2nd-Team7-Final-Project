@@ -206,11 +206,11 @@ void AResourceItemSpawnManager::SetCurrentRegionTag(const FString& MapName)
 	if (RegionTag.IsValid())
 	{
 		CurrentRegionTags.AddTag(RegionTag);
-		UE_LOG(LogTemp, Log, TEXT("[ResourceItemSpawnManager] Set region tag: %s"), *TagName);
+		LOG_Item_WARNING(TEXT("[ResourceItemSpawnManager] Set region tag: %s"), *TagName);
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[ResourceItemSpawnManager] Invalid region tag: %s"), *TagName);
+		LOG_Item_WARNING(TEXT("[ResourceItemSpawnManager] Invalid region tag: %s"), *TagName);
 	}
 }
 
@@ -232,4 +232,15 @@ void AResourceItemSpawnManager::SetCurrentMapRegionTag()
 	{
 		CurrentRegionTags.AddTag(FGameplayTag::RequestGameplayTag("ItemSpawn.Map.Ruins"));
 	}
+}
+
+AItemBase* AResourceItemSpawnManager::SpawnItemAtLocation(FName ItemRowName, FVector Location)
+{
+	if (ItemSpawnerComponent)
+	{
+		return ItemSpawnerComponent->CreateItem(ItemRowName, Location);
+	}
+
+	LOG_Item_WARNING(TEXT("[AResourceItemSpawnManager::SpawnItemAtLocation] ItemSpawnerComponent is null"));
+	return nullptr;
 }

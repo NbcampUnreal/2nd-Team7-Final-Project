@@ -17,6 +17,7 @@ class UToolbarInventoryComponent;
 class UBackpackInventoryComponent;
 struct FBaseItemSlotData;
 class UItemSpawnerComponent;
+class AResourceNode;
 
 UCLASS()
 class LASTCANARY_API ABaseCharacter : public AAlsCharacter
@@ -546,4 +547,12 @@ public:
 
 	/** 스캐너를 위한 스텐실 설정 */
 	void EnableStencilForAllMeshes(int32 StencilValue);
+
+	//-----------------------------------------------------
+	// 각종 자원 채집을 위한 상호작용
+	//-----------------------------------------------------
+
+	UFUNCTION(Server, Reliable)
+	void Server_InteractWithResourceNode(AResourceNode* TargetNode);
+	void Server_InteractWithResourceNode_Implementation(AResourceNode* TargetNode);
 };

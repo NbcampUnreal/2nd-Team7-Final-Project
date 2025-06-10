@@ -59,6 +59,10 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Spawn")
     void SetCurrentRegionTag(const FString& MapName);
 
+    /** 자원 생산 노드에서 요청 시 생성 */
+    UFUNCTION(BlueprintCallable, Category = "Spawn")
+    AItemBase* SpawnItemAtLocation(FName ItemRowName, FVector Location);
+
 protected:
     /** 현재 맵에 따른 지역 태그 자동 설정 */
     void SetCurrentMapRegionTag();

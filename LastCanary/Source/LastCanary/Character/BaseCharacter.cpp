@@ -21,6 +21,7 @@
 #include "Inventory/BackpackInventoryComponent.h"
 #include "Item/ItemBase.h"
 #include "Item/ItemSpawnerComponent.h"
+#include "Item/ResourceNode.h"
 #include "Item/EquipmentItem/GunBase.h"
 #include "Item/EquipmentItem/EquipmentItemBase.h"
 #include "UI/Manager/LCUIManager.h"
@@ -2501,4 +2502,21 @@ void ABaseCharacter::EnableStencilForAllMeshes(int32 StencilValue)
 		MeshComp->SetRenderCustomDepth(true);
 		MeshComp->SetCustomDepthStencilValue(StencilValue);
 	}
+}
+
+void ABaseCharacter::Server_InteractWithResourceNode_Implementation(AResourceNode* TargetNode)
+{
+	if (!TargetNode)
+	{
+		return;
+	}
+
+	AItemBase* EquippedItem = GetToolbarInventoryComponent()->GetCurrentEquippedItem();
+	if (!EquippedItem || !EquippedItem->ItemData.ItemType.MatchesTag(TargetNode->RequiredToolTag))
+	{
+		LOG_Item_WARNING(TEXT("올바른 도구를 장착하지 않았습니다."));
+		return;
+	}
+
+	TargetNode->HarvestResource(GetController<APlayerController>());
 }
