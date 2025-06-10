@@ -174,7 +174,7 @@ public:
 	void SetCameraMode(bool bIsFirstPersonView);
 
 	void ApplyRecoilStep();
-	void CameraShake();
+	void CameraShake(float Vertical, float Horizontal);
 
 
 	void SwapHeadMaterialTransparent(bool bUseTransparent);

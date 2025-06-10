@@ -108,14 +108,6 @@ void ABaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (HasAuthority())
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Character BeginPlay - Complete  This is Server."));
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Character BeginPlay - Complete  This is Client."));
-	}
 	if (IsLocallyControlled())
 	{
 		// "head"는 스켈레탈 메시의 머리 본에 해당하는 이름
@@ -179,10 +171,7 @@ void ABaseCharacter::SetBrightness(float Value)
 	CustomPostProcessComponent->Settings.AutoExposureMinBrightness = baseBrightness;
 	CustomPostProcessComponent->Settings.AutoExposureMaxBrightness = baseBrightness + 0.5f;
 	CustomPostProcessComponent->Settings.AutoExposureBias = baseBrightness; // 유저 설정값 반영
-	UE_LOG(LogTemp, Warning, TEXT("SetBrightness : %f"), Value);
 }
-
-
 
 void ABaseCharacter::NotifyControllerChanged()
 {
@@ -238,7 +227,6 @@ void ABaseCharacter::NotifyControllerChanged()
 	Super::NotifyControllerChanged();
 }
 
-
 void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo)
 {
 	if (Controller && Controller->IsLocalPlayerController())
@@ -283,11 +271,11 @@ void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue, floa
 	Controller->SetControlRotation(NewRotation);
 }
 
-void ABaseCharacter::CameraShake()
+void ABaseCharacter::CameraShake(float Vertical, float Horizontal)
 {
 	// 새로운 반동량을 기존 값에 누적
-	RecoilStepPitch += 5.0f / RecoilMaxSteps;
-	RecoilStepYaw += FMath::RandRange(-YawRecoilRange, YawRecoilRange) / RecoilMaxSteps;
+	RecoilStepPitch += Vertical / RecoilMaxSteps;
+	RecoilStepYaw += FMath::RandRange(-Horizontal, Horizontal) / RecoilMaxSteps;
 
 	// 타이머가 안 돌고 있을 때만 시작
 	if (!GetWorld()->GetTimerManager().IsTimerActive(RecoilTimerHandle))
@@ -436,7 +424,9 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 				//bIsSprinting = true;
 				FootSoundModifier = MyPlayerState->SprintingFootSoundModifier;
 				//SetDesiredAiming(false);
-				SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+				Camera->AttachToComponent(SpringArm, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+				Camera->SetRelativeLocation(FVector::ZeroVector);
+				Camera->SetRelativeRotation(FRotator::ZeroRotator); // 필요 시 원래 회전 복구
 				StopStaminaRecovery();
 				StopStaminaRecoverAfterDelay();
 				StartStaminaDrain();
@@ -447,7 +437,9 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 				//bIsSprinting = true;
 				FootSoundModifier = MyPlayerState->SprintingFootSoundModifier;
 				//SetDesiredAiming(false);
-				SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+				Camera->AttachToComponent(SpringArm, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+				Camera->SetRelativeLocation(FVector::ZeroVector);
+				Camera->SetRelativeRotation(FRotator::ZeroRotator); // 필요 시 원래 회전 복구
 				StopStaminaRecovery();
 				StopStaminaRecoverAfterDelay();
 				StartStaminaDrain();
@@ -667,14 +659,20 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 				{
 					//UE_LOG(LogTemp, Warning, TEXT("Scope on"));
 					CancelInteraction();
-					SpringArm->AttachToComponent(RifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
+					// 1. 소켓 위치와 회전 가져오기
+					FTransform ScopeTransform = RifleMesh->GetSocketTransform(TEXT("Scope"));
+					Camera->AttachToComponent(RifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
+					Camera->SetWorldRotation(RifleMesh->GetSocketRotation(TEXT("Scope")));
 					//ToADSCamera(true);
 					return;
 				}
 				else
 				{
 					//UE_LOG(LogTemp, Warning, TEXT("Scope out"));
-					SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+					// 예: 조준 해제 시
+					Camera->AttachToComponent(SpringArm, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+					Camera->SetRelativeLocation(FVector::ZeroVector);
+					Camera->SetRelativeRotation(FRotator::ZeroRotator); // 필요 시 원래 회전 복구
 					//ToADSCamera(false);
 					return;
 				}
@@ -815,7 +813,9 @@ void ABaseCharacter::ConsumeStamina()
 	bIsSprinting = true;
 	SetDesiredAiming(false);
 	SetDesiredGait(AlsGaitTags::Sprinting);
-	SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+	Camera->AttachToComponent(SpringArm, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+	Camera->SetRelativeLocation(FVector::ZeroVector);
+	Camera->SetRelativeRotation(FRotator::ZeroRotator); // 필요 시 원래 회전 복구
 	StopStaminaRecovery();
 	StopStaminaRecoverAfterDelay();
 	StartStaminaRecoverAfterDelayOnJump();
