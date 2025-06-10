@@ -139,6 +139,10 @@ public:
 
 	EPlayerInGameStatus InGameState = EPlayerInGameStatus::Alive;
 
+	void SetInGameStatus(EPlayerInGameStatus Status);
+	EPlayerInGameStatus GetInGameStatus();
+
+
 	UFUNCTION()
 	void OnRep_CurrentState();
 

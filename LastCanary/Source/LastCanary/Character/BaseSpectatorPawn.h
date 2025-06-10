@@ -22,10 +22,6 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-public:	
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
-
 public:
 	void Handle_LookMouse(const FInputActionValue& ActionValue, float Sensivity);
 	void AdjustCameraZoom(float ZoomDelta); // 선택사항

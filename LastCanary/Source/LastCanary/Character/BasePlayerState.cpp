@@ -31,6 +31,15 @@ void ABasePlayerState::BeginPlay()
 	UpdateStaminaUI();
 }
 
+void ABasePlayerState::SetInGameStatus(EPlayerInGameStatus Status)
+{
+	InGameState = Status;
+}
+EPlayerInGameStatus ABasePlayerState::GetInGameStatus()
+{
+	return InGameState;
+}
+
 void ABasePlayerState::InitializeStats()
 {
 	CurrentHP = InitialStats.MaxHP;

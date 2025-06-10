@@ -27,16 +27,9 @@ void ABaseSpectatorPawn::BeginPlay()
 	
 }
 
-// Called every frame
-void ABaseSpectatorPawn::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
-}
 
 void ABaseSpectatorPawn::Handle_LookMouse(const FInputActionValue& ActionValue, float Sensivity)
 {
-	UE_LOG(LogTemp, Warning, TEXT("SpawnedSpectatorPawn LookMouse"));
 	const FVector2f Value{ ActionValue.Get<FVector2D>() };
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
@@ -68,7 +61,6 @@ void ABaseSpectatorPawn::Handle_LookMouse(const FInputActionValue& ActionValue, 
 
 void ABaseSpectatorPawn::AdjustCameraZoom(float ZoomDelta)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Spectator zoom,"));
     float NewLength = FMath::Clamp(SpringArm->TargetArmLength + ZoomDelta * 10.0f, MinZoom, MaxZoom);
     SpringArm->TargetArmLength = NewLength;
 }

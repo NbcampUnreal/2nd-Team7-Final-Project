@@ -59,6 +59,11 @@ private:
 	void Server_SpawnSpectatablePawn();
 	void Server_SpawnSpectatablePawn_Implementation();
 
+	void CheckCurrentSpectatedCharacterStatus();
+
+	FTimerHandle SpectatorCheckHandle;
+	FTimerHandle AutoSpectateHandle;
+	bool bIsWaitingForAutoSpectate = false;
 protected:
 	UEnhancedInputComponent* EnhancedInput;
 	UInputMappingContext* CurrentIMC;
@@ -248,14 +253,22 @@ public:
 	void Client_OnPlayerExitActivePlay_Implementation();
 
 	UPROPERTY(BlueprintReadWrite)
-	int32 CurrentSpectatedCharacterIndex = 0;
+	int32 CurrentSpectatedCharacterIndex = -1;
 
+	UFUNCTION(Client, Reliable)
+	void Client_StartSpectation();
+	void Client_StartSpectation_Implementation();
 
 	void SpectateNextPlayer();
 	void SpectatePreviousPlayer();
 	TArray<ABasePlayerState*> GetPlayerArray();
 
 	TArray<ABasePlayerState*> SpectatorTargets;
+
+	ABasePlayerState* CurrentSpectatedPlayer = nullptr;
+
+	FVector SpectatorSpawnLocation = FVector::ZeroVector;
+	FRotator SpectatorSpawnRotation = FRotator::ZeroRotator;
 
 	//관전 컨트롤 전용 변수
 	bool bIsSpectatingButtonClicked = false;

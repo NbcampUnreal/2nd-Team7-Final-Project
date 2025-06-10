@@ -134,16 +134,14 @@ void ABasePlayerController::HandleExitGate()
 void ABasePlayerController::OnPlayerExitActivePlay()
 {
 	// 일정 시간 후 Pawn 제거
-	Client_OnPlayerExitActivePlay();
-	//클라이언트에서 해야할 것.
 	APawn* MyPawn = GetPawn();
-	if (MyPawn)
+	if (IsValid(MyPawn))
 	{
-		MyPawn->DetachFromControllerPendingDestroy();
-		MyPawn->SetLifeSpan(5.f); // 또는 Custom Fade Out
+		SpectatorSpawnLocation = MyPawn->GetActorLocation();
+		SpectatorSpawnRotation = MyPawn->GetActorRotation();
 	}
-	
-	OnUnPossess();
+
+	Client_OnPlayerExitActivePlay();
 
 	SpawnSpectatablePawn();
 }
@@ -168,9 +166,6 @@ void ABasePlayerController::Client_OnPlayerExitActivePlay_Implementation()
 			PlayerCharacter->SetCameraMode(false);
 		}
 	}
-	//UnPossess();
-	//CreateWidget();
-	//addtoviewport
 }
 
 void ABasePlayerController::SpawnSpectatablePawn()
@@ -179,11 +174,24 @@ void ABasePlayerController::SpawnSpectatablePawn()
 	{
 		FActorSpawnParameters Params;
 		Params.Owner = this;
-		ABaseSpectatorPawn* Spectator = GetWorld()->SpawnActor<ABaseSpectatorPawn>(SpectatorClass, FVector::ZeroVector, FRotator::ZeroRotator, Params);
+		ABaseSpectatorPawn* Spectator = GetWorld()->SpawnActor<ABaseSpectatorPawn>(SpectatorClass, SpectatorSpawnLocation, SpectatorSpawnRotation, Params);
+		if (!IsValid(Spectator))
+		{
+			return;
+		}
 		SpawnedSpectatorPawn = Spectator;
+		CurrentPossessedPawn = SpawnedSpectatorPawn;
 		SpawnedSpectatorPawn->SetOwner(this);
+		//클라이언트에서 해야할 것.
+		APawn* MyPawn = GetPawn();
+		if (MyPawn)
+		{
+			MyPawn->DetachFromControllerPendingDestroy();
+			MyPawn->SetLifeSpan(5.f); // 또는 Custom Fade Out
+		}
+		OnUnPossess();
 		Possess(Spectator);
-		SpectateNextPlayer();
+		Client_StartSpectation();
 	}
 	else
 	{
@@ -206,6 +214,12 @@ void ABasePlayerController::OnRep_SpawnedSpectatorPawn()
 
 	UE_LOG(LogTemp, Warning, TEXT("Client received replicated SpawnedSpectatorPawn: %s"), *SpawnedSpectatorPawn->GetName());
 	CurrentPossessedPawn = SpawnedSpectatorPawn;	
+}
+
+void ABasePlayerController::Client_StartSpectation_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Spectate Start On Client"));
+	GetWorldTimerManager().SetTimer(SpectatorCheckHandle, this, &ABasePlayerController::CheckCurrentSpectatedCharacterStatus, 0.5f, true);
 }
 
 APawn* ABasePlayerController::GetMyPawn()
@@ -414,8 +428,6 @@ void ABasePlayerController::Input_OnLookMouse(const FInputActionValue& ActionVal
 	}
 	if (CurrentPossessedPawn->IsA<ABaseSpectatorPawn>())
 	{
-
-		UE_LOG(LogTemp, Warning, TEXT("SpawnedSpectatorPawn"));
 		ABaseSpectatorPawn* Spectator = Cast<ABaseSpectatorPawn>(CurrentPossessedPawn);
 		if (IsValid(Spectator))
 		{
@@ -455,9 +467,9 @@ void ABasePlayerController::Input_OnMove(const FInputActionValue& ActionValue)
 		return;
 	}
 
-	if (MyPlayerState->InGameState == EPlayerInGameStatus::Spectating)
+	if (MyPlayerState->InGameState != EPlayerInGameStatus::Alive)
 	{
-		//UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is Spectating"));
+		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is Spectating"));
 		const auto Value{ ActionValue.Get<FVector2D>() };
 		if (Value.X != 0.0f)
 		{
@@ -493,6 +505,32 @@ void ABasePlayerController::Input_OnMove(const FInputActionValue& ActionValue)
 	else if (ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn))
 	{
 		Drone->Input_Move(ActionValue);
+	}
+	else if (ABaseSpectatorPawn* Spectator = Cast<ABaseSpectatorPawn>(CurrentPossessedPawn))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is Spectating"));
+		const auto Value{ ActionValue.Get<FVector2D>() };
+		if (Value.X != 0.0f)
+		{
+			if (bIsSpectatingButtonClicked == true)
+			{
+				return;
+			}
+			bIsSpectatingButtonClicked = true;
+			if (Value.X > 0.0f)
+			{
+				SpectateNextPlayer();
+			}
+			else
+			{
+				SpectatePreviousPlayer();
+			}
+		}
+		else
+		{
+			bIsSpectatingButtonClicked = false;
+		}
+		return;
 	}
 	else
 	{
@@ -716,8 +754,13 @@ void ABasePlayerController::SpectatePreviousPlayer()
 	{
 		return;
 	}
+	CurrentSpectatedPlayer = PlayerList[CurrentSpectatedCharacterIndex];
 	Spectator->SpectateOtherUser(TargetCharacter);
-	//SetViewTargetWithBlend(PlayerList[CurrentSpectatedCharacterIndex]->GetPawn());
+
+	bIsWaitingForAutoSpectate = false;
+
+	// 타이머 초기화 (중복 실행 방지)
+	GetWorldTimerManager().ClearTimer(AutoSpectateHandle);
 }
 
 void ABasePlayerController::SpectateNextPlayer()
@@ -750,13 +793,18 @@ void ABasePlayerController::SpectateNextPlayer()
 		return;
 	}
 	UE_LOG(LogTemp, Warning, TEXT("Spectator Pawn AttachToActor"));
+	CurrentSpectatedPlayer = PlayerList[CurrentSpectatedCharacterIndex];
 	ABaseCharacter* TargetCharacter = Cast<ABaseCharacter>(Target);
 	if (!IsValid(TargetCharacter))
 	{
 		return;
 	}
 	Spectator->SpectateOtherUser(TargetCharacter);
-	//SetViewTargetWithBlend(PlayerList[CurrentSpectatedCharacterIndex]->GetPawn());
+
+	bIsWaitingForAutoSpectate = false;
+
+	// 타이머 초기화 (중복 실행 방지)
+	GetWorldTimerManager().ClearTimer(AutoSpectateHandle);
 }
 
 TArray<ABasePlayerState*> ABasePlayerController::GetPlayerArray()
@@ -797,6 +845,26 @@ TArray<ABasePlayerState*> ABasePlayerController::GetPlayerArray()
 		return SpectatorTargets;
 	}
 }
+void ABasePlayerController::CheckCurrentSpectatedCharacterStatus()
+{
+	UE_LOG(LogTemp, Warning, TEXT("체크"));
+	if (!IsValid(CurrentSpectatedPlayer) || CurrentSpectatedPlayer->GetInGameStatus() != EPlayerInGameStatus::Alive)
+	{
+		SpectatorTargets = GetPlayerArray();
+
+		const int32 AliveCount = SpectatorTargets.Num();
+
+		if (AliveCount <= 0)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("No more alive players to spectate."));
+			GetWorldTimerManager().ClearTimer(SpectatorCheckHandle);
+
+			return;
+		}
+		SpectateNextPlayer();
+	}
+}
+
 
 
 void ABasePlayerController::Input_OnItemUse(const FInputActionValue& ActionValue)
