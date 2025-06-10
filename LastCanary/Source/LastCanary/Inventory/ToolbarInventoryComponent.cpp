@@ -2,13 +2,17 @@
 #include "Character/BaseCharacter.h"
 #include "DataTable/ItemDataRow.h"
 #include "DataType/BaseItemSlotData.h"
+#include "Framework/GameInstance/LCGameInstance.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Item/EquipmentItem/BackpackItem.h"
 #include "Item/ItemBase.h"
 #include "Item/ItemSpawnerComponent.h"
 #include "Item/EquipmentItem/EquipmentItemBase.h"
 #include "Item/EquipmentItem/GunBase.h"
+#include "UI/UIElement/InventoryMainWidget.h"
+#include "UI/Manager/LCUIManager.h"
 #include "Net/UnrealNetwork.h"
+#include "Engine/DataTable.h"
 #include "LastCanary.h"
 
 UToolbarInventoryComponent::UToolbarInventoryComponent()
@@ -290,6 +294,26 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
         }
         
         OnInventoryUpdated.Broadcast();
+
+        if (CachedOwnerCharacter && CachedOwnerCharacter->IsLocallyControlled())
+        {
+            if (ULCGameInstanceSubsystem* LCGameInstanceSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+            {
+                if (ULCUIManager* UIManager = LCGameInstanceSubsystem->GetUIManager())
+                {
+                    if (UInventoryMainWidget* InventoryWidget = UIManager->GetInventoryMainWidget())
+                    {
+                        const FItemDataRow* ItemData = LCGameInstanceSubsystem->GetItemDataByRowName(SlotData->ItemRowName);
+                        if (ItemData)
+                        {
+                            FText DisplayText = FText::FromString(ItemData->ItemName.ToString());
+                            InventoryWidget->ShowToolbarSlotItemText(DisplayText);
+                        }
+                    }
+                }
+            }
+        }
+
         return;
     }
 
