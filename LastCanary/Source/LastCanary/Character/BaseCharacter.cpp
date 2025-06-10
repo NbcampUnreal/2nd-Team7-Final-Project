@@ -2221,8 +2221,10 @@ void ABaseCharacter::Server_UnequipCurrentItem_Implementation()
 	UnequipCurrentItem();
 }
 
-bool ABaseCharacter::UseEquippedItem(const FInputActionValue& ActionValue)
+bool ABaseCharacter::UseEquippedItem(float ActionValue)
 {
+	UE_LOG(LogTemp, Warning, TEXT("아이템 사용 : %f"), ActionValue);
+
 	if (bIsReloading)
 	{
 		return true;
@@ -2241,9 +2243,12 @@ bool ABaseCharacter::UseEquippedItem(const FInputActionValue& ActionValue)
 
 	if (GetLocalRole() < ROLE_Authority)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("서버가 아님"));
 		Server_UseEquippedItem(ActionValue);
 		return true;
 	}
+
+
 
 	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
 	if (!EquippedItem)
@@ -2252,7 +2257,7 @@ bool ABaseCharacter::UseEquippedItem(const FInputActionValue& ActionValue)
 		return false;
 	}
 
-	if (ActionValue.Get<float>() >= 0.5f)
+	if (ActionValue >= 0.5f)
 	{
 		if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))
 		{
@@ -2287,6 +2292,7 @@ bool ABaseCharacter::UseEquippedItem(const FInputActionValue& ActionValue)
 			}
 
 		}
+		UE_LOG(LogTemp, Warning, TEXT("UseItem"));
 		EquippedItem->UseItem();
 		bIsUsingItem = true;
 		return true;
@@ -2308,8 +2314,9 @@ bool ABaseCharacter::UseEquippedItem(const FInputActionValue& ActionValue)
 	
 }
 
-void ABaseCharacter::Server_UseEquippedItem_Implementation(const FInputActionValue& ActionValue)
+void ABaseCharacter::Server_UseEquippedItem_Implementation(float ActionValue)
 {
+	UE_LOG(LogTemp, Warning, TEXT("서버 RPC"));
 	UseEquippedItem(ActionValue);
 }
 

@@ -11,6 +11,7 @@
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Actor/Gimmick/LCBaseGimmick.h"
 
+#include "Character/BaseSpectatorPawn.h"
 #include "Inventory/ToolbarInventoryComponent.h"
 
 #include "SaveGame/LCLocalPlayerSaveGame.h"
@@ -141,7 +142,10 @@ void ABasePlayerController::OnPlayerExitActivePlay()
 		MyPawn->DetachFromControllerPendingDestroy();
 		MyPawn->SetLifeSpan(5.f); // 또는 Custom Fade Out
 	}
+	
 	OnUnPossess();
+
+	SpawnSpectatablePawn();
 }
 
 void ABasePlayerController::Client_OnPlayerExitActivePlay_Implementation()
@@ -167,6 +171,41 @@ void ABasePlayerController::Client_OnPlayerExitActivePlay_Implementation()
 	//UnPossess();
 	//CreateWidget();
 	//addtoviewport
+}
+
+void ABasePlayerController::SpawnSpectatablePawn()
+{
+	if (HasAuthority()) // 서버만 스폰 가능
+	{
+		FActorSpawnParameters Params;
+		Params.Owner = this;
+		ABaseSpectatorPawn* Spectator = GetWorld()->SpawnActor<ABaseSpectatorPawn>(SpectatorClass, FVector::ZeroVector, FRotator::ZeroRotator, Params);
+		SpawnedSpectatorPawn = Spectator;
+		SpawnedSpectatorPawn->SetOwner(this);
+		Possess(Spectator);
+		SpectateNextPlayer();
+	}
+	else
+	{
+		Server_SpawnSpectatablePawn();
+	}
+}
+
+void ABasePlayerController::Server_SpawnSpectatablePawn_Implementation()
+{
+	SpawnSpectatablePawn();
+}
+
+void ABasePlayerController::OnRep_SpawnedSpectatorPawn()
+{
+	if (!IsValid(SpawnedSpectatorPawn))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SpawnedSpectatorPawn is invalid on client!"));
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("Client received replicated SpawnedSpectatorPawn: %s"), *SpawnedSpectatorPawn->GetName());
+	CurrentPossessedPawn = SpawnedSpectatorPawn;	
 }
 
 APawn* ABasePlayerController::GetMyPawn()
@@ -373,6 +412,16 @@ void ABasePlayerController::Input_OnLookMouse(const FInputActionValue& ActionVal
 			Drone->Input_Look(ActionValue);
 		}
 	}
+	if (CurrentPossessedPawn->IsA<ABaseSpectatorPawn>())
+	{
+
+		UE_LOG(LogTemp, Warning, TEXT("SpawnedSpectatorPawn"));
+		ABaseSpectatorPawn* Spectator = Cast<ABaseSpectatorPawn>(CurrentPossessedPawn);
+		if (IsValid(Spectator))
+		{
+			Spectator->Handle_LookMouse(ActionValue, MouseSensivity);
+		}
+	}
 }
 
 void ABasePlayerController::Input_OnLook(const FInputActionValue& ActionValue)
@@ -397,6 +446,12 @@ void ABasePlayerController::Input_OnMove(const FInputActionValue& ActionValue)
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
 	{
+		return;
+	}
+
+	if (!IsValid(CurrentPossessedPawn))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_OnMove"));
 		return;
 	}
 
@@ -427,11 +482,7 @@ void ABasePlayerController::Input_OnMove(const FInputActionValue& ActionValue)
 		return;
 	}
 
-	if (!IsValid(CurrentPossessedPawn))
-	{
-		//UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_OnMove"));
-		return;
-	}
+
 	
 
 	// APawn 타입에 맞는 처리를 실행
@@ -641,7 +692,32 @@ void ABasePlayerController::SpectatePreviousPlayer()
 	{
 		CurrentSpectatedCharacterIndex = PlayerListLength - 1;
 	}
-	SetViewTargetWithBlend(PlayerList[CurrentSpectatedCharacterIndex]->GetPawn());
+	APawn* Target = PlayerList[CurrentSpectatedCharacterIndex]->GetPawn();
+	if (!IsValid(Target))
+	{
+		return;
+	}
+	if (!IsValid(CurrentPossessedPawn))
+	{
+		return;
+	}
+	if (!CurrentPossessedPawn->IsA<ABaseSpectatorPawn>())
+	{
+		return;
+	}
+	ABaseSpectatorPawn* Spectator = Cast<ABaseSpectatorPawn>(CurrentPossessedPawn);
+	if (!IsValid(Spectator))
+	{
+		return;
+	}
+	UE_LOG(LogTemp, Warning, TEXT("Spectator Pawn AttachToActor"));
+	ABaseCharacter* TargetCharacter = Cast<ABaseCharacter>(Target);
+	if (!IsValid(TargetCharacter))
+	{
+		return;
+	}
+	Spectator->SpectateOtherUser(TargetCharacter);
+	//SetViewTargetWithBlend(PlayerList[CurrentSpectatedCharacterIndex]->GetPawn());
 }
 
 void ABasePlayerController::SpectateNextPlayer()
@@ -655,7 +731,32 @@ void ABasePlayerController::SpectateNextPlayer()
 
 	CurrentSpectatedCharacterIndex++;
 	CurrentSpectatedCharacterIndex %= PlayerListLength;
-	SetViewTargetWithBlend(PlayerList[CurrentSpectatedCharacterIndex]->GetPawn());
+	APawn* Target = PlayerList[CurrentSpectatedCharacterIndex]->GetPawn();
+	if (!IsValid(Target))
+	{
+		return;
+	}
+	if (!IsValid(CurrentPossessedPawn))
+	{
+		return;
+	}
+	if (!CurrentPossessedPawn->IsA<ABaseSpectatorPawn>())
+	{
+		return;
+	}
+	ABaseSpectatorPawn* Spectator = Cast<ABaseSpectatorPawn>(CurrentPossessedPawn);
+	if (!IsValid(Spectator))
+	{
+		return;
+	}
+	UE_LOG(LogTemp, Warning, TEXT("Spectator Pawn AttachToActor"));
+	ABaseCharacter* TargetCharacter = Cast<ABaseCharacter>(Target);
+	if (!IsValid(TargetCharacter))
+	{
+		return;
+	}
+	Spectator->SpectateOtherUser(TargetCharacter);
+	//SetViewTargetWithBlend(PlayerList[CurrentSpectatedCharacterIndex]->GetPawn());
 }
 
 TArray<ABasePlayerState*> ABasePlayerController::GetPlayerArray()
@@ -700,8 +801,7 @@ TArray<ABasePlayerState*> ABasePlayerController::GetPlayerArray()
 
 void ABasePlayerController::Input_OnItemUse(const FInputActionValue& ActionValue)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Use Item"));
-
+	float Value = ActionValue.Get<float>();
 	if (!IsValid(CurrentPossessedPawn))
 	{
 		return;
@@ -709,7 +809,7 @@ void ABasePlayerController::Input_OnItemUse(const FInputActionValue& ActionValue
 
 	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
-		PlayerCharacter->UseEquippedItem(ActionValue);
+		PlayerCharacter->UseEquippedItem(Value);
 	}
 }
 
@@ -775,6 +875,17 @@ void ABasePlayerController::Input_ChangeQuickSlot(const FInputActionValue& Actio
 		// 휠 아래로 → 이전 슬롯
 		ChangeToPreviousQuickSlot();
 	}
+
+	if (!CurrentPossessedPawn->IsA<ABaseSpectatorPawn>())
+	{
+		return;
+	}
+	ABaseSpectatorPawn* Spectator = Cast<ABaseSpectatorPawn>(CurrentPossessedPawn);
+	if (!IsValid(Spectator))
+	{
+		return;
+	}
+	Spectator->AdjustCameraZoom(ScrollValue);
 }
 
 void ABasePlayerController::ChangeToNextQuickSlot()
@@ -1070,3 +1181,4 @@ void ABasePlayerController::Server_InteractWithGimmick_Implementation(ALCBaseGim
 
 	IInteractableInterface::Execute_Interact(Target, this);
 }
+

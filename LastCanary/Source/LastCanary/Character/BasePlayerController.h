@@ -11,8 +11,10 @@ class UInputMappingContext;
 class UInputAction;
 class ABaseCharacter;
 class ABaseDrone;
+class ABaseSpectatorPawn;
 class ABasePlayerState;
 class ALCBaseGimmick;
+class ABaseSpectatorPawn;
 
 UCLASS()
 class LASTCANARY_API ABasePlayerController : public ALCPlayerController
@@ -40,12 +42,22 @@ private:
 	APawn* CachedPawn;  // Pawn을 저장할 멤버 변수
 	APawn* CurrentPossessedPawn;
 	ABaseCharacter* SpanwedPlayerCharacter;
-
+	
+	UPROPERTY(ReplicatedUsing = OnRep_SpawnedSpectatorPawn)
+	ABaseSpectatorPawn* SpawnedSpectatorPawn;
+	
 	UPROPERTY(ReplicatedUsing = OnRep_SpawnedPlayerDrone)
 	ABaseDrone* SpawnedPlayerDrone;
 
 	UFUNCTION()
 	void OnRep_SpawnedPlayerDrone();
+
+	UFUNCTION()
+	void OnRep_SpawnedSpectatorPawn();
+
+	UFUNCTION(Server, Reliable)
+	void Server_SpawnSpectatablePawn();
+	void Server_SpawnSpectatablePawn_Implementation();
 
 protected:
 	UEnhancedInputComponent* EnhancedInput;
@@ -273,7 +285,13 @@ public:
 
 	void PossessOnDrone();
 
+	// 헤더 파일 (예: MyPlayerController.h)
 
+	UPROPERTY(EditDefaultsOnly, Category = "Spectator")
+	TSubclassOf<ABaseSpectatorPawn> SpectatorClass;
+
+
+	void SpawnSpectatablePawn();
 
 public:
 	void InteractGimmick(ALCBaseGimmick* Target);
