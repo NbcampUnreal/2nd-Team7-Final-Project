@@ -274,7 +274,7 @@ void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue, floa
 void ABaseCharacter::CameraShake()
 {
 	// 새로운 반동량을 기존 값에 누적
-	RecoilStepPitch += 5.0f / RecoilMaxSteps;
+	RecoilStepPitch += 2.0f / RecoilMaxSteps;
 	RecoilStepYaw += FMath::RandRange(-YawRecoilRange, YawRecoilRange) / RecoilMaxSteps;
 
 	// 타이머가 안 돌고 있을 때만 시작
