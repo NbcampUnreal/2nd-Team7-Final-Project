@@ -2248,6 +2248,8 @@ bool ABaseCharacter::UseEquippedItem(float ActionValue)
 		return true;
 	}
 
+
+
 	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
 	if (!EquippedItem)
 	{

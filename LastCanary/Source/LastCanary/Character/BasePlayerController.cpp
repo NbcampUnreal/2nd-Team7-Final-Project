@@ -183,6 +183,7 @@ void ABasePlayerController::SpawnSpectatablePawn()
 		SpawnedSpectatorPawn = Spectator;
 		SpawnedSpectatorPawn->SetOwner(this);
 		Possess(Spectator);
+		SpectateNextPlayer();
 	}
 	else
 	{

@@ -39,13 +39,13 @@ protected:
 	class UCameraComponent* Camera;
 
 	UPROPERTY(EditAnywhere, Category = "Camera")
-	float DefaultZoom = 500.f;
+	float DefaultZoom = 300.f;
 
 	UPROPERTY(EditAnywhere, Category = "Camera")
 	float MinZoom = 200.f;
 
 	UPROPERTY(EditAnywhere, Category = "Camera")
-	float MaxZoom = 1000.f;
+	float MaxZoom = 400.f;
 
 	UPROPERTY(EditAnywhere, Category = "Camera")
 	float MinPitchAngle = 10.f;
