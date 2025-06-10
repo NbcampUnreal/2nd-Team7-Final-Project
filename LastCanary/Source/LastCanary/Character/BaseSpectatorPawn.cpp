@@ -4,11 +4,12 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "BasePlayerState.h"
+#include "Character/BaseCharacter.h"
 
 ABaseSpectatorPawn::ABaseSpectatorPawn()
 {
     PrimaryActorTick.bCanEverTick = false;
-
+	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootComponent"));
     SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
     SpringArm->SetupAttachment(RootComponent);
     SpringArm->TargetArmLength = DefaultZoom;
@@ -35,6 +36,7 @@ void ABaseSpectatorPawn::Tick(float DeltaTime)
 
 void ABaseSpectatorPawn::Handle_LookMouse(const FInputActionValue& ActionValue, float Sensivity)
 {
+	UE_LOG(LogTemp, Warning, TEXT("SpawnedSpectatorPawn LookMouse"));
 	const FVector2f Value{ ActionValue.Get<FVector2D>() };
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
@@ -54,7 +56,7 @@ void ABaseSpectatorPawn::Handle_LookMouse(const FInputActionValue& ActionValue, 
 	const float NewPitchInput = Value.Y * Sensivity;
 
 	// Pitch 제한 적용
-	float NewPitch = FMath::Clamp(CurrentPitch + NewPitchInput, MinPitchAngle, MaxPitchAngle);
+	float NewPitch = FMath::Clamp(CurrentPitch + NewPitchInput, -MaxPitchAngle, MaxPitchAngle);
 
 	// Yaw는 그대로
 	float NewYaw = CurrentRotation.Yaw + Value.X * Sensivity;
@@ -66,6 +68,19 @@ void ABaseSpectatorPawn::Handle_LookMouse(const FInputActionValue& ActionValue, 
 
 void ABaseSpectatorPawn::AdjustCameraZoom(float ZoomDelta)
 {
-    float NewLength = FMath::Clamp(SpringArm->TargetArmLength + ZoomDelta, MinZoom, MaxZoom);
+	UE_LOG(LogTemp, Warning, TEXT("Spectator zoom,"));
+    float NewLength = FMath::Clamp(SpringArm->TargetArmLength + ZoomDelta * 10.0f, MinZoom, MaxZoom);
     SpringArm->TargetArmLength = NewLength;
+}
+
+void ABaseSpectatorPawn::SpectateOtherUser(ABaseCharacter* TargetCharacter)
+{
+	if (TargetCharacter)
+	{
+		if (TargetCharacter->GetMesh())
+		{
+			AttachToComponent(TargetCharacter->GetMesh(), FAttachmentTransformRules::KeepRelativeTransform); 
+			SetActorRelativeLocation(FVector(0, 0, 200));  // 예: 위로 50만큼 띄우기
+		}
+	}
 }

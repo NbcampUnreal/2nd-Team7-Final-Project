@@ -7,6 +7,7 @@
 #include "BaseSpectatorPawn.generated.h"
 
 struct FInputActionValue;
+class ABaseCharacter;
 
 UCLASS()
 class LASTCANARY_API ABaseSpectatorPawn : public APawn
@@ -28,6 +29,8 @@ public:
 public:
 	void Handle_LookMouse(const FInputActionValue& ActionValue, float Sensivity);
 	void AdjustCameraZoom(float ZoomDelta); // 선택사항
+
+	void SpectateOtherUser(ABaseCharacter* TargetCharacter);
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	class USpringArmComponent* SpringArm;

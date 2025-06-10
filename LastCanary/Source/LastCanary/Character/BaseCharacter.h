@@ -475,10 +475,10 @@ public:
 	void Server_UnequipCurrentItem_Implementation();
 
 	UFUNCTION(BlueprintCallable, Category = "Equipment")
-	bool UseEquippedItem(const FInputActionValue& ActionValue);
+	bool UseEquippedItem(float ActionValue);
 	UFUNCTION(Server, Reliable)
-	void Server_UseEquippedItem(const FInputActionValue& ActionValue);
-	void Server_UseEquippedItem_Implementation(const FInputActionValue& ActionValue);
+	void Server_UseEquippedItem(float ActionValue);
+	void Server_UseEquippedItem_Implementation(float ActionValue);
 
 public:
 	/** 인벤토리 UI를 토글합니다 */
