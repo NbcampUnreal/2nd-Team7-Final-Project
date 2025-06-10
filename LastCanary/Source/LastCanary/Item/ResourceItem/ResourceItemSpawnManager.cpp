@@ -238,7 +238,7 @@ AItemBase* AResourceItemSpawnManager::SpawnItemAtLocation(FName ItemRowName, FVe
 {
 	if (ItemSpawnerComponent)
 	{
-		return ItemSpawnerComponent->CreateItem(ItemRowName, Location);
+		return ItemSpawnerComponent->CreateItemAtLocation(ItemRowName, Location);
 	}
 
 	LOG_Item_WARNING(TEXT("[AResourceItemSpawnManager::SpawnItemAtLocation] ItemSpawnerComponent is null"));
