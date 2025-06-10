@@ -11,11 +11,12 @@
 #include "InputTriggers.h"
 #include "InputCoreTypes.h"
 #include "UserSettings/EnhancedInputUserSettings.h"
+#include "SaveGame/LCLocalPlayerSaveGame.h"
 
 void UKeySettingWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
-
+	/*
 	InitRow(TEXT("Move Forward"), IA_MoveForward, ActionLabelMoveForward, CurrentKeyMoveForward, SelectorMoveForward);
 	InitRow(TEXT("Move Backward"), IA_MoveBackward, ActionLabelMoveBackward, CurrentKeyMoveBackward, SelectorMoveBackward);
 	InitRow(TEXT("Move Left"), IA_MoveLeft, ActionLabelMoveLeft, CurrentKeyMoveLeft, SelectorMoveLeft);
@@ -37,13 +38,11 @@ void UKeySettingWidget::NativeConstruct()
 	InitRow(TEXT("SelectQuickSlot4"), IA_SelectQuickSlot4, ActionLabelSelectQuickSlot4, CurrentKeySelectQuickSlot4, SelectorSelectQuickSlot4);
 	InitRow(TEXT("OpenPauseMenu"), IA_OpenPauseMenu, ActionLabelOpenPauseMenu, CurrentKeyOpenPauseMenu, SelectorOpenPauseMenu);
 	InitRow(TEXT("OpenExitDrone"), IA_OpenExitDrone, ActionLabelExitDrone, CurrentKeyExitDrone, SelectorExitDrone);
-
+	*/
 	SelectorMoveForward->OnKeySelected.AddUniqueDynamic(this, &UKeySettingWidget::OnKeySelectedMoveForward);
 	SelectorMoveBackward->OnKeySelected.AddUniqueDynamic(this, &UKeySettingWidget::OnKeySelectedMoveBackward);
 	SelectorMoveLeft->OnKeySelected.AddUniqueDynamic(this, &UKeySettingWidget::OnKeySelectedMoveLeft);
 	SelectorMoveRight->OnKeySelected.AddUniqueDynamic(this, &UKeySettingWidget::OnKeySelectedMoveRight);
-	//SelectorStrafeLeft->OnKeySelected.AddUniqueDynamic(this, &UKeySettingWidget::OnKeySelectedStrafeLeft);
-	//SelectorStrafeRight->OnKeySelected.AddUniqueDynamic(this, &UKeySettingWidget::OnKeySelectedStrafeRight);
 	SelectorWalk->OnKeySelected.AddUniqueDynamic(this, &UKeySettingWidget::OnKeySelectedWalk);
 	SelectorSprint->OnKeySelected.AddUniqueDynamic(this, &UKeySettingWidget::OnKeySelectedSprint);
 	SelectorJump->OnKeySelected.AddUniqueDynamic(this, &UKeySettingWidget::OnKeySelectedJump);
@@ -59,6 +58,7 @@ void UKeySettingWidget::NativeConstruct()
 	SelectorSelectQuickSlot4->OnKeySelected.AddUniqueDynamic(this, &UKeySettingWidget::OnKeySelectedChangeQuickSlot4);
 	SelectorOpenPauseMenu->OnKeySelected.AddUniqueDynamic(this, &UKeySettingWidget::OnKeySelectedOpenPauseMenu);
 	SelectorExitDrone->OnKeySelected.AddUniqueDynamic(this, &UKeySettingWidget::OnKeySelectedExitDrone);
+	InitialMappings();
 }
 
 void UKeySettingWidget::InitRow(const FString& DisplayName, UInputAction* Action, UTextBlock* Label, UTextBlock* KeyText, UInputKeySelector* Selector)
@@ -151,30 +151,7 @@ void UKeySettingWidget::OnKeySelectedMoveRight(FInputChord SelectedKey)
 	CurrentKeyMoveRight->SetText(FText::FromName(SelectedKey.Key.GetFName()));
 	UpdateMappings("MoveRight", PressedKey);
 }
-//void UKeySettingWidget::OnKeySelectedStrafeLeft(FInputChord SelectedKey)
-//{
-//	if (!SelectedKey.Key.IsValid())
-//	{
-//		UE_LOG(LogTemp, Warning, TEXT("InValid Selected Key."));
-//		return;
-//	}
-//
-//	FKey PressedKey = SelectedKey.Key;
-//	CurrentKeyStrafeLeft->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-//	UpdateMappings("DroneStrafeLeft_Keyboard", PressedKey);
-//}
-//void UKeySettingWidget::OnKeySelectedStrafeRight(FInputChord SelectedKey)
-//{
-//	if (!SelectedKey.Key.IsValid())
-//	{
-//		UE_LOG(LogTemp, Warning, TEXT("InValid Selected Key."));
-//		return;
-//	}
-//
-//	FKey PressedKey = SelectedKey.Key;
-//	CurrentKeyStrafeRight->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-//	UpdateMappings("DroneStrafeRight_Keyboard", PressedKey);
-//}
+
 void UKeySettingWidget::OnKeySelectedWalk(FInputChord SelectedKey)
 {
 	if (!SelectedKey.Key.IsValid())
@@ -185,7 +162,7 @@ void UKeySettingWidget::OnKeySelectedWalk(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyWalk->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("Walk_Keyboard", PressedKey);
+	UpdateMappings("Walk", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedSprint(FInputChord SelectedKey)
 {
@@ -197,7 +174,7 @@ void UKeySettingWidget::OnKeySelectedSprint(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeySprint->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("Sprint_Keyboard", PressedKey);
+	UpdateMappings("Sprint", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedJump(FInputChord SelectedKey)
 {
@@ -209,7 +186,7 @@ void UKeySettingWidget::OnKeySelectedJump(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyJump->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("Jump_Keyboard", PressedKey);
+	UpdateMappings("Jump", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedCrouch(FInputChord SelectedKey)
 {
@@ -221,7 +198,7 @@ void UKeySettingWidget::OnKeySelectedCrouch(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyCrouch->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("Crouch_Keyboard", PressedKey);
+	UpdateMappings("Crouch", PressedKey);
 }
 
 void UKeySettingWidget::OnKeySelectedInteract(FInputChord SelectedKey)
@@ -234,7 +211,7 @@ void UKeySettingWidget::OnKeySelectedInteract(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyInteract->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("Interact_Keyboard", PressedKey);
+	UpdateMappings("Interact", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedAim(FInputChord SelectedKey)
 {
@@ -246,7 +223,7 @@ void UKeySettingWidget::OnKeySelectedAim(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyAim->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("Aim_Keyboard", PressedKey);
+	UpdateMappings("Aim", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedThrowItem(FInputChord SelectedKey)
 {
@@ -258,7 +235,7 @@ void UKeySettingWidget::OnKeySelectedThrowItem(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyThrowItem->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("ThrowItem_Keyboard", PressedKey);
+	UpdateMappings("ThrowItem", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedVoice(FInputChord SelectedKey)
 {
@@ -270,7 +247,7 @@ void UKeySettingWidget::OnKeySelectedVoice(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyVoice->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("VoiceChat_Keyboard", PressedKey);
+	UpdateMappings("VoiceChat", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedChangeShootingMode(FInputChord SelectedKey)
 {
@@ -282,7 +259,7 @@ void UKeySettingWidget::OnKeySelectedChangeShootingMode(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyChangeShootingMode->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("ChangeShootingMode_Keyboard", PressedKey);
+	UpdateMappings("ChangeShootingMode", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedChangeQuickSlot1(FInputChord SelectedKey)
 {
@@ -294,7 +271,7 @@ void UKeySettingWidget::OnKeySelectedChangeQuickSlot1(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeySelectQuickSlot1->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("SelectQuickSlot1_Keyboard", PressedKey);
+	UpdateMappings("SelectQuickSlot1", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedChangeQuickSlot2(FInputChord SelectedKey)
 {
@@ -306,7 +283,7 @@ void UKeySettingWidget::OnKeySelectedChangeQuickSlot2(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeySelectQuickSlot2->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("SelectQuickSlot2_Keyboard", PressedKey);
+	UpdateMappings("SelectQuickSlot2", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedChangeQuickSlot3(FInputChord SelectedKey)
 {
@@ -318,7 +295,7 @@ void UKeySettingWidget::OnKeySelectedChangeQuickSlot3(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeySelectQuickSlot3->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("SelectQuickSlot3_Keyboard", PressedKey);
+	UpdateMappings("SelectQuickSlot3", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedChangeQuickSlot4(FInputChord SelectedKey)
 {
@@ -330,7 +307,7 @@ void UKeySettingWidget::OnKeySelectedChangeQuickSlot4(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeySelectQuickSlot4->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("SelectQuickSlot4_Keyboard", PressedKey);
+	UpdateMappings("SelectQuickSlot4", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedOpenPauseMenu(FInputChord SelectedKey)
 {
@@ -342,7 +319,7 @@ void UKeySettingWidget::OnKeySelectedOpenPauseMenu(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyOpenPauseMenu->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("OpenPauseMenu_Keyboard", PressedKey);
+	UpdateMappings("OpenPauseMenu", PressedKey);
 }
 void UKeySettingWidget::OnKeySelectedExitDrone(FInputChord SelectedKey)
 {
@@ -354,7 +331,7 @@ void UKeySettingWidget::OnKeySelectedExitDrone(FInputChord SelectedKey)
 
 	FKey PressedKey = SelectedKey.Key;
 	CurrentKeyExitDrone->SetText(FText::FromName(SelectedKey.Key.GetFName()));
-	UpdateMappings("ExitDrone_Keyboard", PressedKey);
+	UpdateMappings("ExitDrone", PressedKey);
 }
 
 
@@ -363,112 +340,93 @@ void UKeySettingWidget::RefreshMappings(const TArray<FEnhancedActionKeyMapping>&
 {
 	for (const FEnhancedActionKeyMapping& Mapping : KeyMappings)
 	{
-		const FText MappingName = Mapping.GetDisplayName();
-		UE_LOG(LogTemp, Warning, TEXT("Mapping Name: %s"), *Mapping.GetDisplayName().ToString());
-		if (MappingName.EqualTo(FText::FromString("MoveFront")) && SelectorMoveForward)
+		if (!Mapping.Action)
+			continue;
+
+		const FName MappingName = Mapping.GetMappingName();
+		//UE_LOG(LogTemp, Warning, TEXT("Mapping Name: %s"), *MappingName.ToString());
+
+		if (MappingName == "MoveFront" && SelectorMoveForward)
 		{
 			SelectorMoveForward->SetSelectedKey(Mapping.Key);
 		}
-
-		if (MappingName.EqualTo(FText::FromString("MoveBack")) && SelectorMoveBackward)
+		else if (MappingName == "MoveBack" && SelectorMoveBackward)
 		{
 			SelectorMoveBackward->SetSelectedKey(Mapping.Key);
 		}
-
-		if (MappingName.EqualTo(FText::FromString("MoveLeft")) && SelectorMoveLeft)
+		else if (MappingName == "MoveLeft" && SelectorMoveLeft)
 		{
 			SelectorMoveLeft->SetSelectedKey(Mapping.Key);
 		}
-
-		if (MappingName.EqualTo(FText::FromString("MoveRight")) && SelectorMoveRight)
+		else if (MappingName == "MoveRight" && SelectorMoveRight)
 		{
 			SelectorMoveRight->SetSelectedKey(Mapping.Key);
 		}
-
-		/*if (MappingName.EqualTo(FText::FromString("DroneStrafeLeft_Keyboard")) && SelectorStrafeLeft)
-		{
-			SelectorStrafeLeft->SetSelectedKey(Mapping.Key);
-		}
-
-		if (MappingName.EqualTo(FText::FromString("DroneStrafeRight_Keyboard")) && SelectorStrafeRight)
-		{
-			SelectorStrafeRight->SetSelectedKey(Mapping.Key);
-		}*/
-
-		if (MappingName.EqualTo(FText::FromString("Jump_Keyboard")) && SelectorJump)
+		else if (MappingName == "Jump" && SelectorJump)
 		{
 			SelectorJump->SetSelectedKey(Mapping.Key);
 		}
-
-		if (MappingName.EqualTo(FText::FromString("Crouch_Keyboard")) && SelectorCrouch)
+		else if (MappingName == "Crouch" && SelectorCrouch)
 		{
 			SelectorCrouch->SetSelectedKey(Mapping.Key);
 		}
-
-		if (MappingName.EqualTo(FText::FromString("Sprint_Keyboard")) && SelectorSprint)
+		else if (MappingName == "Sprint" && SelectorSprint)
 		{
 			SelectorSprint->SetSelectedKey(Mapping.Key);
 		}
-
-		if (MappingName.EqualTo(FText::FromString("Aim_Keyboard")) && SelectorSprint)
+		else if (MappingName == "Aim" && SelectorAim)
 		{
 			SelectorAim->SetSelectedKey(Mapping.Key);
 		}
-
-		if (MappingName.EqualTo(FText::FromString("Interact_Keyboard")) && SelectorInteract)
+		else if (MappingName == "Interact" && SelectorInteract)
 		{
 			SelectorInteract->SetSelectedKey(Mapping.Key);
 		}
-
-		if (MappingName.EqualTo(FText::FromString("ThrowItem_Keyboard")) && SelectorThrowItem)
+		else if (MappingName == "ThrowItem" && SelectorThrowItem)
 		{
 			SelectorThrowItem->SetSelectedKey(Mapping.Key);
 		}
-
-		if (MappingName.EqualTo(FText::FromString("VoiceChat_Keyboard")) && SelectorVoice)
+		else if (MappingName == "VoiceChat" && SelectorVoice)
 		{
 			SelectorVoice->SetSelectedKey(Mapping.Key);
 		}
-
-		if (MappingName.EqualTo(FText::FromString("ChangeShootingMode_Keyboard")) && SelectorChangeShootingMode)
+		else if (MappingName == "ChangeShootingMode" && SelectorChangeShootingMode)
 		{
 			SelectorChangeShootingMode->SetSelectedKey(Mapping.Key);
 		}
-
-		if (MappingName.EqualTo(FText::FromString("SelectQuickSlot1_Keyboard")) && SelectorSelectQuickSlot1)
+		else if (MappingName == "SelectQuickSlot1" && SelectorSelectQuickSlot1)
 		{
 			SelectorSelectQuickSlot1->SetSelectedKey(Mapping.Key);
 		}
-
-		if (MappingName.EqualTo(FText::FromString("SelectQuickSlot2_Keyboard")) && SelectorSelectQuickSlot2)
+		else if (MappingName == "SelectQuickSlot2" && SelectorSelectQuickSlot2)
 		{
 			SelectorSelectQuickSlot2->SetSelectedKey(Mapping.Key);
 		}
-
-		if (MappingName.EqualTo(FText::FromString("SelectQuickSlot3_Keyboard")) && SelectorSelectQuickSlot3)
+		else if (MappingName == "SelectQuickSlot3" && SelectorSelectQuickSlot3)
 		{
 			SelectorSelectQuickSlot3->SetSelectedKey(Mapping.Key);
 		}
-
-		if (MappingName.EqualTo(FText::FromString("SelectQuickSlot4_Keyboard")) && SelectorSelectQuickSlot4)
+		else if (MappingName == "SelectQuickSlot4" && SelectorSelectQuickSlot4)
 		{
 			SelectorSelectQuickSlot4->SetSelectedKey(Mapping.Key);
 		}
-
-		if (MappingName.EqualTo(FText::FromString("OpenPauseMenu_Keyboard")) && SelectorOpenPauseMenu)
+		else if (MappingName == "OpenPauseMenu" && SelectorOpenPauseMenu)
 		{
 			SelectorOpenPauseMenu->SetSelectedKey(Mapping.Key);
 		}
-
-		if (MappingName.EqualTo(FText::FromString("ExitDrone_Keyboard")) && SelectorExitDrone)
+		else if (MappingName == "ExitDrone" && SelectorExitDrone)
 		{
 			SelectorExitDrone->SetSelectedKey(Mapping.Key);
 		}
-		// ... 다른 키들도 여기에 추가 가능
+		else if (MappingName == "Walk" && SelectorWalk)
+		{
+			SelectorWalk->SetSelectedKey(Mapping.Key);
+		}
+		// 필요하면 더 추가 가능
 	}
 }
 
-void UKeySettingWidget::UpdateMappings(FName DisplayName, FKey Key)
+void UKeySettingWidget::UpdateMappings(FName MappingName, FKey Key)
 {
 	APlayerController* PC = GetOwningPlayer();
 	if (!IsValid(PC))
@@ -491,9 +449,10 @@ void UKeySettingWidget::UpdateMappings(FName DisplayName, FKey Key)
 		return;
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("Update Mappings Mapping Name: %s"), *DisplayName.ToString());
+	UE_LOG(LogTemp, Warning, TEXT("Update Mappings Mapping Name: %s"), *MappingName.ToString());
+
 	FMapPlayerKeyArgs Args;
-	Args.MappingName = DisplayName;
+	Args.MappingName = MappingName;
 	Args.NewKey = Key;
 	Args.Slot = EPlayerMappableKeySlot::First;
 	Args.bCreateMatchingSlotIfNeeded = true;
@@ -502,14 +461,26 @@ void UKeySettingWidget::UpdateMappings(FName DisplayName, FKey Key)
 	FGameplayTagContainer FailureReason;
 	UserSettings->MapPlayerKey(Args, FailureReason);
 
-
 	UE_LOG(LogTemp, Warning, TEXT("Refresh"));
-	//const TArray<FEnhancedActionKeyMapping> Mappings = Subsystem->GetAllPlayerMappableActionKeyMappings();
-	//RefreshMappings(Mappings);
 	FTimerHandle TimerHandle;
 	GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this, Subsystem]()
 		{
 			const TArray<FEnhancedActionKeyMapping> Mappings = Subsystem->GetAllPlayerMappableActionKeyMappings();
+			TArray<FSaveKeyMapping> SaveArray;
+
+			for (const FEnhancedActionKeyMapping& Mapping : Mappings)
+			{
+				if (!Mapping.Action) continue;
+
+				FSaveKeyMapping SaveMapping;
+				SaveMapping.MappingName = Mapping.GetMappingName();
+				SaveMapping.Key = Mapping.Key;
+
+				SaveArray.Add(SaveMapping);
+			}
+
+			ULCLocalPlayerSaveGame::SaveKeyBindings(GetWorld(), SaveArray);
+
 			RefreshMappings(Mappings);
 
 		}, 0.1f, false);
@@ -533,11 +504,100 @@ void UKeySettingWidget::InitialMappings()
 	{
 		return;
 	}
+
+	const TArray<FSaveKeyMapping> LoadedMappings = ULCLocalPlayerSaveGame::LoadKeyBindings(GetWorld());
+	if (LoadedMappings.Num() == 0)
+	{
+		return;
+	}
+
 	UEnhancedInputUserSettings* UserSettings = Subsystem->GetUserSettings();
 	if (!IsValid(UserSettings))
 	{
 		return;
 	}
-	const TArray<FEnhancedActionKeyMapping> Mappings = Subsystem->GetAllPlayerMappableActionKeyMappings();
-	RefreshMappings(Mappings);
+
+	FGameplayTagContainer FailureReason;
+
+	// 현재 등록된 모든 키 매핑 가져오기
+	const TArray<FEnhancedActionKeyMapping> AllMappings = Subsystem->GetAllPlayerMappableActionKeyMappings();
+
+	for (const FSaveKeyMapping& SavedMapping : LoadedMappings)
+	{
+		// MappingName으로부터 매핑 찾기
+		const FEnhancedActionKeyMapping* FoundMapping = AllMappings.FindByPredicate(
+			[&](const FEnhancedActionKeyMapping& Mapping)
+			{
+				return Mapping.GetMappingName() == SavedMapping.MappingName;
+			});
+
+		if (!FoundMapping)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("No mapping found for mapping name: %s"), *SavedMapping.MappingName.ToString());
+			continue;
+		}
+
+		// MappingName을 가져와서 적용
+		FMapPlayerKeyArgs Args;
+		Args.MappingName = FoundMapping->GetMappingName();
+		Args.NewKey = SavedMapping.Key;
+		Args.Slot = EPlayerMappableKeySlot::First;
+		Args.bCreateMatchingSlotIfNeeded = true;
+		Args.bDeferOnSettingsChangedBroadcast = false;
+
+		UserSettings->MapPlayerKey(Args, FailureReason);
+	}
+
+	UserSettings->SaveSettings();  // UserSettings 저장
+	UserSettings->ApplySettings(); // 설정 적용
+
+	// 최신 매핑 상태로 UI 갱신
+	const TArray<FEnhancedActionKeyMapping> CurrentMappings = Subsystem->GetAllPlayerMappableActionKeyMappings();
+	RefreshMappings(CurrentMappings);
+}
+
+
+
+void UKeySettingWidget::ResetKeyBindings()
+{
+	APlayerController* PC = GetOwningPlayer();
+	if (!IsValid(PC))
+		return;
+
+	ULocalPlayer* LP = PC->GetLocalPlayer();
+	if (!IsValid(LP))
+		return;
+
+	UEnhancedInputLocalPlayerSubsystem* Subsystem = LP->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
+	if (!IsValid(Subsystem))
+		return;
+
+	UEnhancedInputUserSettings* UserSettings = Subsystem->GetUserSettings();
+	if (!IsValid(UserSettings))
+		return;
+
+	const TArray<FEnhancedActionKeyMapping>& Mappings = Subsystem->GetAllPlayerMappableActionKeyMappings();
+
+	FGameplayTagContainer DummyFailure;
+
+	for (const FEnhancedActionKeyMapping& Mapping : Mappings)
+	{
+		if (Mapping.Action)
+		{
+			FMapPlayerKeyArgs Args;
+			Args.MappingName = Mapping.Action->GetFName();
+			Args.Slot = EPlayerMappableKeySlot::First;  // 기본 슬롯 초기화
+			Args.bCreateMatchingSlotIfNeeded = false;   // 초기화 시에는 false로 충분
+			Args.bDeferOnSettingsChangedBroadcast = false;
+
+			UserSettings->ResetAllPlayerKeysInRow(Args, DummyFailure);
+		}
+	}
+
+	UserSettings->SaveSettings();
+	UserSettings->ApplySettings();
+
+	// UI 갱신
+	const TArray<FEnhancedActionKeyMapping> UpdatedMappings = Subsystem->GetAllPlayerMappableActionKeyMappings();
+	RefreshMappings(UpdatedMappings);
 }

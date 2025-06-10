@@ -2,9 +2,11 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/SaveGame.h"
+#include "UserSettings/EnhancedInputUserSettings.h"
 #include "LCLocalPlayerSaveGame.generated.h"
 
 
+struct FEnhancedActionKeyMapping;
 
 namespace DefaultSettings
 {
@@ -24,6 +26,24 @@ public:
 		return FString(PlayerSaveSlotPrefix) + FString::FromInt(PlayerId);
 	}
 };
+
+
+USTRUCT(BlueprintType)
+struct FSaveKeyMapping
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName MappingName;  // 매핑 이름 (액션의 FName)
+
+	UPROPERTY()
+	FKey Key;
+
+	FSaveKeyMapping() {}
+	FSaveKeyMapping(FName InMappingName, FKey InKey) : MappingName(InMappingName), Key(InKey) {}
+};
+
+
 
 USTRUCT(BlueprintType)
 struct FUserSettings
@@ -47,6 +67,9 @@ struct FUserSettings
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bIsFullScreenMode = DefaultSettings::DEFAULT_FULLSCREEN;
+
+	UPROPERTY()
+	TArray<FSaveKeyMapping> SavedMappings;
 
 	void ResetToDefault()
 	{
@@ -89,6 +112,9 @@ public:
 
 	static bool SaveFullScreenMode(UWorld* World, bool NewSetting);
 	static bool LoadFullScreenMode(UWorld* World);
+
+	static bool SaveKeyBindings(UWorld* World, const TArray<FSaveKeyMapping>& Mappings);
+	static TArray<FSaveKeyMapping> LoadKeyBindings(UWorld* World);
 
 	static ULCLocalPlayerSaveGame* GetSaveInstance(UWorld* World);
 };

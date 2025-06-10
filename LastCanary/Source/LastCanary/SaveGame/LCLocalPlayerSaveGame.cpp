@@ -2,6 +2,7 @@
 #include "Engine/LocalPlayer.h" // ULocalPlayer 관련
 #include "Kismet/GameplayStatics.h"    // 경우에 따라 사용 가능
 
+
 const TCHAR UMySaveGameUtils::PlayerSaveSlotPrefix[] = TEXT("PlayerSaveSlot_");
 
 bool ULCLocalPlayerSaveGame::SaveMouseSensitivity(UWorld* World, float NewSensitivity)
@@ -123,6 +124,23 @@ bool ULCLocalPlayerSaveGame::LoadFullScreenMode(UWorld* World)
     }
 
     return DefaultSettings::DEFAULT_FULLSCREEN; // 기본값
+}
+
+bool ULCLocalPlayerSaveGame::SaveKeyBindings(UWorld* World, const TArray<FSaveKeyMapping>& Mappings)
+{
+    ULCLocalPlayerSaveGame* SaveGame = GetSaveInstance(World);
+    if (!SaveGame) return false;
+
+    SaveGame->Settings.SavedMappings = Mappings;
+    return SaveGame->SaveGameToSlotForLocalPlayer();
+}
+
+TArray<FSaveKeyMapping> ULCLocalPlayerSaveGame::LoadKeyBindings(UWorld* World)
+{
+    ULCLocalPlayerSaveGame* SaveGame = GetSaveInstance(World);
+    if (!SaveGame) return TArray<FSaveKeyMapping>();
+
+    return SaveGame->Settings.SavedMappings;
 }
 
 ULCLocalPlayerSaveGame* ULCLocalPlayerSaveGame::GetSaveInstance(UWorld* World)
