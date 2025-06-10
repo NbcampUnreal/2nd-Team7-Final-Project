@@ -271,11 +271,11 @@ void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue, floa
 	Controller->SetControlRotation(NewRotation);
 }
 
-void ABaseCharacter::CameraShake()
+void ABaseCharacter::CameraShake(float Vertical, float Horizontal)
 {
 	// 새로운 반동량을 기존 값에 누적
-	RecoilStepPitch += 2.0f / RecoilMaxSteps;
-	RecoilStepYaw += FMath::RandRange(-YawRecoilRange, YawRecoilRange) / RecoilMaxSteps;
+	RecoilStepPitch += Vertical / RecoilMaxSteps;
+	RecoilStepYaw += FMath::RandRange(-Horizontal, Horizontal) / RecoilMaxSteps;
 
 	// 타이머가 안 돌고 있을 때만 시작
 	if (!GetWorld()->GetTimerManager().IsTimerActive(RecoilTimerHandle))
