@@ -111,9 +111,10 @@ void ULCGameInstance::LoadGunData()
 	{
 		if (GunDataRow)
 		{
+			GunDataRow->GunID = FCrc::StrCrc32(*GunDataRow->GunName.ToString());
 			// 예: 아이디 해시화 → 캐싱 용도
-			int32 HashedID = GetTypeHash(GunDataRow->GunName);
-			GunDataRow->GunID = HashedID;
+			//int32 HashedID = GetTypeHash(GunDataRow->GunName);
+			//GunDataRow->GunID = HashedID;
 		}
 	}
 }
