@@ -34,7 +34,7 @@ public:
 
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Checklist")
-	TSubclassOf<AChecklistManager> ChecklistManagerClass;
+	TSoftClassPtr<AActor> ChecklistManagerClass;
 
 public:
 	UPROPERTY()
