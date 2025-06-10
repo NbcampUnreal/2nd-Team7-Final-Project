@@ -138,8 +138,20 @@ void UPlayerSlot::OnKickButtonClicked()
 
 void UPlayerSlot::ClearPlayerInfo()
 {
-    NickNameText->SetText(FText::FromString("Empty Slot"));
-    KickButton->SetVisibility(ESlateVisibility::Hidden);
-    MuteButton->SetVisibility(ESlateVisibility::Hidden);
-    VolumeSlider->SetVisibility(ESlateVisibility::Hidden);
+    if (NickNameText)
+    {
+        NickNameText->SetText(FText::FromString("Empty Slot"));
+    }
+    if (KickButton)
+    {
+        KickButton->SetVisibility(ESlateVisibility::Hidden);
+    }
+    if (MuteButton)
+    {
+        MuteButton->SetVisibility(ESlateVisibility::Hidden);
+    }
+    if (VolumeSlider)
+    {
+        VolumeSlider->SetVisibility(ESlateVisibility::Hidden);
+    }
 }
