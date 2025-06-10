@@ -179,7 +179,7 @@ public:
 public:
 	// Gold & Exp
 	UPROPERTY(Replicated, BlueprintReadOnly)
-	int32 TotalGold = 500;
+	int32 TotalGold = 500000;
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	int32 TotalExp;
 	void AddTotalGold(int32 Amount);
