@@ -123,6 +123,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SoundSettings")
 	float SprintingFootSoundModifier = 1.5f;
 
+
 public:
 	// State
 	UPROPERTY(ReplicatedUsing = OnRep_bHasEscaped)
