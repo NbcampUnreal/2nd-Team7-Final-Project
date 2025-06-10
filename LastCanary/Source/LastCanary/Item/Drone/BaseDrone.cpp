@@ -321,22 +321,7 @@ void ABaseDrone::SpawnDroneItemAtCurrentLocation()
 		return;
 	}
 
-	FVector CurrentLocation = GetActorLocation();
-	FVector SpawnLocation = CurrentLocation + ItemSpawnOffset;
-
-	FHitResult HitResult;
-	FVector TraceStart = SpawnLocation + FVector(0, 0, 100.0f);
-	FVector TraceEnd = SpawnLocation - FVector(0, 0, 500.0f);
-
-	FCollisionQueryParams QueryParams;
-	QueryParams.AddIgnoredActor(this);
-	QueryParams.bTraceComplex = true;
-
-	if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_WorldStatic, QueryParams))
-	{
-		SpawnLocation = HitResult.ImpactPoint + FVector(0, 0, 30.0f);
-	}
-
+	FVector SpawnLocation = GetActorLocation();
 	AItemBase* DroneItem = ItemSpawner->CreateItemAtLocation(DroneItemRowName, SpawnLocation);
 	if (DroneItem)
 	{
