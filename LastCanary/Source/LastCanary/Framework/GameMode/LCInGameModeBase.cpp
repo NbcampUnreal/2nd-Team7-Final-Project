@@ -6,6 +6,8 @@
 
 #include "Kismet/GameplayStatics.h"
 
+#include "LastCanary.h"
+
 ALCInGameModeBase::ALCInGameModeBase()
 {
 	static ConstructorHelpers::FClassFinder<AChecklistManager> ChecklistBPClass(TEXT("/Game/_LastCanary/Blueprint/Framework/Manager/BP_ChecklistManager.BP_ChecklistManager"));
@@ -13,6 +15,12 @@ ALCInGameModeBase::ALCInGameModeBase()
 	{
 		ChecklistManagerClass = ChecklistBPClass.Class;
 	}
+}
+
+void ALCInGameModeBase::StartPlay()
+{
+	Super::StartPlay();
+	LOG_Server(Log, TEXT("InGameMode Start!!"));
 }
 
 void ALCInGameModeBase::BeginPlay()
