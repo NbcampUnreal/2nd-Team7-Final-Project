@@ -207,6 +207,12 @@ public:
 
 	virtual void CopyProperties(APlayerState* PlayerState) override;
 
-	UPROPERTY(Replicated, BlueprintReadOnly)
-	TArray<int32> CollectedResources;
+	// 자원 수집 내역 (RowName → 개수)
+	TMap<FName, int32> CollectedResourceMap;
+
+	void AddCollectedResource(FName RowName);
+
+	const TMap<FName, int32>& GetCollectedResourceMap() const;
+
+	void ClearCollectedResources();
 };

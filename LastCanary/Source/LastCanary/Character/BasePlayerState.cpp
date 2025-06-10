@@ -225,6 +225,28 @@ void ABasePlayerState::CopyProperties(APlayerState* PlayerState)
 	}
 }
 
+void ABasePlayerState::AddCollectedResource(FName RowName)
+{
+	if (CollectedResourceMap.Contains(RowName))
+	{
+		CollectedResourceMap[RowName]++;
+	}
+	else
+	{
+		CollectedResourceMap.Add(RowName, 1);
+	}
+}
+
+const TMap<FName, int32>& ABasePlayerState::GetCollectedResourceMap() const
+{
+	return CollectedResourceMap;
+}
+
+void ABasePlayerState::ClearCollectedResources()
+{
+	CollectedResourceMap.Empty();
+}
+
 void ABasePlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -235,5 +257,4 @@ void ABasePlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME(ABasePlayerState, TotalExp);
 	DOREPLIFETIME(ABasePlayerState, CurrentState);
 	DOREPLIFETIME(ABasePlayerState, AquiredItemIDs);
-	DOREPLIFETIME(ABasePlayerState, CollectedResources);
 }

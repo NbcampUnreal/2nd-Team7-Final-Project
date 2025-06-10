@@ -132,11 +132,11 @@ void AItemBase::ApplyItemDataFromTable()
 
 	SetupMeshComponents();
 
-	if (ItemData.bIsResourceItem)
+	/*if (ItemData.bIsResourceItem)
 	{
 		LOG_Frame_WARNING(TEXT("이 아이템은 자원입니다. 카테고리: %d, 점수: %d"),
 			static_cast<int32>(ItemData.Category), ItemData.BaseScore);
-	}
+	}*/
 
 	ApplyCollisionSettings();
 
