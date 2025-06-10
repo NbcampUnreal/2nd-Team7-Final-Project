@@ -67,6 +67,10 @@ public:
 	UFUNCTION(Exec)
 	void ShowPlayerFrameworkInfo();
 
+	/** 얻은 아이템 전부 출력*/
+	UFUNCTION(Exec)
+	void PrintAcquiredItems();
+
 	/** 현재 무적 여부 확인 */
 	bool IsGodModeEnabled() const { return bGodMode; }
 
