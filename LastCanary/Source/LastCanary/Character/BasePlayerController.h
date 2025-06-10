@@ -19,6 +19,20 @@ class LASTCANARY_API ABasePlayerController : public ALCPlayerController
 {
 	GENERATED_BODY()
 
+public:
+	void LoadMouseSensitivity();
+
+	void SetMouseSensitivity(float Sensitivity);
+
+	void LoadBrightness();
+
+	void SetBrightness(float Brightness);
+
+	/*Camera Settings*/
+	float MouseSensivity = 1.0f;
+
+	UPROPERTY()
+	float BrightnessSetting = 1.0f;
 
 private:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
@@ -157,11 +171,11 @@ public:
 
 	virtual void Input_OnViewMode();
 
-	virtual void Input_OnInteract();
+	virtual void Input_OnInteract(const FInputActionValue& ActionValue);
 
 	virtual void Input_OnStrafe(const FInputActionValue& ActionValue);
 
-	virtual void Input_OnItemUse();
+	virtual void Input_OnItemUse(const FInputActionValue& ActionValue);
 
 	virtual void Input_OnItemThrow();
 

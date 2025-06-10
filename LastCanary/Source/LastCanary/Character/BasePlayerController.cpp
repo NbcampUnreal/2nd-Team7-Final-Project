@@ -13,6 +13,7 @@
 
 #include "Inventory/ToolbarInventoryComponent.h"
 
+#include "SaveGame/LCLocalPlayerSaveGame.h"
 
 void ABasePlayerController::BeginPlay()
 {
@@ -35,12 +36,49 @@ void ABasePlayerController::BeginPlay()
 			}
 		}
 	}
+
+	LoadMouseSensitivity();
+	LoadBrightness();
 }
 
 void ABasePlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(ABasePlayerController, SpawnedPlayerDrone);
+}
+
+void ABasePlayerController::LoadMouseSensitivity()
+{
+	float LoadedSensitivity = ULCLocalPlayerSaveGame::LoadMouseSensitivity(GetWorld());
+
+	SetMouseSensitivity(LoadedSensitivity);
+}
+
+void ABasePlayerController::SetMouseSensitivity(float Sensitivity)
+{
+	MouseSensivity = Sensitivity;
+}
+
+void ABasePlayerController::LoadBrightness()
+{
+	float Brightness = ULCLocalPlayerSaveGame::LoadBrightness(GetWorld());
+
+	SetBrightness(Brightness);
+}
+
+void ABasePlayerController::SetBrightness(float Brightness)
+{
+	BrightnessSetting = Brightness;
+	if (!IsValid(CurrentPossessedPawn))
+	{
+		return;
+	}
+	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
+	if (!IsValid(PlayerCharacter))
+	{
+		return;
+	}
+	PlayerCharacter->SetBrightness(Brightness);
 }
 
 
@@ -281,10 +319,12 @@ void ABasePlayerController::InitInputComponent()
 		EnhancedInput->BindAction(ViewModeAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnViewMode);
 
 		EnhancedInput->BindAction(InteractAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnInteract);
+		EnhancedInput->BindAction(InteractAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnInteract);
 
 		EnhancedInput->BindAction(StrafeAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnStrafe);
 
-		EnhancedInput->BindAction(ItemUseAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_OnItemUse);
+		EnhancedInput->BindAction(ItemUseAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnItemUse);
+		EnhancedInput->BindAction(ItemUseAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnItemUse);
 
 		EnhancedInput->BindAction(ThrowItemAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_OnItemThrow);
 
@@ -322,7 +362,7 @@ void ABasePlayerController::Input_OnLookMouse(const FInputActionValue& ActionVal
 		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
 		if (IsValid(PlayerCharacter))
 		{
-			PlayerCharacter->Handle_LookMouse(ActionValue);  // ABaseCharacter에 맞는 LookMouse 호출
+			PlayerCharacter->Handle_LookMouse(ActionValue, MouseSensivity);  // ABaseCharacter에 맞는 LookMouse 호출
 		}
 	}
 	if (CurrentPossessedPawn->IsA<ABaseDrone>())
@@ -527,7 +567,7 @@ void ABasePlayerController::Input_OnViewMode()
 }
 
 
-void ABasePlayerController::Input_OnInteract()
+void ABasePlayerController::Input_OnInteract(const FInputActionValue& ActionValue)
 {
 	if (!IsValid(CurrentPossessedPawn))
 	{
@@ -544,7 +584,7 @@ void ABasePlayerController::Input_OnInteract()
 
 	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
-		PlayerCharacter->Handle_Interact();
+		PlayerCharacter->Handle_Interact(ActionValue);
 	}
 	else
 	{
@@ -658,7 +698,7 @@ TArray<ABasePlayerState*> ABasePlayerController::GetPlayerArray()
 }
 
 
-void ABasePlayerController::Input_OnItemUse()
+void ABasePlayerController::Input_OnItemUse(const FInputActionValue& ActionValue)
 {
 	UE_LOG(LogTemp, Warning, TEXT("Use Item"));
 
@@ -669,7 +709,7 @@ void ABasePlayerController::Input_OnItemUse()
 
 	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
-		PlayerCharacter->UseEquippedItem();
+		PlayerCharacter->UseEquippedItem(ActionValue);
 	}
 }
 

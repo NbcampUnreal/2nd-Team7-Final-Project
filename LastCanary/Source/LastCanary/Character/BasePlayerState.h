@@ -48,10 +48,10 @@ public:
 	float DefaultExhaustionRecoveryThreshold{ InitialStats.ExhaustionRecoveryThreshold };
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
-	float DefaultStaminaDrainRate{ InitialStats.StaminaDrainRate }; // 초당 15 소모
+	float DefaultStaminaDrainRate{ InitialStats.StaminaDrainRate };
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
-	float DefaultStaminaRecoveryRate{ InitialStats.StaminaRecoveryRate }; // 초당 30 회복
+	float DefaultStaminaRecoveryRate{ InitialStats.StaminaRecoveryRate };
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	float DefaultRecoverDelayTime{ InitialStats.RecoverDelayTime };
@@ -122,6 +122,7 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SoundSettings")
 	float SprintingFootSoundModifier = 1.5f;
+
 
 public:
 	// State

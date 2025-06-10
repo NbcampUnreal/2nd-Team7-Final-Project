@@ -65,4 +65,13 @@ public:
 	void OnResolutionChanged(FString SelectedItem, ESelectInfo::Type SelectionType);
 
 	void PopulateResolutionOptions();
+
+	void InitializeSensitivity();
+	void InitializeMasterVolume();
+	void InitializeBGMVolume();
+	void InitializeEffectVolume();
+	void InitializeBrightness();
+	void InitializeScreenMode();
+
+	void InitializeAllOptions();
 };
