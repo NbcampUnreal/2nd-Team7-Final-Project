@@ -6,6 +6,18 @@
 #include "GameplayTagContainer.h"
 #include "ResourceNode.generated.h"
 
+USTRUCT(BlueprintType)
+struct FResourceItemData
+{
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resource")
+    FName ItemRowName = FName(TEXT("Default"));
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resource", meta = (ClampMin = 0.0, ClampMax = 100.0))
+    float Probability = 25.0;
+};
+
 UENUM(BlueprintType)
 enum class EResourceSpawnLocationType : uint8
 {
@@ -46,8 +58,8 @@ public:
     AResourceItemSpawnManager* ResourceItemSpawnManager;
 
     // 드랍시 선택할 아이템 RowName 목록
-    UPROPERTY(EditAnywhere)
-    TArray<FName> PossibleResourceItems;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resource")
+    TArray<FResourceItemData> PossibleResourceItems;
 
     // 적절한 상호작용 도구 태그
     UPROPERTY(EditAnywhere, Category = "Resource")

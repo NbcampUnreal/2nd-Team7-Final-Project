@@ -40,22 +40,45 @@ void AResourceNode::HarvestResource(APlayerController* Interactor)
 {
     if (!ResourceItemSpawnManager)
     {
-        LOG_Item_WARNING(TEXT("[AResourceNode::Interact_Implementation] ResourceItemSpawnManager not initialized!"));
+        LOG_Item_WARNING(TEXT("[AResourceNode::HarvestResource] ResourceItemSpawnManager not initialized!"));
         return;
     }
 
     if (PossibleResourceItems.Num() <= 0)
     {
-        LOG_Item_WARNING(TEXT("[AResourceNode::Interact_Implementation] 스폰할 아이템 목록이 할당되지 않았습니다."));
+        LOG_Item_WARNING(TEXT("[AResourceNode::HarvestResource] 스폰할 아이템 목록이 할당되지 않았습니다."));
         return;
     }
 
-    // 일단은 완전 랜덤
-    FName SpawnItemRow = PossibleResourceItems[FMath::RandRange(0, PossibleResourceItems.Num() - 1)];
+    float TotalProbability = 0.0f;
+    for (const FResourceItemData& ItemData : PossibleResourceItems)
+    {
+        TotalProbability += ItemData.Probability;
+    }
 
-    // 매니저에 스폰 요청
+    if (TotalProbability <= 0.0f)
+    {
+        LOG_Item_WARNING(TEXT("[AResourceNode::HarvestResource] 유효한 아이템 확률 없음"));
+        return;
+    }
+
+    const float RandomValue = FMath::FRandRange(0.0f, TotalProbability);
+
+    // 누적 확률로 아이템 선택
+    float Accumulated = 0.0f;
+    FName SelectedItemRow = NAME_None;
+    for (const FResourceItemData& ItemData : PossibleResourceItems)
+    {
+        Accumulated += ItemData.Probability;
+        if (RandomValue <= Accumulated)
+        {
+            SelectedItemRow = ItemData.ItemRowName;
+            break;
+        }
+    }
+
     FVector SpawnLocation = CalculateResourceSpawnLocation(Interactor);
-    ResourceItemSpawnManager->SpawnItemAtLocation(SpawnItemRow, SpawnLocation);
+    ResourceItemSpawnManager->SpawnItemAtLocation(SelectedItemRow, SpawnLocation);
 
     // TODO : 내구도 차감, 재사용 쿨타임 적용, 디스폰 등 부가 로직
 }

@@ -337,7 +337,7 @@ void ABaseDrone::SpawnDroneItemAtCurrentLocation()
 		SpawnLocation = HitResult.ImpactPoint + FVector(0, 0, 30.0f);
 	}
 
-	AItemBase* DroneItem = ItemSpawner->CreateItem(DroneItemRowName, SpawnLocation);
+	AItemBase* DroneItem = ItemSpawner->CreateItemAtLocation(DroneItemRowName, SpawnLocation);
 	if (DroneItem)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[SpawnDroneItemAtCurrentLocation] 드론 아이템 스폰 성공: %s"),
