@@ -129,13 +129,13 @@ public:
     //-----------------------------------------------------
     // 기본 기능
     //-----------------------------------------------------
-
+public:
     /** 아이템 사용 (발사) */
     virtual void UseItem() override;
 
     /** 탄약 재장전 */
     UFUNCTION(BlueprintCallable, Category = "Gun|Actions")
-    virtual bool Reload(float AmmoAmount);
+    virtual bool Reload();
 
 protected:
     /** 단발 사격 실행 */
@@ -164,6 +164,9 @@ public:
 
     /** 연발 타이머 핸들 */
     FTimerHandle AutoFireTimerHandle;
+
+    /** 재장전 타이머 핸들 */
+    FTimerHandle ReloadTimerHandle;
 
     /** 발사 모드 전환 */
     UFUNCTION(BlueprintCallable, Category = "Gun|FireMode")
@@ -212,6 +215,11 @@ public:
     UFUNCTION(NetMulticast, Unreliable)
     void Multicast_PlayFireEffects();
     void Multicast_PlayFireEffects_Implementation();
+
+    /** 총기 반동 효과 적용 */
+    UFUNCTION(Client, Unreliable)
+    void Client_PlayCameraShake();
+    void Client_PlayCameraShake_Implementation();
 
     //-----------------------------------------------------
     // 애니메이션 관련
