@@ -1327,7 +1327,11 @@ void ABaseCharacter::TraceInteractableActor()
 	{
 		return;
 	}
-	SetDesiredAiming(true);
+	if (!bIsSprinting)
+	{
+		SetDesiredAiming(true);
+	}
+	
 	SetRotationMode(AlsRotationModeTags::Aiming);
 	if (!IsLocallyControlled())
 	{
@@ -1488,7 +1492,7 @@ void ABaseCharacter::UpdateGunWallClipOffset(float DeltaTime)
 	float MuzzlePitch = MuzzleRot.Pitch;  // 상하 방향 판별용
 
 	// 2. 라인 트레이스
-	FVector TraceEnd = MuzzleLoc + MuzzleForward * 100.0f;
+	FVector TraceEnd = MuzzleLoc + MuzzleForward * 50.0f;
 
 	FHitResult Hit;
 	FCollisionQueryParams Params;
@@ -1783,7 +1787,14 @@ void ABaseCharacter::HandlePlayerDeath()
 	if (!IsValid(PC))
 	{
 		return;
+	}	
+	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
+	if (!IsValid(MyPlayerState))
+	{
+		return;
 	}
+	MyPlayerState->CurrentState = EPlayerState::Dead;
+	MyPlayerState->SetInGameStatus(EPlayerInGameStatus::Spectating);
 	PC->OnPlayerExitActivePlay();
 	Multicast_SetPlayerInGameStateOnDie();
 	UnequipCurrentItem();
@@ -1798,7 +1809,7 @@ void ABaseCharacter::Multicast_SetPlayerInGameStateOnDie_Implementation()
 		return;
 	}
 	MyPlayerState->CurrentState = EPlayerState::Dead;
-	MyPlayerState->InGameState = EPlayerInGameStatus::Spectating; // 관전 상태 돌입
+	MyPlayerState->SetInGameStatus(EPlayerInGameStatus::Spectating);
 	SwapHeadMaterialTransparent(false);
 }
 
@@ -1832,8 +1843,15 @@ void ABaseCharacter::EscapeThroughGate()
 	{
 		return;
 	}
-	Multicast_SetPlayerInGameStateOnEscapeGate();
+	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
+	if (!IsValid(MyPlayerState))
+	{
+		return;
+	}
+	MyPlayerState->CurrentState = EPlayerState::Escape;
+	MyPlayerState->SetInGameStatus(EPlayerInGameStatus::Spectating);	
 	PC->OnPlayerExitActivePlay();
+	Multicast_SetPlayerInGameStateOnEscapeGate();
 }
 
 void ABaseCharacter::Multicast_SetPlayerInGameStateOnEscapeGate_Implementation()

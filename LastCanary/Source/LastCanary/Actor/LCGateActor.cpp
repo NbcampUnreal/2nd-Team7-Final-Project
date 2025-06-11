@@ -32,173 +32,218 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 {
 	LOG_Frame_WARNING(TEXT("Gate actor %s is being interacted with."), *GetName());
 
-	if (Controller == nullptr)
+	if (!IsValid(Controller))
 	{
 		return;
 	}
-
-	ALCGameMode* LCGM = Cast<ALCGameMode>(GetWorld()->GetAuthGameMode());
-
-	if (ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+	switch (TravelType)
 	{
-		switch (TravelType)
+	case EGateTravelType::ToBaseCamp:
+	{
+		LOG_Frame_WARNING(TEXT("Travel To BaseCamp"));
+		ReturnToBaseCamp(Controller);
+		break;
+	}
+	case EGateTravelType::ToInGame:
+	{
+		LOG_Frame_WARNING(TEXT("Play Game Level"));
+		IntoGameLevel(Controller);
+		break;
+	}
+	}
+}
+
+void ALCGateActor::ReturnToBaseCamp(APlayerController* Controller)
+{
+	if (!IsValid(Controller))
+	{
+		LOG_Frame_WARNING(TEXT("컨트롤러가 유효하지 않음"));
+		return;
+	}
+	ALCRoomPlayerController* RoomPC = Cast<ALCRoomPlayerController>(Controller);
+	if (!IsValid(RoomPC))
+	{
+		LOG_Frame_WARNING(TEXT("컨트롤러 캐스팅이 실패함"));
+		return;
+	}
+	RoomPC->Server_MarkPlayerAsEscaped();
+	ULCGameInstance* LCGameInstance = GetGameInstance<ULCGameInstance>();
+	if (!IsValid(LCGameInstance))
+	{
+		LOG_Frame_WARNING(TEXT("게임 인스턴스가 유효하지 않음"));
+		return;
+	}
+	ULCGameInstanceSubsystem* LCGameInstanceSubsystem = LCGameInstance->GetSubsystem<ULCGameInstanceSubsystem>();
+	if (!IsValid(LCGameInstanceSubsystem))
+	{
+		LOG_Frame_WARNING(TEXT("게임 인스턴스 서브시스템이 유효하지 않음"));
+		return;
+	}
+	ABasePlayerState* PlayerState = RoomPC->GetPlayerState<ABasePlayerState>();
+	if (!IsValid(PlayerState))
+	{
+		LOG_Frame_WARNING(TEXT("플레이어 스테이트를 가져오지 못함"));
+		return;
+	}
+	// 아이템 ID 복사
+	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(RoomPC->GetPawn());
+	if (!IsValid(PlayerCharacter))
+	{
+		LOG_Frame_WARNING(TEXT("플레이어 캐릭터가 유효하지 않음"));
+		return;
+	}
+
+	PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetToolbarInventoryComponent()->GetInventoryItemIDs());
+	PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetBackpackInventoryComponent()->GetInventoryItemIDs());
+	if (!HasAuthority()) // 서버에서만 처리
+	{
+		LOG_Frame_WARNING(TEXT("서버가 아님"));
+		RoomPC->OnExitGate();
+		return;
+	}
+	// 자원 수집 기록
+
+	UDataTable* ItemTable = LCGameInstanceSubsystem->GetItemDataTable();
+	if (!IsValid(ItemTable))
+	{
+		return;
+	}
+	for (int32 ItemID : PlayerState->AquiredItemIDs)
+	{
+		FName RowName = *FString::Printf(TEXT("Item_%d"), ItemID);
+		const FItemDataRow* Row = ItemTable->FindRow<FItemDataRow>(RowName, TEXT("Gate Resource Parse"));
+
+		if (Row && Row->bIsResourceItem)
 		{
-		case EGateTravelType::ToBaseCamp:
-		{
-			if (ALCRoomPlayerController* RoomPC = Cast<ALCRoomPlayerController>(Controller))
-			{
-				RoomPC->Server_MarkPlayerAsEscaped();
-
-				//if (RoomPC->HasAuthority())
-				//{
-				//	RoomPC->Server_MarkPlayerAsEscaped_Implementation();
-				//	if (ALCGameState* GS = GetWorld()->GetGameState<ALCGameState>())
-				//	{
-				//		//GS->MarkPlayerAsEscaped(RoomPC->PlayerState);
-				//	}
-				//}
-				//else
-				//{
-				//	RoomPC->Server_MarkPlayerAsEscaped();
-				//}
-
-				if (ABasePlayerState* PlayerState = RoomPC->GetPlayerState<ABasePlayerState>())
-				{
-					// 아이템 ID 복사
-					ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(RoomPC->GetPawn());
-					PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetToolbarInventoryComponent()->GetInventoryItemIDs());
-					PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetBackpackInventoryComponent()->GetInventoryItemIDs());
-
-					// 자원 수집 기록
-					if (HasAuthority()) // 서버에서만 처리
-					{
-						if (ULCGameInstance* LCGameInstance = GetGameInstance<ULCGameInstance>())
-						{
-							if (ULCGameInstanceSubsystem* LCGameInstanceSubsystem = LCGameInstance->GetSubsystem<ULCGameInstanceSubsystem>())
-							{
-								if (UDataTable* ItemTable = LCGameInstanceSubsystem->GetItemDataTable())
-								{
-									for (int32 ItemID : PlayerState->AquiredItemIDs)
-									{
-										FName RowName = *FString::Printf(TEXT("Item_%d"), ItemID);
-										const FItemDataRow* Row = ItemTable->FindRow<FItemDataRow>(RowName, TEXT("Gate Resource Parse"));
-
-										if (Row && Row->bIsResourceItem)
-										{
-											PlayerState->AddCollectedResource(RowName);
-											LOG_Frame_WARNING(TEXT("자원 기록: %s → %d개 누적"), *RowName.ToString(), PlayerState->CollectedResourceMap[RowName]);
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-
-			// HUD 숨기고 관전 모드 전환
-			if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
-			{
-				UIManager->HideInGameHUD();
-			}
-			ABasePlayerController* BasePlayerController = Cast<ABasePlayerController>(Controller);
-			BasePlayerController->OnExitGate();
-
-			// TODO : 탈출, 체크리스트 띄우고 전부 작성하면 결과 UI-> 호스트가 버튼 눌러서 베이스캠프로 이동
-			// 사망->시체 스켈레탈메시남고->관전(컨트롤러)
-			// 관전으로 넘기는 함수
-			// 탈출시 PS로 아이템 아이디넘김 타이머로 캐릭터 Destroy
-			break;
+			PlayerState->AddCollectedResource(RowName);
+			LOG_Frame_WARNING(TEXT("자원 기록: %s → %d개 누적"), *RowName.ToString(), PlayerState->CollectedResourceMap[RowName]);
 		}
-		case EGateTravelType::ToInGame:
-		{
-			if (ALCRoomPlayerController* RoomPC = Cast<ALCRoomPlayerController>(Controller))
-			{
-				if (ABasePlayerState* PlayerState = RoomPC->GetPlayerState<ABasePlayerState>())
-				{
-					ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(RoomPC->GetPawn());
-					PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetToolbarInventoryComponent()->GetInventoryItemIDs());
-				}
-			}
+	}
+	RoomPC->OnExitGate();
+	//if (RoomPC->HasAuthority())
+	//{
+	//	RoomPC->Server_MarkPlayerAsEscaped_Implementation();
+	//	if (ALCGameState* GS = GetWorld()->GetGameState<ALCGameState>())
+	//	{
+	//		//GS->MarkPlayerAsEscaped(RoomPC->PlayerState);
+	//	}
+	//}
+	//else
+	//{
+	//	RoomPC->Server_MarkPlayerAsEscaped();
+	//}
 
-			if (HasAuthority() == false)
+	/*
+	ABasePlayerController* BasePlayerController = Cast<ABasePlayerController>(Controller);
+	BasePlayerController->OnExitGate();
+	*/
+
+	// TODO : 탈출, 체크리스트 띄우고 전부 작성하면 결과 UI-> 호스트가 버튼 눌러서 베이스캠프로 이동
+	// 사망->시체 스켈레탈메시남고->관전(컨트롤러)
+	// 관전으로 넘기는 함수
+	// 탈출시 PS로 아이템 아이디넘김 타이머로 캐릭터 Destroy
+}
+
+void ALCGateActor::IntoGameLevel(APlayerController* Controller)
+{
+	if (!IsValid(Controller))
+	{
+		return;
+	}
+	ALCGameMode* LCGM = Cast<ALCGameMode>(GetWorld()->GetAuthGameMode());
+	if (!IsValid(LCGM))
+	{
+		return;
+	}
+	ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
+	if (!IsValid(GISubsystem))
+	{
+		return;
+	}
+	if (ALCRoomPlayerController* RoomPC = Cast<ALCRoomPlayerController>(Controller))
+	{
+		if (ABasePlayerState* PlayerState = RoomPC->GetPlayerState<ABasePlayerState>())
+		{
+			ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(RoomPC->GetPawn());
+			PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetToolbarInventoryComponent()->GetInventoryItemIDs());
+		}
+	}
+
+	if (HasAuthority() == false)
+	{
+		return;
+	}
+	else
+	{
+		if (LCGM)
+		{
+			if (LCGM->IsAllPlayersReady() == false)
 			{
+				LOG_Server_ERROR(TEXT("All Client is Not Ready!!"));
 				return;
 			}
-			else
+		}
+		else
+		{
+			LOG_Server_ERROR(TEXT("Cast Fail GameMode : Not Server!!"));
+			return;
+		}
+
+		LOG_Server_WARNING(TEXT("All Client is Ready!! Try To Server Travel"));
+
+		// 랜덤 맵 지정이 아직 안 된 경우
+		if (TargetMapID == 0)
+		{
+			// MapDataTable에서 인게임 맵만 추출
+			if (UDataTable* MapTable = GISubsystem->GetMapDataTable())
 			{
-				if (LCGM)
+				TArray<FMapDataRow*> AllMaps;
+				static const FString Ctx = TEXT("GateActor-SelectRandomMap");
+				MapTable->GetAllRows(Ctx, AllMaps);
+
+				TArray<int32> InGameMapIDs;
+
+				for (const FMapDataRow* Row : AllMaps)
 				{
-					if (LCGM->IsAllPlayersReady() == false)
+					if (Row && Row->MapInfo.MapName != TEXT("BaseCamp"))
 					{
-						LOG_Server_ERROR(TEXT("All Client is Not Ready!!"));
-						return;
+						InGameMapIDs.Add(Row->MapID);
 					}
+				}
+
+				if (InGameMapIDs.Num() > 0)
+				{
+					int32 RandomIdx = FMath::RandRange(0, InGameMapIDs.Num() - 1);
+					TargetMapID = InGameMapIDs[RandomIdx];
+					LOG_Frame_WARNING(TEXT("Gate assigned random InGame TargetMapID: %d"), TargetMapID);
 				}
 				else
 				{
-					LOG_Server_ERROR(TEXT("Cast Fail GameMode : Not Server!!"));
+					LOG_Frame_WARNING(TEXT("No InGame maps found in MapDataTable."));
 					return;
 				}
-
-				LOG_Server_WARNING(TEXT("All Client is Ready!! Try To Server Travel"));
-
-				// 랜덤 맵 지정이 아직 안 된 경우
-				if (TargetMapID == 0)
-				{
-					// MapDataTable에서 인게임 맵만 추출
-					if (UDataTable* MapTable = GISubsystem->GetMapDataTable())
-					{
-						TArray<FMapDataRow*> AllMaps;
-						static const FString Ctx = TEXT("GateActor-SelectRandomMap");
-						MapTable->GetAllRows(Ctx, AllMaps);
-
-						TArray<int32> InGameMapIDs;
-
-						for (const FMapDataRow* Row : AllMaps)
-						{
-							if (Row && Row->MapInfo.MapName != TEXT("BaseCamp"))
-							{
-								InGameMapIDs.Add(Row->MapID);
-							}
-						}
-
-						if (InGameMapIDs.Num() > 0)
-						{
-							int32 RandomIdx = FMath::RandRange(0, InGameMapIDs.Num() - 1);
-							TargetMapID = InGameMapIDs[RandomIdx];
-							LOG_Frame_WARNING(TEXT("Gate assigned random InGame TargetMapID: %d"), TargetMapID);
-						}
-						else
-						{
-							LOG_Frame_WARNING(TEXT("No InGame maps found in MapDataTable."));
-							return;
-						}
-					}
-					else
-					{
-						LOG_Frame_WARNING(TEXT("MapDataTable is null in GameInstanceSubsystem."));
-						return;
-					}
-				}
-			}
-			GISubsystem->ChangeLevelByMapID(TargetMapID);
-
-			if (LCGM)
-			{
-				LCGM->ShowLoading();
 			}
 			else
 			{
-				LOG_Server_ERROR(TEXT("Base GameMode Is Null"));
+				LOG_Frame_WARNING(TEXT("MapDataTable is null in GameInstanceSubsystem."));
 				return;
 			}
-
-			break;
-		}
 		}
 	}
+	GISubsystem->ChangeLevelByMapID(TargetMapID);
+
+	if (LCGM)
+	{
+		LCGM->ShowLoading();
+	}
+	else
+	{
+		LOG_Server_ERROR(TEXT("Base GameMode Is Null"));
+		return;
+	}
+
 }
+
 
 FString ALCGateActor::GetInteractMessage_Implementation() const
 {
