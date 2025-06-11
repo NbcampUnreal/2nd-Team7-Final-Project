@@ -46,6 +46,12 @@ public:
 
 	virtual void CreateSession_Implementation(const FSessionInfo& SessionInfo);
 
+public:
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Session")
+	void UpdateSession(bool bAdvertise, bool bAllowJoin, int32 NumPublicConnections);
+
+	virtual void UpdateSession_Implementation(bool bAdvertise, bool bAllowJoin, int32 NumPublicConnections);
+
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Session")
 	bool bIsCreateSession;

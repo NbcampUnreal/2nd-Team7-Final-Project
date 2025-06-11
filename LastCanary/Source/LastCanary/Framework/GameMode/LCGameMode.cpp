@@ -1,12 +1,13 @@
 ﻿#include "Framework/GameMode/LCGameMode.h"
 #include "Framework/GameInstance/LCGameInstance.h"
-#include "GameFramework/PlayerStart.h"
+#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Framework/PlayerController/LCPlayerController.h"
+#include "GameFramework/PlayerStart.h"
 #include "GameFramework/GameSession.h"
 #include "EngineUtils.h"
 #include "Actor/PlayerChecker.h"
 
-#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "Kismet/GameplayStatics.h"
 
 #include "LastCanary.h"
 
@@ -17,6 +18,20 @@ void ALCGameMode::PreLogin(const FString& Options, const FString& Address, const
 	if (CurrentPlayerNum >= MaxPlayerNum)
 	{
 		ErrorMessage = TEXT("Room Is Full !!");
+	}
+
+	// 1) 현재 월드의 레벨 이름을 가져옴
+	FString MapName = UGameplayStatics::GetCurrentLevelName(this, true);
+
+	// 2) 허용된 레벨 이름 확인
+	static const TArray<FString> AllowedJoinMaps = {
+		TEXT("BaseCamp")
+	};
+
+	if (!AllowedJoinMaps.Contains(MapName))
+	{
+		// BaseCamp가 아니면 에러 메시지를 세팅하여 조인을 차단
+		ErrorMessage = TEXT("게임이 이미 시작되어 참여할 수 없습니다.");
 	}
 }
 
@@ -35,6 +50,26 @@ void ALCGameMode::PostSeamlessTravel()
 	{
 		It->InitializeChecker(); 
 		It->Server_OpenDoors();
+	}	
+
+	if (ULCGameInstance* LCGI = Cast<ULCGameInstance>(GetGameInstance()))
+	{
+		FString MapName = UGameplayStatics::GetCurrentLevelName(this, /*bRemovePIEPrefix=*/ true);
+
+		static const TArray<FString> AllowedJoinMaps = {
+			TEXT("BaseCamp")
+		};
+
+		if (AllowedJoinMaps.Contains(MapName))
+		{
+			// BaseCamp 로 돌아왔으니 세션 검색/조인 허용 재활성화
+			LCGI->UpdateSession(true, true, MaxPlayerNum);
+		}
+		else
+		{
+			// InGameLevel 에서는 세션 숨기기 & 조인 금지
+			LCGI->UpdateSession(false, false, 0);
+		}
 	}
 }
 
@@ -250,7 +285,7 @@ void ALCGameMode::TravelMapBySoftPath(FString SoftPath)
 
 	// 3) ?listen 붙여서 최종 ServerTravel URL생성
 	const FString TravelURL = PackageName + TEXT("?listen");
-	UE_LOG(LogTemp, Log, TEXT("Try Server Travel By SoftPath. Traveling to: %s"), *TravelURL);
+	LOG_Server_WARNING(TEXT("Try Server Travel By SoftPath. Traveling to: %s"), *TravelURL);
 
 	GetWorld()->ServerTravel(TravelURL, true);
 }
@@ -258,7 +293,7 @@ void ALCGameMode::TravelMapBySoftPath(FString SoftPath)
 void ALCGameMode::TravelMapByPath(FString Path)
 {
 	const FString TravelURL = Path + TEXT("?listen");
-	UE_LOG(LogTemp, Log, TEXT("Try Server Travel By Path. Traveling to: %s"), *TravelURL);
+	LOG_Server_WARNING(TEXT("Try Server Travel By Path. Traveling to: %s"), *TravelURL);
 
 	GetWorld()->ServerTravel(TravelURL, true);
 }
