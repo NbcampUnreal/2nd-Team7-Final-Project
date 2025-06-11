@@ -61,7 +61,6 @@ protected:
     /** Berserk 진입 조건 재정의 (Phylactery 파괴 시 즉시) */
     virtual void OnRep_IsBerserk() override;
 
-    /** ── 공격 시 영혼 흡수 힐 ── */
-    virtual void OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted) override;
+    virtual bool RequestAttack() override;
 	
 };

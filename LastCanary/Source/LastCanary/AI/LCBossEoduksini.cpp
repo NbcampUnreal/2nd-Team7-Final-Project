@@ -441,7 +441,7 @@ bool ALCBossEoduksini::RequestAttack()
     const float Rand = FMath::FRand();
 
     // 1) Night Terror
-    if (!bHasUsedNightTerror)
+	if (!bHasUsedNightTerror && Rage >= NightTerrorHealthThreshold && !bDarknessActive)
     {
         bHasUsedNightTerror = true;
         NightTerror();

@@ -118,7 +118,7 @@ protected:
 
     // Night Terror
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Ability")
-    float NightTerrorHealthThreshold = 0.5f;
+    float NightTerrorHealthThreshold = 0.8f;
     bool bHasUsedNightTerror = false;
     void NightTerror();
 
@@ -131,7 +131,7 @@ protected:
     void ShadowSwipe();
     void VoidGrasp();
     
-    /** ── Rage 연동 공격 ── */
+    /** ── 공격 ── */
     virtual bool RequestAttack() override;
 
     /** ── Darkness State ── */

@@ -87,21 +87,19 @@ void ALCBossLich::OnRep_IsBerserk()
     }
 }
 
-void ALCBossLich::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
+bool ALCBossLich::RequestAttack()
 {
-    Super::OnAttackMontageEnded(Montage, bInterrupted);
+    if (!HasAuthority()) return false;
 
-    // 일반 공격 완료 시 흡수량만큼 힐 (데미지의 50%)
-    if (Montage == NormalAttackMontage)
-    {
-        float HealAmount = NormalAttackDamage * 0.5f;
-        UGameplayStatics::ApplyDamage(
-            this,
-            -HealAmount,               // 음수 대미지 → 힐
-            GetController(),
-            this,
-            UDamageType::StaticClass()
-        );
-        UE_LOG(LogTemp, Log, TEXT("[Lich] Soul Absorb: %f 회복"), HealAmount);
-    }
+    float HealAmount = NormalAttackDamage * 0.5f;
+    UGameplayStatics::ApplyDamage(
+        this,
+        -HealAmount,
+        GetController(),
+        this,
+        UDamageType::StaticClass()
+    );
+    UE_LOG(LogTemp, Log, TEXT("[Lich] Soul Absorb: %f 회복"), HealAmount);
+
+    return true;
 }

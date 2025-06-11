@@ -12,6 +12,8 @@ ABaseBossMonsterCharacter::ABaseBossMonsterCharacter()
 
 void ABaseBossMonsterCharacter::BeginPlay()
 {
+    Super::BeginPlay();   // ← 추가!
+
     // 1) ClueClasses 내용을 RemainingClueClasses로 복사
     RemainingClueClasses = ClueClasses;
 
@@ -31,72 +33,10 @@ void ABaseBossMonsterCharacter::BeginPlay()
 
 bool ABaseBossMonsterCharacter::RequestAttack()
 {
-    if (!HasAuthority())
-        return false;
-
-    const float Now = GetWorld()->GetTimeSeconds();
-
-    // (1) 강공격 우선
-    if (StrongAttackMontage &&
-        FMath::FRand() < StrongAttackChance &&
-        (Now - LastStrongTime) >= StrongAttackCooldown)
-    {
-        LastStrongTime = Now;
-        PlayStrongAttack();
-        return true;
-    }
-
-    // (2) 일반 공격
-    if (NormalAttackMontage &&
-        (Now - LastNormalTime) >= NormalAttackCooldown)
-    {
-        LastNormalTime = Now;
-        PlayNormalAttack();
-        return true;
-    }
 
     return false;
 }
 
-
-void ABaseBossMonsterCharacter::PlayNormalAttack()
-{
-    if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
-    {
-        Anim->Montage_Play(NormalAttackMontage);
-        Anim->OnMontageEnded.AddDynamic(this, &ABaseBossMonsterCharacter::OnAttackMontageEnded);
-    }
-}
-
-
-void ABaseBossMonsterCharacter::PlayStrongAttack()
-{
-    if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
-    {
-        Anim->Montage_Play(StrongAttackMontage);
-        Anim->OnMontageEnded.AddDynamic(this, &ABaseBossMonsterCharacter::OnAttackMontageEnded);
-    }
-}
-
-
-void ABaseBossMonsterCharacter::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
-{
-    float DamageToApply = 0.f;
-
-    if (Montage == NormalAttackMontage)
-    {
-        DamageToApply = NormalAttackDamage;
-    }
-    else if (Montage == StrongAttackMontage)
-    {
-        DamageToApply = StrongAttackDamage;
-    }
-
-    if (DamageToApply > 0.f)
-    {
-        DealDamageInRange(DamageToApply);
-    }
-}
 
 // Tick이나 다른 타이밍에 호출하여 Rage를 갱신하고 싶다면 여기서 Berserk 배수를 적용
 void ABaseBossMonsterCharacter::UpdateRage(float DeltaSeconds)

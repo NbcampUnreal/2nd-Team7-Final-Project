@@ -23,25 +23,6 @@ void ALCBossVampire::BeginPlay()
     GetWorldTimerManager().SetTimer(GazeTimerHandle, this, &ALCBossVampire::ExecuteNightmareGaze, GazeInterval, true);
 }
 
-void ALCBossVampire::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
-{
-    Super::OnAttackMontageEnded(Montage, bInterrupted);
-
-    // Blood Drain: 데미지의 30%만큼 힐
-    float DamageDone = 0.f;
-    if (Montage == NormalAttackMontage)
-        DamageDone = NormalAttackDamage;
-    else if (Montage == StrongAttackMontage)
-        DamageDone = StrongAttackDamage;
-
-    if (DamageDone > 0.f)
-    {
-        float HealAmount = DamageDone * 0.3f;
-        UGameplayStatics::ApplyDamage(this, -HealAmount, GetController(), this, UDamageType::StaticClass());
-        UE_LOG(LogTemp, Log, TEXT("[Vampire] Blood Drain heal: %f"), HealAmount);
-    }
-}
-
 void ALCBossVampire::ExecuteBatSwarm()
 {
     if (!HasAuthority() || !BatSwarmClass) return;

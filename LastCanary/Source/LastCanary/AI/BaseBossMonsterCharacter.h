@@ -13,13 +13,6 @@ public:
     ABaseBossMonsterCharacter();
 	virtual void BeginPlay() override;
 
-    /** ─── 공격 설정 ─── */
-    UPROPERTY(EditDefaultsOnly, Category = "Boss|Attack")
-    UAnimMontage* NormalAttackMontage;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Boss|Attack")
-    UAnimMontage* StrongAttackMontage;
-
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Attack", meta = (ClampMin = "0.0", ClampMax = "1.0"))
     float StrongAttackChance = 0.3f;
 
@@ -60,14 +53,6 @@ public:
     void EnterBerserkState();
 
 protected:
-    /** 실제 공격 처리(Montage 재생) */
-    virtual void PlayNormalAttack();
-    virtual void PlayStrongAttack();
-
-    /** 몽타주 종료 콜백(파생 클래스에서 override 가능) */
-    UFUNCTION()
-    virtual void OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted);
-
     float LastNormalTime = -FLT_MAX;
     float LastStrongTime = -FLT_MAX;
 

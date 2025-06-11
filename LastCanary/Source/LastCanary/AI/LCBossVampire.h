@@ -14,7 +14,6 @@ public:
 
 protected:
     virtual void BeginPlay() override;
-    virtual void OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted) override;
 
     /** ── Blood Drain (영혼 흡수 힐) ── */
     // OnAttackMontageEnded에서 처리
