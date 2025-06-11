@@ -19,6 +19,9 @@ protected:
     UFUNCTION()
     void EcholocationPing();
 
+    /** Berserk 상태일 때 반향 추가 효과 */
+    void BerserkExtraEcho();
+
     /** AIController나 Behavior Tree가 소리를 감지했을 때 호출됨 **/
     UFUNCTION(BlueprintCallable, Category = "Banshee|Hearing")
     void OnHeardNoise(const FVector& NoiseLocation);

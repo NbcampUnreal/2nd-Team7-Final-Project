@@ -1,4 +1,4 @@
-#include "AI/LCBossBanshee.h"
+ï»¿#include "AI/LCBossBanshee.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
 #include "DrawDebugHelpers.h"
@@ -11,14 +11,14 @@
 ALCBossBanshee::ALCBossBanshee()
 {
     PrimaryActorTick.bCanEverTick = true;
-    // bCanShriek´Â ¼±¾ğ ½Ã ÃÊ±âÈ­
+    // bCanShriekëŠ” ì„ ì–¸ ì‹œ ì´ˆê¸°í™”
 }
 
 void ALCBossBanshee::BeginPlay()
 {
     Super::BeginPlay();
 
-    // ÁÖ±âÀûÀÎ ¹İÇâ Á¤Âû ½ÃÀÛ
+    // ì£¼ê¸°ì ì¸ ë°˜í–¥ ì •ì°° ì‹œì‘
     GetWorldTimerManager().SetTimer(
         PingTimerHandle,
         this,
@@ -30,25 +30,44 @@ void ALCBossBanshee::BeginPlay()
 
 void ALCBossBanshee::EcholocationPing()
 {
-    // 1) ¹İÇâ ¼Ò¸® Àç»ı
+    // 1) ë°˜í–¥ ì†Œë¦¬ ì¬ìƒ
     if (EcholocationSound)
     {
         UGameplayStatics::PlaySoundAtLocation(
             this, EcholocationSound, GetActorLocation());
     }
 
-    // 2) µğ¹ö±×¿ë ¹İ°æ ½Ã°¢È­
-    DrawDebugSphere(
-        GetWorld(),
-        GetActorLocation(),
-        PingRadius,
-        32,
-        FColor::Cyan,
-        false,
-        RevealDuration
-    );
+    // 2) ë””ë²„ê·¸ìš© ë°˜ê²½ ì‹œê°í™”
+	if (bIsBerserk)
+	{
+        // ì˜ˆ: ë°˜í–¥ ì‹œë§ˆë‹¤ ì¶”ê°€ë¡œ ëŠë¦¬ê²Œ ë§Œë“œëŠ” ë””ë²„í”„ë¥¼ ê±¸ê±°ë‚˜, íŒŒí‹°í´ì„ ë¿Œë¦¬ëŠ” ë¡œì§
+        DrawDebugSphere(
+            GetWorld(),
+            GetActorLocation(),
+            PingRadius * 1.2f,
+            16,
+            FColor::Purple,
+            false,
+            1.0f
+        );
+	}
 
-    // 3) ¹İ°æ ³» ¸ğµç ÇÃ·¹ÀÌ¾î Ä³¸¯ÅÍ Ç¥½Ã
+    else
+    {
+        DrawDebugSphere(
+            GetWorld(),
+            GetActorLocation(),
+            PingRadius,
+            32,
+            FColor::Cyan,
+            false,
+            RevealDuration
+        );
+    }
+    
+
+
+    // 3) ë°˜ê²½ ë‚´ ëª¨ë“  í”Œë ˆì´ì–´ ìºë¦­í„° í‘œì‹œ
     TArray<FOverlapResult> Overlaps;
     FCollisionShape Sphere = FCollisionShape::MakeSphere(PingRadius);
     FCollisionQueryParams Params;
@@ -69,17 +88,22 @@ void ALCBossBanshee::EcholocationPing()
         {
             if (ACharacter* Char = Cast<ACharacter>(Result.GetActor()))
             {
-                // ¿¹½Ã: °¡½Ã¼º Åä±Û
+                // ì˜ˆì‹œ: ê°€ì‹œì„± í† ê¸€
                 Char->SetActorHiddenInGame(false);
-                // RevealDuration ÀÌÈÄ ´Ù½Ã ¼û±â·Á¸é º°µµ ·ÎÁ÷ ÇÊ¿ä
+                // RevealDuration ì´í›„ ë‹¤ì‹œ ìˆ¨ê¸°ë ¤ë©´ ë³„ë„ ë¡œì§ í•„ìš”
             }
         }
     }
 }
 
+void ALCBossBanshee::BerserkExtraEcho()
+{
+
+}
+
 void ALCBossBanshee::OnHeardNoise(const FVector& NoiseLocation)
 {
-    // 1) ¼Ò¸® ¹ß»ı ÁöÁ¡ ¹Ù¶óº¸±â
+    // 1) ì†Œë¦¬ ë°œìƒ ì§€ì  ë°”ë¼ë³´ê¸°
     FVector Dir = NoiseLocation - GetActorLocation();
     Dir.Z = 0.f;
     if (!Dir.IsNearlyZero())
@@ -87,30 +111,17 @@ void ALCBossBanshee::OnHeardNoise(const FVector& NoiseLocation)
         SetActorRotation(Dir.Rotation());
     }
 
-    // 2) ¿ïºÎÂ¢±â
+    // 2) ìš¸ë¶€ì§–ê¸°
     if (bCanShriek)
     {
-        // »ç¿îµå Àç»ı
+        // ì‚¬ìš´ë“œ ì¬ìƒ
         if (SonicShriekSound)
         {
             UGameplayStatics::PlaySoundAtLocation(
                 this, SonicShriekSound, GetActorLocation());
         }
 
-        // ¹İ°æ µ¥¹ÌÁö Àû¿ë
-        UGameplayStatics::ApplyRadialDamage(
-            this,
-            ShriekDamage,
-            GetActorLocation(),
-            ShriekRadius,
-            nullptr,
-            TArray<AActor*>(),
-            this,
-            GetController(),
-            true
-        );
-
-        // µğ¹ö±× ½Ã°¢È­
+        // ë””ë²„ê·¸ ì‹œê°í™”
         DrawDebugSphere(
             GetWorld(),
             GetActorLocation(),
@@ -121,7 +132,35 @@ void ALCBossBanshee::OnHeardNoise(const FVector& NoiseLocation)
             2.f
         );
 
-        // Äğ´Ù¿î ½ÃÀÛ
+        // â”€â”€ Berserk ì‹œ ì¶”ê°€ í­ë°œ íš¨ê³¼ â”€â”€
+        if (bIsBerserk)
+        {
+            // ì˜ˆ: ê°•ë ¥í•œ í•œ ë²ˆ ë” ApplyRadialDamage í•˜ê±°ë‚˜, í­ë°œ íŒŒí‹°í´
+            UGameplayStatics::ApplyRadialDamage(
+                this,
+                ShriekDamage * 0.5f,
+                GetActorLocation(),
+                ShriekRadius * 1.5f,
+                nullptr,
+                TArray<AActor*>(),
+                this,
+                GetController(),
+                true
+            );
+            DrawDebugSphere(
+                GetWorld(),
+                GetActorLocation(),
+                ShriekRadius * 1.5f,
+                24,
+                FColor::Orange,
+                false,
+                2.f
+            );
+            UE_LOG(LogTemp, Log, TEXT("[Banshee] BerserkExtraShriek ì‹¤í–‰"));
+        }
+
+
+        // ì¿¨ë‹¤ìš´ ì‹œì‘
         bCanShriek = false;
         GetWorldTimerManager().SetTimer(
             ShriekTimerHandle,

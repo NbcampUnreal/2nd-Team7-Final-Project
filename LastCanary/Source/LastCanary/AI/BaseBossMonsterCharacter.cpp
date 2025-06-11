@@ -10,6 +10,25 @@ ABaseBossMonsterCharacter::ABaseBossMonsterCharacter()
     bReplicates = true;
 }
 
+void ABaseBossMonsterCharacter::BeginPlay()
+{
+    // 1) ClueClasses 내용을 RemainingClueClasses로 복사
+    RemainingClueClasses = ClueClasses;
+
+    // 2) 남은 단서가 있을 때만 타이머 시작
+    if (HasAuthority() && RemainingClueClasses.Num() > 0)
+    {
+        const float InitialDelay = FMath::RandRange(ClueSpawnIntervalMin, ClueSpawnIntervalMax);
+        GetWorldTimerManager().SetTimer(
+            ClueTimerHandle,
+            this,
+            &ABaseBossMonsterCharacter::SpawnRandomClue,
+            InitialDelay,
+            false
+        );
+    }
+}
+
 bool ABaseBossMonsterCharacter::RequestAttack()
 {
     if (!HasAuthority())
@@ -218,18 +237,7 @@ void ABaseBossMonsterCharacter::SpawnRandomClue()
     }
 }
 
-void ABaseBossMonsterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-    // Rage 복제
-    DOREPLIFETIME(ABaseBossMonsterCharacter, Rage);
-
-    // Berserk 상태 복제
-    DOREPLIFETIME(ABaseBossMonsterCharacter, bIsBerserk);
-}
-
-    void ABaseBossMonsterCharacter::DealDamageInRange(float DamageAmount)
+void ABaseBossMonsterCharacter::DealDamageInRange(float DamageAmount)
 {
     FVector Origin = GetActorLocation();
     float Radius = AttackRange;
@@ -279,4 +287,16 @@ void ABaseBossMonsterCharacter::EnableStencilForAllMeshes(int32 StencilValue)
         MeshComp->SetRenderCustomDepth(true);
         MeshComp->SetCustomDepthStencilValue(StencilValue);
     }
+}
+
+
+void ABaseBossMonsterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+    // Rage 복제
+    DOREPLIFETIME(ABaseBossMonsterCharacter, Rage);
+
+    // Berserk 상태 복제
+    DOREPLIFETIME(ABaseBossMonsterCharacter, bIsBerserk);
 }

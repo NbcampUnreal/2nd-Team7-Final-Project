@@ -11,6 +11,7 @@ class LASTCANARY_API ABaseBossMonsterCharacter : public ACharacter
 
 public:
     ABaseBossMonsterCharacter();
+	virtual void BeginPlay() override;
 
     /** ─── 공격 설정 ─── */
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Attack")
@@ -65,7 +66,7 @@ protected:
 
     /** 몽타주 종료 콜백(파생 클래스에서 override 가능) */
     UFUNCTION()
-    void OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted);
+    virtual void OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 
     float LastNormalTime = -FLT_MAX;
     float LastStrongTime = -FLT_MAX;
@@ -86,7 +87,7 @@ protected:
 
     /** Replication 후 처리용 OnRep 함수 */
     UFUNCTION()
-    void OnRep_IsBerserk();
+    virtual void OnRep_IsBerserk();
 
     /** Berserk 시작을 클라이언트 전체에 알리는 멀티캐스트 RPC */
     UFUNCTION(NetMulticast, Reliable)
@@ -97,10 +98,10 @@ protected:
     void Multicast_EndBerserk();
 
     /** 실제 Berserk 상태 진입 로직 */
-    void StartBerserk();
+    virtual void StartBerserk();
 
     /** Berserk 종료 처리 로직 */
-    void EndBerserk();
+    virtual void EndBerserk();
 
     /** Rage 업데이트 시 Berserk 배수를 적용하고 싶으면 이 함수를 오버라이드하여 사용 */
     virtual void UpdateRage(float DeltaSeconds);
