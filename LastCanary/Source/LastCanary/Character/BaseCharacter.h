@@ -17,6 +17,8 @@ class UToolbarInventoryComponent;
 class UBackpackInventoryComponent;
 struct FBaseItemSlotData;
 class UItemSpawnerComponent;
+class UPostProcessComponent;
+class AResourceNode;
 
 UCLASS()
 class LASTCANARY_API ABaseCharacter : public AAlsCharacter
@@ -71,6 +73,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
 	USkeletalMeshComponent* HeadMesh;
 
+	UPROPERTY(VisibleAnywhere)
+	UPostProcessComponent* CustomPostProcessComponent;
+
+	float GetBrightness();
+	void SetBrightness(float Value);
+
 	void Tick(float DeltaSeconds)
 	{
 		Super::Tick(DeltaSeconds);
@@ -94,15 +102,6 @@ protected:
 
 	// Camera Settings
 protected:
-	/*Camera Settings*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|MouseSensitivity", Meta = (ClampMin = 0, ForceUnits = "x"))
-	float LookUpMouseSensitivity{ 1.0f };
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|MouseSensitivity", Meta = (ClampMin = 0, ForceUnits = "x"))
-	float LookRightMouseSensitivity{ 1.0f };
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|MouseSensitivity", Meta = (ClampMin = 0, ForceUnits = "deg/s"))
-	float LookUpRate{ 90.0f };
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|MouseSensitivity", Meta = (ClampMin = 0, ForceUnits = "deg/s"))
-	float LookRightRate{ 240.0f };
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Camera", Meta = (ClampMin = 0, ClampMax = 90, ForceUnits = "deg"))
 	float MaxPitchAngle{ 60.0f };
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Camera", Meta = (ClampMin = -80, ClampMax = 0, ForceUnits = "deg"))
@@ -176,7 +175,7 @@ public:
 	void SetCameraMode(bool bIsFirstPersonView);
 
 	void ApplyRecoilStep();
-	void CameraShake();
+	void CameraShake(float Vertical, float Horizontal);
 
 
 	void SwapHeadMaterialTransparent(bool bUseTransparent);
@@ -189,14 +188,14 @@ public:
 	float YawRecoilRange = 1.0f;
 
 	int32 RecoilStep = 0;
-	int32 RecoilMaxSteps = 5;
+	int32 RecoilMaxSteps = 10;
 	float RecoilStepPitch = 0.f;
 	float RecoilStepYaw = 0.f;
 	// Character Input Handle Function
 
 public:
 	/*Function called by the controller*/
-	virtual void Handle_LookMouse(const FInputActionValue& ActionValue);
+	virtual void Handle_LookMouse(const FInputActionValue& ActionValue, float Sensivity);
 	virtual void Handle_Look(const FInputActionValue& ActionValue);
 	virtual void Handle_Move(const FInputActionValue& ActionValue);
 	virtual void Handle_Sprint(const FInputActionValue& ActionValue);
@@ -205,7 +204,7 @@ public:
 	virtual void Handle_Jump(const FInputActionValue& ActionValue);
 	virtual void Handle_Strafe(const FInputActionValue& ActionValue);
 	virtual void Handle_Aim(const FInputActionValue& ActionValue);
-	virtual void Handle_Interact();
+	virtual void Handle_Interact(const FInputActionValue& ActionValue);
 	virtual void Handle_ViewMode();
 	virtual void Handle_Reload();
 
@@ -218,8 +217,9 @@ public:
 	bool bIsPossessed;
 	bool bIsReloading = false;
 	bool bIsClose = false;
+	bool bIsUsingItem= false;
 	void SetPossess(bool IsPossessed);
-
+	bool bRecoveringFromRecoil = false;
 
 	//About Character Animation Montage and Animation Class
 public:
@@ -476,10 +476,10 @@ public:
 	void Server_UnequipCurrentItem_Implementation();
 
 	UFUNCTION(BlueprintCallable, Category = "Equipment")
-	bool UseEquippedItem();
+	bool UseEquippedItem(float ActionValue);
 	UFUNCTION(Server, Reliable)
-	void Server_UseEquippedItem();
-	void Server_UseEquippedItem_Implementation();
+	void Server_UseEquippedItem(float ActionValue);
+	void Server_UseEquippedItem_Implementation(float ActionValue);
 
 public:
 	/** 인벤토리 UI를 토글합니다 */
@@ -546,4 +546,12 @@ public:
 
 	/** 스캐너를 위한 스텐실 설정 */
 	void EnableStencilForAllMeshes(int32 StencilValue);
+
+	//-----------------------------------------------------
+	// 각종 자원 채집을 위한 상호작용
+	//-----------------------------------------------------
+
+	UFUNCTION(Server, Reliable)
+	void Server_InteractWithResourceNode(AResourceNode* TargetNode);
+	void Server_InteractWithResourceNode_Implementation(AResourceNode* TargetNode);
 };

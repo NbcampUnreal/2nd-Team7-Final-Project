@@ -11,14 +11,30 @@ class UInputMappingContext;
 class UInputAction;
 class ABaseCharacter;
 class ABaseDrone;
+class ABaseSpectatorPawn;
 class ABasePlayerState;
 class ALCBaseGimmick;
+class ABaseSpectatorPawn;
 
 UCLASS()
 class LASTCANARY_API ABasePlayerController : public ALCPlayerController
 {
 	GENERATED_BODY()
 
+public:
+	void LoadMouseSensitivity();
+
+	void SetMouseSensitivity(float Sensitivity);
+
+	void LoadBrightness();
+
+	void SetBrightness(float Brightness);
+
+	/*Camera Settings*/
+	float MouseSensivity = 1.0f;
+
+	UPROPERTY()
+	float BrightnessSetting = 1.0f;
 
 private:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
@@ -26,13 +42,28 @@ private:
 	APawn* CachedPawn;  // Pawn을 저장할 멤버 변수
 	APawn* CurrentPossessedPawn;
 	ABaseCharacter* SpanwedPlayerCharacter;
-
+	
+	UPROPERTY(ReplicatedUsing = OnRep_SpawnedSpectatorPawn)
+	ABaseSpectatorPawn* SpawnedSpectatorPawn;
+	
 	UPROPERTY(ReplicatedUsing = OnRep_SpawnedPlayerDrone)
 	ABaseDrone* SpawnedPlayerDrone;
 
 	UFUNCTION()
 	void OnRep_SpawnedPlayerDrone();
 
+	UFUNCTION()
+	void OnRep_SpawnedSpectatorPawn();
+
+	UFUNCTION(Server, Reliable)
+	void Server_SpawnSpectatablePawn();
+	void Server_SpawnSpectatablePawn_Implementation();
+
+	void CheckCurrentSpectatedCharacterStatus();
+
+	FTimerHandle SpectatorCheckHandle;
+	FTimerHandle AutoSpectateHandle;
+	bool bIsWaitingForAutoSpectate = false;
 protected:
 	UEnhancedInputComponent* EnhancedInput;
 	UInputMappingContext* CurrentIMC;
@@ -157,11 +188,11 @@ public:
 
 	virtual void Input_OnViewMode();
 
-	virtual void Input_OnInteract();
+	virtual void Input_OnInteract(const FInputActionValue& ActionValue);
 
 	virtual void Input_OnStrafe(const FInputActionValue& ActionValue);
 
-	virtual void Input_OnItemUse();
+	virtual void Input_OnItemUse(const FInputActionValue& ActionValue);
 
 	virtual void Input_OnItemThrow();
 
@@ -222,14 +253,22 @@ public:
 	void Client_OnPlayerExitActivePlay_Implementation();
 
 	UPROPERTY(BlueprintReadWrite)
-	int32 CurrentSpectatedCharacterIndex = 0;
+	int32 CurrentSpectatedCharacterIndex = -1;
 
+	UFUNCTION(Client, Reliable)
+	void Client_StartSpectation();
+	void Client_StartSpectation_Implementation();
 
 	void SpectateNextPlayer();
 	void SpectatePreviousPlayer();
 	TArray<ABasePlayerState*> GetPlayerArray();
 
 	TArray<ABasePlayerState*> SpectatorTargets;
+
+	ABasePlayerState* CurrentSpectatedPlayer = nullptr;
+
+	FVector SpectatorSpawnLocation = FVector::ZeroVector;
+	FRotator SpectatorSpawnRotation = FRotator::ZeroRotator;
 
 	//관전 컨트롤 전용 변수
 	bool bIsSpectatingButtonClicked = false;
@@ -259,7 +298,13 @@ public:
 
 	void PossessOnDrone();
 
+	// 헤더 파일 (예: MyPlayerController.h)
 
+	UPROPERTY(EditDefaultsOnly, Category = "Spectator")
+	TSubclassOf<ABaseSpectatorPawn> SpectatorClass;
+
+
+	void SpawnSpectatablePawn();
 
 public:
 	void InteractGimmick(ALCBaseGimmick* Target);

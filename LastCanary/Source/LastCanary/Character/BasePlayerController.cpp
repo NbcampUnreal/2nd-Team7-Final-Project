@@ -11,8 +11,10 @@
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Actor/Gimmick/LCBaseGimmick.h"
 
+#include "Character/BaseSpectatorPawn.h"
 #include "Inventory/ToolbarInventoryComponent.h"
 
+#include "SaveGame/LCLocalPlayerSaveGame.h"
 
 void ABasePlayerController::BeginPlay()
 {
@@ -35,12 +37,49 @@ void ABasePlayerController::BeginPlay()
 			}
 		}
 	}
+
+	LoadMouseSensitivity();
+	LoadBrightness();
 }
 
 void ABasePlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(ABasePlayerController, SpawnedPlayerDrone);
+}
+
+void ABasePlayerController::LoadMouseSensitivity()
+{
+	float LoadedSensitivity = ULCLocalPlayerSaveGame::LoadMouseSensitivity(GetWorld());
+
+	SetMouseSensitivity(LoadedSensitivity);
+}
+
+void ABasePlayerController::SetMouseSensitivity(float Sensitivity)
+{
+	MouseSensivity = Sensitivity;
+}
+
+void ABasePlayerController::LoadBrightness()
+{
+	float Brightness = ULCLocalPlayerSaveGame::LoadBrightness(GetWorld());
+
+	SetBrightness(Brightness);
+}
+
+void ABasePlayerController::SetBrightness(float Brightness)
+{
+	BrightnessSetting = Brightness;
+	if (!IsValid(CurrentPossessedPawn))
+	{
+		return;
+	}
+	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
+	if (!IsValid(PlayerCharacter))
+	{
+		return;
+	}
+	PlayerCharacter->SetBrightness(Brightness);
 }
 
 
@@ -95,15 +134,16 @@ void ABasePlayerController::HandleExitGate()
 void ABasePlayerController::OnPlayerExitActivePlay()
 {
 	// 일정 시간 후 Pawn 제거
-	Client_OnPlayerExitActivePlay();
-	//클라이언트에서 해야할 것.
 	APawn* MyPawn = GetPawn();
-	if (MyPawn)
+	if (IsValid(MyPawn))
 	{
-		MyPawn->DetachFromControllerPendingDestroy();
-		MyPawn->SetLifeSpan(5.f); // 또는 Custom Fade Out
+		SpectatorSpawnLocation = MyPawn->GetActorLocation();
+		SpectatorSpawnRotation = MyPawn->GetActorRotation();
 	}
-	OnUnPossess();
+
+	Client_OnPlayerExitActivePlay();
+
+	SpawnSpectatablePawn();
 }
 
 void ABasePlayerController::Client_OnPlayerExitActivePlay_Implementation()
@@ -126,9 +166,66 @@ void ABasePlayerController::Client_OnPlayerExitActivePlay_Implementation()
 			PlayerCharacter->SetCameraMode(false);
 		}
 	}
-	//UnPossess();
-	//CreateWidget();
-	//addtoviewport
+	ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
+	// HUD 숨기고 관전 모드 전환
+	if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
+	{
+		UIManager->HideInGameHUD();
+	}
+}
+
+void ABasePlayerController::SpawnSpectatablePawn()
+{
+	if (HasAuthority()) // 서버만 스폰 가능
+	{
+		FActorSpawnParameters Params;
+		Params.Owner = this;
+		ABaseSpectatorPawn* Spectator = GetWorld()->SpawnActor<ABaseSpectatorPawn>(SpectatorClass, SpectatorSpawnLocation, SpectatorSpawnRotation, Params);
+		if (!IsValid(Spectator))
+		{
+			return;
+		}
+		SpawnedSpectatorPawn = Spectator;
+		CurrentPossessedPawn = SpawnedSpectatorPawn;
+		SpawnedSpectatorPawn->SetOwner(this);
+		//클라이언트에서 해야할 것.
+		APawn* MyPawn = GetPawn();
+		if (MyPawn)
+		{
+			MyPawn->DetachFromControllerPendingDestroy();
+			MyPawn->SetLifeSpan(5.f); // 또는 Custom Fade Out
+		}
+		OnUnPossess();
+		Possess(Spectator);
+		Client_StartSpectation();
+	}
+	else
+	{
+		Server_SpawnSpectatablePawn();
+	}
+}
+
+void ABasePlayerController::Server_SpawnSpectatablePawn_Implementation()
+{
+	SpawnSpectatablePawn();
+}
+
+void ABasePlayerController::OnRep_SpawnedSpectatorPawn()
+{
+	if (!IsValid(SpawnedSpectatorPawn))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SpawnedSpectatorPawn is invalid on client!"));
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("Client received replicated SpawnedSpectatorPawn: %s"), *SpawnedSpectatorPawn->GetName());
+	CurrentPossessedPawn = SpawnedSpectatorPawn;	
+}
+
+void ABasePlayerController::Client_StartSpectation_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Spectate Start On Client"));
+	GetWorldTimerManager().SetTimer(SpectatorCheckHandle, this, &ABasePlayerController::CheckCurrentSpectatedCharacterStatus, 0.5f, true);
 }
 
 APawn* ABasePlayerController::GetMyPawn()
@@ -281,10 +378,12 @@ void ABasePlayerController::InitInputComponent()
 		EnhancedInput->BindAction(ViewModeAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnViewMode);
 
 		EnhancedInput->BindAction(InteractAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnInteract);
+		EnhancedInput->BindAction(InteractAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnInteract);
 
 		EnhancedInput->BindAction(StrafeAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnStrafe);
 
-		EnhancedInput->BindAction(ItemUseAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_OnItemUse);
+		EnhancedInput->BindAction(ItemUseAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnItemUse);
+		EnhancedInput->BindAction(ItemUseAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnItemUse);
 
 		EnhancedInput->BindAction(ThrowItemAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_OnItemThrow);
 
@@ -322,7 +421,7 @@ void ABasePlayerController::Input_OnLookMouse(const FInputActionValue& ActionVal
 		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
 		if (IsValid(PlayerCharacter))
 		{
-			PlayerCharacter->Handle_LookMouse(ActionValue);  // ABaseCharacter에 맞는 LookMouse 호출
+			PlayerCharacter->Handle_LookMouse(ActionValue, MouseSensivity);  // ABaseCharacter에 맞는 LookMouse 호출
 		}
 	}
 	if (CurrentPossessedPawn->IsA<ABaseDrone>())
@@ -331,6 +430,14 @@ void ABasePlayerController::Input_OnLookMouse(const FInputActionValue& ActionVal
 		if (IsValid(Drone))
 		{
 			Drone->Input_Look(ActionValue);
+		}
+	}
+	if (CurrentPossessedPawn->IsA<ABaseSpectatorPawn>())
+	{
+		ABaseSpectatorPawn* Spectator = Cast<ABaseSpectatorPawn>(CurrentPossessedPawn);
+		if (IsValid(Spectator))
+		{
+			Spectator->Handle_LookMouse(ActionValue, MouseSensivity);
 		}
 	}
 }
@@ -360,9 +467,15 @@ void ABasePlayerController::Input_OnMove(const FInputActionValue& ActionValue)
 		return;
 	}
 
-	if (MyPlayerState->InGameState == EPlayerInGameStatus::Spectating)
+	if (!IsValid(CurrentPossessedPawn))
 	{
-		//UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is Spectating"));
+		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_OnMove"));
+		return;
+	}
+
+	if (MyPlayerState->InGameState != EPlayerInGameStatus::Alive)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is Spectating"));
 		const auto Value{ ActionValue.Get<FVector2D>() };
 		if (Value.X != 0.0f)
 		{
@@ -387,11 +500,7 @@ void ABasePlayerController::Input_OnMove(const FInputActionValue& ActionValue)
 		return;
 	}
 
-	if (!IsValid(CurrentPossessedPawn))
-	{
-		//UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_OnMove"));
-		return;
-	}
+
 	
 
 	// APawn 타입에 맞는 처리를 실행
@@ -402,6 +511,32 @@ void ABasePlayerController::Input_OnMove(const FInputActionValue& ActionValue)
 	else if (ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn))
 	{
 		Drone->Input_Move(ActionValue);
+	}
+	else if (ABaseSpectatorPawn* Spectator = Cast<ABaseSpectatorPawn>(CurrentPossessedPawn))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is Spectating"));
+		const auto Value{ ActionValue.Get<FVector2D>() };
+		if (Value.X != 0.0f)
+		{
+			if (bIsSpectatingButtonClicked == true)
+			{
+				return;
+			}
+			bIsSpectatingButtonClicked = true;
+			if (Value.X > 0.0f)
+			{
+				SpectateNextPlayer();
+			}
+			else
+			{
+				SpectatePreviousPlayer();
+			}
+		}
+		else
+		{
+			bIsSpectatingButtonClicked = false;
+		}
+		return;
 	}
 	else
 	{
@@ -527,7 +662,7 @@ void ABasePlayerController::Input_OnViewMode()
 }
 
 
-void ABasePlayerController::Input_OnInteract()
+void ABasePlayerController::Input_OnInteract(const FInputActionValue& ActionValue)
 {
 	if (!IsValid(CurrentPossessedPawn))
 	{
@@ -544,7 +679,7 @@ void ABasePlayerController::Input_OnInteract()
 
 	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
-		PlayerCharacter->Handle_Interact();
+		PlayerCharacter->Handle_Interact(ActionValue);
 	}
 	else
 	{
@@ -601,7 +736,37 @@ void ABasePlayerController::SpectatePreviousPlayer()
 	{
 		CurrentSpectatedCharacterIndex = PlayerListLength - 1;
 	}
-	SetViewTargetWithBlend(PlayerList[CurrentSpectatedCharacterIndex]->GetPawn());
+	APawn* Target = PlayerList[CurrentSpectatedCharacterIndex]->GetPawn();
+	if (!IsValid(Target))
+	{
+		return;
+	}
+	if (!IsValid(CurrentPossessedPawn))
+	{
+		return;
+	}
+	if (!CurrentPossessedPawn->IsA<ABaseSpectatorPawn>())
+	{
+		return;
+	}
+	ABaseSpectatorPawn* Spectator = Cast<ABaseSpectatorPawn>(CurrentPossessedPawn);
+	if (!IsValid(Spectator))
+	{
+		return;
+	}
+	UE_LOG(LogTemp, Warning, TEXT("Spectator Pawn AttachToActor"));
+	ABaseCharacter* TargetCharacter = Cast<ABaseCharacter>(Target);
+	if (!IsValid(TargetCharacter))
+	{
+		return;
+	}
+	CurrentSpectatedPlayer = PlayerList[CurrentSpectatedCharacterIndex];
+	Spectator->SpectateOtherUser(TargetCharacter);
+
+	bIsWaitingForAutoSpectate = false;
+
+	// 타이머 초기화 (중복 실행 방지)
+	GetWorldTimerManager().ClearTimer(AutoSpectateHandle);
 }
 
 void ABasePlayerController::SpectateNextPlayer()
@@ -615,7 +780,37 @@ void ABasePlayerController::SpectateNextPlayer()
 
 	CurrentSpectatedCharacterIndex++;
 	CurrentSpectatedCharacterIndex %= PlayerListLength;
-	SetViewTargetWithBlend(PlayerList[CurrentSpectatedCharacterIndex]->GetPawn());
+	APawn* Target = PlayerList[CurrentSpectatedCharacterIndex]->GetPawn();
+	if (!IsValid(Target))
+	{
+		return;
+	}
+	if (!IsValid(CurrentPossessedPawn))
+	{
+		return;
+	}
+	if (!CurrentPossessedPawn->IsA<ABaseSpectatorPawn>())
+	{
+		return;
+	}
+	ABaseSpectatorPawn* Spectator = Cast<ABaseSpectatorPawn>(CurrentPossessedPawn);
+	if (!IsValid(Spectator))
+	{
+		return;
+	}
+	UE_LOG(LogTemp, Warning, TEXT("Spectator Pawn AttachToActor"));
+	CurrentSpectatedPlayer = PlayerList[CurrentSpectatedCharacterIndex];
+	ABaseCharacter* TargetCharacter = Cast<ABaseCharacter>(Target);
+	if (!IsValid(TargetCharacter))
+	{
+		return;
+	}
+	Spectator->SpectateOtherUser(TargetCharacter);
+
+	bIsWaitingForAutoSpectate = false;
+
+	// 타이머 초기화 (중복 실행 방지)
+	GetWorldTimerManager().ClearTimer(AutoSpectateHandle);
 }
 
 TArray<ABasePlayerState*> ABasePlayerController::GetPlayerArray()
@@ -656,12 +851,31 @@ TArray<ABasePlayerState*> ABasePlayerController::GetPlayerArray()
 		return SpectatorTargets;
 	}
 }
-
-
-void ABasePlayerController::Input_OnItemUse()
+void ABasePlayerController::CheckCurrentSpectatedCharacterStatus()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Use Item"));
+	UE_LOG(LogTemp, Warning, TEXT("체크"));
+	if (!IsValid(CurrentSpectatedPlayer) || CurrentSpectatedPlayer->GetInGameStatus() != EPlayerInGameStatus::Alive)
+	{
+		SpectatorTargets = GetPlayerArray();
 
+		const int32 AliveCount = SpectatorTargets.Num();
+
+		if (AliveCount <= 0)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("No more alive players to spectate."));
+			GetWorldTimerManager().ClearTimer(SpectatorCheckHandle);
+
+			return;
+		}
+		SpectateNextPlayer();
+	}
+}
+
+
+
+void ABasePlayerController::Input_OnItemUse(const FInputActionValue& ActionValue)
+{
+	float Value = ActionValue.Get<float>();
 	if (!IsValid(CurrentPossessedPawn))
 	{
 		return;
@@ -669,7 +883,7 @@ void ABasePlayerController::Input_OnItemUse()
 
 	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
-		PlayerCharacter->UseEquippedItem();
+		PlayerCharacter->UseEquippedItem(Value);
 	}
 }
 
@@ -735,6 +949,17 @@ void ABasePlayerController::Input_ChangeQuickSlot(const FInputActionValue& Actio
 		// 휠 아래로 → 이전 슬롯
 		ChangeToPreviousQuickSlot();
 	}
+
+	if (!CurrentPossessedPawn->IsA<ABaseSpectatorPawn>())
+	{
+		return;
+	}
+	ABaseSpectatorPawn* Spectator = Cast<ABaseSpectatorPawn>(CurrentPossessedPawn);
+	if (!IsValid(Spectator))
+	{
+		return;
+	}
+	Spectator->AdjustCameraZoom(ScrollValue);
 }
 
 void ABasePlayerController::ChangeToNextQuickSlot()
@@ -1030,3 +1255,4 @@ void ABasePlayerController::Server_InteractWithGimmick_Implementation(ALCBaseGim
 
 	IInteractableInterface::Execute_Interact(Target, this);
 }
+

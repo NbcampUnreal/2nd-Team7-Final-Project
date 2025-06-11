@@ -36,23 +36,15 @@ public:
 	void Server_RequestPurchase_Implementation(const TArray<FItemDropData>& DropList);
 
 protected:
-	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	TSubclassOf<URoomWidget> RoomWidgetClass;
-	URoomWidget* RoomWidgetInstance;
-
 	void InitInputComponent() override;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|RoomPC", Meta = (DisplayThumbnail = false))
 	TObjectPtr<UInputAction> RoomUIAction;
-
-private:
-	void CreateRoomWidget();
 	UFUNCTION()
 	virtual void ToggleShowRoomWidget();
 
 	bool bIsShowRoomUI = false;
 
-	float RePeatRate = 0.1f;
-
+	float RePeatRate = 0.3f;
 public:
 	UFUNCTION(Client, Reliable)
 	void Client_NotifyResultReady(const FChecklistResultData& ResultData);
@@ -71,4 +63,7 @@ public:
 	void Server_RequestSubmitChecklist_Implementation(const TArray<FChecklistQuestion>& PlayerAnswers);
 	
 	void DelayedPostTravelSetup();
+
+private:
+	FTimerHandle UpdatePlayerListTimerHandle;
 };

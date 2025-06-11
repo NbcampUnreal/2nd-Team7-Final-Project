@@ -305,3 +305,76 @@ void ULCCheatManager::ShowPlayerFrameworkInfo()
 		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Cyan, InfoString);
 	}
 }
+
+void ULCCheatManager::PrintAcquiredItems()
+{
+	APlayerController* PC = GetOuterAPlayerController();
+	if (!PC)
+	{
+		UE_LOG(LogCheat, Warning, TEXT("PlayerController가 없습니다."));
+		return;
+	}
+
+	ABasePlayerState* PS = PC->GetPlayerState<ABasePlayerState>();
+	if (!PS)
+	{
+		UE_LOG(LogCheat, Warning, TEXT("PlayerState가 BasePlayerState가 아닙니다."));
+		return;
+	}
+
+	ULCGameInstance* GI = Cast<ULCGameInstance>(PC->GetGameInstance());
+	if (!GI)
+	{
+		UE_LOG(LogCheat, Warning, TEXT("GameInstance가 유효하지 않습니다."));
+		return;
+	}
+
+	ULCGameInstanceSubsystem* Subsystem = GI->GetSubsystem<ULCGameInstanceSubsystem>();
+	if (!Subsystem)
+	{
+		UE_LOG(LogCheat, Warning, TEXT("GameInstanceSubsystem이 유효하지 않습니다."));
+		return;
+	}
+
+	const UDataTable* ItemTable = Subsystem->GetItemDataTable();
+	if (!ItemTable)
+	{
+		UE_LOG(LogCheat, Warning, TEXT("ItemDataTable이 없습니다."));
+		return;
+	}
+
+	const TArray<int32>& ItemIDs = PS->AquiredItemIDs;
+	if (ItemIDs.Num() == 0)
+	{
+		UE_LOG(LogCheat, Warning, TEXT("[치트] 획득한 아이템이 없습니다."));
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("획득한 아이템 없음"));
+		return;
+	}
+
+	FString Summary = TEXT("▶ 획득한 아이템 목록");
+
+	for (int32 ItemID : ItemIDs)
+	{
+		FName RowName = *FString::Printf(TEXT("Item_%d"), ItemID);
+		const FItemDataRow* Row = ItemTable->FindRow<FItemDataRow>(RowName, TEXT("Cheat: PrintAcquiredItems"));
+
+		if (Row)
+		{
+			FString Line = FString::Printf(TEXT(" - %s (%s)"), *Row->ItemName.ToString(), Row->bIsResourceItem ? TEXT("자원") : TEXT("일반"));
+			UE_LOG(LogCheat, Warning, TEXT("%s"), *Line);
+			Summary += LINE_TERMINATOR + Line;
+		}
+		else
+		{
+			FString Line = FString::Printf(TEXT(" - ItemID %d: Row를 찾을 수 없습니다."), ItemID);
+			UE_LOG(LogCheat, Warning, TEXT("%s"), *Line);
+			Summary += LINE_TERMINATOR + Line;
+		}
+	}
+
+	// 화면 출력
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Green, Summary);
+	}
+}

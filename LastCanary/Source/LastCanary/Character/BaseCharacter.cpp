@@ -21,6 +21,7 @@
 #include "Inventory/BackpackInventoryComponent.h"
 #include "Item/ItemBase.h"
 #include "Item/ItemSpawnerComponent.h"
+#include "Item/ResourceNode.h"
 #include "Item/EquipmentItem/GunBase.h"
 #include "Item/EquipmentItem/EquipmentItemBase.h"
 #include "UI/Manager/LCUIManager.h"
@@ -31,6 +32,9 @@
 #include "Components/ArrowComponent.h"
 #include "../Plugins/ALS-Refactored-4.15/Source/ALS/Public/AlsAnimationInstance.h"
 #include "Character/BaseCharacterAnimNotify.h"
+#include "Components/PostProcessComponent.h"
+
+#include "SaveGame/LCLocalPlayerSaveGame.h"
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -72,6 +76,11 @@ ABaseCharacter::ABaseCharacter()
 	SpectatorCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("SpectatorCamera"));
 	SpectatorCamera->SetupAttachment(SpectatorSpringArm);  // SpringArm에 카메라 부착
 
+	CustomPostProcessComponent = CreateDefaultSubobject<UPostProcessComponent>(TEXT("PostProcess"));
+	CustomPostProcessComponent->bUnbound = false; // 시야 내에서만 적용
+	CustomPostProcessComponent->SetupAttachment(Camera); // 카메라에 붙이기
+
+
 	// 캐릭터 클래스의 생성자 함수 내부 
 	FieldOfView = Camera->FieldOfView;
 
@@ -100,14 +109,6 @@ void ABaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (HasAuthority())
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Character BeginPlay - Complete  This is Server."));
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Character BeginPlay - Complete  This is Client."));
-	}
 	if (IsLocallyControlled())
 	{
 		// "head"는 스켈레탈 메시의 머리 본에 해당하는 이름
@@ -134,9 +135,44 @@ void ABaseCharacter::BeginPlay()
 	}
 
 	EnableStencilForAllMeshes(2);
+
+
+	if (IsLocallyControlled() && CustomPostProcessComponent)
+	{
+		CustomPostProcessComponent->Settings.AutoExposureMethod = EAutoExposureMethod::AEM_Histogram;
+		CustomPostProcessComponent->Settings.bOverride_AutoExposureMinBrightness = true;
+		CustomPostProcessComponent->Settings.bOverride_AutoExposureMaxBrightness = true;
+
+		// 노출 범위는 0.5~2.0 사이 정도로 잡는 게 적당
+		float baseBrightness = FMath::Lerp(1.0f, 10.0f, GetBrightness()); // 0~1 값을 0.5~2.0 범위로 매핑
+		CustomPostProcessComponent->Settings.AutoExposureMinBrightness = baseBrightness;
+		CustomPostProcessComponent->Settings.AutoExposureMaxBrightness = baseBrightness + 0.5f;
+
+		CustomPostProcessComponent->Settings.bOverride_AutoExposureBias = true;
+		CustomPostProcessComponent->Settings.AutoExposureBias = baseBrightness; // 유저 설정값 반영
+
+		// 블렌드 웨이트 1.0으로 보정 적용 보장
+		CustomPostProcessComponent->BlendWeight = 1.0f;
+	}
 }
 
+float ABaseCharacter::GetBrightness()
+{
+	ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+	if (!IsValid(PC))
+	{
+		return 1.0f;
+	}
+	return PC->BrightnessSetting;
+}
 
+void ABaseCharacter::SetBrightness(float Value)
+{
+	float baseBrightness = FMath::Lerp(1.0f, 10.0f, Value); // 0~1 값을 0.5~2.0 범위로 매핑
+	CustomPostProcessComponent->Settings.AutoExposureMinBrightness = baseBrightness;
+	CustomPostProcessComponent->Settings.AutoExposureMaxBrightness = baseBrightness + 0.5f;
+	CustomPostProcessComponent->Settings.AutoExposureBias = baseBrightness; // 유저 설정값 반영
+}
 
 void ABaseCharacter::NotifyControllerChanged()
 {
@@ -192,7 +228,6 @@ void ABaseCharacter::NotifyControllerChanged()
 	Super::NotifyControllerChanged();
 }
 
-
 void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo)
 {
 	if (Controller && Controller->IsLocalPlayerController())
@@ -209,7 +244,7 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 	}
 }
 
-void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue)
+void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue, float Sensivity)
 {
 	if (LocomotionAction == AlsLocomotionActionTags::Mantling)
 	{
@@ -224,24 +259,24 @@ void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue)
 	float CurrentPitch = CurrentRotation.GetNormalized().Pitch;
 
 	// 입력값 계산
-	const float NewPitchInput = Value.Y * LookUpMouseSensitivity;
+	const float NewPitchInput = Value.Y * Sensivity;
 
 	// Pitch 제한 적용
 	float NewPitch = FMath::Clamp(CurrentPitch + NewPitchInput, MinPitchAngle, MaxPitchAngle);
 
 	// Yaw는 그대로
-	float NewYaw = CurrentRotation.Yaw + Value.X * LookRightMouseSensitivity;
+	float NewYaw = CurrentRotation.Yaw + Value.X * Sensivity;
 
 	// 새 회전값 적용
 	FRotator NewRotation = FRotator(NewPitch, NewYaw, 0.f);
 	Controller->SetControlRotation(NewRotation);
 }
 
-void ABaseCharacter::CameraShake()
+void ABaseCharacter::CameraShake(float Vertical, float Horizontal)
 {
 	// 새로운 반동량을 기존 값에 누적
-	RecoilStepPitch += 1.5f / RecoilMaxSteps;
-	RecoilStepYaw += FMath::RandRange(-YawRecoilRange, YawRecoilRange) / RecoilMaxSteps;
+	RecoilStepPitch += Vertical / RecoilMaxSteps;
+	RecoilStepYaw += FMath::RandRange(-Horizontal, Horizontal) / RecoilMaxSteps;
 
 	// 타이머가 안 돌고 있을 때만 시작
 	if (!GetWorld()->GetTimerManager().IsTimerActive(RecoilTimerHandle))
@@ -293,6 +328,7 @@ void ABaseCharacter::ApplyRecoilStep()
 
 void ABaseCharacter::Handle_Look(const FInputActionValue& ActionValue)
 {
+	/*  Deprecated
 	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
@@ -303,8 +339,9 @@ void ABaseCharacter::Handle_Look(const FInputActionValue& ActionValue)
 	}
 	const FVector2f Value{ ActionValue.Get<FVector2D>() };
 
-	AddControllerPitchInput(Value.Y * LookUpRate);
-	AddControllerYawInput(Value.X * LookRightRate);
+	AddControllerPitchInput(Value.Y);
+	AddControllerYawInput(Value.X);
+	*/
 }
 
 void ABaseCharacter::Handle_Move(const FInputActionValue& ActionValue)
@@ -388,7 +425,9 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 				//bIsSprinting = true;
 				FootSoundModifier = MyPlayerState->SprintingFootSoundModifier;
 				//SetDesiredAiming(false);
-				SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+				Camera->AttachToComponent(SpringArm, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+				Camera->SetRelativeLocation(FVector::ZeroVector);
+				Camera->SetRelativeRotation(FRotator::ZeroRotator); // 필요 시 원래 회전 복구
 				StopStaminaRecovery();
 				StopStaminaRecoverAfterDelay();
 				StartStaminaDrain();
@@ -399,7 +438,9 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 				//bIsSprinting = true;
 				FootSoundModifier = MyPlayerState->SprintingFootSoundModifier;
 				//SetDesiredAiming(false);
-				SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+				Camera->AttachToComponent(SpringArm, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+				Camera->SetRelativeLocation(FVector::ZeroVector);
+				Camera->SetRelativeRotation(FRotator::ZeroRotator); // 필요 시 원래 회전 복구
 				StopStaminaRecovery();
 				StopStaminaRecoverAfterDelay();
 				StartStaminaDrain();
@@ -619,14 +660,20 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 				{
 					//UE_LOG(LogTemp, Warning, TEXT("Scope on"));
 					CancelInteraction();
-					SpringArm->AttachToComponent(RifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
+					// 1. 소켓 위치와 회전 가져오기
+					FTransform ScopeTransform = RifleMesh->GetSocketTransform(TEXT("Scope"));
+					Camera->AttachToComponent(RifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
+					Camera->SetWorldRotation(RifleMesh->GetSocketRotation(TEXT("Scope")));
 					//ToADSCamera(true);
 					return;
 				}
 				else
 				{
 					//UE_LOG(LogTemp, Warning, TEXT("Scope out"));
-					SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+					// 예: 조준 해제 시
+					Camera->AttachToComponent(SpringArm, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+					Camera->SetRelativeLocation(FVector::ZeroVector);
+					Camera->SetRelativeRotation(FRotator::ZeroRotator); // 필요 시 원래 회전 복구
 					//ToADSCamera(false);
 					return;
 				}
@@ -767,7 +814,9 @@ void ABaseCharacter::ConsumeStamina()
 	bIsSprinting = true;
 	SetDesiredAiming(false);
 	SetDesiredGait(AlsGaitTags::Sprinting);
-	SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+	Camera->AttachToComponent(SpringArm, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+	Camera->SetRelativeLocation(FVector::ZeroVector);
+	Camera->SetRelativeRotation(FRotator::ZeroRotator); // 필요 시 원래 회전 복구
 	StopStaminaRecovery();
 	StopStaminaRecoverAfterDelay();
 	StartStaminaRecoverAfterDelayOnJump();
@@ -962,6 +1011,10 @@ void ABaseCharacter::Handle_Reload()
 	{
 		return;
 	}
+	if (bIsUsingItem)
+	{
+		return;
+	}
 	CancelInteraction();
 	Server_PlayReload();
 }
@@ -1099,7 +1152,7 @@ void ABaseCharacter::Handle_Strafe(const FInputActionValue& ActionValue)
 	}
 }
 
-void ABaseCharacter::Handle_Interact()
+void ABaseCharacter::Handle_Interact(const FInputActionValue& ActionValue)
 {
 	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
@@ -1274,7 +1327,11 @@ void ABaseCharacter::TraceInteractableActor()
 	{
 		return;
 	}
-	SetDesiredAiming(true);
+	if (!bIsSprinting)
+	{
+		SetDesiredAiming(true);
+	}
+	
 	SetRotationMode(AlsRotationModeTags::Aiming);
 	if (!IsLocallyControlled())
 	{
@@ -1435,7 +1492,8 @@ void ABaseCharacter::UpdateGunWallClipOffset(float DeltaTime)
 	float MuzzlePitch = MuzzleRot.Pitch;  // 상하 방향 판별용
 
 	// 2. 라인 트레이스
-	FVector TraceEnd = MuzzleLoc + MuzzleForward * 100.0f;
+	static constexpr float GunWallTraceDistance = 50.0f; // 50에서 100으로 더 여유있게
+	FVector TraceEnd = MuzzleLoc + MuzzleForward * GunWallTraceDistance;
 
 	FHitResult Hit;
 	FCollisionQueryParams Params;
@@ -1444,19 +1502,36 @@ void ABaseCharacter::UpdateGunWallClipOffset(float DeltaTime)
 	bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, MuzzleLoc, TraceEnd, ECC_Visibility, Params);
 
 	DrawDebugLine(GetWorld(), MuzzleLoc, TraceEnd, FColor::Red, false, 0.1f);
-
 	// 3. 벽과의 거리 비율 계산
-	float WallRatio = 0.0f;
+	//float WallRatio = 0.0f;
+	//if (bHit)
+	//{
+	//	float Dist = (Hit.Location - MuzzleLoc).Size();
+	//	WallRatio = 1.0f - (Dist / 30.0f); // 30cm 안으로 들어가면 1.0
+	//	WallRatio = FMath::Clamp(WallRatio, 0.0f, 1.0f);
+	//}
+
+	static constexpr float WallClipTriggerDistance = 60.0f;
+	float TargetWallRatio = 0.0f;
+
 	if (bHit)
 	{
 		float Dist = (Hit.Location - MuzzleLoc).Size();
-		WallRatio = 1.0f - (Dist / 30.0f); // 30cm 안으로 들어가면 1.0
-		WallRatio = FMath::Clamp(WallRatio, 0.0f, 1.0f);
+		if (Dist < WallClipTriggerDistance)
+		{
+			TargetWallRatio = 1.0f - (Dist / WallClipTriggerDistance);
+			TargetWallRatio = FMath::Clamp(TargetWallRatio, 0.0f, 1.0f);
+		}
 	}
+
+	// WallRatio 보간 (떨림 방지 핵심)
+	static float SmoothedWallRatio = 0.0f; // 내부 상태 유지
+	SmoothedWallRatio = FMath::FInterpTo(SmoothedWallRatio, TargetWallRatio, DeltaTime, 3.0f);
+
 
 	// 4. Pitch 보정값 계산 (상하 방향에 따라 부호 바꿈)
 	float DirectionSign = MuzzlePitch >= 0 ? 1.0f : -1.0f;  // 위를 보면 +, 아래를 보면 -
-	float TargetOffset = FMath::Lerp(0.0f, MaxWallClipPitch, WallRatio) * DirectionSign;
+	float TargetOffset = FMath::Lerp(0.0f, MaxWallClipPitch, SmoothedWallRatio) * DirectionSign;
 
 	// 5. 부드러운 보간
 	WallClipAimOffsetPitch = FMath::FInterpTo(WallClipAimOffsetPitch, TargetOffset, DeltaTime, 10.0f);
@@ -1730,7 +1805,14 @@ void ABaseCharacter::HandlePlayerDeath()
 	if (!IsValid(PC))
 	{
 		return;
+	}	
+	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
+	if (!IsValid(MyPlayerState))
+	{
+		return;
 	}
+	MyPlayerState->CurrentState = EPlayerState::Dead;
+	MyPlayerState->SetInGameStatus(EPlayerInGameStatus::Spectating);
 	PC->OnPlayerExitActivePlay();
 	Multicast_SetPlayerInGameStateOnDie();
 	UnequipCurrentItem();
@@ -1745,7 +1827,7 @@ void ABaseCharacter::Multicast_SetPlayerInGameStateOnDie_Implementation()
 		return;
 	}
 	MyPlayerState->CurrentState = EPlayerState::Dead;
-	MyPlayerState->InGameState = EPlayerInGameStatus::Spectating; // 관전 상태 돌입
+	MyPlayerState->SetInGameStatus(EPlayerInGameStatus::Spectating);
 	SwapHeadMaterialTransparent(false);
 }
 
@@ -1779,8 +1861,15 @@ void ABaseCharacter::EscapeThroughGate()
 	{
 		return;
 	}
-	Multicast_SetPlayerInGameStateOnEscapeGate();
+	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
+	if (!IsValid(MyPlayerState))
+	{
+		return;
+	}
+	MyPlayerState->CurrentState = EPlayerState::Escape;
+	MyPlayerState->SetInGameStatus(EPlayerInGameStatus::Spectating);	
 	PC->OnPlayerExitActivePlay();
+	Multicast_SetPlayerInGameStateOnEscapeGate();
 }
 
 void ABaseCharacter::Multicast_SetPlayerInGameStateOnEscapeGate_Implementation()
@@ -2169,8 +2258,10 @@ void ABaseCharacter::Server_UnequipCurrentItem_Implementation()
 	UnequipCurrentItem();
 }
 
-bool ABaseCharacter::UseEquippedItem()
+bool ABaseCharacter::UseEquippedItem(float ActionValue)
 {
+	UE_LOG(LogTemp, Warning, TEXT("아이템 사용 : %f"), ActionValue);
+
 	if (bIsReloading)
 	{
 		return true;
@@ -2189,9 +2280,12 @@ bool ABaseCharacter::UseEquippedItem()
 
 	if (GetLocalRole() < ROLE_Authority)
 	{
-		Server_UseEquippedItem();
+		UE_LOG(LogTemp, Warning, TEXT("서버가 아님"));
+		Server_UseEquippedItem(ActionValue);
 		return true;
 	}
+
+
 
 	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
 	if (!EquippedItem)
@@ -2200,65 +2294,67 @@ bool ABaseCharacter::UseEquippedItem()
 		return false;
 	}
 
-	if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Backpack")))
+	if (ActionValue >= 0.5f)
 	{
-		ToggleInventory();
+		if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))
+		{
+			ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+			if (PC)
+			{
+				PC->SpawnDrone();
+				//현재 들고 있는 인벤토리에서 제거하기
+
+				ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].ItemRowName = "Default";
+				ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].Quantity = 1;
+				ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].Durability = 100;
+				ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].bIsEquipped = false;
+				ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].bIsValid = true;
+				UnequipCurrentItem();
+				ToolbarInventoryComponent->EquippedItemComponent->DestroyChildActor();
+				RefreshOverlayObject(0);
+				return true;
+			}
+		}
+
+		if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
+		{
+			if (bIsSprinting)
+			{
+				return true;
+			}
+			if (IsDesiredAiming() == false)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("조준하세요"));
+				return true;
+			}
+
+		}
+		UE_LOG(LogTemp, Warning, TEXT("UseItem"));
+		EquippedItem->UseItem();
+		bIsUsingItem = true;
+		return true;
 	}
-
-
-	if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))
+	else
 	{
-		ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
-		if (PC)
+		bIsUsingItem = false;
+		AGunBase* Rifle = Cast<AGunBase>(EquippedItem);
+		if (!IsValid(Rifle))
 		{
-			PC->SpawnDrone();
-			//현재 들고 있는 인벤토리에서 제거하기
-
-			ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].ItemRowName = "Default";
-			ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].Quantity = 1;
-			ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].Durability = 100;
-			ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].bIsEquipped = false;
-			ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].bIsValid = true;
-			UnequipCurrentItem();
-			ToolbarInventoryComponent->EquippedItemComponent->DestroyChildActor();
-			RefreshOverlayObject(0);
-			return true;
+			return false;
 		}
+		if (Rifle->CurrentFireMode == EFireMode::FullAuto)
+		{
+			Rifle->StopAutoFire();
+		}
+		return true;
 	}
-
-	if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
-	{
-		if (bIsSprinting)
-		{
-			return true;
-		}
-		if (IsDesiredAiming() == false)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("조준하세요"));
-			return true;
-		}
-	}
-
-	EquippedItem->UseItem();
-
-	// 총기에서 CameraShake 사용됨
-	//if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
-	//{
-	//	AGunBase* RifleItem = Cast<AGunBase>(EquippedItem);
-	//	if (RifleItem)
-	//	{
-	//		if (RifleItem->CurrentAmmo > 0)
-	//		{
-	//			CameraShake();
-	//		}
-	//	}
-	//}
-	return true;
+	
 }
 
-void ABaseCharacter::Server_UseEquippedItem_Implementation()
+void ABaseCharacter::Server_UseEquippedItem_Implementation(float ActionValue)
 {
-	UseEquippedItem();
+	UE_LOG(LogTemp, Warning, TEXT("서버 RPC"));
+	UseEquippedItem(ActionValue);
 }
 
 void ABaseCharacter::ToggleInventory()
@@ -2501,4 +2597,21 @@ void ABaseCharacter::EnableStencilForAllMeshes(int32 StencilValue)
 		MeshComp->SetRenderCustomDepth(true);
 		MeshComp->SetCustomDepthStencilValue(StencilValue);
 	}
+}
+
+void ABaseCharacter::Server_InteractWithResourceNode_Implementation(AResourceNode* TargetNode)
+{
+	if (!TargetNode)
+	{
+		return;
+	}
+
+	AItemBase* EquippedItem = GetToolbarInventoryComponent()->GetCurrentEquippedItem();
+	if (!EquippedItem || !EquippedItem->ItemData.ItemType.MatchesTag(TargetNode->RequiredToolTag))
+	{
+		LOG_Item_WARNING(TEXT("올바른 도구를 장착하지 않았습니다."));
+		return;
+	}
+
+	TargetNode->HarvestResource(GetController<APlayerController>());
 }

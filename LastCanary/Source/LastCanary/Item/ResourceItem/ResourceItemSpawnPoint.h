@@ -25,8 +25,6 @@ public:
 protected:
     virtual void BeginPlay() override;
 
-    bool IsLocationOccupied() const;
-
 public:
     UPROPERTY(EditAnywhere, Category = "Spawn|Condition")
     ESpawnTimeCondition SpawnTimeCondition = ESpawnTimeCondition::Always;
@@ -45,10 +43,6 @@ public:
     /** 아이템 스폰용 클래스 */
     UPROPERTY(EditAnywhere, Category = "Spawn")
     TSubclassOf<AItemBase> ItemClass;
-
-    /** 아이템을 스폰 시도 */
-    UFUNCTION(BlueprintCallable)
-    void TrySpawnItem();
 
     /** 외부 매니저가 직접 조건 확인 후 강제 스폰할 수도 있음 */
     void SpawnItemByRow(FName ItemRowName);

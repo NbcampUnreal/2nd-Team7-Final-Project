@@ -9,6 +9,7 @@
 #include "Net/UnrealNetwork.h"
 #include "Kismet/GameplayStatics.h"
 #include "DataTable/ItemDataRow.h"
+#include "Engine/World.h"
 
 #include "LastCanary.h"
 
@@ -66,7 +67,7 @@ void AChecklistManager::StartChecklist()
 	LOG_Frame_WARNING(TEXT("StartChecklist."));
 	TotalPlayerCount = GetNumPlayers();
 	SubmittedCount = 0;
-
+	LOG_Frame_WARNING(TEXT("제출해야할 플레이어의 숫자 = %d."), TotalPlayerCount); // << 서버
 	if (ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 	{
 		LOG_Frame_WARNING(TEXT("GISubsystem 있음."));
@@ -91,6 +92,35 @@ int32 AChecklistManager::GetNumPlayers() const
 		return World->GetGameState()->PlayerArray.Num();
 	}
 	return 0;
+}
+
+TMap<FName, int32> AChecklistManager::CollectAllPlayerResources()
+{
+	TMap<FName, int32> MergedResources;
+
+	if (AGameStateBase* GS = GetWorld()->GetGameState())
+	{
+		for (APlayerState* PS : GS->PlayerArray)
+		{
+			if (ABasePlayerState* BasePS = Cast<ABasePlayerState>(PS))
+			{
+				const TMap<FName, int32>& PlayerMap = BasePS->GetCollectedResourceMap();
+				LOG_Frame_WARNING(TEXT("Player %s has %d items"), *BasePS->GetPlayerName(), PlayerMap.Num());
+
+				for (const auto& Elem : PlayerMap)
+				{
+					LOG_Frame_WARNING(TEXT("  - %s : %d"), *Elem.Key.ToString(), Elem.Value);
+					MergedResources.FindOrAdd(Elem.Key) += Elem.Value;
+				}
+			}
+		}
+	}
+	else
+	{
+		LOG_Frame_WARNING(TEXT("[ChecklistManager] GameState is null!"));
+	}
+
+	return MergedResources;
 }
 
 void AChecklistManager::Server_SubmitChecklist_Implementation(APlayerController* Submitter, const TArray<FChecklistQuestion>& PlayerAnswers)
@@ -119,32 +149,30 @@ void AChecklistManager::Server_SubmitChecklist_Implementation(APlayerController*
 			}
 		}
 	}
-
+	TotalPlayerCount = GetNumPlayers();
 	TMap<FName, int32> ParsedResources;
-
 	if (ResourceItemTable)
 	{
-		if (ABasePlayerState* PS = Cast<ABasePlayerState>(Submitter->PlayerState))
+		TMap<FName, int32> AllResources = CollectAllPlayerResources();
+		LOG_Frame_WARNING(TEXT("[ChecklistManager] ResourceItemTable 있음. 리소스 파싱 시작."));
+		LOG_Frame_WARNING(TEXT("[ChecklistManager] 전체 자원 수집 개수: %d"), AllResources.Num());
+
+		for (const TPair<FName, int32>& Pair : AllResources)
 		{
-			TArray<FItemDataRow*> AllRows;
-			ResourceItemTable->GetAllRows(TEXT("Checklist Resource Parse"), AllRows);
+			const FName& RowName = Pair.Key;
+			int32 Count = Pair.Value;
 
-			for (int32 i = 0; i < AllRows.Num(); ++i)
+			const FItemDataRow* Row = ResourceItemTable->FindRow<FItemDataRow>(RowName, TEXT("Checklist Resource Parse"));
+			if (Row == nullptr)
 			{
-				const FItemDataRow* Row = AllRows[i];
-				if (Row == nullptr || Row->bIsResourceItem == false)
-				{
-					continue;
-				}
+				LOG_Frame_WARNING(TEXT("[ChecklistManager] ResourceItemTable에서 %s 항목을 찾을 수 없습니다."), *RowName.ToString());
+				continue;
+			}
 
-				if (PS->CollectedResources.IsValidIndex(i))
-				{
-					int32 CollectedCount = PS->CollectedResources[i];
-					if (CollectedCount > 0)
-					{
-						ParsedResources.Add(Row->ItemName, CollectedCount);
-					}
-				}
+			if (Row->bIsResourceItem && Count > 0)
+			{
+				LOG_Frame_WARNING(TEXT("[ChecklistManager] %s 항목 파싱 완료. 개수: %d"), *RowName.ToString(), Count);
+				ParsedResources.Add(RowName, Count);
 			}
 		}
 	}
@@ -156,11 +184,18 @@ void AChecklistManager::Server_SubmitChecklist_Implementation(APlayerController*
 		ParsedResources
 	);
 
-	// 결과 저장
+	LOG_Frame_WARNING(TEXT("[ChecklistManager] EvaluateResult 결과 → 정답: %d / %d | 생존: %d | 자원점수 항목 수: %d | 최종점수: %d | 랭크: %s"),
+		GameResult.CorrectChecklistCount,
+		GameResult.TotalChecklistCount,
+		SurvivingCount,
+		GameResult.ResourceScoreDetails.Num(),
+		GameResult.FinalScore,
+		*GameResult.Rank);
+
 	FChecklistResultData FinalResult;
 	FinalResult.OwnerController = Submitter;
 	FinalResult.CorrectRate = (float)GameResult.CorrectChecklistCount / GameResult.TotalChecklistCount;
-	FinalResult.bIsSurvived = true; // bHasEscaped 값으로 넣어도 OK
+	FinalResult.bIsSurvived = true;
 	FinalResult.Score = GameResult.FinalScore;
 	FinalResult.Rank = GameResult.Rank;
 	FinalResult.ResourceDetails = GameResult.ResourceScoreDetails;
@@ -169,17 +204,14 @@ void AChecklistManager::Server_SubmitChecklist_Implementation(APlayerController*
 
 	if (ABasePlayerState* PS = Cast<ABasePlayerState>(Submitter->PlayerState))
 	{
-		// 점수 = 골드 보상
 		PS->AddTotalGold(FinalResult.Score);
-
 		LOG_Frame_WARNING(TEXT("[ChecklistManager] %s 골드 보상 지급: +%d (총 골드: %d)"),
 			*Submitter->GetName(), FinalResult.Score, PS->GetTotalGold());
 	}
 
 	SubmittedCount++;
-
 	LOG_Frame_WARNING(TEXT("[ChecklistManager] %s 결과 저장 완료 (%d / %d)"),
-		*Submitter->GetName(), SubmittedCount, TotalPlayerCount);
+		*Submitter->GetName(), SubmittedCount, TotalPlayerCount);  // << 여기 왜 0임?
 
 	if (SubmittedCount >= TotalPlayerCount)
 	{
