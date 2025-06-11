@@ -6,6 +6,7 @@
 #include "NavMesh/NavMeshBoundsVolume.h"
 #include "Components/BrushComponent.h"
 #include "AI/BaseMonsterCharacter.h"
+#include "Character/BaseCharacter.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
@@ -77,7 +78,6 @@ void UMonsterSpawnComponent::StopSpawning()
 
     bIsSpawning = false;
     GetWorld()->GetTimerManager().ClearTimer(SpawnTimerHandle);
-    //GetWorld()->GetTimerManager().ClearTimer(DestroyTimerHandle);
     DestroyAllMonsters();
 }
 
@@ -259,12 +259,12 @@ void UMonsterSpawnComponent::SpawnMonsters()
 
         if (!TooClose)
         {
-            for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
+            for (TActorIterator<ABaseCharacter> ActorItr(GetWorld()); ActorItr; ++ActorItr)
             {
-                APlayerController* PC = Iterator->Get();
-                if (IsValid(PC) && IsValid(PC->GetPawn()))
+                ABaseCharacter* Player = *ActorItr;
+                if (IsValid(Player) && Player->IsPlayerControlled())
                 {
-                    float DistToPlayer = FVector::Dist2D(SpawnLocation, PC->GetPawn()->GetActorLocation());
+                    float DistToPlayer = FVector::Dist2D(SpawnLocation, Player->GetActorLocation());
                     if (DistToPlayer < AvoidSpawnRadius)
                     {
                         TooClose = true;
@@ -380,12 +380,12 @@ void UMonsterSpawnComponent::SpawnNightMonsters()
 
         if (!TooClose)
         {
-            for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
+            for (TActorIterator<ABaseCharacter> ActorItr(GetWorld()); ActorItr; ++ActorItr)
             {
-                APlayerController* PC = Iterator->Get();
-                if (IsValid(PC) && IsValid(PC->GetPawn()))
+                ABaseCharacter* Player = *ActorItr;
+                if (IsValid(Player) && Player->IsPlayerControlled())
                 {
-                    float DistToPlayer = FVector::Dist2D(SpawnLocation, PC->GetPawn()->GetActorLocation());
+                    float DistToPlayer = FVector::Dist2D(SpawnLocation, Player->GetActorLocation());
                     if (DistToPlayer < AvoidSpawnRadius)
                     {
                         TooClose = true;
