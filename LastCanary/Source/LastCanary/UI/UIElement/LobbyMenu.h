@@ -38,7 +38,7 @@ private:
 	void OnCreateRoomButtonClicked();
 	UFUNCTION()
 	void OnRefreshButtonClicked();
-	UFUNCTION()
+	UFUNCTION(BlueprintCallable)
 	void OnBackButtonClicked();
 
 public:
@@ -46,5 +46,18 @@ public:
 	void RefreshServerList();
 
 	virtual void RefreshServerList_Implementation();
+
+private:
+	/** 자동 갱신 간격 (초) */
+	UPROPERTY(EditAnywhere, Category = "Lobby")
+	float RefreshInterval = 10.0f;
+
+	/** 서버 리스트 자동 갱신용 타이머 핸들 */
+	FTimerHandle ServerListRefreshTimer;
+
+	/** 자동 갱신 시작/중지 */
+	void StartAutoRefresh();
+	UFUNCTION(BlueprintCallable)
+	void StopAutoRefresh();
 
 };
