@@ -1149,7 +1149,10 @@ void ABasePlayerController::Input_DroneExit()
 	}
 	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
-		PlayerCharacter->SwapHeadMaterialTransparent(true);
+		if (IsLocalController())
+		{
+			PlayerCharacter->SwapHeadMaterialTransparent(true);
+		}
 	}
 }
 
