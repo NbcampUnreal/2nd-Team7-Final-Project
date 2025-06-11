@@ -66,6 +66,11 @@ void UPlayerSlot::SetPlayerInfo(const FSessionPlayerInfo& PlayerInfo)
     //    ReadyText->SetText(FText::FromString(IsReady));
     //}
 
+    if (!IsValid(GetOwningPlayer()))
+    {
+        return;
+    }
+
     SetVisibleKickButton(PlayerInfo);
 
     SetVisibleVoiceChat(PlayerInfo);
