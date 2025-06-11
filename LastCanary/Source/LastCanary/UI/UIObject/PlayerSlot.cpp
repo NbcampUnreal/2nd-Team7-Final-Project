@@ -66,6 +66,11 @@ void UPlayerSlot::SetPlayerInfo(const FSessionPlayerInfo& PlayerInfo)
     //    ReadyText->SetText(FText::FromString(IsReady));
     //}
 
+    if (!IsValid(GetOwningPlayer()))
+    {
+        return;
+    }
+
     SetVisibleKickButton(PlayerInfo);
 
     SetVisibleVoiceChat(PlayerInfo);
@@ -122,7 +127,7 @@ void UPlayerSlot::OnKickButtonClicked()
         return;
     }
 
-    GM->KickPlayer(MySessionPlayerInfo, FText::FromString("호스트에 의해 강퇴되었습니다!!"));
+    GM->KickPlayer(MySessionPlayerInfo, FText::FromString(TEXT("호스트에 의해 강퇴되었습니다!!")));
 }
 
 //
