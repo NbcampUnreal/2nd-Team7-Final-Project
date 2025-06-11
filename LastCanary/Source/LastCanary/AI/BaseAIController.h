@@ -27,6 +27,9 @@ public:
     UFUNCTION(BlueprintCallable, Category = "AI")
     void SetDeath();
 
+private:
+    FTimerHandle DissolveTimerHandle;
+
 protected:
     virtual void BeginPlay() override;
 

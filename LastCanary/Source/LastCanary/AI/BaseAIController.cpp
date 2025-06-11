@@ -29,7 +29,15 @@ void ABaseAIController::OnPossess(APawn* InPawn)
 
 	if (BehaviorTree && BlackboardComponent)
 	{
-		SetPatrolling();
+		BlackboardComponent->SetValueAsInt(StateKeyName, -1);
+
+		GetWorld()->GetTimerManager().SetTimer(
+			DissolveTimerHandle,
+			this,
+			&ABaseAIController::SetPatrolling,
+			2.0f,
+			false
+		);
 
 		RunBehaviorTree(BehaviorTree);
 	}
@@ -56,6 +64,7 @@ void ABaseAIController::SetPatrolling()
 		{
 			MovementComp->MaxWalkSpeed = 200.f;
 		}
+
 		BlackboardComponent->SetValueAsInt(StateKeyName, 0);
 	}
 }

@@ -10,7 +10,7 @@
 #include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
 #include "DataTable/MonsterDataTable.h"
-
+//스폰 중 startspawning함수 불러오게 하기
 UMonsterSpawnComponent::UMonsterSpawnComponent()
 {
     PrimaryComponentTick.bCanEverTick = false;
@@ -36,6 +36,17 @@ void UMonsterSpawnComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
     StopSpawning();
     Super::EndPlay(EndPlayReason);
+}
+
+void UMonsterSpawnComponent::SwitchDayNight()//타임 매니저가 불러야 할 것 //기존 몬스터를 모두 없애야 하는가?
+{
+    bIsNighttime = !bIsNighttime;
+
+    if (bIsSpawning)
+    {
+        StopSpawning();
+        StartSpawning();
+    }
 }
 
 void UMonsterSpawnComponent::StartSpawning()
@@ -66,7 +77,7 @@ void UMonsterSpawnComponent::StopSpawning()
 
     bIsSpawning = false;
     GetWorld()->GetTimerManager().ClearTimer(SpawnTimerHandle);
-    GetWorld()->GetTimerManager().ClearTimer(DestroyTimerHandle);
+    //GetWorld()->GetTimerManager().ClearTimer(DestroyTimerHandle);
     DestroyAllMonsters();
 }
 
@@ -235,6 +246,7 @@ void UMonsterSpawnComponent::SpawnMonsters()
         }
 
         bool TooClose = false;//뭉쳐서 스폰되지 않도록
+
         for (const FVector& UsedLocation : UsedLocations)
         {
             float DistSq = FVector::DistSquared2D(SpawnLocation, UsedLocation);
@@ -242,6 +254,23 @@ void UMonsterSpawnComponent::SpawnMonsters()
             {
                 TooClose = true;
                 break;
+            }
+        }
+
+        if (!TooClose)
+        {
+            for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
+            {
+                APlayerController* PC = Iterator->Get();
+                if (IsValid(PC) && IsValid(PC->GetPawn()))
+                {
+                    float DistToPlayer = FVector::Dist2D(SpawnLocation, PC->GetPawn()->GetActorLocation());
+                    if (DistToPlayer < AvoidSpawnRadius)
+                    {
+                        TooClose = true;
+                        break;
+                    }
+                }
             }
         }
 
@@ -346,6 +375,23 @@ void UMonsterSpawnComponent::SpawnNightMonsters()
             {
                 TooClose = true;
                 break;
+            }
+        }
+
+        if (!TooClose)
+        {
+            for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
+            {
+                APlayerController* PC = Iterator->Get();
+                if (IsValid(PC) && IsValid(PC->GetPawn()))
+                {
+                    float DistToPlayer = FVector::Dist2D(SpawnLocation, PC->GetPawn()->GetActorLocation());
+                    if (DistToPlayer < AvoidSpawnRadius)
+                    {
+                        TooClose = true;
+                        break;
+                    }
+                }
             }
         }
 
