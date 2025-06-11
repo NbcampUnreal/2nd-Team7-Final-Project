@@ -6,6 +6,7 @@
 
 class UToolbarInventoryWidget;
 class UBackpackInventoryWidget;
+class UTextBlock;
 
 UCLASS()
 class LASTCANARY_API UInventoryMainWidget : public ULCUserWidgetBase
@@ -19,6 +20,9 @@ class LASTCANARY_API UInventoryMainWidget : public ULCUserWidgetBase
 	UPROPERTY(meta = (BindWidget))
 	UBackpackInventoryWidget* BackpackWidget;
 
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* SlotItemText;
+
 public:
 	virtual void NativeConstruct() override;
 
@@ -30,6 +34,14 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	bool IsBackpackInventoryOpen() const;
+
+	UFUNCTION(BlueprintCallable)
+	void ShowToolbarSlotItemText(const FText& ItemName);
+
+	UFUNCTION()
+	void HideToolbarSlotItemText();
+
+	FTimerHandle SlotItemTextTimerHandle;
 
 private:
 	bool bBackpackInventoryOpen = false;

@@ -35,8 +35,6 @@ void ALCRoomPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	CreateRoomWidget();
-
 	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 	{
 		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
@@ -110,31 +108,28 @@ void ALCRoomPlayerController::Client_UpdatePlayerList_Implementation(const TArra
 
 void ALCRoomPlayerController::UpdatePlayerList(const TArray<FSessionPlayerInfo>& PlayerInfos)
 {
-	if (IsValid(RoomWidgetInstance))
+	if (IsValid(LCUIManager))
 	{
-		LOG_Frame_WARNING(TEXT("Try Update Player List!"));
-		RoomWidgetInstance->UpdatePlayerLists(PlayerInfos);
+		LOG_Frame_WARNING(TEXT("LCUIManager Is Not Null Null!"));
+		URoomWidget* RoomWidget = LCUIManager->GetRoomWidgetInstance();
+		RoomWidget->UpdatePlayerLists(PlayerInfos);
+
+		GetWorld()->GetTimerManager().ClearTimer(UpdatePlayerListTimerHandle);
 	}
 	else
 	{
-		LOG_Frame_WARNING(TEXT("Not Initialized Widget Instance!! Retry Update Info"));
-
-		FTimerHandle TimerHandle;
 		TWeakObjectPtr<ALCRoomPlayerController> WeakPtr(this);
 		TArray<FSessionPlayerInfo> InfosCopy = PlayerInfos;
 
 		GetWorld()->GetTimerManager().SetTimer
 		(
-			TimerHandle,
+			UpdatePlayerListTimerHandle,
 			[WeakPtr, InfosCopy]()
 			{
 				if (WeakPtr.IsValid())
 				{
-					if (WeakPtr->RoomWidgetInstance)
-					{
-						UE_LOG(LogTemp, Warning, TEXT("Update Lobby UI!!"));
-						WeakPtr->UpdatePlayerList(InfosCopy);
-					}
+					UE_LOG(LogTemp, Warning, TEXT("Update Lobby UI!!"));
+					WeakPtr->UpdatePlayerList(InfosCopy);
 				}
 			},
 			RePeatRate,
@@ -256,49 +251,25 @@ void ALCRoomPlayerController::InitInputComponent()
 
 }
 
-void ALCRoomPlayerController::CreateRoomWidget()
-{
-	if (IsLocalPlayerController())
-	{
-		if (RoomWidgetClass)
-		{
-			RoomWidgetInstance = CreateWidget<URoomWidget>(this, RoomWidgetClass);
-			RoomWidgetInstance->CreatePlayerSlots();
-			RoomWidgetInstance->AddToViewport(10);
-			RoomWidgetInstance->SetVisibility(ESlateVisibility::Hidden);
-			bIsShowRoomUI = false;
-		}
-	}
-}
-
 void ALCRoomPlayerController::ToggleShowRoomWidget()
 {
 	bIsShowRoomUI = !bIsShowRoomUI;
+	LOG_Frame_WARNING(TEXT("ToggleShowRoomWidget: %s"), bIsShowRoomUI ? TEXT("Show") : TEXT("Hide"));
 
-	if (!IsLocalPlayerController())
+	if (bIsShowRoomUI)
 	{
-		return;
+		LCUIManager->ShowRoomWidget();
+		FInputModeGameAndUI GameAndUIInputMode;
+		SetInputMode(GameAndUIInputMode);
+	}
+	else
+	{
+		LCUIManager->HideRoomWidget();
+		FInputModeGameOnly GameInputMode;
+		SetInputMode(GameInputMode);
 	}
 
-	if (IsValid(RoomWidgetInstance))
-	{
-		if (bIsShowRoomUI)
-		{
-			//RoomWidgetInstance->AddToViewport(10);
-			RoomWidgetInstance->SetVisibility(ESlateVisibility::Visible);
-			FInputModeGameAndUI GameAndUIInputMode;
-			SetInputMode(GameAndUIInputMode);
-		}
-		else
-		{
-			//RoomWidgetInstance->RemoveFromParent();
-			RoomWidgetInstance->SetVisibility(ESlateVisibility::Hidden);
-			FInputModeGameOnly GameInputMode;
-			SetInputMode(GameInputMode);
-		}
-
-		bShowMouseCursor = bIsShowRoomUI;
-	}
+	bShowMouseCursor = bIsShowRoomUI;
 }
 
 void ALCRoomPlayerController::Client_NotifyResultReady_Implementation(const FChecklistResultData& ResultData)

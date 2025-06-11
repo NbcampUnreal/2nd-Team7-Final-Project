@@ -15,6 +15,7 @@
 #include "UI/UIElement/LoadingLevel.h"
 #include "UI/UIElement/ChecklistWidget.h"
 #include "UI/UIElement/ResultMenu.h"
+#include "UI/UIElement/RoomWidget.h"
 
 #include "UI/UIObject/ConfirmPopup.h"
 
@@ -57,6 +58,7 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			ConfirmPopupClass = Settings->FromBPConfirmPopupClass;
 			ChecklistWidgetClass = Settings->FromBPChecklistWidgetClass;
 			ResultMenuClass = Settings->FromBPResultMenuClass;
+			RoomWidgetClass = Settings->FromBPRoomWidgetClass;
 
 			if ((CachedTitleMenu == nullptr) && TitleMenuClass)
 			{
@@ -110,7 +112,18 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			{
 				CachedResultMenu = CreateWidget<UResultMenu>(PlayerController, ResultMenuClass);
 			}
+			if ((CachedRoomWidget == nullptr) && RoomWidgetClass)
+			{
+				CachedRoomWidget = CreateWidget<URoomWidget>(PlayerController, RoomWidgetClass);
+				CachedRoomWidget->CreatePlayerSlots();
+			}
 		}
+	}
+
+	if (bSessionErrorOccurred)
+	{
+		ShowPopupNotice(CachedErrorReson);
+		bSessionErrorOccurred = false;
 	}
 }
 
@@ -444,6 +457,36 @@ UResultMenu* ULCUIManager::ShowResultMenu()
 	return CachedResultMenu;
 }
 
+void ULCUIManager::ShowRoomWidget()
+{
+	if (CachedRoomWidget)
+	{
+		if (!CachedRoomWidget->IsInViewport())
+		{
+			CachedRoomWidget->AddToViewport(10);
+		}
+	}
+	else
+	{
+		LOG_Frame_ERROR(TEXT("ShowRoomWidget: CachedRoomWidget is nullptr"));
+	}
+}
+
+void ULCUIManager::HideRoomWidget()
+{
+	if (CachedRoomWidget)
+	{
+		if (CachedRoomWidget->IsInViewport())
+		{
+			CachedRoomWidget->RemoveFromParent();
+		}
+	}
+	else
+	{
+		LOG_Frame_ERROR(TEXT("HideRoomWidget: CachedRoomWidget is nullptr"));
+	}
+}
+
 void ULCUIManager::ShowPopUpLoading()
 {
 	if (CachedPopupLoading)
@@ -460,7 +503,7 @@ void ULCUIManager::HidePopUpLoading()
 	}
 }
 
-void ULCUIManager::ShowPopupNotice(FString Notice)
+void ULCUIManager::ShowPopupNotice(const FText& Notice)
 {
 	LOG_Frame_WARNING(TEXT("Show Popup Notice"));
 	if (CachedPopupNotice)
@@ -684,4 +727,10 @@ void ULCUIManager::UpdateInputModeByContext()
 void ULCUIManager::SetUIContext(ELCUIContext NewContext)
 {
 	CurrentContext = NewContext;
+}
+
+void ULCUIManager::SetSessionErrorState(const FText& Reason)
+{
+	bSessionErrorOccurred = true;
+	CachedErrorReson = Reason;
 }

@@ -41,8 +41,8 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Checklist")
     TSubclassOf<UChecklistQuestionEntryWidget> QuestionEntryClass;
 
-    UFUNCTION()
-    void OnRevealAnimationFinished();
+    //UFUNCTION()
+    //void OnRevealAnimationFinished();
 
     void UpdateSubmitButtonVisibility();
     void AddNextEntry();

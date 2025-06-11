@@ -26,6 +26,7 @@ class UPauseMenu;
 class UConfirmPopup;
 class UChecklistWidget;
 class UResultMenu;
+class URoomWidget;
 
 UENUM(BlueprintType)
 enum class ELCUIContext : uint8
@@ -67,6 +68,8 @@ public:
 	void ToggleInventory();
 	void ShowChecklistWidget();
 	UResultMenu* ShowResultMenu();
+	void ShowRoomWidget();
+	void HideRoomWidget();
 
 	void SwitchToWidget(UUserWidget* Widget);
 
@@ -78,7 +81,7 @@ public:
 	void HidePopUpLoading();
 
 	UFUNCTION(BlueprintCallable)
-	void ShowPopupNotice(FString Notice);
+	void ShowPopupNotice(const FText& Notice);
 	UFUNCTION(BlueprintCallable)
 	void HidePopUpNotice();
 
@@ -98,6 +101,7 @@ public:
 	FORCEINLINE UInventoryMainWidget* GetInventoryMainWidget() const { return CachedInventoryMainWidget; }
 	FORCEINLINE UChecklistWidget* GetChecklistWidget() const { return CachedChecklistWidget; }
 	FORCEINLINE UResultMenu* GetResultMenuClass() const { return CachedResultMenu; }
+	FORCEINLINE URoomWidget* GetRoomWidgetInstance() const { return CachedRoomWidget; }
 
 	void SetLastShopInteractor(AShopInteractor* Interactor);
 	void SetLastMapSelectInteractor(AMapSelectInteractor* Interactor);
@@ -150,6 +154,8 @@ private:
 	TSubclassOf<UChecklistWidget> ChecklistWidgetClass;
 	UPROPERTY()
 	TSubclassOf<UResultMenu> ResultMenuClass;
+	UPROPERTY()
+	TSubclassOf<URoomWidget> RoomWidgetClass;
 
 
 	// 위젯 캐싱
@@ -182,7 +188,15 @@ private:
 	UChecklistWidget* CachedChecklistWidget;
 	UPROPERTY()
 	UResultMenu* CachedResultMenu;
+	UPROPERTY()
+	URoomWidget* CachedRoomWidget;
 
 	UPROPERTY()
 	ELCUIContext CurrentContext;
+
+	bool bSessionErrorOccurred = false;
+	FText CachedErrorReson;
+public:
+	UFUNCTION(BlueprintCallable)
+	void SetSessionErrorState(const FText& Reason);
 };

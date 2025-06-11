@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "UI/Manager/LCUIManager.h"
@@ -18,7 +18,6 @@ public:
 
 	virtual void BeginPlay() override;
 
-
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_SetPlayerInfo(const FSessionPlayerInfo& PlayerInfo);
 	virtual void Server_SetPlayerInfo_Implementation(const FSessionPlayerInfo& PlayerInfo);
@@ -35,11 +34,11 @@ public:
 	void Client_ReceiveMessageFromGM(const FString& Message);
 	void Client_ReceiveMessageFromGM_Implementation(const FString& Message);
 
-	virtual void ClientReturnToMainMenuWithTextReason_Implementation(const FText& ReturnReason) override;
-
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Session")
+	// 서버에서 플레이어 강퇴시 호출 됨
 	void ClientWasKicked_Implementation(const FText& KickReason);
-	void ClientWasKicked_Implementation_Implementation(const FText& KickReason);
+	// 강퇴시나 PreLogIn에서 ErrorMessage가 있으면 해당 함수를 통해 
+	// MainMenu로 돌아가는거 같은데 디버깅이 안됨... 아오...
+	void ClientReturnToMainMenuWithTextReason_Implementation(const FText& ReturnReason);
 
 	void StartGame(FString SoftPath);
 
