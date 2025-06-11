@@ -319,13 +319,11 @@ FString AItemBase::GetInteractMessage_Implementation() const
 	{
 		if (const FItemDataRow* Found = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("GetInteractMessage")))
 		{
-			return FString::Printf(TEXT("%s 습득 (x%d)"),
-				*Found->ItemName.ToString(), Quantity);
+			return FString::Printf(TEXT("%s 습득 (x%d)"), *Found->ItemName.ToString(), Quantity);
 		}
 	}
 
-	return FString::Printf(TEXT("%s 습득 (x%d)"),
-		*ItemRowName.ToString(), Quantity);
+	return FString::Printf(TEXT("%s 습득 (x%d)"), *ItemRowName.ToString(), Quantity);
 }
 
 void AItemBase::Server_TryPickupByPlayer_Implementation(APlayerController* PlayerController)
