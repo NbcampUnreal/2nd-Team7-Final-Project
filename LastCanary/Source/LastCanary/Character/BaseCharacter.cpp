@@ -24,6 +24,7 @@
 #include "Item/ResourceNode.h"
 #include "Item/EquipmentItem/GunBase.h"
 #include "Item/EquipmentItem/EquipmentItemBase.h"
+#include "Item/EquipmentItem/BackpackItem.h"
 #include "UI/Manager/LCUIManager.h"
 #include "LastCanary.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -2385,59 +2386,47 @@ void ABaseCharacter::DropItemAtSlot(int32 SlotIndex, int32 Quantity)
 	}
 }
 
-bool ABaseCharacter::EquipBackpack(FName BackpackItemRowName, const TArray<FBaseItemSlotData>& BackpackData, int32 MaxSlots)
+bool ABaseCharacter::EquipBackpack(const TArray<FBaseItemSlotData>& BackpackData, int32 MaxSlots)
 {
-	if (BackpackItemRowName.IsNone())
+	if (!BackpackInventoryComponent)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[ABaseCharacter::EquipBackpack] 잘못된 매개변수"));
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::EquipBackpack] 캐릭터에 가방 컴포넌트가 없습니다"));
 		return false;
 	}
 
-	if (BackpackInventoryComponent)
+	BackpackInventoryComponent->MaxSlots = MaxSlots;
+	BackpackInventoryComponent->ItemSlots.SetNum(MaxSlots);
+	for (FBaseItemSlotData& Slot : BackpackInventoryComponent->ItemSlots)
 	{
-		BackpackInventoryComponent->MaxSlots = MaxSlots;
-		BackpackInventoryComponent->ItemSlots = BackpackData;
-
-		if (ULCGameInstanceSubsystem* GameSubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
-		{
-			BackpackInventoryComponent->ItemDataTable = GameSubsystem->ItemDataTable;
-		}
-
-		if (BackpackInventoryComponent->ItemSlots.Num() == 0)
-		{
-			BackpackInventoryComponent->InitializeSlots();
-		}
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[ABaseCharacter::EquipBackpack] BackpackInventoryComponent가 없습니다"));
-		return false;
+		Slot.ItemRowName = FName("Default");
+		Slot.Quantity = 0;
+		Slot.bIsValid = false;
 	}
 
-	if (ULCGameInstanceSubsystem* GameSubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+	// 데이터 복사
+	for (int32 i = 0; i < BackpackData.Num() && i < MaxSlots; ++i)
 	{
-		if (const FItemDataRow* ItemData = GameSubsystem->GetItemDataByRowName(BackpackItemRowName))
-		{
-			SetBackpackMesh(ItemData->StaticMesh);
-		}
+		BackpackInventoryComponent->ItemSlots[i] = BackpackData[i];
 	}
+
+	BackpackInventoryComponent->OnInventoryUpdated.Broadcast();
 
 	return true;
 }
 
 TArray<FBaseItemSlotData> ABaseCharacter::UnequipBackpack()
 {
-	TArray<FBaseItemSlotData> BackpackData;
-
-	if (BackpackInventoryComponent)
+	if (!BackpackInventoryComponent)
 	{
-		BackpackData = BackpackInventoryComponent->ItemSlots;
-
-		BackpackInventoryComponent->ItemSlots.Empty();
-		BackpackInventoryComponent->MaxSlots = 0;
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::UnequipBackpack] 캐릭터에 가방 컴포넌트가 없습니다"));
 	}
 
-	SetBackpackMesh(nullptr);
+	TArray<FBaseItemSlotData> BackpackData = BackpackInventoryComponent->ItemSlots;
+	BackpackData = BackpackInventoryComponent->ItemSlots;
+
+	BackpackInventoryComponent->ItemSlots.Empty();
+	BackpackInventoryComponent->MaxSlots = 0;
+	BackpackInventoryComponent->OnInventoryUpdated.Broadcast();
 
 	return BackpackData;
 }

@@ -511,7 +511,7 @@ public:
 
 	/** 가방 장착 (데이터 복사 방식) */
 	UFUNCTION(BlueprintCallable, Category = "Character|Equipment")
-	bool EquipBackpack(FName BackpackItemRowName, const TArray<FBaseItemSlotData>& BackpackData, int32 MaxSlots);
+	bool EquipBackpack(const TArray<FBaseItemSlotData>& BackpackData, int32 MaxSlots);
 
 	/** 가방 해제 (데이터 반환) */
 	UFUNCTION(BlueprintCallable, Category = "Character|Equipment")

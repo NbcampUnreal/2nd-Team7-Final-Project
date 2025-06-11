@@ -276,11 +276,10 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
         return;
     }
 
+    // 기존 슬롯이 Default 상태일 때
     if (IsDefaultItem(SlotData->ItemRowName))
     {
-        LOG_Item_WARNING(TEXT("[EquipItemAtSlot] Default 아이템 장착 - 빈 손 상태로 설정"));
-
-        // 현재 장착된 아이템 해제
+        // 기존의 장착된 아이템 해제
         UnequipCurrentItem();
 
         // Default 슬롯을 장착된 상태로 설정
@@ -304,7 +303,7 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
         return;
     }
 
-    // 현재 장착된 아이템 해제
+    // 기존의 장착된 아이템 해제
     UnequipCurrentItem();
 
     FItemDataRow* ItemData = GISubsystem->GetItemDataByRowName(SlotData->ItemRowName);
@@ -315,15 +314,17 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
         return;
     }
 
+    // 가방 전용 로직
     static const FGameplayTag BackpackTag = FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Backpack"));
 
     if (ItemData->ItemType.MatchesTag(BackpackTag))
     {
-        TArray<FBaseItemSlotData> EmptyData;
-        if (CachedOwnerCharacter->EquipBackpack(SlotData->ItemRowName, EmptyData, 20))
+        TArray<FBaseItemSlotData> BackupData;
+        if (CachedOwnerCharacter->EquipBackpack(BackupData, 20))
         {
             ItemSlots[SlotIndex].bIsEquipped = true;
             CurrentEquippedSlotIndex = SlotIndex;
+            // TODO : 메시, UI 등의 처리를 이곳에서 하는 것이 좋을지도
         }
         else
         {
@@ -331,6 +332,7 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
             return;
         }
     }
+    // 가방이 아닐 시 다른 일반 아이템들 장착 로직
     else
     {
         if (!ItemData->ItemActorClass)
@@ -443,35 +445,8 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
 
     if (ItemData->ItemType.MatchesTag(BackpackTag))
     {
-        // 가방 아이템인 경우 실제 해제하지 않고 슬롯 상태만 변경
-        LOG_Item_WARNING(TEXT("[UnequipCurrentItem] 가방 아이템 해제 - 실제 가방은 유지, 슬롯 상태만 변경"));
-
-        CurrentEquippedSlotIndex = -1;
-
-        // 캐릭터는 여전히 장착 상태 유지 (가방이 있으므로)
-        if (CachedOwnerCharacter)
-        {
-            // 가방이 있으면 여전히 장착 상태로 간주
-            bool bHasOtherEquipment = false;
-            for (int32 i = 0; i < ItemSlots.Num(); ++i)
-            {
-                if (i != UnequipSlotIndex && ItemSlots[i].bIsEquipped &&
-                    !IsDefaultItem(ItemSlots[i].ItemRowName))
-                {
-                    bHasOtherEquipment = true;
-                    break;
-                }
-            }
-
-            // 다른 장비가 없으면 SetEquipped(false), 있으면 유지
-            if (!bHasOtherEquipment)
-            {
-                CachedOwnerCharacter->SetEquipped(false);
-            }
-        }
-
-        // 아이템 제거
-        EquippedItemComponent->DestroyChildActor();
+        // 장착 가방 데이터만 저장
+        TArray<FBaseItemSlotData> BackpackData = CachedOwnerCharacter->UnequipBackpack();
     }
     else
     {
@@ -488,8 +463,6 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
         }
 
         EquippedItemComponent->DestroyChildActor();
-
-        CurrentEquippedSlotIndex = -1;
 
         // 가방이 장착되어 있는지 확인
         bool bHasBackpack = CachedOwnerCharacter && CachedOwnerCharacter->HasBackpackEquipped();
@@ -511,6 +484,8 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
             CachedOwnerCharacter->SetEquipped(bHasBackpack || bHasOtherEquipment);
         }
     }
+
+    CurrentEquippedSlotIndex = -1;
 
     OnInventoryUpdated.Broadcast();
 
@@ -823,7 +798,7 @@ bool UToolbarInventoryComponent::TryStoreItem(AItemBase* ItemActor)
                 }
             }
 
-            if (CachedOwnerCharacter->EquipBackpack(ItemActor->ItemRowName, BackpackData, BackpackMaxSlots))
+            if (CachedOwnerCharacter->EquipBackpack(BackpackData, BackpackMaxSlots))
             {
                 ItemSlots[EmptySlotIndex].bIsEquipped = false;
             }

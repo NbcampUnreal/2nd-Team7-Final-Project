@@ -17,13 +17,17 @@ protected:
     virtual void BeginPlay() override;
 
 public:
-    /** 가방의 인벤토리 컴포넌트 */
+    /** 가방의 인벤토리 컴포넌트 (삭제 예정)*/
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
     UBackpackInventoryComponent* BackpackInventoryComponent;
 
-    /** 가방 인벤토리 컴포넌트 접근자 */
+    /** 가방 인벤토리 컴포넌트 접근자 (삭제 예정)*/
     UFUNCTION(BlueprintPure, Category = "Inventory")
     UBackpackInventoryComponent* GetBackpackInventoryComponent() const;
+
+    /** 가방 내부 아이템 데이터 */
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Backpack")
+    TArray<FBaseItemSlotData> BackpackData;
 
     /** 가방 최대 슬롯 수 */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Backpack Settings", meta = (ClampMin = "1", ClampMax = "50"))

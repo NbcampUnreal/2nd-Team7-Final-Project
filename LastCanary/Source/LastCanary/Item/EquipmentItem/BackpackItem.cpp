@@ -46,18 +46,10 @@ void ABackpackItem::UseItem()
 
 TArray<FBaseItemSlotData> ABackpackItem::GetBackpackData() const
 {
-    if (BackpackInventoryComponent)
-    {
-        return BackpackInventoryComponent->ItemSlots;
-    }
-    return TArray<FBaseItemSlotData>();
+    return BackpackData;
 }
 
 void ABackpackItem::SetBackpackData(const TArray<FBaseItemSlotData>& NewData)
 {
-    if (BackpackInventoryComponent)
-    {
-        BackpackInventoryComponent->ItemSlots = NewData;
-        BackpackInventoryComponent->OnInventoryUpdated.Broadcast();
-    }
+    BackpackData = NewData;
 }
