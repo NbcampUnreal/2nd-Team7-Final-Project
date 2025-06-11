@@ -18,6 +18,7 @@ void ALCGameMode::PreLogin(const FString& Options, const FString& Address, const
 	if (CurrentPlayerNum >= MaxPlayerNum)
 	{
 		ErrorMessage = TEXT("Room Is Full !!");
+		return;
 	}
 
 	// 1) 현재 월드의 레벨 이름을 가져옴
