@@ -166,6 +166,12 @@ void ABasePlayerController::Client_OnPlayerExitActivePlay_Implementation()
 			PlayerCharacter->SetCameraMode(false);
 		}
 	}
+	ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
+	// HUD 숨기고 관전 모드 전환
+	if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
+	{
+		UIManager->HideInGameHUD();
+	}
 }
 
 void ABasePlayerController::SpawnSpectatablePawn()
