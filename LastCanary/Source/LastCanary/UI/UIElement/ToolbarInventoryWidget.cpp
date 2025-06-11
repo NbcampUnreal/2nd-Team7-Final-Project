@@ -52,5 +52,12 @@ void UToolbarInventoryWidget::RefreshInventoryUI()
         }
 
         ToolbarSlotBox->AddChild(SlotWidget);
+
+        if (UHorizontalBoxSlot* AddedSlot = Cast<UHorizontalBoxSlot>(ToolbarSlotBox->AddChild(SlotWidget)))
+        {
+            AddedSlot->SetHorizontalAlignment(HAlign_Fill);
+            AddedSlot->SetVerticalAlignment(VAlign_Fill);
+            AddedSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+        }
     }
 }
