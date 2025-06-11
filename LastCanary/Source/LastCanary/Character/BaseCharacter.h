@@ -56,10 +56,8 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Inventory")
 	UBackpackInventoryComponent* BackpackInventoryComponent;
 
-
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	TObjectPtr<UArrowComponent> ThirdPersonArrow;
-
 
 	// 관전용 스프링암
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
@@ -109,7 +107,7 @@ protected:
 
 	void CalcCameraLocation();
 
-	void CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo);
+	virtual void CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo) override;
 
 	FTimerHandle MoveTimerHandle;
 	FVector StartLocation;
@@ -131,6 +129,7 @@ protected:
 	float SmoothCameraTimeThreshold = 0.5f;
 
 	float SmoothCameraCurrentTime = 0.f;
+	USkeletalMeshComponent* CurrentRifleMesh;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float FieldOfView = 90.f;
@@ -140,6 +139,18 @@ protected:
 
 	bool bIsCloseToWall = false;
 	bool bIsSprinting = false;
+
+	bool bIsAiming = false;
+
+	// ABaseCharacter.h
+
+	FVector LastCameraLocation;
+	FRotator LastCameraRotation;
+
+	FVector CameraLocationTarget;
+	FRotator CameraRotationTarget;
+
+
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
 	UMaterialInterface* DefaultHeadMaterial_HelmBoots;
@@ -167,9 +178,6 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
 	UMaterialInterface* TransparentHeadMaterial;
-
-
-
 
 public:
 	void SetCameraMode(bool bIsFirstPersonView);
@@ -235,6 +243,20 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void RefreshOverlayLinkedAnimationLayer(int index);
 
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_RefreshOverlayObject(int index);
+	void Multicast_RefreshOverlayObject_Implementation(int index);
+
+	bool bIsSpawnDrone = false;
+
+	UFUNCTION(Server, Reliable)
+	void Server_UnPossessDrone();
+	void Server_UnPossessDrone_Implementation();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void NetMulticast_UnPossessDrone();
+	void NetMulticast_UnPossessDrone_Implementation();
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	TSubclassOf<UAnimInstance> DefaultAnimationClass;
 
@@ -248,6 +270,9 @@ public:
 	TSubclassOf<UAnimInstance> TorchAnimationClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	TSubclassOf<UAnimInstance> BinocularsAnimationClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	USkeletalMesh* SKM_Rifle;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
@@ -256,6 +281,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	UStaticMesh* SM_Torch;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	UStaticMesh* RCController;
 
 public:
 	//애니메이션 몽타주

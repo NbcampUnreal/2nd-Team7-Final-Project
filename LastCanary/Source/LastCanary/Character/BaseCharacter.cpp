@@ -59,7 +59,7 @@ ABaseCharacter::ABaseCharacter()
 	Camera->SetupAttachment(SpringArm);  // SpringArm에 카메라 부착
 
 	// 초기 방향 설정S
-	Camera->SetRelativeRotation(FRotator::ZeroRotator);  // 필요시만 설정
+	Camera->SetRelativeRotation(FRotator::ZeroRotator);  // 필요시만 설정	
 
 	ThirdPersonArrow = CreateDefaultSubobject<UArrowComponent>(TEXT("FirstPersonArrow"));
 	ThirdPersonArrow->SetupAttachment(SpringArm);
@@ -230,19 +230,33 @@ void ABaseCharacter::NotifyControllerChanged()
 
 void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo)
 {
-	if (Controller && Controller->IsLocalPlayerController())
+	Super::CalcCamera(DeltaTime, ViewInfo);
+
+	if (bIsAiming && IsValid(CurrentRifleMesh) && !bIsReloading)
 	{
-		// 내가 조종 중이라면 → 1인칭 시점
-		Camera->GetCameraView(DeltaTime, ViewInfo);
+		FTransform ScopeTransform = CurrentRifleMesh->GetSocketTransform(TEXT("Scope"));
+		FVector TargetLoc = ScopeTransform.GetLocation();
+		FRotator TargetRot = ScopeTransform.GetRotation().Rotator();
+
+		// ViewInfo.Location이 현재 카메라 위치 → 여기서 보간 시작
+		ViewInfo.Location = FMath::VInterpTo(ViewInfo.Location, TargetLoc, DeltaTime, 5.0f);
+		ViewInfo.Rotation = FMath::RInterpTo(ViewInfo.Rotation, TargetRot, DeltaTime, 5.0f);
+
+		ViewInfo.Rotation.Roll = 0.0f;
+
+		SpringArm->bUsePawnControlRotation = false;
+		SpringArm->TargetArmLength = 20.0f;
 	}
 	else
 	{
-		// 관전자가 바라볼 경우 → 3인칭 시점
-		SpectatorCamera->GetCameraView(DeltaTime, ViewInfo);
-		//GetMesh()->SetOwnerNoSee(false);
-		//GetMesh()->UnHideBoneByName(TEXT("head"));
+		SpringArm->bUsePawnControlRotation = true;
+		SpringArm->TargetArmLength = 0.0f;
+		// 일반 모드에서는 Super::CalcCamera에서 ViewInfo가 이미 적절히 설정됨
 	}
 }
+
+
+
 
 void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue, float Sensivity)
 {
@@ -623,7 +637,7 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
 	if (!EquippedItem)
 	{
-		LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 현재 장착된 아이템이 없습니다."));
+		//LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 현재 장착된 아이템이 없습니다."));
 		return;
 	}
 	if (bIsSprinting)
@@ -650,31 +664,26 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 			if (RifleItem)
 			{
 				USkeletalMeshComponent* RifleMesh = RifleItem->GetSkeletalMeshComponent();
+				CurrentRifleMesh = RifleMesh;
 				if (!RifleMesh)
 				{
-					UE_LOG(LogTemp, Warning, TEXT("Handle_Aim: No SkeletalMeshComponent found on rifle"));
+					//UE_LOG(LogTemp, Warning, TEXT("Handle_Aim: No SkeletalMeshComponent found on rifle"));
 					return;
 				}
 
 				if (ActionValue.Get<float>() > 0.5f && bIsCloseToWall == false)
 				{
-					//UE_LOG(LogTemp, Warning, TEXT("Scope on"));
+					bIsAiming = true;
 					CancelInteraction();
-					// 1. 소켓 위치와 회전 가져오기
-					FTransform ScopeTransform = RifleMesh->GetSocketTransform(TEXT("Scope"));
-					Camera->AttachToComponent(RifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
-					Camera->SetWorldRotation(RifleMesh->GetSocketRotation(TEXT("Scope")));
-					//ToADSCamera(true);
+					SpringArm->AttachToComponent(RifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
 					return;
 				}
 				else
 				{
-					//UE_LOG(LogTemp, Warning, TEXT("Scope out"));
-					// 예: 조준 해제 시
-					Camera->AttachToComponent(SpringArm, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
-					Camera->SetRelativeLocation(FVector::ZeroVector);
-					Camera->SetRelativeRotation(FRotator::ZeroRotator); // 필요 시 원래 회전 복구
-					//ToADSCamera(false);
+					bIsAiming = false;
+					SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+					SpringArm->TargetArmLength = 0.0f;
+					SpringArm->bUsePawnControlRotation = true;
 					return;
 				}
 			}
@@ -1324,6 +1333,10 @@ void ABaseCharacter::PickupItem()
 void ABaseCharacter::TraceInteractableActor()
 {
 	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
+	{
+		return;
+	}
+	if (bIsSpawnDrone)
 	{
 		return;
 	}
@@ -2003,18 +2016,48 @@ void ABaseCharacter::ResetMovementSetting()
 	AlsCharacterMovement->ResetGaitSettings();
 }
 
+void ABaseCharacter::Multicast_RefreshOverlayObject_Implementation(int index)
+{
+	UE_LOG(LogTemp, Warning, TEXT("멀티캐스트 Overlay Objects"));
+	bIsSpawnDrone = true;
+	RefreshOverlayObject(index);
+}
+
+void ABaseCharacter::Server_UnPossessDrone_Implementation()
+{
+	bIsSpawnDrone = false;
+	NetMulticast_UnPossessDrone();
+}
+
+
+void ABaseCharacter::NetMulticast_UnPossessDrone_Implementation()
+{
+	bIsSpawnDrone = false;
+	RefreshOverlayObject(0);
+}
+
 void ABaseCharacter::RefreshOverlayObject(int index)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Refresh Overlay Objects"));
+	UE_LOG(LogTemp, Warning, TEXT("Refresh Overlay Objects : %d"), index);
 	AItemBase* CurrentItem = GetToolbarInventoryComponent()->GetCurrentEquippedItem();
 	//static FGameplayTag CurrentItemTag = FGameplayTag::RequestGameplayTag(TEXT("Character.Player.Equipped"));  // 참고용
+	if (bIsSpawnDrone == true)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Drone Controller"));
+		SetDesiredGait(AlsOverlayModeTags::Binoculars);
+		SetOverlayMode(AlsOverlayModeTags::Binoculars);
+		RefreshOverlayLinkedAnimationLayer(4);
+		SetDesiredAiming(false);
+		AttachOverlayObject(RCController, NULL, NULL, "DroneController", true);
+		return;
+	}
 	if (!IsValid(CurrentItem))
 	{
 		//아이템이 없으면, 기본 애니메이션 지정 및 소켓에 달려있는 거 삭제
 		SetDesiredGait(AlsOverlayModeTags::Default);
 		SetOverlayMode(AlsOverlayModeTags::Default);
 		RefreshOverlayLinkedAnimationLayer(3);
-		//AttachOverlayObject(NULL, NULL, NULL, "Torch", true);
+		AttachOverlayObject(NULL, NULL, NULL, "Torch", true);
 
 		UE_LOG(LogTemp, Warning, TEXT("Character Equipped None"));
 
@@ -2057,7 +2100,7 @@ void ABaseCharacter::RefreshOverlayObject(int index)
 	SetDesiredGait(AlsOverlayModeTags::Default);
 	SetOverlayMode(AlsOverlayModeTags::Default);
 	RefreshOverlayLinkedAnimationLayer(3);
-	//AttachOverlayObject(SM_Torch, NULL, NULL, "Torch", true);
+	AttachOverlayObject(SM_Torch, NULL, NULL, "Torch", true);
 	UE_LOG(LogTemp, Warning, TEXT("Character Equipped Unknown Item"));
 	return;
 
@@ -2101,8 +2144,10 @@ void ABaseCharacter::AttachOverlayObject(UStaticMesh* NewStaticMesh, USkeletalMe
 	);
 
 	//EquippedItemComponent->SetMesh()
-	//EquippedItemComponent->AttachToComponent(GetMesh(), AttachRules, ResultSocketName);
-	//EquippedItemComponent->SetAnimInstanceClass(NewAnimationClass);
+	OverlayStaticMesh->SetStaticMesh(NewStaticMesh);
+	OverlayStaticMesh->AttachToComponent(GetMesh(), AttachRules, ResultSocketName);
+	OverlaySkeletalMesh->SetSkinnedAssetAndUpdate(NewSkeletalMesh, true);
+	
 
 	//RemoteOnlyEquippedItemComponent->SetMesh()
 	//RemoteOnlyEquippedItemComponent->AttachToComponent(RemoteOnlySkeletalMesh, AttachRules, ResultSocketName);
@@ -2128,6 +2173,10 @@ void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(int index)
 	else if (index == 3)
 	{
 		OverlayAnimationInstanceClass = DefaultAnimationClass;;
+	}
+	else if (index == 4)
+	{
+		OverlayAnimationInstanceClass = BinocularsAnimationClass;
 	}
 	else
 	{
@@ -2311,7 +2360,9 @@ bool ABaseCharacter::UseEquippedItem(float ActionValue)
 				ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].bIsValid = true;
 				UnequipCurrentItem();
 				ToolbarInventoryComponent->EquippedItemComponent->DestroyChildActor();
-				RefreshOverlayObject(0);
+				bIsSpawnDrone = true;
+				RefreshOverlayObject(50); 
+				Multicast_RefreshOverlayObject(50);
 				return true;
 			}
 		}
