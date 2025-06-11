@@ -139,6 +139,10 @@ public:
 
 	EPlayerInGameStatus InGameState = EPlayerInGameStatus::Alive;
 
+	void SetInGameStatus(EPlayerInGameStatus Status);
+	EPlayerInGameStatus GetInGameStatus();
+
+
 	UFUNCTION()
 	void OnRep_CurrentState();
 
@@ -179,7 +183,7 @@ public:
 public:
 	// Gold & Exp
 	UPROPERTY(Replicated, BlueprintReadOnly)
-	int32 TotalGold = 500;
+	int32 TotalGold = 500000;
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	int32 TotalExp;
 	void AddTotalGold(int32 Amount);
@@ -207,6 +211,12 @@ public:
 
 	virtual void CopyProperties(APlayerState* PlayerState) override;
 
-	UPROPERTY(Replicated, BlueprintReadOnly)
-	TArray<int32> CollectedResources;
+	// 자원 수집 내역 (RowName → 개수)
+	TMap<FName, int32> CollectedResourceMap;
+
+	void AddCollectedResource(FName RowName);
+
+	const TMap<FName, int32>& GetCollectedResourceMap() const;
+
+	void ClearCollectedResources();
 };

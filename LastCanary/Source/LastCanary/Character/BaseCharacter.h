@@ -18,6 +18,7 @@ class UBackpackInventoryComponent;
 struct FBaseItemSlotData;
 class UItemSpawnerComponent;
 class UPostProcessComponent;
+class AResourceNode;
 
 UCLASS()
 class LASTCANARY_API ABaseCharacter : public AAlsCharacter
@@ -475,10 +476,10 @@ public:
 	void Server_UnequipCurrentItem_Implementation();
 
 	UFUNCTION(BlueprintCallable, Category = "Equipment")
-	bool UseEquippedItem(const FInputActionValue& ActionValue);
+	bool UseEquippedItem(float ActionValue);
 	UFUNCTION(Server, Reliable)
-	void Server_UseEquippedItem(const FInputActionValue& ActionValue);
-	void Server_UseEquippedItem_Implementation(const FInputActionValue& ActionValue);
+	void Server_UseEquippedItem(float ActionValue);
+	void Server_UseEquippedItem_Implementation(float ActionValue);
 
 public:
 	/** 인벤토리 UI를 토글합니다 */
@@ -545,4 +546,12 @@ public:
 
 	/** 스캐너를 위한 스텐실 설정 */
 	void EnableStencilForAllMeshes(int32 StencilValue);
+
+	//-----------------------------------------------------
+	// 각종 자원 채집을 위한 상호작용
+	//-----------------------------------------------------
+
+	UFUNCTION(Server, Reliable)
+	void Server_InteractWithResourceNode(AResourceNode* TargetNode);
+	void Server_InteractWithResourceNode_Implementation(AResourceNode* TargetNode);
 };

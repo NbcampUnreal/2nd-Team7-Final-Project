@@ -132,11 +132,11 @@ void AItemBase::ApplyItemDataFromTable()
 
 	SetupMeshComponents();
 
-	if (ItemData.bIsResourceItem)
+	/*if (ItemData.bIsResourceItem)
 	{
 		LOG_Frame_WARNING(TEXT("이 아이템은 자원입니다. 카테고리: %d, 점수: %d"),
 			static_cast<int32>(ItemData.Category), ItemData.BaseScore);
-	}
+	}*/
 
 	ApplyCollisionSettings();
 
@@ -319,13 +319,11 @@ FString AItemBase::GetInteractMessage_Implementation() const
 	{
 		if (const FItemDataRow* Found = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("GetInteractMessage")))
 		{
-			return FString::Printf(TEXT("%s 습득 (x%d)"),
-				*Found->ItemName.ToString(), Quantity);
+			return FString::Printf(TEXT("%s 습득 (x%d)"), *Found->ItemName.ToString(), Quantity);
 		}
 	}
 
-	return FString::Printf(TEXT("%s 습득 (x%d)"),
-		*ItemRowName.ToString(), Quantity);
+	return FString::Printf(TEXT("%s 습득 (x%d)"), *ItemRowName.ToString(), Quantity);
 }
 
 void AItemBase::Server_TryPickupByPlayer_Implementation(APlayerController* PlayerController)
