@@ -1492,7 +1492,8 @@ void ABaseCharacter::UpdateGunWallClipOffset(float DeltaTime)
 	float MuzzlePitch = MuzzleRot.Pitch;  // 상하 방향 판별용
 
 	// 2. 라인 트레이스
-	FVector TraceEnd = MuzzleLoc + MuzzleForward * 50.0f;
+	static constexpr float GunWallTraceDistance = 50.0f; // 50에서 100으로 더 여유있게
+	FVector TraceEnd = MuzzleLoc + MuzzleForward * GunWallTraceDistance;
 
 	FHitResult Hit;
 	FCollisionQueryParams Params;
@@ -1501,19 +1502,36 @@ void ABaseCharacter::UpdateGunWallClipOffset(float DeltaTime)
 	bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, MuzzleLoc, TraceEnd, ECC_Visibility, Params);
 
 	DrawDebugLine(GetWorld(), MuzzleLoc, TraceEnd, FColor::Red, false, 0.1f);
-
 	// 3. 벽과의 거리 비율 계산
-	float WallRatio = 0.0f;
+	//float WallRatio = 0.0f;
+	//if (bHit)
+	//{
+	//	float Dist = (Hit.Location - MuzzleLoc).Size();
+	//	WallRatio = 1.0f - (Dist / 30.0f); // 30cm 안으로 들어가면 1.0
+	//	WallRatio = FMath::Clamp(WallRatio, 0.0f, 1.0f);
+	//}
+
+	static constexpr float WallClipTriggerDistance = 60.0f;
+	float TargetWallRatio = 0.0f;
+
 	if (bHit)
 	{
 		float Dist = (Hit.Location - MuzzleLoc).Size();
-		WallRatio = 1.0f - (Dist / 30.0f); // 30cm 안으로 들어가면 1.0
-		WallRatio = FMath::Clamp(WallRatio, 0.0f, 1.0f);
+		if (Dist < WallClipTriggerDistance)
+		{
+			TargetWallRatio = 1.0f - (Dist / WallClipTriggerDistance);
+			TargetWallRatio = FMath::Clamp(TargetWallRatio, 0.0f, 1.0f);
+		}
 	}
+
+	// WallRatio 보간 (떨림 방지 핵심)
+	static float SmoothedWallRatio = 0.0f; // 내부 상태 유지
+	SmoothedWallRatio = FMath::FInterpTo(SmoothedWallRatio, TargetWallRatio, DeltaTime, 3.0f);
+
 
 	// 4. Pitch 보정값 계산 (상하 방향에 따라 부호 바꿈)
 	float DirectionSign = MuzzlePitch >= 0 ? 1.0f : -1.0f;  // 위를 보면 +, 아래를 보면 -
-	float TargetOffset = FMath::Lerp(0.0f, MaxWallClipPitch, WallRatio) * DirectionSign;
+	float TargetOffset = FMath::Lerp(0.0f, MaxWallClipPitch, SmoothedWallRatio) * DirectionSign;
 
 	// 5. 부드러운 보간
 	WallClipAimOffsetPitch = FMath::FInterpTo(WallClipAimOffsetPitch, TargetOffset, DeltaTime, 10.0f);
