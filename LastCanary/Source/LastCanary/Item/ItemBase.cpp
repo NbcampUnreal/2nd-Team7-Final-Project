@@ -122,8 +122,7 @@ void AItemBase::ApplyItemDataFromTable()
 	FItemDataRow* Found = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("ApplyItemDataFromTable"));
 	if (!Found)
 	{
-		LOG_Item_WARNING(TEXT("[AItemBase::ApplyItemDataFromTable] ItemData not found for: %s"),
-			*ItemRowName.ToString());
+		LOG_Item_WARNING(TEXT("[AItemBase::ApplyItemDataFromTable] ItemData not found for: %s"), *ItemRowName.ToString());
 		return;
 	}
 
@@ -358,14 +357,6 @@ bool AItemBase::Internal_TryPickupByPlayer(APlayerController* PlayerController)
 		return false;
 	}
 
-	if (UBackpackInventoryComponent* BackpackInventory = Character->GetBackpackInventoryComponent())
-	{
-		if (BackpackInventory->TryAddItem(this))
-		{
-			return true;
-		}
-	}
-
 	if (UToolbarInventoryComponent* ToolbarInventory = Character->GetToolbarInventoryComponent())
 	{
 		if (ToolbarInventory->TryAddItem(this))
@@ -374,8 +365,7 @@ bool AItemBase::Internal_TryPickupByPlayer(APlayerController* PlayerController)
 		}
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("[AItemBase::Internal_TryPickupByPlayer] 인벤토리가 가득참: %s"),
-		*ItemRowName.ToString());
+	UE_LOG(LogTemp, Warning, TEXT("[AItemBase::Internal_TryPickupByPlayer] 인벤토리가 가득참: %s"), *ItemRowName.ToString());
 	return false;
 }
 

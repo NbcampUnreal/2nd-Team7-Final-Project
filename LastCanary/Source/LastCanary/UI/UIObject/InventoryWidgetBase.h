@@ -73,4 +73,7 @@ protected:
 
     /** 공유 툴팁 위젯 생성 */
     void CreateSharedTooltipWidget();
+
+    /** 데이터 전환 함수 */
+    FBaseItemSlotData ConvertBackpackSlotToBaseSlot(const FBackpackSlotData& BackpackSlot);
 };

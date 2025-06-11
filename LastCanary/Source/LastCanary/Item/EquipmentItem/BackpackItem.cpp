@@ -1,34 +1,16 @@
 #include "Item/EquipmentItem/BackpackItem.h"
 #include "Character/BaseCharacter.h"
+#include "Inventory/ToolbarInventoryComponent.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "LastCanary.h"
 
 ABackpackItem::ABackpackItem()
 {
-    BackpackInventoryComponent = CreateDefaultSubobject<UBackpackInventoryComponent>(TEXT("BackpackInventoryComponent"));
 }
 
 void ABackpackItem::BeginPlay()
 {
     Super::BeginPlay();
-
-    if (HasAuthority())
-    {
-        InitializeBackpack();
-    }
-}
-
-void ABackpackItem::InitializeBackpack()
-{
-    if (BackpackInventoryComponent)
-    {
-        BackpackInventoryComponent->MaxSlots = BackpackSlots;
-    }
-}
-
-UBackpackInventoryComponent* ABackpackItem::GetBackpackInventoryComponent() const
-{
-    return BackpackInventoryComponent;
 }
 
 void ABackpackItem::UseItem()
@@ -44,12 +26,12 @@ void ABackpackItem::UseItem()
     Super::UseItem();
 }
 
-TArray<FBaseItemSlotData> ABackpackItem::GetBackpackData() const
+TArray<FBackpackSlotData> ABackpackItem::GetBackpackData() const
 {
     return BackpackData;
 }
 
-void ABackpackItem::SetBackpackData(const TArray<FBaseItemSlotData>& NewData)
+void ABackpackItem::SetBackpackData(const TArray<FBackpackSlotData>& InData)
 {
-    BackpackData = NewData;
+    BackpackData = InData;
 }

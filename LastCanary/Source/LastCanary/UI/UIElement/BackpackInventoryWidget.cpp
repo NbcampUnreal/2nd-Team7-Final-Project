@@ -1,5 +1,5 @@
 #include "UI/UIElement/BackpackInventoryWidget.h"
-#include "Inventory/BackpackInventoryComponent.h"
+#include "Inventory/ToolbarInventoryComponent.h"
 #include "Components/GridPanel.h"
 #include "LastCanary.h"
 
@@ -25,29 +25,26 @@ void UBackpackInventoryWidget::RefreshInventoryUI()
 
     BackpackSlotPanel->ClearChildren();
 
-    UBackpackInventoryComponent* BackpackInventory = Cast<UBackpackInventoryComponent>(InventoryComponent);
-    if (!BackpackInventory)
+    UToolbarInventoryComponent* ToolbarInventory = Cast<UToolbarInventoryComponent>(InventoryComponent);
+    if (!ToolbarInventory)
     {
-        LOG_Item_WARNING(TEXT("[BackpackInventoryWidget::RefreshInventoryUI] BackpackInventory Cast 실패!"));
-        LOG_Item_WARNING(TEXT("[BackpackInventoryWidget::RefreshInventoryUI] InventoryComponent 클래스: %s"),
-            InventoryComponent ? *InventoryComponent->GetClass()->GetName() : TEXT("NULL"));
+        LOG_Item_WARNING(TEXT("[ToolbarInventoryWidget::RefreshInventoryUI] InventoryComponent 캐스팅 실패!"));
         return;
     }
 
-    for (int32 i = 0; i < BackpackInventory->ItemSlots.Num(); ++i)
+    TArray<FBackpackSlotData> BackpackSlots = ToolbarInventory->GetCurrentBackpackSlots();
+    for (int32 i = 0; i < BackpackSlots.Num(); ++i)
     {
-        const FBaseItemSlotData& SlotData = BackpackInventory->ItemSlots[i];
-
-        UInventorySlotWidget* SlotWidget = CreateSlotWidget(i, SlotData);
+        FBaseItemSlotData BaseSlot = ConvertBackpackSlotToBaseSlot(BackpackSlots[i]);
+        UInventorySlotWidget* SlotWidget = CreateSlotWidget(i, BaseSlot);
         if (!SlotWidget)
         {
-            LOG_Item_WARNING(TEXT("[BackpackInventoryWidget::RefreshInventoryUI] 슬롯 위젯 생성 실패: %d"), i);
             continue;
         }
 
         int32 Row = i / ColumnsPerRow;
-        int32 Column = i % ColumnsPerRow;
+        int32 Col = i % ColumnsPerRow;
 
-        BackpackSlotPanel->AddChildToGrid(SlotWidget, Row, Column);
+        BackpackSlotPanel->AddChildToGrid(SlotWidget, Row, Col);
     }
 }

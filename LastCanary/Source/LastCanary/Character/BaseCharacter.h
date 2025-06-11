@@ -16,6 +16,7 @@ class AItemBase;
 class UToolbarInventoryComponent;
 class UBackpackInventoryComponent;
 struct FBaseItemSlotData;
+struct FBackpackSlotData;
 class UItemSpawnerComponent;
 class UPostProcessComponent;
 class AResourceNode;
@@ -52,10 +53,6 @@ public:
 	// 캐릭터 인벤토리 컴포넌트
 	UPROPERTY(VisibleAnywhere, Category = "Inventory")
 	UToolbarInventoryComponent* ToolbarInventoryComponent;
-
-	UPROPERTY(VisibleAnywhere, Category = "Inventory")
-	UBackpackInventoryComponent* BackpackInventoryComponent;
-
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	TObjectPtr<UArrowComponent> ThirdPersonArrow;
@@ -446,8 +443,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	UToolbarInventoryComponent* GetToolbarInventoryComponent() const;
 
-	UFUNCTION(BlueprintCallable, Category = "Inventory")
-	UBackpackInventoryComponent* GetBackpackInventoryComponent() const;
 private:
 	UPROPERTY(Replicated)
 	FGameplayTagContainer EquippedTags;
@@ -504,22 +499,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Character|Inventory")
 	void DropItemAtSlot(int32 SlotIndex, int32 Quantity = 1);
 
-public:
 	//-----------------------------------------------------
 	// 가방 관리 (간소화)
 	//-----------------------------------------------------
-
-	/** 가방 장착 (데이터 복사 방식) */
-	UFUNCTION(BlueprintCallable, Category = "Character|Equipment")
-	bool EquipBackpack(const TArray<FBaseItemSlotData>& BackpackData, int32 MaxSlots);
-
-	/** 가방 해제 (데이터 반환) */
-	UFUNCTION(BlueprintCallable, Category = "Character|Equipment")
-	TArray<FBaseItemSlotData> UnequipBackpack();
-
-	/** 가방이 장착되어 있는지 확인 */
-	UFUNCTION(BlueprintPure, Category = "Character|Equipment")
-	bool HasBackpackEquipped() const;
 
 private:
 	/** 가방 메시 설정 */
