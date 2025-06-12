@@ -1,6 +1,9 @@
 #include "Item/ResourceItem/ResourceItemSpawnManager.h"
 #include "Item/ItemBase.h"
 #include "Item/ItemSpawnerComponent.h"
+#include "Item/ResourceNode.h"
+#include "DataTable/ResourceNodeSpawnRow.h"
+#include "Engine/TargetPoint.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "Framework/Manager/LCTimeManager.h"
@@ -32,6 +35,8 @@ void AResourceItemSpawnManager::BeginPlay()
 		{
 			SpawnItemsForTheme();
 		}
+
+		SpawnResourceNodes(SpawnCount);
 	}
 }
 
@@ -213,6 +218,76 @@ void AResourceItemSpawnManager::SetCurrentRegionTag(const FString& MapName)
 		LOG_Item_WARNING(TEXT("[ResourceItemSpawnManager] Invalid region tag: %s"), *TagName);
 	}
 }
+
+void AResourceItemSpawnManager::SpawnResourceNodes(int32 Count)
+{
+	if (ResourceNodeSpawnTable == nullptr)
+	{
+		return;
+	}
+
+	// 1. DataTable Row 가져오기
+	TArray<FResourceNodeSpawnRow*> Rows;
+	ResourceNodeSpawnTable->GetAllRows(TEXT("SpawnResourceNodes"), Rows);
+	if (Rows.Num() == 0)
+	{
+		return;
+	}
+
+	// 2. TargetPoint 목록 수집
+	TArray<AActor*> FoundPoints;
+	UGameplayStatics::GetAllActorsOfClassWithTag(
+		GetWorld(),
+		ATargetPoint::StaticClass(),
+		TargetPointTag,
+		FoundPoints);
+	if (FoundPoints.Num() == 0)
+	{
+		return;
+	}
+
+	FoundPoints.Sort([](const AActor& A, const AActor& B) { return FMath::RandBool(); }); // 랜덤 섞기
+
+	// 3. 누적 확률 계산
+	float TotalProbability = 0.0f;
+	for (auto Row : Rows)
+	{
+		TotalProbability += Row->SpawnProbability;
+	}
+
+	// 4. 스폰 루프
+	for (int32 i = 0; i < Count && i < FoundPoints.Num(); ++i)
+	{
+		// 4-1. 확률 기반 클래스 선택
+		float Roll = FMath::FRandRange(0.f, TotalProbability);
+		float Accum = 0.0f;
+		TSubclassOf<AResourceNode> SelectedClass = nullptr;
+
+		for (auto Row : Rows)
+		{
+			Accum += Row->SpawnProbability;
+			if (Roll <= Accum)
+			{
+				SelectedClass = Row->ResourceNodeClass;
+				break;
+			}
+		}
+
+		if (SelectedClass == nullptr)
+		{
+			continue;
+		}
+
+		// 4-2. 타깃 포인트에서 무작위 선택 (혹은 순차 선택)
+		int32 Index = i % FoundPoints.Num();
+		FVector SpawnLocation = FoundPoints[Index]->GetActorLocation();
+
+		// 4-3. 액터 스폰
+		FActorSpawnParameters Params;
+		GetWorld()->SpawnActor<AResourceNode>(SelectedClass, SpawnLocation, FRotator::ZeroRotator, Params);
+	}
+}
+
 
 void AResourceItemSpawnManager::SetCurrentMapRegionTag()
 {

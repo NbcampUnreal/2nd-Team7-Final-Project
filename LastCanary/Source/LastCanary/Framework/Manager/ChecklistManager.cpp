@@ -67,7 +67,7 @@ void AChecklistManager::StartChecklist()
 	LOG_Frame_WARNING(TEXT("StartChecklist."));
 	TotalPlayerCount = GetNumPlayers();
 	SubmittedCount = 0;
-
+	LOG_Frame_WARNING(TEXT("제출해야할 플레이어의 숫자 = %d."), TotalPlayerCount); // << 서버
 	if (ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 	{
 		LOG_Frame_WARNING(TEXT("GISubsystem 있음."));
@@ -149,7 +149,7 @@ void AChecklistManager::Server_SubmitChecklist_Implementation(APlayerController*
 			}
 		}
 	}
-
+	TotalPlayerCount = GetNumPlayers();
 	TMap<FName, int32> ParsedResources;
 	if (ResourceItemTable)
 	{
@@ -211,7 +211,7 @@ void AChecklistManager::Server_SubmitChecklist_Implementation(APlayerController*
 
 	SubmittedCount++;
 	LOG_Frame_WARNING(TEXT("[ChecklistManager] %s 결과 저장 완료 (%d / %d)"),
-		*Submitter->GetName(), SubmittedCount, TotalPlayerCount);
+		*Submitter->GetName(), SubmittedCount, TotalPlayerCount);  // << 여기 왜 0임?
 
 	if (SubmittedCount >= TotalPlayerCount)
 	{
