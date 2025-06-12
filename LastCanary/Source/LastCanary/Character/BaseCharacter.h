@@ -105,8 +105,6 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Camera", Meta = (ClampMin = -80, ClampMax = 0, ForceUnits = "deg"))
 	float MinPitchAngle{ -60.0f };
 
-	void CalcCameraLocation();
-
 	virtual void CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo) override;
 
 	FTimerHandle MoveTimerHandle;

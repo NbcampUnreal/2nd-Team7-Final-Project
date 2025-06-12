@@ -1009,11 +1009,6 @@ void ABaseCharacter::SmoothMoveStep()
 	Camera->SetWorldLocation(New);
 }
 
-void ABaseCharacter::CalcCameraLocation()
-{
-
-}
-
 void ABaseCharacter::Handle_Reload()
 {
 	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
