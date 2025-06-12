@@ -94,7 +94,7 @@ void ALCGateActor::ReturnToBaseCamp(APlayerController* Controller)
 	}
 
 	PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetToolbarInventoryComponent()->GetInventoryItemIDs());
-	PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetBackpackInventoryComponent()->GetInventoryItemIDs());
+	PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetToolbarInventoryComponent()->GetAllBackpackItemIDs());
 	if (!HasAuthority()) // 서버에서만 처리
 	{
 		LOG_Frame_WARNING(TEXT("서버가 아님"));
