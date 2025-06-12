@@ -39,4 +39,8 @@ public:
 
     /** 가방에 데이터 초기화 함수 */
     void InitializeBackpackSlots(TArray<FBackpackSlotData>& SlotsArray, int32 NumSlots);
+
+    UFUNCTION(Client, Reliable)
+    void Client_ToggleInventory();
+    void Client_ToggleInventory_Implementation();
 };

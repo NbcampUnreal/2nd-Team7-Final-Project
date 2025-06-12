@@ -19,7 +19,11 @@ void ABackpackItem::UseItem()
 {
     if (ABaseCharacter* OwnerCharacter = Cast<ABaseCharacter>(GetOwner()))
     {
-        if (OwnerCharacter->IsLocallyControlled())
+        if (OwnerCharacter->HasAuthority())
+        {
+            Client_ToggleInventory();
+        }
+        else
         {
             OwnerCharacter->ToggleInventory();
         }
@@ -47,5 +51,13 @@ void ABackpackItem::InitializeBackpackSlots(TArray<FBackpackSlotData>& SlotsArra
         DefaultSlot.ItemRowName = FName("Default");
         DefaultSlot.Quantity = 0;
         SlotsArray.Add(DefaultSlot);
+    }
+}
+
+void ABackpackItem::Client_ToggleInventory_Implementation()
+{
+    if (ABaseCharacter* OwnerCharacter = Cast<ABaseCharacter>(GetOwner()))
+    {
+        OwnerCharacter->ToggleInventory();
     }
 }
