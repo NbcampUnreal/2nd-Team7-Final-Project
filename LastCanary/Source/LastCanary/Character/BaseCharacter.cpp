@@ -232,8 +232,18 @@ void ABaseCharacter::NotifyControllerChanged()
 void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo)
 {
 	Super::CalcCamera(DeltaTime, ViewInfo);
-
-	if (bIsAiming && IsValid(CurrentRifleMesh) && !bIsReloading)
+	if (bIsMantling)
+	{
+		Controller->SetControlRotation(GetActorRotation()); // 컨트롤러 회전도 고정
+		SpringArm->bUsePawnControlRotation = false;
+		FVector TargetLoc = GetActorLocation();
+		FRotator TargetRot = GetActorRotation(); // 또는 GetMesh()->GetComponentRotation() 사용 가능
+		ViewInfo.Rotation = TargetRot;// FMath::RInterpTo(ViewInfo.Rotation, TargetRot, DeltaTime, 1.0f);
+		SpringArm->SetWorldRotation(TargetRot);
+		UE_LOG(LogTemp, Warning, TEXT("SpringArm Rotation: %s"), *SpringArm->GetComponentRotation().ToString());
+		
+	}
+	else if (bIsAiming && IsValid(CurrentRifleMesh) && !bIsReloading)
 	{
 		FTransform ScopeTransform = CurrentRifleMesh->GetSocketTransform(TEXT("Scope"));
 		FVector TargetLoc = ScopeTransform.GetLocation();
@@ -251,7 +261,6 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 	else
 	{
 		SpringArm->bUsePawnControlRotation = true;
-		SpringArm->TargetArmLength = 0.0f;
 		// 일반 모드에서는 Super::CalcCamera에서 ViewInfo가 이미 적절히 설정됨
 	}
 }
@@ -318,22 +327,8 @@ void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue, floa
 
 	if (!Controller) return;
 
-	// 현재 컨트롤러 회전
-	FRotator CurrentRotation = Controller->GetControlRotation();
-	float CurrentPitch = CurrentRotation.GetNormalized().Pitch;
-
-	// 입력값 계산
-	const float NewPitchInput = Value.Y * Sensivity;
-
-	// Pitch 제한 적용
-	float NewPitch = FMath::Clamp(CurrentPitch + NewPitchInput, MinPitchAngle, MaxPitchAngle);
-
-	// Yaw는 그대로
-	float NewYaw = CurrentRotation.Yaw + Value.X * Sensivity;
-
-	// 새 회전값 적용
-	FRotator NewRotation = FRotator(NewPitch, NewYaw, 0.f);
-	Controller->SetControlRotation(NewRotation);
+	AddControllerYawInput(Value.X * Sensivity);
+	AddControllerPitchInput(Value.Y * Sensivity);
 }
 
 void ABaseCharacter::CameraShake(float Vertical, float Horizontal)
@@ -614,8 +609,6 @@ void ABaseCharacter::Handle_Crouch(const FInputActionValue& ActionValue)
 			}
 		}
 	}
-
-
 }
 
 void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
