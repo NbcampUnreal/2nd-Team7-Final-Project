@@ -77,12 +77,12 @@ void ALCRotationLuxStatue::EmitLuxRay()
 	const FVector Start = LightOriginLeft->GetComponentLocation();
 	const FVector End = Start + LightOriginLeft->GetForwardVector() * LightRange;
 
-	// 원기둥 형태의 스피어 트레이스 사용
+	// Sweep 트레이스로 빛을 쏨 (통과 없음)
 	FHitResult Hit;
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(this);
 
-	const float TraceRadius = 100.f; // 감지 반경 설정 (원한다면 조절 가능)
+	const float TraceRadius = 100.f;
 
 	bool bHit = GetWorld()->SweepSingleByChannel(
 		Hit,
@@ -99,19 +99,22 @@ void ALCRotationLuxStatue::EmitLuxRay()
 	if (bHit)
 	{
 		LOG_Art(Log, TEXT("[EmitLuxRay] ▶ 빛이 맞은 액터: %s"), *GetNameSafe(HitActor));
+
+		// 맞은 액터가 Lux 태그를 가졌다면 흡수처럼 연출
+		if (HitActor->ActorHasTag("Lux"))
+		{
+			if (HitActor->GetClass()->ImplementsInterface(ULCGimmickInterface::StaticClass()))
+			{
+				ILCGimmickInterface::Execute_ActivateGimmick(HitActor);
+			}
+		}
 	}
 	else
 	{
 		LOG_Art(Log, TEXT("[EmitLuxRay] ▶ 빛이 닿은 액터 없음"));
 	}
 
-	// 감지된 액터가 기믹 인터페이스 구현체면 트리거
-	if (HitActor && HitActor->GetClass()->ImplementsInterface(ULCGimmickInterface::StaticClass()))
-	{
-		ILCGimmickInterface::Execute_ActivateGimmick(HitActor);
-	}
-
-	// 이전에 맞았던 액터가 다른 경우, Deactivate
+	// 이전 타겟이 다르면 Deactivate
 	if (LastLitTarget && LastLitTarget != HitActor)
 	{
 		if (LastLitTarget->GetClass()->ImplementsInterface(ULCGimmickInterface::StaticClass()))
@@ -122,8 +125,9 @@ void ALCRotationLuxStatue::EmitLuxRay()
 
 	LastLitTarget = HitActor;
 
-	// 클라이언트 이펙트 출력
-	Multicast_EmitLightEffect(End);
+	// 시각 이펙트는 빛이 닿은 지점까지만
+	const FVector VisualEnd = bHit ? Hit.ImpactPoint : End;
+	Multicast_EmitLightEffect(VisualEnd);
 }
 
 void ALCRotationLuxStatue::DeactivateLux()

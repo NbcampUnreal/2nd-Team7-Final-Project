@@ -100,6 +100,25 @@ void ALCLuxPrism::StartEmitLux()
 		AudioComponent->Play();
 		LOG_Art(Log, TEXT("▶ StartEmitLux - AudioComponent 재생됨"));
 	}
+
+	if (NiagaraComponent)
+	{
+		const FVector Location = NiagaraComponent->GetComponentLocation();
+		const FRotator Rotation = NiagaraComponent->GetComponentRotation();
+
+		LOG_Art(Log, TEXT("[StartEmitLux] ▶ NiagaraComponent 위치: %s / 회전: %s"),
+			*Location.ToString(), *Rotation.ToString());
+
+		if (!NiagaraComponent->IsActive())
+		{
+			LOG_Art_WARNING(TEXT("[StartEmitLux] ▶ NiagaraComponent가 비활성 상태임"));
+		}
+	}
+	else
+	{
+		LOG_Art_ERROR(TEXT("[StartEmitLux] ▶ NiagaraComponent 없음!"));
+	}
+
 }
 
 void ALCLuxPrism::StopEmitLux()
@@ -126,12 +145,51 @@ void ALCLuxPrism::EmitLux()
 {
 	if (!EmitOrigin) return;
 
-	FVector Start = EmitOrigin->GetComponentLocation();
-	FVector End = Start + EmitOrigin->GetForwardVector() * LightRange;
+	const FVector Start = EmitOrigin->GetComponentLocation();
+	const FVector End = Start + EmitOrigin->GetForwardVector() * LightRange;
 
+	// Sweep 트레이스 (원기둥 형태, 통과 없음)
+	FHitResult Hit;
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+
+	const float TraceRadius = 100.f;
+
+	bool bHit = GetWorld()->SweepSingleByChannel(
+		Hit,
+		Start,
+		End,
+		FQuat::Identity,
+		ECC_Visibility,
+		FCollisionShape::MakeSphere(TraceRadius),
+		Params
+	);
+
+	AActor* HitActor = bHit ? Hit.GetActor() : nullptr;
+
+	if (bHit)
+	{
+		LOG_Art(Log, TEXT("[EmitLux] ▶ 빛이 맞은 액터: %s"), *GetNameSafe(HitActor));
+
+		if (HitActor->ActorHasTag("Lux"))
+		{
+			if (HitActor->GetClass()->ImplementsInterface(ULCGimmickInterface::StaticClass()))
+			{
+				ILCGimmickInterface::Execute_ActivateGimmick(HitActor);
+			}
+		}
+	}
+	else
+	{
+		LOG_Art(Log, TEXT("[EmitLux] ▶ 빛이 닿은 액터 없음"));
+	}
+
+	// 디버그 라인은 맞은 곳까지만
+	const FVector VisualEnd = bHit ? Hit.ImpactPoint : End;
 	if (bUseDebugLine)
 	{
-		DrawDebugLine(GetWorld(), Start, End, FColor::Cyan, false, EmitInterval, 0, 2.0f);
+		DrawDebugLine(GetWorld(), Start, VisualEnd, FColor::Cyan, false, EmitInterval + 0.05f, 0, 2.f);
+		LOG_Art(Log, TEXT("[EmitLux] ▶ 디버그 라인: %s → %s"), *Start.ToString(), *VisualEnd.ToString());
 	}
 }
 

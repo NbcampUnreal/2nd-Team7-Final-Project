@@ -62,6 +62,19 @@ void ALCBaseGimmick::BeginPlay()
 		ActivationTrigger->OnComponentBeginOverlap.AddDynamic(this, &ALCBaseGimmick::OnTriggerEnter);
 		ActivationTrigger->OnComponentEndOverlap.AddDynamic(this, &ALCBaseGimmick::OnTriggerExit);
 	}
+
+	if (ActivationType == EGimmickActivationType::ActivateOnConditionMet)
+	{
+		GetWorldTimerManager().SetTimer(
+			ConditionCheckTimer,
+			this,
+			&ALCBaseGimmick::CheckConditionAndActivate,
+			ConditionCheckInterval,
+			true
+		);
+		CheckConditionAndActivate();
+	}
+
 }
 
 #pragma region Overlap
@@ -73,26 +86,18 @@ void ALCBaseGimmick::OnActorEnter(UPrimitiveComponent* OverlappedComp, AActor* O
 	{
 		AttachedActors.Add(OtherActor);
 	}
-	LOG_Art(Log, TEXT("%s ▶ 감지 영역 진입: %s"), *GetName(), *GetNameSafe(OtherActor));
 }
 
 void ALCBaseGimmick::OnActorExit(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	// 회전/이동 중일 때는 제거하지 않음
 	const bool bIsBusy = ILCGimmickInterface::Execute_IsGimmickBusy(this);
 
 	if (!bIsBusy)
 	{
 		AttachedActors.Remove(OtherActor);
-		LOG_Art(Log, TEXT("%s ▶ 감지 영역 이탈: %s"), *GetName(), *GetNameSafe(OtherActor));
-	}
-	else
-	{
-		LOG_Art(Log, TEXT("%s ▶ 감지 영역 이탈 시도 → 기믹 동작 중이므로 유지: %s"), *GetName(), *GetNameSafe(OtherActor));
 	}
 }
-
 #pragma endregion
 
 #pragma region TriggerOverlap
@@ -159,8 +164,6 @@ void ALCBaseGimmick::OnTriggerExit(UPrimitiveComponent* OverlappedComp, AActor* 
 
 	OverlappingActors.Remove(OtherActor);
 
-	LOG_Art(Log, TEXT("%s ▶ Trigger 이탈: %s"), *GetName(), *GetNameSafe(OtherActor));
-
 	switch (ActivationType)
 	{
 	case EGimmickActivationType::ActivateWhileStepping:
@@ -170,7 +173,6 @@ void ALCBaseGimmick::OnTriggerExit(UPrimitiveComponent* OverlappedComp, AActor* 
 
 			if (!bToggleState)
 			{
-				LOG_Art(Log, TEXT("%s ▶ Trigger 이탈 - 즉시 복귀 시도"), *GetName());
 				ILCGimmickInterface::Execute_ReturnToInitialState(this);
 			}
 		}
@@ -226,6 +228,36 @@ bool ALCBaseGimmick::IsGimmickBusy_Implementation()
 FString ALCBaseGimmick::GetInteractMessage_Implementation() const
 {
 	return InteractMessage;
+}
+
+#pragma endregion
+
+#pragma region Condition / Auto
+
+bool ALCBaseGimmick::IsConditionMet_Implementation() const
+{
+	return false;
+}
+
+void ALCBaseGimmick::CheckConditionAndActivate()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	if (IsConditionMet())
+	{
+		ILCGimmickInterface::Execute_ActivateGimmick(this);
+	}
+}
+
+void ALCBaseGimmick::ActivateLoopedGimmick()
+{
+	if (ILCGimmickInterface::Execute_CanActivate(this))
+	{
+		ILCGimmickInterface::Execute_ActivateGimmick(this);
+	}
 }
 
 #pragma endregion

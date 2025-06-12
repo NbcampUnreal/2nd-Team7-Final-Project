@@ -35,21 +35,17 @@ public:
 
 #pragma region Movement Variables
 
-	/** 이동 거리 (bUseAxis = false일 경우 사용됨) */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Movement", meta = (EditCondition = "!bUseAxis"))
-	float MoveStep;
-
-	/** 이동 벡터 (bUseAxis = true일 경우 사용됨) */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Movement", meta = (EditCondition = "bUseAxis"))
+	/** 이동 방향 벡터 (절대 방향) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Movement")
 	FVector MoveVector;
 
-	/** true면 MoveVector 사용, false면 Z축 기준 MoveStep 사용 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Movement")
-	bool bUseAxis;
-
-	/** 이동 속도 (cm/sec) */
+	/** 이동 속도 (cm/s) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Movement", meta = (ClampMin = "1.0"))
-	float MoveSpeed;
+	float MoveDuration;
+
+	/** 복귀 이동 속도 (cm/s) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Movement", meta = (ClampMin = "1.0"))
+	float ReturnMoveDuration;
 
 	/** 이동 인덱스 (몇 번 이동했는지) */
 	UPROPERTY(VisibleInstanceOnly, Category = "Gimmick|Movement")
@@ -74,7 +70,7 @@ public:
 	FTimerHandle MovementTimerHandle;
 
 	/** 복귀 이동 타이머 */
-	FTimerHandle ReturnTimerHandle;
+	FTimerHandle ReturnMoveTimerHandle;
 
 	/** 클라이언트 보간 이동용 */
 	FVector ClientStartLocation;
@@ -95,21 +91,17 @@ public:
 
 #pragma region Rotation Variables
 
-	/** 회전 각도 (Yaw 기준, bUseRotationAxis = false일 때 사용) */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Rotation", meta = (EditCondition = "!bUseRotationAxis"))
-	float RotationStep;
-
-	/** 회전 벡터 축 (bUseRotationAxis = true일 때 사용) */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Rotation", meta = (EditCondition = "bUseRotationAxis"))
-	FVector RotationAxis;
-
-	/** 축 기반 회전 여부 */
+	/** 회전 축 (Pitch, Yaw, Roll) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Rotation")
-	bool bUseRotationAxis;
+	FVector RotationAxis;
 
 	/** 회전 속도 (deg/sec) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Rotation", meta = (ClampMin = "1.0"))
-	float RotationSpeed;
+	float RotationDuration;
+
+	/** 복귀 회전 속도 (deg/sec) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Rotation", meta = (ClampMin = "1.0"))
+	float ReturnRotationDuration;
 
 	/** 회전 인덱스 */
 	UPROPERTY(VisibleInstanceOnly, Category = "Gimmick|Rotation")
@@ -124,6 +116,9 @@ public:
 	/** 회전 목표값 */
 	FRotator TargetRotation;
 
+	/** 누적 회전량 (Yaw 기준으로 누적) */
+	FRotator AccumulatedDeltaRotation;
+
 	/** 서버 회전 중 여부 */
 	bool bIsRotatingServer;
 
@@ -134,9 +129,10 @@ public:
 	FTimerHandle RotationTimerHandle;
 
 	/** 복귀 회전 타이머 */
-	FTimerHandle RotationReturnTimerHandle;
+	FTimerHandle ReturnRotationTimerHandle;
 
 	/** 클라이언트 보간 회전용 */
+	FRotator AccumulatedRotation;
 	FRotator ClientStartRotation;
 	FRotator ClientTargetRotation;
 	float ClientRotationDuration;
@@ -144,6 +140,8 @@ public:
 	FTimerHandle ClientRotationTimer;
 
 	/** 서버 보간 회전용 */
+	FRotator ServerStartRotation;
+	FRotator ServerTargetRotation;
 	float ServerRotationDuration;
 	float ServerRotationElapsed;
 	FTimerHandle ServerRotationTimer;

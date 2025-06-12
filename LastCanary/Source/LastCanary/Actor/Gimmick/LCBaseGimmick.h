@@ -44,6 +44,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Activation")
 	EGimmickActivationType ActivationType;
 
+	/** 자동 반복 작동용 함수 */
+	UFUNCTION()
+	virtual void ActivateLoopedGimmick(); 
+
+	/** 자동 반복용 타이머 */
+	FTimerHandle LoopedTimerHandle;
+
 	/** ==== 오버랩 방식 ==== */
 
 	/** 오버랩 기반 기믹 작동용 트리거 */
@@ -74,6 +81,24 @@ public:
 	/** ActivateAfterDelay 사용 시 지연 시간 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Activation")
 	float ActivationDelay;
+
+	/** ==== 기타 특정 조건 방식 ==== */
+
+	/** 조건형 기믹 활성 여부 판단용 함수 */
+	UFUNCTION(BlueprintNativeEvent, Category = "Gimmick|Condition")
+	bool IsConditionMet() const;
+	virtual bool IsConditionMet_Implementation() const;
+
+	/** 조건 검사 후 조건 충족 시 Activate */
+	UFUNCTION()
+	void CheckConditionAndActivate();
+
+	/** 조건 체크 주기 */
+	UPROPERTY(EditDefaultsOnly, Category = "Gimmick|Condition")
+	float ConditionCheckInterval;
+
+	/** 조건 체크 타이머 */
+	FTimerHandle ConditionCheckTimer;
 
 	/** ==== 감지 영역 ==== */
 
@@ -120,7 +145,7 @@ public:
 	bool bToggleState;
 
 	/** 상태 복귀까지 대기 시간 (초) */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Toggle", meta = (EditCondition = "!bToggleState"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|State", meta = (EditCondition = "!bToggleState"))
 	float ReturnDelay;
 
 public:
