@@ -80,7 +80,7 @@ public:
 	void Tick(float DeltaSeconds)
 	{
 		Super::Tick(DeltaSeconds);
-
+		
 		//SmoothADSCamera(DeltaSeconds);
 		UpdateGunWallClipOffset(DeltaSeconds);
 	}
@@ -97,7 +97,7 @@ protected:
 	virtual void NotifyControllerChanged() override;
 	virtual void BeginPlay() override;
 
-
+	
 	// Camera Settings
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Camera", Meta = (ClampMin = 0, ClampMax = 90, ForceUnits = "deg"))
@@ -148,6 +148,20 @@ protected:
 	FVector CameraLocationTarget;
 	FRotator CameraRotationTarget;
 
+	/*AIAIAIAIAAI*/
+public:
+	virtual void NotifyNoiseToAI(FVector Velocity) override;
+	virtual void NotifyNoiseToAI(float LandVelocity) override;
+	void MakeNoiseSoundToAI(float Force);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AISettings", meta = (ClampMin = "1.0", ClampMax = "10000.0"))
+	float SoundLoudnessDivider = 1000.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AISettings", meta = (ClampMin = "1.0", ClampMax = "10000.0"))
+	float MaxSoundRange = 1000.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AISettings")
+	FName AISoundCheckTag = "None";
 
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
@@ -434,7 +448,7 @@ public:
 	float FrontInput = 0.0f;
 
 	//달리기 관련 로직
-	float GetPlayerMovementSpeed();
+	float GetPlayerMovementSpeed() const;
 
 	void ConsumeStamina();
 	void TickStaminaDrain();

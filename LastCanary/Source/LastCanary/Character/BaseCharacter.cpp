@@ -33,7 +33,8 @@
 #include "../Plugins/ALS-Refactored-4.15/Source/ALS/Public/AlsAnimationInstance.h"
 #include "Character/BaseCharacterAnimNotify.h"
 #include "Components/PostProcessComponent.h"
-
+#include "Perception/AISense_Hearing.h"
+#include "Kismet/GameplayStatics.h"
 #include "SaveGame/LCLocalPlayerSaveGame.h"
 
 ABaseCharacter::ABaseCharacter()
@@ -255,8 +256,57 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 	}
 }
 
+void ABaseCharacter::NotifyNoiseToAI(FVector Velocity)
+{
+	Super::NotifyNoiseToAI(Velocity);
+	float XSpeed = Velocity.X;
+	float YSpeed = Velocity.Y;
 
+	//플레이어의 앞뒤좌우 움직임의 속도를 가져오는 부분
+	FVector2D XYSpeed(XSpeed, YSpeed);
+	float SpeedXY = XYSpeed.Size();
+	float PowerOnFoot = SpeedXY + Velocity.Z;
+	MakeNoiseSoundToAI(PowerOnFoot);
+}
 
+void ABaseCharacter::NotifyNoiseToAI(float LandVelocity)
+{
+	Super::NotifyNoiseToAI(LandVelocity);
+	float CurrentPlayerSpeed = GetPlayerMovementSpeed();
+	float PowerOnFoot = CurrentPlayerSpeed + LandVelocity;
+
+	MakeNoiseSoundToAI(PowerOnFoot);
+}
+
+void ABaseCharacter::MakeNoiseSoundToAI(float Force)
+{
+	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
+	if (!IsValid(MyPlayerState))
+	{
+		return;
+	}
+	if (Force < MyPlayerState->WalkSpeed)
+	{
+		return;
+	}
+	UE_LOG(LogTemp, Warning, TEXT("발소리가 났음: %f "), Force);
+	
+	FVector SoundLocation = GetActorLocation();
+	
+	float SoundLoudness = Force / SoundLoudnessDivider;
+	
+	AActor* SoundCauser = this;
+	
+	UAISense_Hearing::ReportNoiseEvent(
+		GetWorld(),
+		SoundLocation,              // FVector: 소리가 발생한 위치
+		SoundLoudness,                   // float: 소리의 크기 (기본값은 1.0f, 감지 거리 등에 영향을 줌)
+		SoundCauser,                 // AActor*: 소리의 주체 (보통 this)
+		MaxSoundRange,                   // float: 소리를 들을 수 있는 최대 거리
+		AISoundCheckTag                         // FName: 태그로 필터링 가능 (선택사항)
+	);
+
+}
 
 void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue, float Sensivity)
 {
@@ -539,10 +589,12 @@ void ABaseCharacter::Handle_Crouch(const FInputActionValue& ActionValue)
 	{
 		if (Value > 0.5f)
 		{
+			FootSoundModifier = MyPlayerState->CrouchingFootSoundModifier;
 			SetDesiredStance(AlsStanceTags::Crouching);
 		}
 		else
 		{
+			FootSoundModifier = MyPlayerState->RunningFootSoundModifier;
 			SetDesiredStance(AlsStanceTags::Standing);
 		}
 	}
@@ -552,10 +604,12 @@ void ABaseCharacter::Handle_Crouch(const FInputActionValue& ActionValue)
 		{
 			if (GetDesiredStance() == AlsStanceTags::Standing)
 			{
+				FootSoundModifier = MyPlayerState->CrouchingFootSoundModifier;
 				SetDesiredStance(AlsStanceTags::Crouching);
 			}
 			else if (GetDesiredStance() == AlsStanceTags::Crouching)
 			{
+				FootSoundModifier = MyPlayerState->RunningFootSoundModifier;
 				SetDesiredStance(AlsStanceTags::Standing);
 			}
 		}
@@ -865,7 +919,7 @@ bool ABaseCharacter::IsStaminaFull() const
 	return MyPlayerState->GetStamina() >= MyPlayerState->InitialStats.MaxStamina;
 }
 
-float ABaseCharacter::GetPlayerMovementSpeed()
+float ABaseCharacter::GetPlayerMovementSpeed() const
 {
 	float XSpeed = GetLocomotionStateMovementSpeed().X;
 	float YSpeed = GetLocomotionStateMovementSpeed().Y;

@@ -519,6 +519,7 @@ void AAlsCharacter::NotifyLocomotionModeChanged(const FGameplayTag& PreviousLoco
 	if (LocomotionMode == AlsLocomotionModeTags::Grounded &&
 	    PreviousLocomotionMode == AlsLocomotionModeTags::InAir)
 	{
+		NotifyNoiseToAI(-LocomotionState.Velocity.Z);
 		GetFallDamage(LocomotionState.Velocity.Z);
 		if (LocomotionState.Velocity.Z <= -500.0f) // 적절히 튜닝
 		{
@@ -1971,7 +1972,17 @@ void AAlsCharacter::GetFallDamage(float Velocity)
 }
 
 
-FVector AAlsCharacter::GetLocomotionStateMovementSpeed()
+FVector AAlsCharacter::GetLocomotionStateMovementSpeed() const
 {
 	return LocomotionState.Velocity;
+}
+
+void AAlsCharacter::NotifyNoiseToAI(FVector Velocity)
+{
+	return;
+}
+
+void AAlsCharacter::NotifyNoiseToAI(float LandVelocity)
+{
+	return;
 }
