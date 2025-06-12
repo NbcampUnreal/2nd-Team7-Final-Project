@@ -70,16 +70,16 @@ public:
     float MaxStamina = 100.f;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stamina")
-    float StaminaDrainRate = 15.f; // 초당 15 소모
+    float StaminaDrainRate = 10.f; // 초당 10 소모
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stamina")
-    float StaminaRecoveryRate = 30.f; // 초당 30 회복
+    float StaminaRecoveryRate = 50.f; // 초당 50 회복
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stamina")
-    float RecoverDelayTime = 3.0f;
+    float RecoverDelayTime = 1.0f;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stamina")
-    float JumpStaminaCost = 15.0f;
+    float JumpStaminaCost = 10.0f;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stamina")
     float ExhaustionRecoveryThreshold = 30.0f;

@@ -95,4 +95,5 @@ public:
 	void Server_SubmitChecklist(APlayerController* Submitter, const TArray<FChecklistQuestion>& PlayerAnswers);
 	void Server_SubmitChecklist_Implementation(APlayerController* Submitter, const TArray<FChecklistQuestion>& PlayerAnswers);
 
+	TMap<FName, int32> CollectAllPlayerResources();
 };

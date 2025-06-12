@@ -41,4 +41,7 @@ public:
     virtual FString GetInteractMessage_Implementation() const override;
 
     void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
+
+    void ReturnToBaseCamp(APlayerController* Controller);
+    void IntoGameLevel(APlayerController* Controller);
 };

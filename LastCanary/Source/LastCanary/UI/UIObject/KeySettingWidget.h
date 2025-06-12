@@ -313,10 +313,11 @@ public:
 
 
 	UFUNCTION(BlueprintCallable)
-	void UpdateMappings(FName DisplayName, FKey Key);
+	void UpdateMappings(FName MappingName, FKey Key);
 
 	UFUNCTION(BlueprintCallable)
 	void InitialMappings();
+	void ResetKeyBindings();
 	//TMap<FName, FKey> PendingMappings;
 
 	//void QueueMapping(FName MappingName, FKey Key);

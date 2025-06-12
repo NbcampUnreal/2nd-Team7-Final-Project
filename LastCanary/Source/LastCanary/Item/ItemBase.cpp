@@ -122,8 +122,7 @@ void AItemBase::ApplyItemDataFromTable()
 	FItemDataRow* Found = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("ApplyItemDataFromTable"));
 	if (!Found)
 	{
-		LOG_Item_WARNING(TEXT("[AItemBase::ApplyItemDataFromTable] ItemData not found for: %s"),
-			*ItemRowName.ToString());
+		LOG_Item_WARNING(TEXT("[AItemBase::ApplyItemDataFromTable] ItemData not found for: %s"), *ItemRowName.ToString());
 		return;
 	}
 
@@ -132,11 +131,11 @@ void AItemBase::ApplyItemDataFromTable()
 
 	SetupMeshComponents();
 
-	if (ItemData.bIsResourceItem)
+	/*if (ItemData.bIsResourceItem)
 	{
 		LOG_Frame_WARNING(TEXT("이 아이템은 자원입니다. 카테고리: %d, 점수: %d"),
 			static_cast<int32>(ItemData.Category), ItemData.BaseScore);
-	}
+	}*/
 
 	ApplyCollisionSettings();
 
@@ -319,13 +318,11 @@ FString AItemBase::GetInteractMessage_Implementation() const
 	{
 		if (const FItemDataRow* Found = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("GetInteractMessage")))
 		{
-			return FString::Printf(TEXT("%s 습득 (x%d)"),
-				*Found->ItemName.ToString(), Quantity);
+			return FString::Printf(TEXT("%s 습득 (x%d)"), *Found->ItemName.ToString(), Quantity);
 		}
 	}
 
-	return FString::Printf(TEXT("%s 습득 (x%d)"),
-		*ItemRowName.ToString(), Quantity);
+	return FString::Printf(TEXT("%s 습득 (x%d)"), *ItemRowName.ToString(), Quantity);
 }
 
 void AItemBase::Server_TryPickupByPlayer_Implementation(APlayerController* PlayerController)
@@ -360,14 +357,6 @@ bool AItemBase::Internal_TryPickupByPlayer(APlayerController* PlayerController)
 		return false;
 	}
 
-	if (UBackpackInventoryComponent* BackpackInventory = Character->GetBackpackInventoryComponent())
-	{
-		if (BackpackInventory->TryAddItem(this))
-		{
-			return true;
-		}
-	}
-
 	if (UToolbarInventoryComponent* ToolbarInventory = Character->GetToolbarInventoryComponent())
 	{
 		if (ToolbarInventory->TryAddItem(this))
@@ -376,8 +365,7 @@ bool AItemBase::Internal_TryPickupByPlayer(APlayerController* PlayerController)
 		}
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("[AItemBase::Internal_TryPickupByPlayer] 인벤토리가 가득참: %s"),
-		*ItemRowName.ToString());
+	UE_LOG(LogTemp, Warning, TEXT("[AItemBase::Internal_TryPickupByPlayer] 인벤토리가 가득참: %s"), *ItemRowName.ToString());
 	return false;
 }
 

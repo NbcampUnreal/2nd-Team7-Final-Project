@@ -57,21 +57,18 @@ void URoomWidget::CreatePlayerSlots()
 	{
 		UPlayerSlot* NewPlayerSlot = CreateWidget<UPlayerSlot>(this, PlayerSlotClass);
 
-		NewPlayerSlot->SetSlotIndex(i + 1);
-		PlayerListContainer->AddChild(NewPlayerSlot);
-		PlayerSlots.Add(NewPlayerSlot);
+		if (NewPlayerSlot)
+		{
+			NewPlayerSlot->SetSlotIndex(i + 1);
+			PlayerListContainer->AddChild(NewPlayerSlot);
+			PlayerSlots.Add(NewPlayerSlot);
+		}
 	}
 }
 
 void URoomWidget::UpdatePlayerLists(const TArray<FSessionPlayerInfo>& PlayerInfos)
 {
 	SessionPlayerInfos = PlayerInfos;
-
-	if (!IsInViewport())
-	{
-		LOG_Server_WARNING(TEXT("UpdatePlayerLists: 위젯이 뷰포트에 없음 → 리턴"));
-		return;
-	}
 
 	UpdatePlayerSlots(PlayerInfos);
 }
@@ -84,16 +81,15 @@ void URoomWidget::UpdatePlayerSlots(const TArray<FSessionPlayerInfo>& PlayerInfo
 		return;
 	}
 
-	for (int32 i = 0; i < MaxPlayerNum; i++)
+	for (int32 i = 0; i < PlayerSlots.Num(); ++i)
 	{
-		if (PlayerSlots.IsValidIndex(i) && PlayerSlots[i])
+		if (PlayerSlots[i])
 		{
 			PlayerSlots[i]->ClearPlayerInfo();
 
 			if (PlayerInfos.IsValidIndex(i))
 			{
-				FSessionPlayerInfo Info = PlayerInfos[i];
-				PlayerSlots[i]->SetPlayerInfo(Info);
+				PlayerSlots[i]->SetPlayerInfo(PlayerInfos[i]);
 			}
 		}
 	}

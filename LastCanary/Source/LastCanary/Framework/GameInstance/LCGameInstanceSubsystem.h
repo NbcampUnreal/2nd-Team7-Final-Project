@@ -30,6 +30,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Data")
 	TObjectPtr<UDataTable> GunDataTable;
 
+	UFUNCTION(BlueprintCallable)
 	ULCUIManager* GetUIManager() const;
 	void ChangeLevelByMapName(const FName& MapName);
 	void ChangeLevelByMapID(int32 MapID);

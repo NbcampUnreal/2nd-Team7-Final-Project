@@ -66,6 +66,11 @@ void UPlayerSlot::SetPlayerInfo(const FSessionPlayerInfo& PlayerInfo)
     //    ReadyText->SetText(FText::FromString(IsReady));
     //}
 
+    if (!IsValid(GetOwningPlayer()))
+    {
+        return;
+    }
+
     SetVisibleKickButton(PlayerInfo);
 
     SetVisibleVoiceChat(PlayerInfo);
@@ -122,7 +127,7 @@ void UPlayerSlot::OnKickButtonClicked()
         return;
     }
 
-    GM->KickPlayer(MySessionPlayerInfo, FText::FromString("호스트에 의해 강퇴되었습니다!!"));
+    GM->KickPlayer(MySessionPlayerInfo, FText::FromString(TEXT("호스트에 의해 강퇴되었습니다!!")));
 }
 
 //
@@ -138,8 +143,20 @@ void UPlayerSlot::OnKickButtonClicked()
 
 void UPlayerSlot::ClearPlayerInfo()
 {
-    NickNameText->SetText(FText::FromString("Empty Slot"));
-    KickButton->SetVisibility(ESlateVisibility::Hidden);
-    MuteButton->SetVisibility(ESlateVisibility::Hidden);
-    VolumeSlider->SetVisibility(ESlateVisibility::Hidden);
+    if (NickNameText)
+    {
+        NickNameText->SetText(FText::FromString("Empty Slot"));
+    }
+    if (KickButton)
+    {
+        KickButton->SetVisibility(ESlateVisibility::Hidden);
+    }
+    if (MuteButton)
+    {
+        MuteButton->SetVisibility(ESlateVisibility::Hidden);
+    }
+    if (VolumeSlider)
+    {
+        VolumeSlider->SetVisibility(ESlateVisibility::Hidden);
+    }
 }

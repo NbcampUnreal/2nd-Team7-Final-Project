@@ -86,7 +86,12 @@ void ULCGameInstance::LoadItemData()
 // BluePrint에서 Create Session을 합니다.
 void ULCGameInstance::CreateSession_Implementation(const FSessionInfo& SessionInfo)
 {
-	UE_LOG(LogTemp, Warning, TEXT("CreateSession called in C++"));
+	LOG_Server_WARNING(TEXT("CreateSession called in C++"));
+}
+
+void ULCGameInstance::UpdateSession_Implementation(bool bAdvertise, bool bAllowJoin, int32 NumPublicConnections)
+{
+	LOG_Server_WARNING(TEXT("UpdateSession called in C++"));
 }
 
 void ULCGameInstance::Shutdown()
@@ -111,9 +116,10 @@ void ULCGameInstance::LoadGunData()
 	{
 		if (GunDataRow)
 		{
+			GunDataRow->GunID = FCrc::StrCrc32(*GunDataRow->GunName.ToString());
 			// 예: 아이디 해시화 → 캐싱 용도
-			int32 HashedID = GetTypeHash(GunDataRow->GunName);
-			GunDataRow->GunID = HashedID;
+			//int32 HashedID = GetTypeHash(GunDataRow->GunName);
+			//GunDataRow->GunID = HashedID;
 		}
 	}
 }

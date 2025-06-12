@@ -2,7 +2,12 @@
 
 #include "CoreMinimal.h"
 #include "Inventory/InventoryComponentBase.h"
+#include "Item/EquipmentItem/GunBase.h"
+#include "Item/EquipmentItem/BackpackItem.h"
 #include "ToolbarInventoryComponent.generated.h"
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnBackpackEquipped, const TArray<FBackpackSlotData>&, BackpackSlots);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnBackpackUnequipped);
 
 class ABaseCharacter;
 struct FGameplayTag;
@@ -29,6 +34,13 @@ public:
     /** 현재 장착된 슬롯 인덱스 */
     UPROPERTY(Replicated)
     int32 CurrentEquippedSlotIndex;
+
+    // 가방 이벤트
+    UPROPERTY(BlueprintAssignable, Category = "Backpack")
+    FOnBackpackEquipped OnBackpackEquipped;
+
+    UPROPERTY(BlueprintAssignable, Category = "Backpack")
+    FOnBackpackUnequipped OnBackpackUnequipped;
 
 public:
     FORCEINLINE int32 GetCurrentEquippedSlotIndex() { return CurrentEquippedSlotIndex; }
@@ -69,9 +81,54 @@ public:
     FBaseItemSlotData* GetItemDataAtSlot(int32 SlotIndex);
 
 public:
+    /** 현재 장착된 가방의 슬롯 데이터 가져오기 */
+    UFUNCTION(BlueprintPure, Category = "Backpack")
+    TArray<FBackpackSlotData> GetCurrentBackpackSlots() const;
+
+    /** 가방 슬롯 데이터 업데이트 (UI에서 호출) */
+    UFUNCTION(BlueprintCallable, Category = "Backpack")
+    bool UpdateCurrentBackpackSlots(const TArray<FBackpackSlotData>& NewSlots);
+
+    /** 가방에 아이템 추가 (UI에서 직접 호출용) */
+    UFUNCTION(BlueprintCallable, Category = "Backpack")
+    bool AddItemToBackpack(FName ItemRowName, int32 Quantity, int32 BackpackSlotIndex);
+
+    /** 가방에서 아이템 제거 (UI에서 직접 호출용) */
+    UFUNCTION(BlueprintCallable, Category = "Backpack")
+    bool RemoveItemFromBackpack(int32 BackpackSlotIndex, int32 Quantity);
+
+    /** 가방이 장착되어 있는지 확인 */
+    UFUNCTION(BlueprintPure, Category = "Backapck|Equipment")
+    bool HasBackpackEquipped() const;
+
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Persistence")
+    TArray<int32> GetAllBackpackItemIDs() const;
+
+private:
+    /** 가방 전용 장착 전처리 */
+    void HandleBackpackEquip(int32 SlotIndex);
+
+    /** 가방 전용 해제 전처리 */
+    void HandleBackpackUnequip(int32 SlotIndex);
+
+    /** 가방인지 확인 */
+    bool IsBackpackItem(const FItemDataRow* ItemData) const;
+    bool IsBackpackItem(FName ItemRowName) const;
+    bool HasOtherEquippedItems() const;
+
+    /** 수집품인지 확인 */
+    bool IsCollectibleItem(const FItemDataRow* ItemData) const;
+
+public:
     /** 장착된 아이템의 내구도를 슬롯에 동기화 */
     UFUNCTION(BlueprintCallable, Category = "Toolbar|Sync")
     void SyncEquippedItemDurabilityToSlot();
+
+    UFUNCTION()
+    void SyncGunStateToSlot();
+
+    UFUNCTION()
+    void RestoreGunStateFromSlot(AGunBase* Gun, const FBaseItemSlotData& SlotData);
 
     //-----------------------------------------------------
     // 드랍 기능
@@ -98,6 +155,11 @@ private:
 
 private:
     bool Internal_DropEquippedItemAtSlot(int32 SlotIndex, int32 Quantity);
+
+    /** 아이템 습득 시 플레이어 스테이트와 동기화 */
+    void OnItemAcquired(const FName& ItemRowName);
+    /** 아이템 드랍 시 플레이어 스테이트와 동기화 */
+    void OnItemDropped(const FName& ItemRowName);
 
     //-----------------------------------------------------
     // 네트워크
