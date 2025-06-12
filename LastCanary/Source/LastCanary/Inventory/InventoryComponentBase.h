@@ -224,16 +224,6 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Inventory|Utility")
     void SetSlotToDefault(int32 SlotIndex);
 
-
-public:
-    /** 인벤토리 슬롯들의 ItemID 배열 반환 (레벨 이동 시 사용) */
-    UFUNCTION(BlueprintCallable, Category = "Inventory|Persistence")
-    TArray<int32> GetInventoryItemIDs() const;
-
-    /** ItemID 배열로부터 인벤토리 복원 (레벨 이동 후 사용) */
-    UFUNCTION(BlueprintCallable, Category = "Inventory|Persistence")
-    void SetInventoryFromItemIDs(const TArray<int32>& ItemIDs);
-
 protected:
     /** ItemRowName을 ItemID로 변환 */
     UFUNCTION(BlueprintPure, Category = "Inventory|Utility")
