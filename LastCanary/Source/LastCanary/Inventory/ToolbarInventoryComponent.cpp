@@ -369,14 +369,14 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
     if (CachedOwnerCharacter) CachedOwnerCharacter->SetEquipped(true);
 
     // UI 처리
-    if (CachedOwnerCharacter && CachedOwnerCharacter->IsLocallyControlled())
+    if (GetOwner()->HasAuthority())
     {
         if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
         {
             if (UInventoryMainWidget* InventoryWidget = UIManager->GetInventoryMainWidget())
             {
                 FText DisplayText = FText::FromString(ItemData->ItemName.ToString());
-                InventoryWidget->ShowToolbarSlotItemText(DisplayText);
+                MulticastUpdateItemText(DisplayText);
             }
         }
     }
@@ -606,6 +606,11 @@ void UToolbarInventoryComponent::SetupEquippedItem(UChildActorComponent* ItemCom
     if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem))
     {
         EquipmentItem->SetEquipped(true);
+    }
+
+    if (ABackpackItem* BackpackItem = Cast<ABackpackItem>(EquippedItem))
+    {
+        BackpackItem->bMeshVisible = false; // 자동으로 복제됨
     }
 
     EquippedItem->ForceNetUpdate();
@@ -953,13 +958,7 @@ void UToolbarInventoryComponent::HandleBackpackEquip(int32 SlotIndex)
             SetupEquippedItem(EquippedItemComponent, CachedOwnerCharacter->GetMesh(), TargetSocket, ItemData, &SlotData);
 
             // 메시 숨김
-            if (ABackpackItem* BackpackItem = Cast<ABackpackItem>(EquippedItemComponent->GetChildActor()))
-            {
-                if (UMeshComponent* MeshComp = BackpackItem->GetMeshComponent())
-                {
-                    MeshComp->SetVisibility(false);
-                }
-            }
+            Multicast_SetBackpackVisibility(false);
         }
     }
 
@@ -1031,6 +1030,17 @@ bool UToolbarInventoryComponent::HasOtherEquippedItems() const
         }
     }
     return false;
+}
+
+void UToolbarInventoryComponent::Multicast_SetBackpackVisibility_Implementation(bool bVisible)
+{
+    if (ABackpackItem* BackpackItem = Cast<ABackpackItem>(EquippedItemComponent->GetChildActor()))
+    {
+        if (UMeshComponent* MeshComp = BackpackItem->GetMeshComponent())
+        {
+            MeshComp->SetVisibility(bVisible);
+        }
+    }
 }
 
 bool UToolbarInventoryComponent::IsCollectibleItem(const FItemDataRow* ItemData) const
@@ -1183,6 +1193,26 @@ void UToolbarInventoryComponent::OnItemDropped(const FName& ItemRowName)
             {
                 PS->AquiredItemIDs.Remove(ItemID);
             }
+        }
+    }
+}
+
+void UToolbarInventoryComponent::MulticastUpdateItemText_Implementation(const FText& ItemName)
+{
+    // 각 클라이언트에서 실행
+    if (!IsOwnerCharacterValid()) return;
+
+    APlayerController* PC = CachedOwnerCharacter->GetController<APlayerController>();
+    if (!PC || !PC->IsLocalController()) return; // 로컬 컨트롤러만
+
+    ULCGameInstanceSubsystem* GISubsystem = GetOwner()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
+    if (!GISubsystem) return;
+
+    if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
+    {
+        if (UInventoryMainWidget* InventoryWidget = UIManager->GetInventoryMainWidget())
+        {
+            InventoryWidget->ShowToolbarSlotItemText(ItemName);
         }
     }
 }
