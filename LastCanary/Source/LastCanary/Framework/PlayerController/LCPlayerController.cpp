@@ -5,8 +5,6 @@
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Framework/Manager/LCCheatManager.h"
 
-#include "OnlineSubsystem.h"
-#include "Interfaces/OnlineSessionInterface.h"
 #include "Kismet/GameplayStatics.h"
 
 #include "Blueprint/UserWidget.h"
@@ -65,21 +63,16 @@ void ALCPlayerController::ClientReturnToMainMenuWithTextReason_Implementation(co
 {
     Super::ClientReturnToMainMenuWithTextReason_Implementation(ReturnReason);
 
-    IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get();
-    if (OnlineSub)
-    {
-        IOnlineSessionPtr Sessions = OnlineSub->GetSessionInterface();
-        if (Sessions.IsValid())
-        {
-            // "GameSession" 이라는 이름으로 생성된 세션을 파괴
-            Sessions->DestroySession(NAME_GameSession);
-        }
-    }
 }
 
-void ALCPlayerController::ClientWasKicked_Implementation_Implementation(const FText& KickReason)
+void ALCPlayerController::ClientWasKicked_Implementation(const FText& KickReason)
 {
-    // BluePrint 에서 DestroySession => 새로운 세션에 Join하기 위해
+    LOG_Server_ERROR(TEXT("Kicked By Server!!"));
+
+    if (LCUIManager)
+    {
+		LCUIManager->SetSessionErrorState(KickReason);
+    }
 }
 
 

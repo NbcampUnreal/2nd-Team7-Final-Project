@@ -30,4 +30,7 @@ public:
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Gimmick")
 	bool IsGimmickBusy();
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Gimmick")
+	void ReturnToInitialState();
 };

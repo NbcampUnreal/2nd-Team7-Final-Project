@@ -81,7 +81,7 @@ public:
 	void HidePopUpLoading();
 
 	UFUNCTION(BlueprintCallable)
-	void ShowPopupNotice(FString Notice);
+	void ShowPopupNotice(const FText& Notice);
 	UFUNCTION(BlueprintCallable)
 	void HidePopUpNotice();
 
@@ -193,4 +193,10 @@ private:
 
 	UPROPERTY()
 	ELCUIContext CurrentContext;
+
+	bool bSessionErrorOccurred = false;
+	FText CachedErrorReson;
+public:
+	UFUNCTION(BlueprintCallable)
+	void SetSessionErrorState(const FText& Reason);
 };

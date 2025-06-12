@@ -119,6 +119,12 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			}
 		}
 	}
+
+	if (bSessionErrorOccurred)
+	{
+		ShowPopupNotice(CachedErrorReson);
+		bSessionErrorOccurred = false;
+	}
 }
 
 void ULCUIManager::SetPlayerController(APlayerController* PlayerController)
@@ -497,7 +503,7 @@ void ULCUIManager::HidePopUpLoading()
 	}
 }
 
-void ULCUIManager::ShowPopupNotice(FString Notice)
+void ULCUIManager::ShowPopupNotice(const FText& Notice)
 {
 	LOG_Frame_WARNING(TEXT("Show Popup Notice"));
 	if (CachedPopupNotice)
@@ -721,4 +727,10 @@ void ULCUIManager::UpdateInputModeByContext()
 void ULCUIManager::SetUIContext(ELCUIContext NewContext)
 {
 	CurrentContext = NewContext;
+}
+
+void ULCUIManager::SetSessionErrorState(const FText& Reason)
+{
+	bSessionErrorOccurred = true;
+	CachedErrorReson = Reason;
 }

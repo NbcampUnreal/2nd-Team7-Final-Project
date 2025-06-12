@@ -9,7 +9,7 @@ class ALCRotationLuxStatue;
 /**
  * 
  */
-UCLASS()
+UCLASS(Blueprintable, BlueprintType)
 class LASTCANARY_API ALCLuxCoreSocket : public ALCTransformGimmick
 {
 	GENERATED_BODY()
