@@ -1,5 +1,7 @@
 #include "UI/UIObject/InventorySlotWidget.h"
 #include "UI/UIObject/InventoryWidgetBase.h"
+#include "UI/UIObject/BackpackSlotWidget.h"
+#include "Inventory/ToolbarInventoryComponent.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Components/TextBlock.h"
@@ -149,13 +151,40 @@ bool UInventorySlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FDrag
 		return false;
 	}
 
-	// 슬롯 교체 시도
-	bool bSuccess = InventoryComponent->TrySwapItemSlots(SourceWidget->SlotIndex, this->SlotIndex);
+	// ⭐ 소스가 가방 슬롯인지 확인
+	UBackpackSlotWidget* SourceBackpackWidget = Cast<UBackpackSlotWidget>(SourceWidget);
+	if (SourceBackpackWidget)
+	{
+		// 가방에서 툴바로 아이템 이동
+		UToolbarInventoryComponent* ToolbarInventory = Cast<UToolbarInventoryComponent>(InventoryComponent);
+		if (!ToolbarInventory)
+		{
+			LOG_Item_WARNING(TEXT("[InventorySlotWidget::NativeOnDrop] ToolbarInventoryComponent 캐스팅 실패"));
+			return false;
+		}
 
-	LOG_Item_WARNING(TEXT("[InventorySlotWidget::NativeOnDrop] 슬롯 교체 결과: %s (from %d to %d)"),
-		bSuccess ? TEXT("성공") : TEXT("실패"), SourceWidget->SlotIndex, this->SlotIndex);
+		bool bSuccess = ToolbarInventory->TryMoveBackpackItemToToolbar(
+			SourceBackpackWidget->BackpackSlotIndex,
+			this->SlotIndex
+		);
 
-	return bSuccess;
+		LOG_Item_WARNING(TEXT("[InventorySlotWidget::NativeOnDrop] 가방->툴바 이동 결과: %s (from backpack %d to toolbar %d)"),
+			bSuccess ? TEXT("성공") : TEXT("실패"),
+			SourceBackpackWidget->BackpackSlotIndex,
+			this->SlotIndex);
+
+		return bSuccess;
+	}
+	else
+	{
+		// 기존 툴바 슬롯 간 스왑 로직
+		bool bSuccess = InventoryComponent->TrySwapItemSlots(SourceWidget->SlotIndex, this->SlotIndex);
+
+		LOG_Item_WARNING(TEXT("[InventorySlotWidget::NativeOnDrop] 툴바 슬롯 교체 결과: %s (from %d to %d)"),
+			bSuccess ? TEXT("성공") : TEXT("실패"), SourceWidget->SlotIndex, this->SlotIndex);
+
+		return bSuccess;
+	}
 }
 
 void UInventorySlotWidget::SetParentInventoryWidget(UInventoryWidgetBase* InParentWidget)

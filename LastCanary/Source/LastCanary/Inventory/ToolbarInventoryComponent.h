@@ -180,8 +180,20 @@ public:
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 public:
-    // 장착한 장비이름을 UI로 전달하는 함수
+    /** 장착한 장비이름을 UI로 전달하는 함수*/
     UFUNCTION(NetMulticast, Reliable)
     void MulticastUpdateItemText(const FText& ItemName);
     void MulticastUpdateItemText_Implementation(const FText& ItemName);
+
+    /** 가방 슬롯 간 스왑 */
+    UFUNCTION(BlueprintCallable, Category = "Backpack|Operations")
+    bool TrySwapBackpackSlots(int32 FromBackpackIndex, int32 ToBackpackIndex);
+
+    /** 툴바 아이템을 가방으로 이동 */
+    UFUNCTION(BlueprintCallable, Category = "Backpack|Operations")
+    bool TryMoveToolbarItemToBackpack(int32 ToolbarIndex, int32 BackpackIndex);
+
+    /** 가방 아이템을 툴바로 이동 */
+    UFUNCTION(BlueprintCallable, Category = "Backpack|Operations")
+    bool TryMoveBackpackItemToToolbar(int32 BackpackIndex, int32 ToolbarIndex);
 };
