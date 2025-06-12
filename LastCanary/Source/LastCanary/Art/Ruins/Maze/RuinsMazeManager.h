@@ -126,6 +126,9 @@ private:
     UPROPERTY(EditAnywhere, Category = "Maze|Gimmick")
     TArray<FGimmickSpawnInfo> GimmickSpawnList;
 
+    /** 셀 위치가 기믹 생성 가능한 조건을 만족하는지 확인 */
+    bool IsValidGimmickSpawnCell(const FIntPoint& Cell) const;
+
     /** 몇 칸마다 기믹을 생성할지 */
     UPROPERTY(EditAnywhere, Category = "Maze|Gimmick")
     int32 GimmickInterval = 5;
@@ -138,4 +141,18 @@ private:
 
     /** 전체 셀 순회하며 기믹 생성 시도 (방문된 셀만) */
     void TryPlaceGimmicks();
+
+    /** 생성할 몬스터 클래스 (에디터에서 설정) */
+    UPROPERTY(EditAnywhere, Category = "Maze|Monster")
+    TSubclassOf<AActor> MonsterClass;
+
+    /** 기믹이 실제로 배치된 셀 목록 몬스터 겹치기 방지용 */
+    UPROPERTY()
+    TSet<FIntPoint> PlacedGimmickCells;
+
+    /** 몬스터 생성 함수 */
+    void SpawnMonsterInMidPath();
+
+    /** 유효 경로 찾기 */
+    TArray<FIntPoint> MainPathCells;
 };

@@ -29,6 +29,15 @@ void ALCRotationGimmick::BeginPlay()
 {
 	Super::BeginPlay();
 	OriginalRotation = VisualMesh->GetComponentRotation();
+
+	if (bUseAlternateToggle)
+	{
+		const FRotator DeltaRot = bUseAxis
+			? FRotator(RotationAxis.X, RotationAxis.Y, RotationAxis.Z)
+			: FRotator(0.f, RotationStep, 0.f);
+
+		AlternateRotation = OriginalRotation + DeltaRot;
+	}
 }
 
 #pragma endregion
@@ -49,7 +58,30 @@ void ALCRotationGimmick::ActivateGimmick_Implementation()
 	}
 
 	Super::ActivateGimmick_Implementation();
-	StartRotation();
+
+	if (bUseAlternateToggle)
+	{
+		const FRotator CurrentRot = VisualMesh->GetComponentRotation();
+		const FRotator& From = CurrentRot;
+		const FRotator& To = CurrentRot.Equals(OriginalRotation, 1.f) ? AlternateRotation : OriginalRotation;
+		const float Duration = (FMath::Abs(From.Pitch - To.Pitch) + FMath::Abs(From.Yaw - To.Yaw) + FMath::Abs(From.Roll - To.Roll)) / RotationSpeed;
+
+		StartServerRotation(From, To, Duration);
+
+		GetWorldTimerManager().SetTimer(
+			RotationTimerHandle,
+			this,
+			&ALCRotationGimmick::CompleteRotation,
+			Duration,
+			false
+		);
+
+		Multicast_StartRotation(From, To, Duration);
+	}
+	else
+	{
+		StartRotation();
+	}
 }
 
 bool ALCRotationGimmick::CanActivate_Implementation()
@@ -68,6 +100,50 @@ bool ALCRotationGimmick::IsGimmickBusy_Implementation()
 	return bIsRotatingServer || bIsReturningServer;
 }
 
+void ALCRotationGimmick::ReturnToInitialState_Implementation()
+{
+	if (bIsReturningServer)
+	{
+		LOG_Art(Log, TEXT("▶ 이미 복귀 중 - ReturnToInitialState 무시"));
+		return;
+	}
+
+	// 회전 중이면 멈춤
+	if (bIsRotatingServer)
+	{
+		GetWorldTimerManager().ClearTimer(RotationTimerHandle);
+		GetWorldTimerManager().ClearTimer(ServerRotationTimer);
+		GetWorldTimerManager().ClearTimer(ClientRotationTimer);
+		GetWorldTimerManager().ClearTimer(ReturnTimerHandle);
+
+		bIsRotatingServer = false;
+	}
+
+	const FRotator From = VisualMesh->GetComponentRotation();
+	const FRotator To = OriginalRotation;
+
+	if (From.Equals(To, 1.0f))
+	{
+		LOG_Art(Log, TEXT("▶ 복귀 회전값과 현재 동일 - 복귀 생략"));
+		return;
+	}
+
+	const float Duration = (FMath::Abs(From.Pitch - To.Pitch) + FMath::Abs(From.Yaw - To.Yaw) + FMath::Abs(From.Roll - To.Roll)) / RotationSpeed;
+
+	bIsReturningServer = true;
+
+	StartServerRotation(From, To, Duration);
+
+	GetWorldTimerManager().SetTimer(
+		RotationTimerHandle,
+		this,
+		&ALCRotationGimmick::CompleteReturn,
+		Duration,
+		false
+	);
+
+	Multicast_StartRotation(From, To, Duration);
+}
 
 #pragma endregion
 
