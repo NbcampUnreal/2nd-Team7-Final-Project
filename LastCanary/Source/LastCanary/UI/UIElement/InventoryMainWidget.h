@@ -2,18 +2,20 @@
 
 #include "CoreMinimal.h"
 #include "UI/LCUserWidgetBase.h"
+#include "DataType/BackpackSlotData.h"
 #include "InventoryMainWidget.generated.h"
 
 class UToolbarInventoryWidget;
 class UBackpackInventoryWidget;
 class UTextBlock;
+struct FBaseItemSlotData;
 
 UCLASS()
 class LASTCANARY_API UInventoryMainWidget : public ULCUserWidgetBase
 {
 	GENERATED_BODY()
 	
-
+protected:
 	UPROPERTY(meta = (BindWidget))
 	UToolbarInventoryWidget* ToolbarWidget;
 
@@ -53,12 +55,7 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = "WidgetClasses")
 	TSubclassOf<UBackpackInventoryWidget> BackpackWidgetClass;
-
-protected:
-	/** 올바른 BackpackInventoryComponent를 찾는 함수 */
-	UFUNCTION()
-	UBackpackInventoryComponent* GetCorrectBackpackComponent();
-
+	
 public:
 	void RefreshInventory();
 };
