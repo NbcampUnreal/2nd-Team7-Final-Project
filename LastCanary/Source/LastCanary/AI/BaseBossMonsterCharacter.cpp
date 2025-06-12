@@ -8,12 +8,6 @@ ABaseBossMonsterCharacter::ABaseBossMonsterCharacter()
 {
     PrimaryActorTick.bCanEverTick = true;
     bReplicates = true;
-
-    NavGenerationradius = 1000.0f;
-    NavRemovalradius = 500.0f;
-
-    NavInvoker = CreateDefaultSubobject<UNavigationInvokerComponent>(TEXT("NavInvoker"));
-    NavInvoker->SetGenerationRadii(NavGenerationradius, NavRemovalradius);
 }
 
 bool ABaseBossMonsterCharacter::RequestAttack()
@@ -29,7 +23,6 @@ bool ABaseBossMonsterCharacter::RequestAttack()
         (Now - LastStrongTime) >= StrongAttackCooldown)
     {
         LastStrongTime = Now;
-        // Berserk 상태라면 DamageMultiplier_Berserk을 참고하여 공격 세기를 조절할 수 있음
         PlayStrongAttack();
         return true;
     }
@@ -61,9 +54,6 @@ void ABaseBossMonsterCharacter::PlayStrongAttack()
 {
     if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
     {
-        // Berserk 상태라면, 몽타주 재생 속도를 빠르게 할 수도 있습니다. 예시:
-        // float PlayRate = bIsBerserk ? 1.5f : 1.0f;
-        // Anim->Montage_Play(StrongAttackMontage, PlayRate);
         Anim->Montage_Play(StrongAttackMontage);
         Anim->OnMontageEnded.AddDynamic(this, &ABaseBossMonsterCharacter::OnAttackMontageEnded);
     }
@@ -72,7 +62,21 @@ void ABaseBossMonsterCharacter::PlayStrongAttack()
 
 void ABaseBossMonsterCharacter::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 {
-    // 예: 파생 클래스에서 이곳을 override하여 이펙트/다음 행동을 트리거할 수 있음
+    float DamageToApply = 0.f;
+
+    if (Montage == NormalAttackMontage)
+    {
+        DamageToApply = NormalAttackDamage;
+    }
+    else if (Montage == StrongAttackMontage)
+    {
+        DamageToApply = StrongAttackDamage;
+    }
+
+    if (DamageToApply > 0.f)
+    {
+        DealDamageInRange(DamageToApply);
+    }
 }
 
 // Tick이나 다른 타이밍에 호출하여 Rage를 갱신하고 싶다면 여기서 Berserk 배수를 적용
@@ -87,12 +91,6 @@ void ABaseBossMonsterCharacter::EnterBerserkState()
     if (!HasAuthority())
         return;
 
-    // 이미 Berserk 중이거나 쿨타임 중이면 무시
-    if (bIsBerserk || GetWorldTimerManager().IsTimerActive(BerserkCooldownTimerHandle))
-    {
-        return;
-    }
-
     StartBerserk();
 }
 
@@ -103,23 +101,6 @@ void ABaseBossMonsterCharacter::StartBerserk()
 
     // 서버가 결정한 Berserk 시작을 클라이언트 전체에 알림
     Multicast_StartBerserk();
-
-    // Berserk 지속 시간이 지나면 EndBerserk 호출 예약
-    GetWorldTimerManager().SetTimer(
-        BerserkTimerHandle,
-        this,
-        &ABaseBossMonsterCharacter::EndBerserk,
-        BerserkDuration,
-        false
-    );
-
-    // Berserk 종료 후 BerserkCooldown만큼 대기시키기 위한 타이머(콜백 람다 식으로 별도 로직 없음)
-    GetWorldTimerManager().SetTimer(
-        BerserkCooldownTimerHandle,
-        FTimerDelegate::CreateLambda([]() {}),
-        BerserkDuration + BerserkCooldown,
-        false
-    );
 }
 
 
@@ -138,12 +119,10 @@ void ABaseBossMonsterCharacter::OnRep_IsBerserk()
     if (bIsBerserk)
     {
         UE_LOG(LogTemp, Warning, TEXT("[Berserk] 클라이언트: Berserk 시작"));
-        // → 예: 파티클, 머티리얼 색 변경, 사운드 재생 등 추가
     }
     else
     {
         UE_LOG(LogTemp, Warning, TEXT("[Berserk] 클라이언트: Berserk 종료"));
-        // → 예: 이펙트 해제, 머티리얼 복구 등 추가
     }
 }
 
@@ -162,6 +141,83 @@ void ABaseBossMonsterCharacter::Multicast_EndBerserk_Implementation()
 }
 
 
+void ABaseBossMonsterCharacter::SpawnRandomClue()
+{
+    // (A) 남은 단서가 없으면 종료
+    if (RemainingClueClasses.Num() == 0)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[SpawnRandomClue] 남은 단서 없음 → 스폰 종료"));
+        return;
+    }
+
+    // (B) 랜덤 클래스 선택
+    int32 Index = FMath::RandRange(0, RemainingClueClasses.Num() - 1);
+    TSubclassOf<AActor> ClueClass = RemainingClueClasses[Index];
+    if (!ClueClass)
+    {
+        RemainingClueClasses.RemoveAt(Index);
+        return;
+    }
+
+    // (C) 보스 기준 X/Y 랜덤 오프셋
+    const float OffsetF = FMath::RandRange(-200.f, 200.f);
+    const float OffsetR = FMath::RandRange(-200.f, 200.f);
+    FVector BossLoc = GetActorLocation();
+    FVector SpawnXY = BossLoc
+        + GetActorForwardVector() * OffsetF
+        + GetActorRightVector() * OffsetR;
+
+    UWorld* World = GetWorld();
+    if (!World) return;
+
+    // (D) 바닥 레이캐스트 ↓
+    FHitResult Hit;
+    FVector TraceStart = SpawnXY + FVector(0.f, 0.f, 500.f);
+    FVector TraceEnd = SpawnXY + FVector(0.f, 0.f, -1000.f);
+    FCollisionQueryParams Params(NAME_None, false, this);
+
+    float SpawnZ = BossLoc.Z; // fallback
+    if (World->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Visibility, Params))
+    {
+        SpawnZ = Hit.Location.Z;
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[SpawnRandomClue] 바닥 레이캐스트 실패 → 기본 Z 사용: %f"), SpawnZ);
+    }
+
+    FVector SpawnLoc = FVector(SpawnXY.X, SpawnXY.Y, SpawnZ);
+    FRotator SpawnRot = GetActorRotation();
+
+    // (E) 스폰 파라미터
+    FActorSpawnParameters SpawnParams;
+    SpawnParams.Owner = this;
+    SpawnParams.Instigator = GetInstigator();
+    SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+    // (F) 액터 스폰
+    AActor* NewClue = World->SpawnActor<AActor>(ClueClass, SpawnLoc, SpawnRot, SpawnParams);
+    if (NewClue)
+    {
+        UE_LOG(LogTemp, Log, TEXT("[SpawnRandomClue] Spawn 성공: %s at %s"),
+            *NewClue->GetName(), *SpawnLoc.ToCompactString());
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("[SpawnRandomClue] Spawn 실패: %s"), *GetNameSafe(ClueClass));
+    }
+
+    // (G) 목록에서 제거하고 다음 예약
+    RemainingClueClasses.RemoveAt(Index);
+    if (RemainingClueClasses.Num() > 0)
+    {
+        float Delay = FMath::RandRange(ClueSpawnIntervalMin, ClueSpawnIntervalMax);
+        GetWorldTimerManager().SetTimer(ClueTimerHandle, this,
+            &ABaseBossMonsterCharacter::SpawnRandomClue,
+            Delay, false);
+    }
+}
+
 void ABaseBossMonsterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -171,4 +227,56 @@ void ABaseBossMonsterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimePrope
 
     // Berserk 상태 복제
     DOREPLIFETIME(ABaseBossMonsterCharacter, bIsBerserk);
+}
+
+    void ABaseBossMonsterCharacter::DealDamageInRange(float DamageAmount)
+{
+    FVector Origin = GetActorLocation();
+    float Radius = AttackRange;
+
+    // (옵션) 디버깅용 범위 시각화
+    DrawDebugSphere(GetWorld(), Origin, Radius, 12, FColor::Red, false, 1.0f);
+
+    // 반경 내 모든 Pawn 검사
+    TArray<FHitResult> HitResults;
+    FCollisionShape Sphere = FCollisionShape::MakeSphere(Radius);
+    bool bHit = GetWorld()->SweepMultiByChannel(
+        HitResults,
+        Origin,
+        Origin,
+        FQuat::Identity,
+        ECC_Pawn,
+        Sphere
+    );
+
+    if (bHit)
+    {
+        for (auto& Hit : HitResults)
+        {
+            APawn* Pawn = Cast<APawn>(Hit.GetActor());
+            if (Pawn && Pawn->IsPlayerControlled())
+            {
+                // 대미지 적용
+                UGameplayStatics::ApplyDamage(
+                    Pawn,
+                    DamageAmount,
+                    GetController(),          // 보스의 컨트롤러
+                    this,                     // 대미지 발생자
+                    UDamageType::StaticClass()
+                );
+            }
+        }
+    }
+}
+
+void ABaseBossMonsterCharacter::EnableStencilForAllMeshes(int32 StencilValue)
+{
+    TArray<UMeshComponent*> MeshComponents;
+    GetComponents<UMeshComponent>(MeshComponents);
+
+    for (UMeshComponent* MeshComp : MeshComponents)
+    {
+        MeshComp->SetRenderCustomDepth(true);
+        MeshComp->SetCustomDepthStencilValue(StencilValue);
+    }
 }

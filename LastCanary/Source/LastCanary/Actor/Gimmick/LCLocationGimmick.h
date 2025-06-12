@@ -37,6 +37,10 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, Category = "Gimmick|Movement")
 	int32 MoveIndex;
 
+	/** 1번 , 2번 위치 토글 모드 사용 여부 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Toggle")
+	bool bUseAlternateToggle;
+
 	/** 이동 시작 위치 */
 	FVector InitialLocation;
 
@@ -45,6 +49,9 @@ protected:
 
 	/** 원래 위치 (복귀 기준) */
 	FVector OriginalLocation;
+
+	/** 위치 토글용 두 번째 위치 (초기 위치 + 이동값) */
+	FVector AlternateLocation;
 
 	/** 이동 타이머 핸들 */
 	FTimerHandle MovementTimerHandle;
@@ -98,12 +105,24 @@ protected:
 	/** 서버 보간 이동 진행 */
 	void StepServerMovement();
 
+	/** 감지된 액터 이동 보간 (서버 전용) */
+	void StartServerAttachedMovement(const FVector& DeltaLocation, float Duration);
+
+	/** 감지된 액터 이동 보간 (클라이언트 전용) */
+	void StartClientAttachedMovement(const FVector& DeltaLocation, float Duration);
+
 	/** 기믹 사용 가능 여부 */
 	virtual bool CanActivate_Implementation() override;
 
 public:
 	/** 기믹 활성화 시 이동 시작 */
 	virtual void ActivateGimmick_Implementation() override;
+
+	virtual void ReturnToInitialState_Implementation() override;
+ 
+	/** 이동 타이머 캐시 */
+	UPROPERTY()
+	TMap<AActor*, FTimerHandle> AttachedMovementTimers;
 
 	/** 이동 시작 정보 멀티캐스트 (From, To, Duration) */
 	UFUNCTION(NetMulticast, Reliable)

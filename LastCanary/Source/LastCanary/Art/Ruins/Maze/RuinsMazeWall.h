@@ -1,14 +1,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Art/Ruins/RuinsGimmickBase.h"
+#include "GameFramework/Actor.h"
 #include "RuinsMazeWall.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class LASTCANARY_API ARuinsMazeWall : public ARuinsGimmickBase
+class LASTCANARY_API ARuinsMazeWall : public AActor
 {
 	GENERATED_BODY()
 

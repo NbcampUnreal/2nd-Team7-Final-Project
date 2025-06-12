@@ -10,7 +10,6 @@
 class UTitleMenu;
 class ULobbyMenu;
 class URoomListEntry;
-class UEnterPasswordWidget;
 class UOptionWidget;
 class UPauseMenu;
 class UInGameHUD;
@@ -26,6 +25,7 @@ class UToolbarInventoryWidget;
 class UConfirmPopup;
 class UChecklistWidget;
 class UResultMenu;
+class URoomWidget;
 
 UCLASS(BlueprintType)
 class LASTCANARY_API ULCUIManagerSettings : public UDataAsset
@@ -39,8 +39,6 @@ public:
 	TSubclassOf<ULobbyMenu> FromBPLobbyMenuClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<URoomListEntry> FromBPRoomListEntryClass;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
-	TSubclassOf<UEnterPasswordWidget> FromBPEnterPasswordWidgetClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UOptionWidget> FromBPOptionWidgetClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
@@ -67,4 +65,6 @@ public:
 	TSubclassOf<UChecklistWidget> FromBPChecklistWidgetClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UResultMenu> FromBPResultMenuClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<URoomWidget> FromBPRoomWidgetClass;
 };

@@ -16,7 +16,10 @@ class AItemBase;
 class UToolbarInventoryComponent;
 class UBackpackInventoryComponent;
 struct FBaseItemSlotData;
+struct FBackpackSlotData;
 class UItemSpawnerComponent;
+class UPostProcessComponent;
+class AResourceNode;
 
 UCLASS()
 class LASTCANARY_API ABaseCharacter : public AAlsCharacter
@@ -51,10 +54,6 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Inventory")
 	UToolbarInventoryComponent* ToolbarInventoryComponent;
 
-	UPROPERTY(VisibleAnywhere, Category = "Inventory")
-	UBackpackInventoryComponent* BackpackInventoryComponent;
-
-
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	TObjectPtr<UArrowComponent> ThirdPersonArrow;
 
@@ -67,6 +66,15 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	UCameraComponent* SpectatorCamera;
 
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* HeadMesh;
+
+	UPROPERTY(VisibleAnywhere)
+	UPostProcessComponent* CustomPostProcessComponent;
+
+	float GetBrightness();
+	void SetBrightness(float Value);
 
 	void Tick(float DeltaSeconds)
 	{
@@ -91,15 +99,6 @@ protected:
 
 	// Camera Settings
 protected:
-	/*Camera Settings*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|MouseSensitivity", Meta = (ClampMin = 0, ForceUnits = "x"))
-	float LookUpMouseSensitivity{ 1.0f };
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|MouseSensitivity", Meta = (ClampMin = 0, ForceUnits = "x"))
-	float LookRightMouseSensitivity{ 1.0f };
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|MouseSensitivity", Meta = (ClampMin = 0, ForceUnits = "deg/s"))
-	float LookUpRate{ 90.0f };
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|MouseSensitivity", Meta = (ClampMin = 0, ForceUnits = "deg/s"))
-	float LookRightRate{ 240.0f };
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Camera", Meta = (ClampMin = 0, ClampMax = 90, ForceUnits = "deg"))
 	float MaxPitchAngle{ 60.0f };
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Camera", Meta = (ClampMin = -80, ClampMax = 0, ForceUnits = "deg"))
@@ -136,17 +135,64 @@ protected:
 	void SmoothADSCamera(float DeltaTime);
 	bool bADS = false; // 현재 정조준 상태인가?
 
+	bool bIsCloseToWall = false;
+	bool bIsSprinting = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_HelmBoots;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_HelmBoots_Glassess;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_Glassess;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_Teeth;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_Body;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_Eyelash;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_CORNEA;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* DefaultHeadMaterial_EYEBALL;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	UMaterialInterface* TransparentHeadMaterial;
+
+
 
 
 public:
 	void SetCameraMode(bool bIsFirstPersonView);
 
+	void ApplyRecoilStep();
+	void CameraShake(float Vertical, float Horizontal);
 
+
+	void SwapHeadMaterialTransparent(bool bUseTransparent);
+public:
+
+	// Recoil 상태
+	FTimerHandle RecoilTimerHandle;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite);
+	float YawRecoilRange = 1.0f;
+
+	int32 RecoilStep = 0;
+	int32 RecoilMaxSteps = 10;
+	float RecoilStepPitch = 0.f;
+	float RecoilStepYaw = 0.f;
 	// Character Input Handle Function
 
 public:
 	/*Function called by the controller*/
-	virtual void Handle_LookMouse(const FInputActionValue& ActionValue);
+	virtual void Handle_LookMouse(const FInputActionValue& ActionValue, float Sensivity);
 	virtual void Handle_Look(const FInputActionValue& ActionValue);
 	virtual void Handle_Move(const FInputActionValue& ActionValue);
 	virtual void Handle_Sprint(const FInputActionValue& ActionValue);
@@ -155,7 +201,7 @@ public:
 	virtual void Handle_Jump(const FInputActionValue& ActionValue);
 	virtual void Handle_Strafe(const FInputActionValue& ActionValue);
 	virtual void Handle_Aim(const FInputActionValue& ActionValue);
-	virtual void Handle_Interact();
+	virtual void Handle_Interact(const FInputActionValue& ActionValue);
 	virtual void Handle_ViewMode();
 	virtual void Handle_Reload();
 
@@ -168,9 +214,9 @@ public:
 	bool bIsPossessed;
 	bool bIsReloading = false;
 	bool bIsClose = false;
-	bool bIsSprinting = false;
+	bool bIsUsingItem= false;
 	void SetPossess(bool IsPossessed);
-
+	bool bRecoveringFromRecoil = false;
 
 	//About Character Animation Montage and Animation Class
 public:
@@ -211,10 +257,26 @@ public:
 public:
 	//애니메이션 몽타주
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
-	UAnimMontage* InteractMontage;
+	UAnimMontage* InteractMontageOnUpperObject;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UAnimMontage* InteractMontageOnUnderObject;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
 	UAnimMontage* ReloadMontage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UAnimMontage* KickMontage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UAnimMontage* PressButtonMontage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UAnimMontage* OpeningValveMontage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UAnimMontage* PickAxeMontage;
+
 
 	UFUNCTION()
 	void OnGunReloadAnimComplete(UAnimMontage* CompletedMontage, bool bInterrupted);
@@ -222,15 +284,22 @@ public:
 	UFUNCTION()
 	void PlayInteractionMontage(AActor* Target);
 
-	UFUNCTION(Server, Reliable)
+	UFUNCTION(Server, Unreliable)
 	void Server_PlayMontage(UAnimMontage* MontageToPlay);
 	void Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay);
 
-	UFUNCTION(NetMulticast, Reliable)
+	UFUNCTION(NetMulticast, Unreliable)
 	void Multicast_PlayMontage(UAnimMontage* MontageToPlay);
 	void Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay);
 
+	UPROPERTY()
+	UAnimMontage* CurrentInteractMontage;
 
+	void CancelInteraction();
+
+	UFUNCTION(Server, Unreliable)
+	void Server_CancelInteraction();
+	void Server_CancelInteraction_Implementation();
 
 	//Check Player Focus Everytime
 public:
@@ -247,13 +316,18 @@ public:
 
 	void TraceInteractableActor();
 
+	void InteractAfterPlayMontage(AActor* TargetActor);
 
+	void OnNotified();
+
+	UPROPERTY()
+	AActor* InteractTargetActor;
 	//Player Take Damage
 public:
 	/*Player Damage, Death*/
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	void HandlePlayerDeath();
-	
+
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_SetPlayerInGameStateOnDie();
 	void Multicast_SetPlayerInGameStateOnDie_Implementation();
@@ -319,7 +393,7 @@ public:
 public:
 	bool CheckHardLandState();
 
-	EPlayerState CheckPlayerCurrentState();
+	EPlayerInGameStatus CheckPlayerCurrentState();
 
 	UFUNCTION(Client, Reliable)
 	void Client_SetMovementSetting();
@@ -329,7 +403,7 @@ public:
 	TArray<float> CalculateMovementSpeedWithWeigth();
 	void ResetMovementSetting();
 
-
+	float FrontInput = 0.0f;
 
 	//달리기 관련 로직
 	float GetPlayerMovementSpeed();
@@ -369,8 +443,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	UToolbarInventoryComponent* GetToolbarInventoryComponent() const;
 
-	UFUNCTION(BlueprintCallable, Category = "Inventory")
-	UBackpackInventoryComponent* GetBackpackInventoryComponent() const;
 private:
 	UPROPERTY(Replicated)
 	FGameplayTagContainer EquippedTags;
@@ -399,10 +471,10 @@ public:
 	void Server_UnequipCurrentItem_Implementation();
 
 	UFUNCTION(BlueprintCallable, Category = "Equipment")
-	bool UseEquippedItem();
+	bool UseEquippedItem(float ActionValue);
 	UFUNCTION(Server, Reliable)
-	void Server_UseEquippedItem();
-	void Server_UseEquippedItem_Implementation();
+	void Server_UseEquippedItem(float ActionValue);
+	void Server_UseEquippedItem_Implementation(float ActionValue);
 
 public:
 	/** 인벤토리 UI를 토글합니다 */
@@ -427,22 +499,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Character|Inventory")
 	void DropItemAtSlot(int32 SlotIndex, int32 Quantity = 1);
 
-public:
 	//-----------------------------------------------------
 	// 가방 관리 (간소화)
 	//-----------------------------------------------------
-
-	/** 가방 장착 (데이터 복사 방식) */
-	UFUNCTION(BlueprintCallable, Category = "Character|Equipment")
-	bool EquipBackpack(FName BackpackItemRowName, const TArray<FBaseItemSlotData>& BackpackData, int32 MaxSlots);
-
-	/** 가방 해제 (데이터 반환) */
-	UFUNCTION(BlueprintCallable, Category = "Character|Equipment")
-	TArray<FBaseItemSlotData> UnequipBackpack();
-
-	/** 가방이 장착되어 있는지 확인 */
-	UFUNCTION(BlueprintPure, Category = "Character|Equipment")
-	bool HasBackpackEquipped() const;
 
 private:
 	/** 가방 메시 설정 */
@@ -461,4 +520,20 @@ protected:
 	/** 현재 총 무게 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Character|Weight")
 	float CurrentTotalWeight = 0.0f;
+
+public:
+	/** 현재 장착된 총기의 발사 모드 전환 (단발 ↔ 연발) */
+	UFUNCTION(BlueprintCallable, Category = "Character|Weapon")
+	void ToggleFireMode();
+
+	/** 스캐너를 위한 스텐실 설정 */
+	void EnableStencilForAllMeshes(int32 StencilValue);
+
+	//-----------------------------------------------------
+	// 각종 자원 채집을 위한 상호작용
+	//-----------------------------------------------------
+
+	UFUNCTION(Server, Reliable)
+	void Server_InteractWithResourceNode(AResourceNode* TargetNode);
+	void Server_InteractWithResourceNode_Implementation(AResourceNode* TargetNode);
 };

@@ -40,6 +40,7 @@ void UChecklistWidget::InitWithQuestions(const TArray<FChecklistQuestion>& InQue
 	{
 		return;
 	}
+	
 
 	QuestionScrollBox->ClearChildren();
 	CurrentRevealIndex = 0;
@@ -97,7 +98,6 @@ void UChecklistWidget::UpdateSubmitButtonVisibility()
 	if (bAllAnswered && FadeInSubmitAnim)
 	{
 		PlayAnimation(FadeInSubmitAnim);
-		LOG_Frame_WARNING(TEXT("ChecklistWidget - SubmitButton 애니메이션 재생"));
 	}
 }
 
@@ -133,19 +133,18 @@ void UChecklistWidget::PlayRevealAnimation()
 	{
 		LOG_Frame_WARNING(TEXT("ChecklistWidget - RevealSignatureAnim 재생 시작"));
 		FWidgetAnimationDynamicEvent AnimFinishedDelegate;
-		AnimFinishedDelegate.BindDynamic(this, &UChecklistWidget::OnRevealAnimationFinished);
+		// AnimFinishedDelegate.BindDynamic(this, &UChecklistWidget::OnRevealAnimationFinished);
 		BindToAnimationFinished(RevealSignatureAnim, AnimFinishedDelegate);
 		PlayAnimation(RevealSignatureAnim);
 	}
-	else
+	/*else
 	{
-		LOG_Frame_WARNING(TEXT("ChecklistWidget - RevealSignatureAnim 없음 → 즉시 종료"));
 		OnRevealAnimationFinished();
-	}
+	}*/
 }
 
-void UChecklistWidget::OnRevealAnimationFinished()
-{
-	LOG_Frame_WARNING(TEXT("ChecklistWidget - RevealAnimationFinished 호출 → 위젯 제거"));
-	// RemoveFromParent();  // 끝
-}
+//void UChecklistWidget::OnRevealAnimationFinished()
+//{
+//	LOG_Frame_WARNING(TEXT("ChecklistWidget - RevealAnimationFinished 호출 → 위젯 제거"));
+//	// RemoveFromParent();  // 끝
+//}

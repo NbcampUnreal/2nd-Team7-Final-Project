@@ -10,6 +10,7 @@
 #include "LCRoomPlayerController.generated.h"
 
 class URoomWidget;
+class AChecklistManager;
 
 UCLASS()
 class LASTCANARY_API ALCRoomPlayerController : public ABasePlayerController
@@ -20,6 +21,7 @@ protected:
 	ALCRoomPlayerController();
 
 	virtual void BeginPlay() override;
+	void TryRestoreInventory();
 	virtual void PostSeamlessTravel() override;
 
 public:
@@ -34,31 +36,23 @@ public:
 	void Server_RequestPurchase_Implementation(const TArray<FItemDropData>& DropList);
 
 protected:
-	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	TSubclassOf<URoomWidget> RoomWidgetClass;
-	URoomWidget* RoomWidgetInstance;
-
 	void InitInputComponent() override;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|RoomPC", Meta = (DisplayThumbnail = false))
 	TObjectPtr<UInputAction> RoomUIAction;
-
-private:
-	void CreateRoomWidget();
 	UFUNCTION()
 	virtual void ToggleShowRoomWidget();
 
 	bool bIsShowRoomUI = false;
 
-	float RePeatRate = 0.1f;
-
+	float RePeatRate = 0.3f;
 public:
 	UFUNCTION(Client, Reliable)
 	void Client_NotifyResultReady(const FChecklistResultData& ResultData);
 	void Client_NotifyResultReady_Implementation(const FChecklistResultData& ResultData);
 
 	UFUNCTION(Client, Reliable)
-	void Client_StartChecklist();
-	void Client_StartChecklist_Implementation();
+	void Client_StartChecklist(AChecklistManager* ChecklistManager);
+	void Client_StartChecklist_Implementation(AChecklistManager* ChecklistManager);
 
 	UFUNCTION(Server, Reliable)
 	void Server_MarkPlayerAsEscaped();
@@ -67,5 +61,9 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_RequestSubmitChecklist(const TArray<FChecklistQuestion>& PlayerAnswers);
 	void Server_RequestSubmitChecklist_Implementation(const TArray<FChecklistQuestion>& PlayerAnswers);
+	
+	void DelayedPostTravelSetup();
 
+private:
+	FTimerHandle UpdatePlayerListTimerHandle;
 };

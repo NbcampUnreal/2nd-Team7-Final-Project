@@ -18,11 +18,11 @@ ABaseMonsterCharacter::ABaseMonsterCharacter()
     PrimaryActorTick.bCanEverTick = false;
     bReplicates = true;
 
-    MaxHP = 100;
+    MaxHP = 100.f;
     CurrentHP = MaxHP;
     bIsDead = false;
 
-    AttackDamage = 30.0f;
+    AttackDamage = 10.0f;
 
     AIPerceptionComponent = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("PerceptionComponent"));
 
@@ -34,7 +34,6 @@ ABaseMonsterCharacter::ABaseMonsterCharacter()
     //AttackCollider->SetRelativeLocation(FVector(100, 0, 0));
     AttackCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-    //공격 이벤트 바인딩
     AttackCollider->OnComponentBeginOverlap.AddDynamic(this, &ABaseMonsterCharacter::OnAttackHit);
 
     UCapsuleComponent* CapsuleComp = GetCapsuleComponent();
@@ -47,7 +46,7 @@ ABaseMonsterCharacter::ABaseMonsterCharacter()
     SetReplicateMovement(true);
 
     GetCharacterMovement()->bOrientRotationToMovement = true;
-    GetCharacterMovement()->MaxWalkSpeed = 300.f;
+    GetCharacterMovement()->MaxWalkSpeed = 200.f;
 
     NavGenerationradius = 200.0f;
     NavRemovalradius = 300.0f;
@@ -69,13 +68,22 @@ float ABaseMonsterCharacter::TakeDamage(float DamageAmount, struct FDamageEvent 
     if (!IsValid(DamageCauser)) return 0.0f;
     if (bIsDead) return 0.0f;
 
+    //무적(엘리트)
+    if (MaxHP <= 0)
+    {
+        return 0.0f;
+    }
+
     float DamageApplied = FMath::Clamp(DamageAmount, 0.0f, CurrentHP);
     CurrentHP -= DamageAmount;
+
 
     if (CurrentHP <= 0)
     {
         CurrentHP = 0;
         bIsDead = true;
+
+        StopAllCurrentActions();//몽타주 올 스탑
 
         GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
         GetCharacterMovement()->SetMovementMode(MOVE_None);
@@ -99,25 +107,42 @@ void ABaseMonsterCharacter::OnAttackHit(UPrimitiveComponent* OverlappedComponent
     if (!OtherActor || OtherActor == this) return;
     if (!bIsAttacking) return;
 
-    // 캐릭터인지 확인
     if (ABaseCharacter* HitCharacter = Cast<ABaseCharacter>(OtherActor))
     {
-        //데미지
         FDamageEvent DamageEvent;
         HitCharacter->TakeDamage(AttackDamage, DamageEvent, GetController(), this);
 
-        UE_LOG(LogTemp, Warning, TEXT("Monster hit player for %f damage!"), AttackDamage);
-
-        //콜라이더 비활성화
         DisableAttackCollider();
     }
+}
+
+void ABaseMonsterCharacter::StopAllCurrentActions()
+{
+    if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+    {
+        AnimInstance->StopAllMontages(0.2f);//0.2초에 걸쳐 부드럽게 정지
+    }
+
+    GetWorldTimerManager().ClearTimer(AttackTimerHandle);
+    GetWorldTimerManager().ClearTimer(AttackEnableTimerHandle);
+
+    bIsAttacking = false;
+    DisableAttackCollider();
+
+    if (ABaseAIController* AIController = Cast<ABaseAIController>(GetController()))
+    {
+        AIController->StopMovement();//이동 중지
+        AIController->SetDeath();
+    }
+
+    GetCharacterMovement()->StopMovementImmediately();//이동(관성) 즉시 중지, 물리적인거라 StopMovement랑 다르다고 함
+    GetCharacterMovement()->DisableMovement();//이동 비활성
 }
 
 void ABaseMonsterCharacter::DestroyActor()
 {
     if (HasAuthority())
     {
-        //UE_LOG(LogTemp, Warning, TEXT("Death"));
         Destroy();
     }
 }
@@ -134,6 +159,8 @@ void ABaseMonsterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 void ABaseMonsterCharacter::BeginPlay()
 {
     Super::BeginPlay();
+
+    EnableStencilForAllMeshes(1);
 }
 
 void ABaseMonsterCharacter::PerformAttack()
@@ -164,7 +191,7 @@ void ABaseMonsterCharacter::ServerPerformAttack_Implementation()
 void ABaseMonsterCharacter::OnAttackFinished()
 {
     bIsAttacking = false;
-    DisableAttackCollider(); // 공격 끝나면 콜라이더 비활성화
+    DisableAttackCollider();
 }
 
 void ABaseMonsterCharacter::MulticastStartAttack_Implementation()
@@ -173,7 +200,6 @@ void ABaseMonsterCharacter::MulticastStartAttack_Implementation()
     {
         PlayAnimMontage(StartAttack);
 
-        // 공격 시작 후 약간의 딜레이 후 콜라이더 활성화
         GetWorldTimerManager().SetTimer(AttackEnableTimerHandle, this,
             &ABaseMonsterCharacter::EnableAttackCollider, 0.5f, false);
 
@@ -335,5 +361,17 @@ void ABaseMonsterCharacter::PlayChaseSound3()
     if (ChaseSound3)
     {
         MulticastPlaySound(ChaseSound3);
+    }
+}
+
+void ABaseMonsterCharacter::EnableStencilForAllMeshes(int32 StencilValue)
+{
+    TArray<UMeshComponent*> MeshComponents;
+    GetComponents<UMeshComponent>(MeshComponents);
+
+    for (UMeshComponent* MeshComp : MeshComponents)
+    {
+        MeshComp->SetRenderCustomDepth(true);
+        MeshComp->SetCustomDepthStencilValue(StencilValue);
     }
 }

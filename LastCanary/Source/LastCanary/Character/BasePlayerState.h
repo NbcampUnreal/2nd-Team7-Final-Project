@@ -48,10 +48,10 @@ public:
 	float DefaultExhaustionRecoveryThreshold{ InitialStats.ExhaustionRecoveryThreshold };
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
-	float DefaultStaminaDrainRate{ InitialStats.StaminaDrainRate }; // 초당 15 소모
+	float DefaultStaminaDrainRate{ InitialStats.StaminaDrainRate };
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
-	float DefaultStaminaRecoveryRate{ InitialStats.StaminaRecoveryRate }; // 초당 30 회복
+	float DefaultStaminaRecoveryRate{ InitialStats.StaminaRecoveryRate };
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	float DefaultRecoverDelayTime{ InitialStats.RecoverDelayTime };
@@ -114,6 +114,14 @@ public:
 	EInputMode CrouchInputMode = EInputMode::Hold;
 
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SoundSettings")
+	float RunningFootSoundModifier = 1.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SoundSettings")
+	float WalkingFootSoundModifier = 0.3f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SoundSettings")
+	float SprintingFootSoundModifier = 1.5f;
 
 
 public:
@@ -130,6 +138,10 @@ public:
 	EPlayerState CurrentState = EPlayerState::Idle;
 
 	EPlayerInGameStatus InGameState = EPlayerInGameStatus::Alive;
+
+	void SetInGameStatus(EPlayerInGameStatus Status);
+	EPlayerInGameStatus GetInGameStatus();
+
 
 	UFUNCTION()
 	void OnRep_CurrentState();
@@ -171,7 +183,7 @@ public:
 public:
 	// Gold & Exp
 	UPROPERTY(Replicated, BlueprintReadOnly)
-	int32 TotalGold = 500;
+	int32 TotalGold = 500000;
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	int32 TotalExp;
 	void AddTotalGold(int32 Amount);
@@ -199,6 +211,12 @@ public:
 
 	virtual void CopyProperties(APlayerState* PlayerState) override;
 
-	UPROPERTY(Replicated, BlueprintReadOnly)
-	TArray<int32> CollectedResources;
+	// 자원 수집 내역 (RowName → 개수)
+	TMap<FName, int32> CollectedResourceMap;
+
+	void AddCollectedResource(FName RowName);
+
+	const TMap<FName, int32>& GetCollectedResourceMap() const;
+
+	void ClearCollectedResources();
 };

@@ -35,9 +35,6 @@ public:
 
     virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
 
-    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Property")
-    int32 MaxHP;
-
     UPROPERTY(EditDefaultsOnly, Category = "Animation")
     UAnimMontage* StartAttack;
 
@@ -76,9 +73,6 @@ public:
     UFUNCTION()
     void OnAttackHit(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
         UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
-    float AttackDamage;
 
     //사운드
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
@@ -144,7 +138,13 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Audio")
     void PlayChaseSound3();
 
+    //FORCEINLINE 
+    float GetAttackRange() const { return AttackRange; }
+
 protected:
+    UFUNCTION()
+    void StopAllCurrentActions();
+
     //멀티 사운드 재생
     UFUNCTION(NetMulticast, Reliable)
     void MulticastPlaySound(USoundBase* Sound);
@@ -155,7 +155,13 @@ protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
     UAIPerceptionComponent* AIPerceptionComponent;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Monster|Combat")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Combat")
+    float MaxHP;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Combat")
+    float AttackDamage;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Combat")
     float AttackRange = 150.f;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Monster|Combat")
@@ -193,4 +199,7 @@ public:
     FGameplayTagContainer GameplayTags;
 
     virtual void GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) const override;
+
+    /** 스캐너를 위한 스텐실 설정 */
+    void EnableStencilForAllMeshes(int32 StencilValue);
 };

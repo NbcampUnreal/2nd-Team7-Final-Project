@@ -6,6 +6,11 @@
 void UInGameHUD::NativeConstruct()
 {
 	Super::NativeConstruct();
+
+	if (InteractMessageText)
+	{
+		InteractMessageText->SetText(FText::FromString(TEXT("")));
+	}
 }
 
 void UInGameHUD::NativeDestruct()

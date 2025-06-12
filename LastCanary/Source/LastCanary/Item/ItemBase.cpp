@@ -11,11 +11,11 @@ AItemBase::AItemBase()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
-	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMeshComponent"));
-	RootComponent = MeshComponent;
+	StaticMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMeshComponent"));
+	RootComponent = StaticMeshComponent;
 
 	SkeletalMeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("SkeletalMeshComponent"));
-	SkeletalMeshComponent->SetupAttachment(MeshComponent);
+	SkeletalMeshComponent->SetupAttachment(StaticMeshComponent);
 
 	SkeletalMeshComponent->SetVisibility(false);
 	SkeletalMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -67,7 +67,7 @@ void AItemBase::BeginPlay()
 
 		if (!ItemRowName.IsNone() && GetOwner() != GetAttachParentActor())
 		{
-			ApplyItemDataFromTable();
+			//ApplyItemDataFromTable();
 		}
 	}
 
@@ -76,6 +76,8 @@ void AItemBase::BeginPlay()
 		GetWorld()->GetTimerManager().SetTimer(PhysicsLocationSyncTimer,
 			this, &AItemBase::SyncPhysicsLocationToActor, 0.1f, true);
 	}
+
+	EnableStencilForAllMeshes(3);
 }
 
 void AItemBase::OnRepDurability()
@@ -120,8 +122,7 @@ void AItemBase::ApplyItemDataFromTable()
 	FItemDataRow* Found = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("ApplyItemDataFromTable"));
 	if (!Found)
 	{
-		LOG_Item_WARNING(TEXT("[AItemBase::ApplyItemDataFromTable] ItemData not found for: %s"),
-			*ItemRowName.ToString());
+		LOG_Item_WARNING(TEXT("[AItemBase::ApplyItemDataFromTable] ItemData not found for: %s"), *ItemRowName.ToString());
 		return;
 	}
 
@@ -130,11 +131,11 @@ void AItemBase::ApplyItemDataFromTable()
 
 	SetupMeshComponents();
 
-	if (ItemData.bIsResourceItem)
+	/*if (ItemData.bIsResourceItem)
 	{
 		LOG_Frame_WARNING(TEXT("이 아이템은 자원입니다. 카테고리: %d, 점수: %d"),
 			static_cast<int32>(ItemData.Category), ItemData.BaseScore);
-	}
+	}*/
 
 	ApplyCollisionSettings();
 
@@ -148,14 +149,23 @@ void AItemBase::SetupMeshComponents()
 		bUsingSkeletalMesh = true;
 		SkeletalMeshComponent->SetSkeletalMesh(ItemData.SkeletalMesh);
 
-		SetMeshComponentActive(SkeletalMeshComponent, MeshComponent);
+		SetMeshComponentActive(SkeletalMeshComponent, StaticMeshComponent);
 	}
 	else if (ItemData.StaticMesh)
 	{
 		bUsingSkeletalMesh = false;
-		MeshComponent->SetStaticMesh(ItemData.StaticMesh);
+		StaticMeshComponent->SetStaticMesh(ItemData.StaticMesh);
 
-		SetMeshComponentActive(MeshComponent, SkeletalMeshComponent);
+		// ItemData 적용 후, 메시가 세팅된 다음 머티리얼 적용
+		if (ItemData.OverrideMaterial)
+		{
+			if (StaticMeshComponent && StaticMeshComponent->GetStaticMesh())
+			{
+				StaticMeshComponent->SetMaterial(0, ItemData.OverrideMaterial);
+			}
+		}
+
+		SetMeshComponentActive(StaticMeshComponent, SkeletalMeshComponent);
 	}
 	else
 	{
@@ -192,9 +202,9 @@ UPrimitiveComponent* AItemBase::GetActiveMeshComponent() const
 	{
 		return SkeletalMeshComponent;
 	}
-	else if (MeshComponent)
+	else if (StaticMeshComponent)
 	{
-		return MeshComponent;
+		return StaticMeshComponent;
 	}
 	return nullptr;
 }
@@ -205,7 +215,7 @@ UStaticMeshComponent* AItemBase::GetMeshComponent() const
 	{
 		return nullptr;
 	}
-	return MeshComponent;
+	return StaticMeshComponent;
 }
 
 USkeletalMeshComponent* AItemBase::GetSkeletalMeshComponent() const
@@ -241,9 +251,9 @@ void AItemBase::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEve
 			{
 				ItemData = *Found;
 
-				if (ItemData.StaticMesh && MeshComponent)
+				if (ItemData.StaticMesh && StaticMeshComponent)
 				{
-					MeshComponent->SetStaticMesh(ItemData.StaticMesh);
+					StaticMeshComponent->SetStaticMesh(ItemData.StaticMesh);
 				}
 			}
 			else
@@ -308,13 +318,11 @@ FString AItemBase::GetInteractMessage_Implementation() const
 	{
 		if (const FItemDataRow* Found = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("GetInteractMessage")))
 		{
-			return FString::Printf(TEXT("%s 습득 (x%d)"),
-				*Found->ItemName.ToString(), Quantity);
+			return FString::Printf(TEXT("%s 습득 (x%d)"), *Found->ItemName.ToString(), Quantity);
 		}
 	}
 
-	return FString::Printf(TEXT("%s 습득 (x%d)"),
-		*ItemRowName.ToString(), Quantity);
+	return FString::Printf(TEXT("%s 습득 (x%d)"), *ItemRowName.ToString(), Quantity);
 }
 
 void AItemBase::Server_TryPickupByPlayer_Implementation(APlayerController* PlayerController)
@@ -349,14 +357,6 @@ bool AItemBase::Internal_TryPickupByPlayer(APlayerController* PlayerController)
 		return false;
 	}
 
-	if (UBackpackInventoryComponent* BackpackInventory = Character->GetBackpackInventoryComponent())
-	{
-		if (BackpackInventory->TryAddItem(this))
-		{
-			return true;
-		}
-	}
-
 	if (UToolbarInventoryComponent* ToolbarInventory = Character->GetToolbarInventoryComponent())
 	{
 		if (ToolbarInventory->TryAddItem(this))
@@ -365,8 +365,7 @@ bool AItemBase::Internal_TryPickupByPlayer(APlayerController* PlayerController)
 		}
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("[AItemBase::Internal_TryPickupByPlayer] 인벤토리가 가득참: %s"),
-		*ItemRowName.ToString());
+	UE_LOG(LogTemp, Warning, TEXT("[AItemBase::Internal_TryPickupByPlayer] 인벤토리가 가득참: %s"), *ItemRowName.ToString());
 	return false;
 }
 
@@ -438,4 +437,16 @@ void AItemBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	}
 
 	Super::EndPlay(EndPlayReason);
+}
+
+void AItemBase::EnableStencilForAllMeshes(int32 StencilValue)
+{
+	TArray<UMeshComponent*> MeshComponents;
+	GetComponents<UMeshComponent>(MeshComponents);
+
+	for (UMeshComponent* MeshComp : MeshComponents)
+	{
+		MeshComp->SetRenderCustomDepth(true);
+		MeshComp->SetCustomDepthStencilValue(StencilValue);
+	}
 }

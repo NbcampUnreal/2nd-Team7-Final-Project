@@ -28,21 +28,4 @@ void AScratchMark::BeginPlay()
 
     // 2) 크기 세팅
     DecalComp->DecalSize = DecalSize;
-
-    // 3) LifeTime 이후 파괴 (타이머)
-    if (LifeTime > 0.0f)
-    {
-        GetWorldTimerManager().SetTimer(
-            LifetimeHandle,
-            this,
-            &AScratchMark::OnLifeTimeExpired,
-            LifeTime,
-            false
-        );
-    }
-}
-
-void AScratchMark::OnLifeTimeExpired()
-{
-    Destroy();
 }

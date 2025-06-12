@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Actor/Gimmick/LCBaseGimmick.h"
+#include "TimerManager.h"
 #include "LCRotationGimmick.generated.h"
 
 UCLASS()
@@ -37,14 +38,21 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, Category = "Gimmick|Rotation")
 	int32 RotationIndex;
 
-	/** 최초 회전 위치 (복귀용 기준값) */
-	FRotator OriginalRotation;
+	/** 회전 토글 모드 여부 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Toggle")
+	bool bUseAlternateToggle;
 
 	/** 회전 시작값 */
 	FRotator InitialRotation;
 
 	/** 회전 목표값 */
 	FRotator TargetRotation;
+
+	/** 초기 회전값 기억 */
+	FRotator OriginalRotation;
+
+	/** 회전 토글용 두 번째 회전값 */
+	FRotator AlternateRotation;
 
 	/** 회전 타이머 핸들 */
 	FTimerHandle RotationTimerHandle;
@@ -78,6 +86,10 @@ protected:
 	float ServerRotationElapsed;
 	FTimerHandle ServerRotationTimer;
 
+	/** 부착된 액터의 회전 보간 타이머 캐시 (클라이언트용) */
+	UPROPERTY()
+	TMap<AActor*, FTimerHandle> AttachedRotationTimers;
+
 	/** ===== 내부 회전 함수 ===== */
 
 	/** 회전 시작 */
@@ -107,9 +119,21 @@ protected:
 	/** 기믹 사용 가능 여부 */
 	virtual bool CanActivate_Implementation() override;
 
+	/** 기믹이 현재 회전/이동 중인지 여부 반환 */
+	virtual bool IsGimmickBusy_Implementation() override;
+
+	/** 감지된 액터 클라이언트 회전 보간 */
+	void StartClientAttachedRotation(const FRotator& DeltaRot, float Duration);
+
+	/** 감지된 액터 서버 회전 보간 */
+	void StartServerAttachedRotation(const FRotator& DeltaRot, float Duration);
+
 public:
 	/** 기믹 활성화 시 회전 시작 */
 	virtual void ActivateGimmick_Implementation() override;
+
+	/** 기믹 상태 복귀 처리 오버라이드 */
+	virtual void ReturnToInitialState_Implementation() override;
 
 	/** 회전 시작 정보 멀티캐스트 (From, To, Duration) */
 	UFUNCTION(NetMulticast, Reliable)

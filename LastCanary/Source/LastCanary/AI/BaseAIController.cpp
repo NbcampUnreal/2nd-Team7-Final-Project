@@ -54,7 +54,7 @@ void ABaseAIController::SetPatrolling()
 		UCharacterMovementComponent* MovementComp = MyCharacter->GetCharacterMovement();
 		if (MovementComp)
 		{
-			MovementComp->MaxWalkSpeed = 300.f;
+			MovementComp->MaxWalkSpeed = 200.f;
 		}
 		BlackboardComponent->SetValueAsInt(StateKeyName, 0);
 	}
@@ -69,7 +69,7 @@ void ABaseAIController::SetChasing(AActor* Target)
 		UCharacterMovementComponent* MovementComp = MyCharacter->GetCharacterMovement();
 		if (MovementComp)
 		{
-			MovementComp->MaxWalkSpeed = 500.f;
+			MovementComp->MaxWalkSpeed = 300.f;
 		}
 
 		BlackboardComponent->SetValueAsObject(TargetActorKeyName, Target);
@@ -92,4 +92,9 @@ void ABaseAIController::SetAttacking()
 
 		MonsterCharacter->PerformAttack();
 	}
+}
+
+void ABaseAIController::SetDeath()
+{
+	BlackboardComponent->SetValueAsInt(StateKeyName, 4);
 }

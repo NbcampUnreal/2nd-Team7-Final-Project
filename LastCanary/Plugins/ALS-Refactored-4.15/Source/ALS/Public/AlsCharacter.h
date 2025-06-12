@@ -24,12 +24,14 @@ class ALS_API AAlsCharacter : public ACharacter
 	GENERATED_BODY()
 
 public:
+	bool bIsMantling = false;
 	FTimerHandle HardLandingTimerHandle;
 	bool bIsInHardLandingState = false;
 	void TriggerHardLanding(float DisableDuration);
 	void EndHardLanding();
 	virtual void GetFallDamage(float Velocity);
 	FVector GetLocomotionStateMovementSpeed();
+	float FootSoundModifier = 1.0f;
 
 
 	UPROPERTY(BlueprintReadOnly, Category = "Als Character")

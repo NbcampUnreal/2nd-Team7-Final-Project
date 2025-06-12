@@ -30,36 +30,20 @@ struct FGimmickSpawnInfo
 {
     GENERATED_BODY()
 
-    /** 트리거 액터 클래스 */
+    /** 스폰할 액터 클래스 (기믹 또는 보상, 기타) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick")
-    TSubclassOf<AActor> PlateClass;
+    TSubclassOf<AActor> GimmickClass;
 
-    /** 작동 대상 클래스 */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick")
-    TSubclassOf<AActor> TargetClass;
-
-    /** 해당 조합의 등장 확률 가중치 */
+    /** 해당 기믹의 등장 확률 가중치 */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick")
     float Weight = 1.0f;
 
-    /** Plate 기준 Target의 상대 위치 */
+    /** 기믹의 회전값 (Yaw 방향 등 설정용) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick")
-    FVector TargetOffset = FVector(150.f, 0.f, 0.f);
+    FRotator Rotation = FRotator::ZeroRotator;
 
-    /** Plate의 회전값 (기믹 방향 설정용) */
+    /** Z 오프셋 (지면 위로 띄우거나 바닥에 붙일 때 사용) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick")
-    FRotator PlateRotation = FRotator::ZeroRotator;
-
-    /** Target의 회전값 */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick")
-    FRotator TargetRotation = FRotator::ZeroRotator;
-
-    /** Plate의 Z 보정값 (지면에 붙이기 위함) */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick")
-    float PlateZOffset = -50.f;
-
-    /** Target의 Z 보정값 */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick")
-    float TargetZOffset = -50.f;
+    float ZOffset = -50.f;
 };
 

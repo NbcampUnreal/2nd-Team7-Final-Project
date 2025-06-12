@@ -30,6 +30,10 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Item Spawner")
     AItemBase* CreateItemWithCustomData(FName ItemRowName, const FVector& SpawnLocation, int32 Quantity, float Durability);
 
+    /** 특정 위치에 아이템을 배치 */
+    UFUNCTION(BlueprintCallable, Category = "Item Spawning")
+    AItemBase* CreateItemAtLocation(FName ItemRowName, const FVector& SpawnLocation, bool bEnablePhysics = true);
+
 protected:
     //-----------------------------------------------------
     // 스폰 설정값들 (컴포넌트에서 관리)
@@ -85,6 +89,9 @@ private:
     /** 물리 시뮬레이션 활성화 */
     void EnablePhysicsSimulation(AItemBase* Item);
 
+    /** 물리 시뮬레이션만 활성화 (던지기 임펄스 없음) */
+    void EnableBasicPhysicsSimulation(AItemBase* Item);
+
 protected:
     /** 던지기 기본 속도 */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Throw Settings")
@@ -118,4 +125,7 @@ public:
 protected:
     /** 메시 물리 설정 */
     void SetupMeshPhysics(UPrimitiveComponent* MeshComponent, const FVector& ThrowDirection, float ThrowVelocity, const FVector& ThrowImpulse);
+
+    /** 메시 물리 설정 */
+    void SetupBasicMeshPhysics(UPrimitiveComponent* MeshComponent);
 };

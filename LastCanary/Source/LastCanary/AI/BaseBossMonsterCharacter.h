@@ -1,17 +1,13 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Character.h"
-#include "NavigationInvokerComponent.h" 
+#include "GameFramework/Character.h" 
 #include "BaseBossMonsterCharacter.generated.h"
 
 UCLASS()
 class LASTCANARY_API ABaseBossMonsterCharacter : public ACharacter
 {
     GENERATED_BODY()
-
-    UPROPERTY(BlueprintReadWrite, Category = Navigation, meta = (AllowPrivateAccess = "true"))
-    UNavigationInvokerComponent* NavInvoker;
 
 public:
     ABaseBossMonsterCharacter();
@@ -31,6 +27,18 @@ public:
 
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Attack")
     float StrongAttackCooldown = 6.0f;
+
+    /** 일반 공격 대미지 */
+    UPROPERTY(EditAnywhere, Category = "Attack")
+    float NormalAttackDamage = 20.f;
+
+    /** 강공격 대미지 */
+    UPROPERTY(EditAnywhere, Category = "Attack")
+    float StrongAttackDamage = 50.f;
+
+    /** 공격 범위 (반경) */
+    UPROPERTY(EditAnywhere, Category = "Attack")
+    float AttackRange = 200.f;
 
     /** 현재 보유한 Rage 값 (복제) */
     UPROPERTY(Replicated, BlueprintReadOnly, Category = "Boss|Attack")
@@ -65,16 +73,8 @@ protected:
     /** ── 광폭화(Berserk) 상태 ── */
 
     /** 현재 Berserk 활성 여부 (Replicated) */
-    UPROPERTY(ReplicatedUsing = OnRep_IsBerserk, BlueprintReadOnly, Category = "Boss|Berserk")
+    UPROPERTY(ReplicatedUsing = OnRep_IsBerserk, BlueprintReadWrite, EditAnywhere, Category = "Boss|Berserk") // 임시로 ReadWrite
     bool bIsBerserk = false;
-
-    /** Berserk 지속 시간(초) */
-    UPROPERTY(EditDefaultsOnly, Category = "Boss|Berserk")
-    float BerserkDuration = 15.f;
-
-    /** Berserk 쿨타임(초) */
-    UPROPERTY(EditDefaultsOnly, Category = "Boss|Berserk")
-    float BerserkCooldown = 60.f;
 
     /** Berserk 상태에서 Rage 증가 속도 배수 */
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Berserk")
@@ -83,12 +83,6 @@ protected:
     /** Berserk 상태에서 데미지 배수 (공격 로직에서 참조) */
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Berserk")
     float DamageMultiplier_Berserk = 1.5f;
-
-    /** Berserk 유지 타이머 핸들 */
-    FTimerHandle BerserkTimerHandle;
-
-    /** Berserk 쿨타임 타이머 핸들 */
-    FTimerHandle BerserkCooldownTimerHandle;
 
     /** Replication 후 처리용 OnRep 함수 */
     UFUNCTION()
@@ -110,6 +104,35 @@ protected:
 
     /** Rage 업데이트 시 Berserk 배수를 적용하고 싶으면 이 함수를 오버라이드하여 사용 */
     virtual void UpdateRage(float DeltaSeconds);
+
+    /** ── 단서(Clue) 관련 멤버들 ── */
+
+/** 단서를 남길 최소/최대 간격 (초) */
+    UPROPERTY(EditAnywhere, Category = "Clue", meta = (ClampMin = "1.0", ClampMax = "60.0"))
+    float ClueSpawnIntervalMin = 120.0f;
+
+    UPROPERTY(EditAnywhere, Category = "Clue", meta = (ClampMin = "1.0", ClampMax = "300.0"))
+    float ClueSpawnIntervalMax = 180.0f;
+
+    /** 단서로 스폰할 액터 클래스들을 배열로 선언 */
+    UPROPERTY(EditAnywhere, Category = "Clue", meta = (EditFixedOrder))
+    TArray<TSubclassOf<AActor>> ClueClasses;
+
+    /** SpawnRandomClue용: 남은 단서 클래스들만 담아두는 배열 */
+    UPROPERTY()
+    TArray<TSubclassOf<AActor>> RemainingClueClasses;
+
+    /** 클루 스폰 타이머 핸들 */
+    FTimerHandle ClueTimerHandle;
+
+    /** 실제 단서를 스폰하는 함수 */
+    void SpawnRandomClue();
+
+    /** 범위 내 플레이어에게 대미지 적용 */
+    void DealDamageInRange(float DamageAmount);
+
+    /** 스캐너를 위한 스텐실 설정 */
+    void EnableStencilForAllMeshes(int32 StencilValue);
 
     // Replication 설정
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;

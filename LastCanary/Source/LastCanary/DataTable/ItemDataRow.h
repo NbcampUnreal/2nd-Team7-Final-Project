@@ -26,8 +26,6 @@ struct FItemDataRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FText ItemDescription = FText::FromString(TEXT(""));
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	bool bSellInShop = true;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bCanBuy = true;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 MaxStack = 1;
@@ -44,6 +42,8 @@ struct FItemDataRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	USkeletalMesh* SkeletalMesh = nullptr;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UMaterialInterface* OverrideMaterial = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<AItemBase> ItemActorClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resource")
@@ -55,4 +55,9 @@ struct FItemDataRow : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Physics")
 	bool bIgnoreCharacterCollision = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawn", Meta = (Categories = "Map"))
+	FGameplayTagContainer AllowedSpawnMaps;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawn", Meta = (Categories = "Time"))
+	FGameplayTagContainer TimeConditions;
 };

@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "AI/BaseBossMonsterCharacter.h"
+#include "Components/SphereComponent.h"
 #include "LCBossEoduksini.generated.h"
 
 UCLASS()
@@ -17,6 +18,28 @@ public:
 protected:
     virtual void BeginPlay() override;
     virtual void Tick(float DeltaSeconds) override;
+
+    /** 어둠 범위를 나타내는 SphereComponent */
+    UPROPERTY(VisibleAnywhere, Category = "Darkness")
+    USphereComponent* DarknessSphere;
+
+    /** 플레이어가 Sphere에 들어왔을 때 호출 */
+    UFUNCTION()
+    void OnDarknessSphereBeginOverlap(
+        UPrimitiveComponent* OverlappedComp,
+        AActor* OtherActor,
+        UPrimitiveComponent* OtherComp,
+        int32 OtherBodyIndex,
+        bool bFromSweep,
+        const FHitResult& SweepResult);
+
+    /** 플레이어가 Sphere에서 나갔을 때 호출 */
+    UFUNCTION()
+    void OnDarknessSphereEndOverlap(
+        UPrimitiveComponent* OverlappedComp,
+        AActor* OtherActor,
+        UPrimitiveComponent* OtherComp,
+        int32 OtherBodyIndex);
 
     /** ── 플레이어 시선 체크 ── */
     bool IsLookedAtByAnyPlayer() const;
@@ -109,29 +132,6 @@ protected:
     UFUNCTION(BlueprintNativeEvent, Category = "Darkness")
     void BP_EndDarknessEffect();
     virtual void BP_EndDarknessEffect_Implementation();
-
-    /** ── 단서(Clue) 관련 멤버들 ── */
-
-    /** 단서를 남길 최소/최대 간격 (초) */
-    UPROPERTY(EditAnywhere, Category = "Clue", meta = (ClampMin = "1.0", ClampMax = "30.0"))
-    float ClueSpawnIntervalMin = 5.0f;
-
-    UPROPERTY(EditAnywhere, Category = "Clue", meta = (ClampMin = "1.0", ClampMax = "30.0"))
-    float ClueSpawnIntervalMax = 12.0f;
-
-    /** 단서로 스폰할 액터 클래스들을 배열로 선언 */
-    UPROPERTY(EditAnywhere, Category = "Clue", meta = (EditFixedOrder))
-    TArray<TSubclassOf<AActor>> ClueClasses;
-
-    /** 이미 스폰된 단서를 추적하기 위한 배열 */
-    UPROPERTY()
-    TArray<AActor*> SpawnedClues;
-
-    /** 클루 스폰 타이머 핸들 */
-    FTimerHandle ClueTimerHandle;
-
-    /** 실제 단서를 스폰하는 함수 */
-    void SpawnRandomClue();
 
     /** Darkness 관련 타이머 */
     FTimerHandle DarknessTimer;

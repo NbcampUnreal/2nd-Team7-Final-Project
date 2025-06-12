@@ -27,7 +27,7 @@ public:
 
     /** 아이템의 스태틱 메시 컴포넌트 */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-    UStaticMeshComponent* MeshComponent;
+    UStaticMeshComponent* StaticMeshComponent;
 
     /** 아이템의 스켈레탈 메시 컴포넌트 */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
@@ -58,6 +58,10 @@ protected:
 
     /** 메시 컴포넌트 활성화/비활성화 */
     void SetMeshComponentActive(UPrimitiveComponent* ActiveComponent, UPrimitiveComponent* InactiveComponent);
+
+    /** 스캐너 효과 적용을 위한 스텐실 설정 */
+    void EnableStencilForAllMeshes(int32 StencilValue);
+
 
     //-----------------------------------------------------
     // 아이템 데이터

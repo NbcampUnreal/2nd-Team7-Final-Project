@@ -31,6 +31,15 @@ void ABasePlayerState::BeginPlay()
 	UpdateStaminaUI();
 }
 
+void ABasePlayerState::SetInGameStatus(EPlayerInGameStatus Status)
+{
+	InGameState = Status;
+}
+EPlayerInGameStatus ABasePlayerState::GetInGameStatus()
+{
+	return InGameState;
+}
+
 void ABasePlayerState::InitializeStats()
 {
 	CurrentHP = InitialStats.MaxHP;
@@ -211,15 +220,40 @@ void ABasePlayerState::CopyProperties(APlayerState* PlayerState)
 {
 	Super::CopyProperties(PlayerState);
 	LOG_Frame_WARNING(TEXT("CopyProperties called for ABasePlayerState"));
+
 	if (ABasePlayerState* TargetState = Cast<ABasePlayerState>(PlayerState))
 	{
+		// 유지할 데이터
 		TargetState->AquiredItemIDs = AquiredItemIDs;
 		TargetState->TotalGold = TotalGold;
 		TargetState->TotalExp = TotalExp;
-		// 필요한 데이터 더 복사 가능
-		TargetState->CurrentHP = CurrentHP; // 테스트용으로 추가
-		LOG_Frame_WARNING(TEXT("TotalGold: %d, TotalExp: %d"), TotalGold, TotalExp);
+
+		// 초기화할 데이터
+		TargetState->CurrentHP = TargetState->MaxHP; 
+		TargetState->CurrentStamina = TargetState->InitialStats.MaxStamina;
 	}
+}
+
+void ABasePlayerState::AddCollectedResource(FName RowName)
+{
+	if (CollectedResourceMap.Contains(RowName))
+	{
+		CollectedResourceMap[RowName]++;
+	}
+	else
+	{
+		CollectedResourceMap.Add(RowName, 1);
+	}
+}
+
+const TMap<FName, int32>& ABasePlayerState::GetCollectedResourceMap() const
+{
+	return CollectedResourceMap;
+}
+
+void ABasePlayerState::ClearCollectedResources()
+{
+	CollectedResourceMap.Empty();
 }
 
 void ABasePlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -232,6 +266,4 @@ void ABasePlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME(ABasePlayerState, TotalExp);
 	DOREPLIFETIME(ABasePlayerState, CurrentState);
 	DOREPLIFETIME(ABasePlayerState, AquiredItemIDs);
-	DOREPLIFETIME(ABasePlayerState, CollectedResources);
-
 }

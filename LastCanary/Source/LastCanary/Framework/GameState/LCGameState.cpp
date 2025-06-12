@@ -7,6 +7,7 @@
 #include "Framework/Manager/ChecklistManager.h"
 #include "Framework/PlayerController/LCRoomPlayerController.h"
 #include "EngineUtils.h"
+#include "Framework/GameMode/LCRoomGameMode.h"
 
 #include "LastCanary.h"
 
@@ -119,24 +120,31 @@ void ALCGameState::CheckGameEndCondition()
 	if (bAllEscaped)
 	{
 		LOG_Frame_WARNING(TEXT("All players have escaped! Showing checklist now."));
+		AGameModeBase* GameModeBase = GetWorld()->GetAuthGameMode();
+		if (!GameModeBase)
+		{
+			LOG_Frame_WARNING(TEXT("게임모드 가져오기 오류"));
+			return;
+		}
+		ALCRoomGameMode* MyGameMode = Cast<ALCRoomGameMode>(GameModeBase);
+		if (!MyGameMode)
+		{
+			LOG_Frame_WARNING(TEXT("게임모드 캐스팅 오류"));
+			return;
+		}
+		AChecklistManager* ChecklistManager = MyGameMode->ChecklistManager;
+		if (!ChecklistManager)
+		{
+			LOG_Frame_WARNING(TEXT("체크리스트가 없음"));
+			return;
+		}
 
 		for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 		{
 			if (ALCRoomPlayerController* PC = Cast<ALCRoomPlayerController>(*It))
 			{
-				if (PC->IsLocalController() == false)
-				{
-					PC->Client_StartChecklist();
-				}
-			}
-		}
-
-		for (TActorIterator<AChecklistManager> It(GetWorld()); It; ++It)
-		{
-			if (AChecklistManager* ChecklistManager = *It)
-			{
-				ChecklistManager->StartChecklist(); // 호스트에게만 띄움
-				break;
+				UE_LOG(LogTemp, Log, TEXT("검사 중인 컨트롤러 이름: %s"), *PC->GetName());
+				PC->Client_StartChecklist(ChecklistManager);
 			}
 		}
 	}

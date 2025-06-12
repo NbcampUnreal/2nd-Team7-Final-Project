@@ -51,18 +51,8 @@ void UToolbarInventoryWidget::RefreshInventoryUI()
             continue;
         }
 
-        if (UToolbarSlotWidget* ToolbarSlot = Cast<UToolbarSlotWidget>(SlotWidget))
-        {
-            if (i == ToolbarInventory->GetCurrentEquippedSlotIndex())
-            {
-                if (AItemBase* EquippedItem = ToolbarInventory->GetCurrentEquippedItem())
-                {
-                    ToolbarSlot->SetItemActor(EquippedItem);
-                }
-            }
-        }
+        ToolbarSlotBox->AddChild(SlotWidget);
 
-        /*ToolbarSlotBox->AddChild(SlotWidget);*/
         if (UHorizontalBoxSlot* AddedSlot = Cast<UHorizontalBoxSlot>(ToolbarSlotBox->AddChild(SlotWidget)))
         {
             AddedSlot->SetHorizontalAlignment(HAlign_Fill);

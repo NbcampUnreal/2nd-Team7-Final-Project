@@ -6,6 +6,8 @@
 #include "Framework/GameState/LCGameState.h"
 #include "Character/BasePlayerState.h"
 #include "Framework/Manager/LCCheatManager.h"
+#include "Character/BaseCharacter.h"
+#include "Inventory/ToolbarInventoryComponent.h"
 
 #include "Actor/LCDroneDelivery.h"
 #include "Item/ItemBase.h"
@@ -33,13 +35,30 @@ void ALCRoomPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	CreateRoomWidget();
-
 	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 	{
 		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
 		{
 			UIManager->SetUIContext(ELCUIContext::Room);
+		}
+	}
+
+	// 복구 타이머
+	FTimerHandle InventoryRestoreHandle;
+	GetWorld()->GetTimerManager().SetTimer(InventoryRestoreHandle, this, &ALCRoomPlayerController::TryRestoreInventory, 0.3f, false);
+}
+
+void ALCRoomPlayerController::TryRestoreInventory()
+{
+	if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+	{
+		if (ABaseCharacter* Char = Cast<ABaseCharacter>(GetPawn()))
+		{
+			if (UToolbarInventoryComponent* Toolbar = Char->GetToolbarInventoryComponent())
+			{
+				Toolbar->SetInventoryFromItemIDs(PS->AquiredItemIDs);
+				LOG_Frame_WARNING(TEXT("[TryRestoreInventory] 복원 시도 완료. 아이템 수: %d"), PS->AquiredItemIDs.Num());
+			}
 		}
 	}
 }
@@ -56,7 +75,29 @@ void ALCRoomPlayerController::PostSeamlessTravel()
 		CheatManager = NewObject<ULCCheatManager>(this, CheatClass);
 		CheatManager->InitCheatManager();
 	}
+
+	LOG_Frame_WARNING(TEXT("PostSeamlessTravel: %s 호출 - IsLocalController: %d"), *GetName(), IsLocalController());
+
+	GetWorldTimerManager().SetTimerForNextTick(this, &ALCRoomPlayerController::DelayedPostTravelSetup);
 }
+
+void ALCRoomPlayerController::DelayedPostTravelSetup()
+{
+	LOG_Frame_WARNING(TEXT("PostSeamlessTravel(Delayed): %s - 여전히 IsLocalController: %d"), *GetName(), IsLocalController());
+
+	if (IsLocalController())
+	{
+		if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+		{
+			if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+			{
+				UIManager->SetPlayerController(this);
+				LOG_Frame_WARNING(TEXT("DelayedPostTravelSetup: UIManager에 컨트롤러 연결 완료"));
+			}
+		}
+	}
+}
+
 
 void ALCRoomPlayerController::Client_UpdatePlayerList_Implementation(const TArray<FSessionPlayerInfo>& PlayerInfos)
 {
@@ -67,31 +108,28 @@ void ALCRoomPlayerController::Client_UpdatePlayerList_Implementation(const TArra
 
 void ALCRoomPlayerController::UpdatePlayerList(const TArray<FSessionPlayerInfo>& PlayerInfos)
 {
-	if (IsValid(RoomWidgetInstance))
+	if (IsValid(LCUIManager))
 	{
-		LOG_Frame_WARNING(TEXT("Try Update Player List!"));
-		RoomWidgetInstance->UpdatePlayerLists(PlayerInfos);
+		LOG_Frame_WARNING(TEXT("LCUIManager Is Not Null Null!"));
+		URoomWidget* RoomWidget = LCUIManager->GetRoomWidgetInstance();
+		RoomWidget->UpdatePlayerLists(PlayerInfos);
+
+		GetWorld()->GetTimerManager().ClearTimer(UpdatePlayerListTimerHandle);
 	}
 	else
 	{
-		LOG_Frame_WARNING(TEXT("Not Initialized Widget Instance!! Retry Update Info"));
-
-		FTimerHandle TimerHandle;
 		TWeakObjectPtr<ALCRoomPlayerController> WeakPtr(this);
 		TArray<FSessionPlayerInfo> InfosCopy = PlayerInfos;
 
 		GetWorld()->GetTimerManager().SetTimer
 		(
-			TimerHandle,
+			UpdatePlayerListTimerHandle,
 			[WeakPtr, InfosCopy]()
 			{
 				if (WeakPtr.IsValid())
 				{
-					if (WeakPtr->RoomWidgetInstance)
-					{
-						UE_LOG(LogTemp, Warning, TEXT("Update Lobby UI!!"));
-						WeakPtr->UpdatePlayerList(InfosCopy);
-					}
+					UE_LOG(LogTemp, Warning, TEXT("Update Lobby UI!!"));
+					WeakPtr->UpdatePlayerList(InfosCopy);
 				}
 			},
 			RePeatRate,
@@ -213,49 +251,25 @@ void ALCRoomPlayerController::InitInputComponent()
 
 }
 
-void ALCRoomPlayerController::CreateRoomWidget()
-{
-	if (IsLocalPlayerController())
-	{
-		if (RoomWidgetClass)
-		{
-			RoomWidgetInstance = CreateWidget<URoomWidget>(this, RoomWidgetClass);
-			RoomWidgetInstance->CreatePlayerSlots();
-			RoomWidgetInstance->AddToViewport(10);
-			RoomWidgetInstance->SetVisibility(ESlateVisibility::Hidden);
-			bIsShowRoomUI = false;
-		}
-	}
-}
-
 void ALCRoomPlayerController::ToggleShowRoomWidget()
 {
 	bIsShowRoomUI = !bIsShowRoomUI;
+	LOG_Frame_WARNING(TEXT("ToggleShowRoomWidget: %s"), bIsShowRoomUI ? TEXT("Show") : TEXT("Hide"));
 
-	if (!IsLocalPlayerController())
+	if (bIsShowRoomUI)
 	{
-		return;
+		LCUIManager->ShowRoomWidget();
+		FInputModeGameAndUI GameAndUIInputMode;
+		SetInputMode(GameAndUIInputMode);
+	}
+	else
+	{
+		LCUIManager->HideRoomWidget();
+		FInputModeGameOnly GameInputMode;
+		SetInputMode(GameInputMode);
 	}
 
-	if (IsValid(RoomWidgetInstance))
-	{
-		if (bIsShowRoomUI)
-		{
-			//RoomWidgetInstance->AddToViewport(10);
-			RoomWidgetInstance->SetVisibility(ESlateVisibility::Visible);
-			FInputModeGameAndUI GameAndUIInputMode;
-			SetInputMode(GameAndUIInputMode);
-		}
-		else
-		{
-			//RoomWidgetInstance->RemoveFromParent();
-			RoomWidgetInstance->SetVisibility(ESlateVisibility::Hidden);
-			FInputModeGameOnly GameInputMode;
-			SetInputMode(GameInputMode);
-		}
-
-		bShowMouseCursor = bIsShowRoomUI;
-	}
+	bShowMouseCursor = bIsShowRoomUI;
 }
 
 void ALCRoomPlayerController::Client_NotifyResultReady_Implementation(const FChecklistResultData& ResultData)
@@ -269,7 +283,7 @@ void ALCRoomPlayerController::Client_NotifyResultReady_Implementation(const FChe
 			UIManager->ShowResultMenu();
 			if (UResultMenu* Menu = UIManager->GetResultMenuClass())
 			{
-				Menu->SetChecklistResult(ResultData); 
+				Menu->SetChecklistResult(ResultData);
 			}
 			else
 			{
@@ -279,15 +293,17 @@ void ALCRoomPlayerController::Client_NotifyResultReady_Implementation(const FChe
 	}
 }
 
-void ALCRoomPlayerController::Client_StartChecklist_Implementation()
+void ALCRoomPlayerController::Client_StartChecklist_Implementation(AChecklistManager* ChecklistManager)
 {
-	for (TActorIterator<AChecklistManager> It(GetWorld()); It; ++It)
+	LOG_Frame_WARNING(TEXT("로컬 컨트롤러가 되었고, 체크리스트를 띄울 준비를 하는 중"));
+	if (ChecklistManager)
 	{
-		if (AChecklistManager* ChecklistManager = *It)
-		{
-			ChecklistManager->StartChecklist();
-			break;
-		}
+		ChecklistManager->StartChecklist();
+		LOG_Frame_WARNING(TEXT("체크리스트를 게임모드에서 받아서 띄움"));
+	}
+	else
+	{
+		LOG_Frame_WARNING(TEXT("체크리스트가 클라이언트에서 유효하지 않음"));
 	}
 }
 
@@ -310,7 +326,7 @@ void ALCRoomPlayerController::Server_RequestSubmitChecklist_Implementation(const
 		if (AChecklistManager* Manager = *It)
 		{
 			LOG_Frame_WARNING(TEXT("ChecklistManager found → Submitting"));
-			Manager->Server_SubmitChecklist(this, PlayerAnswers); 
+			Manager->Server_SubmitChecklist(this, PlayerAnswers);
 			return;
 		}
 	}
