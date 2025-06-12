@@ -14,22 +14,7 @@ void UVoiceOptionWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 	ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>();
-	EnumerateInputDevices();
-
-	if (MicDeviceComboBox)
-	{
-		MicDeviceComboBox->OnSelectionChanged.AddUniqueDynamic(this, &UVoiceOptionWidget::OnMicDeviceChanged);
-	}
-
-	if (VoiceInputModeButtonPre)
-	{
-		VoiceInputModeButtonPre->OnClicked.AddUniqueDynamic(this, &UVoiceOptionWidget::OnPreVoiceInputModeChanged);
-	}
-	if (VoiceInputModeButtonNext)
-	{
-		VoiceInputModeButtonNext->OnClicked.AddUniqueDynamic(this, &UVoiceOptionWidget::OnNextVoiceInputModeChanged);
-	}
-
+	
 	if (MyMicVolumeSlider)
 	{
 		MyMicVolumeSlider->SetValue(OptionManager->MyMicVolume);
@@ -53,11 +38,7 @@ void UVoiceOptionWidget::NativeConstruct()
 void UVoiceOptionWidget::NativeDestruct()
 {
 	Super::NativeDestruct();
-
-	if (MicDeviceComboBox)
-	{
-		MicDeviceComboBox->OnSelectionChanged.RemoveDynamic(this, &UVoiceOptionWidget::OnMicDeviceChanged);
-	}
+	
 	if (MyMicVolumeSlider)
 	{
 		MyMicVolumeSlider->OnValueChanged.RemoveDynamic(this, &UVoiceOptionWidget::OnMicVolumeChanged);
@@ -82,34 +63,6 @@ void UVoiceOptionWidget::RefreshInputModeText()
 	case EVoiceInputMode::Off:     ModeString = TEXT("끄기"); break;
 	}
 	InputModeText->SetText(FText::FromString(ModeString));
-}
-
-void UVoiceOptionWidget::EnumerateInputDevices()
-{
-	//TODO : 여기에 마이크 장치 변경 로직을 추가해야 합니다.
-	if (!MicDeviceComboBox) return;
-
-	MicDeviceComboBox->ClearOptions();
-
-	// 임시 더미 장치 목록
-	MicDeviceComboBox->AddOption(TEXT("Default Microphone"));
-	MicDeviceComboBox->AddOption(TEXT("External USB Mic"));
-	MicDeviceComboBox->AddOption(TEXT("Virtual Cable Input"));
-
-	MicDeviceComboBox->SetSelectedIndex(0);
-}
-
-void UVoiceOptionWidget::OnMicDeviceChanged(FString SelectedItem, ESelectInfo::Type SelectionType)
-{
-	if (SelectionType == ESelectInfo::Direct) return; // 프로그래밍적으로 선택된 경우 무시
-
-	LOG_Frame_WARNING(TEXT("Mic Device Changed to: %s"), *SelectedItem);
-
-	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
-	{
-		OptionManager->SelectedMicDeviceName = SelectedItem;
-		// OptionManager->ApplyVoiceInputDevice(); // 필요 시 추가
-	}
 }
 
 void UVoiceOptionWidget::OnMicVolumeChanged(float Value)
@@ -142,18 +95,4 @@ void UVoiceOptionWidget::OnVoiceVolumeChanged(float Value)
 		OptionManager->VoiceVolume = Value;
 		OptionManager->ApplyAudio(); // 볼륨은 바로 적용
 	}
-}
-
-void UVoiceOptionWidget::OnPreVoiceInputModeChanged()
-{
-	int32 Prev = ((int32)CurrentInputMode - 1 + 4) % 4; // 음수 방지
-	CurrentInputMode = static_cast<EVoiceInputMode>(Prev);
-	RefreshInputModeText();
-}
-
-void UVoiceOptionWidget::OnNextVoiceInputModeChanged()
-{
-	int32 Next = ((int32)CurrentInputMode + 1) % 4;
-	CurrentInputMode = static_cast<EVoiceInputMode>(Next);
-	RefreshInputModeText();
 }

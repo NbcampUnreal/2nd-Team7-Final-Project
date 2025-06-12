@@ -43,4 +43,12 @@ public:
     UFUNCTION(Client, Reliable)
     void Client_ToggleInventory();
     void Client_ToggleInventory_Implementation();
+
+    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+    UPROPERTY(ReplicatedUsing = OnRep_MeshVisibility)
+    bool bMeshVisible = true;
+
+    UFUNCTION()
+    void OnRep_MeshVisibility();
 };
