@@ -210,7 +210,13 @@ bool UToolbarInventoryComponent::TryRemoveItemAtSlot(int32 SlotIndex)
         return false;
     }
 
-    ItemSlots.RemoveAt(SlotIndex);
+    ItemSlots[SlotIndex] = FBaseItemSlotData();
+    ItemSlots[SlotIndex].ItemRowName = FName("Default");
+    ItemSlots[SlotIndex].Quantity = 0;
+    ItemSlots[SlotIndex].bIsBackpack = false;
+    ItemSlots[SlotIndex].bIsValid = false;
+    ItemSlots[SlotIndex].BackpackSlots.Empty();
+
     OnInventoryUpdated.Broadcast();
 
     return true;
@@ -242,6 +248,8 @@ bool UToolbarInventoryComponent::TryAddItem(AItemBase* ItemActor)
         {
             if (ItemSlots[i].bIsBackpack)
             {
+                UE_LOG(LogTemp, Warning, TEXT("TryAddItem: %d번 슬롯, Default=%d, bIsBackpack=%d"),
+                    i, IsDefaultItem(ItemSlots[i].ItemRowName), ItemSlots[i].bIsBackpack ? 1 : 0);
                 if (AddItemToBackpack(ItemActor->ItemRowName, ItemActor->Quantity, i))
                 {
                     if (GetOwner()->HasAuthority())
@@ -897,10 +905,6 @@ void UToolbarInventoryComponent::Server_DropItemAtSlot_Implementation(int32 Slot
     Super::TryDropItemAtSlot(SlotIndex, Quantity);
 }
 
-// ===================================================
-// ============== 가방 전용 헬퍼 함수들 ==============
-// ===================================================
-
 void UToolbarInventoryComponent::HandleBackpackEquip(int32 SlotIndex)
 
 {
@@ -1067,6 +1071,7 @@ bool UToolbarInventoryComponent::AddItemToBackpack(FName ItemRowName, int32 Quan
             BackpackSlot.ItemRowName = ItemRowName;
             BackpackSlot.Quantity = Quantity;
             OnInventoryUpdated.Broadcast();
+
             return true;
         }
         // 스택 가능
@@ -1074,6 +1079,7 @@ bool UToolbarInventoryComponent::AddItemToBackpack(FName ItemRowName, int32 Quan
         {
             BackpackSlot.Quantity += Quantity;
             OnInventoryUpdated.Broadcast();
+
             return true;
         }
     }
@@ -1092,7 +1098,7 @@ bool UToolbarInventoryComponent::RemoveItemFromBackpack(int32 BackpackSlotIndex,
 
             if (BackpackSlot.Quantity <= 0)
             {
-                BackpackSlot.ItemRowName = NAME_None;
+                BackpackSlot.ItemRowName = "Default";
                 BackpackSlot.Quantity = 0;
             }
 
