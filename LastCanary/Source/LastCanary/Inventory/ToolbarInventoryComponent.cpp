@@ -369,14 +369,14 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
     if (CachedOwnerCharacter) CachedOwnerCharacter->SetEquipped(true);
 
     // UI 처리
-    if (CachedOwnerCharacter && CachedOwnerCharacter->IsLocallyControlled())
+    if (GetOwner()->HasAuthority())
     {
         if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
         {
             if (UInventoryMainWidget* InventoryWidget = UIManager->GetInventoryMainWidget())
             {
                 FText DisplayText = FText::FromString(ItemData->ItemName.ToString());
-                InventoryWidget->ShowToolbarSlotItemText(DisplayText);
+                MulticastUpdateItemText(DisplayText);
             }
         }
     }
@@ -1183,6 +1183,26 @@ void UToolbarInventoryComponent::OnItemDropped(const FName& ItemRowName)
             {
                 PS->AquiredItemIDs.Remove(ItemID);
             }
+        }
+    }
+}
+
+void UToolbarInventoryComponent::MulticastUpdateItemText_Implementation(const FText& ItemName)
+{
+    // 각 클라이언트에서 실행
+    if (!IsOwnerCharacterValid()) return;
+
+    APlayerController* PC = CachedOwnerCharacter->GetController<APlayerController>();
+    if (!PC || !PC->IsLocalController()) return; // 로컬 컨트롤러만
+
+    ULCGameInstanceSubsystem* GISubsystem = GetOwner()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
+    if (!GISubsystem) return;
+
+    if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
+    {
+        if (UInventoryMainWidget* InventoryWidget = UIManager->GetInventoryMainWidget())
+        {
+            InventoryWidget->ShowToolbarSlotItemText(ItemName);
         }
     }
 }

@@ -152,8 +152,6 @@ public:
 
 private:
     bool Internal_DropCurrentEquippedItem();
-
-private:
     bool Internal_DropEquippedItemAtSlot(int32 SlotIndex, int32 Quantity);
 
     /** 아이템 습득 시 플레이어 스테이트와 동기화 */
@@ -166,4 +164,10 @@ private:
     //-----------------------------------------------------
 public:
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+public:
+    // 장착한 장비이름을 UI로 전달하는 함수
+    UFUNCTION(NetMulticast, Reliable)
+    void MulticastUpdateItemText(const FText& ItemName);
+    void MulticastUpdateItemText_Implementation(const FText& ItemName);
 };
