@@ -1,41 +1,30 @@
 #include "Item/EquipmentItem/BackpackItem.h"
 #include "Character/BaseCharacter.h"
+#include "Inventory/ToolbarInventoryComponent.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "Net/UnrealNetwork.h"
 #include "LastCanary.h"
 
 ABackpackItem::ABackpackItem()
 {
-    BackpackInventoryComponent = CreateDefaultSubobject<UBackpackInventoryComponent>(TEXT("BackpackInventoryComponent"));
 }
 
 void ABackpackItem::BeginPlay()
 {
     Super::BeginPlay();
 
-    if (HasAuthority())
-    {
-        InitializeBackpack();
-    }
-}
-
-void ABackpackItem::InitializeBackpack()
-{
-    if (BackpackInventoryComponent)
-    {
-        BackpackInventoryComponent->MaxSlots = BackpackSlots;
-    }
-}
-
-UBackpackInventoryComponent* ABackpackItem::GetBackpackInventoryComponent() const
-{
-    return BackpackInventoryComponent;
+    InitializeBackpackSlots(BackpackData, BackpackSlots);
 }
 
 void ABackpackItem::UseItem()
 {
     if (ABaseCharacter* OwnerCharacter = Cast<ABaseCharacter>(GetOwner()))
     {
-        if (OwnerCharacter->IsLocallyControlled())
+        if (OwnerCharacter->HasAuthority())
+        {
+            Client_ToggleInventory();
+        }
+        else
         {
             OwnerCharacter->ToggleInventory();
         }
@@ -44,20 +33,46 @@ void ABackpackItem::UseItem()
     Super::UseItem();
 }
 
-TArray<FBaseItemSlotData> ABackpackItem::GetBackpackData() const
+TArray<FBackpackSlotData> ABackpackItem::GetBackpackData() const
 {
-    if (BackpackInventoryComponent)
-    {
-        return BackpackInventoryComponent->ItemSlots;
-    }
-    return TArray<FBaseItemSlotData>();
+    return BackpackData;
 }
 
-void ABackpackItem::SetBackpackData(const TArray<FBaseItemSlotData>& NewData)
+void ABackpackItem::SetBackpackData(const TArray<FBackpackSlotData>& InData)
 {
-    if (BackpackInventoryComponent)
+    BackpackData = InData;
+}
+
+void ABackpackItem::InitializeBackpackSlots(TArray<FBackpackSlotData>& SlotsArray, int32 NumSlots)
+{
+    SlotsArray.Empty();
+    for (int32 i = 0; i < NumSlots; ++i)
     {
-        BackpackInventoryComponent->ItemSlots = NewData;
-        BackpackInventoryComponent->OnInventoryUpdated.Broadcast();
+        FBackpackSlotData DefaultSlot;
+        DefaultSlot.ItemRowName = FName("Default");
+        DefaultSlot.Quantity = 0;
+        SlotsArray.Add(DefaultSlot);
+    }
+}
+
+void ABackpackItem::Client_ToggleInventory_Implementation()
+{
+    if (ABaseCharacter* OwnerCharacter = Cast<ABaseCharacter>(GetOwner()))
+    {
+        OwnerCharacter->ToggleInventory();
+    }
+}
+
+void ABackpackItem::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+    DOREPLIFETIME(ABackpackItem, bMeshVisible);
+}
+
+void ABackpackItem::OnRep_MeshVisibility()
+{
+    if (UMeshComponent* MeshComp = GetMeshComponent())
+    {
+        MeshComp->SetVisibility(bMeshVisible);
     }
 }

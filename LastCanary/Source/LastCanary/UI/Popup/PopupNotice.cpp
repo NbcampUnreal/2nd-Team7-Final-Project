@@ -19,11 +19,11 @@ void UPopupNotice::NativeDestruct()
 	}
 }
 
-void UPopupNotice::InitializeNoticePopup(const FString& Notice)
+void UPopupNotice::InitializeNoticePopup(const FText& Notice)
 {
 	if (NoticeText)
 	{
-		NoticeText->SetText(FText::FromString(Notice));
+		NoticeText->SetText(Notice);
 	}
 }
 

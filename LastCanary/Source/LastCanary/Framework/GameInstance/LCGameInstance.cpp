@@ -86,7 +86,12 @@ void ULCGameInstance::LoadItemData()
 // BluePrint에서 Create Session을 합니다.
 void ULCGameInstance::CreateSession_Implementation(const FSessionInfo& SessionInfo)
 {
-	UE_LOG(LogTemp, Warning, TEXT("CreateSession called in C++"));
+	LOG_Server_WARNING(TEXT("CreateSession called in C++"));
+}
+
+void ULCGameInstance::UpdateSession_Implementation(bool bAdvertise, bool bAllowJoin, int32 NumPublicConnections)
+{
+	LOG_Server_WARNING(TEXT("UpdateSession called in C++"));
 }
 
 void ULCGameInstance::Shutdown()
