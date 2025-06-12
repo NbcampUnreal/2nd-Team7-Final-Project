@@ -319,6 +319,14 @@ public:
 	UAnimMontage* PickAxeMontage;
 
 
+	FTimerHandle DroneTrackingTimerHandle;
+	void StartTrackingDrone();
+	void StopTrackingDrone();
+	void UpdateRotationToDrone();
+
+	class ABaseDrone* ControlledDrone;
+
+
 	UFUNCTION()
 	void OnGunReloadAnimComplete(UAnimMontage* CompletedMontage, bool bInterrupted);
 
@@ -341,6 +349,8 @@ public:
 	UFUNCTION(Server, Unreliable)
 	void Server_CancelInteraction();
 	void Server_CancelInteraction_Implementation();
+
+	bool bIsPlayingInteractionMontage = false;
 
 	//Check Player Focus Everytime
 public:

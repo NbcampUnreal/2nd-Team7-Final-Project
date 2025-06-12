@@ -36,6 +36,8 @@
 #include "Components/PostProcessComponent.h"
 #include "Perception/AISense_Hearing.h"
 #include "Kismet/GameplayStatics.h"
+#include "Item/Drone/BaseDrone.h"
+
 #include "SaveGame/LCLocalPlayerSaveGame.h"
 
 ABaseCharacter::ABaseCharacter()
@@ -317,6 +319,10 @@ void ABaseCharacter::MakeNoiseSoundToAI(float Force)
 
 void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue, float Sensivity)
 {
+	if (bIsPlayingInteractionMontage)
+	{
+		return;
+	}
 	if (LocomotionAction == AlsLocomotionActionTags::Mantling)
 	{
 		return;
@@ -340,6 +346,38 @@ void ABaseCharacter::CameraShake(float Vertical, float Horizontal)
 	{
 		RecoilStep = 0;
 		GetWorld()->GetTimerManager().SetTimer(RecoilTimerHandle, this, &ABaseCharacter::ApplyRecoilStep, 0.02f, true);
+	}
+}
+
+void ABaseCharacter::StartTrackingDrone()
+{
+	// 0.02초 (50fps) 주기로 회전 업데이트 시작
+	GetWorld()->GetTimerManager().SetTimer(DroneTrackingTimerHandle, this, &ABaseCharacter::UpdateRotationToDrone, 0.02f, true);
+}
+
+void ABaseCharacter::StopTrackingDrone()
+{
+	GetWorld()->GetTimerManager().ClearTimer(DroneTrackingTimerHandle);
+}
+
+void ABaseCharacter::UpdateRotationToDrone()
+{
+	if (ControlledDrone)
+	{
+		FVector ToDrone = ControlledDrone->GetActorLocation() - GetActorLocation();
+		ToDrone.Z = 0; // Pitch는 무시해서 Yaw 회전만
+
+		if (!ToDrone.IsNearlyZero())
+		{
+			FRotator LookAtRotation = ToDrone.Rotation();
+
+			// 부드러운 회전 (선택)
+			FRotator NewRotation = FMath::RInterpTo(GetActorRotation(), LookAtRotation, GetWorld()->GetDeltaSeconds(), 5.0f);
+
+			SetActorRotation(NewRotation);
+			SpringArm->SetWorldRotation(NewRotation);
+			Controller->SetControlRotation(NewRotation); // 컨트롤러 회전도 고정
+		}
 	}
 }
 
@@ -1253,6 +1291,10 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 	{
 		MontageToPlay = PressButtonMontage;
 	}
+	else if (InteractTargetActor->Tags.Contains("Crystal"))
+	{
+		MontageToPlay = PickAxeMontage;
+	}
 	else
 	{
 		//당장 태그 없는 거 빠르게 테스트 하기 위해서 넣어놨습니다.
@@ -1273,6 +1315,7 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 		return;
 	}
 	CurrentInteractMontage = MontageToPlay;
+	bIsPlayingInteractionMontage = true;
 	Server_PlayMontage(MontageToPlay);
 }
 
@@ -1283,6 +1326,7 @@ void ABaseCharacter::CancelInteraction()
 	{
 		AnimInstance->Montage_Stop(0.2f, CurrentInteractMontage); // 부드럽게 블렌드 아웃
 		Server_CancelInteraction();
+		bIsPlayingInteractionMontage = false;
 	}
 }
 
@@ -1308,7 +1352,9 @@ void ABaseCharacter::OnNotified()
 		return;
 	}
 	IInteractableInterface::Execute_Interact(InteractTargetActor, PC);
+	bIsPlayingInteractionMontage = false;
 	//		InteractTargetActor = nullptr;
+
 }
 
 
@@ -2127,7 +2173,7 @@ void ABaseCharacter::RefreshOverlayObject(int index)
 	SetDesiredGait(AlsOverlayModeTags::Default);
 	SetOverlayMode(AlsOverlayModeTags::Default);
 	RefreshOverlayLinkedAnimationLayer(3);
-	AttachOverlayObject(SM_Torch, NULL, NULL, "Torch", true);
+	AttachOverlayObject(NULL, NULL, NULL, "Torch", true);
 	UE_LOG(LogTemp, Warning, TEXT("Character Equipped Unknown Item"));
 	return;
 

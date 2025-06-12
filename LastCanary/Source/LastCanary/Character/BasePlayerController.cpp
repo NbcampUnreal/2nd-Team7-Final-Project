@@ -1148,6 +1148,7 @@ void ABasePlayerController::Input_DroneExit()
 	}
 	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
+		PlayerCharacter->StopTrackingDrone();
 		PlayerCharacter->Server_UnPossessDrone();
 		if (IsLocalController())
 		{
@@ -1205,6 +1206,8 @@ void ABasePlayerController::Server_SpawnDrone_Implementation()
 	//리슨서버 호스트만 
 	if (HasAuthority())
 	{
+		SpanwedPlayerCharacter->ControlledDrone = SpawnedPlayerDrone;
+		SpanwedPlayerCharacter->StartTrackingDrone();
 		PossessOnDrone();
 	}
 	
@@ -1219,7 +1222,12 @@ void ABasePlayerController::OnRep_SpawnedPlayerDrone()
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("Client received replicated drone: %s"), *SpawnedPlayerDrone->GetName());
-
+	if (IsValid(SpanwedPlayerCharacter))
+	{
+		SpanwedPlayerCharacter->ControlledDrone = SpawnedPlayerDrone;
+		SpanwedPlayerCharacter->StartTrackingDrone();
+	}
+	
 	// UI 연동이나 기타 클라이언트 작업만 여기서
 	PossessOnDrone(); // 내부에서 서버에 possession 요청함
 }
