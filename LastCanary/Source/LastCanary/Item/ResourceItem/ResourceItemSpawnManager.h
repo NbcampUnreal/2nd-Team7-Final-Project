@@ -63,6 +63,18 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Spawn")
     AItemBase* SpawnItemAtLocation(FName ItemRowName, FVector Location);
 
+    UPROPERTY(EditAnywhere, Category = "Spawning")
+    FName TargetPointTag = FName("ResourceSpawn");
+
+    UPROPERTY(EditAnywhere, Category = "Spawn")
+    UDataTable* ResourceNodeSpawnTable;
+
+    UFUNCTION(BlueprintCallable, Category = "Spawn")
+    void  SpawnResourceNodes(int32 Count);
+
+    // 몇 개 스폰할지
+    UPROPERTY(EditAnywhere, Category = "Spawn")
+    int32 SpawnCount = 10;
 protected:
     /** 현재 맵에 따른 지역 태그 자동 설정 */
     void SetCurrentMapRegionTag();

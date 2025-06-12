@@ -219,3 +219,15 @@ UInventorySlotWidget* UInventoryWidgetBase::CreateSlotWidget(int32 SlotIndex, co
 
 	return SlotWidget;
 }
+
+FBaseItemSlotData UInventoryWidgetBase::ConvertBackpackSlotToBaseSlot(const FBackpackSlotData& BackpackSlot)
+{
+	FBaseItemSlotData Result;
+	Result.ItemRowName = BackpackSlot.ItemRowName;
+	Result.Quantity = BackpackSlot.Quantity;
+	Result.Durability = 100;
+	Result.bIsValid = BackpackSlot.IsValid();
+	Result.bIsEquipped = false;
+	// 기타 필드는 기본값 또는 무시
+	return Result;
+}
