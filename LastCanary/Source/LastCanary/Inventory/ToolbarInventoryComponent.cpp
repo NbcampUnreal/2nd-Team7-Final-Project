@@ -235,19 +235,21 @@ bool UToolbarInventoryComponent::TryAddItem(AItemBase* ItemActor)
         return false;
     }
 
-    // 수집 아이템이며 가방 장착 중이면 가방에 먼저 저장 시도
-    if (IsCollectibleItem(ItemData) && HasBackpackEquipped())
+    // 수집 아이템(Collectible)이면 툴바 내 모든 가방 슬롯을 0부터 탐색
+    if (IsCollectibleItem(ItemData))
     {
-        // 가방에 저장 성공시 ItemActor 제거, true 반환
-        if (AddItemToBackpack(ItemActor->ItemRowName, ItemActor->Quantity))
+        for (int32 i = 0; i < ItemSlots.Num(); ++i)
         {
-            if (GetOwner()->HasAuthority())
+            if (ItemSlots[i].bIsBackpack)
             {
-                ItemActor->Destroy();
+                if (AddItemToBackpack(ItemActor->ItemRowName, ItemActor->Quantity, i))
+                {
+                    if (GetOwner()->HasAuthority())
+                        ItemActor->Destroy();
+                    PostAddProcess();
+                    return true;
+                }
             }
-
-            PostAddProcess();
-            return true;
         }
     }
 
@@ -707,11 +709,23 @@ bool UToolbarInventoryComponent::TryStoreItem(AItemBase* ItemActor)
     if (IsBackpackItem(ItemData))
     {
         NewSlot.bIsBackpack = true;
+        NewSlot.BackpackSlots.Empty();
+        // 데이터가 있다면 복사
         if (ABackpackItem* BackpackItem = Cast<ABackpackItem>(ItemActor))
         {
-            // 가방의 데이터를 슬롯에 복사
             TArray<FBackpackSlotData> BackpackData = BackpackItem->GetBackpackData();
             NewSlot.BackpackSlots = BackpackData;
+        }
+        // 부족하면 Default로 채움
+        if (NewSlot.BackpackSlots.Num() < 20)
+        {
+            for (int32 i = NewSlot.BackpackSlots.Num(); i < 20; ++i)
+            {
+                FBackpackSlotData DefaultSlot;
+                DefaultSlot.ItemRowName = FName("Default");
+                DefaultSlot.Quantity = 0;
+                NewSlot.BackpackSlots.Add(DefaultSlot);
+            }
         }
     }
 
@@ -897,6 +911,17 @@ void UToolbarInventoryComponent::HandleBackpackEquip(int32 SlotIndex)
         return;
     }
 
+    if (SlotData.BackpackSlots.Num() < 20)
+    {
+        for (int32 i = SlotData.BackpackSlots.Num(); i < 20; ++i)
+        {
+            FBackpackSlotData DefaultSlot;
+            DefaultSlot.ItemRowName = FName("Default");
+            DefaultSlot.Quantity = 0;
+            SlotData.BackpackSlots.Add(DefaultSlot);
+        }
+    }
+
     // 가방 UI 활성화 (델리게이트 통해 UI에 알림)
     if (OnBackpackEquipped.IsBound())
     {
@@ -1028,37 +1053,26 @@ bool UToolbarInventoryComponent::UpdateCurrentBackpackSlots(const TArray<FBackpa
     return false;
 }
 
-bool UToolbarInventoryComponent::AddItemToBackpack(FName ItemRowName, int32 Quantity)
+bool UToolbarInventoryComponent::AddItemToBackpack(FName ItemRowName, int32 Quantity, int32 BackpackSlotIndex)
 {
-    if (CurrentEquippedSlotIndex >= 0 && ItemSlots.IsValidIndex(CurrentEquippedSlotIndex))
-    {
-        FBaseItemSlotData& SlotData = ItemSlots[CurrentEquippedSlotIndex];
-        if (SlotData.bIsBackpack)
-        {
-            // 빈 슬롯 찾기
-            for (FBackpackSlotData& BackpackSlot : SlotData.BackpackSlots)
-            {
-                if (BackpackSlot.ItemRowName.IsNone() || BackpackSlot.Quantity <= 0)
-                {
-                    BackpackSlot.ItemRowName = ItemRowName;
-                    BackpackSlot.Quantity = Quantity;
-                    OnInventoryUpdated.Broadcast();
-                    return true;
-                }
-                // 스택 가능한지 확인
-                else if (BackpackSlot.ItemRowName == ItemRowName)
-                {
-                    BackpackSlot.Quantity += Quantity;
-                    OnInventoryUpdated.Broadcast();
-                    return true;
-                }
-            }
+    if (!ItemSlots.IsValidIndex(BackpackSlotIndex)) return false;
+    FBaseItemSlotData& SlotData = ItemSlots[BackpackSlotIndex];
+    if (!SlotData.bIsBackpack) return false;
 
-            // 빈 슬롯이 없으면 새로 추가
-            FBackpackSlotData NewSlot;
-            NewSlot.ItemRowName = ItemRowName;
-            NewSlot.Quantity = Quantity;
-            SlotData.BackpackSlots.Add(NewSlot);
+    for (FBackpackSlotData& BackpackSlot : SlotData.BackpackSlots)
+    {
+        // 빈 슬롯 "Default" 또는 수량0
+        if (IsDefaultItem(BackpackSlot.ItemRowName) || BackpackSlot.Quantity <= 0)
+        {
+            BackpackSlot.ItemRowName = ItemRowName;
+            BackpackSlot.Quantity = Quantity;
+            OnInventoryUpdated.Broadcast();
+            return true;
+        }
+        // 스택 가능
+        else if (BackpackSlot.ItemRowName == ItemRowName)
+        {
+            BackpackSlot.Quantity += Quantity;
             OnInventoryUpdated.Broadcast();
             return true;
         }

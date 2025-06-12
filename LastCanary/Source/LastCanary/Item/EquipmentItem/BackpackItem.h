@@ -36,4 +36,7 @@ public:
     /** 가방에 데이터 설정 */
     UFUNCTION(BlueprintCallable, Category = "Backpack")
     void SetBackpackData(const TArray<FBackpackSlotData>& InData);
+
+    /** 가방에 데이터 초기화 함수 */
+    void InitializeBackpackSlots(TArray<FBackpackSlotData>& SlotsArray, int32 NumSlots);
 };

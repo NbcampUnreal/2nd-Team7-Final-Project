@@ -91,11 +91,11 @@ public:
 
     /** 가방에 아이템 추가 (UI에서 직접 호출용) */
     UFUNCTION(BlueprintCallable, Category = "Backpack")
-    bool AddItemToBackpack(FName ItemRowName, int32 Quantity = 1);
+    bool AddItemToBackpack(FName ItemRowName, int32 Quantity, int32 BackpackSlotIndex);
 
     /** 가방에서 아이템 제거 (UI에서 직접 호출용) */
     UFUNCTION(BlueprintCallable, Category = "Backpack")
-    bool RemoveItemFromBackpack(int32 BackpackSlotIndex, int32 Quantity = 1);
+    bool RemoveItemFromBackpack(int32 BackpackSlotIndex, int32 Quantity);
 
     /** 가방이 장착되어 있는지 확인 */
     UFUNCTION(BlueprintPure, Category = "Backapck|Equipment")

@@ -11,6 +11,8 @@ ABackpackItem::ABackpackItem()
 void ABackpackItem::BeginPlay()
 {
     Super::BeginPlay();
+
+    InitializeBackpackSlots(BackpackData, BackpackSlots);
 }
 
 void ABackpackItem::UseItem()
@@ -34,4 +36,16 @@ TArray<FBackpackSlotData> ABackpackItem::GetBackpackData() const
 void ABackpackItem::SetBackpackData(const TArray<FBackpackSlotData>& InData)
 {
     BackpackData = InData;
+}
+
+void ABackpackItem::InitializeBackpackSlots(TArray<FBackpackSlotData>& SlotsArray, int32 NumSlots)
+{
+    SlotsArray.Empty();
+    for (int32 i = 0; i < NumSlots; ++i)
+    {
+        FBackpackSlotData DefaultSlot;
+        DefaultSlot.ItemRowName = FName("Default");
+        DefaultSlot.Quantity = 0;
+        SlotsArray.Add(DefaultSlot);
+    }
 }
