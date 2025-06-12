@@ -20,7 +20,6 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-
 public:
 	/** 앞쪽 트리거 박스 (뒤로 민다) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Push")
@@ -30,9 +29,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Push")
 	UBoxComponent* BackwardTrigger;
 
-	/** 트리거별 이동 방향 (트리거가 있는 반대 방향) */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Push")
-	TMap<UBoxComponent*, FVector> PushDirectionMap;
+	///** 트리거별 이동 방향 (트리거가 있는 반대 방향) */
+	//UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Push")
+	//TMap<UBoxComponent*, FVector> PushDirectionMap;
 
 	/** 상호작용 시 이동 수행 */
 	virtual void ActivateGimmick_Implementation() override;
