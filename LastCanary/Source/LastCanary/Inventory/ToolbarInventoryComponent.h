@@ -116,6 +116,11 @@ private:
     bool IsBackpackItem(FName ItemRowName) const;
     bool HasOtherEquippedItems() const;
 
+    /** 가방메시 비가시화 RPC함수 */
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_SetBackpackVisibility(bool bVisible);
+    void Multicast_SetBackpackVisibility_Implementation(bool bVisible);
+
     /** 수집품인지 확인 */
     bool IsCollectibleItem(const FItemDataRow* ItemData) const;
 

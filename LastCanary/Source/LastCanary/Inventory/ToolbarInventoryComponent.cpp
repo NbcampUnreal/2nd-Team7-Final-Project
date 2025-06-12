@@ -608,6 +608,11 @@ void UToolbarInventoryComponent::SetupEquippedItem(UChildActorComponent* ItemCom
         EquipmentItem->SetEquipped(true);
     }
 
+    if (ABackpackItem* BackpackItem = Cast<ABackpackItem>(EquippedItem))
+    {
+        BackpackItem->bMeshVisible = false; // 자동으로 복제됨
+    }
+
     EquippedItem->ForceNetUpdate();
 }
 
@@ -953,13 +958,7 @@ void UToolbarInventoryComponent::HandleBackpackEquip(int32 SlotIndex)
             SetupEquippedItem(EquippedItemComponent, CachedOwnerCharacter->GetMesh(), TargetSocket, ItemData, &SlotData);
 
             // 메시 숨김
-            if (ABackpackItem* BackpackItem = Cast<ABackpackItem>(EquippedItemComponent->GetChildActor()))
-            {
-                if (UMeshComponent* MeshComp = BackpackItem->GetMeshComponent())
-                {
-                    MeshComp->SetVisibility(false);
-                }
-            }
+            Multicast_SetBackpackVisibility(false);
         }
     }
 
@@ -1031,6 +1030,17 @@ bool UToolbarInventoryComponent::HasOtherEquippedItems() const
         }
     }
     return false;
+}
+
+void UToolbarInventoryComponent::Multicast_SetBackpackVisibility_Implementation(bool bVisible)
+{
+    if (ABackpackItem* BackpackItem = Cast<ABackpackItem>(EquippedItemComponent->GetChildActor()))
+    {
+        if (UMeshComponent* MeshComp = BackpackItem->GetMeshComponent())
+        {
+            MeshComp->SetVisibility(bVisible);
+        }
+    }
 }
 
 bool UToolbarInventoryComponent::IsCollectibleItem(const FItemDataRow* ItemData) const
