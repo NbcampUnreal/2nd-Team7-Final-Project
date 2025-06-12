@@ -387,20 +387,7 @@ void ABaseCharacter::ApplyRecoilStep()
 
 void ABaseCharacter::Handle_Look(const FInputActionValue& ActionValue)
 {
-	/*  Deprecated
-	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
-	{
-		return;
-	}
-	if (IsValid(CurrentInteractMontage))
-	{
-		return;
-	}
-	const FVector2f Value{ ActionValue.Get<FVector2D>() };
 
-	AddControllerPitchInput(Value.Y);
-	AddControllerYawInput(Value.X);
-	*/
 }
 
 void ABaseCharacter::Handle_Move(const FInputActionValue& ActionValue)
@@ -1547,7 +1534,7 @@ void ABaseCharacter::UpdateGunWallClipOffset(float DeltaTime)
 	float MuzzlePitch = MuzzleRot.Pitch;  // 상하 방향 판별용
 
 	// 2. 라인 트레이스
-	static constexpr float GunWallTraceDistance = 50.0f; // 50에서 100으로 더 여유있게
+	static constexpr float GunWallTraceDistance = 25.0f; // 50에서 100으로 더 여유있게
 	FVector TraceEnd = MuzzleLoc + MuzzleForward * GunWallTraceDistance;
 
 	FHitResult Hit;
