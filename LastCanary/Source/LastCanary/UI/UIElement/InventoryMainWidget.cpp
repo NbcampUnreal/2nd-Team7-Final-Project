@@ -13,7 +13,7 @@
 void UInventoryMainWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
-
+	
 	AutoInitializeWithPlayer();
 
 	ShowToolbarOnly();
@@ -123,4 +123,3 @@ void UInventoryMainWidget::RefreshInventory()
 		BackpackWidget->RefreshInventoryUI();
 	}
 }
-

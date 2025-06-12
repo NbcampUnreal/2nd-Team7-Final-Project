@@ -1,5 +1,6 @@
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "Character/BaseCharacter.h"
+#include "Character/BasePlayerState.h"
 #include "DataTable/ItemDataRow.h"
 #include "DataType/BaseItemSlotData.h"
 #include "Framework/GameInstance/LCGameInstance.h"
@@ -208,6 +209,11 @@ bool UToolbarInventoryComponent::TryRemoveItemAtSlot(int32 SlotIndex)
         // TODO : 실재하지 않는 아이템이라는 것을 알리는 UI나 메시지가 필요할지도
         // 예를 들면 아이템을 클릭한 상태(사용, 버리기 등의 선택지를 띄워둔 상태에서 아이템이 소모되어 사라진다면 발생할지도
         return false;
+    }
+
+    if (!IsDefaultItem(ItemSlots[SlotIndex].ItemRowName) && ItemSlots[SlotIndex].bIsValid)
+    {
+        OnItemDropped(ItemSlots[SlotIndex].ItemRowName);
     }
 
     ItemSlots[SlotIndex] = FBaseItemSlotData();
@@ -746,6 +752,9 @@ bool UToolbarInventoryComponent::TryStoreItem(AItemBase* ItemActor)
 
     ItemSlots[EmptySlotIndex] = NewSlot;
 
+    // 플레이어 스테이트에 동기화
+    OnItemAcquired(ItemActor->ItemRowName);
+
     // 정리
     OnInventoryUpdated.Broadcast();
     if (GetOwner()->HasAuthority() && ItemActor)
@@ -840,7 +849,7 @@ bool UToolbarInventoryComponent::Internal_DropEquippedItemAtSlot(int32 SlotIndex
         SyncGunStateToSlot();
     }
 
-    // ✅ 드롭 아이템 생성
+    // 드롭 아이템 생성
     FVector DropLocation = CalculateDropLocation();
     FBaseItemSlotData DropItemData = *SlotData;
     DropItemData.Quantity = FMath::Min(Quantity, SlotData->Quantity);
@@ -853,7 +862,7 @@ bool UToolbarInventoryComponent::Internal_DropEquippedItemAtSlot(int32 SlotIndex
         return false;
     }
 
-    // ✅ 가방 전용 후처리
+    // 가방 전용 후처리
     if (SlotData->bIsBackpack)
     {
         if (ABackpackItem* DroppedBackpack = Cast<ABackpackItem>(DroppedItem))
@@ -867,6 +876,7 @@ bool UToolbarInventoryComponent::Internal_DropEquippedItemAtSlot(int32 SlotIndex
     SlotData->Quantity -= DropItemData.Quantity;
     if (SlotData->Quantity <= 0)
     {
+        OnItemDropped(SlotData->ItemRowName);
         SetSlotToDefault(SlotIndex);
     }
 
@@ -1072,6 +1082,8 @@ bool UToolbarInventoryComponent::AddItemToBackpack(FName ItemRowName, int32 Quan
             BackpackSlot.Quantity = Quantity;
             OnInventoryUpdated.Broadcast();
 
+            OnItemAcquired(ItemRowName);
+
             return true;
         }
         // 스택 가능
@@ -1094,6 +1106,12 @@ bool UToolbarInventoryComponent::RemoveItemFromBackpack(int32 BackpackSlotIndex,
         if (SlotData.bIsBackpack && SlotData.BackpackSlots.IsValidIndex(BackpackSlotIndex))
         {
             FBackpackSlotData& BackpackSlot = SlotData.BackpackSlots[BackpackSlotIndex];
+            
+            if (BackpackSlot.Quantity <= Quantity && !IsDefaultItem(BackpackSlot.ItemRowName))
+            {
+                OnItemDropped(BackpackSlot.ItemRowName);
+            }
+
             BackpackSlot.Quantity -= Quantity;
 
             if (BackpackSlot.Quantity <= 0)
@@ -1116,4 +1134,55 @@ bool UToolbarInventoryComponent::HasBackpackEquipped() const
         return ItemSlots[CurrentEquippedSlotIndex].bIsBackpack;
     }
     return false;
+}
+
+TArray<int32> UToolbarInventoryComponent::GetAllBackpackItemIDs() const
+{
+    TArray<int32> Result;
+    for (const FBaseItemSlotData& Slot : ItemSlots)
+    {
+        if (Slot.bIsBackpack)
+        {
+            for (const FBackpackSlotData& BackpackSlot : Slot.BackpackSlots)
+            {
+                // 빈 아이템 제외 (Default 등)
+                if (!IsDefaultItem(BackpackSlot.ItemRowName) && BackpackSlot.Quantity > 0)
+                {
+                    int32 ItemID = GetItemIDFromRowName(BackpackSlot.ItemRowName);
+                    Result.Add(ItemID);
+                }
+            }
+        }
+    }
+    return Result;
+}
+
+void UToolbarInventoryComponent::OnItemAcquired(const FName& ItemRowName)
+{
+    if (IsOwnerCharacterValid())
+    {
+        if (ABasePlayerState* PS = CachedOwnerCharacter->GetPlayerState<ABasePlayerState>())
+        {
+            int32 ItemID = GetItemIDFromRowName(ItemRowName);
+            if (ItemID > 0 && !PS->AquiredItemIDs.Contains(ItemID))
+            {
+                PS->AquiredItemIDs.Add(ItemID);
+            }
+        }
+    }
+}
+
+void UToolbarInventoryComponent::OnItemDropped(const FName& ItemRowName)
+{
+    if (IsOwnerCharacterValid())
+    {
+        if (ABasePlayerState* PS = CachedOwnerCharacter->GetPlayerState<ABasePlayerState>())
+        {
+            int32 ItemID = GetItemIDFromRowName(ItemRowName);
+            if (ItemID > 0)
+            {
+                PS->AquiredItemIDs.Remove(ItemID);
+            }
+        }
+    }
 }

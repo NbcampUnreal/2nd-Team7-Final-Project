@@ -101,6 +101,9 @@ public:
     UFUNCTION(BlueprintPure, Category = "Backapck|Equipment")
     bool HasBackpackEquipped() const;
 
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Persistence")
+    TArray<int32> GetAllBackpackItemIDs() const;
+
 private:
     /** 가방 전용 장착 전처리 */
     void HandleBackpackEquip(int32 SlotIndex);
@@ -152,6 +155,11 @@ private:
 
 private:
     bool Internal_DropEquippedItemAtSlot(int32 SlotIndex, int32 Quantity);
+
+    /** 아이템 습득 시 플레이어 스테이트와 동기화 */
+    void OnItemAcquired(const FName& ItemRowName);
+    /** 아이템 드랍 시 플레이어 스테이트와 동기화 */
+    void OnItemDropped(const FName& ItemRowName);
 
     //-----------------------------------------------------
     // 네트워크

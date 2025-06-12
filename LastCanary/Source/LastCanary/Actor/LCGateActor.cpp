@@ -67,7 +67,7 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 					// 아이템 ID 복사
 					ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(RoomPC->GetPawn());
 					PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetToolbarInventoryComponent()->GetInventoryItemIDs());
-					//PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetBackpackInventoryComponent()->GetInventoryItemIDs());
+					PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetToolbarInventoryComponent()->GetAllBackpackItemIDs());
 
 					// 자원 수집 기록
 					if (HasAuthority()) // 서버에서만 처리
