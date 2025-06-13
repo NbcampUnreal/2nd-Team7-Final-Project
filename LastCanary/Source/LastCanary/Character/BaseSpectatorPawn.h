@@ -27,6 +27,16 @@ public:
 	void AdjustCameraZoom(float ZoomDelta); // 선택사항
 
 	void SpectateOtherUser(ABaseCharacter* TargetCharacter);
+
+
+	virtual void Handle_VoiceChatting(const FInputActionValue& ActionValue);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Voice")
+	void StartVoiceChat();
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Voice")
+	void CancelVoiceChat();
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	class USpringArmComponent* SpringArm;
