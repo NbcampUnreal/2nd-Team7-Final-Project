@@ -420,6 +420,7 @@ void ABaseCharacter::NotifyNoiseToAI(FVector Velocity)
 	float SpeedXY = XYSpeed.Size();
 	float PowerOnFoot = SpeedXY + Velocity.Z;
 	MakeNoiseSoundToAI(PowerOnFoot);
+	MakeNoiseSoundToBoss(PowerOnFoot);
 }
 
 void ABaseCharacter::NotifyNoiseToAI(float LandVelocity)
@@ -429,6 +430,7 @@ void ABaseCharacter::NotifyNoiseToAI(float LandVelocity)
 	float PowerOnFoot = CurrentPlayerSpeed + LandVelocity;
 
 	MakeNoiseSoundToAI(PowerOnFoot);
+	MakeNoiseSoundToBoss(PowerOnFoot);
 }
 
 void ABaseCharacter::MakeNoiseSoundToAI(float Force)
@@ -459,6 +461,35 @@ void ABaseCharacter::MakeNoiseSoundToAI(float Force)
 		AISoundCheckTag                         // FName: 태그로 필터링 가능 (선택사항)
 	);
 
+}
+
+void ABaseCharacter::MakeNoiseSoundToBoss(float Force)
+{
+	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
+	if (!IsValid(MyPlayerState))
+	{
+		return;
+	}
+	if (Force < MyPlayerState->WalkSpeed)
+	{
+		return;
+	}
+	UE_LOG(LogTemp, Warning, TEXT("발소리가 났음: %f "), Force);
+
+	FVector SoundLocation = GetActorLocation();
+
+	float SoundLoudness = Force / SoundLoudnessDivider;
+
+	AActor* SoundCauser = this;
+
+	UAISense_Hearing::ReportNoiseEvent(
+		GetWorld(),
+		SoundLocation,              // FVector: 소리가 발생한 위치
+		SoundLoudness*1000,                   // float: 소리의 크기 (기본값은 1.0f, 감지 거리 등에 영향을 줌)
+		SoundCauser,                 // AActor*: 소리의 주체 (보통 this)
+		MaxSoundRange,                   // float: 소리를 들을 수 있는 최대 거리
+		"Boss"                         // FName: 태그로 필터링 가능 (선택사항)
+	);
 }
 
 void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue, float Sensivity)

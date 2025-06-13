@@ -163,6 +163,7 @@ public:
 	virtual void NotifyNoiseToAI(FVector Velocity) override;
 	virtual void NotifyNoiseToAI(float LandVelocity) override;
 	void MakeNoiseSoundToAI(float Force);
+	void MakeNoiseSoundToBoss(float Force);
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AISettings", meta = (ClampMin = "1.0", ClampMax = "10000.0"))
 	float SoundLoudnessDivider = 1000.0f;

@@ -7,7 +7,7 @@ ALCBossAIController::ALCBossAIController()
     SightConfig = CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("SightConfig"));
     SightConfig->SightRadius = 2000.f;
     SightConfig->LoseSightRadius = 2300.f;
-    SightConfig->PeripheralVisionAngleDegrees = 90.f;
+    SightConfig->PeripheralVisionAngleDegrees = 180.f;
     SightConfig->SetMaxAge(5.f);
     SightConfig->DetectionByAffiliation.bDetectEnemies = true;
     SightConfig->DetectionByAffiliation.bDetectNeutrals = true;
