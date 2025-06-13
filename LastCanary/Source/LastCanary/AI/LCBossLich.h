@@ -13,54 +13,87 @@ public:
     ALCBossLich();
 
 protected:
+    // ─── 기본 라이프사이클 ─────────────────────────
     virtual void BeginPlay() override;
+    virtual void Tick(float DeltaTime) override;
     virtual void UpdateRage(float DeltaSeconds) override;
+    virtual void OnRep_IsBerserk() override;
+    virtual bool RequestAttack(float TargetDistance) override;
 
-    /** ── 언데드 소환 ── */
-    /** 소환할 언데드 클래스 목록 */
+    // ─── 언데드 소환(희생의 의식) ─────────────────
     UPROPERTY(EditAnywhere, Category = "Lich|Undead")
     TArray<TSubclassOf<APawn>> UndeadClasses;
 
-    /** 소환 주기 */
     UPROPERTY(EditAnywhere, Category = "Lich|Undead", meta = (ClampMin = "5.0"))
     float UndeadSpawnInterval = 20.f;
 
-    /** 소환 타이머 핸들 */
-    FTimerHandle UndeadSpawnTimerHandle;
+    UPROPERTY(EditAnywhere, Category = "Lich|Undead")
+    float UndeadRagePerSecond = 2.f;  // 살아있는 언데드 한 마리당 초당 Rage
 
-    /** 언데드 소환 함수 */
+    FTimerHandle UndeadSpawnTimerHandle;
     void SpawnUndeadMinion();
 
-    /** ── 마나 파동 ── */
-    /** 마나 파동 데미지 */
+    // ─── Rage ─────────────────────────────────────
+    UPROPERTY(EditAnywhere, Category = "Lich|Rage")
+    float MaxRage = 100.f;
+
+    void AddRage(float Amount);
+
+    // ─── 마나 파동 ─────────────────────────────────
+    UPROPERTY(EditAnywhere, Category = "Lich|ManaPulse")
+    float ManaPulseInterval = 25.f;
+
     UPROPERTY(EditAnywhere, Category = "Lich|ManaPulse")
     float ManaPulseDamage = 15.f;
 
-    /** 마나 파동 반경 */
     UPROPERTY(EditAnywhere, Category = "Lich|ManaPulse")
     float ManaPulseRadius = 600.f;
 
-    /** 마나 파동 주기 */
-    UPROPERTY(EditAnywhere, Category = "Lich|ManaPulse", meta = (ClampMin = "1.0"))
-    float ManaPulseInterval = 25.f;
-
-    /** 마나 파동 타이머 */
     FTimerHandle ManaPulseTimerHandle;
-
-    /** 마나 파동 실행 함수 */
     void ExecuteManaPulse();
 
-    /** ── 소환된 Phylactery ── */
-    /** Phylactery 액터 레퍼런스 (월드에 배치하거나 스폰) */
-    UPROPERTY(EditAnywhere, Category = "Lich|Phylactery")
-    AActor* PhylacteryActor;
+    // ─── 공격 패턴 ─────────────────────────────────
+    UPROPERTY(EditAnywhere, Category = "Lich|Combat")
+    float ArcaneBoltCooldown = 4.f;
 
-    /** Phylactery 파괴 체크 */
+    UPROPERTY(EditAnywhere, Category = "Lich|Combat")
+    float ArcaneBoltRange = 2000.f;
+
+    UPROPERTY(EditAnywhere, Category = "Lich|Combat")
+    float SoulBindCooldown = 12.f;
+
+    UPROPERTY(EditAnywhere, Category = "Lich|Combat")
+    float SoulBindRange = 1200.f;
+
+    UPROPERTY(EditAnywhere, Category = "Lich|Combat")
+    float DeathNovaThreshold = 0.5f;   // 체력 비율
+
+    UPROPERTY(EditAnywhere, Category = "Lich|Combat")
+    float DeathNovaDamage = 50.f;
+
+    UPROPERTY(EditAnywhere, Category = "Lich|Combat")
+    float DeathNovaRadius = 800.f;
+
+    UPROPERTY(EditAnywhere, Category = "Lich|Combat")
+    float SoulAbsorbDamage = 20.f;
+
+    UPROPERTY(EditAnywhere, Category = "Lich|Combat")
+    float SoulAbsorbHeal = 30.f;
+
+    float LastArcaneBoltTime = -FLT_MAX;
+    float LastSoulBindTime = -FLT_MAX;
+    bool  bHasUsedDeathNova = false;
+
+    void ExecuteArcaneBolt(AActor* Target);
+    void ExecuteSoulBind(AActor* Target);
+    void ExecuteDeathNova();
+    void ExecuteSoulAbsorb(AActor* Target);
+
+    // ─── Phylactery 기믹 ─────────────────────────────
+    UPROPERTY(EditAnywhere, Category = "Lich|Phylactery")
+    AActor* PhylacteryActor = nullptr;
+
     void CheckPhylactery();
 
-    /** Berserk 진입 조건 재정의 (Phylactery 파괴 시 즉시) */
-    virtual void OnRep_IsBerserk() override;
-
-    virtual bool RequestAttack(float TargetDistance) override;
 	
 };

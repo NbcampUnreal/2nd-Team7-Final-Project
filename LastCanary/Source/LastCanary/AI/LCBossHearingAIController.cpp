@@ -3,6 +3,9 @@
 #include "Perception/AISense_Hearing.h"
 #include "AI/LCBossBanshee.h"
 
+// 블록 상단에 태그 정의 (원하는 위치에 추가)
+static const FName BossNoiseTag = TEXT("Boss");
+
 ALCBossHearingAIController::ALCBossHearingAIController()
 {
     HearingConfig = CreateDefaultSubobject<UAISenseConfig_Hearing>(TEXT("HearingConfig"));
@@ -19,7 +22,8 @@ ALCBossHearingAIController::ALCBossHearingAIController()
 
 void ALCBossHearingAIController::OnPerceptionUpdated(const TArray<AActor*>& UpdatedActors)
 {
-    FAISenseID HearingSenseID = UAISense_Hearing::StaticClass()->GetDefaultObject<UAISense>()->GetSenseID();
+    FAISenseID HearingSenseID = UAISense_Hearing::StaticClass()
+        ->GetDefaultObject<UAISense>()->GetSenseID();
 
     float ClosestDistSqr = FLT_MAX;
     FVector ClosestLocation = FVector::ZeroVector;
@@ -34,9 +38,16 @@ void ALCBossHearingAIController::OnPerceptionUpdated(const TArray<AActor*>& Upda
 
         for (const FAIStimulus& Stimulus : Info.LastSensedStimuli)
         {
-            if (Stimulus.Type == HearingSenseID && Stimulus.WasSuccessfullySensed())
+            // HearingSenseID + 성공 감지 + “Boss” 태그 체크
+            if (Stimulus.Type == HearingSenseID
+                && Stimulus.WasSuccessfullySensed()
+                && Stimulus.Tag == BossNoiseTag)
             {
-                float DistSqr = FVector::DistSquared(Stimulus.StimulusLocation, GetPawn()->GetActorLocation());
+                float DistSqr = FVector::DistSquared(
+                    Stimulus.StimulusLocation,
+                    GetPawn()->GetActorLocation()
+                );
+
                 if (DistSqr < ClosestDistSqr)
                 {
                     ClosestDistSqr = DistSqr;
@@ -49,8 +60,8 @@ void ALCBossHearingAIController::OnPerceptionUpdated(const TArray<AActor*>& Upda
 
     if (ClosestActor)
     {
-        ALCBossBanshee* Banshee = Cast<ALCBossBanshee>(GetPawn());
-        if (Banshee)
+        // 보스에게 반향 알리기
+        if (ALCBossBanshee* Banshee = Cast<ALCBossBanshee>(GetPawn()))
         {
             Banshee->OnHeardNoise(ClosestLocation);
         }
