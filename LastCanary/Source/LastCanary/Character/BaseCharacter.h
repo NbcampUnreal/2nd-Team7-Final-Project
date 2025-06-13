@@ -132,7 +132,6 @@ protected:
 	float SmoothCameraTimeThreshold = 0.5f;
 
 	float SmoothCameraCurrentTime = 0.f;
-	USkeletalMeshComponent* CurrentRifleMesh;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float FieldOfView = 90.f;

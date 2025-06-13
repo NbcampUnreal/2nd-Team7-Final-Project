@@ -243,11 +243,11 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 		//UE_LOG(LogTemp, Warning, TEXT("SpringArm Rotation: %s"), *SpringArm->GetComponentRotation().ToString());
 		
 	}
-	else if (bIsAiming && IsValid(CurrentRifleMesh) && !bIsReloading)
+	else if (bIsAiming && IsValid(CurrentRifleMesh) && !bIsReloading)	
 	{
-		UpdateRightHandIKTarget();
+		//UpdateRightHandIKTarget();
 
-		/*
+		
 		FTransform ScopeTransform = CurrentRifleMesh->GetSocketTransform(TEXT("Scope"));
 		FVector TargetLoc = ScopeTransform.GetLocation();
 		FRotator TargetRot = ScopeTransform.GetRotation().Rotator();
@@ -261,7 +261,7 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 		//SpringArm->TargetArmLength = FMath::Lerp(SpringArm->TargetArmLength, 20.0f, DeltaTime);
 
 		SpringArm->bUsePawnControlRotation = false;
-		*/
+		
 	}
 	else
 	{
@@ -272,34 +272,45 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 
 void ABaseCharacter::UpdateRightHandIKTarget()
 {
+	/*
 	if (!CurrentRifleMesh || !Camera) return;
 
-	// 총에서 Scope 소켓의 위치와 회전
+	UE_LOG(LogTemp, Warning, TEXT("UpdateRightHandIKTarget"));
+
 	FTransform ScopeTransform = CurrentRifleMesh->GetSocketTransform(TEXT("Scope"), RTS_World);
-	FVector ScopeWorldLocation = ScopeTransform.GetLocation();
-	FRotator ScopeWorldRotation = ScopeTransform.Rotator();
+	FTransform MeshTransform = GetMesh()->GetSocketTransform(TEXT("ik_hand_gun"), RTS_World);
+	FTransform Relative = UKismetMathLibrary::MakeRelativeTransform(ScopeTransform, MeshTransform);
+	FVector AimSocketLocation = Relative.GetLocation();
+	FRotator AimSocketRotation = Relative.GetRotation().Rotator();
 
-	// 카메라 기준 타겟 위치
-	FVector CameraLocation = Camera->GetComponentLocation();
-	FVector CameraForward = Camera->GetForwardVector();
-	FVector TargetAimLocation = CameraLocation + (CameraForward * 30.0f);
+	FTransform CameraTransform = Camera->GetComponentTransform();
+	FTransform HandrootTransform = GetMesh()->GetSocketTransform(TEXT("ik_hand_root"), RTS_World);
+	FTransform HandRelative = UKismetMathLibrary::MakeRelativeTransform(CameraTransform, HandrootTransform);
+	FVector RelativeLocation = HandRelative.GetLocation();
+	FRotator RelativeRotation = HandRelative.GetRotation().Rotator();
+	
+	FVector AimPointLocation = RelativeLocation;
 
-	// 위치 offset 계산
-	FVector Offset = TargetAimLocation - ScopeWorldLocation;
-	FVector DesiredIKLocation = GetMesh()->GetSocketLocation(TEXT("ik_hand_gun")) + Offset;
+	FVector ForwardVector = RelativeRotation.Vector(); // 또는 RelativeRotation.GetForwardVector()
+	FVector AimPointForwardLocation = RelativeLocation + ForwardVector * 20.0f;
+	
 
-	// 애님 인스턴스에 위치 + 회전 전달
+
 	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
 	{
-		if (UAlsLinkedAnimationInstance* MyAnimInstance = Cast<UAlsLinkedAnimationInstance>(AnimInstance))
+		if (UAlsAnimationInstance* MyAnimInstance = Cast<UAlsAnimationInstance>(AnimInstance))
 		{
-			MyAnimInstance->RightHandIKTargetLocation = DesiredIKLocation;
+			MyAnimInstance->AimSocketLocation = AimSocketLocation;
 
-			// 카메라 방향을 기준으로 총이 바라볼 회전
-			FRotator TargetRotation = CameraForward.ToOrientationRotator();
-			MyAnimInstance->RightHandIKTargetRotation = TargetRotation;
+			MyAnimInstance->AimSocketRotation = AimSocketRotation;
+			
+			MyAnimInstance->AimPointLocation = AimPointForwardLocation;
+			
+			MyAnimInstance->AimPointRotation = RelativeRotation;
+
 		}
 	}
+	*/
 }
 
 
@@ -784,15 +795,15 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 				{
 					bIsAiming = true;
 					CancelInteraction();
-					//SpringArm->AttachToComponent(RifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
+					SpringArm->AttachToComponent(RifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
 					return;
 				}
 				else
 				{
 					bIsAiming = false;
-					//SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
-					//SpringArm->TargetArmLength = 0.0f;
-					//SpringArm->bUsePawnControlRotation = true;
+					SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+					SpringArm->TargetArmLength = 0.0f;
+					SpringArm->bUsePawnControlRotation = true;
 					if (!bIsFPSCamera)
 					{
 						SpringArm->TargetArmLength = 200.0f;
