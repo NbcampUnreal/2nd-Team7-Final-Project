@@ -6,9 +6,12 @@
 #include "Components/SplineComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/PointLightComponent.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
 #include "TimerManager.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "Kismet/GameplayStatics.h"
 
 #include "LastCanary.h"
 
@@ -54,7 +57,7 @@ void ALCDroneDelivery::StartDelivery()
 
 	if (ExternalSpline==nullptr)
 	{
-		UE_LOG(LogTemp, Error, TEXT("[Drone] No valid spline found for delivery."));
+		// UE_LOG(LogTemp, Error, TEXT("[Drone] No valid spline found for delivery."));
 		Destroy();
 		return;
 	}
@@ -141,8 +144,6 @@ void ALCDroneDelivery::UpdateLocationOnSpline()
 
 void ALCDroneDelivery::DropBox()
 {
-	Multicast_PlayDropEffect();
-
 	GetWorldTimerManager().ClearTimer(LightBlinkTimerHandle);
 
 	if (HasAuthority() == true)
@@ -202,16 +203,26 @@ void ALCDroneDelivery::UpdateEscapeMovement()
 	}
 }
 
-void ALCDroneDelivery::Multicast_PlayDropEffect_Implementation()
-{
-	// TODO: 이펙트, 사운드 등 연출 삽입 가능
-	UE_LOG(LogTemp, Warning, TEXT("[Drone] Drop effect played on all clients"));
-}
-
 void ALCDroneDelivery::Multicast_PlayDropExplosionEffect_Implementation()
 {
-	UE_LOG(LogTemp, Log, TEXT("[Drone] Drop explosion played on all clients"));
-	// Add explosion FX or sound here
+	if (DestroyEffect && DropBoxMesh )
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			GetWorld(),
+			DestroyEffect,
+			DropBoxMesh->GetComponentLocation(),
+			DropBoxMesh->GetComponentRotation() 
+		);
+	}
+
+	if (DropSound && DropBoxMesh)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			this,
+			DropSound,
+			DropBoxMesh->GetComponentLocation()
+		);
+	}
 }
 
 void ALCDroneDelivery::Multicast_DropBoxDetach_Implementation()
@@ -234,7 +245,7 @@ void ALCDroneDelivery::OnDropBoxHit(UPrimitiveComponent* HitComp, AActor* OtherA
 	}
 
 	DropBoxMesh->OnComponentHit.RemoveAll(this);
-	LOG_Frame_WARNING(TEXT("[Drone] OnDropBoxHit Called..."));
+	// LOG_Frame_WARNING(TEXT("[Drone] OnDropBoxHit Called..."));
 
 	// 1.5초 후 아이템 드랍 연출 및 제거
 	GetWorldTimerManager().SetTimer(
@@ -254,7 +265,7 @@ void ALCDroneDelivery::SpawnDroppedItems()
 	}
 
 	const FVector BaseLocation = DropBoxMesh->GetComponentLocation();
-	LOG_Frame_WARNING(TEXT("[Drone] DropBox hit ground! Spawning items..."));
+	// LOG_Frame_WARNING(TEXT("[Drone] DropBox hit ground! Spawning items..."));
 
 	for (const FItemDropData& Drop : ItemsToDrop)
 	{
@@ -262,11 +273,11 @@ void ALCDroneDelivery::SpawnDroppedItems()
 		FName ItemRowName = FindItemRowNameByID(Drop.ItemID);
 		if (ItemRowName.IsNone())
 		{
-			LOG_Frame_WARNING(TEXT("[Drone] ItemRowName not found for ItemID: %d"), Drop.ItemID);
+			// LOG_Frame_WARNING(TEXT("[Drone] ItemRowName not found for ItemID: %d"), Drop.ItemID);
 			continue;
 		}
 
-		LOG_Frame_WARNING(TEXT("[Drone] Spawning %d x %s (ID: %d)"), Drop.Count, *ItemRowName.ToString(), Drop.ItemID);
+		// LOG_Frame_WARNING(TEXT("[Drone] Spawning %d x %s (ID: %d)"), Drop.Count, *ItemRowName.ToString(), Drop.ItemID);
 
 		for (int32 i = 0; i < Drop.Count; ++i)
 		{
@@ -282,8 +293,7 @@ void ALCDroneDelivery::SpawnDroppedItems()
 		}
 	}
 
-	Multicast_PlayDropExplosionEffect();
-	Destroy();
+	DestroySelf();
 }
 
 
@@ -298,7 +308,7 @@ FName ALCDroneDelivery::FindItemRowNameByID(int32 ItemID)
 				UDataTable* ItemDataTable = GameSubsystem->GetItemDataTable();
 				if (!ItemDataTable)
 				{
-					LOG_Frame_WARNING(TEXT("[FindItemRowNameByID] ItemDataTable is null"));
+					// LOG_Frame_WARNING(TEXT("[FindItemRowNameByID] ItemDataTable is null"));
 					return NAME_None;
 				}
 
@@ -313,13 +323,13 @@ FName ALCDroneDelivery::FindItemRowNameByID(int32 ItemID)
 					}
 				}
 
-				LOG_Frame_WARNING(TEXT("[FindItemRowNameByID] No RowName found for ItemID: %d"), ItemID);
+				// LOG_Frame_WARNING(TEXT("[FindItemRowNameByID] No RowName found for ItemID: %d"), ItemID);
 				return NAME_None;
 			}
 		}
 	}
-
-	LOG_Frame_WARNING(TEXT("[FindItemRowNameByID] Failed to get GameSubsystem"));
+	
+	// LOG_Frame_WARNING(TEXT("[FindItemRowNameByID] Failed to get GameSubsystem"));
 	return NAME_None;
 }
 
@@ -339,4 +349,11 @@ void ALCDroneDelivery::ToggleLights()
 			Light->ToggleVisibility();
 		}
 	}
+}
+
+void ALCDroneDelivery::DestroySelf()
+{
+	Multicast_PlayDropExplosionEffect();
+
+	Destroy();
 }

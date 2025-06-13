@@ -392,8 +392,8 @@ void ABasePlayerController::InitInputComponent()
 
 		EnhancedInput->BindAction(RifleReloadAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_Reload);
 
-		EnhancedInput->BindAction(VoiceAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_OnStartedVoiceChat);
-		EnhancedInput->BindAction(VoiceAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnCanceledVoiceChat);
+		EnhancedInput->BindAction(VoiceAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_VoiceChat);
+		EnhancedInput->BindAction(VoiceAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_VoiceChat);
 
 		EnhancedInput->BindAction(ChangeShootingSettingAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_ChangeShootingSetting);
 		
@@ -903,19 +903,37 @@ void ABasePlayerController::Input_OnItemThrow()
 }
 
 
-void ABasePlayerController::Input_OnStartedVoiceChat()
+void ABasePlayerController::Input_VoiceChat(const FInputActionValue& ActionValue)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Voice On"));
+	UE_LOG(LogTemp, Warning, TEXT("Voice Chatting Triggered"));
 	//TODO: Voice 기능을 잘 추가해보기
-	ConsoleCommand(TEXT("ToggleSpeaking 1"), true);
+	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
+	if (!IsValid(MyPlayerState))
+	{
+		return;
+	}
+
+	if (!IsValid(CurrentPossessedPawn))
+	{
+		return;
+	}
+
+	if (MyPlayerState->InGameState == EPlayerInGameStatus::Spectating)
+	{
+		if (!IsValid(SpawnedSpectatorPawn))
+		{
+			return;
+		}
+		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is Spectating"));
+		SpawnedSpectatorPawn->Handle_VoiceChatting(ActionValue);
+	}
+	if (!IsValid(SpanwedPlayerCharacter))
+	{
+		return;
+	}
+	SpanwedPlayerCharacter->Handle_VoiceChatting(ActionValue);
 }
 
-void ABasePlayerController::Input_OnCanceledVoiceChat()
-{
-	UE_LOG(LogTemp, Warning, TEXT("Voice Off"));
-	//TODO: Voice 기능을 잘 추가해보기
-	ConsoleCommand(TEXT("ToggleSpeaking 0"), true);
-}
 
 void ABasePlayerController::Input_ChangeShootingSetting()
 {
