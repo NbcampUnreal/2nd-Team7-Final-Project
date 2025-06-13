@@ -4,6 +4,8 @@
 #include "LastCanary.h"
 
 ALCPushGimmick::ALCPushGimmick()
+	: PushDistance(100.f)
+	, bBlockedByWall(false)
 {
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true;
@@ -51,6 +53,12 @@ void ALCPushGimmick::ActivateGimmick_Implementation()
 		return;
 	}
 
+	if (bBlockedByWall)
+	{
+		LOG_Art_WARNING(TEXT("▶ Blocker 감지로 인해 이동 차단됨"));
+		return;
+	}
+
 	if (!ILCGimmickInterface::Execute_CanActivate(this))
 	{
 		return;
@@ -62,7 +70,7 @@ void ALCPushGimmick::ActivateGimmick_Implementation()
 		return;
 	}
 
-	MoveVector = PushDirection * 600.f;
+	MoveVector = PushDirection * PushDistance;
 	Super::ActivateGimmick_Implementation();
 }
 
@@ -74,13 +82,14 @@ void ALCPushGimmick::StartMovement()
 	}
 
 	FVector PushDirection;
+
 	if (!DeterminePushDirection(PushDirection))
 	{
 		return;
 	}
 
 	MoveVector = PushDirection * 600.f;
-	Super::StartMovement(); 
+	Super::StartMovement();
 }
 
 bool ALCPushGimmick::DeterminePushDirection(FVector& OutDirection)
@@ -123,3 +132,4 @@ bool ALCPushGimmick::CanActivate_Implementation()
 	}
 	return Super::CanActivate_Implementation();
 }
+
