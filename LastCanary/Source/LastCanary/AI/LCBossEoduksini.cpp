@@ -55,7 +55,6 @@ void ALCBossEoduksini::Tick(float DeltaSeconds)
         if (auto* BB = AICon->GetBlackboardComponent())
         {
             BB->SetValueAsFloat(TEXT("RagePercent"), Rage / MaxRage);
-            BB->SetValueAsBool(TEXT("IsDarknessActive"), bDarknessActive);
             BB->SetValueAsBool(TEXT("IsBerserkMode"), bIsBerserk);
         }
     }
@@ -168,10 +167,41 @@ bool ALCBossEoduksini::IsPlayerLooking(APlayerController* PC) const
 
 void ALCBossEoduksini::UpdateRageAndScale(float DeltaSeconds)
 {
-    bool bLooked = IsLookedAtByAnyPlayer();
-    float Delta = (bLooked ? -RageLossPerSec : RageGainPerSec) * DeltaSeconds;
-    if (bIsBerserk) Delta *= BerserkRageGainMultiplier;
-    Rage = FMath::Clamp(Rage + Delta, 0.f, MaxRage);
+    int32 TotalPlayers = 0;
+    int32 LookCount = 0;
+
+    // 모든 플레이어 컨트롤러를 순회하면서
+    for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+    {
+        APlayerController* PC = It->Get();
+        if (!PC) continue;
+
+        APawn* Pawn = PC->GetPawn();
+        if (!Pawn || !Pawn->IsPlayerControlled())
+            continue;
+
+        ++TotalPlayers;
+
+        // 플레이어가 보스 바라보고 있으면 카운트
+        if (IsPlayerLooking(PC))
+            ++LookCount;
+    }
+
+    // 바라보는 플레이어 수에 비례해서 Rage 감소,
+    // 바라보지 않는 플레이어 수에 비례해서 Rage 증가
+    int32 NotLookCount = TotalPlayers - LookCount;
+
+    float DeltaRage = 0.f;
+    DeltaRage += NotLookCount * RageGainPerSec * DeltaSeconds;
+    DeltaRage -= LookCount * RageLossPerSec * DeltaSeconds;
+
+    // Berserk 중엔 증가/감소율 배수 적용
+    if (bIsBerserk)
+    {
+        DeltaRage *= BerserkRageGainMultiplier;
+    }
+
+    Rage = FMath::Clamp(Rage + DeltaRage, 0.f, MaxRage);
 }
 
 // --- Darkness state ---
@@ -283,38 +313,9 @@ void ALCBossEoduksini::BP_EndDarknessEffect_Implementation()
 
 // --- Abilities ---
 
-void ALCBossEoduksini::PhaseShift()
-{
-    if (!HasAuthority()) return;
-
-    FVector Dest;
-    if (bIsBerserk)
-    {
-        // cluster to most players
-        TArray<APlayerController*> PCs;
-        for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
-        {
-            PCs.Add(It->Get());
-        }
-        // simple: teleport to first player's location
-        if (PCs.Num() > 0 && PCs[0]->GetPawn())
-            Dest = PCs[0]->GetPawn()->GetActorLocation();
-        else
-            Dest = GetActorLocation();
-    }
-    else
-    {
-        UNavigationSystemV1* Nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
-        FNavLocation Loc;
-        Nav->GetRandomPointInNavigableRadius(GetActorLocation(), DarknessRadius, Loc);
-        Dest = Loc.Location;
-    }
-    SetActorLocation(Dest);
-}
-
 void ALCBossEoduksini::ShadowEcho()
 {
-    if (!HasAuthority()) return;
+    UE_LOG(LogTemp, Log, TEXT("[Eoduksini] ShadowEcho 시작 (딜레이: %.1f초)"), ShadowEchoDelay);
 
     FVector EchoLoc = GetActorLocation() + GetActorForwardVector() * 500.f;
     // spawn VFX here if desired
@@ -333,10 +334,37 @@ void ALCBossEoduksini::ShadowEcho()
 
 void ALCBossEoduksini::ExecuteShadowEchoDamage(FVector Location)
 {
+    UE_LOG(LogTemp, Log, TEXT("[Eoduksini] ShadowEcho 폭발 데미지 수행 (위치: %s)"),
+        *Location.ToCompactString());
+
     float Radius = 400.f;
+
+    // 1) Debug: 폭발 위치에 보라색 구 그리기 (2초간, 두께 5)
+    DrawDebugSphere(
+        GetWorld(),
+        Location,
+        Radius,
+        16,
+        FColor::Purple,
+        false,
+        2.0f,
+        0,
+        5.0f
+    );
+
+    // 2) 실제 SweepMultiByChannel
     TArray<FHitResult> Hits;
     FCollisionShape Sphere = FCollisionShape::MakeSphere(Radius);
-    bool bHit = GetWorld()->SweepMultiByChannel(Hits, Location, Location, FQuat::Identity, ECC_Pawn, Sphere);
+    bool bHit = GetWorld()->SweepMultiByChannel(
+        Hits,
+        Location,
+        Location,
+        FQuat::Identity,
+        ECC_Pawn,
+        Sphere
+    );
+
+    // 3) 히트된 각 Pawn에 대해 디버그 라인과 대미지 적용
     if (bHit)
     {
         for (auto& Hit : Hits)
@@ -359,7 +387,7 @@ void ALCBossEoduksini::ExecuteShadowEchoDamage(FVector Location)
 
 void ALCBossEoduksini::NightmareGrasp()
 {
-    if (!HasAuthority()) return;
+    UE_LOG(LogTemp, Log, TEXT("[Eoduksini] NightmareGrasp 실행"));
 
     FVector Start = GetActorLocation();
     FVector End = Start + GetActorForwardVector() * 800.f;
@@ -383,6 +411,8 @@ void ALCBossEoduksini::NightmareGrasp()
 
 void ALCBossEoduksini::NightTerror()
 {
+    UE_LOG(LogTemp, Log, TEXT("[Eoduksini] NightTerror 실행"));
+
     // full-screen terror: 모든 로컬 플레이어에게 셰이크 적용
     for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
     {
@@ -410,11 +440,18 @@ void ALCBossEoduksini::NightTerror()
 
 void ALCBossEoduksini::ShadowSwipe()
 {
+    UE_LOG(LogTemp, Log, TEXT("[Eoduksini] ShadowSwipe 실행: 대미지 %.1f"), NormalAttackDamage);
+
     DealDamageInRange(NormalAttackDamage);
+
+
+
 }
 
 void ALCBossEoduksini::VoidGrasp()
 {
+    UE_LOG(LogTemp, Log, TEXT("[Eoduksini] VoidGrasp 실행: 대미지 %.1f"), StrongAttackDamage);
+
     TArray<FHitResult> Hits;
     FCollisionShape Sphere = FCollisionShape::MakeSphere(600.f);
     if (GetWorld()->SweepMultiByChannel(Hits, GetActorLocation(), GetActorLocation(), FQuat::Identity, ECC_Pawn, Sphere))
@@ -425,6 +462,7 @@ void ALCBossEoduksini::VoidGrasp()
             {
                 FVector PullLoc = GetActorLocation() + GetActorForwardVector() * 200.f;
                 P->SetActorLocation(PullLoc);
+                DrawDebugSphere(GetWorld(), GetActorLocation(), 600.f, 16, FColor::Red, false, 1.f, 0, 2.f);
                 UGameplayStatics::ApplyDamage(P, StrongAttackDamage, GetController(), this, nullptr);
             }
         }
@@ -433,43 +471,81 @@ void ALCBossEoduksini::VoidGrasp()
 
 // --- override base attack to include rage logic ---
 
-bool ALCBossEoduksini::RequestAttack()
+bool ALCBossEoduksini::RequestAttack(float TargetDistance)
 {
     if (!HasAuthority()) return false;
 
     const float Now = GetWorld()->GetTimeSeconds();
-    const float Rand = FMath::FRand();
+    struct FEntry { float Weight; TFunction<void()> Action; };
+    TArray<FEntry> Entries;
 
-    // 1) Night Terror
-	if (!bHasUsedNightTerror && Rage >= NightTerrorHealthThreshold && !bDarknessActive)
+    // (1) 특수 액션—예: Night Terror
+    if (!bHasUsedNightTerror && Rage >= NightTerrorRageThreshold)
     {
         bHasUsedNightTerror = true;
+        UE_LOG(LogTemp, Log, TEXT("[Eoduksini] NightTerror 발동"));
         NightTerror();
         return true;
     }
 
-    // 2) Phase Shift
-    if (Rand < PhaseShiftChance && Now - LastPhaseShiftTime >= PhaseShiftInterval)
+    // 2) ShadowEcho
+    if (TargetDistance <= ShadowEchoRange && Now - LastShadowEchoTime >= ShadowEchoInterval)
     {
-        LastPhaseShiftTime = Now;
-        PhaseShift();
-        return true;
+        Entries.Add({ ShadowEchoWeight, [this, Now]()
+        {
+            LastShadowEchoTime = Now;
+            UE_LOG(LogTemp, Log, TEXT("[Eodu] ShadowEcho 실행"));
+            ShadowEcho();
+        } });
     }
 
-    // 3) Shadow Echo
-    if (Rand < ShadowEchoChance && Now - LastShadowEchoTime >= ShadowEchoInterval)
+    // 3) NightmareGrasp
+    if (TargetDistance <= NightmareGraspRange && Now - LastNightmareGraspTime >= NightmareGraspInterval)
     {
-        LastShadowEchoTime = Now;
-        ShadowEcho();
-        return true;
+        Entries.Add({ NightmareGraspWeight, [this, Now]()
+        {
+            LastNightmareGraspTime = Now;
+            UE_LOG(LogTemp, Log, TEXT("[Eodu] NightmareGrasp 실행"));
+            NightmareGrasp();
+        } });
     }
 
-    // 4) Nightmare Grasp
-    if (Rand < NightmareGraspChance && Now - LastNightmareGraspTime >= NightmareGraspInterval)
+    // 4) 근접계열 (ShadowSwipe)
+    if (TargetDistance <= ShadowSwipeRange && Now - LastNormalTime >= NormalAttackCooldown)
     {
-        LastNightmareGraspTime = Now;
-        NightmareGrasp();
-        return true;
+        Entries.Add({ ShadowSwipeWeight, [this, Now]()
+        {
+            LastNormalTime = Now;
+            UE_LOG(LogTemp, Log, TEXT("[Eodu] ShadowSwipe 실행"));
+            ShadowSwipe();
+        } });
+    }
+
+    // 5) 견인계열 (VoidGrasp)
+    if (TargetDistance <= VoidGraspRange && Now - LastStrongTime >= StrongAttackCooldown)
+    {
+        Entries.Add({ VoidGraspWeight, [this, Now]()
+        {
+            LastStrongTime = Now;
+            UE_LOG(LogTemp, Log, TEXT("[Eodu] VoidGrasp 실행"));
+            VoidGrasp();
+        } });
+    }
+
+    // 가중치 랜덤 선택
+    float TotalW = 0.f;
+    for (auto& E : Entries) TotalW += E.Weight;
+    if (TotalW <= 0.f) return false;
+
+    float Pick = FMath::FRandRange(0.f, TotalW), Acc = 0.f;
+    for (auto& E : Entries)
+    {
+        Acc += E.Weight;
+        if (Pick <= Acc)
+        {
+            E.Action();
+            return true;
+        }
     }
 
     return false;

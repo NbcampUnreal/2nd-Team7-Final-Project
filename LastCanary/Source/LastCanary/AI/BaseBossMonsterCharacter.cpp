@@ -31,7 +31,7 @@ void ABaseBossMonsterCharacter::BeginPlay()
     }
 }
 
-bool ABaseBossMonsterCharacter::RequestAttack()
+bool ABaseBossMonsterCharacter::RequestAttack(float TargetDistance)
 {
 
     return false;
@@ -54,11 +54,26 @@ void ABaseBossMonsterCharacter::EnterBerserkState()
 }
 
 
+void ABaseBossMonsterCharacter::StartBerserk(float Duration)
+{
+    bIsBerserk = true;
+    Multicast_StartBerserk();
+
+    if (HasAuthority() && Duration > 0.f)
+    {
+        GetWorldTimerManager().SetTimer(
+            BerserkDurationHandle,
+            this,
+            &ABaseBossMonsterCharacter::EndBerserk,
+            Duration,
+            false
+        );
+    }
+}
+
 void ABaseBossMonsterCharacter::StartBerserk()
 {
     bIsBerserk = true;
-
-    // 서버가 결정한 Berserk 시작을 클라이언트 전체에 알림
     Multicast_StartBerserk();
 }
 
@@ -69,9 +84,14 @@ void ABaseBossMonsterCharacter::EndBerserk()
         return;
 
     bIsBerserk = false;
+
+    if (HasAuthority())
+    {
+        GetWorldTimerManager().ClearTimer(BerserkDurationHandle);
+    }
+
     Multicast_EndBerserk();
 }
-
 
 void ABaseBossMonsterCharacter::OnRep_IsBerserk()
 {

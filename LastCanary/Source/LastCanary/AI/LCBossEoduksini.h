@@ -67,7 +67,7 @@ protected:
     float RageGainPerSec = 8.f;
 
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Rage")
-    float RageLossPerSec = 12.f;
+    float RageLossPerSec = 5.f;
 
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Rage")
     float DarknessRageThreshold = 60.f;
@@ -89,50 +89,62 @@ protected:
     float BerserkPlayRateMultiplier = 1.3f;
 
     /** ── Abilities ── */
-    // Phase Shift
-    UPROPERTY(EditDefaultsOnly, Category = "Boss|Ability")
-    float PhaseShiftChance = 0.1f;
-    UPROPERTY(EditDefaultsOnly, Category = "Boss|Ability")
-    float PhaseShiftInterval = 20.f;
-    float LastPhaseShiftTime = -FLT_MAX;
-    void PhaseShift();
 
     // Shadow Echo
-    UPROPERTY(EditDefaultsOnly, Category = "Boss|Ability")
-    float ShadowEchoChance = 0.15f;
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Ability")
     float ShadowEchoInterval = 15.f;
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Ability")
     float ShadowEchoDelay = 2.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Boss|Ability")
+	float ShadowEchoRange = 400.f; // 범위 내 모든 플레이어에게 데미지 적용
     float LastShadowEchoTime = -FLT_MAX;
     void ShadowEcho();
     void ExecuteShadowEchoDamage(FVector Location);
 
     // Nightmare Grasp
-    UPROPERTY(EditDefaultsOnly, Category = "Boss|Ability")
-    float NightmareGraspChance = 0.2f;
-    UPROPERTY(EditDefaultsOnly, Category = "Boss|Ability")
     float NightmareGraspInterval = 12.f;
     float LastNightmareGraspTime = -FLT_MAX;
+	UPROPERTY(EditDefaultsOnly, Category = "Boss|Ability")
+	float NightmareGraspRange = 800.f; // 범위 내 모든 플레이어에게 견인
     void NightmareGrasp();
 
     // Night Terror
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Ability")
-    float NightTerrorHealthThreshold = 0.8f;
+    float NightTerrorRageThreshold = 0.8f;
     bool bHasUsedNightTerror = false;
     void NightTerror();
+
+    /** 공격확률 추가 */
+    UPROPERTY(EditAnywhere, Category = "Boss|Ability")
+    float PhaseShiftWeight = 1.f;
+    UPROPERTY(EditAnywhere, Category = "Boss|Ability")
+    float ShadowEchoWeight = 2.f;
+    UPROPERTY(EditAnywhere, Category = "Boss|Ability")
+    float NightmareGraspWeight = 3.f;
+    UPROPERTY(EditAnywhere, Category = "Boss|Ability")
+    float ShadowSwipeWeight = 5.f;
+    UPROPERTY(EditAnywhere, Category = "Boss|Ability")
+    float VoidGraspWeight = 4.f;
+
+
 
     /** ── Camera Shake ── */
     // 에디터에서 블루프린트 셰이크 클래스를 할당하세요
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Effects")
     TSubclassOf<UCameraShakeBase> TerrorCameraShakeClass;
 
-    // 기본 공격
+	// ShadowSwipe
+	UPROPERTY(EditDefaultsOnly, Category = "Boss|Attack")
+	float ShadowSwipeRange = 200.f; // 근접 공격 범위
     void ShadowSwipe();
+
+	// Void Grasp
+	UPROPERTY(EditDefaultsOnly, Category = "Boss|Attack")
+	float VoidGraspRange = 600.f; // 견인 범위
     void VoidGrasp();
     
     /** ── 공격 ── */
-    virtual bool RequestAttack() override;
+    virtual bool RequestAttack(float TargetDistance) override;
 
     /** ── Darkness State ── */
     UPROPERTY(ReplicatedUsing = OnRep_DarknessActive, BlueprintReadOnly, Category = "Boss|Darkness")

@@ -87,7 +87,7 @@ void ALCBossLich::OnRep_IsBerserk()
     }
 }
 
-bool ALCBossLich::RequestAttack()
+bool ALCBossLich::RequestAttack(float TargetDistance)
 {
     if (!HasAuthority()) return false;
 

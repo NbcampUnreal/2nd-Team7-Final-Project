@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "AI/BaseBossMonsterCharacter.h"
+#include "NiagaraSystem.h"
 #include "LCBossBanshee.generated.h"
 
 UCLASS()
@@ -11,56 +12,145 @@ class LASTCANARY_API ALCBossBanshee : public ABaseBossMonsterCharacter
 
 public:
     ALCBossBanshee();
+    virtual void EnterBerserkState() override;
+    virtual void StartBerserk() override;
+    virtual void StartBerserk(float Duration) override;
+    virtual void EndBerserk() override;
 
-protected:
-    virtual void BeginPlay() override;
-
-    /** 반향 탐지 핑: 일정 반경 내 플레이어를 잠시 드러내는 기능 **/
-    UFUNCTION()
-    void EcholocationPing();
-
-    /** Berserk 상태일 때 반향 추가 효과 */
-    void BerserkExtraEcho();
-
-    /** AIController나 Behavior Tree가 소리를 감지했을 때 호출됨 **/
     UFUNCTION(BlueprintCallable, Category = "Banshee|Hearing")
     void OnHeardNoise(const FVector& NoiseLocation);
 
-    /** 울부짖기 재사용 대기 상태를 초기화 **/
+protected:
+    virtual void BeginPlay() override;
+    virtual void Tick(float DeltaTime) override;
+
+    virtual void OnRep_IsBerserk() override;
+
+    void EcholocationPing();
+    void HandleRehide(ACharacter* Char);
+
+
+
     void ResetShriek();
+    void AddRage(float Amount);
+    void DecayRage(float DeltaTime);
 
-    /** --- 반향 탐지 설정 --- **/
+    UFUNCTION(NetMulticast, Reliable)
+    void MulticastActivateBerserkEffects();
+
+    /** Wail: 근접 범위에 울음파를 발사해 넉백 및 공포 디버프 */
+    UFUNCTION()
+    void Wail();
+
+    /** Echo Slash: 핑된 위치로 순간이동 후 광역 베기 */
+    void EchoSlash();
+
+    /** Desperate Wail: 광역 공포 울음 + 슬로우 디버프 */
+    void DesperateWail();
+
+    /** 분신 소환 */
+    void SpawnBansheeClones();
+
+    /** --- 사운드 & 이펙트 --- */
+    UPROPERTY(EditDefaultsOnly, Category = "Sound")
+    USoundBase* WailSound = nullptr;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Effect")
+    UNiagaraSystem* WailFX = nullptr;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Sound")
+    USoundBase* EcholocationSound;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Sound")
+    USoundBase* SonicShriekSound;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Sound")
+    USoundBase* DesperateWailSound;
+
+    UPROPERTY(EditDefaultsOnly, Category = "|FX")
+    UNiagaraSystem* DesperateWailFX;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Effect")
+    UNiagaraSystem* BerserkEffectFX;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Effect")
+    UNiagaraSystem* EchoSlashFX;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Effect")
+    UNiagaraSystem* CloneSpawnFX;
+
+    /** --- 수치 설정 --- */
     UPROPERTY(EditDefaultsOnly, Category = "Banshee|Echolocation")
-    float PingInterval = 8.f;     // 핑 주기 (초)
+    float PingInterval = 8.f;
 
     UPROPERTY(EditDefaultsOnly, Category = "Banshee|Echolocation")
-    float PingRadius = 2000.f;    // 핑 반경
+    float PingRadius = 2000.f;
 
     UPROPERTY(EditDefaultsOnly, Category = "Banshee|Echolocation")
-    float RevealDuration = 4.f;   // 드러내는 시간 (초)
-
-    UPROPERTY(EditDefaultsOnly, Category = "Banshee|Sound")
-    USoundBase* EcholocationSound = nullptr; // 반향 소리
-
-    /** --- 소닉 울부짖기 설정 --- **/
-    UPROPERTY(EditDefaultsOnly, Category = "Banshee|Sonic")
-    float ShriekDamage = 75.f;     // 울부짖기 데미지
+    float RevealDuration = 4.f;
 
     UPROPERTY(EditDefaultsOnly, Category = "Banshee|Sonic")
-    float ShriekRadius = 800.f;    // 울부짖기 반경
+    float ShriekDamage = 75.f;
 
     UPROPERTY(EditDefaultsOnly, Category = "Banshee|Sonic")
-    float ShriekCooldown = 6.f;    // 울부짖기 재사용 대기 시간
+    float ShriekRadius = 800.f;
 
-    UPROPERTY(EditDefaultsOnly, Category = "Banshee|Sound")
-    USoundBase* SonicShriekSound = nullptr;  // 울부짖는 소리
+    UPROPERTY(EditDefaultsOnly, Category = "Banshee|Sonic")
+    float ShriekCooldown = 6.f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Banshee|Special")
+    float CloneSpawnRadius = 600.f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Banshee|Special")
+    int32 CloneCount = 4;
+
+    float LastEchoSlashTime = 0.f;
+    float LastWailTime = 0.f;
+    float LastBasicTime = 0.f;
+
+    bool bHasUsedDesperateWail = false;
+
+    /** --- 공격 관련 수치 설정 --- */
+
+    UPROPERTY(EditDefaultsOnly, Category = "Banshee|Combat")
+    float WailRange = 400.f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Banshee|Combat")
+    float EchoSlashCooldown = 10.f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Banshee|Combat")
+    float WailCooldown = 6.f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Banshee|Combat")
+    float BasicAttackCooldown = 3.f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Banshee|Combat")
+    float EchoSlashWeight = 2.f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Banshee|Combat")
+    float WailWeight = 3.f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Banshee|Combat")
+    float BasicAttackWeight = 5.f;
+
+    /** --- Rage --- */
+
+    UPROPERTY(EditDefaultsOnly, Category = "Banshee|Rage")
+    float MaxRage = 100.f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Banshee|Rage")
+    float RageDecayPerSecond = 5.f;
+
+    virtual bool RequestAttack(float TargetDistance) override;
 
 private:
-    /** 타이머 핸들 **/
     FTimerHandle PingTimerHandle;
     FTimerHandle ShriekTimerHandle;
 
-    /** 울부짖기 가능 여부 **/
     bool bCanShriek = true;
+    float LastHeardNoiseTime = 0.f;
+
+    /** 최근 EchoSlash 대상 위치 */
+    FVector LastPingedLocation;
 	
 };

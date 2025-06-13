@@ -1,24 +1,23 @@
 ﻿#include "AI/LCBossBanshee.h"
+#include "AI/LCBaseBossAIController.h"
+#include "BehaviorTree/BlackboardComponent.h"
 #include "Kismet/GameplayStatics.h"
-#include "TimerManager.h"
 #include "DrawDebugHelpers.h"
-#include "Engine/World.h"
-#include "Engine/EngineTypes.h"
-#include "Engine/OverlapResult.h"
-#include "CollisionQueryParams.h"
+#include "TimerManager.h"
+#include "NiagaraFunctionLibrary.h"
 #include "GameFramework/Character.h"
+#include "Engine/World.h"
 
 ALCBossBanshee::ALCBossBanshee()
 {
     PrimaryActorTick.bCanEverTick = true;
-    // bCanShriek는 선언 시 초기화
+    bReplicates = true;
 }
 
 void ALCBossBanshee::BeginPlay()
 {
     Super::BeginPlay();
 
-    // 주기적인 반향 정찰 시작
     GetWorldTimerManager().SetTimer(
         PingTimerHandle,
         this,
@@ -28,151 +27,432 @@ void ALCBossBanshee::BeginPlay()
     );
 }
 
-void ALCBossBanshee::EcholocationPing()
+void ALCBossBanshee::Tick(float DeltaTime)
 {
-    // 1) 반향 소리 재생
-    if (EcholocationSound)
+    Super::Tick(DeltaTime);
+    DecayRage(DeltaTime);
+
+    if (auto* AICon = Cast<ALCBaseBossAIController>(GetController()))
     {
-        UGameplayStatics::PlaySoundAtLocation(
-            this, EcholocationSound, GetActorLocation());
-    }
-
-    // 2) 디버그용 반경 시각화
-	if (bIsBerserk)
-	{
-        // 예: 반향 시마다 추가로 느리게 만드는 디버프를 걸거나, 파티클을 뿌리는 로직
-        DrawDebugSphere(
-            GetWorld(),
-            GetActorLocation(),
-            PingRadius * 1.2f,
-            16,
-            FColor::Purple,
-            false,
-            1.0f
-        );
-	}
-
-    else
-    {
-        DrawDebugSphere(
-            GetWorld(),
-            GetActorLocation(),
-            PingRadius,
-            32,
-            FColor::Cyan,
-            false,
-            RevealDuration
-        );
-    }
-    
-
-
-    // 3) 반경 내 모든 플레이어 캐릭터 표시
-    TArray<FOverlapResult> Overlaps;
-    FCollisionShape Sphere = FCollisionShape::MakeSphere(PingRadius);
-    FCollisionQueryParams Params;
-    Params.AddIgnoredActor(this);
-
-    bool bHit = GetWorld()->OverlapMultiByObjectType(
-        Overlaps,
-        GetActorLocation(),
-        FQuat::Identity,
-        FCollisionObjectQueryParams(ECC_Pawn),
-        Sphere,
-        Params
-    );
-
-    if (bHit)
-    {
-        for (auto& Result : Overlaps)
+        if (auto* BB = AICon->GetBlackboardComponent())
         {
-            if (ACharacter* Char = Cast<ACharacter>(Result.GetActor()))
-            {
-                // 예시: 가시성 토글
-                Char->SetActorHiddenInGame(false);
-                // RevealDuration 이후 다시 숨기려면 별도 로직 필요
-            }
+            BB->SetValueAsFloat(TEXT("RagePercent"), Rage / MaxRage);
+            BB->SetValueAsBool(TEXT("IsBerserkMode"), bIsBerserk);
         }
     }
 }
 
-void ALCBossBanshee::BerserkExtraEcho()
+void ALCBossBanshee::EcholocationPing()
 {
+    if (EcholocationSound)
+        UGameplayStatics::PlaySoundAtLocation(this, EcholocationSound, GetActorLocation());
 
+    const float Radius = bIsBerserk ? PingRadius * 1.2f : PingRadius;
+    const FVector Origin = GetActorLocation();
+
+    DrawDebugSphere(GetWorld(), Origin, Radius, 32, FColor::Cyan, false, RevealDuration);
+
+    TArray<FHitResult> HitResults;
+    FCollisionShape Sphere = FCollisionShape::MakeSphere(Radius);
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(this);
+
+    bool bRevealedAnyone = false;
+    bool bFoundPingTarget = false;
+
+    if (GetWorld()->SweepMultiByObjectType(HitResults, Origin, Origin, FQuat::Identity, FCollisionObjectQueryParams(ECC_Pawn), Sphere, Params))
+    {
+        for (const FHitResult& Hit : HitResults)
+        {
+            ACharacter* HitCharacter = Cast<ACharacter>(Hit.GetActor());
+            if (!HitCharacter)
+                continue;
+
+            if (USkeletalMeshComponent* SkeletalMesh = HitCharacter->GetMesh())
+            {
+                SkeletalMesh->SetRenderCustomDepth(true);
+                SkeletalMesh->SetCustomDepthStencilValue(252); // 강조용 스텐실 값
+            }
+
+            HandleRehide(HitCharacter);
+            bRevealedAnyone = true;
+
+            if (!bFoundPingTarget)
+            {
+                LastPingedLocation = HitCharacter->GetActorLocation();
+                bFoundPingTarget = true;
+            }
+        }
+    }
+
+    AddRage(bRevealedAnyone ? 5.f : -5.f);
+}
+
+void ALCBossBanshee::EnterBerserkState()
+{
+    Super::EnterBerserkState();
+    UE_LOG(LogTemp, Warning, TEXT("[Banshee] 영구 Berserk 진입"));
+}
+
+void ALCBossBanshee::StartBerserk()
+{
+    Super::StartBerserk();  // bIsBerserk = true 및 Multicast 호출 포함
+
+    // 이펙트 추가
+    if (BerserkEffectFX)
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAttached(
+            BerserkEffectFX,
+            GetRootComponent(),
+            NAME_None,
+            FVector::ZeroVector,
+            FRotator::ZeroRotator,
+            EAttachLocation::KeepRelativeOffset,
+            true
+        );
+    }
+
+}
+
+void ALCBossBanshee::StartBerserk(float Duration)
+{
+    Super::StartBerserk(Duration);
+
+    // 동일 이펙트 재생
+    if (BerserkEffectFX)
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAttached(
+            BerserkEffectFX,
+            GetRootComponent(),
+            NAME_None,
+            FVector::ZeroVector,
+            FRotator::ZeroRotator,
+            EAttachLocation::KeepRelativeOffset,
+            true
+        );
+    }
+
+
+}
+
+void ALCBossBanshee::EndBerserk()
+{
+    Super::EndBerserk();
+
+    UE_LOG(LogTemp, Warning, TEXT("[Banshee] Berserk 종료"));
+
+    // 종료 시 후처리가 필요하다면 여기에
+}
+
+void ALCBossBanshee::OnRep_IsBerserk()
+{
+    Super::OnRep_IsBerserk();
+
+    if (bIsBerserk)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[Banshee] OnRep → Berserk 이펙트 클라에서 재생"));
+
+        if (BerserkEffectFX)
+        {
+            UNiagaraFunctionLibrary::SpawnSystemAttached(
+                BerserkEffectFX,
+                GetRootComponent(),
+                NAME_None,
+                FVector::ZeroVector,
+                FRotator::ZeroRotator,
+                EAttachLocation::KeepRelativeOffset,
+                true
+            );
+        }
+    }
+}
+
+void ALCBossBanshee::HandleRehide(ACharacter* Char)
+{
+    FTimerHandle TempHandle;
+    GetWorldTimerManager().SetTimer(TempHandle, [Char]()
+        {
+            if (IsValid(Char))
+            {
+                if (USkeletalMeshComponent* Mesh = Char->GetMesh())
+                    Mesh->SetRenderCustomDepth(false);
+            }
+        }, RevealDuration, false);
 }
 
 void ALCBossBanshee::OnHeardNoise(const FVector& NoiseLocation)
 {
-    // 1) 소리 발생 지점 바라보기
     FVector Dir = NoiseLocation - GetActorLocation();
     Dir.Z = 0.f;
     if (!Dir.IsNearlyZero())
-    {
         SetActorRotation(Dir.Rotation());
-    }
 
-    // 2) 울부짖기
+    LastHeardNoiseTime = GetWorld()->GetTimeSeconds();
+    AddRage(10.f);
+
     if (bCanShriek)
     {
-        // 사운드 재생
         if (SonicShriekSound)
-        {
-            UGameplayStatics::PlaySoundAtLocation(
-                this, SonicShriekSound, GetActorLocation());
-        }
+            UGameplayStatics::PlaySoundAtLocation(this, SonicShriekSound, GetActorLocation());
 
-        // 디버그 시각화
-        DrawDebugSphere(
-            GetWorld(),
-            GetActorLocation(),
-            ShriekRadius,
-            32,
-            FColor::Red,
-            false,
-            2.f
-        );
+        DrawDebugSphere(GetWorld(), GetActorLocation(), ShriekRadius, 32, FColor::Red, false, 2.f);
 
-        // ── Berserk 시 추가 폭발 효과 ──
         if (bIsBerserk)
         {
-            // 예: 강력한 한 번 더 ApplyRadialDamage 하거나, 폭발 파티클
             UGameplayStatics::ApplyRadialDamage(
                 this,
                 ShriekDamage * 0.5f,
                 GetActorLocation(),
                 ShriekRadius * 1.5f,
                 nullptr,
-                TArray<AActor*>(),
+                {},
                 this,
                 GetController(),
                 true
             );
-            DrawDebugSphere(
-                GetWorld(),
-                GetActorLocation(),
-                ShriekRadius * 1.5f,
-                24,
-                FColor::Orange,
-                false,
-                2.f
-            );
-            UE_LOG(LogTemp, Log, TEXT("[Banshee] BerserkExtraShriek 실행"));
         }
 
-
-        // 쿨다운 시작
         bCanShriek = false;
-        GetWorldTimerManager().SetTimer(
-            ShriekTimerHandle,
-            this,
-            &ALCBossBanshee::ResetShriek,
-            ShriekCooldown,
-            false
-        );
+        GetWorldTimerManager().SetTimer(ShriekTimerHandle, this, &ALCBossBanshee::ResetShriek, ShriekCooldown, false);
     }
 }
 
 void ALCBossBanshee::ResetShriek()
 {
     bCanShriek = true;
+}
+
+void ALCBossBanshee::AddRage(float Amount)
+{
+    float Multiplier = bIsBerserk ? RageGainMultiplier_Berserk : 1.f;
+    Rage = FMath::Clamp(Rage + Amount * Multiplier, 0.f, MaxRage);
+
+    if (Rage >= MaxRage && !bIsBerserk)
+    {
+        StartBerserk(BerserkDuration);
+        MulticastActivateBerserkEffects();
+    }
+}
+
+void ALCBossBanshee::DecayRage(float DeltaTime)
+{
+    if (GetWorld()->GetTimeSeconds() - LastHeardNoiseTime >= 15.f)
+        AddRage(-RageDecayPerSecond * DeltaTime);
+}
+
+void ALCBossBanshee::MulticastActivateBerserkEffects_Implementation()
+{
+    if (BerserkEffectFX)
+        UNiagaraFunctionLibrary::SpawnSystemAttached(
+            BerserkEffectFX,
+            GetRootComponent(),
+            NAME_None,
+            FVector::ZeroVector,
+            FRotator::ZeroRotator,
+            EAttachLocation::KeepRelativeOffset,
+            true
+        );
+
+    UE_LOG(LogTemp, Log, TEXT("[Banshee] Berserk Activated"));
+}
+
+void ALCBossBanshee::Wail()
+{
+    if (WailSound)
+        UGameplayStatics::PlaySoundAtLocation(this, WailSound, GetActorLocation());
+
+    const FVector Origin = GetActorLocation();
+    const float Radius = WailRange;
+
+    TArray<FHitResult> HitResults;
+    FCollisionShape Sphere = FCollisionShape::MakeSphere(Radius);
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(this);
+
+    if (GetWorld()->SweepMultiByObjectType(
+        HitResults,
+        Origin,
+        Origin,
+        FQuat::Identity,
+        FCollisionObjectQueryParams(ECC_Pawn),
+        Sphere,
+        Params))
+    {
+        for (const FHitResult& Hit : HitResults)
+        {
+            ACharacter* Target = Cast<ACharacter>(Hit.GetActor());
+            if (!Target) continue;
+
+            FVector Dir = (Target->GetActorLocation() - Origin).GetSafeNormal();
+            FVector LaunchVelocity = Dir * 800.f + FVector(0, 0, 300.f);
+            Target->LaunchCharacter(LaunchVelocity, true, true);
+
+            // 공포 디버프 적용
+            // Target->ApplyDebuff("Fear", 3.0f);
+        }
+    }
+
+    if (WailFX)
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+            GetWorld(),
+            WailFX,
+            Origin,
+            FRotator::ZeroRotator
+        );
+    }
+
+    UE_LOG(LogTemp, Log, TEXT("[Banshee] Wail triggered with HitResult sweep"));
+}
+
+void ALCBossBanshee::EchoSlash()
+{
+    if (!LastPingedLocation.IsZero())
+    {
+        if (EchoSlashFX)
+            UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), EchoSlashFX, GetActorLocation());
+
+        SetActorLocation(LastPingedLocation, false, nullptr, ETeleportType::TeleportPhysics);
+
+        TArray<AActor*> Ignored;
+        UGameplayStatics::ApplyRadialDamage(
+            this,
+            60.f,
+            GetActorLocation(),
+            400.f,
+            nullptr,
+            Ignored,
+            this,
+            GetController(),
+            true
+        );
+
+        UE_LOG(LogTemp, Log, TEXT("[Banshee] EchoSlash executed at %s"), *LastPingedLocation.ToString());
+    }
+}
+
+void ALCBossBanshee::DesperateWail()
+{
+    if (DesperateWailSound)
+        UGameplayStatics::PlaySoundAtLocation(this, DesperateWailSound, GetActorLocation());
+
+    const float MapRadius = 10000.f;
+    const FVector Origin = GetActorLocation();
+
+    TArray<FHitResult> HitResults;
+    FCollisionShape Sphere = FCollisionShape::MakeSphere(MapRadius);
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(this);
+
+    if (GetWorld()->SweepMultiByObjectType(
+        HitResults,
+        Origin,
+        Origin,
+        FQuat::Identity,
+        FCollisionObjectQueryParams(ECC_Pawn),
+        Sphere,
+        Params))
+    {
+        for (const FHitResult& Hit : HitResults)
+        {
+            ACharacter* Target = Cast<ACharacter>(Hit.GetActor());
+            if (!Target) continue;
+
+            // 공포 + 슬로우 디버프 적용
+            // Target->ApplyDebuff("Fear", 4.f);
+            // Target->ApplyDebuff("Slow", 4.f);
+        }
+    }
+
+    if (DesperateWailFX)
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+            GetWorld(),
+            DesperateWailFX,
+            Origin,
+            FRotator::ZeroRotator
+        );
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("[Banshee] DesperateWail executed (HitResult sweep)"));
+}
+
+void ALCBossBanshee::SpawnBansheeClones()
+{
+    for (int32 i = 0; i < CloneCount; ++i)
+    {
+        float Angle = (360.f / CloneCount) * i;
+        FVector Offset = FVector(FMath::Cos(FMath::DegreesToRadians(Angle)), FMath::Sin(FMath::DegreesToRadians(Angle)), 0.f) * CloneSpawnRadius;
+        FVector SpawnLocation = GetActorLocation() + Offset;
+
+        if (CloneSpawnFX)
+        {
+            UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+                GetWorld(), CloneSpawnFX, SpawnLocation, FRotator::ZeroRotator);
+        }
+
+        // 실제 분신은 별도 ACharacter 서브클래스에서 스폰
+        // GetWorld()->SpawnActor<ACloneMinion>(CloneClass, SpawnLocation, FRotator::ZeroRotator);
+    }
+
+    UE_LOG(LogTemp, Log, TEXT("[Banshee] %d Clones Spawned"), CloneCount);
+}
+
+bool ALCBossBanshee::RequestAttack(float TargetDistance)
+{
+    if (!HasAuthority()) return false;
+
+    const float Now = GetWorld()->GetTimeSeconds();
+    struct FAttackEntry { float Weight; TFunction<void()> Action; };
+    TArray<FAttackEntry> Entries;
+
+    // (1) 특수 스킬 - Desperate Wail
+    if (!bHasUsedDesperateWail)
+    {
+        bHasUsedDesperateWail = true;
+        UE_LOG(LogTemp, Log, TEXT("[Banshee] Desperate Wail 발동"));
+        DesperateWail();
+        return true;
+    }
+
+    // (2) EchoSlash - 최근 핑된 위치로 순간이동 후 공격
+    if (!LastPingedLocation.IsZero() && TargetDistance > 800.f && Now - LastEchoSlashTime >= EchoSlashCooldown)
+    {
+        Entries.Add({ EchoSlashWeight, [this, Now]()
+        {
+            LastEchoSlashTime = Now;
+            UE_LOG(LogTemp, Log, TEXT("[Banshee] Echo Slash 발동"));
+            EchoSlash();
+        } });
+    }
+
+    // (3) Wail - 근접 범위 울부짖기 공격
+    if (TargetDistance <= WailRange && Now - LastWailTime >= WailCooldown)
+    {
+        Entries.Add({ WailWeight, [this, Now]()
+        {
+            LastWailTime = Now;
+            UE_LOG(LogTemp, Log, TEXT("[Banshee] Wail 발동"));
+            Wail();
+        } });
+    }
+
+    // 가중치 랜덤 선택
+    float TotalWeight = 0.f;
+    for (auto& Entry : Entries) TotalWeight += Entry.Weight;
+    if (TotalWeight <= 0.f) return false;
+
+    float Pick = FMath::FRandRange(0.f, TotalWeight);
+    float Acc = 0.f;
+    for (auto& Entry : Entries)
+    {
+        Acc += Entry.Weight;
+        if (Pick <= Acc)
+        {
+            Entry.Action();
+            return true;
+        }
+    }
+
+    return false;
 }

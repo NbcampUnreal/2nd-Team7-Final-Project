@@ -46,11 +46,11 @@ public:
 
     /** 공격 요청 진입 함수 (성공 시 true 반환) */
     UFUNCTION(BlueprintCallable, Category = "Boss|Attack")
-    virtual bool RequestAttack();
+    virtual bool RequestAttack(float TargetDistance);
 
     /** 외부(예: 게임 모드, 코어 Actor 등)에서 호출해 보스를 Berserk 상태로 전환 */
     UFUNCTION(BlueprintCallable, Category = "Boss|Berserk")
-    void EnterBerserkState();
+    virtual void EnterBerserkState();
 
 protected:
     float LastNormalTime = -FLT_MAX;
@@ -70,6 +70,12 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Berserk")
     float DamageMultiplier_Berserk = 1.5f;
 
+    // 광폭화 지속 시간과 타이머 핸들
+    UPROPERTY(EditAnywhere, Category = "Boss|Berserk")
+    float BerserkDuration = 12.f;
+
+    FTimerHandle BerserkDurationHandle;
+
     /** Replication 후 처리용 OnRep 함수 */
     UFUNCTION()
     virtual void OnRep_IsBerserk();
@@ -83,7 +89,8 @@ protected:
     void Multicast_EndBerserk();
 
     /** 실제 Berserk 상태 진입 로직 */
-    virtual void StartBerserk();
+    virtual void StartBerserk();                       // 무제한
+    virtual void StartBerserk(float Duration);         // 제한 시간
 
     /** Berserk 종료 처리 로직 */
     virtual void EndBerserk();
