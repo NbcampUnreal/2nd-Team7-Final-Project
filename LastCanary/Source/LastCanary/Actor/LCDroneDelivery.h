@@ -9,6 +9,7 @@ class USplineComponent;
 class ALCDronePath;
 class UStaticMeshComponent;
 class UPointLightComponent;
+class UNiagaraSystem;
 UCLASS()
 class LASTCANARY_API ALCDroneDelivery : public AActor
 {
@@ -46,10 +47,6 @@ protected:
 	void BeginDelivery();
 
 	/** 드랍 연출 (모든 클라이언트) */
-	UFUNCTION(NetMulticast, Unreliable)
-	void Multicast_PlayDropEffect();
-	void Multicast_PlayDropEffect_Implementation();
-
     UFUNCTION(NetMulticast, Unreliable)
     void Multicast_PlayDropExplosionEffect();
     void Multicast_PlayDropExplosionEffect_Implementation();
@@ -127,4 +124,11 @@ public:
     void ToggleLights();
     void InitializeLights();
 
+	UPROPERTY(EditDefaultsOnly, Category = "Effects")
+	UNiagaraSystem* DestroyEffect;
+    UPROPERTY(EditDefaultsOnly, Category = "Effects")
+    USoundBase* DropSound;
+
+    UFUNCTION()
+    void DestroySelf();
 };
