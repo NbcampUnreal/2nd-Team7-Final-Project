@@ -99,6 +99,9 @@ struct FGunDataRow : public FTableRowBase
 
     // 애니메이션
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Animation")
+    TSubclassOf<UAnimInstance> AnimationBlueprint;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Animation")
     UAnimMontage* FireAnimation;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Animation")

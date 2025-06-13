@@ -353,11 +353,6 @@ void AGunBase::Multicast_PlayFireAnimation_Implementation()
     if (GunData.FireAnimation)
     {
         PlayGunAnimation(GunData.FireAnimation);
-        LOG_Item_WARNING(TEXT("Playing fire animation: %s"), *GunData.FireAnimation->GetName());
-    }
-    else
-    {
-        LOG_Item_WARNING(TEXT("No fire animation assigned"));
     }
 }
 
@@ -529,6 +524,15 @@ void AGunBase::ApplyGunDataFromDataTable()
     {
         LOG_Item_WARNING(TEXT("[GunBase::ApplyGunDataFromDataTable] RowName '%s'에 해당하는 데이터를 찾을 수 없습니다."), *ItemRowName.ToString());
         return;
+    }
+
+    if (GunData.AnimationBlueprint && SkeletalMeshComponent)
+    {
+        SkeletalMeshComponent->SetAnimInstanceClass(GunData.AnimationBlueprint);
+    }
+    else
+    {
+        LOG_Item_WARNING(TEXT("[GunBase::ApplyGunDataFromDataTable] AnimationBlueprint 없음"));
     }
 
     // 총기 데이터 적용
