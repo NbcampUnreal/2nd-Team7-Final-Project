@@ -286,7 +286,7 @@ void ABaseCharacter::UpdateRightHandIKTarget()
 
 	// 위치 offset 계산
 	FVector Offset = TargetAimLocation - ScopeWorldLocation;
-	FVector DesiredIKLocation = GetMesh()->GetSocketLocation(TEXT("hand_r")) + Offset;
+	FVector DesiredIKLocation = GetMesh()->GetSocketLocation(TEXT("ik_hand_gun")) + Offset;
 
 	// 애님 인스턴스에 위치 + 회전 전달
 	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
