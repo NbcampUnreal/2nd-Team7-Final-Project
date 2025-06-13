@@ -196,9 +196,7 @@ public:
 
 	virtual void Input_OnItemThrow();
 
-	virtual void Input_OnStartedVoiceChat();
-
-	virtual void Input_OnCanceledVoiceChat();
+	virtual void Input_VoiceChat(const FInputActionValue& ActionValue);
 
 	virtual void Input_ChangeShootingSetting();
 

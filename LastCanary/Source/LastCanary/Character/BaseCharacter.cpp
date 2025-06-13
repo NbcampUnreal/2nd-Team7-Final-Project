@@ -234,14 +234,19 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 	Super::CalcCamera(DeltaTime, ViewInfo);
 	if (bIsMantling)
 	{
+		bIsAiming = false;
+		SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 		Controller->SetControlRotation(GetActorRotation()); // 컨트롤러 회전도 고정
 		SpringArm->bUsePawnControlRotation = false;
 		FVector TargetLoc = GetActorLocation();
 		FRotator TargetRot = GetActorRotation(); // 또는 GetMesh()->GetComponentRotation() 사용 가능
 		ViewInfo.Rotation = TargetRot;
 		SpringArm->SetWorldRotation(TargetRot);
-		//UE_LOG(LogTemp, Warning, TEXT("SpringArm Rotation: %s"), *SpringArm->GetComponentRotation().ToString());
-		
+		//UE_LOG(LogTemp, Warning, TEXT("SpringArm Rotation: %s"), *SpringArm->GetComponentRotation().ToString());		
+		if (!bIsFPSCamera)
+		{
+			SpringArm->TargetArmLength = 200.0f;
+		}
 	}
 	else if (bIsAiming && IsValid(CurrentRifleMesh) && !bIsReloading)	
 	{
@@ -474,6 +479,20 @@ void ABaseCharacter::ApplyRecoilStep()
 void ABaseCharacter::Handle_Look(const FInputActionValue& ActionValue)
 {
 
+}
+
+void ABaseCharacter::Handle_VoiceChatting(const FInputActionValue& ActionValue)
+{
+	const float Value = ActionValue.Get<float>();
+
+	if (Value > 0.5f)
+	{
+		StartVoiceChat();
+	}
+	else
+	{
+		CancelVoiceChat();
+	}
 }
 
 void ABaseCharacter::Handle_Move(const FInputActionValue& ActionValue)
@@ -1940,6 +1959,7 @@ void ABaseCharacter::GetFallDamage(float Velocity)
 void ABaseCharacter::HandlePlayerDeath()
 {
 	UE_LOG(LogTemp, Log, TEXT("Character Died"));
+	Client_HandlePlayerVoiceChattingState();
 	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
@@ -1954,6 +1974,7 @@ void ABaseCharacter::HandlePlayerDeath()
 	{
 		return;
 	}
+	
 	MyPlayerState->CurrentState = EPlayerState::Dead;
 	MyPlayerState->SetInGameStatus(EPlayerInGameStatus::Spectating);
 	PC->OnPlayerExitActivePlay();
@@ -1961,6 +1982,13 @@ void ABaseCharacter::HandlePlayerDeath()
 	UnequipCurrentItem();
 	StartRagdolling();
 }
+
+void ABaseCharacter::Client_HandlePlayerVoiceChattingState_Implementation()
+{
+	//블루프린트에서 마저 구현
+	UpdateVoiceChannelBySoectateState();
+}
+
 
 void ABaseCharacter::Multicast_SetPlayerInGameStateOnDie_Implementation()
 {
@@ -1999,6 +2027,7 @@ float ABaseCharacter::CalculateFallDamage(float Velocity)
 
 void ABaseCharacter::EscapeThroughGate()
 {
+	Client_HandlePlayerVoiceChattingState();
 	ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
 	if (!IsValid(PC))
 	{
