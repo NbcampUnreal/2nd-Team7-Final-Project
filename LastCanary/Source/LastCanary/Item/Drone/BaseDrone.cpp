@@ -54,6 +54,8 @@ void ABaseDrone::BeginPlay()
 	DroneMesh->OnComponentHit.AddDynamic(this, &ABaseDrone::OnDroneHit);
 
 	MoveDirection = FVector::ForwardVector;
+
+	TargetDroneRotation.Yaw = GetActorRotation().Yaw;
 }
 
 void ABaseDrone::Tick(float DeltaTime)

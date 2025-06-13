@@ -116,6 +116,11 @@ private:
     bool IsBackpackItem(FName ItemRowName) const;
     bool HasOtherEquippedItems() const;
 
+    /** 가방메시 비가시화 RPC함수 */
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_SetBackpackVisibility(bool bVisible);
+    void Multicast_SetBackpackVisibility_Implementation(bool bVisible);
+
     /** 수집품인지 확인 */
     bool IsCollectibleItem(const FItemDataRow* ItemData) const;
 
@@ -152,8 +157,6 @@ public:
 
 private:
     bool Internal_DropCurrentEquippedItem();
-
-private:
     bool Internal_DropEquippedItemAtSlot(int32 SlotIndex, int32 Quantity);
 
     /** 아이템 습득 시 플레이어 스테이트와 동기화 */
@@ -161,9 +164,36 @@ private:
     /** 아이템 드랍 시 플레이어 스테이트와 동기화 */
     void OnItemDropped(const FName& ItemRowName);
 
+public:
+    /** 인벤토리 슬롯들의 ItemID 배열 반환 (레벨 이동 시 사용) */
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Persistence")
+    TArray<int32> GetInventoryItemIDs() const;
+
+    /** ItemID 배열로부터 인벤토리 복원 (레벨 이동 후 사용) */
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Persistence")
+    void SetInventoryFromItemIDs(const TArray<int32>& ItemIDs);
+
     //-----------------------------------------------------
     // 네트워크
     //-----------------------------------------------------
 public:
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+public:
+    /** 장착한 장비이름을 UI로 전달하는 함수*/
+    UFUNCTION(NetMulticast, Reliable)
+    void MulticastUpdateItemText(const FText& ItemName);
+    void MulticastUpdateItemText_Implementation(const FText& ItemName);
+
+    /** 가방 슬롯 간 스왑 */
+    UFUNCTION(BlueprintCallable, Category = "Backpack|Operations")
+    bool TrySwapBackpackSlots(int32 FromBackpackIndex, int32 ToBackpackIndex);
+
+    /** 툴바 아이템을 가방으로 이동 */
+    UFUNCTION(BlueprintCallable, Category = "Backpack|Operations")
+    bool TryMoveToolbarItemToBackpack(int32 ToolbarIndex, int32 BackpackIndex);
+
+    /** 가방 아이템을 툴바로 이동 */
+    UFUNCTION(BlueprintCallable, Category = "Backpack|Operations")
+    bool TryMoveBackpackItemToToolbar(int32 BackpackIndex, int32 ToolbarIndex);
 };

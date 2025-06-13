@@ -81,7 +81,7 @@ void UAlsAnimNotify_FootstepEffects::Notify(USkeletalMeshComponent* Mesh, UAnimS
 	{
 		return;
 	}
-	if (Mesh->GetName().Contains(TEXT("FPSSkeletalMesh")))
+	if (Mesh->GetName().Contains(TEXT("HeadMesh")))
 	{
 		return;
 	}
@@ -176,6 +176,12 @@ void UAlsAnimNotify_FootstepEffects::Notify(USkeletalMeshComponent* Mesh, UAnimS
 	if (bSpawnSound)
 	{
 		SpawnSound(Mesh, EffectSettings->Sound, FootstepLocation, FootstepRotation);
+		if (IsValid(Character))
+		{
+			auto* MutableCharacter = const_cast<AAlsCharacter*>(Character);
+			MutableCharacter->NotifyNoiseToAI(Character->GetLocomotionStateMovementSpeed());
+		}
+		
 	}
 
 	if (bSpawnDecal)

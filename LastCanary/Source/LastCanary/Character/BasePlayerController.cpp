@@ -40,6 +40,9 @@ void ABasePlayerController::BeginPlay()
 
 	LoadMouseSensitivity();
 	LoadBrightness();
+
+	PlayerCameraManager->ViewPitchMin = -80.0f; // 최소 Pitch 각도 (고개 숙이기)
+	PlayerCameraManager->ViewPitchMax = 80.0f;  // 최대 Pitch 각도 (고개 들기)
 }
 
 void ABasePlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -636,10 +639,6 @@ void ABasePlayerController::Input_OnAim(const FInputActionValue& ActionValue)
 	{
 		PlayerCharacter->Handle_Aim(ActionValue);
 	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is not an ABaseCharacter: %s"), *CurrentPossessedPawn->GetName());
-	}
 }
 
 
@@ -1149,7 +1148,13 @@ void ABasePlayerController::Input_DroneExit()
 	}
 	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
-		PlayerCharacter->SwapHeadMaterialTransparent(true);
+		PlayerCharacter->StopTrackingDrone();
+		PlayerCharacter->Server_UnPossessDrone();
+		if (IsLocalController())
+		{
+			PlayerCharacter->SwapHeadMaterialTransparent(true);
+			PlayerCharacter->Server_UnPossessDrone();
+		}
 	}
 }
 
@@ -1163,8 +1168,32 @@ void ABasePlayerController::SpawnDrone()
 
 void ABasePlayerController::Server_SpawnDrone_Implementation()
 {
-	FVector Location = GetPawn()->GetActorLocation() + FVector(0, 0, 200);
-	FRotator Rotation = GetPawn()->GetActorRotation();
+	if (!IsValid(CurrentPossessedPawn))
+	{
+		return;
+	}
+	if (!(CurrentPossessedPawn->IsA<ABaseCharacter>()))
+	{
+		return;
+	}
+	
+	FVector Location = FVector::ZeroVector;
+	FRotator Rotation = FRotator::ZeroRotator;
+	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
+
+	if (IsValid(PlayerCharacter))
+	{
+		FName SocketName = TEXT("Drone");
+		Location = PlayerCharacter->GetMesh()->GetSocketLocation(SocketName);
+		Rotation = PlayerCharacter->GetControlRotation();
+		Rotation.Pitch = 0.f;
+	}
+	else
+	{
+		Location = GetPawn()->GetActorLocation() + FVector(0, 0, 200);
+		Rotation = GetPawn()->GetActorRotation();
+	}
+	
 	FActorSpawnParameters Params;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 	Params.TransformScaleMethod = ESpawnActorScaleMethod::OverrideRootScale;
@@ -1177,6 +1206,8 @@ void ABasePlayerController::Server_SpawnDrone_Implementation()
 	//리슨서버 호스트만 
 	if (HasAuthority())
 	{
+		SpanwedPlayerCharacter->ControlledDrone = SpawnedPlayerDrone;
+		SpanwedPlayerCharacter->StartTrackingDrone();
 		PossessOnDrone();
 	}
 	
@@ -1191,7 +1222,12 @@ void ABasePlayerController::OnRep_SpawnedPlayerDrone()
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("Client received replicated drone: %s"), *SpawnedPlayerDrone->GetName());
-
+	if (IsValid(SpanwedPlayerCharacter))
+	{
+		SpanwedPlayerCharacter->ControlledDrone = SpawnedPlayerDrone;
+		SpanwedPlayerCharacter->StartTrackingDrone();
+	}
+	
 	// UI 연동이나 기타 클라이언트 작업만 여기서
 	PossessOnDrone(); // 내부에서 서버에 possession 요청함
 }

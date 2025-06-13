@@ -28,9 +28,10 @@ protected:
 	virtual void NativeDestruct() override;
 
 private:
-	UPROPERTY(meta = (BindWidget))
-	UComboBoxString* MicDeviceComboBox;
 
+public:
+	UPROPERTY(BlueprintReadwrite, EditAnywhere, Category = "VoiceOptionWidget")
+	EVoiceInputMode CurrentInputMode;
 	UPROPERTY(meta = (BindWidget))
 	USlider* VoiceVolumeSlider;
 	UPROPERTY(meta = (BindWidget))
@@ -40,27 +41,19 @@ private:
 	UTextBlock* VoiceVolumeText;
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* MyMicVolumeText;
-	UPROPERTY(meta = (BindWidget))
+	UPROPERTY(BlueprintReadwrite, EditAnywhere, meta = (BindWidget))
 	UTextBlock* InputModeText;
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* VoiceInputModeButtonPre;
 	UPROPERTY(meta = (BindWidget))
 	UButton* VoiceInputModeButtonNext;
-
-	EVoiceInputMode CurrentInputMode;
-	void RefreshInputModeText();
-	void EnumerateInputDevices();
-
-public:
-	UFUNCTION()
-	void OnMicDeviceChanged(FString SelectedItem, ESelectInfo::Type SelectionType);
+	
 	UFUNCTION()
 	void OnMicVolumeChanged(float Value);
 	UFUNCTION()
 	void OnVoiceVolumeChanged(float Value);
-	UFUNCTION()
-	void OnPreVoiceInputModeChanged();
-	UFUNCTION()
-	void OnNextVoiceInputModeChanged();
+
+	UFUNCTION(BlueprintCallable)
+	void RefreshInputModeText();
 };
