@@ -73,7 +73,7 @@ void ALCLuxCoreSocket::Server_InstallCore_Implementation()
 
 void ALCLuxCoreSocket::Multicast_PlayInstallEffect_Implementation()
 {
-	StartMovementToTarget(GetActorLocation() + FVector(0.f, 0.f, 100.f));
+	/*StartMovementToTarget(GetActorLocation() + FVector(0.f, 0.f, 100.f));*/
 }
 
 void ALCLuxCoreSocket::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

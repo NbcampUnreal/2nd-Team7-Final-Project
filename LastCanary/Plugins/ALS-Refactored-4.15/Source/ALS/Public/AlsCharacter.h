@@ -23,14 +23,20 @@ class ALS_API AAlsCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
+
 public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CurrentRifleMesh;
+
+	virtual void NotifyNoiseToAI(FVector Velocity);
+	virtual void NotifyNoiseToAI(float LandVelocity);
 	bool bIsMantling = false;
 	FTimerHandle HardLandingTimerHandle;
 	bool bIsInHardLandingState = false;
 	void TriggerHardLanding(float DisableDuration);
 	void EndHardLanding();
 	virtual void GetFallDamage(float Velocity);
-	FVector GetLocomotionStateMovementSpeed();
+	FVector GetLocomotionStateMovementSpeed() const;
 	float FootSoundModifier = 1.0f;
 
 

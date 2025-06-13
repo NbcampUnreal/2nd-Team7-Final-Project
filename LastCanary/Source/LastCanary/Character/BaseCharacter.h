@@ -16,6 +16,7 @@ class AItemBase;
 class UToolbarInventoryComponent;
 class UBackpackInventoryComponent;
 struct FBaseItemSlotData;
+struct FBackpackSlotData;
 class UItemSpawnerComponent;
 class UPostProcessComponent;
 class AResourceNode;
@@ -53,13 +54,9 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Inventory")
 	UToolbarInventoryComponent* ToolbarInventoryComponent;
 
-	UPROPERTY(VisibleAnywhere, Category = "Inventory")
-	UBackpackInventoryComponent* BackpackInventoryComponent;
-
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	TObjectPtr<UArrowComponent> ThirdPersonArrow;
-
 
 	// 관전용 스프링암
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
@@ -82,7 +79,7 @@ public:
 	void Tick(float DeltaSeconds)
 	{
 		Super::Tick(DeltaSeconds);
-
+		
 		//SmoothADSCamera(DeltaSeconds);
 		UpdateGunWallClipOffset(DeltaSeconds);
 	}
@@ -90,6 +87,12 @@ public:
 	float MaxWallClipPitch = 90.0f;
 	float CapsuleWallRatio = 0.0f;
 	void UpdateGunWallClipOffset(float DeltaTime);
+
+	int LerpCount = 0;
+	
+	void UpdateRightHandIKTarget();
+
+
 
 	//Character Default Settings
 protected:
@@ -99,7 +102,7 @@ protected:
 	virtual void NotifyControllerChanged() override;
 	virtual void BeginPlay() override;
 
-
+	
 	// Camera Settings
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Camera", Meta = (ClampMin = 0, ClampMax = 90, ForceUnits = "deg"))
@@ -107,9 +110,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Camera", Meta = (ClampMin = -80, ClampMax = 0, ForceUnits = "deg"))
 	float MinPitchAngle{ -60.0f };
 
-	void CalcCameraLocation();
-
-	void CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo);
+	virtual void CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo) override;
 
 	FTimerHandle MoveTimerHandle;
 	FVector StartLocation;
@@ -141,6 +142,32 @@ protected:
 	bool bIsCloseToWall = false;
 	bool bIsSprinting = false;
 
+	bool bIsAiming = false;
+
+	// ABaseCharacter.h
+
+	FVector LastCameraLocation;
+	FRotator LastCameraRotation;
+
+	FVector CameraLocationTarget;
+	FRotator CameraRotationTarget;
+
+	/*AIAIAIAIAAI*/
+public:
+	virtual void NotifyNoiseToAI(FVector Velocity) override;
+	virtual void NotifyNoiseToAI(float LandVelocity) override;
+	void MakeNoiseSoundToAI(float Force);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AISettings", meta = (ClampMin = "1.0", ClampMax = "10000.0"))
+	float SoundLoudnessDivider = 1000.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AISettings", meta = (ClampMin = "1.0", ClampMax = "10000.0"))
+	float MaxSoundRange = 1000.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AISettings")
+	FName AISoundCheckTag = "None";
+
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
 	UMaterialInterface* DefaultHeadMaterial_HelmBoots;
 
@@ -167,9 +194,6 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
 	UMaterialInterface* TransparentHeadMaterial;
-
-
-
 
 public:
 	void SetCameraMode(bool bIsFirstPersonView);
@@ -207,6 +231,19 @@ public:
 	virtual void Handle_Interact(const FInputActionValue& ActionValue);
 	virtual void Handle_ViewMode();
 	virtual void Handle_Reload();
+	virtual void Handle_VoiceChatting(const FInputActionValue& ActionValue);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Voice")
+	void UpdateVoiceChannelBySoectateState();
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Voice")
+	void StartVoiceChat();
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Voice")
+	void CancelVoiceChat();
+
+
+
 
 	void EscapeThroughGate();
 
@@ -235,6 +272,20 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void RefreshOverlayLinkedAnimationLayer(int index);
 
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_RefreshOverlayObject(int index);
+	void Multicast_RefreshOverlayObject_Implementation(int index);
+
+	bool bIsSpawnDrone = false;
+
+	UFUNCTION(Server, Reliable)
+	void Server_UnPossessDrone();
+	void Server_UnPossessDrone_Implementation();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void NetMulticast_UnPossessDrone();
+	void NetMulticast_UnPossessDrone_Implementation();
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	TSubclassOf<UAnimInstance> DefaultAnimationClass;
 
@@ -248,6 +299,9 @@ public:
 	TSubclassOf<UAnimInstance> TorchAnimationClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	TSubclassOf<UAnimInstance> BinocularsAnimationClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	USkeletalMesh* SKM_Rifle;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
@@ -256,6 +310,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	UStaticMesh* SM_Torch;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	UStaticMesh* RCController;
 
 public:
 	//애니메이션 몽타주
@@ -281,6 +337,14 @@ public:
 	UAnimMontage* PickAxeMontage;
 
 
+	FTimerHandle DroneTrackingTimerHandle;
+	void StartTrackingDrone();
+	void StopTrackingDrone();
+	void UpdateRotationToDrone();
+
+	class ABaseDrone* ControlledDrone;
+
+
 	UFUNCTION()
 	void OnGunReloadAnimComplete(UAnimMontage* CompletedMontage, bool bInterrupted);
 
@@ -303,6 +367,8 @@ public:
 	UFUNCTION(Server, Unreliable)
 	void Server_CancelInteraction();
 	void Server_CancelInteraction_Implementation();
+
+	bool bIsPlayingInteractionMontage = false;
 
 	//Check Player Focus Everytime
 public:
@@ -330,6 +396,11 @@ public:
 	/*Player Damage, Death*/
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	void HandlePlayerDeath();
+
+	UFUNCTION(Client, Reliable)
+	void Client_HandlePlayerVoiceChattingState();
+	void Client_HandlePlayerVoiceChattingState_Implementation();
+
 
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_SetPlayerInGameStateOnDie();
@@ -409,7 +480,7 @@ public:
 	float FrontInput = 0.0f;
 
 	//달리기 관련 로직
-	float GetPlayerMovementSpeed();
+	float GetPlayerMovementSpeed() const;
 
 	void ConsumeStamina();
 	void TickStaminaDrain();
@@ -446,8 +517,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	UToolbarInventoryComponent* GetToolbarInventoryComponent() const;
 
-	UFUNCTION(BlueprintCallable, Category = "Inventory")
-	UBackpackInventoryComponent* GetBackpackInventoryComponent() const;
 private:
 	UPROPERTY(Replicated)
 	FGameplayTagContainer EquippedTags;
@@ -504,22 +573,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Character|Inventory")
 	void DropItemAtSlot(int32 SlotIndex, int32 Quantity = 1);
 
-public:
 	//-----------------------------------------------------
 	// 가방 관리 (간소화)
 	//-----------------------------------------------------
-
-	/** 가방 장착 (데이터 복사 방식) */
-	UFUNCTION(BlueprintCallable, Category = "Character|Equipment")
-	bool EquipBackpack(FName BackpackItemRowName, const TArray<FBaseItemSlotData>& BackpackData, int32 MaxSlots);
-
-	/** 가방 해제 (데이터 반환) */
-	UFUNCTION(BlueprintCallable, Category = "Character|Equipment")
-	TArray<FBaseItemSlotData> UnequipBackpack();
-
-	/** 가방이 장착되어 있는지 확인 */
-	UFUNCTION(BlueprintPure, Category = "Character|Equipment")
-	bool HasBackpackEquipped() const;
 
 private:
 	/** 가방 메시 설정 */
@@ -554,4 +610,18 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_InteractWithResourceNode(AResourceNode* TargetNode);
 	void Server_InteractWithResourceNode_Implementation(AResourceNode* TargetNode);
+
+	// 체력 회복 관련 함수
+	FTimerHandle HealingTimerHandle;
+	int32 HealingTicksRemaining = 0;
+	float HealingPerTick = 0.f;
+
+	UFUNCTION()
+	void StartHealing(float TotalHealAmount, float Duration);
+	
+	UFUNCTION()
+	void HealStep();
+
+	UFUNCTION()
+	void StopHealing();
 };

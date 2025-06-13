@@ -123,6 +123,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SoundSettings")
 	float SprintingFootSoundModifier = 1.5f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SoundSettings")
+	float CrouchingFootSoundModifier = 0.2f;
 
 public:
 	// State

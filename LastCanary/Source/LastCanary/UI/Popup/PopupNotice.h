@@ -17,7 +17,7 @@ public:
 	virtual void NativeDestruct() override;
 
 	UFUNCTION(BlueprintCallable, Category = "Popup")
-	void InitializeNoticePopup(const FString& Notice);
+	void InitializeNoticePopup(const FText& Notice);
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* NoticeText;

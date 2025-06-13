@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Item/EquipmentItem/EquipmentItemBase.h"
+#include "DataType/BackpackSlotData.h"
 #include "Inventory/BackpackInventoryComponent.h"
 #include "BackpackItem.generated.h"
 
@@ -17,13 +18,9 @@ protected:
     virtual void BeginPlay() override;
 
 public:
-    /** 가방의 인벤토리 컴포넌트 */
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-    UBackpackInventoryComponent* BackpackInventoryComponent;
-
-    /** 가방 인벤토리 컴포넌트 접근자 */
-    UFUNCTION(BlueprintPure, Category = "Inventory")
-    UBackpackInventoryComponent* GetBackpackInventoryComponent() const;
+    /** 가방 내부 아이템 데이터 */
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Backpack")
+    TArray<FBackpackSlotData> BackpackData;
 
     /** 가방 최대 슬롯 수 */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Backpack Settings", meta = (ClampMin = "1", ClampMax = "50"))
@@ -34,13 +31,24 @@ public:
 
     /** 가방 데이터 가져오기 */
     UFUNCTION(BlueprintPure, Category = "Backpack")
-    TArray<FBaseItemSlotData> GetBackpackData() const;
+    TArray<FBackpackSlotData> GetBackpackData() const;
 
     /** 가방에 데이터 설정 */
     UFUNCTION(BlueprintCallable, Category = "Backpack")
-    void SetBackpackData(const TArray<FBaseItemSlotData>& NewData);
+    void SetBackpackData(const TArray<FBackpackSlotData>& InData);
 
-protected:
-    /** 가방 초기화 */
-    void InitializeBackpack();
+    /** 가방에 데이터 초기화 함수 */
+    void InitializeBackpackSlots(TArray<FBackpackSlotData>& SlotsArray, int32 NumSlots);
+
+    UFUNCTION(Client, Reliable)
+    void Client_ToggleInventory();
+    void Client_ToggleInventory_Implementation();
+
+    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+    UPROPERTY(ReplicatedUsing = OnRep_MeshVisibility)
+    bool bMeshVisible = true;
+
+    UFUNCTION()
+    void OnRep_MeshVisibility();
 };

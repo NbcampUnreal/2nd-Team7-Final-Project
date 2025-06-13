@@ -59,6 +59,20 @@ void ABaseSpectatorPawn::Handle_LookMouse(const FInputActionValue& ActionValue, 
 	Controller->SetControlRotation(NewRotation);
 }
 
+void ABaseSpectatorPawn::Handle_VoiceChatting(const FInputActionValue& ActionValue)
+{
+	const float Value = ActionValue.Get<float>();
+
+	if (Value > 0.5f)
+	{
+		StartVoiceChat();
+	}
+	else
+	{
+		CancelVoiceChat();
+	}
+}
+
 void ABaseSpectatorPawn::AdjustCameraZoom(float ZoomDelta)
 {
     float NewLength = FMath::Clamp(SpringArm->TargetArmLength + ZoomDelta * 10.0f, MinZoom, MaxZoom);
