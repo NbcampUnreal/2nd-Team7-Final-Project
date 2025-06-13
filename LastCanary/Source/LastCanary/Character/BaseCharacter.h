@@ -132,7 +132,6 @@ protected:
 	float SmoothCameraTimeThreshold = 0.5f;
 
 	float SmoothCameraCurrentTime = 0.f;
-	USkeletalMeshComponent* CurrentRifleMesh;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float FieldOfView = 90.f;
@@ -232,6 +231,19 @@ public:
 	virtual void Handle_Interact(const FInputActionValue& ActionValue);
 	virtual void Handle_ViewMode();
 	virtual void Handle_Reload();
+	virtual void Handle_VoiceChatting(const FInputActionValue& ActionValue);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Voice")
+	void UpdateVoiceChannelBySoectateState();
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Voice")
+	void StartVoiceChat();
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Voice")
+	void CancelVoiceChat();
+
+
+
 
 	void EscapeThroughGate();
 
@@ -384,6 +396,11 @@ public:
 	/*Player Damage, Death*/
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	void HandlePlayerDeath();
+
+	UFUNCTION(Client, Reliable)
+	void Client_HandlePlayerVoiceChattingState();
+	void Client_HandlePlayerVoiceChattingState_Implementation();
+
 
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_SetPlayerInGameStateOnDie();
