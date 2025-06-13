@@ -16,5 +16,8 @@ public:
 protected:
     UPROPERTY(VisibleAnywhere, Category = "AI")
     UAISenseConfig_Hearing* HearingConfig;
+
+    virtual void OnPerceptionUpdated(const TArray<AActor*>& UpdatedActors) override;
+
 	
 };
