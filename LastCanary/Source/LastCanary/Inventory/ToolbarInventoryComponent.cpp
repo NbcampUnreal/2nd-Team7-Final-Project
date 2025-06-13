@@ -1375,6 +1375,26 @@ bool UToolbarInventoryComponent::TryMoveToolbarItemToBackpack(int32 ToolbarIndex
     FBaseItemSlotData& ToolbarSlot = ItemSlots[ToolbarIndex];
     FBaseItemSlotData& BackpackOwnerSlot = ItemSlots[CurrentEquippedSlotIndex];
 
+    if (!ItemDataTable)
+    {
+        LOG_Item_WARNING(TEXT("[TryMoveToolbarItemToBackpack] 데이터 테이블이 없음"));
+        return false;
+    }
+
+    const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(ToolbarSlot.ItemRowName, TEXT("TryMoveToolbarItemToBackpack"));
+    if (!ItemData)
+    {
+        LOG_Item_WARNING(TEXT("[TryMoveToolbarItemToBackpack] 데이터가 유효하지 않음"));
+        return false;
+    }
+
+    // Collectible이 아니면 가방 이동 불가
+    if (!IsCollectibleItem(ItemData))
+    {
+        LOG_Item_WARNING(TEXT("[TryMoveToolbarItemToBackpack] 가방에 넣을 수 없는(Collectible 아님) 아이템: %s"), *ToolbarSlot.ItemRowName.ToString());
+        return false;
+    }
+
     if (!BackpackOwnerSlot.bIsBackpack ||
         !BackpackOwnerSlot.BackpackSlots.IsValidIndex(BackpackIndex))
     {
