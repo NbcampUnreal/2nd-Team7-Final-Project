@@ -154,7 +154,7 @@ public:
 	virtual void StartMovement();
 
 	/** 이동 완료 */
-	void CompleteMovement();
+	virtual void CompleteMovement();
 
 	/** 복귀 이동 시작 */
 	void ReturnToInitialLocation();
