@@ -13,8 +13,4 @@ class LASTCANARY_API UToolbarSlotWidget : public UInventorySlotWidget
 	GENERATED_BODY()
 	
 public:
-	UPROPERTY()
-	TWeakObjectPtr<AItemBase> ItemActor;
-
-	void SetItemActor(AItemBase* NewItemActor);
 };

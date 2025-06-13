@@ -14,6 +14,8 @@ AResourceNode::AResourceNode()
 
 void AResourceNode::BeginPlay()
 {
+    Super::BeginPlay();
+
     // 레벨 상에 있는 스폰 매니저 할당
     ResourceItemSpawnManager = Cast<AResourceItemSpawnManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AResourceItemSpawnManager::StaticClass()));
     if (!ResourceItemSpawnManager)
