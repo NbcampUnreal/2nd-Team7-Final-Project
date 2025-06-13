@@ -879,8 +879,8 @@ void ABasePlayerController::Input_OnItemUse(const FInputActionValue& ActionValue
 	{
 		return;
 	}
-
-	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
+	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
+	if (IsValid(PlayerCharacter))
 	{
 		PlayerCharacter->UseEquippedItem(Value);
 	}

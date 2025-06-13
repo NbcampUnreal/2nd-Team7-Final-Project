@@ -39,6 +39,7 @@
 #include "Item/Drone/BaseDrone.h"
 #include "../Plugins/ALS-Refactored-4.15/Source/ALS/Public/AlsLinkedAnimationInstance.h"
 #include "SaveGame/LCLocalPlayerSaveGame.h"
+#include "Components/CapsuleComponent.h"
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -96,6 +97,15 @@ ABaseCharacter::ABaseCharacter()
 	BackpackMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	ToolbarInventoryComponent = CreateDefaultSubobject<UToolbarInventoryComponent>(TEXT("ToolbarInventoryComponent"));
+
+	WallCollisionCapsule = CreateDefaultSubobject<UCapsuleComponent>(TEXT("WallCollisionCapsule"));
+	WallCollisionCapsule->SetupAttachment(RootComponent); // 또는 Mesh에 붙일 수도 있음
+	WallCollisionCapsule->SetCapsuleSize(30.f, 80.f); // 필요에 따라 조절
+	WallCollisionCapsule->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	WallCollisionCapsule->SetCollisionObjectType(ECC_WorldDynamic);
+	WallCollisionCapsule->SetCollisionResponseToAllChannels(ECR_Ignore);
+	WallCollisionCapsule->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Overlap);
+	WallCollisionCapsule->bHiddenInGame = false;
 }
 
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
@@ -145,9 +155,9 @@ void ABaseCharacter::BeginPlay()
 		CustomPostProcessComponent->Settings.bOverride_AutoExposureMaxBrightness = true;
 
 		// 노출 범위는 0.5~2.0 사이 정도로 잡는 게 적당
-		float baseBrightness = FMath::Lerp(1.0f, 10.0f, GetBrightness()); // 0~1 값을 0.5~2.0 범위로 매핑
-		CustomPostProcessComponent->Settings.AutoExposureMinBrightness = baseBrightness;
-		CustomPostProcessComponent->Settings.AutoExposureMaxBrightness = baseBrightness + 0.5f;
+		float baseBrightness = FMath::Lerp(-10.0f, 10.0f, GetBrightness()); // 0~1 값을 0.5~2.0 범위로 매핑
+		CustomPostProcessComponent->Settings.AutoExposureMinBrightness = baseBrightness - 0.1f;
+		CustomPostProcessComponent->Settings.AutoExposureMaxBrightness = baseBrightness + 0.1f;
 
 		CustomPostProcessComponent->Settings.bOverride_AutoExposureBias = true;
 		CustomPostProcessComponent->Settings.AutoExposureBias = baseBrightness; // 유저 설정값 반영
@@ -169,9 +179,9 @@ float ABaseCharacter::GetBrightness()
 
 void ABaseCharacter::SetBrightness(float Value)
 {
-	float baseBrightness = FMath::Lerp(1.0f, 10.0f, Value); // 0~1 값을 0.5~2.0 범위로 매핑
-	CustomPostProcessComponent->Settings.AutoExposureMinBrightness = baseBrightness;
-	CustomPostProcessComponent->Settings.AutoExposureMaxBrightness = baseBrightness + 0.5f;
+	float baseBrightness = FMath::Lerp(-10.0f, 10.0f, Value); // 0~1 값을 0.5~2.0 범위로 매핑
+	CustomPostProcessComponent->Settings.AutoExposureMinBrightness = baseBrightness - 0.1f;
+	CustomPostProcessComponent->Settings.AutoExposureMaxBrightness = baseBrightness + 0.1f;
 	CustomPostProcessComponent->Settings.AutoExposureBias = baseBrightness; // 유저 설정값 반영
 }
 
@@ -235,6 +245,7 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 	if (bIsMantling)
 	{
 		bIsAiming = false;
+
 		SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 		Controller->SetControlRotation(GetActorRotation()); // 컨트롤러 회전도 고정
 		SpringArm->bUsePawnControlRotation = false;
@@ -250,9 +261,9 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 	}
 	else if (bIsAiming && IsValid(CurrentRifleMesh) && !bIsReloading)	
 	{
-		//UpdateRightHandIKTarget();
-
 		
+
+		/*
 		FTransform ScopeTransform = CurrentRifleMesh->GetSocketTransform(TEXT("Scope"));
 		FVector TargetLoc = ScopeTransform.GetLocation();
 		FRotator TargetRot = ScopeTransform.GetRotation().Rotator();
@@ -264,9 +275,9 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 		
 		//SpringArm->TargetArmLength = 20.0f;
 		//SpringArm->TargetArmLength = FMath::Lerp(SpringArm->TargetArmLength, 20.0f, DeltaTime);
-
-		SpringArm->bUsePawnControlRotation = false;
 		
+		SpringArm->bUsePawnControlRotation = false;
+		*/
 	}
 	else
 	{
@@ -277,7 +288,11 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 
 void ABaseCharacter::UpdateRightHandIKTarget()
 {
-	/*
+	if (bIsAiming)
+	{
+		return;
+	}
+
 	if (!CurrentRifleMesh || !Camera) return;
 
 	UE_LOG(LogTemp, Warning, TEXT("UpdateRightHandIKTarget"));
@@ -306,19 +321,93 @@ void ABaseCharacter::UpdateRightHandIKTarget()
 		if (UAlsAnimationInstance* MyAnimInstance = Cast<UAlsAnimationInstance>(AnimInstance))
 		{
 			MyAnimInstance->AimSocketLocation = AimSocketLocation;
-
 			MyAnimInstance->AimSocketRotation = AimSocketRotation;
-			
 			MyAnimInstance->AimPointLocation = AimPointForwardLocation;
-			
 			MyAnimInstance->AimPointRotation = RelativeRotation;
-
+			/*
+			UE_LOG(LogTemp, Warning, TEXT("[IK] AimSocketLocation: %s"), *AimSocketLocation.ToString());
+			UE_LOG(LogTemp, Warning, TEXT("[IK] AimSocketRotation: %s"), *AimSocketRotation.ToString());
+			UE_LOG(LogTemp, Warning, TEXT("[IK] AimPointLocation: %s"), *AimPointForwardLocation.ToString());
+			UE_LOG(LogTemp, Warning, TEXT("[IK] AimPointRotation: %s"), *RelativeRotation.ToString());
+			*/
 		}
 	}
-	*/
 }
 
+void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
+{
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
+	{
+		return;
+	}
+	if (CheckHardLandState())
+	{
+		return;
+	}
+	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
+	if (!EquippedItem)
+	{
+		//LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 현재 장착된 아이템이 없습니다."));
+		return;
+	}
+	if (bIsSprinting)
+	{
+		return;
+	}
+	if (bIsReloading)
+	{
+		return; // 리로드 중이므로 줌 입력 무시
+	}
+	if (bIsClose)
+	{
+		return;
+	}
+	if (bIsMantling)
+	{
+		return;
+	}
+	if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem))
+	{
+		if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
+		{
+			AGunBase* RifleItem = Cast<AGunBase>(EquippedItem);
+			if (RifleItem)
+			{
+				USkeletalMeshComponent* RifleMesh = RifleItem->GetSkeletalMeshComponent();
+				CurrentRifleMesh = RifleMesh;
+				if (!RifleMesh)
+				{
+					//UE_LOG(LogTemp, Warning, TEXT("Handle_Aim: No SkeletalMeshComponent found on rifle"));
+					return;
+				}
 
+				if (ActionValue.Get<float>() > 0.5f && bIsCloseToWall == false)
+				{
+					//UpdateRightHandIKTarget();
+					bIsAiming = true;
+					CancelInteraction();
+					
+					SpringArm->AttachToComponent(RifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
+					return;
+				}
+				else
+				{
+					bIsAiming = false;
+					SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+					SpringArm->TargetArmLength = 0.0f;
+					SpringArm->bUsePawnControlRotation = true;
+					if (!bIsFPSCamera)
+					{
+						SpringArm->TargetArmLength = 200.0f;
+					}
+					return;
+				}
+			}
+		}
+	}
+
+	SetDesiredAiming(ActionValue.Get<bool>());
+}
 
 void ABaseCharacter::NotifyNoiseToAI(FVector Velocity)
 {
@@ -763,78 +852,7 @@ void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
 	}
 }
 
-void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
-{
-	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
-	{
-		return;
-	}
-	if (CheckHardLandState())
-	{
-		return;
-	}
-	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
-	if (!EquippedItem)
-	{
-		//LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 현재 장착된 아이템이 없습니다."));
-		return;
-	}
-	if (bIsSprinting)
-	{
-		return;
-	}
-	if (bIsReloading)
-	{
-		return; // 리로드 중이므로 줌 입력 무시
-	}
-	if (bIsClose)
-	{
-		return;
-	}
-	if (bIsMantling)
-	{
-		return;
-	}
-	if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem))
-	{
-		if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
-		{
-			AGunBase* RifleItem = Cast<AGunBase>(EquippedItem);
-			if (RifleItem)
-			{
-				USkeletalMeshComponent* RifleMesh = RifleItem->GetSkeletalMeshComponent();
-				CurrentRifleMesh = RifleMesh;
-				if (!RifleMesh)
-				{
-					//UE_LOG(LogTemp, Warning, TEXT("Handle_Aim: No SkeletalMeshComponent found on rifle"));
-					return;
-				}
 
-				if (ActionValue.Get<float>() > 0.5f && bIsCloseToWall == false)
-				{
-					bIsAiming = true;
-					CancelInteraction();
-					SpringArm->AttachToComponent(RifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
-					return;
-				}
-				else
-				{
-					bIsAiming = false;
-					SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
-					SpringArm->TargetArmLength = 0.0f;
-					SpringArm->bUsePawnControlRotation = true;
-					if (!bIsFPSCamera)
-					{
-						SpringArm->TargetArmLength = 200.0f;
-					}
-					return;
-				}
-			}
-		}
-	}
-
-	SetDesiredAiming(ActionValue.Get<bool>());
-}
 
 
 void ABaseCharacter::StartStaminaDrain()

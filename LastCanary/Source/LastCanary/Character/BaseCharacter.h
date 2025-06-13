@@ -28,6 +28,12 @@ class LASTCANARY_API ABaseCharacter : public AAlsCharacter
 
 	//Character Mesh and Component
 public:
+	// .h 파일
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Collision")
+	UCapsuleComponent* WallCollisionCapsule;
+
+
 	/*1인칭 전용 메시 (자신만 보이는)*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
 	UStaticMeshComponent* OverlayStaticMesh;
@@ -91,7 +97,7 @@ public:
 	int LerpCount = 0;
 	
 	void UpdateRightHandIKTarget();
-
+	
 
 
 	//Character Default Settings

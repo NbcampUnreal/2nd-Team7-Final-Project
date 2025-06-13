@@ -49,6 +49,8 @@ public:
 	UPROPERTY(BlueprintReadWrite, Category = "IK")
 	FRotator AimPointRotation;
 
+	UPROPERTY(BlueprintReadWrite, Category = "IK")
+	float AimAlpha = 0.0f;
 
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
