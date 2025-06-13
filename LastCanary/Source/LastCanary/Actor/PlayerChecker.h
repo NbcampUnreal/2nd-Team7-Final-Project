@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "CoreMinimal.h"5
+#include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "PlayerChecker.generated.h"
 
