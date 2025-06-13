@@ -105,11 +105,11 @@ void ALCBaseGimmick::OnActorExit(UPrimitiveComponent* OverlappedComp, AActor* Ot
 void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	LOG_Art(Log, TEXT("%s ▶ Trigger 진입: %s | Role: %s | HasAuthority: %s"),
-		*GetName(),
-		*GetNameSafe(OtherActor),
-		*UEnum::GetValueAsString(GetLocalRole()),
-		HasAuthority() ? TEXT("true") : TEXT("false"));
+	//LOG_Art(Log, TEXT("%s ▶ Trigger 진입: %s | Role: %s | HasAuthority: %s"),
+	//	*GetName(),
+	//	*GetNameSafe(OtherActor),
+	//	*UEnum::GetValueAsString(GetLocalRole()),
+	//	HasAuthority() ? TEXT("true") : TEXT("false"));
 
 	if (!HasAuthority() || !IsValid(OtherActor)) return;
 
