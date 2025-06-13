@@ -10,6 +10,7 @@
 /**
  * 
  */
+class UToolbarInventoryComponent;
 UCLASS()
 class LASTCANARY_API ABandage : public AEquipmentItemBase
 {

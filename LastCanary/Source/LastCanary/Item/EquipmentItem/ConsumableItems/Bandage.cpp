@@ -1,16 +1,18 @@
 #include "Item/EquipmentItem/ConsumableItems/Bandage.h"
 #include "Character/BaseCharacter.h"
 #include "Character/BasePlayerState.h"
+#include "Inventory/ToolbarInventoryComponent.h"
 
 ABandage::ABandage()
 {
-	CurrentDurability = MaxDurability; // 초기 내구도 설정
+	Durability = MaxDurability; // 초기 내구도 설정
+	LOG_Item_WARNING(TEXT("CurrentDurability : %0.f"), Durability);
 }
 
 void ABandage::UseItem()
 {
 	Super::UseItem();
-
+	LOG_Item_WARNING(TEXT("CurrentDurability : %0.f"), Durability);
 	if (!HasAuthority())
 	{
 		return;
@@ -35,17 +37,25 @@ void ABandage::UseItem()
 		return;
 	}
 
-	if (CurrentDurability <= 0)
-	{
-		// 내구도가 0 이하일 때
-		LOG_Item_WARNING(TEXT("붕대의 내구도가 소진되어 사용 노노~"));
-		return;
-	}
-
 	//1. 총 회복량 2. 소요 시간
 	OwnerCharacter->StartHealing(HealingAmount, HealDuration);
 
 	// 내구도 감소
-	CurrentDurability--;
-}
+	Durability -= 40;
+	LOG_Item_WARNING(TEXT("CurrentDurability : %0.f"), Durability);
 
+	if (Durability <= 0)
+	{
+		// 내구도가 0 이하일 때
+		if (TryRemoveFromInventory())
+		{
+			LOG_Item_WARNING(TEXT("붕대 제거 성공"));
+		}
+		else
+		{
+			LOG_Item_WARNING(TEXT("붕대 제거 실패"));
+		}
+		LOG_Item_WARNING(TEXT("붕대의 내구도가 소진되어 사용 노노~"));
+		return;
+	}
+}

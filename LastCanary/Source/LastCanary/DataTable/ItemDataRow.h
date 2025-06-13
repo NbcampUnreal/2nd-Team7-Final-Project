@@ -29,6 +29,8 @@ struct FItemDataRow : public FTableRowBase
 	bool bCanBuy = true;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 MaxStack = 1;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Properties")
+	float MaxDurability = 100.0f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Meta = (Categories = "Item"))
 	FGameplayTag ItemType;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)

@@ -150,6 +150,9 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Item|Initialization")
     void ApplyItemDataFromTable();
 
+    /** 인벤토리에서 아이템 제거 (공용 함수) */
+    UFUNCTION(BlueprintCallable, Category = "Item|Inventory")
+    virtual bool TryRemoveFromInventory();
     //-----------------------------------------------------
     // 네트워크 & 에디터 기능
     //-----------------------------------------------------
