@@ -88,6 +88,12 @@ public:
 	float CapsuleWallRatio = 0.0f;
 	void UpdateGunWallClipOffset(float DeltaTime);
 
+	int LerpCount = 0;
+	
+	void UpdateRightHandIKTarget();
+
+
+
 	//Character Default Settings
 protected:
 	/*Character Default Settings*/

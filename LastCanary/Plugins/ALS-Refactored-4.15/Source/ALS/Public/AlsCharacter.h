@@ -25,6 +25,9 @@ class ALS_API AAlsCharacter : public ACharacter
 
 
 public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "IK")
+	FVector RightHandIKTargetLocation;
+
 	virtual void NotifyNoiseToAI(FVector Velocity);
 	virtual void NotifyNoiseToAI(float LandVelocity);
 	bool bIsMantling = false;

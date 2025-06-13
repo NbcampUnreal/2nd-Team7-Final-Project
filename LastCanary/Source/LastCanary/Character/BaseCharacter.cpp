@@ -37,7 +37,7 @@
 #include "Perception/AISense_Hearing.h"
 #include "Kismet/GameplayStatics.h"
 #include "Item/Drone/BaseDrone.h"
-
+#include "../Plugins/ALS-Refactored-4.15/Source/ALS/Public/AlsLinkedAnimationInstance.h"
 #include "SaveGame/LCLocalPlayerSaveGame.h"
 
 ABaseCharacter::ABaseCharacter()
@@ -238,13 +238,16 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 		SpringArm->bUsePawnControlRotation = false;
 		FVector TargetLoc = GetActorLocation();
 		FRotator TargetRot = GetActorRotation(); // 또는 GetMesh()->GetComponentRotation() 사용 가능
-		ViewInfo.Rotation = TargetRot;// FMath::RInterpTo(ViewInfo.Rotation, TargetRot, DeltaTime, 1.0f);
+		ViewInfo.Rotation = TargetRot;
 		SpringArm->SetWorldRotation(TargetRot);
-		UE_LOG(LogTemp, Warning, TEXT("SpringArm Rotation: %s"), *SpringArm->GetComponentRotation().ToString());
+		//UE_LOG(LogTemp, Warning, TEXT("SpringArm Rotation: %s"), *SpringArm->GetComponentRotation().ToString());
 		
 	}
 	else if (bIsAiming && IsValid(CurrentRifleMesh) && !bIsReloading)
 	{
+		UpdateRightHandIKTarget();
+
+		/*
 		FTransform ScopeTransform = CurrentRifleMesh->GetSocketTransform(TEXT("Scope"));
 		FVector TargetLoc = ScopeTransform.GetLocation();
 		FRotator TargetRot = ScopeTransform.GetRotation().Rotator();
@@ -252,11 +255,13 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 		// ViewInfo.Location이 현재 카메라 위치 → 여기서 보간 시작
 		ViewInfo.Location = FMath::VInterpTo(ViewInfo.Location, TargetLoc, DeltaTime, 5.0f);
 		ViewInfo.Rotation = FMath::RInterpTo(ViewInfo.Rotation, TargetRot, DeltaTime, 5.0f);
-
 		ViewInfo.Rotation.Roll = 0.0f;
+		
+		//SpringArm->TargetArmLength = 20.0f;
+		//SpringArm->TargetArmLength = FMath::Lerp(SpringArm->TargetArmLength, 20.0f, DeltaTime);
 
 		SpringArm->bUsePawnControlRotation = false;
-		SpringArm->TargetArmLength = 20.0f;
+		*/
 	}
 	else
 	{
@@ -264,6 +269,40 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 		// 일반 모드에서는 Super::CalcCamera에서 ViewInfo가 이미 적절히 설정됨
 	}
 }
+
+void ABaseCharacter::UpdateRightHandIKTarget()
+{
+	if (!CurrentRifleMesh || !Camera) return;
+
+	// 총에서 Scope 소켓의 위치와 회전
+	FTransform ScopeTransform = CurrentRifleMesh->GetSocketTransform(TEXT("Scope"), RTS_World);
+	FVector ScopeWorldLocation = ScopeTransform.GetLocation();
+	FRotator ScopeWorldRotation = ScopeTransform.Rotator();
+
+	// 카메라 기준 타겟 위치
+	FVector CameraLocation = Camera->GetComponentLocation();
+	FVector CameraForward = Camera->GetForwardVector();
+	FVector TargetAimLocation = CameraLocation + (CameraForward * 30.0f);
+
+	// 위치 offset 계산
+	FVector Offset = TargetAimLocation - ScopeWorldLocation;
+	FVector DesiredIKLocation = GetMesh()->GetSocketLocation(TEXT("hand_r")) + Offset;
+
+	// 애님 인스턴스에 위치 + 회전 전달
+	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	{
+		if (UAlsLinkedAnimationInstance* MyAnimInstance = Cast<UAlsLinkedAnimationInstance>(AnimInstance))
+		{
+			MyAnimInstance->RightHandIKTargetLocation = DesiredIKLocation;
+
+			// 카메라 방향을 기준으로 총이 바라볼 회전
+			FRotator TargetRotation = CameraForward.ToOrientationRotator();
+			MyAnimInstance->RightHandIKTargetRotation = TargetRotation;
+		}
+	}
+}
+
+
 
 void ABaseCharacter::NotifyNoiseToAI(FVector Velocity)
 {
@@ -745,15 +784,19 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 				{
 					bIsAiming = true;
 					CancelInteraction();
-					SpringArm->AttachToComponent(RifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
+					//SpringArm->AttachToComponent(RifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
 					return;
 				}
 				else
 				{
 					bIsAiming = false;
-					SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
-					SpringArm->TargetArmLength = 0.0f;
-					SpringArm->bUsePawnControlRotation = true;
+					//SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+					//SpringArm->TargetArmLength = 0.0f;
+					//SpringArm->bUsePawnControlRotation = true;
+					if (!bIsFPSCamera)
+					{
+						SpringArm->TargetArmLength = 200.0f;
+					}
 					return;
 				}
 			}
@@ -1577,17 +1620,20 @@ void ABaseCharacter::UpdateGunWallClipOffset(float DeltaTime)
 	FRotator MuzzleRot = MuzzleForward.Rotation();
 	float MuzzlePitch = MuzzleRot.Pitch;  // 상하 방향 판별용
 
-	// 2. 라인 트레이스
-	static constexpr float GunWallTraceDistance = 25.0f; // 50에서 100으로 더 여유있게
-	FVector TraceEnd = MuzzleLoc + MuzzleForward * GunWallTraceDistance;
-
 	FHitResult Hit;
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(this);
 
-	bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, MuzzleLoc, TraceEnd, ECC_Visibility, Params);
+	// 2. 라인 트레이스
+	static constexpr float GunWallTraceDistance = 70.0f; // 50에서 100으로 더 여유있게
+	static constexpr float TraceStartOffset = 50.0f; // 뒤로 10cm 정도
+	FVector TraceStart = MuzzleLoc - MuzzleForward * TraceStartOffset;
+	// 끝 지점은 그대로 앞쪽 방향으로 트레이스 거리만큼
+	FVector TraceEnd = TraceStart + MuzzleForward * GunWallTraceDistance;
+	bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Visibility, Params);
 
-	DrawDebugLine(GetWorld(), MuzzleLoc, TraceEnd, FColor::Red, false, 0.1f);
+	// 디버그 라인도 수정된 시작점 기준으로
+	DrawDebugLine(GetWorld(), TraceStart, TraceEnd, FColor::Red, false, 0.1f);
 	// 3. 벽과의 거리 비율 계산
 	//float WallRatio = 0.0f;
 	//if (bHit)
@@ -1612,7 +1658,7 @@ void ABaseCharacter::UpdateGunWallClipOffset(float DeltaTime)
 
 	// WallRatio 보간 (떨림 방지 핵심)
 	static float SmoothedWallRatio = 0.0f; // 내부 상태 유지
-	SmoothedWallRatio = FMath::FInterpTo(SmoothedWallRatio, TargetWallRatio, DeltaTime, 3.0f);
+	SmoothedWallRatio = FMath::FInterpTo(SmoothedWallRatio, TargetWallRatio, DeltaTime, 10.0f);
 
 
 	// 4. Pitch 보정값 계산 (상하 방향에 따라 부호 바꿈)
