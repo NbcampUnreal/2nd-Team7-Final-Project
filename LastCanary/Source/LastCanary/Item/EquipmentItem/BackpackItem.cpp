@@ -2,6 +2,7 @@
 #include "Character/BaseCharacter.h"
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "Net/UnrealNetwork.h"
 #include "LastCanary.h"
 
 ABackpackItem::ABackpackItem()
@@ -59,5 +60,19 @@ void ABackpackItem::Client_ToggleInventory_Implementation()
     if (ABaseCharacter* OwnerCharacter = Cast<ABaseCharacter>(GetOwner()))
     {
         OwnerCharacter->ToggleInventory();
+    }
+}
+
+void ABackpackItem::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+    DOREPLIFETIME(ABackpackItem, bMeshVisible);
+}
+
+void ABackpackItem::OnRep_MeshVisibility()
+{
+    if (UMeshComponent* MeshComp = GetMeshComponent())
+    {
+        MeshComp->SetVisibility(bMeshVisible);
     }
 }

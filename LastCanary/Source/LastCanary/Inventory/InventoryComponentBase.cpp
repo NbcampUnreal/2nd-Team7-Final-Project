@@ -452,22 +452,6 @@ UItemSpawnerComponent* UInventoryComponentBase::GetItemSpawner() const
 	return nullptr;
 }
 
-TArray<int32> UInventoryComponentBase::GetInventoryItemIDs() const
-{
-	TArray<int32> ItemIDs;
-	ItemIDs.Reserve(ItemSlots.Num());
-
-	for (int32 i = 0; i < ItemSlots.Num(); ++i)
-	{
-		const FBaseItemSlotData& SlotData = ItemSlots[i];
-
-		int32 ItemID = GetItemIDFromRowName(SlotData.ItemRowName);
-		ItemIDs.Add(ItemID);
-	}
-
-	return ItemIDs;
-}
-
 int32 UInventoryComponentBase::GetItemIDFromRowName(FName ItemRowName) const
 {
 	if (ItemRowName.IsNone())
@@ -489,80 +473,6 @@ int32 UInventoryComponentBase::GetItemIDFromRowName(FName ItemRowName) const
 
 	LOG_Item_WARNING(TEXT("[GetItemIDFromRowName] ItemID를 찾을 수 없음: %s"), *ItemRowName.ToString());
 	return -1;
-}
-
-void UInventoryComponentBase::SetInventoryFromItemIDs(const TArray<int32>& ItemIDs)
-{
-	LOG_Item_WARNING(TEXT("[SetInventoryFromItemIDs] === 시작 === 받은 ItemID 수: %d"), ItemIDs.Num());
-
-	// ⭐ 기존 인벤토리 초기화
-	ClearInventorySlots();
-
-	// ⭐ 슬롯 수를 ItemID 배열 크기로 맞추기
-	if (ItemIDs.Num() > MaxSlots)
-	{
-		LOG_Item_WARNING(TEXT("[SetInventoryFromItemIDs] ItemID 수(%d)가 MaxSlots(%d)보다 큽니다. MaxSlots로 제한합니다."),
-			ItemIDs.Num(), MaxSlots);
-	}
-
-	int32 SlotsToRestore = FMath::Min(ItemIDs.Num(), MaxSlots);
-	ItemSlots.SetNum(SlotsToRestore);
-
-	// ⭐ 각 슬롯에 ItemID 기반 데이터 설정
-	for (int32 i = 0; i < SlotsToRestore; ++i)
-	{
-		int32 ItemID = ItemIDs[i];
-
-		// ⭐ ItemID를 ItemRowName으로 변환
-		FName ItemRowName = GetItemRowNameFromID(ItemID);
-
-		LOG_Item_WARNING(TEXT("ItemID: %d → ItemRowName: %s"), ItemID, *ItemRowName.ToString());
-
-		if (ItemRowName.IsNone())
-		{
-			LOG_Item_WARNING(TEXT("[SetInventoryFromItemIDs] 슬롯 %d: ItemID %d에 해당하는 아이템을 찾을 수 없음 -> Default로 설정"), i, ItemID);
-			SetSlotToDefault(i);
-		}
-		else
-		{
-			// 유효한 아이템 설정
-			FBaseItemSlotData& SlotData = ItemSlots[i];
-			SlotData.ItemRowName = ItemRowName;
-			SlotData.Quantity = 1;
-			SlotData.Durability = 100.0f;
-			SlotData.bIsValid = true;
-			SlotData.bIsEquipped = false;
-
-			LOG_Item_WARNING(TEXT("[SetInventoryFromItemIDs] 슬롯 %d: ItemID %d -> %s 복원 성공"),
-				i, ItemID, *ItemRowName.ToString());
-		}
-	}
-
-	// ⭐ 남은 슬롯들은 Default로 채우기
-	for (int32 i = SlotsToRestore; i < MaxSlots; ++i)
-	{
-		if (i < ItemSlots.Num())
-		{
-			SetSlotToDefault(i);
-		}
-		else
-		{
-			// 새 슬롯 추가
-			FBaseItemSlotData DefaultSlot;
-			DefaultSlot.ItemRowName = DefaultItemRowName;
-			DefaultSlot.Quantity = 1;
-			DefaultSlot.Durability = 100.0f;
-			DefaultSlot.bIsValid = true;
-			DefaultSlot.bIsEquipped = false;
-			ItemSlots.Add(DefaultSlot);
-		}
-	}
-
-	// 무게 갱신 및 UI 새로고침
-	UpdateWeight();
-	OnInventoryUpdated.Broadcast();
-
-	LOG_Item_WARNING(TEXT("[SetInventoryFromItemIDs] ✅ 인벤토리 복원 완료 - 총 %d개 슬롯"), ItemSlots.Num());
 }
 
 FName UInventoryComponentBase::GetItemRowNameFromID(int32 ItemID) const
