@@ -54,9 +54,9 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Inventory")
 	UToolbarInventoryComponent* ToolbarInventoryComponent;
 
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	TObjectPtr<UArrowComponent> ThirdPersonArrow;
-
 
 	// 관전용 스프링암
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
@@ -79,7 +79,7 @@ public:
 	void Tick(float DeltaSeconds)
 	{
 		Super::Tick(DeltaSeconds);
-
+		
 		//SmoothADSCamera(DeltaSeconds);
 		UpdateGunWallClipOffset(DeltaSeconds);
 	}
@@ -87,6 +87,12 @@ public:
 	float MaxWallClipPitch = 90.0f;
 	float CapsuleWallRatio = 0.0f;
 	void UpdateGunWallClipOffset(float DeltaTime);
+
+	int LerpCount = 0;
+	
+	void UpdateRightHandIKTarget();
+
+
 
 	//Character Default Settings
 protected:
@@ -96,7 +102,7 @@ protected:
 	virtual void NotifyControllerChanged() override;
 	virtual void BeginPlay() override;
 
-
+	
 	// Camera Settings
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Camera", Meta = (ClampMin = 0, ClampMax = 90, ForceUnits = "deg"))
@@ -104,9 +110,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Camera", Meta = (ClampMin = -80, ClampMax = 0, ForceUnits = "deg"))
 	float MinPitchAngle{ -60.0f };
 
-	void CalcCameraLocation();
-
-	void CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo);
+	virtual void CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo) override;
 
 	FTimerHandle MoveTimerHandle;
 	FVector StartLocation;
@@ -128,6 +132,7 @@ protected:
 	float SmoothCameraTimeThreshold = 0.5f;
 
 	float SmoothCameraCurrentTime = 0.f;
+	USkeletalMeshComponent* CurrentRifleMesh;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float FieldOfView = 90.f;
@@ -137,6 +142,32 @@ protected:
 
 	bool bIsCloseToWall = false;
 	bool bIsSprinting = false;
+
+	bool bIsAiming = false;
+
+	// ABaseCharacter.h
+
+	FVector LastCameraLocation;
+	FRotator LastCameraRotation;
+
+	FVector CameraLocationTarget;
+	FRotator CameraRotationTarget;
+
+	/*AIAIAIAIAAI*/
+public:
+	virtual void NotifyNoiseToAI(FVector Velocity) override;
+	virtual void NotifyNoiseToAI(float LandVelocity) override;
+	void MakeNoiseSoundToAI(float Force);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AISettings", meta = (ClampMin = "1.0", ClampMax = "10000.0"))
+	float SoundLoudnessDivider = 1000.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AISettings", meta = (ClampMin = "1.0", ClampMax = "10000.0"))
+	float MaxSoundRange = 1000.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AISettings")
+	FName AISoundCheckTag = "None";
+
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
 	UMaterialInterface* DefaultHeadMaterial_HelmBoots;
@@ -164,9 +195,6 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
 	UMaterialInterface* TransparentHeadMaterial;
-
-
-
 
 public:
 	void SetCameraMode(bool bIsFirstPersonView);
@@ -232,6 +260,20 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void RefreshOverlayLinkedAnimationLayer(int index);
 
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_RefreshOverlayObject(int index);
+	void Multicast_RefreshOverlayObject_Implementation(int index);
+
+	bool bIsSpawnDrone = false;
+
+	UFUNCTION(Server, Reliable)
+	void Server_UnPossessDrone();
+	void Server_UnPossessDrone_Implementation();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void NetMulticast_UnPossessDrone();
+	void NetMulticast_UnPossessDrone_Implementation();
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	TSubclassOf<UAnimInstance> DefaultAnimationClass;
 
@@ -245,6 +287,9 @@ public:
 	TSubclassOf<UAnimInstance> TorchAnimationClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	TSubclassOf<UAnimInstance> BinocularsAnimationClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	USkeletalMesh* SKM_Rifle;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
@@ -253,6 +298,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	UStaticMesh* SM_Torch;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	UStaticMesh* RCController;
 
 public:
 	//애니메이션 몽타주
@@ -278,6 +325,14 @@ public:
 	UAnimMontage* PickAxeMontage;
 
 
+	FTimerHandle DroneTrackingTimerHandle;
+	void StartTrackingDrone();
+	void StopTrackingDrone();
+	void UpdateRotationToDrone();
+
+	class ABaseDrone* ControlledDrone;
+
+
 	UFUNCTION()
 	void OnGunReloadAnimComplete(UAnimMontage* CompletedMontage, bool bInterrupted);
 
@@ -300,6 +355,8 @@ public:
 	UFUNCTION(Server, Unreliable)
 	void Server_CancelInteraction();
 	void Server_CancelInteraction_Implementation();
+
+	bool bIsPlayingInteractionMontage = false;
 
 	//Check Player Focus Everytime
 public:
@@ -406,7 +463,7 @@ public:
 	float FrontInput = 0.0f;
 
 	//달리기 관련 로직
-	float GetPlayerMovementSpeed();
+	float GetPlayerMovementSpeed() const;
 
 	void ConsumeStamina();
 	void TickStaminaDrain();
@@ -536,4 +593,18 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_InteractWithResourceNode(AResourceNode* TargetNode);
 	void Server_InteractWithResourceNode_Implementation(AResourceNode* TargetNode);
+
+	// 체력 회복 관련 함수
+	FTimerHandle HealingTimerHandle;
+	int32 HealingTicksRemaining = 0;
+	float HealingPerTick = 0.f;
+
+	UFUNCTION()
+	void StartHealing(float TotalHealAmount, float Duration);
+	
+	UFUNCTION()
+	void HealStep();
+
+	UFUNCTION()
+	void StopHealing();
 };
