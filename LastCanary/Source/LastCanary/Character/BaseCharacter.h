@@ -610,4 +610,18 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_InteractWithResourceNode(AResourceNode* TargetNode);
 	void Server_InteractWithResourceNode_Implementation(AResourceNode* TargetNode);
+
+	// 체력 회복 관련 함수
+	FTimerHandle HealingTimerHandle;
+	int32 HealingTicksRemaining = 0;
+	float HealingPerTick = 0.f;
+
+	UFUNCTION()
+	void StartHealing(float TotalHealAmount, float Duration);
+	
+	UFUNCTION()
+	void HealStep();
+
+	UFUNCTION()
+	void StopHealing();
 };
