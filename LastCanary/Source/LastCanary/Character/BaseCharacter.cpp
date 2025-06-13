@@ -2694,3 +2694,51 @@ void ABaseCharacter::Server_InteractWithResourceNode_Implementation(AResourceNod
 
 	TargetNode->HarvestResource(GetController<APlayerController>());
 }
+
+void ABaseCharacter::StartHealing(float TotalHealAmount, float Duration)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	if (GetWorldTimerManager().IsTimerActive(HealingTimerHandle))
+	{
+		return;
+	}
+
+	const float Interval = 1.0f;
+	HealingTicksRemaining = FMath::CeilToInt(Duration / Interval);
+	HealingPerTick = TotalHealAmount / HealingTicksRemaining;
+
+	GetWorldTimerManager().SetTimer(HealingTimerHandle, this, &ABaseCharacter::HealStep, Interval, true);
+}
+
+void ABaseCharacter::HealStep()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	ABasePlayerState* PS = GetPlayerState<ABasePlayerState>();
+	if (!IsValid(PS))
+	{
+		return;
+	}
+	const float NewHP = FMath::Clamp(PS->GetHP() + HealingPerTick, 0.0f, PS->MaxHP);
+	PS->SetHP(NewHP);
+	HealingTicksRemaining--;
+
+	if (HealingTicksRemaining <= 0)
+	{
+		StopHealing();
+	}
+}
+
+void ABaseCharacter::StopHealing()
+{
+	GetWorldTimerManager().ClearTimer(HealingTimerHandle);
+	HealingTicksRemaining = 0;
+}
+
+
