@@ -57,10 +57,10 @@ void UVoiceOptionWidget::RefreshInputModeText()
 	FString ModeString;
 	switch (CurrentInputMode)
 	{
-	case EVoiceInputMode::Toggle:  ModeString = TEXT("토글"); break;
-	case EVoiceInputMode::Hold:    ModeString = TEXT("홀드"); break;
-	case EVoiceInputMode::Always:  ModeString = TEXT("상시오픈"); break;
-	case EVoiceInputMode::Off:     ModeString = TEXT("끄기"); break;
+	case EVoiceInputMode::Toggle:  ModeString = TEXT("Toggle to Talk"); break;
+	case EVoiceInputMode::Hold:    ModeString = TEXT("Hold to Talk"); break;
+	case EVoiceInputMode::Always:  ModeString = TEXT("Open Mic Always"); break;
+	case EVoiceInputMode::Off:     ModeString = TEXT("Off"); break;
 	}
 	InputModeText->SetText(FText::FromString(ModeString));
 }
