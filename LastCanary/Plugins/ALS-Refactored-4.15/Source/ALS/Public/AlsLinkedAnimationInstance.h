@@ -24,6 +24,15 @@ public:
 
 	virtual void NativeBeginPlay() override;
 
+	// UAlsLinkedAnimationInstance.h
+
+	UPROPERTY(BlueprintReadWrite, Category = "IK")
+	FVector RightHandIKTargetLocation;
+
+	UPROPERTY(BlueprintReadWrite, Category = "IK")
+	FRotator RightHandIKTargetRotation;
+
+
 protected:
 	virtual FAnimInstanceProxy* CreateAnimInstanceProxy() override;
 

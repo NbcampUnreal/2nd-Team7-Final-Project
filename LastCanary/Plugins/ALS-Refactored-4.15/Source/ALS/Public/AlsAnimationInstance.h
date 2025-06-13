@@ -36,6 +36,9 @@ class ALS_API UAlsAnimationInstance : public UAnimInstance
 public:
 	UPROPERTY(BlueprintReadOnly)
 	float WallClipAimOffsetPitch = 0.0f;
+
+	UPROPERTY(BlueprintReadWrite, Category = "IK")
+	FVector RightHandIKTargetLocation;
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
 	TObjectPtr<UAlsAnimationInstanceSettings> Settings;
