@@ -169,7 +169,6 @@ void ALCTransformGimmick::ReturnToInitialState_Implementation()
 
 	const FVector CurLoc = GetActorLocation();
 
-	// ✅ 위치 복귀
 	if (!CurLoc.Equals(OriginalLocation, 1.0f) && !bIsReturningServer)
 	{
 		bIsReturningServer = true;
@@ -178,12 +177,10 @@ void ALCTransformGimmick::ReturnToInitialState_Implementation()
 		Multicast_StartMovement(CurLoc, OriginalLocation, ReturnMoveDuration);
 	}
 
-	// ✅ 회전 복귀
 	if (!bIsReturningRotationServer && TotalRotationIndex != 0)
 	{
 		bIsReturningRotationServer = true;
 
-		// 회전 기준을 VisualMesh 현재 쿼터니언이 아니라 누적된 내부 쿼터니언으로 통일
 		const FQuat CurQuat = CurrentRotationQuat;
 		const FQuat TargetQuat = OriginalRotationQuat;
 
@@ -198,7 +195,6 @@ void ALCTransformGimmick::ReturnToInitialState_Implementation()
 
 }
 
-
 FVector ALCTransformGimmick::GetRotationAxisVector(EGimmickRotationAxis AxisEnum) const
 {
 	switch (AxisEnum)
@@ -209,7 +205,6 @@ FVector ALCTransformGimmick::GetRotationAxisVector(EGimmickRotationAxis AxisEnum
 	default: return FVector::UpVector;
 	}
 }
-
 
 #pragma endregion
 
@@ -497,7 +492,6 @@ void ALCTransformGimmick::StartRotation()
 	CurrentRotationQuat = TargetRotation;
 	TotalRotationIndex += RotationCount;
 
-	// ✅ 마지막 회전 정보 저장
 	LastRotationStartQuat = VisualMesh->GetComponentQuat();
 	LastRotationDeltaQuat = DeltaQuat;
 
@@ -517,18 +511,14 @@ void ALCTransformGimmick::StartRotation()
 	}
 }
 
-
 void ALCTransformGimmick::CompleteRotation()
 {
 	bIsRotatingServer = false;
 
-	// 최종 회전 적용
 	VisualMesh->SetWorldRotation(TargetRotation);
 
-	// ✅ 누적 회전 반영
 	CurrentRotationQuat = TargetRotation;
 
-	// 자동 복귀 처리
 	if (!bToggleState && !bUseAlternateToggle)
 	{
 		LOG_Art(Log, TEXT("▶ 회전 복귀 예약됨 - ReturnToInitialState %.1f초 후"), ReturnDelay);
@@ -553,7 +543,6 @@ void ALCTransformGimmick::ReturnToInitialRotation()
 	InitialRotation = CurrentRotationQuat;
 	TargetRotation = OriginalRotationQuat;
 
-	// ✅ 복귀용 회전 계산
 	const FQuat DeltaQuat = TargetRotation * InitialRotation.Inverse();
 
 	float AngleRad;
@@ -563,7 +552,6 @@ void ALCTransformGimmick::ReturnToInitialRotation()
 	RotationAngle = FMath::RadiansToDegrees(AngleRad);
 	RotationCount = 1;
 
-	// ✅ 로그 찍기
 	LOG_Art(Log, TEXT("▶ 복귀 회전 계산 - Axis: %s | AngleDeg: %.1f | From: %s | To: %s"),
 		*Axis.ToString(),
 		RotationAngle,
@@ -571,7 +559,6 @@ void ALCTransformGimmick::ReturnToInitialRotation()
 		*TargetRotation.Rotator().ToCompactString()
 	);
 
-	// ✅ 타이머 시작
 	StartServerRotation(InitialRotation, TargetRotation, ReturnRotationDuration);
 	Multicast_StartRotation(InitialRotation, TargetRotation, ReturnRotationDuration);
 
@@ -610,7 +597,6 @@ void ALCTransformGimmick::StartServerRotation(const FQuat& FromQuat, const FQuat
 	ServerStartRotation = FromQuat;
 	ServerTargetRotation = ToQuat;
 
-	// ✅ 로그 출력
 	LOG_Art(Log, TEXT("▶ StartServerRotation - From: %s | To: %s | Duration: %.2fs"),
 		*FromQuat.Rotator().ToCompactString(),
 		*ToQuat.Rotator().ToCompactString(),
@@ -682,7 +668,6 @@ void ALCTransformGimmick::StartClientRotation(const FQuat& FromQuat, const FQuat
 	ClientRotationDuration = Duration;
 	ClientRotationElapsed = 0.f;
 
-	// ✅ 로그 출력
 	LOG_Art(Log, TEXT("▶ StartClientRotation - From: %s | To: %s | Duration: %.2fs"),
 		*FromQuat.Rotator().ToCompactString(),
 		*ToQuat.Rotator().ToCompactString(),
@@ -775,7 +760,5 @@ void ALCTransformGimmick::StartClientAttachedRotation(const FQuat& FromQuat, con
 		GetWorldTimerManager().SetTimer(Handle, Delegate, 0.02f, true);
 	}
 }
-
-
 
 #pragma endregion

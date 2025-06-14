@@ -39,7 +39,6 @@ void ALCAutoGimmick::AutoMove()
 	StartServerMovement(InitialLocation, TargetLocation, MoveDuration);
 	Multicast_StartMovement(InitialLocation, TargetLocation, MoveDuration);
 
-	// ✅ 누적 회전 보정: RotationCount 사용
 	FVector AxisVector = FVector::ForwardVector;
 	switch (RotationAxisEnum)
 	{
@@ -107,7 +106,6 @@ void ALCAutoGimmick::AutoReturn()
 			bIsReturningServer = false;
 			bIsReturningRotationServer = false;
 
-			// ✅ 복귀 후 누적 회전 인덱스 리셋
 			TotalRotationIndex = 0;
 			CurrentRotationQuat = OriginalRotationQuat;
 
