@@ -157,10 +157,22 @@ public:
     /** 인벤토리에서 아이템 제거 (공용 함수) */
     UFUNCTION(BlueprintCallable, Category = "Item|Inventory")
     virtual bool TryRemoveFromInventory();
+
+    /** 아이템 사용 사운드 출력 (공용 함수) */
+    UFUNCTION(BlueprintCallable, Category = "Item|Sound")
+    void PlayItemUseSound(bool bIsStart);
+protected:
+    /** 실제 사운드 재생 내부 함수 */
+    void Internal_PlaySound(USoundBase* SoundToPlay);
+
+    UFUNCTION(NetMulticast, Reliable)
+    void MulticastPlayItemUseSound(bool bIsStart);
+    void MulticastPlayItemUseSound_Implementation(bool bIsStart);
+
     //-----------------------------------------------------
     // 네트워크 & 에디터 기능
     //-----------------------------------------------------
-
+public:
     /** 리플리케이션 속성 설정 */
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 

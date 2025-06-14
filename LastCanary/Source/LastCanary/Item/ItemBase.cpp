@@ -5,6 +5,7 @@
 #include "Components/SphereComponent.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Net/UnrealNetwork.h"
+#include "Kismet/GameplayStatics.h"
 #include "LastCanary.h"
 
 AItemBase::AItemBase()
@@ -514,4 +515,53 @@ void AItemBase::EnableStencilForAllMeshes(int32 StencilValue)
 		MeshComp->SetRenderCustomDepth(true);
 		MeshComp->SetCustomDepthStencilValue(StencilValue);
 	}
+}
+
+void AItemBase::PlayItemUseSound(bool bIsStart)
+{
+	// 서버에서만 멀티캐스트 호출
+	if (HasAuthority())
+	{
+		MulticastPlayItemUseSound(bIsStart);
+	}
+	// 단일 플레이(싱글) 환경에서는 바로 재생
+	else
+	{
+		USoundBase* SoundToPlay = nullptr;
+		if (bIsStart)
+		{
+			SoundToPlay = ItemData.UseStartSound;
+		}
+		else
+		{
+			SoundToPlay = ItemData.UseEndSound;
+		}
+
+		Internal_PlaySound(SoundToPlay);
+	}
+}
+
+void AItemBase::Internal_PlaySound(USoundBase* SoundToPlay)
+{
+	if (!SoundToPlay)
+	{
+		return;
+	}
+
+	UGameplayStatics::PlaySoundAtLocation(this, SoundToPlay, GetActorLocation());
+}
+
+void AItemBase::MulticastPlayItemUseSound_Implementation(bool bIsStart)
+{
+	USoundBase* SoundToPlay = nullptr;
+	if (bIsStart)
+	{
+		SoundToPlay = ItemData.UseStartSound;
+	}
+	else
+	{
+		SoundToPlay = ItemData.UseEndSound;
+	}
+
+	Internal_PlaySound(SoundToPlay);
 }
