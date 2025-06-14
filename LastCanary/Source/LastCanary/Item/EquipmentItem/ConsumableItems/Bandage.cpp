@@ -41,7 +41,7 @@ void ABandage::UseItem()
 	OwnerCharacter->StartHealing(HealingAmount, HealDuration);
 
 	// 내구도 감소
-	Durability -= 40;
+	Durability--;
 	LOG_Item_WARNING(TEXT("CurrentDurability : %0.f"), Durability);
 
 	if (Durability <= 0)

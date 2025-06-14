@@ -28,7 +28,7 @@ AItemBase::AItemBase()
 	bIsEquipped = false;
 	bUsingSkeletalMesh = false;
 	Quantity = 1;
-	Durability = 100.f;
+	Durability = MaxDurability;;
 }
 
 void AItemBase::BeginPlay()
@@ -86,9 +86,9 @@ void AItemBase::OnRepDurability()
 	{
 		Durability = 0.0f;
 	}
-	else if (Durability > 100.0f)
+	else if (Durability > MaxDurability)
 	{
-		Durability = 100.0f;
+		Durability = MaxDurability;
 	}
 
 	OnItemStateChanged.Broadcast();
@@ -127,6 +127,8 @@ void AItemBase::ApplyItemDataFromTable()
 	}
 
 	ItemData = *Found;
+	MaxDurability = ItemData.MaxDurability;
+	Durability = FMath::Clamp(Durability, 0.0f, MaxDurability);
 	bIgnoreCharacterCollision = ItemData.bIgnoreCharacterCollision;
 
 	SetupMeshComponents();

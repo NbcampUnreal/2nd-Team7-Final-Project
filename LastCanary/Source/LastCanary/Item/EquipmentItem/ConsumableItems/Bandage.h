@@ -28,8 +28,6 @@ public:
 	float HealDuration = 5.0f; // 회복 시간
 
 protected:
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Healing")
-	int32 MaxDurability = 3; // 최대 내구도
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Healing")
 	int32 CurrentDurability;
 };

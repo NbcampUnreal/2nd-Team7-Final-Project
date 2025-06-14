@@ -95,6 +95,10 @@ public:
     UPROPERTY(ReplicatedUsing = OnRepDurability, EditAnywhere, BlueprintReadWrite, Category = "Item|State")
     float Durability;
 
+    /** 데이터 테이블에서 로드된 최대 내구도 */
+    UPROPERTY(Replicated, BlueprintReadOnly, Category = "Item|State")
+    float MaxDurability = 100.0f;
+
     /** Durability가 복제될 때 호출되는 함수 */
     UFUNCTION()
     virtual void OnRepDurability();
