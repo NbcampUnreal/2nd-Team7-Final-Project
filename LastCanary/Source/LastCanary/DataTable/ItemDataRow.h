@@ -6,6 +6,14 @@
 #include "GameplayTagContainer.h"
 #include "ItemDataRow.generated.h"
 
+UENUM(BlueprintType)
+enum class ENoteType : uint8
+{
+	Truth			UMETA(DisplayName = "Truth"),		
+	Lie				UMETA(DisplayName = "Lie"),			
+	Noise			UMETA(DisplayName = "Noise"),		
+};
+
 /**
  * 
  */
@@ -78,4 +86,17 @@ struct FItemDataRow : public FTableRowBase
     USoundBase* UseStartSound = nullptr;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "8. Sound Settings")
     USoundBase* UseEndSound = nullptr;
+
+
+public:
+	// 쪽지 타입
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Note")
+	ENoteType NoteType = ENoteType::Truth;
+
+	// 쪽지 내용 (UI에 표시될 정보)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Note", meta = (MultiLine = true))
+	FText NoteContent;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Note")
+	TArray<TSoftObjectPtr<UTexture2D>> CandidateNoteImages;
 };
