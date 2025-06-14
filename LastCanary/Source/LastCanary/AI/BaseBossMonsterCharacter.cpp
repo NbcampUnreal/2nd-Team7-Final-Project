@@ -10,74 +10,33 @@ ABaseBossMonsterCharacter::ABaseBossMonsterCharacter()
     bReplicates = true;
 }
 
-bool ABaseBossMonsterCharacter::RequestAttack()
+void ABaseBossMonsterCharacter::BeginPlay()
 {
-    if (!HasAuthority())
-        return false;
+    Super::BeginPlay();   // ← 추가!
 
-    const float Now = GetWorld()->GetTimeSeconds();
+    // 1) ClueClasses 내용을 RemainingClueClasses로 복사
+    RemainingClueClasses = ClueClasses;
 
-    // (1) 강공격 우선
-    if (StrongAttackMontage &&
-        FMath::FRand() < StrongAttackChance &&
-        (Now - LastStrongTime) >= StrongAttackCooldown)
+    // 2) 남은 단서가 있을 때만 타이머 시작
+    if (HasAuthority() && RemainingClueClasses.Num() > 0)
     {
-        LastStrongTime = Now;
-        PlayStrongAttack();
-        return true;
+        const float InitialDelay = FMath::RandRange(ClueSpawnIntervalMin, ClueSpawnIntervalMax);
+        GetWorldTimerManager().SetTimer(
+            ClueTimerHandle,
+            this,
+            &ABaseBossMonsterCharacter::SpawnRandomClue,
+            InitialDelay,
+            false
+        );
     }
+}
 
-    // (2) 일반 공격
-    if (NormalAttackMontage &&
-        (Now - LastNormalTime) >= NormalAttackCooldown)
-    {
-        LastNormalTime = Now;
-        PlayNormalAttack();
-        return true;
-    }
+bool ABaseBossMonsterCharacter::RequestAttack(float TargetDistance)
+{
 
     return false;
 }
 
-
-void ABaseBossMonsterCharacter::PlayNormalAttack()
-{
-    if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
-    {
-        Anim->Montage_Play(NormalAttackMontage);
-        Anim->OnMontageEnded.AddDynamic(this, &ABaseBossMonsterCharacter::OnAttackMontageEnded);
-    }
-}
-
-
-void ABaseBossMonsterCharacter::PlayStrongAttack()
-{
-    if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
-    {
-        Anim->Montage_Play(StrongAttackMontage);
-        Anim->OnMontageEnded.AddDynamic(this, &ABaseBossMonsterCharacter::OnAttackMontageEnded);
-    }
-}
-
-
-void ABaseBossMonsterCharacter::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
-{
-    float DamageToApply = 0.f;
-
-    if (Montage == NormalAttackMontage)
-    {
-        DamageToApply = NormalAttackDamage;
-    }
-    else if (Montage == StrongAttackMontage)
-    {
-        DamageToApply = StrongAttackDamage;
-    }
-
-    if (DamageToApply > 0.f)
-    {
-        DealDamageInRange(DamageToApply);
-    }
-}
 
 // Tick이나 다른 타이밍에 호출하여 Rage를 갱신하고 싶다면 여기서 Berserk 배수를 적용
 void ABaseBossMonsterCharacter::UpdateRage(float DeltaSeconds)
@@ -95,11 +54,26 @@ void ABaseBossMonsterCharacter::EnterBerserkState()
 }
 
 
+void ABaseBossMonsterCharacter::StartBerserk(float Duration)
+{
+    bIsBerserk = true;
+    Multicast_StartBerserk();
+
+    if (HasAuthority() && Duration > 0.f)
+    {
+        GetWorldTimerManager().SetTimer(
+            BerserkDurationHandle,
+            this,
+            &ABaseBossMonsterCharacter::EndBerserk,
+            Duration,
+            false
+        );
+    }
+}
+
 void ABaseBossMonsterCharacter::StartBerserk()
 {
     bIsBerserk = true;
-
-    // 서버가 결정한 Berserk 시작을 클라이언트 전체에 알림
     Multicast_StartBerserk();
 }
 
@@ -110,9 +84,14 @@ void ABaseBossMonsterCharacter::EndBerserk()
         return;
 
     bIsBerserk = false;
+
+    if (HasAuthority())
+    {
+        GetWorldTimerManager().ClearTimer(BerserkDurationHandle);
+    }
+
     Multicast_EndBerserk();
 }
-
 
 void ABaseBossMonsterCharacter::OnRep_IsBerserk()
 {
@@ -218,18 +197,7 @@ void ABaseBossMonsterCharacter::SpawnRandomClue()
     }
 }
 
-void ABaseBossMonsterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-    // Rage 복제
-    DOREPLIFETIME(ABaseBossMonsterCharacter, Rage);
-
-    // Berserk 상태 복제
-    DOREPLIFETIME(ABaseBossMonsterCharacter, bIsBerserk);
-}
-
-    void ABaseBossMonsterCharacter::DealDamageInRange(float DamageAmount)
+void ABaseBossMonsterCharacter::DealDamageInRange(float DamageAmount)
 {
     FVector Origin = GetActorLocation();
     float Radius = AttackRange;
@@ -279,4 +247,16 @@ void ABaseBossMonsterCharacter::EnableStencilForAllMeshes(int32 StencilValue)
         MeshComp->SetRenderCustomDepth(true);
         MeshComp->SetCustomDepthStencilValue(StencilValue);
     }
+}
+
+
+void ABaseBossMonsterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+    // Rage 복제
+    DOREPLIFETIME(ABaseBossMonsterCharacter, Rage);
+
+    // Berserk 상태 복제
+    DOREPLIFETIME(ABaseBossMonsterCharacter, bIsBerserk);
 }

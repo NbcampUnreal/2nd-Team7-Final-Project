@@ -26,8 +26,11 @@ EBTNodeResult::Type UBTTask_BossAttack::ExecuteTask(
     if (!Boss)
         return EBTNodeResult::Failed;
 
+    UBlackboardComponent* BB = OwnerComp.GetBlackboardComponent();
+    float TargetDistance = BB->GetValueAsFloat("TargetDistance");
+
     // RequestAttack(): 쿨다운·조건 체크 후 공격 몽타주 실행
-    const bool bAttacked = Boss->RequestAttack();
+    const bool bAttacked = Boss->RequestAttack(TargetDistance);
     return bAttacked
         ? EBTNodeResult::Succeeded
         : EBTNodeResult::Failed;

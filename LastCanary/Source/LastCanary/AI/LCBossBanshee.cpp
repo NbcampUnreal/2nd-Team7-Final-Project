@@ -1,24 +1,23 @@
-#include "AI/LCBossBanshee.h"
+Ôªø#include "AI/LCBossBanshee.h"
+#include "AI/LCBaseBossAIController.h"
+#include "BehaviorTree/BlackboardComponent.h"
 #include "Kismet/GameplayStatics.h"
-#include "TimerManager.h"
 #include "DrawDebugHelpers.h"
-#include "Engine/World.h"
-#include "Engine/EngineTypes.h"
-#include "Engine/OverlapResult.h"
-#include "CollisionQueryParams.h"
+#include "TimerManager.h"
+#include "NiagaraFunctionLibrary.h"
 #include "GameFramework/Character.h"
+#include "Engine/World.h"
 
 ALCBossBanshee::ALCBossBanshee()
 {
     PrimaryActorTick.bCanEverTick = true;
-    // bCanShriek¥¬ º±æ Ω√ √ ±‚»≠
+    bReplicates = true;
 }
 
 void ALCBossBanshee::BeginPlay()
 {
     Super::BeginPlay();
 
-    // ¡÷±‚¿˚¿Œ π›«‚ ¡§¬˚ Ω√¿€
     GetWorldTimerManager().SetTimer(
         PingTimerHandle,
         this,
@@ -28,112 +27,432 @@ void ALCBossBanshee::BeginPlay()
     );
 }
 
-void ALCBossBanshee::EcholocationPing()
+void ALCBossBanshee::Tick(float DeltaTime)
 {
-    // 1) π›«‚ º“∏Æ ¿Áª˝
-    if (EcholocationSound)
+    Super::Tick(DeltaTime);
+    DecayRage(DeltaTime);
+
+    if (auto* AICon = Cast<ALCBaseBossAIController>(GetController()))
     {
-        UGameplayStatics::PlaySoundAtLocation(
-            this, EcholocationSound, GetActorLocation());
-    }
-
-    // 2) µπˆ±◊øÎ π›∞Ê Ω√∞¢»≠
-    DrawDebugSphere(
-        GetWorld(),
-        GetActorLocation(),
-        PingRadius,
-        32,
-        FColor::Cyan,
-        false,
-        RevealDuration
-    );
-
-    // 3) π›∞Ê ≥ª ∏µÁ «√∑π¿ÃæÓ ƒ≥∏Ø≈Õ «•Ω√
-    TArray<FOverlapResult> Overlaps;
-    FCollisionShape Sphere = FCollisionShape::MakeSphere(PingRadius);
-    FCollisionQueryParams Params;
-    Params.AddIgnoredActor(this);
-
-    bool bHit = GetWorld()->OverlapMultiByObjectType(
-        Overlaps,
-        GetActorLocation(),
-        FQuat::Identity,
-        FCollisionObjectQueryParams(ECC_Pawn),
-        Sphere,
-        Params
-    );
-
-    if (bHit)
-    {
-        for (auto& Result : Overlaps)
+        if (auto* BB = AICon->GetBlackboardComponent())
         {
-            if (ACharacter* Char = Cast<ACharacter>(Result.GetActor()))
-            {
-                // øπΩ√: ∞°Ω√º∫ ≈‰±€
-                Char->SetActorHiddenInGame(false);
-                // RevealDuration ¿Ã»ƒ ¥ŸΩ√ º˚±‚∑¡∏È ∫∞µµ ∑Œ¡˜ « ø‰
-            }
+            BB->SetValueAsFloat(TEXT("RagePercent"), Rage / MaxRage);
+            BB->SetValueAsBool(TEXT("IsBerserkMode"), bIsBerserk);
         }
     }
 }
 
+void ALCBossBanshee::EcholocationPing()
+{
+    if (EcholocationSound)
+        UGameplayStatics::PlaySoundAtLocation(this, EcholocationSound, GetActorLocation());
+
+    const float Radius = bIsBerserk ? PingRadius * 1.2f : PingRadius;
+    const FVector Origin = GetActorLocation();
+
+    DrawDebugSphere(GetWorld(), Origin, Radius, 32, FColor::Cyan, false, RevealDuration);
+
+    TArray<FHitResult> HitResults;
+    FCollisionShape Sphere = FCollisionShape::MakeSphere(Radius);
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(this);
+
+    bool bRevealedAnyone = false;
+    bool bFoundPingTarget = false;
+
+    if (GetWorld()->SweepMultiByObjectType(HitResults, Origin, Origin, FQuat::Identity, FCollisionObjectQueryParams(ECC_Pawn), Sphere, Params))
+    {
+        for (const FHitResult& Hit : HitResults)
+        {
+            ACharacter* HitCharacter = Cast<ACharacter>(Hit.GetActor());
+            if (!HitCharacter)
+                continue;
+
+            if (USkeletalMeshComponent* SkeletalMesh = HitCharacter->GetMesh())
+            {
+                SkeletalMesh->SetRenderCustomDepth(true);
+                SkeletalMesh->SetCustomDepthStencilValue(252); // Í∞ïÏ°∞Ïö© Ïä§ÌÖêÏã§ Í∞í
+            }
+
+            HandleRehide(HitCharacter);
+            bRevealedAnyone = true;
+
+            if (!bFoundPingTarget)
+            {
+                LastPingedLocation = HitCharacter->GetActorLocation();
+                bFoundPingTarget = true;
+            }
+        }
+    }
+
+    AddRage(bRevealedAnyone ? 5.f : -5.f);
+}
+
+void ALCBossBanshee::EnterBerserkState()
+{
+    Super::EnterBerserkState();
+    UE_LOG(LogTemp, Warning, TEXT("[Banshee] ÏòÅÍµ¨ Berserk ÏßÑÏûÖ"));
+}
+
+void ALCBossBanshee::StartBerserk()
+{
+    Super::StartBerserk();  // bIsBerserk = true Î∞è Multicast Ìò∏Ï∂ú Ìè¨Ìï®
+
+    // Ïù¥ÌéôÌä∏ Ï∂îÍ∞Ä
+    if (BerserkEffectFX)
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAttached(
+            BerserkEffectFX,
+            GetRootComponent(),
+            NAME_None,
+            FVector::ZeroVector,
+            FRotator::ZeroRotator,
+            EAttachLocation::KeepRelativeOffset,
+            true
+        );
+    }
+
+}
+
+void ALCBossBanshee::StartBerserk(float Duration)
+{
+    Super::StartBerserk(Duration);
+
+    // ÎèôÏùº Ïù¥ÌéôÌä∏ Ïû¨ÏÉù
+    if (BerserkEffectFX)
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAttached(
+            BerserkEffectFX,
+            GetRootComponent(),
+            NAME_None,
+            FVector::ZeroVector,
+            FRotator::ZeroRotator,
+            EAttachLocation::KeepRelativeOffset,
+            true
+        );
+    }
+
+
+}
+
+void ALCBossBanshee::EndBerserk()
+{
+    Super::EndBerserk();
+
+    UE_LOG(LogTemp, Warning, TEXT("[Banshee] Berserk Ï¢ÖÎ£å"));
+
+    // Ï¢ÖÎ£å Ïãú ÌõÑÏ≤òÎ¶¨Í∞Ä ÌïÑÏöîÌïòÎã§Î©¥ Ïó¨Í∏∞Ïóê
+}
+
+void ALCBossBanshee::OnRep_IsBerserk()
+{
+    Super::OnRep_IsBerserk();
+
+    if (bIsBerserk)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[Banshee] OnRep ‚Üí Berserk Ïù¥ÌéôÌä∏ ÌÅ¥ÎùºÏóêÏÑú Ïû¨ÏÉù"));
+
+        if (BerserkEffectFX)
+        {
+            UNiagaraFunctionLibrary::SpawnSystemAttached(
+                BerserkEffectFX,
+                GetRootComponent(),
+                NAME_None,
+                FVector::ZeroVector,
+                FRotator::ZeroRotator,
+                EAttachLocation::KeepRelativeOffset,
+                true
+            );
+        }
+    }
+}
+
+void ALCBossBanshee::HandleRehide(ACharacter* Char)
+{
+    FTimerHandle TempHandle;
+    GetWorldTimerManager().SetTimer(TempHandle, [Char]()
+        {
+            if (IsValid(Char))
+            {
+                if (USkeletalMeshComponent* Mesh = Char->GetMesh())
+                    Mesh->SetRenderCustomDepth(false);
+            }
+        }, RevealDuration, false);
+}
+
 void ALCBossBanshee::OnHeardNoise(const FVector& NoiseLocation)
 {
-    // 1) º“∏Æ πﬂª˝ ¡ˆ¡° πŸ∂Û∫∏±‚
     FVector Dir = NoiseLocation - GetActorLocation();
     Dir.Z = 0.f;
     if (!Dir.IsNearlyZero())
-    {
         SetActorRotation(Dir.Rotation());
-    }
 
-    // 2) øÔ∫Œ¬¢±‚
+    LastHeardNoiseTime = GetWorld()->GetTimeSeconds();
+    AddRage(10.f);
+
     if (bCanShriek)
     {
-        // ªÁøÓµÂ ¿Áª˝
         if (SonicShriekSound)
+            UGameplayStatics::PlaySoundAtLocation(this, SonicShriekSound, GetActorLocation());
+
+        DrawDebugSphere(GetWorld(), GetActorLocation(), ShriekRadius, 32, FColor::Red, false, 2.f);
+
+        if (bIsBerserk)
         {
-            UGameplayStatics::PlaySoundAtLocation(
-                this, SonicShriekSound, GetActorLocation());
+            UGameplayStatics::ApplyRadialDamage(
+                this,
+                ShriekDamage * 0.5f,
+                GetActorLocation(),
+                ShriekRadius * 1.5f,
+                nullptr,
+                {},
+                this,
+                GetController(),
+                true
+            );
         }
 
-        // π›∞Ê µ•πÃ¡ˆ ¿˚øÎ
-        UGameplayStatics::ApplyRadialDamage(
-            this,
-            ShriekDamage,
-            GetActorLocation(),
-            ShriekRadius,
-            nullptr,
-            TArray<AActor*>(),
-            this,
-            GetController(),
-            true
-        );
-
-        // µπˆ±◊ Ω√∞¢»≠
-        DrawDebugSphere(
-            GetWorld(),
-            GetActorLocation(),
-            ShriekRadius,
-            32,
-            FColor::Red,
-            false,
-            2.f
-        );
-
-        // ƒ¥ŸøÓ Ω√¿€
         bCanShriek = false;
-        GetWorldTimerManager().SetTimer(
-            ShriekTimerHandle,
-            this,
-            &ALCBossBanshee::ResetShriek,
-            ShriekCooldown,
-            false
-        );
+        GetWorldTimerManager().SetTimer(ShriekTimerHandle, this, &ALCBossBanshee::ResetShriek, ShriekCooldown, false);
     }
 }
 
 void ALCBossBanshee::ResetShriek()
 {
     bCanShriek = true;
+}
+
+void ALCBossBanshee::AddRage(float Amount)
+{
+    float Multiplier = bIsBerserk ? RageGainMultiplier_Berserk : 1.f;
+    Rage = FMath::Clamp(Rage + Amount * Multiplier, 0.f, MaxRage);
+
+    if (Rage >= MaxRage && !bIsBerserk)
+    {
+        StartBerserk(BerserkDuration);
+        MulticastActivateBerserkEffects();
+    }
+}
+
+void ALCBossBanshee::DecayRage(float DeltaTime)
+{
+    if (GetWorld()->GetTimeSeconds() - LastHeardNoiseTime >= 15.f)
+        AddRage(-RageDecayPerSecond * DeltaTime);
+}
+
+void ALCBossBanshee::MulticastActivateBerserkEffects_Implementation()
+{
+    if (BerserkEffectFX)
+        UNiagaraFunctionLibrary::SpawnSystemAttached(
+            BerserkEffectFX,
+            GetRootComponent(),
+            NAME_None,
+            FVector::ZeroVector,
+            FRotator::ZeroRotator,
+            EAttachLocation::KeepRelativeOffset,
+            true
+        );
+
+    UE_LOG(LogTemp, Log, TEXT("[Banshee] Berserk Activated"));
+}
+
+void ALCBossBanshee::Wail()
+{
+    if (WailSound)
+        UGameplayStatics::PlaySoundAtLocation(this, WailSound, GetActorLocation());
+
+    const FVector Origin = GetActorLocation();
+    const float Radius = WailRange;
+
+    TArray<FHitResult> HitResults;
+    FCollisionShape Sphere = FCollisionShape::MakeSphere(Radius);
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(this);
+
+    if (GetWorld()->SweepMultiByObjectType(
+        HitResults,
+        Origin,
+        Origin,
+        FQuat::Identity,
+        FCollisionObjectQueryParams(ECC_Pawn),
+        Sphere,
+        Params))
+    {
+        for (const FHitResult& Hit : HitResults)
+        {
+            ACharacter* Target = Cast<ACharacter>(Hit.GetActor());
+            if (!Target) continue;
+
+            FVector Dir = (Target->GetActorLocation() - Origin).GetSafeNormal();
+            FVector LaunchVelocity = Dir * 800.f + FVector(0, 0, 300.f);
+            Target->LaunchCharacter(LaunchVelocity, true, true);
+
+            // Í≥µÌè¨ ÎîîÎ≤ÑÌîÑ Ï†ÅÏö©
+            // Target->ApplyDebuff("Fear", 3.0f);
+        }
+    }
+
+    if (WailFX)
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+            GetWorld(),
+            WailFX,
+            Origin,
+            FRotator::ZeroRotator
+        );
+    }
+
+    UE_LOG(LogTemp, Log, TEXT("[Banshee] Wail triggered with HitResult sweep"));
+}
+
+void ALCBossBanshee::EchoSlash()
+{
+    if (!LastPingedLocation.IsZero())
+    {
+        if (EchoSlashFX)
+            UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), EchoSlashFX, GetActorLocation());
+
+        SetActorLocation(LastPingedLocation, false, nullptr, ETeleportType::TeleportPhysics);
+
+        TArray<AActor*> Ignored;
+        UGameplayStatics::ApplyRadialDamage(
+            this,
+            60.f,
+            GetActorLocation(),
+            400.f,
+            nullptr,
+            Ignored,
+            this,
+            GetController(),
+            true
+        );
+
+        UE_LOG(LogTemp, Log, TEXT("[Banshee] EchoSlash executed at %s"), *LastPingedLocation.ToString());
+    }
+}
+
+void ALCBossBanshee::DesperateWail()
+{
+    if (DesperateWailSound)
+        UGameplayStatics::PlaySoundAtLocation(this, DesperateWailSound, GetActorLocation());
+
+    const float MapRadius = 10000.f;
+    const FVector Origin = GetActorLocation();
+
+    TArray<FHitResult> HitResults;
+    FCollisionShape Sphere = FCollisionShape::MakeSphere(MapRadius);
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(this);
+
+    if (GetWorld()->SweepMultiByObjectType(
+        HitResults,
+        Origin,
+        Origin,
+        FQuat::Identity,
+        FCollisionObjectQueryParams(ECC_Pawn),
+        Sphere,
+        Params))
+    {
+        for (const FHitResult& Hit : HitResults)
+        {
+            ACharacter* Target = Cast<ACharacter>(Hit.GetActor());
+            if (!Target) continue;
+
+            // Í≥µÌè¨ + Ïä¨Î°úÏö∞ ÎîîÎ≤ÑÌîÑ Ï†ÅÏö©
+            // Target->ApplyDebuff("Fear", 4.f);
+            // Target->ApplyDebuff("Slow", 4.f);
+        }
+    }
+
+    if (DesperateWailFX)
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+            GetWorld(),
+            DesperateWailFX,
+            Origin,
+            FRotator::ZeroRotator
+        );
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("[Banshee] DesperateWail executed (HitResult sweep)"));
+}
+
+void ALCBossBanshee::SpawnBansheeClones()
+{
+    for (int32 i = 0; i < CloneCount; ++i)
+    {
+        float Angle = (360.f / CloneCount) * i;
+        FVector Offset = FVector(FMath::Cos(FMath::DegreesToRadians(Angle)), FMath::Sin(FMath::DegreesToRadians(Angle)), 0.f) * CloneSpawnRadius;
+        FVector SpawnLocation = GetActorLocation() + Offset;
+
+        if (CloneSpawnFX)
+        {
+            UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+                GetWorld(), CloneSpawnFX, SpawnLocation, FRotator::ZeroRotator);
+        }
+
+        // Ïã§Ï†ú Î∂ÑÏã†ÏùÄ Î≥ÑÎèÑ ACharacter ÏÑúÎ∏åÌÅ¥ÎûòÏä§ÏóêÏÑú Ïä§Ìè∞
+        // GetWorld()->SpawnActor<ACloneMinion>(CloneClass, SpawnLocation, FRotator::ZeroRotator);
+    }
+
+    UE_LOG(LogTemp, Log, TEXT("[Banshee] %d Clones Spawned"), CloneCount);
+}
+
+bool ALCBossBanshee::RequestAttack(float TargetDistance)
+{
+    if (!HasAuthority()) return false;
+
+    const float Now = GetWorld()->GetTimeSeconds();
+    struct FAttackEntry { float Weight; TFunction<void()> Action; };
+    TArray<FAttackEntry> Entries;
+
+    // (1) ÌäπÏàò Ïä§ÌÇ¨ - Desperate Wail
+    if (!bHasUsedDesperateWail)
+    {
+        bHasUsedDesperateWail = true;
+        UE_LOG(LogTemp, Log, TEXT("[Banshee] Desperate Wail Î∞úÎèô"));
+        DesperateWail();
+        return true;
+    }
+
+    // (2) EchoSlash - ÏµúÍ∑º ÌïëÎêú ÏúÑÏπòÎ°ú ÏàúÍ∞ÑÏù¥Îèô ÌõÑ Í≥µÍ≤©
+    if (!LastPingedLocation.IsZero() && TargetDistance > 800.f && Now - LastEchoSlashTime >= EchoSlashCooldown)
+    {
+        Entries.Add({ EchoSlashWeight, [this, Now]()
+        {
+            LastEchoSlashTime = Now;
+            UE_LOG(LogTemp, Log, TEXT("[Banshee] Echo Slash Î∞úÎèô"));
+            EchoSlash();
+        } });
+    }
+
+    // (3) Wail - Í∑ºÏ†ë Î≤îÏúÑ Ïö∏Î∂ÄÏßñÍ∏∞ Í≥µÍ≤©
+    if (TargetDistance <= WailRange && Now - LastWailTime >= WailCooldown)
+    {
+        Entries.Add({ WailWeight, [this, Now]()
+        {
+            LastWailTime = Now;
+            UE_LOG(LogTemp, Log, TEXT("[Banshee] Wail Î∞úÎèô"));
+            Wail();
+        } });
+    }
+
+    // Í∞ÄÏ§ëÏπò ÎûúÎç§ ÏÑ†ÌÉù
+    float TotalWeight = 0.f;
+    for (auto& Entry : Entries) TotalWeight += Entry.Weight;
+    if (TotalWeight <= 0.f) return false;
+
+    float Pick = FMath::FRandRange(0.f, TotalWeight);
+    float Acc = 0.f;
+    for (auto& Entry : Entries)
+    {
+        Acc += Entry.Weight;
+        if (Pick <= Acc)
+        {
+            Entry.Action();
+            return true;
+        }
+    }
+
+    return false;
 }
