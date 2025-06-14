@@ -34,6 +34,8 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Push")
 	UBoxComponent* BackwardTrigger;
 
+	bool IsBlockedByWall(const FVector& Direction);
+
 	bool bBlockedByWall;
 
 	///** 트리거별 이동 방향 (트리거가 있는 반대 방향) */

@@ -53,12 +53,6 @@ void ALCPushGimmick::ActivateGimmick_Implementation()
 		return;
 	}
 
-	if (bBlockedByWall)
-	{
-		LOG_Art_WARNING(TEXT("▶ Blocker 감지로 인해 이동 차단됨"));
-		return;
-	}
-
 	if (!ILCGimmickInterface::Execute_CanActivate(this))
 	{
 		return;
@@ -70,9 +64,17 @@ void ALCPushGimmick::ActivateGimmick_Implementation()
 		return;
 	}
 
+	bBlockedByWall = IsBlockedByWall(PushDirection);
+	if (bBlockedByWall)
+	{
+		LOG_Art_WARNING(TEXT("▶ Blocker 감지로 인해 이동 차단됨"));
+		return;
+	}
+
 	MoveVector = PushDirection * PushDistance;
 	Super::ActivateGimmick_Implementation();
 }
+
 
 void ALCPushGimmick::StartMovement()
 {
@@ -133,3 +135,22 @@ bool ALCPushGimmick::CanActivate_Implementation()
 	return Super::CanActivate_Implementation();
 }
 
+bool ALCPushGimmick::IsBlockedByWall(const FVector& Direction)
+{
+	FHitResult Hit;
+	const FVector Start = GetActorLocation();
+	const FVector End = Start + Direction * 500.f;
+
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params);
+
+	if (bHit && Hit.GetActor()->ActorHasTag(FName("GimmickBlocker")))
+	{
+		LOG_Art(Log, TEXT("▶ 라인트레이스로 Blocker 감지됨: %s"), *Hit.GetActor()->GetName());
+		return true;
+	}
+
+	return false;
+}

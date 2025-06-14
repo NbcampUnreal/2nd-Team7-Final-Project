@@ -148,6 +148,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|State", meta = (EditCondition = "!bToggleState"))
 	float ReturnDelay;
 
+	/** 복귀 호출여부 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Interaction")
+	bool bCallReturnToInitialStateInsteadOfActivate;
+
 public:
 	/** ===== 인터페이스 구현 ===== */
 

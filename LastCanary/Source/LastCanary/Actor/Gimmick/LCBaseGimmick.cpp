@@ -16,6 +16,7 @@ ALCBaseGimmick::ALCBaseGimmick()
 	, RequiredCount(1.f)
 	, ActivationDelay(1.5f)
 	, ActivationType(EGimmickActivationType::ActivateOnPress) 
+	, bCallReturnToInitialStateInsteadOfActivate(false)
 {
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true;
@@ -105,12 +106,6 @@ void ALCBaseGimmick::OnActorExit(UPrimitiveComponent* OverlappedComp, AActor* Ot
 void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	//LOG_Art(Log, TEXT("%s ▶ Trigger 진입: %s | Role: %s | HasAuthority: %s"),
-	//	*GetName(),
-	//	*GetNameSafe(OtherActor),
-	//	*UEnum::GetValueAsString(GetLocalRole()),
-	//	HasAuthority() ? TEXT("true") : TEXT("false"));
-
 	if (!HasAuthority() || !IsValid(OtherActor)) return;
 
 	if (!OverlappingActors.Contains(OtherActor))
@@ -121,7 +116,14 @@ void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor*
 	switch (ActivationType)
 	{
 	case EGimmickActivationType::ActivateOnStep:
-		ILCGimmickInterface::Execute_ActivateGimmick(this);
+		if (bCallReturnToInitialStateInsteadOfActivate)
+		{
+			ILCGimmickInterface::Execute_ReturnToInitialState(this);
+		}
+		else
+		{
+			ILCGimmickInterface::Execute_ActivateGimmick(this);
+		}
 		break;
 
 	case EGimmickActivationType::ActivateWhileStepping:
@@ -129,7 +131,14 @@ void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor*
 		{
 			if (ILCGimmickInterface::Execute_CanActivate(this))
 			{
-				ILCGimmickInterface::Execute_ActivateGimmick(this);
+				if (bCallReturnToInitialStateInsteadOfActivate)
+				{
+					ILCGimmickInterface::Execute_ReturnToInitialState(this);
+				}
+				else
+				{
+					ILCGimmickInterface::Execute_ActivateGimmick(this);
+				}
 			}
 		}
 		break;
@@ -143,7 +152,14 @@ void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor*
 				{
 					if (!bActivated && OverlappingActors.Num() >= RequiredCount)
 					{
-						ILCGimmickInterface::Execute_ActivateGimmick(this);
+						if (bCallReturnToInitialStateInsteadOfActivate)
+						{
+							ILCGimmickInterface::Execute_ReturnToInitialState(this);
+						}
+						else
+						{
+							ILCGimmickInterface::Execute_ActivateGimmick(this);
+						}
 					}
 				},
 				ActivationDelay,
@@ -208,11 +224,17 @@ void ALCBaseGimmick::Interact_Implementation(APlayerController* Interactor)
 		Targets.Add(this);
 	}
 
-	for (AActor* Target : LinkedTargets)
+	for (AActor* Target : Targets)
 	{
-		if (IsValid(Target) && Target->GetClass()->ImplementsInterface(ULCGimmickInterface::StaticClass()))
+		if (!IsValid(Target)) continue;
+
+		if (Target->GetClass()->ImplementsInterface(ULCGimmickInterface::StaticClass()))
 		{
-			if (ILCGimmickInterface::Execute_CanActivate(Target))
+			if (bCallReturnToInitialStateInsteadOfActivate)
+			{
+				ILCGimmickInterface::Execute_ReturnToInitialState(Target);
+			}
+			else if (ILCGimmickInterface::Execute_CanActivate(Target))
 			{
 				ILCGimmickInterface::Execute_ActivateGimmick(Target);
 			}
