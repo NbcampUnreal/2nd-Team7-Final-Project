@@ -12,6 +12,7 @@
 #include "UI/Popup/PopupCreateSession.h"
 #include "UI/Popup/PopupNotice.h"
 #include "UI/Popup/PopupLoading.h"
+#include "UI/Popup/NotePopupWidget.h"
 #include "UI/UIElement/LoadingLevel.h"
 #include "UI/UIElement/ChecklistWidget.h"
 #include "UI/UIElement/ResultMenu.h"
@@ -22,6 +23,7 @@
 #include "Framework/PlayerController/LCRoomPlayerController.h"
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "Kismet/GameplayStatics.h"
 
 #include "Components/WidgetComponent.h"
 
@@ -59,6 +61,7 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			ChecklistWidgetClass = Settings->FromBPChecklistWidgetClass;
 			ResultMenuClass = Settings->FromBPResultMenuClass;
 			RoomWidgetClass = Settings->FromBPRoomWidgetClass;
+			NotePopupWidgetClass = Settings->FromBPNotePopupWidgetClass;
 
 			if ((CachedTitleMenu == nullptr) && TitleMenuClass)
 			{
@@ -116,6 +119,10 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			{
 				CachedRoomWidget = CreateWidget<URoomWidget>(PlayerController, RoomWidgetClass);
 				CachedRoomWidget->CreatePlayerSlots();
+			}
+			if ((CachedNotePopupWidget == nullptr) && NotePopupWidgetClass)
+			{
+				CachedNotePopupWidget = CreateWidget<UNotePopupWidget>(PlayerController, NotePopupWidgetClass);
 			}
 		}
 	}
@@ -537,6 +544,42 @@ void ULCUIManager::HideLoadingLevel()
 	}
 }
 
+void ULCUIManager::ShowNotePopup(const FText& NoteText, const TArray<TSoftObjectPtr<UTexture2D>>& CandidateImages, int32 SelectedIndex)
+{
+	if (NotePopupWidgetClass == nullptr)
+	{
+		return;
+	}
+
+	if (CachedNotePopupWidget == nullptr)
+	{
+		CachedNotePopupWidget = CreateWidget<UNotePopupWidget>(GetWorld(), NotePopupWidgetClass);
+		if (CachedNotePopupWidget == nullptr)
+		{
+			return;
+		}
+	}
+
+	if (CachedNotePopupWidget->IsInViewport() == false)
+	{
+		CachedNotePopupWidget->AddToViewport(50); 
+		CachedNotePopupWidget->SetKeyboardFocus();
+	}
+
+	CachedNotePopupWidget->ShowNoteContent(NoteText, CandidateImages, SelectedIndex);
+	SetInputModeGameAndUI();
+}
+
+void ULCUIManager::HideNotePopup()
+{
+	if (CachedNotePopupWidget && CachedNotePopupWidget->IsInViewport())
+	{
+		CachedNotePopupWidget->RemoveFromParent();
+	}
+	
+	SetInputModeGameOnly();
+}
+
 void ULCUIManager::ShowMapSelectPopup()
 {
 	LOG_Frame_WARNING(TEXT("ShowMapSelectPopup"));
@@ -689,6 +732,18 @@ void ULCUIManager::SetInputModeGameOnly()
 	}
 }
 
+void ULCUIManager::SetInputModeGameAndUI()
+{
+	if (APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0))
+	{
+		FInputModeGameAndUI InputMode;
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		InputMode.SetHideCursorDuringCapture(false);
+		PC->SetInputMode(InputMode);
+		PC->bShowMouseCursor = true;
+	}
+}
+
 void ULCUIManager::SetLastShopInteractor(AShopInteractor* Interactor)
 {
 	LastShopInteractor = Interactor;
@@ -706,8 +761,8 @@ void ULCUIManager::UpdateInputModeByContext()
 		LOG_Frame_WARNING(TEXT("OwningPlayer is nullptr in SetInputModeByContext."));
 		return;
 	}
-	
-	switch(CurrentContext)
+
+	switch (CurrentContext)
 	{
 	case ELCUIContext::Title:
 		SetInputModeUIOnly(CachedTitleMenu);
