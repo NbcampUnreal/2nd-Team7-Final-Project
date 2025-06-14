@@ -23,6 +23,8 @@ enum class EFireMode : uint8
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAnimationComplete, UAnimMontage*, CompletedMontage);
 
+class UShellEjectionComponent;
+
 UCLASS()
 class LASTCANARY_API AGunBase : public AEquipmentItemBase
 {
@@ -38,6 +40,9 @@ public:
     /** 총구 위치를 나타내는 씬 컴포넌트 */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gun|Components")
     USceneComponent* MuzzleLocation;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gun|Components")
+    UShellEjectionComponent* ShellEjectionComponent;
 
     //-----------------------------------------------------
     // 총기 데이터

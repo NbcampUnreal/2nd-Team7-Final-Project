@@ -1,5 +1,6 @@
 #include "Item/EquipmentItem/GunBase.h"
 #include "Item/ItemBase.h"
+#include "Item/ShellEjectionComponent.h"
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "Character/BaseCharacter.h"
 #include "Kismet/GameplayStatics.h"
@@ -29,6 +30,8 @@ AGunBase::AGunBase()
     bDrawDebugLine = true;
     bDrawImpactDebug = true;
     DebugDrawDuration = 10.0f;
+
+    ShellEjectionComponent = CreateDefaultSubobject<UShellEjectionComponent>(TEXT("ShellEjectionComponent"));
 }
 
 void AGunBase::UseItem()
@@ -329,6 +332,12 @@ void AGunBase::Multicast_PlayFireEffects_Implementation()
         }
     }
 
+    // 탄피 배출
+    if (ShellEjectionComponent)
+    {
+        ShellEjectionComponent->EjectShell();
+    }
+
     // 플레이어 카메라 흔들림 등 추가 이펙트 (옵션)
     APawn* OwnerPawn = Cast<APawn>(GetOwner());
     if (OwnerPawn && OwnerPawn->IsLocallyControlled())
@@ -559,6 +568,12 @@ void AGunBase::ApplyGunDataFromDataTable()
     FireSound = GunData.FireSound;
     EmptySound = GunData.EmptySound;
     ImpactSound = GunData.ImpactSound;
+
+    // 탄피 이펙트 설정
+    if (ShellEjectionComponent && GunData.ShellEjectEffect)
+    {
+        ShellEjectionComponent->SetShellParticleSystem(GunData.ShellEjectEffect);
+    }
 }
 
 void AGunBase::UpdateAmmoState()
