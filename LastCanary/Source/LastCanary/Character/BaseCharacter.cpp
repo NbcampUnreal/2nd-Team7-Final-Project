@@ -1123,6 +1123,25 @@ void ABaseCharacter::OnGunReloadAnimComplete(UAnimMontage* CompletedMontage, boo
 }
 
 
+void ABaseCharacter::StopReload()
+{
+	Server_StopReload();
+}
+
+void ABaseCharacter::Server_StopReload_Implementation()
+{
+	Multicast_StopReload();
+}
+
+void ABaseCharacter::Multicast_StopReload_Implementation()
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && ReloadMontage)
+	{
+		AnimInstance->Montage_Stop(0.2f, ReloadMontage); // 부드럽게 블렌드 아웃
+	}
+}
+
 void ABaseCharacter::Handle_ViewMode()
 {
 	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
@@ -2460,6 +2479,8 @@ bool ABaseCharacter::IsInventoryOpen() const
 
 void ABaseCharacter::DropCurrentItem()
 {
+	StopAiming();
+	StopReload();
 	if (!ToolbarInventoryComponent)
 	{
 		LOG_Item_WARNING(TEXT("[DropCurrentItem] ToolbarInventoryComponent is null"));
