@@ -185,7 +185,7 @@ void APlayerChecker::Multicast_CloseDoors_Implementation()
     const FVector RightPos = RightDoorMesh->GetComponentLocation();
     const FVector CenterPos = (LeftPos + RightPos) * 0.5f;
 
-    UGameplayStatics::PlaySoundAtLocation(this, OpenDoorSoundCue, CenterPos);
+    UGameplayStatics::PlaySoundAtLocation(this, CloseDoorSoundCue, CenterPos);
 }
 
 void APlayerChecker::PlayDoorTimelineForward()
