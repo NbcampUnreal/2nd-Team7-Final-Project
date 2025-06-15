@@ -97,15 +97,6 @@ ABaseCharacter::ABaseCharacter()
 	BackpackMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	ToolbarInventoryComponent = CreateDefaultSubobject<UToolbarInventoryComponent>(TEXT("ToolbarInventoryComponent"));
-
-	WallCollisionCapsule = CreateDefaultSubobject<UCapsuleComponent>(TEXT("WallCollisionCapsule"));
-	WallCollisionCapsule->SetupAttachment(RootComponent); // 또는 Mesh에 붙일 수도 있음
-	WallCollisionCapsule->SetCapsuleSize(30.f, 80.f); // 필요에 따라 조절
-	WallCollisionCapsule->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	WallCollisionCapsule->SetCollisionObjectType(ECC_WorldDynamic);
-	WallCollisionCapsule->SetCollisionResponseToAllChannels(ECR_Ignore);
-	WallCollisionCapsule->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Overlap);
-	WallCollisionCapsule->bHiddenInGame = false;
 }
 
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
