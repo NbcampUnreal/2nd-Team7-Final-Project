@@ -1046,6 +1046,10 @@ void ABaseCharacter::Handle_Reload()
 	{
 		return;
 	}
+	if (bIsReloading)
+	{
+		return;
+	}
 	if (bIsUsingItem)
 	{
 		return;
@@ -1239,7 +1243,7 @@ void ABaseCharacter::Handle_Interact(const FInputActionValue& ActionValue)
 		}
 		else
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Handle_Interact: Controller is nullptr"));
+			UE_LOG(LogTemp, Warning, TEXT("Handle_Interacty: Controller is nullptr"));
 		}
 	}
 	else
@@ -1261,18 +1265,22 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 	InteractTargetActor = TargetActor;
 	if (InteractTargetActor->Tags.Contains("Roll"))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("태그는 Roll"));
 		MontageToPlay = OpeningValveMontage;
 	}
 	else if (InteractTargetActor->Tags.Contains("Kick"))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("태그는 Kick"));
 		MontageToPlay = KickMontage;
 	}
 	else if (InteractTargetActor->Tags.Contains("Press"))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("태그는 Press"));
 		MontageToPlay = PressButtonMontage;
 	}
 	else if (InteractTargetActor->Tags.Contains("Crystal"))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("태그는 Crystal"));
 		MontageToPlay = PickAxeMontage;
 	}
 	else
@@ -1288,6 +1296,7 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 			UE_LOG(LogTemp, Warning, TEXT("excute interact"));
 			IInteractableInterface::Execute_Interact(InteractTargetActor, PC);
 		}
+		return;
 	}
 	if (!IsValid(MontageToPlay))
 	{
@@ -1296,6 +1305,7 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 	}
 	CurrentInteractMontage = MontageToPlay;
 	bIsPlayingInteractionMontage = true;
+	UE_LOG(LogTemp, Warning, TEXT("플레이 애니메이션."));
 	Server_PlayMontage(MontageToPlay);
 }
 
@@ -1364,11 +1374,13 @@ void ABaseCharacter::PlayInteractionMontage(AActor* Target)
 
 void ABaseCharacter::Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay)
 {
+	UE_LOG(LogTemp, Warning, TEXT("플레이 애니메이션. 서버에서"));
 	Multicast_PlayMontage(MontageToPlay);
 }
 
 void ABaseCharacter::Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay)
 {
+	UE_LOG(LogTemp, Warning, TEXT("플레이 애니메이션. 멀티에서"));
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	AnimInstance->Montage_Play(MontageToPlay);
 	CurrentInteractMontage = MontageToPlay;

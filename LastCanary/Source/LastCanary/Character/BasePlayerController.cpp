@@ -1298,7 +1298,7 @@ void ABasePlayerController::InteractGimmick(ALCBaseGimmick* Target)
 	}
 	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
 	Server_InteractWithGimmick(Target);
-	PlayerCharacter->PlayInteractionMontage(Target);
+	//PlayerCharacter->PlayInteractionMontage(Target);
 }
 
 void ABasePlayerController::Server_InteractWithGimmick_Implementation(ALCBaseGimmick* Target)
