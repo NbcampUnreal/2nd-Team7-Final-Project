@@ -75,7 +75,6 @@ void ALCPushGimmick::ActivateGimmick_Implementation()
 	Super::ActivateGimmick_Implementation();
 }
 
-
 void ALCPushGimmick::StartMovement()
 {
 	if (bIsMovingServer || bIsReturningServer)
@@ -90,7 +89,7 @@ void ALCPushGimmick::StartMovement()
 		return;
 	}
 
-	MoveVector = PushDirection * 600.f;
+	MoveVector = PushDirection * PushDistance;
 	Super::StartMovement();
 }
 
@@ -143,6 +142,8 @@ bool ALCPushGimmick::IsBlockedByWall(const FVector& Direction)
 
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(this);
+
+	DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 1.5f, 0, 2.0f);
 
 	bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params);
 

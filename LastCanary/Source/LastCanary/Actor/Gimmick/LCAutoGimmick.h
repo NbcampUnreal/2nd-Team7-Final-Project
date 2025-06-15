@@ -4,6 +4,14 @@
 #include "Actor/Gimmick/LCTransformGimmick.h"
 #include "LCAutoGimmick.generated.h"
 
+UENUM(BlueprintType)
+enum class EGimmickLoopType : uint8
+{
+	None UMETA(DisplayName = "None"),
+	LoopForward UMETA(DisplayName = "Forward Only"),
+	PingPong UMETA(DisplayName = "Back and Forth")
+};
+
 /**
  * 
  */
@@ -15,40 +23,69 @@ class LASTCANARY_API ALCAutoGimmick : public ALCTransformGimmick
 public:
 	ALCAutoGimmick();
 
-
 protected:
 	virtual void BeginPlay() override;
 
-	/** 반복 실행 주기 시작 (서버 전용) */
-	void StartLoop();
+public:
+	/** BeginPlay 시 자동 루프 시작 여부 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Auto")
+	bool bStartAtBeginPlay;
 
-	/** 한 번 이동 수행 */
-	void AutoMove();
-
-	/** 한 번 복귀 수행 */
-	void AutoReturn();
-
-	/** 자동 반복 여부 (외부에서 비활성화 가능) */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Auto")
+	/** 루프 실행 여부 */
+	UPROPERTY(BlueprintReadOnly, Category = "Auto")
 	bool bLoopingEnabled;
 
-	/** 외부에서 반복 중단 */
-	UFUNCTION(BlueprintCallable, Category = "Gimmick|Auto")
+	/** 루프 간 대기 시간 (0이면 즉시 다음 루프) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Auto", meta = (ClampMin = "0.0"))
+	float LoopInterval;
+
+	/** 루프 타입 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Auto")
+	EGimmickLoopType LoopType;
+
+	/** 정지된 후 루프를 몇 초 후에 재시작할지 (0이면 완전 멈춤) */	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Auto")
+	float LoopRestartDelay;
+
+	// Auto 루프에서 PingPong 속도 분기용 UI 세팅 변수만 추가
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Loop")
+	float ForwardMoveDuration;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Loop")
+	float BackwardMoveDuration;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Loop")
+	float ForwardRotationDuration;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Loop")
+	float BackwardRotationDuration;
+
+	/** 복귀 이동 완료 시 루프 재시작 처리 */
+	void CompleteReturn();
+
+	/** 복귀 회전 완료 시 루프 재시작 처리 */
+	void CompleteRotationReturn();
+
+protected:
+	FTimerHandle LoopTimerHandle;
+
+	UFUNCTION()
+	void HandleLoop();
+
+	void ScheduleNextLoop();
+
+public:
+	UFUNCTION(BlueprintCallable, Category = "Auto")
+	void StartLoop();
+
+	UFUNCTION(BlueprintCallable, Category = "Auto")
 	void StopLoop();
 
-	/** 외부에서 반복 재시작 */
-	UFUNCTION(BlueprintCallable, Category = "Gimmick|Auto")
-	void ResumeLoop();
+protected:
+	virtual void ActivateGimmick_Implementation() override;
+	virtual void DeactivateGimmick_Implementation() override;
+	virtual void ReturnToInitialState_Implementation() override;
 
-	/** 이동 완료 후 복귀를 위한 딜레이 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Auto")
-	float MovePauseTime;
-
-	/** 복귀 완료 후 재시작까지 대기 시간 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Auto")
-	float ReturnPauseTime;
-
-	FTimerHandle AutoMoveTimerHandle;
-	FTimerHandle AutoReturnTimerHandle;
-	
+	virtual void CompleteMovement() override;
+	virtual void CompleteRotation() override;
 };

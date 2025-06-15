@@ -1,148 +1,264 @@
 #include "Actor/Gimmick/LCAutoGimmick.h"
 #include "TimerManager.h"
-#include "Net/UnrealNetwork.h"
 #include "LastCanary.h"
 
 ALCAutoGimmick::ALCAutoGimmick()
-	: MovePauseTime(0.5f)
-	, ReturnPauseTime(0.5f)
-	, bLoopingEnabled(true)
+	: bStartAtBeginPlay(false)
+	, bLoopingEnabled(false)
+	, LoopInterval(0.f)
+	, LoopType(EGimmickLoopType::None)
+	, ForwardMoveDuration(1.0f)
+	, BackwardMoveDuration(1.0f)
+	, ForwardRotationDuration(1.0f)
+	, BackwardRotationDuration(1.0f)
 {
 	ActivationType = EGimmickActivationType::ActivateOnConditionMet;
 	bToggleState = false;
+	bUseAlternateToggle = false;
 }
 
 void ALCAutoGimmick::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (HasAuthority())
+	if (HasAuthority() && bStartAtBeginPlay && LoopType != EGimmickLoopType::None)
 	{
-		StartLoop();
+		GetWorldTimerManager().SetTimer(LoopTimerHandle, this, &ALCAutoGimmick::StartLoop, 3.0f, false);
 	}
 }
 
 void ALCAutoGimmick::StartLoop()
 {
-	AutoMove();
-}
+	if (!HasAuthority()) return;
 
-void ALCAutoGimmick::AutoMove()
-{
-	if (!bLoopingEnabled) return;
-	if (!HasAuthority() || bIsMovingServer || bIsReturningServer || bIsRotatingServer || bIsReturningRotationServer)
-		return;
+	LOG_Art(Log, TEXT("▶ [StartLoop] 루프 시작"));
 
-	InitialLocation = GetActorLocation();
-	TargetLocation = InitialLocation + MoveVector;
-
-	StartServerMovement(InitialLocation, TargetLocation, MoveDuration);
-	Multicast_StartMovement(InitialLocation, TargetLocation, MoveDuration);
-
-	FVector AxisVector = FVector::ForwardVector;
-	switch (RotationAxisEnum)
-	{
-	case EGimmickRotationAxis::X: AxisVector = FVector::RightVector; break;
-	case EGimmickRotationAxis::Y: AxisVector = FVector::UpVector;    break;
-	case EGimmickRotationAxis::Z: default:                           break;
-	}
-
-	TotalRotationIndex += RotationCount;
-	const float TotalAngleRad = FMath::DegreesToRadians(RotationAngle * TotalRotationIndex);
-	const FQuat DeltaQuat = FQuat(AxisVector, TotalAngleRad);
-	const FQuat ResultQuat = OriginalRotationQuat * DeltaQuat;
-
-	StartServerRotation(CurrentRotationQuat, ResultQuat, RotationDuration);
-	Multicast_StartRotation(CurrentRotationQuat, ResultQuat, RotationDuration);
-
-	CurrentRotationQuat = ResultQuat;
-
-	FTimerDelegate Delegate;
-	Delegate.BindLambda([this]()
-		{
-			SetActorLocation(TargetLocation);
-			bIsMovingServer = false;
-			bIsRotatingServer = false;
-
-			GetWorldTimerManager().SetTimer(
-				AutoReturnTimerHandle,
-				this,
-				&ALCAutoGimmick::AutoReturn,
-				MovePauseTime,
-				false
-			);
-		});
-
-	GetWorldTimerManager().SetTimer(
-		MovementTimerHandle,
-		Delegate,
-		MoveDuration,
-		false
-	);
-}
-
-void ALCAutoGimmick::AutoReturn()
-{
-	if (!bLoopingEnabled) return;
-	if (!HasAuthority() || bIsMovingServer || bIsReturningServer || bIsRotatingServer || bIsReturningRotationServer)
-		return;
-
-	InitialLocation = GetActorLocation();
-	TargetLocation = OriginalLocation;
-
-	StartServerMovement(InitialLocation, TargetLocation, ReturnMoveDuration);
-	Multicast_StartMovement(InitialLocation, TargetLocation, ReturnMoveDuration);
-
-	const FQuat CurQuat = VisualMesh->GetComponentQuat();
-	const FQuat OrigQuat = OriginalRotation.Quaternion();
-
-	StartServerRotation(CurQuat, OrigQuat, ReturnRotationDuration);
-	Multicast_StartRotation(CurQuat, OrigQuat, ReturnRotationDuration);
-
-	FTimerDelegate ReturnDoneDelegate;
-	ReturnDoneDelegate.BindLambda([this]()
-		{
-			SetActorLocation(TargetLocation);
-			bIsReturningServer = false;
-			bIsReturningRotationServer = false;
-
-			TotalRotationIndex = 0;
-			CurrentRotationQuat = OriginalRotationQuat;
-
-			GetWorldTimerManager().SetTimer(
-				AutoMoveTimerHandle,
-				this,
-				&ALCAutoGimmick::AutoMove,
-				ReturnPauseTime,
-				false
-			);
-		});
-
-	GetWorldTimerManager().SetTimer(
-		MovementTimerHandle,
-		ReturnDoneDelegate,
-		ReturnMoveDuration,
-		false
-	);
+	bLoopingEnabled = true;
+	HandleLoop();
 }
 
 void ALCAutoGimmick::StopLoop()
 {
+	if (!HasAuthority()) return;
+
 	bLoopingEnabled = false;
-	GetWorldTimerManager().ClearTimer(AutoMoveTimerHandle);
-	GetWorldTimerManager().ClearTimer(AutoReturnTimerHandle);
-	GetWorldTimerManager().ClearTimer(MovementTimerHandle);
-	GetWorldTimerManager().ClearTimer(RotationTimerHandle);
-	GetWorldTimerManager().ClearTimer(ReturnRotationTimerHandle);
-	LOG_Art(Log, TEXT("[AutoGimmick] 루프 중지됨"));
+	GetWorldTimerManager().ClearTimer(LoopTimerHandle);
 }
 
-void ALCAutoGimmick::ResumeLoop()
+void ALCAutoGimmick::HandleLoop()
 {
-	if (!bLoopingEnabled)
+	if (!HasAuthority() || !bLoopingEnabled || LoopType == EGimmickLoopType::None)
+		return;
+
+	LOG_Art(Log, TEXT("[HandleLoop] 루프 실행 - 타입: %d"), static_cast<int32>(LoopType));
+
+	if (IsGimmickBusy_Implementation())
 	{
-		bLoopingEnabled = true;
-		StartLoop();
-		LOG_Art(Log, TEXT("[AutoGimmick] 루프 재시작됨"));
+		GetWorldTimerManager().SetTimer(LoopTimerHandle, this, &ALCAutoGimmick::HandleLoop, 0.1f, false);
+		return;
+	}
+
+	switch (LoopType)
+	{
+	case EGimmickLoopType::LoopForward:
+	{
+		LOG_Art(Log, TEXT("[HandleLoop] LoopForward - 회전 상태 초기화 및 실행"));
+
+		bUseAlternateToggle = false;
+
+		CurrentRotationQuat = VisualMesh->GetComponentQuat();
+		OriginalRotationQuat = CurrentRotationQuat;
+		InitialRotation = CurrentRotationQuat;
+
+		StartMovement();
+		StartRotation();
+		break;
+	}
+
+	case EGimmickLoopType::PingPong:
+	{
+		LOG_Art(Log, TEXT("[HandleLoop] PingPong - ActivateGimmick 호출"));
+
+		bUseAlternateToggle = true;
+
+		if (OriginalRotationQuat.Equals(FQuat::Identity, 0.01f))
+		{
+			OriginalRotationQuat = VisualMesh->GetComponentQuat();
+			CurrentRotationQuat = OriginalRotationQuat;
+			RotationIndex = 0; 
+
+			LOG_Art(Log, TEXT("✅ 최초 회전 상태 저장됨: %s"), *OriginalRotationQuat.Rotator().ToCompactString());
+		}
+		
+		ILCGimmickInterface::Execute_ActivateGimmick(this);
+		break;
+	}
+
+
+
+	default:
+		break;
+	}
+}
+
+void ALCAutoGimmick::ScheduleNextLoop()
+{
+	LOG_Art(Log, TEXT("🔄 [ScheduleNextLoop] 호출됨 - Interval: %.2f"), LoopInterval);
+
+	if (!HasAuthority() || !bLoopingEnabled) return;
+
+	if (LoopInterval <= 0.f)
+	{
+		LOG_Art(Log, TEXT("▶ [ScheduleNextLoop] 즉시 HandleLoop 호출"));
+		HandleLoop();
+	}
+	else
+	{
+		LOG_Art(Log, TEXT("▶ [ScheduleNextLoop] 타이머로 HandleLoop 예약"));
+		GetWorldTimerManager().SetTimer(LoopTimerHandle, this, &ALCAutoGimmick::HandleLoop, LoopInterval, false);
+	}
+}
+
+void ALCAutoGimmick::ActivateGimmick_Implementation()
+{
+	if (!HasAuthority()) return;
+	if (!ILCGimmickInterface::Execute_CanActivate(this)) return;
+
+	LOG_Art(Log, TEXT("▶ [ActivateGimmick] 실행"));
+
+	if (LoopType == EGimmickLoopType::PingPong)
+	{
+		if (RotationIndex == 0)
+		{
+			CacheOriginalRotation();
+		}
+
+		const bool bIsForward = (RotationIndex % 2 == 0);
+
+		LOG_Art(Log, TEXT("[ActivateGimmick] PingPong - 방향: %s"), bIsForward ? TEXT("Forward") : TEXT("Backward"));
+
+		MoveDuration = bIsForward ? ForwardMoveDuration : BackwardMoveDuration;
+		RotationDuration = bIsForward ? ForwardRotationDuration : BackwardRotationDuration;
+
+		if (!MoveVector.IsNearlyZero())
+		{
+			const FVector BaseMoveVector = MoveVector.GetSafeNormal() * MoveVector.Size();
+			MoveVector = bIsForward ? BaseMoveVector : -BaseMoveVector;
+		}
+
+		if (bIsForward)
+		{
+			InitialRotation = OriginalRotationQuat;
+			const FVector Axis = GetRotationAxisVector(RotationAxisEnum);
+			const float AngleRad = FMath::DegreesToRadians(RotationAngle * RotationCount);
+			const FQuat DeltaQuat = FQuat(Axis, AngleRad);
+			TargetRotation = DeltaQuat * InitialRotation;
+			CurrentRotationQuat = TargetRotation;
+		}
+		else
+		{
+			InitialRotation = CurrentRotationQuat;
+			TargetRotation = OriginalRotationQuat;
+			CurrentRotationQuat = TargetRotation;
+		}
+
+		RotationIndex++;
+	}
+
+	Super::ActivateGimmick_Implementation();
+}
+void ALCAutoGimmick::DeactivateGimmick_Implementation()
+{
+	if (!HasAuthority()) return;
+
+	StopLoop();
+	Super::DeactivateGimmick_Implementation();
+}
+
+void ALCAutoGimmick::CompleteMovement()
+{
+	LOG_Art(Log, TEXT("✔️ [CompleteMovement] 이동 완료"));
+
+	const bool bShouldReturn = !bLoopingEnabled && !bToggleState;
+
+	if (bShouldReturn)
+	{
+		LOG_Art(Log, TEXT("▶ [CompleteMovement] 복귀 예약"));
+		Super::CompleteMovement();
+	}
+	else
+	{
+		SetActorLocation(TargetLocation);
+		bIsMovingServer = false;
+	}
+
+	ScheduleNextLoop();
+}
+void ALCAutoGimmick::CompleteRotation()
+{
+	LOG_Art(Log, TEXT("✔️ [CompleteRotation] 회전 완료"));
+
+	const bool bShouldReturn = !bLoopingEnabled && !bToggleState;
+
+	if (bShouldReturn)
+	{
+		LOG_Art(Log, TEXT("▶ [CompleteRotation] 복귀 예약"));
+		Super::CompleteRotation();
+	}
+	else
+	{
+		VisualMesh->SetWorldRotation(TargetRotation);
+		bIsRotatingServer = false;
+	}
+
+	ScheduleNextLoop();
+}
+
+void ALCAutoGimmick::CompleteReturn()
+{
+	LOG_Art(Log, TEXT("✅ [CompleteReturn] 복귀 이동 완료"));
+
+	Super::CompleteReturn();
+
+	if (LoopType == EGimmickLoopType::PingPong && bLoopingEnabled)
+	{
+		LOG_Art(Log, TEXT("🔁 [CompleteReturn] 다음 루프 예약"));
+		ScheduleNextLoop();
+	}
+}
+
+void ALCAutoGimmick::CompleteRotationReturn()
+{
+	LOG_Art(Log, TEXT("✅ [CompleteRotationReturn] 복귀 회전 완료"));
+
+	Super::CompleteRotationReturn();
+
+	if (LoopType == EGimmickLoopType::PingPong && bLoopingEnabled)
+	{
+		LOG_Art(Log, TEXT("🔁 [CompleteRotationReturn] 다음 루프 예약"));
+		ScheduleNextLoop();
+	}
+}
+
+void ALCAutoGimmick::ReturnToInitialState_Implementation()
+{
+	LOG_Art(Log, TEXT("🔁 [ReturnToInitialState] 복귀 시작"));
+
+	if (LoopType == EGimmickLoopType::PingPong)
+	{
+		ReturnMoveDuration = BackwardMoveDuration;
+		ReturnRotationDuration = BackwardRotationDuration;
+	}
+
+	Super::ReturnToInitialState_Implementation();
+
+	if (!HasAuthority()) return;
+
+	StopLoop();
+
+	if (LoopRestartDelay > 0.f && LoopType != EGimmickLoopType::None)
+	{
+		LOG_Art(Log, TEXT("⏳ [ReturnToInitialState] %.2f초 후 루프 재시작 예약"), LoopRestartDelay);
+		GetWorldTimerManager().SetTimer(LoopTimerHandle, this, &ALCAutoGimmick::StartLoop, LoopRestartDelay, false);
 	}
 }

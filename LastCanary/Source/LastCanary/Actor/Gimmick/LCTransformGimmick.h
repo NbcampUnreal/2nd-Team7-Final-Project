@@ -37,7 +37,7 @@ public:
 	FVector AlternateLocation;
 
 	/** 회전 토글용 두 번째 회전값 */
-	FRotator AlternateRotation;
+	FQuat GetAlternateRotationQuat() const;
 
 	virtual void ReturnToInitialState_Implementation() override;
 
@@ -189,7 +189,7 @@ public:
 	void StartServerMovement(const FVector& From, const FVector& To, float Duration);
 
 	/** 서버 보간 이동 실행 */
-	void StepServerMovement();
+	//void StepServerMovement();
 
 	/** 클라이언트 보간 이동 시작 */
 	void StartClientMovement(const FVector& From, const FVector& To, float Duration);
@@ -226,13 +226,21 @@ public:
 	void StartRotation();
 
 	/** 회전 완료 */
-	void CompleteRotation();
+	virtual void CompleteRotation();
+
+	/** 회전 복귀 시작 */
+	void StartReturnRotation();
+
+	/** 회전 복귀 보간 단계 (서버) */
+	//void StepServerReturnRotation();
 
 	/** 복귀 회전 시작 */
-	void ReturnToInitialRotation();
+	//void ReturnToInitialRotation();
 
 	/** 복귀 회전 완료 */
 	void CompleteRotationReturn();
+
+	FQuat ReturnRotationDeltaQuat; // 되감기용 쿼터니언
 
 	/** 회전 축 Enum → 방향 벡터로 변환 */
 	FVector GetRotationAxisVector(EGimmickRotationAxis AxisEnum) const;
@@ -243,14 +251,20 @@ public:
 	/** 마지막 회전 델타 (서버 기준) */
 	FQuat LastRotationDeltaQuat;
 
+	bool bOriginalRotationCached = false;
+
+	bool bIsReturningRotationClient = false;
+
+	void CacheOriginalRotation();
+
 	/** 서버 보간 회전 시작 */
 	void StartServerRotation(const FQuat& From, const FQuat& To, float Duration);
 
 	/** 서버 보간 회전 실행 */
-	void StepServerRotation();
+	//void StepServerRotation();
 
 	/** 클라이언트 보간 회전 시작 */
-	void StartClientRotation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration);
+	void StartClientRotation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration, bool bReturn);
 
 	/** 클라이언트 보간 회전 실행 */
 	void StepClientRotation();
@@ -261,8 +275,8 @@ public:
 
 	/** 회전 시작 - 멀티캐스트 */
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_StartRotation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration);
-	void Multicast_StartRotation_Implementation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration);
+	void Multicast_StartRotation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration, bool bIsReturnRotation);
+	void Multicast_StartRotation_Implementation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration, bool bIsReturnRotation);
 
 #pragma endregion
 };

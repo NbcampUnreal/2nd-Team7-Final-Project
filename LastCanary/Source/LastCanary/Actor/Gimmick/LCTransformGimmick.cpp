@@ -6,7 +6,6 @@
 ALCTransformGimmick::ALCTransformGimmick()
 	: bUseAlternateToggle(false)
 	, AlternateLocation(FVector::ZeroVector)
-	, AlternateRotation(FRotator::ZeroRotator)
 	, MoveVector(FVector::ZeroVector)
 	, MoveDuration(1.f)
 	, ReturnMoveDuration(1.f)
@@ -32,6 +31,7 @@ ALCTransformGimmick::ALCTransformGimmick()
 	, OriginalRotationQuat(FQuat::Identity)
 	, InitialRotation(FQuat::Identity)
 	, TargetRotation(FQuat::Identity)
+	, ReturnRotationDeltaQuat(FQuat::Identity)
 	, TotalRotationIndex(0)
 	, bIsRotatingServer(false)
 	, bIsReturningRotationServer(false)
@@ -60,36 +60,25 @@ void ALCTransformGimmick::BeginPlay()
 	Super::BeginPlay();
 
 	OriginalLocation = GetActorLocation();
+
 	OriginalRotation = VisualMesh->GetComponentRotation();
 	OriginalRotationQuat = VisualMesh->GetComponentQuat();
 
-	CurrentRotationQuat = VisualMesh->GetComponentQuat();
+	CurrentRotationQuat = OriginalRotationQuat;
 
 	if (bUseAlternateToggle)
 	{
-		AlternateLocation = OriginalLocation + MoveVector;
-		const float TotalAngleRad = FMath::DegreesToRadians(RotationAngle * RotationCount);
-		FQuat OriginalQuat = OriginalRotation.Quaternion();
-		FQuat RotatedQuat;
-
-		switch (RotationAxisEnum)
+		if (AlternateLocation.IsNearlyZero())
 		{
-		case EGimmickRotationAxis::X:
-			RotatedQuat = FQuat(FVector::RightVector, TotalAngleRad) * OriginalQuat;
-			break;
-		case EGimmickRotationAxis::Y:
-			RotatedQuat = FQuat(FVector::UpVector, TotalAngleRad) * OriginalQuat;
-			break;
-		case EGimmickRotationAxis::Z:
-		default:
-			RotatedQuat = FQuat(FVector::ForwardVector, TotalAngleRad) * OriginalQuat;
-			break;
+			AlternateLocation = OriginalLocation + MoveVector;
 		}
 
-		AlternateRotation = RotatedQuat.Rotator();
+		if (GetAlternateRotationQuat().Equals(OriginalRotationQuat, 0.01f))
+		{
+			LOG_Art_WARNING(TEXT("⚠️ AlternateRotation이 OriginalRotation과 동일함"));
+		}
 	}
 }
-
 
 #pragma endregion
 
@@ -113,6 +102,8 @@ void ALCTransformGimmick::ActivateGimmick_Implementation()
 
 	Super::ActivateGimmick_Implementation();
 
+		CacheOriginalRotation();
+
 	if (bUseAlternateToggle)
 	{
 		const FVector CurLoc = GetActorLocation();
@@ -120,7 +111,7 @@ void ALCTransformGimmick::ActivateGimmick_Implementation()
 
 		const FQuat CurQuat = VisualMesh->GetComponentQuat();
 		const FQuat OrigQuat = OriginalRotation.Quaternion();
-		const FQuat AltQuat = AlternateRotation.Quaternion();
+		const FQuat AltQuat = GetAlternateRotationQuat();
 		const FQuat ToQuat = CurQuat.Equals(OrigQuat, 0.01f) ? AltQuat : OrigQuat;
 
 		if (!CurLoc.Equals(ToLoc, 1.f))
@@ -132,9 +123,11 @@ void ALCTransformGimmick::ActivateGimmick_Implementation()
 
 		if (!CurQuat.Equals(ToQuat, 0.01f))
 		{
+			const bool bIsReturnRotation = ToQuat.Equals(OriginalRotationQuat, 0.01f); 
+
 			StartServerRotation(CurQuat, ToQuat, RotationDuration);
 			GetWorldTimerManager().SetTimer(RotationTimerHandle, this, &ALCTransformGimmick::CompleteRotation, RotationDuration, false);
-			Multicast_StartRotation(CurQuat, ToQuat, RotationDuration);
+			Multicast_StartRotation(CurQuat, ToQuat, RotationDuration, bIsReturnRotation);
 		}
 	}
 	else
@@ -179,21 +172,22 @@ void ALCTransformGimmick::ReturnToInitialState_Implementation()
 
 	if (!bIsReturningRotationServer && TotalRotationIndex != 0)
 	{
+		LOG_Art(Log, TEXT("▶ 회전 복귀 조건 만족 → StartReturnRotation 진입"));
+
+		CurrentRotationQuat = VisualMesh->GetComponentQuat();
+
+		StartReturnRotation();
+
 		bIsReturningRotationServer = true;
 
-		const FQuat CurQuat = CurrentRotationQuat;
-		const FQuat TargetQuat = OriginalRotationQuat;
-
-		LOG_Art(Log, TEXT("▶ 회전 복귀 - 현재: %s → 목표(Original): %s"),
-			*CurQuat.Rotator().ToCompactString(),
-			*TargetQuat.Rotator().ToCompactString());
-
-		StartServerRotation(CurQuat, TargetQuat, ReturnRotationDuration);
-		GetWorldTimerManager().SetTimer(RotationTimerHandle, this, &ALCTransformGimmick::CompleteRotationReturn, ReturnRotationDuration, false);
-		Multicast_StartRotation(CurQuat, TargetQuat, ReturnRotationDuration);
 	}
-
+	else
+	{
+		LOG_Art(Log, TEXT("❌ 회전 복귀 조건 불충족 - bIsReturningRotationServer: %d | TotalRotationIndex: %d"),
+			bIsReturningRotationServer, TotalRotationIndex);
+	}
 }
+
 
 FVector ALCTransformGimmick::GetRotationAxisVector(EGimmickRotationAxis AxisEnum) const
 {
@@ -220,6 +214,8 @@ void ALCTransformGimmick::StartMovement()
 	InitialLocation = GetActorLocation();
 	MoveIndex++;
 
+	//const FVector Delta = GetActorTransform().TransformVectorNoScale(MoveVector);
+	//TargetLocation = InitialLocation + Delta;
 	const FVector Delta = MoveVector;
 	TargetLocation = InitialLocation + Delta;
 
@@ -273,16 +269,6 @@ void ALCTransformGimmick::ReturnToInitialLocation()
 	const FVector To = OriginalLocation;
 
 	StartServerMovement(From, To, ReturnMoveDuration);
-
-	GetWorldTimerManager().SetTimer(
-		MovementTimerHandle,
-		this,
-		&ALCTransformGimmick::CompleteReturn,
-		ReturnMoveDuration,
-		false
-	);
-
-	Multicast_StartMovement(From, To, ReturnMoveDuration);
 }
 
 void ALCTransformGimmick::CompleteReturn()
@@ -325,44 +311,47 @@ void ALCTransformGimmick::StartMovementToTarget(const FVector& NewTarget)
 
 void ALCTransformGimmick::StartServerMovement(const FVector& From, const FVector& To, float Duration)
 {
-	ServerMoveElapsed = 0.f;
-	ServerMoveDuration = Duration;
 	InitialLocation = From;
 	TargetLocation = To;
 
-	GetWorldTimerManager().SetTimer(
-		ServerMoveTimer,
-		this,
-		&ALCTransformGimmick::StepServerMovement,
-		0.02f,
-		true
-	);
+	SetActorLocation(From); // 서버 보정
+	Multicast_StartMovement(From, To, Duration);
+
+	GetWorldTimerManager().SetTimer(ServerMoveTimer, [this]()
+		{
+			SetActorLocation(TargetLocation);
+			bIsMovingServer = false;
+			bIsReturningServer = false;
+		}, Duration, false);
+
+	bIsMovingServer = true;
 }
 
-void ALCTransformGimmick::StepServerMovement()
-{
-	ServerMoveElapsed += 0.02f;
-	const float Alpha = FMath::Clamp(ServerMoveElapsed / ServerMoveDuration, 0.f, 1.f);
-	const FVector NewLoc = FMath::Lerp(InitialLocation, TargetLocation, Alpha);
-
-	SetActorLocation(NewLoc);
-
-	if (Alpha >= 1.f)
-	{
-		GetWorldTimerManager().ClearTimer(ServerMoveTimer);
-		GetWorldTimerManager().ClearTimer(ReturnMoveTimerHandle);
-
-		bIsReturningServer = false;
-		bIsMovingServer = false;
-		SetActorLocation(TargetLocation);
-	}
-}
+//
+//void ALCTransformGimmick::StepServerMovement()
+//{
+//	ServerMoveElapsed += 0.02f;
+//	const float Alpha = FMath::Clamp(ServerMoveElapsed / ServerMoveDuration, 0.f, 1.f);
+//	const FVector NewLoc = FMath::Lerp(InitialLocation, TargetLocation, Alpha);
+//
+//	SetActorLocation(NewLoc);
+//
+//	if (Alpha >= 1.f)
+//	{
+//		GetWorldTimerManager().ClearTimer(ServerMoveTimer);
+//		GetWorldTimerManager().ClearTimer(ReturnMoveTimerHandle);
+//
+//		bIsReturningServer = false;
+//		bIsMovingServer = false;
+//		SetActorLocation(TargetLocation);
+//	}
+//}
 
 void ALCTransformGimmick::Multicast_StartMovement_Implementation(const FVector& From, const FVector& To, float Duration)
 {
 	const FVector DeltaLocation = To - From;
 
-	if (!HasAuthority())
+	if (GetNetMode() != NM_DedicatedServer)
 	{
 		StartClientMovement(From, To, Duration);
 		StartClientAttachedMovement(DeltaLocation, Duration);
@@ -475,39 +464,38 @@ void ALCTransformGimmick::StartClientAttachedMovement(const FVector& DeltaLocati
 
 void ALCTransformGimmick::StartRotation()
 {
+	CacheOriginalRotation();
+
 	if (bIsRotatingServer || bIsReturningRotationServer)
 	{
 		return;
 	}
 
+	OriginalRotationQuat = VisualMesh->GetComponentQuat();
+	OriginalRotation = VisualMesh->GetComponentRotation();
+
 	InitialRotation = CurrentRotationQuat;
 
-	FVector Axis = GetRotationAxisVector(RotationAxisEnum);
+	const FVector Axis = GetRotationAxisVector(RotationAxisEnum);
 	const float TotalAngleRad = FMath::DegreesToRadians(RotationAngle * RotationCount);
 	const FQuat DeltaQuat = FQuat(Axis, TotalAngleRad);
 
 	TargetRotation = DeltaQuat * InitialRotation;
-
-	// ✅ 회전 누적
 	CurrentRotationQuat = TargetRotation;
 	TotalRotationIndex += RotationCount;
 
-	LastRotationStartQuat = VisualMesh->GetComponentQuat();
-	LastRotationDeltaQuat = DeltaQuat;
-
-	LOG_Art(Log, TEXT("▶ StartRotation - Axis: %s | AngleDeg: %.1f | FromQuat: %s | ToQuat: %s"),
+	LOG_Art(Log, TEXT("▶ StartRotation - Axis: %s | Angle: %.1f | From: %s | To: %s"),
 		*Axis.ToString(),
 		RotationAngle * RotationCount,
 		*InitialRotation.Rotator().ToCompactString(),
 		*TargetRotation.Rotator().ToCompactString()
 	);
 
-	StartServerRotation(InitialRotation, TargetRotation, RotationDuration);
-	Multicast_StartRotation(InitialRotation, TargetRotation, RotationDuration);
+	Multicast_StartRotation(InitialRotation, TargetRotation, RotationDuration, false); 
 
-	if (!IsRunningDedicatedServer())
+	if (GetNetMode() != NM_DedicatedServer)
 	{
-		StartClientRotation(InitialRotation, TargetRotation, RotationDuration);
+		StartClientRotation(InitialRotation, TargetRotation, RotationDuration, false);
 	}
 }
 
@@ -515,9 +503,11 @@ void ALCTransformGimmick::CompleteRotation()
 {
 	bIsRotatingServer = false;
 
-	VisualMesh->SetWorldRotation(TargetRotation);
-
-	CurrentRotationQuat = TargetRotation;
+	if (!bIsReturningRotationClient)
+	{
+		VisualMesh->SetWorldRotation(TargetRotation);
+		CurrentRotationQuat = TargetRotation;
+	}
 
 	if (!bToggleState && !bUseAlternateToggle)
 	{
@@ -531,7 +521,7 @@ void ALCTransformGimmick::CompleteRotation()
 	}
 }
 
-void ALCTransformGimmick::ReturnToInitialRotation()
+void ALCTransformGimmick::StartReturnRotation()
 {
 	if (bIsRotatingServer || bIsReturningRotationServer)
 	{
@@ -543,30 +533,81 @@ void ALCTransformGimmick::ReturnToInitialRotation()
 	InitialRotation = CurrentRotationQuat;
 	TargetRotation = OriginalRotationQuat;
 
-	const FQuat DeltaQuat = TargetRotation * InitialRotation.Inverse();
+	CurrentRotationQuat = TargetRotation;
 
-	float AngleRad;
-	FVector Axis;
-	DeltaQuat.ToAxisAndAngle(Axis, AngleRad);
-
-	RotationAngle = FMath::RadiansToDegrees(AngleRad);
-	RotationCount = 1;
-
-	LOG_Art(Log, TEXT("▶ 복귀 회전 계산 - Axis: %s | AngleDeg: %.1f | From: %s | To: %s"),
-		*Axis.ToString(),
-		RotationAngle,
+	LOG_Art(Log, TEXT("▶ 복귀 회전 From: %s | To: %s | [정확한 원상복귀]"),
 		*InitialRotation.Rotator().ToCompactString(),
-		*TargetRotation.Rotator().ToCompactString()
-	);
+		*TargetRotation.Rotator().ToCompactString());
 
-	StartServerRotation(InitialRotation, TargetRotation, ReturnRotationDuration);
-	Multicast_StartRotation(InitialRotation, TargetRotation, ReturnRotationDuration);
-
-	if (!IsRunningDedicatedServer())
-	{
-		StartClientRotation(InitialRotation, TargetRotation, ReturnRotationDuration);
-	}
+	Multicast_StartRotation(InitialRotation, TargetRotation, ReturnRotationDuration, true);
 }
+
+//void ALCTransformGimmick::StepServerReturnRotation()
+//{
+//	LOG_Art(Log, TEXT("▶ StepServerReturnRotation() 호출됨"));
+//
+//	ServerRotationElapsed += 0.02f;
+//
+//	LOG_Art(Log, TEXT("▶ StepServerReturnRotation 실행 중 - %.2f / %.2f"), ServerRotationElapsed, ServerRotationDuration);
+//
+//	const float Alpha = FMath::Clamp(ServerRotationElapsed / ServerRotationDuration, 0.f, 1.f);
+//	const FQuat StepQuat = FQuat::SlerpFullPath(FQuat::Identity, ReturnRotationDeltaQuat, Alpha);
+//	const FQuat NewQuat = StepQuat * InitialRotation;
+//
+//	VisualMesh->SetWorldRotation(NewQuat);
+//
+//	if (Alpha >= 1.f)
+//	{
+//		GetWorldTimerManager().ClearTimer(ServerRotationTimer);
+//		CompleteRotationReturn();
+//	}
+//}
+
+
+//void ALCTransformGimmick::ReturnToInitialRotation()
+//{
+//	if (bIsRotatingServer || bIsReturningRotationServer)
+//	{
+//		return;
+//	}
+//
+//	bIsReturningRotationServer = true;
+//
+//	InitialRotation = CurrentRotationQuat;
+//
+//	TargetRotation = OriginalRotationQuat;
+//
+//	const FQuat DeltaQuat = TargetRotation * InitialRotation.Inverse();
+//
+//	float AngleRad;
+//	FVector DeltaAxis;
+//	DeltaQuat.ToAxisAndAngle(DeltaAxis, AngleRad);
+//
+//	RotationAngle = FMath::RadiansToDegrees(AngleRad);
+//	RotationCount = 1;
+//
+//	if (FMath::Abs(DeltaAxis.X) > 0.9f)
+//	{
+//		RotationAxisEnum = EGimmickRotationAxis::X;
+//	}
+//	else if (FMath::Abs(DeltaAxis.Y) > 0.9f)
+//	{
+//		RotationAxisEnum = EGimmickRotationAxis::Y;
+//	}
+//	else
+//	{
+//		RotationAxisEnum = EGimmickRotationAxis::Z;
+//	}
+//
+//	StartServerRotation(InitialRotation, TargetRotation, ReturnRotationDuration);
+//
+//	Multicast_StartRotation(InitialRotation, TargetRotation, ReturnRotationDuration);
+//
+//	if (!IsRunningDedicatedServer())
+//	{
+//		StartClientRotation(InitialRotation, TargetRotation, ReturnRotationDuration);
+//	}
+//}
 
 void ALCTransformGimmick::CompleteRotationReturn()
 {
@@ -574,9 +615,10 @@ void ALCTransformGimmick::CompleteRotationReturn()
 	bIsRotatingServer = false;
 
 	VisualMesh->SetWorldRotation(OriginalRotation);
+	CurrentRotationQuat = OriginalRotationQuat;
+
 	RotationIndex = 0;
 	TotalRotationIndex = 0;
-
 }
 
 #pragma endregion
@@ -585,70 +627,51 @@ void ALCTransformGimmick::CompleteRotationReturn()
 
 void ALCTransformGimmick::StartServerRotation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration)
 {
-	if (bIsRotatingServer)
+	ServerStartRotation = FromQuat;
+	ServerTargetRotation = ToQuat;
+	ServerRotationDuration = Duration;
+
+	const bool bIsReturnRotation = ToQuat.Equals(OriginalRotationQuat, 0.01f);
+
+	Multicast_StartRotation(FromQuat, ToQuat, Duration, bIsReturnRotation);
+
+	if (GetNetMode() != NM_DedicatedServer)
 	{
-		return;
+		bIsReturningRotationClient = bIsReturnRotation;
+		StartClientRotation(FromQuat, ToQuat, Duration, bIsReturnRotation); 
 	}
 
 	bIsRotatingServer = true;
-	ServerRotationElapsed = 0.f;
-	ServerRotationDuration = Duration;
-
-	ServerStartRotation = FromQuat;
-	ServerTargetRotation = ToQuat;
-
-	LOG_Art(Log, TEXT("▶ StartServerRotation - From: %s | To: %s | Duration: %.2fs"),
-		*FromQuat.Rotator().ToCompactString(),
-		*ToQuat.Rotator().ToCompactString(),
-		Duration
-	);
-
-	GetWorldTimerManager().SetTimer(
-		ServerRotationTimer,
-		this,
-		&ALCTransformGimmick::StepServerRotation,
-		0.02f,
-		true
-	);
 }
 
-void ALCTransformGimmick::StepServerRotation()
+//
+//void ALCTransformGimmick::StepServerRotation()
+//{
+//	ServerRotationElapsed += 0.02f;
+//	const float Alpha = FMath::Clamp(ServerRotationElapsed / ServerRotationDuration, 0.f, 1.f);
+//
+//	const FVector Axis = GetRotationAxisVector(RotationAxisEnum);
+//	const float TotalAngleRad = FMath::DegreesToRadians(RotationAngle * RotationCount);
+//	const float StepAngleRad = FMath::Lerp(0.f, TotalAngleRad, Alpha);
+//	const FQuat StepQuat = FQuat(Axis, StepAngleRad);
+//	const FQuat NewQuat = StepQuat * ServerStartRotation;
+//
+//	VisualMesh->SetWorldRotation(NewQuat);
+//
+//	if (Alpha >= 1.f)
+//	{
+//		GetWorldTimerManager().ClearTimer(ServerRotationTimer);
+//		CompleteRotation();
+//	}
+//}
+
+void ALCTransformGimmick::Multicast_StartRotation_Implementation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration, bool bIsReturnRotation)
 {
-	if (!bIsRotatingServer)
+	if (GetNetMode() != NM_DedicatedServer)
 	{
-		return;
-	}
+		GetWorldTimerManager().ClearTimer(ClientRotationTimer);
 
-	ServerRotationElapsed += 0.02f;
-	const float Alpha = FMath::Clamp(ServerRotationElapsed / ServerRotationDuration, 0.f, 1.f);
-
-	const float TotalAngleRad = FMath::DegreesToRadians(RotationAngle * RotationCount);
-	const float StepAngleRad = FMath::Lerp(0.f, TotalAngleRad, Alpha);
-
-	FVector Axis;
-	switch (RotationAxisEnum)
-	{
-	case EGimmickRotationAxis::X: Axis = FVector::RightVector;   break;
-	case EGimmickRotationAxis::Y: Axis = FVector::UpVector;      break;
-	case EGimmickRotationAxis::Z: Axis = FVector::ForwardVector; break;
-	default:                    Axis = FVector::ForwardVector;   break;
-	}
-
-	const FQuat NewQuat = FQuat(Axis, StepAngleRad) * InitialRotation;
-	VisualMesh->SetWorldRotation(NewQuat);
-
-	if (Alpha >= 1.f)
-	{
-		GetWorldTimerManager().ClearTimer(ServerRotationTimer);
-		CompleteRotation();
-	}
-}
-
-void ALCTransformGimmick::Multicast_StartRotation_Implementation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration)
-{
-	if (!HasAuthority())
-	{
-		StartClientRotation(FromQuat, ToQuat, Duration);
+		StartClientRotation(FromQuat, ToQuat, Duration, bIsReturnRotation);
 		StartClientAttachedRotation(FromQuat, ToQuat, Duration);
 	}
 	else
@@ -657,21 +680,22 @@ void ALCTransformGimmick::Multicast_StartRotation_Implementation(const FQuat& Fr
 	}
 }
 
-void ALCTransformGimmick::StartClientRotation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration)
+void ALCTransformGimmick::StartClientRotation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration, bool bReturn)
 {
-	ensure(!IsRunningDedicatedServer());
-
-	VisualMesh->SetWorldRotation(FromQuat);
+	bIsReturningRotationClient = bReturn;
 
 	ClientStartRotation = FromQuat;
+
 	ClientTargetRotation = ToQuat;
 	ClientRotationDuration = Duration;
 	ClientRotationElapsed = 0.f;
 
-	LOG_Art(Log, TEXT("▶ StartClientRotation - From: %s | To: %s | Duration: %.2fs"),
-		*FromQuat.Rotator().ToCompactString(),
-		*ToQuat.Rotator().ToCompactString(),
-		Duration
+	// VisualMesh->SetWorldRotation(ClientStartRotation);
+
+	LOG_Art(Log, TEXT("[클라] StartClientRotation 시작 - 복귀 상태: %s | From: %s | To: %s"),
+		bIsReturningRotationClient ? TEXT("✔️ 복귀") : TEXT("❌ 일반"),
+		*ClientStartRotation.Rotator().ToCompactString(),
+		*ClientTargetRotation.Rotator().ToCompactString()
 	);
 
 	GetWorldTimerManager().SetTimer(
@@ -683,31 +707,32 @@ void ALCTransformGimmick::StartClientRotation(const FQuat& FromQuat, const FQuat
 	);
 }
 
+
 void ALCTransformGimmick::StepClientRotation()
 {
 	ClientRotationElapsed += 0.02f;
 	const float Alpha = FMath::Clamp(ClientRotationElapsed / ClientRotationDuration, 0.f, 1.f);
 
-	const float TotalAngleRad = FMath::DegreesToRadians(RotationAngle * RotationCount);
-	const float StepAngleRad = FMath::Lerp(0.f, TotalAngleRad, Alpha);
-
-	FVector Axis;
-	switch (RotationAxisEnum)
+	if (bIsReturningRotationClient)
 	{
-	case EGimmickRotationAxis::X: Axis = FVector::RightVector;   break;
-	case EGimmickRotationAxis::Y: Axis = FVector::UpVector;      break;
-	case EGimmickRotationAxis::Z: Axis = FVector::ForwardVector; break;
-	default:                    Axis = FVector::ForwardVector;   break;
+		const FQuat NewQuat = FQuat::SlerpFullPath(ClientStartRotation, ClientTargetRotation, Alpha);
+		VisualMesh->SetWorldRotation(NewQuat);
+	}
+	else
+	{
+		const float StepAngleRad = FMath::Lerp(0.f, FMath::DegreesToRadians(RotationAngle * RotationCount), Alpha);
+		const FVector Axis = GetRotationAxisVector(RotationAxisEnum);
+		const FQuat DeltaQuat = FQuat(Axis, StepAngleRad);
+		const FQuat NewQuat = DeltaQuat * ClientStartRotation;
+		VisualMesh->SetWorldRotation(NewQuat);
 	}
 
-	const FQuat NewQuat = FQuat(Axis, StepAngleRad) * ClientStartRotation;
-	VisualMesh->SetWorldRotation(NewQuat);
-
-	if (Alpha >= 1.f)
+	if (Alpha >= 1.f || FMath::IsNearlyEqual(Alpha, 1.f, 0.01f))
 	{
 		GetWorldTimerManager().ClearTimer(ClientRotationTimer);
 	}
 }
+
 
 void ALCTransformGimmick::StartServerAttachedRotation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration)
 {
@@ -759,6 +784,25 @@ void ALCTransformGimmick::StartClientAttachedRotation(const FQuat& FromQuat, con
 
 		GetWorldTimerManager().SetTimer(Handle, Delegate, 0.02f, true);
 	}
+}
+
+void ALCTransformGimmick::CacheOriginalRotation()
+{
+	if (!bOriginalRotationCached)
+	{
+		OriginalRotationQuat = VisualMesh->GetComponentQuat();
+		OriginalRotation = VisualMesh->GetComponentRotation();
+		bOriginalRotationCached = true;
+
+		LOG_Art(Log, TEXT(" 최초 회전 상태 저장됨: %s"), *OriginalRotationQuat.Rotator().ToCompactString());
+	}
+}
+
+FQuat ALCTransformGimmick::GetAlternateRotationQuat() const
+{
+	const float TotalAngleRad = FMath::DegreesToRadians(RotationAngle * RotationCount);
+	const FVector Axis = GetRotationAxisVector(RotationAxisEnum);
+	return FQuat(Axis, TotalAngleRad) * OriginalRotationQuat;
 }
 
 #pragma endregion
