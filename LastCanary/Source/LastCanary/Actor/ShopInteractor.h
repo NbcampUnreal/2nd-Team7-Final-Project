@@ -26,6 +26,13 @@ protected:
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<UUserWidget> ShopWidgetClass;
 
+	//UFUNCTION(Server, Reliable)
+	//void Server_ShowPopupShopWidget();
+	//void Server_ShowPopupShopWidget_Implementation();
+	//UFUNCTION(Client, Reliable)
+	//void Client_ShowPopupShopWidget(int Gold);
+	//void Client_ShowPopupShopWidget_Implementation(int Gold);
+
 	virtual void BeginPlay() override;
 
 public:

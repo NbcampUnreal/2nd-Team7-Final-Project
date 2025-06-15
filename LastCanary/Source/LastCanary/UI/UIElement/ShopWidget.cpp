@@ -35,15 +35,15 @@ void UShopWidget::NativeConstruct()
 	if (ShoppingCartWidget)
 	{
 		// 골드 가져오기 
-		int32 PlayerGold = 0;
-		if (const APlayerState* PS = GetOwningPlayerState())
-		{
-			if (const ABasePlayerState* MyPS = Cast<ABasePlayerState>(PS))
-			{
-				PlayerGold = MyPS->GetTotalGold();
-			}
-		}
-		ShoppingCartWidget->SetPlayerGold(PlayerGold);
+		//int32 PlayerGold = 0;
+		//if (const APlayerState* PS = GetOwningPlayerState())
+		//{
+		//	if (const ABasePlayerState* MyPS = Cast<ABasePlayerState>(PS))
+		//	{
+		//		PlayerGold = MyPS->GetTotalGold();
+		//	}
+		//}
+		//ShoppingCartWidget->SetPlayerGold(PlayerGold);
 
 		// 델리게이트 바인딩
 		ShoppingCartWidget->OnCartValidityChanged.BindLambda([this](bool bCanAfford)
@@ -101,6 +101,11 @@ void UShopWidget::PopulateShopItems()
 			}
 		}
 	}
+}
+
+void UShopWidget::SetGold(int gold)
+{
+	ShoppingCartWidget->SetPlayerGold(gold);
 }
 
 void UShopWidget::OnShopItemClicked(UShopItemEntry* ClickedEntry)

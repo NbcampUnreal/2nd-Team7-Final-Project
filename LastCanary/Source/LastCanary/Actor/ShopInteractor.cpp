@@ -8,6 +8,7 @@
 
 #include "Framework/PlayerController/LCRoomPlayerController.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "Framework/GameInstance/LCGameManager.h"
 
 #include "LastCanary.h"
 
@@ -50,21 +51,32 @@ void AShopInteractor::Interact_Implementation(APlayerController* InteractingPlay
 		return;
 	}
 
+	ALCRoomPlayerController* RoomPC = Cast<ALCRoomPlayerController>(InteractingPlayerController);
+	if (!IsValid(RoomPC))
+	{
+		LOG_Frame_WARNING(TEXT("Fail To casting"));
+		return;
+	}
+
 	InteractingPlayerController->SetViewTargetWithBlend(ShopCamera, 0.5f);
 
 	FTimerHandle TimerHandle;
 	FTimerDelegate TimerDel;
-	TimerDel.BindLambda([this, InteractingPlayerController]()
+
+	TimerDel.BindLambda([this, RoomPC]()
 		{
-			if (UGameInstance* GameInstance = InteractingPlayerController->GetGameInstance())
+			if (UGameInstance* GameInstance = GetGameInstance())
 			{
+				//UGameDataManager* GM = GameInstance->GetSubsystem<UGameDataManager>();
 				if (ULCGameInstanceSubsystem* GI = GameInstance->GetSubsystem<ULCGameInstanceSubsystem>())
 				{
 					if (ULCUIManager* UIManager = GI->GetUIManager())
 					{
 						UIManager->SetLastShopInteractor(this);
-						LOG_Frame_WARNING(TEXT("PC : %s"), *InteractingPlayerController->GetActorNameOrLabel());
-						UIManager->ShowShopPopup();
+						LOG_Frame_WARNING(TEXT("PC : %s"), *RoomPC->GetActorNameOrLabel());
+						//GM->GetGold();
+						RoomPC->Server_ShowShopWidget();
+						//UIManager->ShowShopPopup(GM->GetGold());
 
 						ShopWidgetComponent->SetVisibility(false);
 					}
