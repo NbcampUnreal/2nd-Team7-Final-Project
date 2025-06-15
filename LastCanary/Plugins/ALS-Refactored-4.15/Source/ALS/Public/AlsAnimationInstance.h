@@ -34,6 +34,12 @@ class ALS_API UAlsAnimationInstance : public UAnimInstance
 
 	friend UAlsLinkedAnimationInstance;
 public:
+	UFUNCTION(BlueprintImplementableEvent)
+	void UpdateIKTransform();
+
+	UPROPERTY(BlueprintReadWrite, Category = "IK")
+	bool IsAiming = false;
+
 	UPROPERTY(BlueprintReadOnly)
 	float WallClipAimOffsetPitch = 0.0f;
 

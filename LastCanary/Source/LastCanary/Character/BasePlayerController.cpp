@@ -955,6 +955,10 @@ void ABasePlayerController::SetShootingSetting()
 void ABasePlayerController::Input_ChangeQuickSlot(const FInputActionValue& ActionValue)
 {
 	// 휠의 Y 방향만 사용 (위: +1, 아래: -1)
+	if (!IsValid(CurrentPossessedPawn))
+	{
+		return;
+	}
 	const float ScrollValue = ActionValue.Get<float>();
 	if (ScrollValue > 0.f)
 	{
@@ -985,7 +989,7 @@ void ABasePlayerController::ChangeToNextQuickSlot()
 	{
 		return;
 	}
-
+		
 	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
 		PlayerCharacter->SetCurrentQuickSlotIndex(PlayerCharacter->GetCurrentQuickSlotIndex() + 1);
