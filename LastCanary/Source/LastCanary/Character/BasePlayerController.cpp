@@ -432,7 +432,7 @@ void ABasePlayerController::Input_OnLookMouse(const FInputActionValue& ActionVal
 		ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn);
 		if (IsValid(Drone))
 		{
-			Drone->Input_Look(ActionValue);
+			Drone->Input_Look(ActionValue, MouseSensivity);
 		}
 	}
 	if (CurrentPossessedPawn->IsA<ABaseSpectatorPawn>())

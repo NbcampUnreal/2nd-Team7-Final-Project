@@ -612,16 +612,21 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 	{
 		return;
 	}
-	if (CheckHardLandState())
-	{
-		return;
-	}
+
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
 	{
 		return;
 	}
-
+	if (CheckHardLandState())
+	{
+		bIsSprinting = false;
+		FootSoundModifier = MyPlayerState->RunningFootSoundModifier;
+		SetDesiredGait(AlsGaitTags::Running);
+		StopStaminaDrain();
+		StartStaminaRecoverAfterDelay();
+		return;
+	}
 	//만약 지친 상태라면 불가
 	if (MyPlayerState->MovementState == ECharacterMovementState::Exhausted)
 	{
