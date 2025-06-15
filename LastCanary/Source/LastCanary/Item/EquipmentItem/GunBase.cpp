@@ -613,7 +613,6 @@ bool AGunBase::Reload()
         return false;
     }
 
-    Multicast_PlayReloadAnimation();
     Durability = MaxAmmo;
     UpdateAmmoState();
     OnItemStateChanged.Broadcast();
