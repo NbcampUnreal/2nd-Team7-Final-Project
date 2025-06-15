@@ -217,8 +217,6 @@ void AFlashlightItem::ConsumeBattery()
     {
         Durability = FMath::Clamp(Durability - (BatteryConsumptionRate * 0.1f), 0.0f, 100.0f);
 
-        LOG_Item_WARNING(TEXT("[AFlashlightItem::ConsumeBattery] 배터리: %.1f%%"), Durability);
-
         // 배터리가 완전히 소모될 때만 서버에 알림
         if (Durability <= 0.0f)
         {

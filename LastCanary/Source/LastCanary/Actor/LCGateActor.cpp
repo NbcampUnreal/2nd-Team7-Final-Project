@@ -160,14 +160,14 @@ void ALCGateActor::IntoGameLevel(APlayerController* Controller)
 	{
 		return;
 	}
-	if (ALCRoomPlayerController* RoomPC = Cast<ALCRoomPlayerController>(Controller))
-	{
-		if (ABasePlayerState* PlayerState = RoomPC->GetPlayerState<ABasePlayerState>())
-		{
-			ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(RoomPC->GetPawn());
-			PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetToolbarInventoryComponent()->GetInventoryItemIDs());
-		}
-	}
+	//if (ALCRoomPlayerController* RoomPC = Cast<ALCRoomPlayerController>(Controller))
+	//{
+	//	if (ABasePlayerState* PlayerState = RoomPC->GetPlayerState<ABasePlayerState>())
+	//	{
+	//		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(RoomPC->GetPawn());
+	//		PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetToolbarInventoryComponent()->GetInventoryItemIDs());
+	//	}
+	//}
 
 	if (HasAuthority() == false)
 	{
