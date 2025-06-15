@@ -116,4 +116,14 @@ struct FGunDataRow : public FTableRowBase
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Misc")
     bool bIsAutomatic;
+
+    // 부착물 관련 추가
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Attachments")
+    bool bHasScope = false;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Attachments")
+    UStaticMesh* ScopeMesh;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Attachments")
+    FName ScopeSocketName = TEXT("Scope");
 };

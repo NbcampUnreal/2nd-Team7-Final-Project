@@ -284,4 +284,36 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Debug")
     bool bDrawImpactDebug = false;
+
+    //-----------------------------------------------------
+    // 부착물 컴포넌트
+    //-----------------------------------------------------
+public:
+    /** 스코프 메시 컴포넌트 */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gun|Attachments")
+    UStaticMeshComponent* ScopeComponent;
+
+    /** 현재 부착된 스코프 메시 */
+    UPROPERTY(BlueprintReadOnly, Category = "Gun|Attachments")
+    UStaticMesh* CurrentAttachedScope;
+
+    //-----------------------------------------------------
+    // 부착물 관련 함수
+    //-----------------------------------------------------
+
+    /** 스코프 부착 */
+    UFUNCTION(BlueprintCallable, Category = "Gun|Attachments")
+    void AttachScope(UStaticMesh* ScopeMesh, FName SocketName = TEXT("Scope_Socket"));
+
+    /** 스코프 제거 */
+    UFUNCTION(BlueprintCallable, Category = "Gun|Attachments")
+    void DetachScope();
+
+    /** 스코프가 부착되어 있는지 확인 */
+    UFUNCTION(BlueprintPure, Category = "Gun|Attachments")
+    bool HasScopeAttached() const;
+
+protected:
+    /** 데이터 테이블에서 부착물 적용 */
+    void ApplyAttachmentsFromDataTable();
 };
