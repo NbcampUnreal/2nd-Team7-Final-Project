@@ -123,7 +123,7 @@ void ALCInGameModeBase::InitPlayerAliveCount(int PlayerCount)
 void ALCInGameModeBase::CreateCheckListManager()
 {
 	// ChecklistManager 동적 생성
-	if (HasAuthority() && ChecklistManagerClass)
+	if (ChecklistManagerClass)
 	{
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
