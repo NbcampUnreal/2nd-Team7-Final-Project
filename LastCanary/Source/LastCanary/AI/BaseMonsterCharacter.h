@@ -11,6 +11,8 @@
 class USphereComponent;
 class ABaseCharacter;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMonsterDeath, ABaseMonsterCharacter*, DeadMonster);
+
 UCLASS()
 class LASTCANARY_API ABaseMonsterCharacter : public ACharacter, public IGameplayTagAssetInterface
 {
@@ -21,6 +23,10 @@ class LASTCANARY_API ABaseMonsterCharacter : public ACharacter, public IGameplay
 
 public:
     ABaseMonsterCharacter();
+
+    /** 몬스터 사망 델리게이트 */
+    UPROPERTY(BlueprintAssignable, Category = "Events")
+    FOnMonsterDeath OnMonsterDeath;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Attack")
     USphereComponent* AttackCollider;

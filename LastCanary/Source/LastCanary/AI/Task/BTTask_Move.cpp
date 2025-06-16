@@ -12,6 +12,7 @@ UBTTask_Move::UBTTask_Move()
     bNotifyTick = true; 
     SoundTimer = 2.5f;
     LastSoundTime = 0.0f;
+    CurrentOwnerComp = nullptr;
 }
 
 EBTNodeResult::Type UBTTask_Move::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
@@ -44,23 +45,45 @@ EBTNodeResult::Type UBTTask_Move::ExecuteTask(UBehaviorTreeComponent& OwnerComp,
         LastSoundTime = GetWorld()->GetTimeSeconds();
     }
 
+    CurrentOwnerComp = &OwnerComp;
+
+    GetWorld()->GetTimerManager().SetTimer(
+        MoveCheckTimer,
+        this,
+        &UBTTask_Move::CheckMoveStatus,
+        0.1f,
+        true//반복
+    );
+
     return EBTNodeResult::InProgress;
 }
 
-void UBTTask_Move::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds)
+void UBTTask_Move::CheckMoveStatus()
 {
-    AAIController* AIController = OwnerComp.GetAIOwner();
-    UBlackboardComponent* BlackboardComp = OwnerComp.GetBlackboardComponent();
+    if (!CurrentOwnerComp)
+    {
+        // 타이머 정리
+        if (GetWorld())
+        {
+            GetWorld()->GetTimerManager().ClearTimer(MoveCheckTimer);
+        }
+        return;
+    }
+
+    AAIController* AIController = CurrentOwnerComp->GetAIOwner();
+    UBlackboardComponent* BlackboardComp = CurrentOwnerComp->GetBlackboardComponent();
 
     if (!AIController || !BlackboardComp)
     {
-        FinishLatentTask(OwnerComp, EBTNodeResult::Failed);
+        // 타이머 정리 후 실패
+        GetWorld()->GetTimerManager().ClearTimer(MoveCheckTimer);
+        FinishLatentTask(*CurrentOwnerComp, EBTNodeResult::Failed);
+        CurrentOwnerComp = nullptr;
         return;
     }
 
     // 주기적으로 사운드 재생
     float CurrentTime = GetWorld()->GetTimeSeconds();
-
     if (CurrentTime - LastSoundTime >= SoundTimer)
     {
         if (ABaseMonsterCharacter* Monster = Cast<ABaseMonsterCharacter>(AIController->GetPawn()))
@@ -77,20 +100,21 @@ void UBTTask_Move::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory
         if (BaseAIController)
         {
             AIController->StopMovement();
-
             BaseAIController->SetPatrolling();
-
-            FinishLatentTask(OwnerComp, EBTNodeResult::Failed);
-            return;
         }
+
+        // 타이머 정리 후 실패
+        GetWorld()->GetTimerManager().ClearTimer(MoveCheckTimer);
+        FinishLatentTask(*CurrentOwnerComp, EBTNodeResult::Failed);
+        CurrentOwnerComp = nullptr;
+        return;
     }
 
-    //이동중인가?
+    // 이동중인가?
     EPathFollowingStatus::Type MoveStatus = AIController->GetMoveStatus();
-
     if (MoveStatus == EPathFollowingStatus::Idle)
     {
-        //다시 추적
+        // 다시 추적
         AIController->MoveToActor(TargetActor, MyAcceptableRadius);
     }
 
@@ -98,18 +122,21 @@ void UBTTask_Move::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory
     if (ControlledPawn)
     {
         float DistanceToTarget = FVector::Distance(ControlledPawn->GetActorLocation(), TargetActor->GetActorLocation());
-        if (DistanceToTarget <= MyAcceptableRadius+50)
+        if (DistanceToTarget <= MyAcceptableRadius + 50)
         {
             FVector DirectionToTarget = (TargetActor->GetActorLocation() - ControlledPawn->GetActorLocation()).GetSafeNormal();
             FRotator TargetRotation = DirectionToTarget.Rotation();
             ControlledPawn->SetActorRotation(TargetRotation);
 
-            ABaseAIController* BaseAIController = Cast<ABaseAIController>(OwnerComp.GetAIOwner());
+            ABaseAIController* BaseAIController = Cast<ABaseAIController>(CurrentOwnerComp->GetAIOwner());
             if (BaseAIController)
             {
                 BaseAIController->SetAttacking();
             }
-            FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
+
+            GetWorld()->GetTimerManager().ClearTimer(MoveCheckTimer);
+            FinishLatentTask(*CurrentOwnerComp, EBTNodeResult::Succeeded);
+            CurrentOwnerComp = nullptr;
         }
     }
 }

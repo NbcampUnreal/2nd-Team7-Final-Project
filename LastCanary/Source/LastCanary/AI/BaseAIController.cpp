@@ -103,7 +103,58 @@ void ABaseAIController::SetAttacking()
 	}
 }
 
-void ABaseAIController::SetDeath()
+void ABaseAIController::SetStop()
 {
 	BlackboardComponent->SetValueAsInt(StateKeyName, 4);
+}
+
+void ABaseAIController::SetStun(float StunDuration)
+{
+	if (!BlackboardComponent) return;
+
+	int32 CurrentState = BlackboardComponent->GetValueAsInt(StateKeyName);
+	if (CurrentState != 1) //추격때만
+	{
+		return;
+	}
+
+	PreviousState = CurrentState;
+
+	BlackboardComponent->SetValueAsInt(StateKeyName, 4);
+
+	StopMovement();
+
+	if (ACharacter* MyCharacter = Cast<ACharacter>(GetPawn()))
+	{
+		UCharacterMovementComponent* MovementComp = MyCharacter->GetCharacterMovement();
+		if (MovementComp)
+		{
+			MovementComp->StopMovementImmediately();
+		}
+	}
+
+	GetWorld()->GetTimerManager().SetTimer(
+		StunRecoveryTimer,
+		this,
+		&ABaseAIController::RecoverFromStun,
+		StunDuration,
+		false
+	);
+}
+
+void ABaseAIController::RecoverFromStun()
+{
+	if (!BlackboardComponent) return;
+
+	BlackboardComponent->SetValueAsInt(StateKeyName, PreviousState);
+
+	AActor* Target = Cast<AActor>(BlackboardComponent->GetValueAsObject(TargetActorKeyName));
+	if (Target)
+	{
+		SetChasing(Target);
+	}
+	else
+	{
+		SetPatrolling();
+	}
 }

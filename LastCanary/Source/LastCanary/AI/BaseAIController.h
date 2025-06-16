@@ -25,10 +25,20 @@ public:
     UFUNCTION(BlueprintCallable, Category = "AI")
     void SetAttacking();
     UFUNCTION(BlueprintCallable, Category = "AI")
-    void SetDeath();
+    void SetStop();
+
+    UFUNCTION(BlueprintCallable, Category = "AI")
+    void SetStun(float StunDuration = 0.1f);//경직 시간
+
+    UFUNCTION()
+    void RecoverFromStun();
 
 private:
     FTimerHandle DissolveTimerHandle;
+
+    FTimerHandle StunRecoveryTimer;
+
+    int32 PreviousState = 0;
 
 protected:
     virtual void BeginPlay() override;

@@ -90,12 +90,28 @@ float ABaseMonsterCharacter::TakeDamage(float DamageAmount, struct FDamageEvent 
 
         MulticastAIDeath();
 
+        // 🔥 델리게이트 발사! (죽을 때)
+        if (OnMonsterDeath.IsBound())
+        {
+            OnMonsterDeath.Broadcast(this);
+        }
+
         if (HasAuthority())
         {
             GetWorldTimerManager().SetTimer(DeathTimerHandle, this,
                 &ABaseMonsterCharacter::DestroyActor, 1.9f, false);
         }
     }
+
+    else//if 랑 순서 바꾸기 (이건 더 많이 체크해야하니까)
+    {
+        if (ABaseAIController* AIController = Cast<ABaseAIController>(GetController()))
+        {
+            AIController->SetStun(0.1f);//경직 시간
+            //피격 사운드 넣기
+        }
+    }
+
     return DamageApplied;
 }
 
@@ -132,7 +148,7 @@ void ABaseMonsterCharacter::StopAllCurrentActions()
     if (ABaseAIController* AIController = Cast<ABaseAIController>(GetController()))
     {
         AIController->StopMovement();//이동 중지
-        AIController->SetDeath();
+        AIController->SetStop();
     }
 
     GetCharacterMovement()->StopMovementImmediately();//이동(관성) 즉시 중지, 물리적인거라 StopMovement랑 다르다고 함
