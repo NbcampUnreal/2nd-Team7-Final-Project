@@ -94,22 +94,31 @@ void ABasePlayerController::SetupInputComponent()
 	//InitInputComponent();
 }
 
+void ABasePlayerController::PlayerExitActivePlayOnDeath()
+{
+	Client_OnPlayerExitActivePlay();
+	APawn* MyPawn = GetPawn();
+	if (IsValid(MyPawn))
+	{
+		SpectatorSpawnLocation = MyPawn->GetActorLocation();
+		SpectatorSpawnRotation = MyPawn->GetActorRotation();
+	}
+	SpawnSpectatablePawn();
+
+}
+
 void ABasePlayerController::OnExitGate()
 {
 	if (!IsValid(CurrentPossessedPawn))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in OnExitGate"));
 		return;
 	}
-
 	if (HasAuthority())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("OnExitGate : is on Server"));
 		HandleExitGate(); // 서버 전용 로직 실행
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("OnExitGate : is on Client"));
 		Server_OnExitGate(); // 클라에서는 서버 RPC만 호출
 	}
 }
@@ -135,23 +144,29 @@ void ABasePlayerController::HandleExitGate()
 	PlayerCharacter->EscapeThroughGate();
 }
 
-void ABasePlayerController::OnPlayerExitActivePlay()
+void ABasePlayerController::PlayerExitActivePlayOnEscapeGate()
 {
-	// 일정 시간 후 Pawn 제거
+	LOG_Char_WARNING(TEXT("PlayerExitActivePlayOnEscapeGate"));
+	Client_OnPlayerExitActivePlay();
 	APawn* MyPawn = GetPawn();
 	if (IsValid(MyPawn))
 	{
 		SpectatorSpawnLocation = MyPawn->GetActorLocation();
 		SpectatorSpawnRotation = MyPawn->GetActorRotation();
 	}
-
-	Client_OnPlayerExitActivePlay();
-
 	SpawnSpectatablePawn();
+
+	// 일정 시간 후 Pawn 제거
+	if (IsValid(MyPawn))
+	{
+		//MyPawn->DetachFromControllerPendingDestroy();
+		MyPawn->Destroy();
+	}
 }
 
 void ABasePlayerController::Client_OnPlayerExitActivePlay_Implementation()
 {
+	LOG_Char_WARNING(TEXT("Client_OnPlayerExitActivePlay_Implementation"));
 	if (!IsValid(CurrentPossessedPawn))
 	{
 		return;
@@ -180,8 +195,11 @@ void ABasePlayerController::Client_OnPlayerExitActivePlay_Implementation()
 
 void ABasePlayerController::SpawnSpectatablePawn()
 {
+	LOG_Char_WARNING(TEXT("SpawnSpectatablePawn"));
+
 	if (HasAuthority()) // 서버만 스폰 가능
 	{
+		LOG_Char_WARNING(TEXT("SpawnSpectatablePawn"));
 		FActorSpawnParameters Params;
 		Params.Owner = this;
 		ABaseSpectatorPawn* Spectator = GetWorld()->SpawnActor<ABaseSpectatorPawn>(SpectatorClass, SpectatorSpawnLocation, SpectatorSpawnRotation, Params);
@@ -193,12 +211,6 @@ void ABasePlayerController::SpawnSpectatablePawn()
 		CurrentPossessedPawn = SpawnedSpectatorPawn;
 		SpawnedSpectatorPawn->SetOwner(this);
 		//클라이언트에서 해야할 것.
-		APawn* MyPawn = GetPawn();
-		if (MyPawn)
-		{
-			MyPawn->DetachFromControllerPendingDestroy();
-			MyPawn->SetLifeSpan(5.f); // 또는 Custom Fade Out
-		}
 		OnUnPossess();
 		Possess(Spectator);
 		Client_StartSpectation();
@@ -780,6 +792,8 @@ void ABasePlayerController::SpectateNextPlayer()
 	int32 PlayerListLength = PlayerList.Num();
 	if (PlayerListLength <= 0)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("살아있는 플레이어가 0보다 작거나 같다."));
+
 		return;
 	}
 
@@ -820,9 +834,10 @@ void ABasePlayerController::SpectateNextPlayer()
 
 TArray<ABasePlayerState*> ABasePlayerController::GetPlayerArray()
 {
-	ALCGameState* GameState = GetWorld()->GetGameState<ALCGameState>();
+	AGameStateBase* GameState = GetWorld()->GetGameState<AGameStateBase>();
 	if (!IsValid(GameState))
 	{
+		LOG_Char_WARNING(TEXT("GameState is Not Valid"));
 		return SpectatorTargets;
 	}
 
@@ -832,9 +847,23 @@ TArray<ABasePlayerState*> ABasePlayerController::GetPlayerArray()
 		for (APlayerState* PS : GameState->PlayerArray)
 		{
 			ABasePlayerState* MyPS = Cast<ABasePlayerState>(PS);
-			if (MyPS && MyPS->InGameState != EPlayerInGameStatus::Spectating)  // 실제 게임 진행 중인 플레이어 관전
+			if (MyPS)
 			{
-				SpectatorTargets.Add(MyPS);
+				UE_LOG(LogTemp, Log, TEXT("Checking PlayerState: %s | InGameState: %d"), *MyPS->GetPlayerName(), (int32)MyPS->InGameState);
+
+				if (MyPS->InGameState != EPlayerInGameStatus::Spectating)
+				{
+					UE_LOG(LogTemp, Log, TEXT("→ Added to SpectatorTargets: %s"), *MyPS->GetPlayerName());
+					SpectatorTargets.Add(MyPS);
+				}
+				else
+				{
+					UE_LOG(LogTemp, Log, TEXT("→ Skipped (Spectating): %s"), *MyPS->GetPlayerName());
+				}
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Failed to cast PlayerState to ABasePlayerState"));
 			}
 		}
 		return SpectatorTargets;
@@ -1154,6 +1183,11 @@ void ABasePlayerController::SetSprintingStateToPlayerState(bool flag)
 
 void ABasePlayerController::Input_DroneExit(const FInputActionValue& ActionValue)
 {
+	if (!IsValid(SpanwedPlayerCharacter))
+	{
+		return;
+	}
+	SpanwedPlayerCharacter->StopTrackingDrone();
 	if (!IsValid(CurrentPossessedPawn))
 	{
 		return;
@@ -1179,7 +1213,7 @@ void ABasePlayerController::Input_DroneExit(const FInputActionValue& ActionValue
 	{
 		return;
 	}
-	PlayerCharacter->StopTrackingDrone();
+	//PlayerCharacter->StopTrackingDrone();
 	PlayerCharacter->Server_UnPossessDrone();
 	if (IsLocalController())
 	{
