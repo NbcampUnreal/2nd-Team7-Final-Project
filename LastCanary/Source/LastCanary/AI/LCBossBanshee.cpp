@@ -141,6 +141,8 @@ void ALCBossBanshee::EndBerserk()
 
     UE_LOG(LogTemp, Warning, TEXT("[Banshee] Berserk 종료"));
 
+
+
     // 종료 시 후처리가 필요하다면 여기에
 }
 

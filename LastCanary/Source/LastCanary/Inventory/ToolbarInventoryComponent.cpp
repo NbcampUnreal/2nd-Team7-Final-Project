@@ -588,7 +588,17 @@ void UToolbarInventoryComponent::SetupEquippedItem(UChildActorComponent* ItemCom
     EquippedItem->ItemRowName = SlotData->ItemRowName;
     EquippedItem->Quantity = SlotData->Quantity;
     EquippedItem->Durability = SlotData->Durability;
-    EquippedItem->SetActorEnableCollision(false);
+    // 상위 콜리전 설정이라서 개별 설정을 하더라도 해당 설정을 우선함
+    // EquippedItem->SetActorEnableCollision(false);
+
+    if (UStaticMeshComponent* StaticMesh = EquippedItem->FindComponentByClass<UStaticMeshComponent>())
+    {
+        StaticMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    }
+    if (USkeletalMeshComponent* SkeletalMesh = EquippedItem->FindComponentByClass<USkeletalMeshComponent>())
+    {
+        SkeletalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    }
 
     EquippedItem->ApplyItemDataFromTable();
 

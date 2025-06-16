@@ -135,7 +135,7 @@ protected:
 
     /** --- Rage --- */
 
-    UPROPERTY(EditDefaultsOnly, Category = "Banshee|Rage")
+    UPROPERTY(EditAnywhere, Category = "Banshee|Rage")
     float MaxRage = 100.f;
 
     UPROPERTY(EditDefaultsOnly, Category = "Banshee|Rage")
