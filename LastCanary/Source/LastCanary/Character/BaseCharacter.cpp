@@ -2482,6 +2482,10 @@ bool ABaseCharacter::UseEquippedItem(float ActionValue)
 	else
 	{
 		bIsUsingItem = false;
+		if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.WalkieTalkie")))
+		{
+			EquippedItem->UseItem();
+		}
 		AGunBase* Rifle = Cast<AGunBase>(EquippedItem);
 		if (!IsValid(Rifle))
 		{
