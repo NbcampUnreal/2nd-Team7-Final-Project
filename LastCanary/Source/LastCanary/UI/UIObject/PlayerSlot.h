@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "DataType/SessionPlayerInfo.h"
-#include "Blueprint/UserWidget.h"
+#include "UI/LCUserWidgetBase.h"
 #include "PlayerSlot.generated.h"
 
 class UTextBlock;
@@ -10,7 +10,7 @@ class UButton;
 class USlider;
 
 UCLASS()
-class LASTCANARY_API UPlayerSlot : public UUserWidget
+class LASTCANARY_API UPlayerSlot : public ULCUserWidgetBase
 {
 	GENERATED_BODY()
 

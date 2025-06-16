@@ -10,6 +10,9 @@
 #include "Character/BasePlayerState.h"
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "Inventory/BackpackInventoryComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "EnhancedInputSubsystems.h"
+#include "EnhancedActionKeyMapping.h"
 
 #include "Net/UnrealNetwork.h"
 
@@ -93,8 +96,8 @@ void ALCGateActor::ReturnToBaseCamp(APlayerController* Controller)
 		return;
 	}
 
-	PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetToolbarInventoryComponent()->GetInventoryItemIDs());
-	PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetToolbarInventoryComponent()->GetAllBackpackItemIDs());
+	//PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetToolbarInventoryComponent()->GetInventoryItemIDs());
+	//PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetToolbarInventoryComponent()->GetAllBackpackItemIDs());
 	if (!HasAuthority()) // 서버에서만 처리
 	{
 		LOG_Frame_WARNING(TEXT("서버가 아님"));
@@ -160,14 +163,14 @@ void ALCGateActor::IntoGameLevel(APlayerController* Controller)
 	{
 		return;
 	}
-	if (ALCRoomPlayerController* RoomPC = Cast<ALCRoomPlayerController>(Controller))
-	{
-		if (ABasePlayerState* PlayerState = RoomPC->GetPlayerState<ABasePlayerState>())
-		{
-			ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(RoomPC->GetPawn());
-			PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetToolbarInventoryComponent()->GetInventoryItemIDs());
-		}
-	}
+	//if (ALCRoomPlayerController* RoomPC = Cast<ALCRoomPlayerController>(Controller))
+	//{
+	//	if (ABasePlayerState* PlayerState = RoomPC->GetPlayerState<ABasePlayerState>())
+	//	{
+	//		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(RoomPC->GetPawn());
+	//		PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetToolbarInventoryComponent()->GetInventoryItemIDs());
+	//	}
+	//}
 
 	if (HasAuthority() == false)
 	{
@@ -244,20 +247,26 @@ void ALCGateActor::IntoGameLevel(APlayerController* Controller)
 
 }
 
-
 FString ALCGateActor::GetInteractMessage_Implementation() const
 {
+	if (IA_Interact == nullptr)
+	{
+		return TEXT("No Interact Key Assigned");
+	}
+
+	FString InteractKeyName = GetCurrentKeyNameForAction(IA_Interact);
+
 	switch (TravelType)
 	{
 	case EGateTravelType::ToBaseCamp:
 	{
-		return TEXT("Press [F] to Use Gate");
+		return FString::Printf(TEXT("Press [%s] to Use Gate"), *InteractKeyName);
 	}
 	case EGateTravelType::ToInGame:
 	{
 		if (HasAuthority())
 		{
-			return TEXT("Press [F] to Explore Gate");
+			return FString::Printf(TEXT("Press [%s] to Use Gate"), *InteractKeyName);
 		}
 		else
 		{
@@ -269,6 +278,37 @@ FString ALCGateActor::GetInteractMessage_Implementation() const
 		return TEXT("Unknown Gate Type");
 	}
 	}
+}
+
+FString ALCGateActor::GetCurrentKeyNameForAction(UInputAction* InputAction) const
+{
+	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+	if (!IsValid(PC))
+	{
+		return TEXT("Invalid");
+	}
+
+	ULocalPlayer* LocalPlayer = PC->GetLocalPlayer();
+	if (!IsValid(LocalPlayer))
+	{
+		return TEXT("Invalid");
+	}
+
+	UEnhancedInputLocalPlayerSubsystem* Subsystem = LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
+	if (!IsValid(Subsystem))
+	{
+		return TEXT("Invalid");
+	}
+	const TArray<FEnhancedActionKeyMapping> Mappings = Subsystem->GetAllPlayerMappableActionKeyMappings();
+
+	for (const FEnhancedActionKeyMapping& Mapping : Mappings)
+	{
+		if (Mapping.Action == InputAction)
+		{
+			return Mapping.Key.GetDisplayName().ToString();
+		}
+	}
+	return TEXT("Unbound");
 }
 
 void ALCGateActor::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

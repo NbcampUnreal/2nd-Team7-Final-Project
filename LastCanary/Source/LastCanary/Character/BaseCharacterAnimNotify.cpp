@@ -15,7 +15,10 @@ void UBaseCharacterAnimNotify::Notify(USkeletalMeshComponent* MeshComp, UAnimSeq
             // 캐릭터가 가지고 있는 TargetActor 사용해서 함수 호출
             if (Player->InteractTargetActor)
             {
-                Player->OnNotified();
+                if (Player->IsLocallyControlled())
+                {
+                    Player->OnNotified();
+                }
             }
             else
             {

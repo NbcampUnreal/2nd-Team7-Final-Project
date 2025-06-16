@@ -50,13 +50,29 @@ void ALCPlayerController::Client_UpdatePlayerList_Implementation(const TArray<FS
 
 void ALCPlayerController::Client_ShowLoading_Implementation()
 {
-    LCUIManager->ShowLoadingLevel();
+    if (LCUIManager)
+    {
+        LCUIManager->ShowLoadingLevel();
+    }
 }
 
+
+void ALCPlayerController::Client_HideLoading_Implementation()
+{
+    if (LCUIManager)
+    {
+        LCUIManager->HideLoadingLevel();
+    }
+}
 
 void ALCPlayerController::Client_ReceiveMessageFromGM_Implementation(const FString& Message)
 {
     LOG_Server_WARNING(TEXT("%s"), *Message);
+	if (LCUIManager)
+	{
+		LCUIManager->ShowPopupNotice(FText::FromString(Message));
+	}
+
 }
 
 void ALCPlayerController::ClientReturnToMainMenuWithTextReason_Implementation(const FText& ReturnReason)

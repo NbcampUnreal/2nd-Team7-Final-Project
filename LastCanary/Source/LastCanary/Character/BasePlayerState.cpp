@@ -29,6 +29,11 @@ void ABasePlayerState::BeginPlay()
 	}
 	UpdateHPUI();
 	UpdateStaminaUI();
+
+	if (ABaseCharacter* MyCharacter = Cast<ABaseCharacter>(GetPawn()))
+	{
+		MyCharacter->SetMovementSetting();
+	}
 }
 
 void ABasePlayerState::SetInGameStatus(EPlayerInGameStatus Status)

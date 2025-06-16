@@ -1,5 +1,6 @@
 #include "Item/EquipmentItem/GunBase.h"
 #include "Item/ItemBase.h"
+#include "Item/ShellEjectionComponent.h"
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "Character/BaseCharacter.h"
 #include "Kismet/GameplayStatics.h"
@@ -26,9 +27,16 @@ AGunBase::AGunBase()
     MuzzleLocation->SetupAttachment(RootComponent);
     MuzzleLocation->SetRelativeLocation(FVector(0, 50, 10));
 
+    ScopeComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ScopeComponent"));
+    ScopeComponent->SetupAttachment(GetSkeletalMeshComponent());
+    ScopeComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    ScopeComponent->SetVisibility(false);
+
     bDrawDebugLine = true;
     bDrawImpactDebug = true;
     DebugDrawDuration = 10.0f;
+
+    ShellEjectionComponent = CreateDefaultSubobject<UShellEjectionComponent>(TEXT("ShellEjectionComponent"));
 }
 
 void AGunBase::UseItem()
@@ -329,6 +337,12 @@ void AGunBase::Multicast_PlayFireEffects_Implementation()
         }
     }
 
+    // 탄피 배출
+    if (ShellEjectionComponent)
+    {
+        ShellEjectionComponent->EjectShell();
+    }
+
     // 플레이어 카메라 흔들림 등 추가 이펙트 (옵션)
     APawn* OwnerPawn = Cast<APawn>(GetOwner());
     if (OwnerPawn && OwnerPawn->IsLocallyControlled())
@@ -353,11 +367,6 @@ void AGunBase::Multicast_PlayFireAnimation_Implementation()
     if (GunData.FireAnimation)
     {
         PlayGunAnimation(GunData.FireAnimation);
-        LOG_Item_WARNING(TEXT("Playing fire animation: %s"), *GunData.FireAnimation->GetName());
-    }
-    else
-    {
-        LOG_Item_WARNING(TEXT("No fire animation assigned"));
     }
 }
 
@@ -531,6 +540,15 @@ void AGunBase::ApplyGunDataFromDataTable()
         return;
     }
 
+    if (GunData.AnimationBlueprint && SkeletalMeshComponent)
+    {
+        SkeletalMeshComponent->SetAnimInstanceClass(GunData.AnimationBlueprint);
+    }
+    else
+    {
+        LOG_Item_WARNING(TEXT("[GunBase::ApplyGunDataFromDataTable] AnimationBlueprint 없음"));
+    }
+
     // 총기 데이터 적용
     GunData = *RowData;
 
@@ -555,6 +573,14 @@ void AGunBase::ApplyGunDataFromDataTable()
     FireSound = GunData.FireSound;
     EmptySound = GunData.EmptySound;
     ImpactSound = GunData.ImpactSound;
+
+    // 탄피 이펙트 설정
+    if (ShellEjectionComponent && GunData.ShellEjectEffect)
+    {
+        ShellEjectionComponent->SetShellParticleSystem(GunData.ShellEjectEffect);
+    }
+
+    ApplyAttachmentsFromDataTable();
 }
 
 void AGunBase::UpdateAmmoState()
@@ -594,7 +620,6 @@ bool AGunBase::Reload()
         return false;
     }
 
-    Multicast_PlayReloadAnimation();
     Durability = MaxAmmo;
     UpdateAmmoState();
     OnItemStateChanged.Broadcast();
@@ -854,4 +879,93 @@ void AGunBase::EnsureGunDataLoaded()
     {
         LOG_Item_WARNING(TEXT("[EnsureGunDataLoaded] 데이터 로드 실패"));
     }
+}
+
+void AGunBase::ApplyAttachmentsFromDataTable()
+{
+    // 스코프 부착 처리
+    if (GunData.ScopeMesh)
+    {
+        AttachScope(GunData.ScopeMesh, GunData.ScopeSocketName);
+        LOG_Item_WARNING(TEXT("[ApplyAttachmentsFromDataTable] 스코프 부착: %s"),
+            *GunData.ScopeMesh->GetName());
+    }
+    else
+    {
+        DetachScope();
+        LOG_Item_WARNING(TEXT("[ApplyAttachmentsFromDataTable] 스코프 없음"));
+    }
+}
+
+void AGunBase::AttachScope(UStaticMesh* ScopeMesh, FName SocketName)
+{
+    if (!ScopeMesh || !ScopeComponent)
+    {
+        LOG_Item_WARNING(TEXT("[AttachScope] ScopeMesh 또는 ScopeComponent가 null"));
+        return;
+    }
+
+    USkeletalMeshComponent* GunMesh = GetSkeletalMeshComponent();
+    if (!GunMesh)
+    {
+        LOG_Item_WARNING(TEXT("[AttachScope] GunMesh가 null"));
+        return;
+    }
+
+    // 소켓 존재 확인
+    if (!GunMesh->DoesSocketExist(SocketName))
+    {
+        LOG_Item_WARNING(TEXT("[AttachScope] 소켓 '%s'이 존재하지 않음. 기본 위치에 부착"),
+            *SocketName.ToString());
+
+        // 소켓이 없으면 기본 위치에 부착
+        ScopeComponent->AttachToComponent(GunMesh,
+            FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+    }
+    else
+    {
+        // 소켓에 부착
+        ScopeComponent->AttachToComponent(GunMesh,
+            FAttachmentTransformRules::SnapToTargetNotIncludingScale, SocketName);
+    }
+
+    // 스코프 메시 설정
+    ScopeComponent->SetStaticMesh(ScopeMesh);
+
+    // 상대 위치/회전 조정 (데이터 테이블에서 설정된 값 적용)
+    //ScopeComponent->SetRelativeLocation(GunData.ScopeRelativeLocation);
+    //ScopeComponent->SetRelativeRotation(GunData.ScopeRelativeRotation);
+
+    // 스코프 표시
+    ScopeComponent->SetVisibility(true);
+
+    // 현재 부착된 스코프 저장
+    CurrentAttachedScope = ScopeMesh;
+
+    LOG_Item_WARNING(TEXT("[AttachScope] 스코프 부착 완료: %s (소켓: %s)"),
+        *ScopeMesh->GetName(), *SocketName.ToString());
+}
+
+void AGunBase::DetachScope()
+{
+    if (!ScopeComponent)
+    {
+        return;
+    }
+
+    // 스코프 숨기기
+    ScopeComponent->SetVisibility(false);
+
+    // 메시 제거
+    ScopeComponent->SetStaticMesh(nullptr);
+
+    // 현재 부착된 스코프 초기화
+    CurrentAttachedScope = nullptr;
+
+    LOG_Item_WARNING(TEXT("[DetachScope] 스코프 제거 완료"));
+}
+
+bool AGunBase::HasScopeAttached() const
+{
+    return CurrentAttachedScope != nullptr && ScopeComponent && ScopeComponent->IsVisible();
 }

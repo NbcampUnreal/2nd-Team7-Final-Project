@@ -213,6 +213,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
 	UMaterialInterface* TransparentHeadMaterial;
 
+	// MyCharacter.h
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	TArray<USkeletalMesh*> SkeletalMeshOptions;
+
+
 public:
 	void SetCameraMode(bool bIsFirstPersonView);
 
@@ -443,6 +449,16 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_PlayReload();
 	void Multicast_PlayReload_Implementation();
+
+	void StopReload();
+
+	UFUNCTION(Server, Reliable)
+	void Server_StopReload();
+	void Server_StopReload_Implementation();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_StopReload();
+	void Multicast_StopReload_Implementation();
 
 
 public:

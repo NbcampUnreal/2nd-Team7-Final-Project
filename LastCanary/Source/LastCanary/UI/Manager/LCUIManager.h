@@ -61,7 +61,7 @@ public:
 	void HidePauseMenu();
 	bool IsPauseMenuOpen() const;
 	void ShowConfirmPopup(TFunction<void()> OnConfirm, const FText& Message);
-	void ShowShopPopup();
+	void ShowShopPopup(int Gold);
 	void HideShopPopup();
 	void ShowMapSelectPopup();
 	void HideMapSelectPopup();

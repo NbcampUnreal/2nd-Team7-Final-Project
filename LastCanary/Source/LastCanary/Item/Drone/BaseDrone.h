@@ -104,7 +104,7 @@ public:
 	void Server_MoveDown_Implementation(float Value);
 	void MoveDown(const FInputActionValue& Value);
 
-	void Input_Look(const FInputActionValue& Value);
+	void Input_Look(const FInputActionValue& Value, float Sensivity);
 	UFUNCTION(Server, Reliable)
 	void Server_Look(FVector2D InputVector);
 	void Server_Look_Implementation(FVector2D InputVector);

@@ -9,6 +9,7 @@
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnItemStateChanged);
 
+class UInputAction;
 UCLASS()
 class LASTCANARY_API AItemBase : public AActor, public IInteractableInterface
 {
@@ -95,6 +96,10 @@ public:
     UPROPERTY(ReplicatedUsing = OnRepDurability, EditAnywhere, BlueprintReadWrite, Category = "Item|State")
     float Durability;
 
+    /** 데이터 테이블에서 로드된 최대 내구도 */
+    UPROPERTY(Replicated, BlueprintReadOnly, Category = "Item|State")
+    float MaxDurability = 100.0f;
+
     /** Durability가 복제될 때 호출되는 함수 */
     UFUNCTION()
     virtual void OnRepDurability();
@@ -150,10 +155,25 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Item|Initialization")
     void ApplyItemDataFromTable();
 
+    /** 인벤토리에서 아이템 제거 (공용 함수) */
+    UFUNCTION(BlueprintCallable, Category = "Item|Inventory")
+    virtual bool TryRemoveFromInventory();
+
+    /** 아이템 사용 사운드 출력 (공용 함수) */
+    UFUNCTION(BlueprintCallable, Category = "Item|Sound")
+    void PlayItemUseSound(bool bIsStart);
+protected:
+    /** 실제 사운드 재생 내부 함수 */
+    void Internal_PlaySound(USoundBase* SoundToPlay);
+
+    UFUNCTION(NetMulticast, Reliable)
+    void MulticastPlayItemUseSound(bool bIsStart);
+    void MulticastPlayItemUseSound_Implementation(bool bIsStart);
+
     //-----------------------------------------------------
     // 네트워크 & 에디터 기능
     //-----------------------------------------------------
-
+public:
     /** 리플리케이션 속성 설정 */
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
@@ -183,4 +203,11 @@ protected:
 protected:
     /** 타이머 제거를 위해 사용 */ 
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
+public:
+    UPROPERTY(EditDefaultsOnly, Category = "Input")
+    UInputAction* IA_Interact;
+
+    UFUNCTION(BlueprintCallable, Category = "Input")
+    FString GetCurrentKeyNameForAction(UInputAction * InputAction) const;
 };

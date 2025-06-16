@@ -6,6 +6,9 @@
 #include "GameFramework/PlayerState.h"
 #include "Framework/GameMode/LCGameMode.h"
 #include "Kismet/GameplayStatics.h"
+#include "UI/Manager/LCUIManager.h"
+
+#include "LastCanary.h"
 
 void UPlayerSlot::NativeConstruct()
 {
@@ -117,17 +120,33 @@ void UPlayerSlot::SetVisibleVoiceChat(const FSessionPlayerInfo& PlayerInfo)
 
 void UPlayerSlot::OnKickButtonClicked()
 {
-    UWorld* World = GetWorld();
-    if (!World) return;
+    LOG_Frame_WARNING(TEXT("On Kick Button Clicked"));
 
-    ALCGameMode* GM = World->GetAuthGameMode<ALCGameMode>();
-    if (!GM)
+    ULCUIManager* LCUIManager = ResolveUIManager();
+    if (LCUIManager)
     {
-        UE_LOG(LogTemp, Warning, TEXT("OnKickButtonClicked: ALCGameMode을(를) 찾을 수 없습니다."));
-        return;
-    }
+        const FString Message = FString::Printf(TEXT("정말로 %s를\n강퇴 하시겠습니까?"), *MySessionPlayerInfo.PlayerName);
 
-    GM->KickPlayer(MySessionPlayerInfo, FText::FromString(TEXT("호스트에 의해 강퇴되었습니다!!")));
+        // 확인 팝업을 띄우고, 예를 눌렀을 경우에만 강퇴
+        LCUIManager->ShowConfirmPopup(
+            [this]()
+            {
+                UWorld* World = GetWorld();
+                if (!World) return;
+
+                ALCGameMode* GM = World->GetAuthGameMode<ALCGameMode>();
+                if (!GM)
+                {
+                    UE_LOG(LogTemp, Warning, TEXT("OnKickButtonClicked: ALCGameMode을(를) 찾을 수 없습니다."));
+                    return;
+                }
+
+                //TODO : 타이틀 메뉴로 전환
+                GM->KickPlayer(MySessionPlayerInfo, FText::FromString(TEXT("호스트에 의해 강퇴되었습니다!!")));
+            },
+            FText::FromString(Message)
+        );
+    }
 }
 
 //
