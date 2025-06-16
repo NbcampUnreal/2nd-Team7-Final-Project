@@ -7,6 +7,7 @@
 
 class UStaticMeshComponent;
 class UWidgetComponent;
+class UInputAction;
 UCLASS()
 class LASTCANARY_API AShopInteractor : public AActor, public IInteractableInterface
 {
@@ -40,4 +41,11 @@ public:
 	virtual FString GetInteractMessage_Implementation() const override;
 
 	UWidgetComponent* GetShopWidgetComponent() const;
+
+public:
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	UInputAction* IA_Interact;
+
+	UFUNCTION(BlueprintCallable, Category = "Input")
+	FString GetCurrentKeyNameForAction(UInputAction* InputAction) const;
 };

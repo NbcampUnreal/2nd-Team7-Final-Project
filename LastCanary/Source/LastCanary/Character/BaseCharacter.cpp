@@ -156,6 +156,9 @@ void ABaseCharacter::BeginPlay()
 		// 블렌드 웨이트 1.0으로 보정 적용 보장
 		CustomPostProcessComponent->BlendWeight = 1.0f;
 	}
+	LOG_Char_WARNING(TEXT("플레이어 비긴플레이"));
+
+	SetMovementSetting();
 }
 
 float ABaseCharacter::GetBrightness()
@@ -214,11 +217,12 @@ void ABaseCharacter::NotifyControllerChanged()
 		PC->SetInputMode(FInputModeGameOnly());
 		PC->bShowMouseCursor = false;
 
+		UE_LOG(LogTemp, Log, TEXT("SetMovementSetting notify controller Change"));
 
 		ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 		if (IsValid(MyPlayerState))
 		{
-			SetMovementSetting();
+			//SetMovementSetting();
 			UE_LOG(LogTemp, Warning, TEXT("플레이어 무브먼트 세팅 초기화 성공"));
 		}
 		else
@@ -2019,15 +2023,18 @@ EPlayerInGameStatus ABaseCharacter::CheckPlayerCurrentState()
 
 void ABaseCharacter::Client_SetMovementSetting_Implementation()
 {
+	LOG_Char_WARNING(TEXT("SetMovementSetting 클라이언트에서"));
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
 	{
+		LOG_Char_WARNING(TEXT("SetMovementSetting 클라이언트에서 스테이트 없음"));
 		return;
 	}
 
 	TArray<float> CalculatedSpeedArray = CalculateMovementSpeedWithWeigth();
 	if (CalculatedSpeedArray.Num() < 5)
 	{
+		LOG_Char_WARNING(TEXT("SetMovementSetting 클라이언트에서 스피드 배열도 이상함"));
 		return;
 	}
 
@@ -2041,24 +2048,29 @@ void ABaseCharacter::Client_SetMovementSetting_Implementation()
 
 	AlsCharacterMovement->SetGaitSettings(CalculatedSpeedArray[0], CalculatedSpeedArray[0], CalculatedSpeedArray[1], CalculatedSpeedArray[1], CalculatedSpeedArray[2], CalculatedSpeedArray[3]);
 	AlsCharacterMovement->JumpZVelocity = CalculatedSpeedArray[4];
+	LOG_Char_WARNING(TEXT("SetMovementSetting 클라이언트에서 설정 완료"));
 }
 
 void ABaseCharacter::SetMovementSetting()
 {
+	LOG_Char_WARNING(TEXT("SetMovementSetting()"));
 	if (HasAuthority())
 	{
 		Client_SetMovementSetting();
+		return;
 	}
-
+	LOG_Char_WARNING(TEXT("SetMovementSetting() On Server"));
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
 	{
+		LOG_Char_WARNING(TEXT("서버에서 플레이어 스테이트 못찾음"));
 		return;
 	}
 
 	TArray<float> CalculatedSpeedArray = CalculateMovementSpeedWithWeigth();
 	if (CalculatedSpeedArray.Num() < 5)
 	{
+		LOG_Char_WARNING(TEXT("스피드 배열 크기가 이상홤"));
 		return;
 	}
 
@@ -2071,11 +2083,12 @@ void ABaseCharacter::SetMovementSetting()
 
 	AlsCharacterMovement->SetGaitSettings(CalculatedSpeedArray[0], CalculatedSpeedArray[0], CalculatedSpeedArray[1], CalculatedSpeedArray[1], CalculatedSpeedArray[2], CalculatedSpeedArray[3]);
 	AlsCharacterMovement->JumpZVelocity = CalculatedSpeedArray[4];
-
+	LOG_Char_WARNING(TEXT("SetMovementSetting 서버에서 설정 완료"));
 }
 
 TArray<float> ABaseCharacter::CalculateMovementSpeedWithWeigth()
 {
+	LOG_Char_WARNING(TEXT("스피드 배열 크기 보는 중"));
 	TArray<float> Calculated;
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
@@ -2094,6 +2107,7 @@ TArray<float> ABaseCharacter::CalculateMovementSpeedWithWeigth()
 	Calculated.Add(CalculatedSprintSpeed);
 	Calculated.Add(CalculatedCrouchSpeed);
 	Calculated.Add(CalculatedJumpZVelocity);
+	LOG_Char_WARNING(TEXT("계산한 속도 값 리턴"));	
 	return Calculated;
 }
 

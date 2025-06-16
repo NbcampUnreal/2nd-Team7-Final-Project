@@ -10,6 +10,9 @@
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Framework/GameInstance/LCGameManager.h"
 
+#include "EnhancedInputSubsystems.h"
+#include "EnhancedActionKeyMapping.h"
+
 #include "LastCanary.h"
 
 AShopInteractor::AShopInteractor()
@@ -93,7 +96,45 @@ void AShopInteractor::Interact_Implementation(APlayerController* InteractingPlay
 
 FString AShopInteractor::GetInteractMessage_Implementation() const
 {
-	return TEXT("Press [F] to Visit Shop");
+	if (IA_Interact == nullptr)
+	{
+		return TEXT("No Interact Key Assigned");
+	}
+
+	FString InteractKeyName = GetCurrentKeyNameForAction(IA_Interact);
+
+	return FString::Printf(TEXT("Press [%s] to Visit Shop"), *InteractKeyName);
+}
+
+FString AShopInteractor::GetCurrentKeyNameForAction(UInputAction* InputAction) const
+{
+	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+	if (!IsValid(PC))
+	{
+		return TEXT("Invalid");
+	}
+
+	ULocalPlayer* LocalPlayer = PC->GetLocalPlayer();
+	if (!IsValid(LocalPlayer))
+	{
+		return TEXT("Invalid");
+	}
+
+	UEnhancedInputLocalPlayerSubsystem* Subsystem = LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
+	if (!IsValid(Subsystem))
+	{
+		return TEXT("Invalid");
+	}
+	const TArray<FEnhancedActionKeyMapping> Mappings = Subsystem->GetAllPlayerMappableActionKeyMappings();
+
+	for (const FEnhancedActionKeyMapping& Mapping : Mappings)
+	{
+		if (Mapping.Action == InputAction)
+		{
+			return Mapping.Key.GetDisplayName().ToString();
+		}
+	}
+	return TEXT("Unbound");
 }
 
 UWidgetComponent* AShopInteractor::GetShopWidgetComponent() const
