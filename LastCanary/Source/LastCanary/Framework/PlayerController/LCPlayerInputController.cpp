@@ -8,6 +8,15 @@
 void ALCPlayerInputController::BeginPlay()
 {
 	Super::BeginPlay();
+	auto* InputSubsystem{ ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()) };
+	if (IsValid(InputSubsystem))
+	{
+		FModifyContextOptions Options;
+		Options.bNotifyUserSettings = true;
+
+		InputSubsystem->AddMappingContext(InputMappingContext, 0, Options);
+
+	}
 	//InitInputComponent();
 }
 

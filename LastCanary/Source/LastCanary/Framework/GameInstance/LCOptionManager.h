@@ -4,6 +4,7 @@
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Sound/SoundMix.h"
 #include "Sound/SoundClass.h"
+#include "UI/UIObject/VoiceOptionWidget.h"
 #include "LCOptionManager.generated.h"
 
 /**
@@ -53,6 +54,8 @@ public:
 	float MyMicVolume = 0.5f;
 	UPROPERTY(BlueprintReadWrite, Category = "Option")
 	float VoiceVolume = 0.5f;
+	UPROPERTY(BlueprintReadWrite, Category = "Option")
+	EVoiceInputMode VoiceInputMode = EVoiceInputMode::Toggle;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Option")
 	float MouseSensitivity = 0.5f;
