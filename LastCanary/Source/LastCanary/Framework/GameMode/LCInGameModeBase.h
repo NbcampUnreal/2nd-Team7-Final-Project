@@ -22,16 +22,15 @@ public:
 	virtual void HandleSeamlessTravelPlayer(AController*& C) override;
 	virtual void StartPlay() override;
 	virtual void BeginPlay() override;
-	
+
 	virtual void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
 
+	virtual void Logout(AController* Exiting) override;
+
+protected:
 	// InGameMode Start Game
 	void OnAllPlayersJoined();
-
 	virtual void StartGame();
-
-	//virtual void Logout(AController* Exiting) override;
-
 
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Checklist")
@@ -42,7 +41,7 @@ public:
 	AChecklistManager* ChecklistManager;
 
 private:
-	void InitPlayerAliveCount();
+	void InitPlayerAliveCount(int PlayerCount);
 	void CreateCheckListManager();
 	void ShowGameLevelInfo();
 };

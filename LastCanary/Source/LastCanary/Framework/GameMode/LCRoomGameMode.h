@@ -23,19 +23,11 @@ public:
 
 	void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
 
-	void StartGame();
-
 public:
 	void UpdatePlayers() override;
 
 private:
+	//void StartGame();
 	void HandleBaseCampDoors();
 
-//protected:
-//	UPROPERTY(EditDefaultsOnly, Category = "Checklist")
-//	TSoftClassPtr<AActor> ChecklistManagerClass;
-//
-//public:
-//	UPROPERTY()
-//	AChecklistManager* ChecklistManager;
 };

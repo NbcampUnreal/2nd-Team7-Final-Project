@@ -2,7 +2,6 @@
 
 #include "Framework/GameInstance/LCGameManager.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
-#include "Framework/GameInstance/LCGameManager.h"
 
 #include "Framework/GameState/LCGameState.h"
 #include "Framework/PlayerState/LCPlayerState.h"
@@ -96,34 +95,28 @@ void ALCInGameModeBase::StartGame()
 
 	LCGM->StartGame();
 
-	InitPlayerAliveCount();
+	InitPlayerAliveCount(LCGM->GetPlayerCount());
 
-	ShowGameLevelInfo();
+	//ShowGameLevelInfo();
 
 }
 
-//void ALCInGameModeBase::Logout(AController* Exiting)
-//{
-//	Super::Logout(Exiting);
-//
-//}
+void ALCInGameModeBase::Logout(AController* Exiting)
+{
+	Super::Logout(Exiting);
 
-void ALCInGameModeBase::InitPlayerAliveCount()
+	if (ALCGameState* LCGameState = GetGameState<ALCGameState>())
+	{
+		LCGameState->RemoveAlivePlayer();
+	}
+}
+
+void ALCInGameModeBase::InitPlayerAliveCount(int PlayerCount)
 {
 	// 생존자 수 초기화
 	if (ALCGameState* LCGameState = GetGameState<ALCGameState>())
 	{
-		int32 InitialAliveCount = 0;
-
-		for (APlayerState* PlayerState : LCGameState->PlayerArray)
-		{
-			if (IsValid(PlayerState) && !PlayerState->IsOnlyASpectator())
-			{
-				++InitialAliveCount;
-			}
-		}
-
-		LCGameState->AlivePlayerCount = InitialAliveCount;
+		LCGameState->AlivePlayerCount = PlayerCount;
 	}
 }
 
