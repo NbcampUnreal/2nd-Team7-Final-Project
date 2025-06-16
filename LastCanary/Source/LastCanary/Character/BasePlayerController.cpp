@@ -15,6 +15,7 @@
 #include "Inventory/ToolbarInventoryComponent.h"
 
 #include "SaveGame/LCLocalPlayerSaveGame.h"
+#include "LastCanary.h"
 
 void ABasePlayerController::BeginPlay()
 {
@@ -1103,8 +1104,9 @@ AActor* ABasePlayerController::TraceInteractable(float TraceDistance)
 		Hit, Start, End, ECC_GameTraceChannel1, Params);
 
 	// 디버그용
+#if WITH_EDITOR
 	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 1.0f);
-
+#endif
 	return bHit ? Hit.GetActor() : nullptr;
 }
 
@@ -1208,16 +1210,13 @@ void ABasePlayerController::SpawnDrone()
 
 void ABasePlayerController::Server_SpawnDrone_Implementation()
 {
-
-	UE_LOG(LogTemp, Warning, TEXT("서버에서 드론 스폰시키기"));
 	if (!IsValid(CurrentPossessedPawn))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("!IsValid(CurrentPossessedPawn)"));
+		LOG_Char_WARNING(TEXT("CurrentPossessedPawn Is Not Valid"));
 		return;
 	}
 	if (!(CurrentPossessedPawn->IsA<ABaseCharacter>()))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("if (!(CurrentPossessedPawn->IsA<ABaseCharacter>()))"));
 		return;
 	}
 	
@@ -1243,11 +1242,10 @@ void ABasePlayerController::Server_SpawnDrone_Implementation()
 	Params.TransformScaleMethod = ESpawnActorScaleMethod::OverrideRootScale;
 	Params.Owner = this;
 	// ABasedrone 포인터로 받아서 타입 안전하게 캐스팅
-	UE_LOG(LogTemp, Warning, TEXT("이 시점에 월드에 스폰"));
 	ABaseDrone* Drone = GetWorld()->SpawnActor<ABaseDrone>(DroneClass, Location, Rotation, Params);
 	if (!IsValid(Drone))
 	{
-		UE_LOG(LogTemp, Warning, TEXT(" 소환한 드론이 유효하지 않음"));
+		LOG_Char_WARNING(TEXT("소환한 드론이 유효하지 않음"));
 	}
 	SpawnedPlayerDrone = Drone;
 	SpawnedPlayerDrone->SetOwner(this);	
@@ -1266,11 +1264,10 @@ void ABasePlayerController::OnRep_SpawnedPlayerDrone()
 {
 	if (!IsValid(SpawnedPlayerDrone))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("SpawnedPlayerDrone is invalid on client!"));
+		LOG_Char_WARNING(TEXT("SpawnedPlayerDrone is invalid on client!"));
 		return;
 	}
-
-	UE_LOG(LogTemp, Warning, TEXT("Client received replicated drone: %s"), *SpawnedPlayerDrone->GetName());
+	LOG_Char_WARNING(TEXT("Client received replicated drone: %s"), *SpawnedPlayerDrone->GetName());
 	if (IsValid(SpanwedPlayerCharacter))
 	{
 		SpanwedPlayerCharacter->ControlledDrone = SpawnedPlayerDrone;

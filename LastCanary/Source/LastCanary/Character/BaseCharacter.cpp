@@ -1469,8 +1469,9 @@ void ABaseCharacter::TraceInteractableActor()
 		bIsCloseToWall = false;
 	}
 
-
+#if WITH_EDITOR
 	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 0.1f);
+#endif
 	//여기가 로그가 안찍힘 수정해야됨
 
 	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
@@ -1587,7 +1588,9 @@ void ABaseCharacter::UpdateGunWallClipOffset(float DeltaTime)
 	bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Visibility, Params);
 
 	// 디버그 라인도 수정된 시작점 기준으로
+#if WITH_EDITOR
 	DrawDebugLine(GetWorld(), TraceStart, TraceEnd, FColor::Red, false, 0.1f);
+#endif
 	// 3. 벽과의 거리 비율 계산
 	//float WallRatio = 0.0f;
 	//if (bHit)
@@ -2375,8 +2378,7 @@ void ABaseCharacter::Server_UnequipCurrentItem_Implementation()
 bool ABaseCharacter::UseEquippedItem(float ActionValue)
 {
 	UE_LOG(LogTemp, Warning, TEXT("아이템 사용 : %f"), ActionValue);
-
-	if (bIsReloading)
+	if (bIsMantling || bIsReloading)
 	{
 		return true;
 	}
@@ -2415,7 +2417,6 @@ bool ABaseCharacter::UseEquippedItem(float ActionValue)
 			ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
 			if (PC)
 			{
-				UE_LOG(LogTemp, Warning, TEXT("드론을 스폰하겠음"));
 				PC->SpawnDrone();
 				//현재 들고 있는 인벤토리에서 제거하기
 
