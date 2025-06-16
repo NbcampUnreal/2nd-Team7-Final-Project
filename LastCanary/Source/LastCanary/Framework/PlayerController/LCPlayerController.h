@@ -3,13 +3,13 @@
 #include "CoreMinimal.h"
 #include "UI/Manager/LCUIManager.h"
 #include "DataType/SessionPlayerInfo.h"
-#include "GameFramework/PlayerController.h"
+#include "Framework/PlayerController/LCPlayerInputController.h"
 #include "LCPlayerController.generated.h"
 
 class ULCUIManager;
 
 UCLASS()
-class LASTCANARY_API ALCPlayerController : public APlayerController
+class LASTCANARY_API ALCPlayerController : public ALCPlayerInputController
 {
 	GENERATED_BODY()
 	

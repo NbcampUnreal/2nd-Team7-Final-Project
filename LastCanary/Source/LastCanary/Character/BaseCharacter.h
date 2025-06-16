@@ -211,6 +211,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
 	UMaterialInterface* TransparentHeadMaterial;
 
+	// MyCharacter.h
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	TArray<USkeletalMesh*> SkeletalMeshOptions;
+
+
 public:
 	void SetCameraMode(bool bIsFirstPersonView);
 

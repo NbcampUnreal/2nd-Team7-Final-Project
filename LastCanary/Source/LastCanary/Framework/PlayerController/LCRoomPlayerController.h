@@ -36,11 +36,10 @@ public:
 	void Server_RequestPurchase_Implementation(const TArray<FItemDropData>& DropList);
 
 protected:
-	void InitInputComponent() override;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|RoomPC", Meta = (DisplayThumbnail = false))
-	TObjectPtr<UInputAction> RoomUIAction;
-	UFUNCTION()
-	virtual void ToggleShowRoomWidget();
+	virtual void InitInputComponent() override;
+
+	//UFUNCTION()
+	virtual void ToggleShowRoomWidget() override;
 
 	bool bIsShowRoomUI = false;
 
