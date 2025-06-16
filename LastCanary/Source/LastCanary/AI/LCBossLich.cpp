@@ -64,6 +64,11 @@ void ALCBossLich::UpdateRage(float DeltaSeconds)
         // 초당 UndeadRagePerSecond × Count 만큼 Rage 증가
         AddRage(UndeadRagePerSecond * AliveCount * DeltaSeconds);
     }
+    else
+    {
+        // 소환된 언데드가 하나도 없으면 초당 UndeadRagePerSecond 만큼 Rage 감소
+        AddRage(-UndeadRagePerSecond * DeltaSeconds);
+    }
 
     // Death Nova 발동 조건
     if (!bHasUsedDeathNova && Rage >= DeathNovaThreshold)
@@ -236,6 +241,9 @@ void ALCBossLich::OnUndeadDestroyed(AActor* DestroyedActor)
 void ALCBossLich::ExecuteManaPulse()
 {
     if (!HasAuthority()) return;
+
+    UE_LOG(LogTemp, Warning, TEXT("[Lich] ExecuteManaPulse 시작: Damage=%.1f, Radius=%.1f"), ManaPulseDamage, ManaPulseRadius);
+
     FVector O = GetActorLocation();
     TArray<FHitResult> Hits;
     FCollisionShape Sphere = FCollisionShape::MakeSphere(ManaPulseRadius);
@@ -243,8 +251,13 @@ void ALCBossLich::ExecuteManaPulse()
     if (GetWorld()->SweepMultiByChannel(Hits, O, O, FQuat::Identity, ECC_Pawn, Sphere))
     {
         for (auto& H : Hits)
+        {
             if (auto C = Cast<ACharacter>(H.GetActor()))
+            {
+                UE_LOG(LogTemp, Warning, TEXT("[Lich] ManaPulse → %s 입혔습니다"), *C->GetName());
                 UGameplayStatics::ApplyDamage(C, ManaPulseDamage, GetController(), this, nullptr);
+            }
+        }
     }
 }
 
@@ -253,29 +266,29 @@ void ALCBossLich::ExecuteArcaneBolt(AActor* Target)
     if (!HasAuthority() || !Target || !ArcaneBoltClass)
         return;
 
-    // (1) 스폰 위치·회전 계산
-    FVector SpawnLoc = GetActorLocation() + GetActorForwardVector() * 100.f;
+    UE_LOG(LogTemp, Warning, TEXT("[Lich] ExecuteArcaneBolt 시작 → 대상: %s"), *Target->GetName());
+
+    // (1) 스폰 위치: 캐릭터 위치 + 전방 100 + 위로 200
+    const float VerticalOffset = 100.f;
+    const float ForwardOffset = 100.f;
+    FVector SpawnLoc = GetActorLocation()
+        + GetActorForwardVector() * ForwardOffset
+        + FVector(0.f, 0.f, VerticalOffset);
+    // (2) 회전: 그대로 타겟을 향하게
     FRotator SpawnRot = (Target->GetActorLocation() - SpawnLoc).Rotation();
     FVector Dir = SpawnRot.Vector();
 
-    // (2) 스폰 파라미터 세팅
     FActorSpawnParameters Params;
     Params.Owner = this;
     Params.Instigator = Cast<APawn>(GetController()->GetPawn());
 
-    // (3) ArcaneBoltClass 로 투사체 생성
     if (AArcaneBolt* Bolt = GetWorld()->SpawnActor<AArcaneBolt>(
         ArcaneBoltClass, SpawnLoc, SpawnRot, Params))
     {
-        // (4) 광폭화 여부에 따라 속도·데미지 보정
-        float Speed = bIsBerserk
-            ? ArcaneBoltSpeed * BerserkCooldownFactor
-            : ArcaneBoltSpeed;
-        float Damage = bIsBerserk
-            ? NormalAttackDamage * BerserkDamageFactor
-            : NormalAttackDamage;
+        float Speed = bIsBerserk ? ArcaneBoltSpeed * BerserkCooldownFactor : ArcaneBoltSpeed;
+        float Damage = bIsBerserk ? NormalAttackDamage * BerserkDamageFactor : NormalAttackDamage;
 
-        // (5) 투사체 초기화
+        UE_LOG(LogTemp, Warning, TEXT("[Lich] ArcaneBolt 스폰 → Speed=%.1f, Damage=%.1f"), Speed, Damage);
         Bolt->InitProjectile(Dir, Speed, Damage, GetController());
     }
 }
@@ -283,6 +296,9 @@ void ALCBossLich::ExecuteArcaneBolt(AActor* Target)
 void ALCBossLich::ExecuteSoulBind(AActor* Target)
 {
     if (!HasAuthority() || !Target) return;
+
+    UE_LOG(LogTemp, Warning, TEXT("[Lich] ExecuteSoulBind 시작 → 대상: %s"), *Target->GetName());
+
     if (auto C = Cast<ACharacter>(Target))
     {
         C->DisableInput(nullptr);
@@ -302,6 +318,8 @@ void ALCBossLich::ExecuteSoulAbsorb(AActor* Target)
 {
     if (!HasAuthority() || !Target) return;
 
+    UE_LOG(LogTemp, Warning, TEXT("[Lich] ExecuteSoulAbsorb 시작 → 대상: %s, Damage=%.1f"), *Target->GetName(), SoulAbsorbDamage);
+
     UGameplayStatics::ApplyDamage(Target, SoulAbsorbDamage, GetController(), this, nullptr);
 
     if (SoulAbsorbFX)
@@ -313,6 +331,9 @@ void ALCBossLich::ExecuteSoulAbsorb(AActor* Target)
 void ALCBossLich::ExecuteDeathNova()
 {
     if (!HasAuthority()) return;
+
+    UE_LOG(LogTemp, Warning, TEXT("[Lich] ExecuteDeathNova 시작 → Damage=%.1f, Radius=%.1f"), DeathNovaDamage, DeathNovaRadius);
+
     FVector O = GetActorLocation();
     TArray<FHitResult> Hits;
     FCollisionShape Sphere = FCollisionShape::MakeSphere(DeathNovaRadius);
@@ -320,8 +341,13 @@ void ALCBossLich::ExecuteDeathNova()
     if (GetWorld()->SweepMultiByChannel(Hits, O, O, FQuat::Identity, ECC_Pawn, Sphere))
     {
         for (auto& H : Hits)
+        {
             if (auto C = Cast<ACharacter>(H.GetActor()))
+            {
+                UE_LOG(LogTemp, Warning, TEXT("[Lich] DeathNova → %s 입혔습니다"), *C->GetName());
                 UGameplayStatics::ApplyDamage(C, DeathNovaDamage, GetController(), this, nullptr);
+            }
+        }
     }
 }
 
@@ -339,42 +365,63 @@ bool ALCBossLich::RequestAttack(float TargetDistance)
 
     // Arcane Bolt
     {
-        float CD = bIsBerserk ? ArcaneBoltCooldown * BerserkCooldownFactor : ArcaneBoltCooldown;
-        float Dmg = bIsBerserk ? NormalAttackDamage * BerserkDamageFactor : NormalAttackDamage;
+        float CD = bIsBerserk
+            ? ArcaneBoltCooldown * BerserkCooldownFactor
+            : ArcaneBoltCooldown;
         if (Target && TargetDistance <= ArcaneBoltRange && Now - LastArcaneBoltTime >= CD)
         {
-            Entries.Add({ 3.f, [this, Now, Target, Dmg]() {
-                LastArcaneBoltTime = Now;
-                ExecuteArcaneBolt(Target);
-            } });
+            Entries.Add({
+                3.f,
+                [this, Now, Target]() {
+                    UE_LOG(LogTemp, Warning, TEXT("[Lich] 선택된 공격 → ArcaneBolt"));
+                    LastArcaneBoltTime = Now;
+                    ExecuteArcaneBolt(Target);
+                }
+                });
         }
     }
 
     // Soul Bind
     {
-        float CD = bIsBerserk ? SoulBindCooldown * BerserkCooldownFactor : SoulBindCooldown;
+        float CD = bIsBerserk
+            ? SoulBindCooldown * BerserkCooldownFactor
+            : SoulBindCooldown;
         if (Target && TargetDistance <= SoulBindRange && Now - LastSoulBindTime >= CD)
         {
-            Entries.Add({ 2.f, [this, Now, Target]() {
-                LastSoulBindTime = Now;
-                ExecuteSoulBind(Target);
-            } });
+            Entries.Add({
+                2.f,
+                [this, Now, Target]() {
+                    UE_LOG(LogTemp, Warning, TEXT("[Lich] 선택된 공격 → SoulBind"));
+                    LastSoulBindTime = Now;
+                    ExecuteSoulBind(Target);
+                }
+                });
         }
     }
 
     // Soul Absorb (fallback)
     {
-        Entries.Add({ 1.f, [this, Target]() {
-            ExecuteSoulAbsorb(Target);
-        } });
+        Entries.Add({
+            1.f,
+            [this, Target]() {
+                UE_LOG(LogTemp, Warning, TEXT("[Lich] 선택된 공격 → SoulAbsorb"));
+                ExecuteSoulAbsorb(Target);
+            }
+            });
     }
 
-    float Total = 0; for (auto& e : Entries) Total += e.W;
-    float Pick = FMath::FRandRange(0.f, Total), Acc = 0;
+    // 가중치 합산 및 랜덤 선택
+    float Total = 0.f;
+    for (auto& e : Entries) Total += e.W;
+    float Pick = FMath::FRandRange(0.f, Total), Acc = 0.f;
     for (auto& e : Entries)
     {
         Acc += e.W;
-        if (Pick <= Acc) { e.A(); return true; }
+        if (Pick <= Acc)
+        {
+            e.A();
+            return true;
+        }
     }
     return false;
 }

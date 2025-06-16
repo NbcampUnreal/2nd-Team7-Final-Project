@@ -24,6 +24,15 @@ ABaseProjectile::ABaseProjectile()
 
     ProjectileDamage = 10.f;
     InstigatorControllerRef = nullptr;
+
+    // 중력을 안받게함
+    MovementComp->ProjectileGravityScale = 0.f;
+
+    // 디버그용 메쉬 세팅
+    DebugMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("DebugMesh"));
+    DebugMesh->SetupAttachment(RootComponent);
+    DebugMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    DebugMesh->SetRelativeScale3D(FVector(0.2f));  // 작게
 }
 
 void ABaseProjectile::BeginPlay()

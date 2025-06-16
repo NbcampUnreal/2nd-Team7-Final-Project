@@ -23,6 +23,10 @@ public:
 protected:
     virtual void BeginPlay() override;
 
+    /** 디버그용으로 보여줄 스태틱 메쉬 */
+    UPROPERTY(VisibleAnywhere, Category = "Projectile|Debug")
+    UStaticMeshComponent* DebugMesh;
+
     /** 충돌체 */
     UPROPERTY(VisibleDefaultsOnly, Category = "Projectile|Collision")
     USphereComponent* CollisionComp;
