@@ -60,7 +60,7 @@ protected:
     float LookAngleDeg = 18.f;
 
     /** ── Rage ── */
-    UPROPERTY(EditDefaultsOnly, Category = "Boss|Rage")
+    UPROPERTY(EditAnywhere, Category = "Boss|Rage")
     float MaxRage = 100.f;
 
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Rage")
