@@ -80,6 +80,7 @@ void ULCOptionManager::ApplyOptions()
 {
 	if (UGameUserSettings* Settings = GEngine->GetGameUserSettings())
 	{
+		Settings->SaveSettings();/*
 		UE_LOG(LogTemp, Warning, TEXT("APPLYING SETTINGS"));
 		UE_LOG(LogTemp, Warning, TEXT("ScreenResolution: %d x %d"), ScreenResolution.X, ScreenResolution.Y);
 		UE_LOG(LogTemp, Warning, TEXT("ScreenMode: %s"), ScreenMode == EScreenMode::FullScreen ? TEXT("Fullscreen") : TEXT("Windowed"));
@@ -105,5 +106,6 @@ void ULCOptionManager::ApplyOptions()
 		LOG_Frame_WARNING(TEXT("Options Applied: %d x %d, Mode: %s"),
 			ScreenResolution.X, ScreenResolution.Y,
 			ScreenMode == EScreenMode::FullScreen ? TEXT("Fullscreen") : TEXT("Windowed"));
+			*/
 	}
 }
