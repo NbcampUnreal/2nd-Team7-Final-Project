@@ -1151,35 +1151,53 @@ void ABasePlayerController::Input_DroneExit()
 	{
 		return;
 	}
+	ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn);
 
-	if (ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn))
+	if (!IsValid(Drone))
 	{
-		CurrentPossessedPawn = SpanwedPlayerCharacter;
-		//Possess(SpanwedPlayerCharacter);
-		SetViewTargetWithBlend(SpanwedPlayerCharacter, 0.5f);
-
-		if (SpawnedPlayerDrone)
-		{
-			SpawnedPlayerDrone->ReturnAsItem();
-			SpawnedPlayerDrone = nullptr;
-		}
+		return;		
 	}
-	if (!IsValid(CurrentPossessedPawn))
+	CurrentPossessedPawn = SpanwedPlayerCharacter;
+	Server_DroneExit();
+	//Possess(SpanwedPlayerCharacter);
+	SetViewTargetWithBlend(SpanwedPlayerCharacter, 0.5f);
+
+	if (IsValid(SpawnedPlayerDrone))
+	{
+		SpawnedPlayerDrone->ReturnAsItem();
+		SpawnedPlayerDrone = nullptr;
+	}
+	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
+	if (!IsValid(PlayerCharacter))
 	{
 		return;
 	}
-	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
+	PlayerCharacter->StopTrackingDrone();
+	PlayerCharacter->Server_UnPossessDrone();
+	if (IsLocalController())
 	{
-		PlayerCharacter->StopTrackingDrone();
+		PlayerCharacter->SwapHeadMaterialTransparent(true);
 		PlayerCharacter->Server_UnPossessDrone();
+	}
+
+	ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
+	if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
+	{
 		if (IsLocalController())
 		{
-			PlayerCharacter->SwapHeadMaterialTransparent(true);
-			PlayerCharacter->Server_UnPossessDrone();
+			UIManager->ShowInGameHUD();
 		}
 	}
 }
 
+void ABasePlayerController::Server_DroneExit_Implementation()
+{
+	if (!IsValid(SpanwedPlayerCharacter))
+	{
+		return;
+	}
+	CurrentPossessedPawn = SpanwedPlayerCharacter;
+}
 
 void ABasePlayerController::SpawnDrone()
 {
@@ -1190,12 +1208,16 @@ void ABasePlayerController::SpawnDrone()
 
 void ABasePlayerController::Server_SpawnDrone_Implementation()
 {
+
+	UE_LOG(LogTemp, Warning, TEXT("서버에서 드론 스폰시키기"));
 	if (!IsValid(CurrentPossessedPawn))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("!IsValid(CurrentPossessedPawn)"));
 		return;
 	}
 	if (!(CurrentPossessedPawn->IsA<ABaseCharacter>()))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("if (!(CurrentPossessedPawn->IsA<ABaseCharacter>()))"));
 		return;
 	}
 	
@@ -1221,7 +1243,12 @@ void ABasePlayerController::Server_SpawnDrone_Implementation()
 	Params.TransformScaleMethod = ESpawnActorScaleMethod::OverrideRootScale;
 	Params.Owner = this;
 	// ABasedrone 포인터로 받아서 타입 안전하게 캐스팅
+	UE_LOG(LogTemp, Warning, TEXT("이 시점에 월드에 스폰"));
 	ABaseDrone* Drone = GetWorld()->SpawnActor<ABaseDrone>(DroneClass, Location, Rotation, Params);
+	if (!IsValid(Drone))
+	{
+		UE_LOG(LogTemp, Warning, TEXT(" 소환한 드론이 유효하지 않음"));
+	}
 	SpawnedPlayerDrone = Drone;
 	SpawnedPlayerDrone->SetOwner(this);	
 
@@ -1275,6 +1302,15 @@ void ABasePlayerController::PossessOnDrone()
 
 	
 	SetViewTargetWithBlend(SpawnedPlayerDrone, 0.5f);
+	ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
+	// HUD 숨기고 관전 모드 전환
+	if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
+	{
+		if (IsLocalController())
+		{
+			UIManager->HideInGameHUD();
+		}
+	}
 }
 
 void ABasePlayerController::CameraSetOnScope()
