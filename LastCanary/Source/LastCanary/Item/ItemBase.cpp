@@ -1,10 +1,16 @@
 #include "Item/ItemBase.h"
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "Inventory/BackpackInventoryComponent.h"
+
 #include "Character/BaseCharacter.h"
 #include "Components/SphereComponent.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Net/UnrealNetwork.h"
+
+#include "Kismet/GameplayStatics.h"
+#include "EnhancedInputSubsystems.h"
+#include "EnhancedActionKeyMapping.h"
+
 #include "LastCanary.h"
 
 AItemBase::AItemBase()
@@ -28,7 +34,7 @@ AItemBase::AItemBase()
 	bIsEquipped = false;
 	bUsingSkeletalMesh = false;
 	Quantity = 1;
-	Durability = 100.f;
+	Durability = MaxDurability;;
 }
 
 void AItemBase::BeginPlay()
@@ -86,9 +92,9 @@ void AItemBase::OnRepDurability()
 	{
 		Durability = 0.0f;
 	}
-	else if (Durability > 100.0f)
+	else if (Durability > MaxDurability)
 	{
-		Durability = 100.0f;
+		Durability = MaxDurability;
 	}
 
 	OnItemStateChanged.Broadcast();
@@ -127,6 +133,8 @@ void AItemBase::ApplyItemDataFromTable()
 	}
 
 	ItemData = *Found;
+	MaxDurability = ItemData.MaxDurability;
+	Durability = FMath::Clamp(Durability, 0.0f, MaxDurability);
 	bIgnoreCharacterCollision = ItemData.bIgnoreCharacterCollision;
 
 	SetupMeshComponents();
@@ -140,6 +148,69 @@ void AItemBase::ApplyItemDataFromTable()
 	ApplyCollisionSettings();
 
 	OnItemStateChanged.Broadcast();
+}
+
+bool AItemBase::TryRemoveFromInventory()
+{
+	if (!HasAuthority())
+	{
+		LOG_Item_WARNING(TEXT("[TryRemoveFromInventory] Authority가 없습니다."));
+		return false;
+	}
+
+	AActor* OwnerActor = GetOwner();
+	if (!OwnerActor)
+	{
+		LOG_Item_WARNING(TEXT("[TryRemoveFromInventory] Owner가 없습니다."));
+		return false;
+	}
+
+	ABaseCharacter* OwnerCharacter = Cast<ABaseCharacter>(OwnerActor);
+	if (!OwnerCharacter)
+	{
+		LOG_Item_WARNING(TEXT("[TryRemoveFromInventory] Owner가 BaseCharacter가 아닙니다."));
+		return false;
+	}
+
+	UToolbarInventoryComponent* ToolbarInventory = OwnerCharacter->GetToolbarInventoryComponent();
+	if (!ToolbarInventory)
+	{
+		LOG_Item_WARNING(TEXT("[TryRemoveFromInventory] ToolbarInventoryComponent를 찾을 수 없습니다."));
+		return false;
+	}
+
+	// 현재 장착된 아이템인지 확인
+	int32 EquippedSlotIndex = ToolbarInventory->GetCurrentEquippedSlotIndex();
+	if (EquippedSlotIndex >= 0)
+	{
+		FBaseItemSlotData* EquippedSlotData = ToolbarInventory->GetItemDataAtSlot(EquippedSlotIndex);
+		if (EquippedSlotData && EquippedSlotData->ItemRowName == ItemRowName)
+		{
+			// 장착된 아이템이면 먼저 장착 해제
+			ToolbarInventory->UnequipCurrentItem();
+
+			// 해당 슬롯을 Default로 설정
+			ToolbarInventory->SetSlotToDefault(EquippedSlotIndex);
+
+			LOG_Item_WARNING(TEXT("[TryRemoveFromInventory] ✅ 장착된 아이템 제거 완료: 슬롯 %d"), EquippedSlotIndex);
+			return true;
+		}
+	}
+
+	// 장착되지 않은 아이템의 경우, 모든 슬롯 탐색
+	for (int32 i = 0; i < ToolbarInventory->ItemSlots.Num(); ++i)
+	{
+		const FBaseItemSlotData& SlotData = ToolbarInventory->ItemSlots[i];
+		if (SlotData.ItemRowName == ItemRowName && SlotData.Quantity > 0)
+		{
+			ToolbarInventory->SetSlotToDefault(i);
+			LOG_Item_WARNING(TEXT("[TryRemoveFromInventory] ✅ 일반 아이템 제거 완료: 슬롯 %d"), i);
+			return true;
+		}
+	}
+
+	LOG_Item_WARNING(TEXT("[TryRemoveFromInventory] 제거할 아이템을 찾을 수 없습니다: %s"), *ItemRowName.ToString());
+	return false;
 }
 
 void AItemBase::SetupMeshComponents()
@@ -309,20 +380,27 @@ void AItemBase::Interact_Implementation(APlayerController* Interactor)
 
 FString AItemBase::GetInteractMessage_Implementation() const
 {
+	if (IA_Interact == nullptr)
+	{
+		return TEXT("No Interact Key Assigned");
+	}
+
+	FString InteractKeyName = GetCurrentKeyNameForAction(IA_Interact);
+
 	if (ItemRowName.IsNone())
 	{
-		return FString(TEXT("아이템 습득"));
+		return FString::Printf(TEXT("Press [%s] to Pick Up Item"), *InteractKeyName);
 	}
 
 	if (ItemDataTable)
 	{
 		if (const FItemDataRow* Found = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("GetInteractMessage")))
 		{
-			return FString::Printf(TEXT("%s 습득 (x%d)"), *Found->ItemName.ToString(), Quantity);
+			return FString::Printf(TEXT("Press [%s] Pick Up %s (x%d)"), *InteractKeyName, *Found->ItemName.ToString(), Quantity);
 		}
 	}
 
-	return FString::Printf(TEXT("%s 습득 (x%d)"), *ItemRowName.ToString(), Quantity);
+	return FString::Printf(TEXT("Press [%s] Pick Up %s (x%d)"), *InteractKeyName, *ItemRowName.ToString(), Quantity);
 }
 
 void AItemBase::Server_TryPickupByPlayer_Implementation(APlayerController* PlayerController)
@@ -449,4 +527,84 @@ void AItemBase::EnableStencilForAllMeshes(int32 StencilValue)
 		MeshComp->SetRenderCustomDepth(true);
 		MeshComp->SetCustomDepthStencilValue(StencilValue);
 	}
+}
+
+void AItemBase::PlayItemUseSound(bool bIsStart)
+{
+	// 서버에서만 멀티캐스트 호출
+	if (HasAuthority())
+	{
+		MulticastPlayItemUseSound(bIsStart);
+	}
+	// 단일 플레이(싱글) 환경에서는 바로 재생
+	else
+	{
+		USoundBase* SoundToPlay = nullptr;
+		if (bIsStart)
+		{
+			SoundToPlay = ItemData.UseStartSound;
+		}
+		else
+		{
+			SoundToPlay = ItemData.UseEndSound;
+		}
+
+		Internal_PlaySound(SoundToPlay);
+	}
+}
+
+void AItemBase::Internal_PlaySound(USoundBase* SoundToPlay)
+{
+	if (!SoundToPlay)
+	{
+		return;
+	}
+
+	UGameplayStatics::PlaySoundAtLocation(this, SoundToPlay, GetActorLocation());
+}
+
+void AItemBase::MulticastPlayItemUseSound_Implementation(bool bIsStart)
+{
+	USoundBase* SoundToPlay = nullptr;
+	if (bIsStart)
+	{
+		SoundToPlay = ItemData.UseStartSound;
+	}
+	else
+	{
+		SoundToPlay = ItemData.UseEndSound;
+	}
+
+	Internal_PlaySound(SoundToPlay);
+}
+
+FString AItemBase::GetCurrentKeyNameForAction(UInputAction* InputAction) const
+{
+	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+	if (!IsValid(PC))
+	{
+		return TEXT("Invalid");
+	}
+
+	ULocalPlayer* LocalPlayer = PC->GetLocalPlayer();
+	if (!IsValid(LocalPlayer))
+	{
+		return TEXT("Invalid");
+	}
+
+	UEnhancedInputLocalPlayerSubsystem* Subsystem = LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
+	if (!IsValid(Subsystem))
+	{
+		return TEXT("Invalid");
+	}
+	const TArray<FEnhancedActionKeyMapping> Mappings = Subsystem->GetAllPlayerMappableActionKeyMappings();
+
+	for (const FEnhancedActionKeyMapping& Mapping : Mappings)
+	{
+		if (Mapping.Action == InputAction)
+		{
+			return Mapping.Key.GetDisplayName().ToString();
+		}
+	}
+	return TEXT("Unbound");
 }

@@ -11,13 +11,7 @@ class LASTCANARY_API ABaseBossMonsterCharacter : public ACharacter
 
 public:
     ABaseBossMonsterCharacter();
-
-    /** ─── 공격 설정 ─── */
-    UPROPERTY(EditDefaultsOnly, Category = "Boss|Attack")
-    UAnimMontage* NormalAttackMontage;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Boss|Attack")
-    UAnimMontage* StrongAttackMontage;
+	virtual void BeginPlay() override;
 
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Attack", meta = (ClampMin = "0.0", ClampMax = "1.0"))
     float StrongAttackChance = 0.3f;
@@ -52,21 +46,13 @@ public:
 
     /** 공격 요청 진입 함수 (성공 시 true 반환) */
     UFUNCTION(BlueprintCallable, Category = "Boss|Attack")
-    virtual bool RequestAttack();
+    virtual bool RequestAttack(float TargetDistance);
 
     /** 외부(예: 게임 모드, 코어 Actor 등)에서 호출해 보스를 Berserk 상태로 전환 */
     UFUNCTION(BlueprintCallable, Category = "Boss|Berserk")
-    void EnterBerserkState();
+    virtual void EnterBerserkState();
 
 protected:
-    /** 실제 공격 처리(Montage 재생) */
-    virtual void PlayNormalAttack();
-    virtual void PlayStrongAttack();
-
-    /** 몽타주 종료 콜백(파생 클래스에서 override 가능) */
-    UFUNCTION()
-    void OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted);
-
     float LastNormalTime = -FLT_MAX;
     float LastStrongTime = -FLT_MAX;
 
@@ -84,9 +70,15 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Berserk")
     float DamageMultiplier_Berserk = 1.5f;
 
+    // 광폭화 지속 시간과 타이머 핸들
+    UPROPERTY(EditAnywhere, Category = "Boss|Berserk")
+    float BerserkDuration = 12.f;
+
+    FTimerHandle BerserkDurationHandle;
+
     /** Replication 후 처리용 OnRep 함수 */
     UFUNCTION()
-    void OnRep_IsBerserk();
+    virtual void OnRep_IsBerserk();
 
     /** Berserk 시작을 클라이언트 전체에 알리는 멀티캐스트 RPC */
     UFUNCTION(NetMulticast, Reliable)
@@ -97,10 +89,11 @@ protected:
     void Multicast_EndBerserk();
 
     /** 실제 Berserk 상태 진입 로직 */
-    void StartBerserk();
+    virtual void StartBerserk();                       // 무제한
+    virtual void StartBerserk(float Duration);         // 제한 시간
 
     /** Berserk 종료 처리 로직 */
-    void EndBerserk();
+    virtual void EndBerserk();
 
     /** Rage 업데이트 시 Berserk 배수를 적용하고 싶으면 이 함수를 오버라이드하여 사용 */
     virtual void UpdateRage(float DeltaSeconds);

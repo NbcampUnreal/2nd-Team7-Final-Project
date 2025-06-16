@@ -84,6 +84,9 @@ struct FGunDataRow : public FTableRowBase
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Effects")
     UNiagaraSystem* TrailEffect;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Effects")
+    UNiagaraSystem* ShellEjectEffect;
+
     // 사운드
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Sound")
     USoundBase* FireSound;
@@ -99,6 +102,9 @@ struct FGunDataRow : public FTableRowBase
 
     // 애니메이션
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Animation")
+    TSubclassOf<UAnimInstance> AnimationBlueprint;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Animation")
     UAnimMontage* FireAnimation;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Animation")
@@ -110,4 +116,14 @@ struct FGunDataRow : public FTableRowBase
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Misc")
     bool bIsAutomatic;
+
+    // 부착물 관련 추가
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Attachments")
+    bool bHasScope = false;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Attachments")
+    UStaticMesh* ScopeMesh;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Attachments")
+    FName ScopeSocketName = TEXT("Scope");
 };

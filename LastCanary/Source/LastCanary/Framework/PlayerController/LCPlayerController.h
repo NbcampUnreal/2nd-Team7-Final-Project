@@ -3,13 +3,13 @@
 #include "CoreMinimal.h"
 #include "UI/Manager/LCUIManager.h"
 #include "DataType/SessionPlayerInfo.h"
-#include "GameFramework/PlayerController.h"
+#include "Framework/PlayerController/LCPlayerInputController.h"
 #include "LCPlayerController.generated.h"
 
 class ULCUIManager;
 
 UCLASS()
-class LASTCANARY_API ALCPlayerController : public APlayerController
+class LASTCANARY_API ALCPlayerController : public ALCPlayerInputController
 {
 	GENERATED_BODY()
 	
@@ -30,6 +30,11 @@ public:
 	void Client_ShowLoading();
 	void Client_ShowLoading_Implementation();
 
+
+	UFUNCTION(Client, Reliable)
+	void Client_HideLoading();
+	void Client_HideLoading_Implementation();
+
 	UFUNCTION(Client, Unreliable)
 	void Client_ReceiveMessageFromGM(const FString& Message);
 	void Client_ReceiveMessageFromGM_Implementation(const FString& Message);
@@ -42,6 +47,7 @@ public:
 
 	void StartGame(FString SoftPath);
 
+	ULCUIManager* GetUIManager() { return LCUIManager; }
 protected:
 	TObjectPtr<ULCUIManager> LCUIManager;
 };

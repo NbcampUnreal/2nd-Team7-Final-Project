@@ -9,20 +9,19 @@
 
 AFlashlightItem::AFlashlightItem()
 {
-    // 스포트라이트 컴포넌트 생성
+    // 메인 스포트라이트
     SpotLightComponent = CreateDefaultSubobject<USpotLightComponent>(TEXT("SpotLight"));
-    SpotLightComponent->SetupAttachment(StaticMeshComponent);
-
-    // 네트워크 복제 활성화
+    SpotLightComponent->SetupAttachment(StaticMeshComponent, TEXT("SpotLight"));
     SpotLightComponent->SetIsReplicated(true);
-
-    // 스포트라이트 위치 조정 (메시의 앞쪽을 향하도록)
-    SpotLightComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 45.0f));
-    SpotLightComponent->SetRelativeRotation(FRotator(90.0f, 0.0f, 0.0f));
-
-    // 초기에는 빛 꺼두기
-    bIsLightOn = false;
     SpotLightComponent->SetVisibility(false);
+
+    // 손전등의 On, Off 여부를 확인하기 위한 스포트라이트
+    GlassGlowComponent = CreateDefaultSubobject<USpotLightComponent>(TEXT("GlassGlow"));
+    GlassGlowComponent->SetupAttachment(StaticMeshComponent, TEXT("GlassGlow"));
+    GlassGlowComponent->SetIsReplicated(true);
+    GlassGlowComponent->SetVisibility(false);
+
+    bIsLightOn = false;
 }
 
 void AFlashlightItem::UseItem()
@@ -79,10 +78,6 @@ void AFlashlightItem::Server_ToggleLight_Implementation(bool bNewState)
 
 void AFlashlightItem::Multicast_UpdateLightState_Implementation(bool bNewState)
 {
-    UE_LOG(LogTemp, Warning, TEXT("[AFlashlightItem::Multicast_UpdateLightState] 실행 - 상태: %s, Role: %d, RemoteRole: %d"),
-        bNewState ? TEXT("켜짐") : TEXT("꺼짐"),
-        (int32)GetLocalRole(),
-        (int32)GetRemoteRole());
     // 상태 업데이트
     bIsLightOn = bNewState;
 
@@ -95,6 +90,7 @@ void AFlashlightItem::Multicast_UpdateLightState_Implementation(bool bNewState)
 
     // 빛 가시성 업데이트
     SpotLightComponent->SetVisibility(bIsLightOn);
+    GlassGlowComponent->SetVisibility(bIsLightOn);
 
     // 빛 강도 설정
     if (!bIsLightOn)
@@ -147,13 +143,6 @@ void AFlashlightItem::Multicast_UpdateLightState_Implementation(bool bNewState)
             }
         }
     }
-
-    if (GetLocalRole() != ROLE_Authority)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("[클라이언트] 손전등 상태 변경: %s, 컴포넌트 가시성: %d"),
-            bNewState ? TEXT("켜짐") : TEXT("꺼짐"),
-            SpotLightComponent->IsVisible());
-    }
 }
 
 void AFlashlightItem::SetEquipped(bool bNewEquipped)
@@ -164,7 +153,9 @@ void AFlashlightItem::SetEquipped(bool bNewEquipped)
     if (!bNewEquipped && bIsLightOn)
     {
         bIsLightOn = false;
-        SpotLightComponent->SetVisibility(false);
+        SpotLightComponent->SetVisibility(bIsLightOn);
+        GlassGlowComponent->SetVisibility(bIsLightOn);
+
 
         if (GetWorld() && BatteryTimerHandle.IsValid())
         {
@@ -216,8 +207,6 @@ void AFlashlightItem::ConsumeBattery()
     if (bShouldConsume)
     {
         Durability = FMath::Clamp(Durability - (BatteryConsumptionRate * 0.1f), 0.0f, 100.0f);
-
-        LOG_Item_WARNING(TEXT("[AFlashlightItem::ConsumeBattery] 배터리: %.1f%%"), Durability);
 
         // 배터리가 완전히 소모될 때만 서버에 알림
         if (Durability <= 0.0f)

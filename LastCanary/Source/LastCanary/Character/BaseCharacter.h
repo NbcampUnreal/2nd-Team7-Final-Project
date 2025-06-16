@@ -76,23 +76,45 @@ public:
 	float GetBrightness();
 	void SetBrightness(float Value);
 
-	void Tick(float DeltaSeconds)
-	{
-		Super::Tick(DeltaSeconds);
-		
-		//SmoothADSCamera(DeltaSeconds);
-		UpdateGunWallClipOffset(DeltaSeconds);
-	}
+	virtual void Tick(float DeltaSeconds);
+
 	float WallClipAimOffsetPitch;
 	float MaxWallClipPitch = 90.0f;
 	float CapsuleWallRatio = 0.0f;
 	void UpdateGunWallClipOffset(float DeltaTime);
 
 	int LerpCount = 0;
-	
-	void UpdateRightHandIKTarget();
+	// Camera 이동 관련
+	FTimerHandle CameraLerpTimerHandle;
+	float LerpAlpha = 0.0f;
+	FVector InitialCameraOffset;
+	FVector TargetCameraOffset;
+	bool bIsAiming = false;
+	UPROPERTY()
+	FVector DefaultSpringArmRelativeLocation;
 
+	UPROPERTY()
+	FName SpringArmAttachSocketName = NAME_None;
 
+	FVector CurrentCameraLocation;
+	FVector TargetCameraLocation;
+	// 오프셋 보간 여부
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+	bool bShouldLerpCamera = false;
+
+	void StartAiming();
+
+	void StopAiming();
+
+	UPROPERTY()
+	bool bIsSmoothTransitioning = false;
+	UPROPERTY()
+	bool bIsTransitioning = false;
+	UPROPERTY()
+	FRotator TargetCameraRotation;
+
+	UPROPERTY()
+	float CameraTransitionSpeed = 15.0f;
 
 	//Character Default Settings
 protected:
@@ -114,15 +136,12 @@ protected:
 
 	FTimerHandle MoveTimerHandle;
 	FVector StartLocation;
-	FVector TargetLocation;
+	//FVector TargetLocation;
 	FName TargetSocketName = FName("");
 	float InterpSpeed = 15.0f;
 	float SnapTolerance = 1.0f;
-	void StartSmoothMove(const FVector& Start, const FVector& Destination);
-	void SmoothMoveStep();
 
 	bool bIsFPSCamera = true;
-	void ToADSCamera(bool bToADS);
 	bool bDesiredADS = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -132,19 +151,14 @@ protected:
 	float SmoothCameraTimeThreshold = 0.5f;
 
 	float SmoothCameraCurrentTime = 0.f;
-	USkeletalMeshComponent* CurrentRifleMesh;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float FieldOfView = 90.f;
 
-	void SmoothADSCamera(float DeltaTime);
 	bool bADS = false; // 현재 정조준 상태인가?
 
 	bool bIsCloseToWall = false;
 	bool bIsSprinting = false;
-
-	bool bIsAiming = false;
-
 	// ABaseCharacter.h
 
 	FVector LastCameraLocation;
@@ -158,6 +172,7 @@ public:
 	virtual void NotifyNoiseToAI(FVector Velocity) override;
 	virtual void NotifyNoiseToAI(float LandVelocity) override;
 	void MakeNoiseSoundToAI(float Force);
+	void MakeNoiseSoundToBoss(float Force);
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AISettings", meta = (ClampMin = "1.0", ClampMax = "10000.0"))
 	float SoundLoudnessDivider = 1000.0f;
@@ -196,6 +211,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
 	UMaterialInterface* TransparentHeadMaterial;
 
+	// MyCharacter.h
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+	TArray<USkeletalMesh*> SkeletalMeshOptions;
+
+
 public:
 	void SetCameraMode(bool bIsFirstPersonView);
 
@@ -232,12 +253,27 @@ public:
 	virtual void Handle_Interact(const FInputActionValue& ActionValue);
 	virtual void Handle_ViewMode();
 	virtual void Handle_Reload();
+	virtual void Handle_VoiceChatting(const FInputActionValue& ActionValue);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Voice")
+	void UpdateVoiceChannelBySoectateState();
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Voice")
+	void StartVoiceChat();
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Voice")
+	void CancelVoiceChat();
+
+
+
 
 	void EscapeThroughGate();
 
 	//Character State
 
 public:
+
+
 	bool bIsScoped = false;
 	bool bIsPossessed;
 	bool bIsReloading = false;
@@ -385,6 +421,11 @@ public:
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	void HandlePlayerDeath();
 
+	UFUNCTION(Client, Reliable)
+	void Client_HandlePlayerVoiceChattingState();
+	void Client_HandlePlayerVoiceChattingState_Implementation();
+
+
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_SetPlayerInGameStateOnDie();
 	void Multicast_SetPlayerInGameStateOnDie_Implementation();
@@ -406,6 +447,16 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_PlayReload();
 	void Multicast_PlayReload_Implementation();
+
+	void StopReload();
+
+	UFUNCTION(Server, Reliable)
+	void Server_StopReload();
+	void Server_StopReload_Implementation();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_StopReload();
+	void Multicast_StopReload_Implementation();
 
 
 public:
@@ -593,4 +644,18 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_InteractWithResourceNode(AResourceNode* TargetNode);
 	void Server_InteractWithResourceNode_Implementation(AResourceNode* TargetNode);
+
+	// 체력 회복 관련 함수
+	FTimerHandle HealingTimerHandle;
+	int32 HealingTicksRemaining = 0;
+	float HealingPerTick = 0.f;
+
+	UFUNCTION()
+	void StartHealing(float TotalHealAmount, float Duration);
+	
+	UFUNCTION()
+	void HealStep();
+
+	UFUNCTION()
+	void StopHealing();
 };

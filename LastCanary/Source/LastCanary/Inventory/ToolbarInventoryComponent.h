@@ -159,10 +159,8 @@ private:
     bool Internal_DropCurrentEquippedItem();
     bool Internal_DropEquippedItemAtSlot(int32 SlotIndex, int32 Quantity);
 
-    /** 아이템 습득 시 플레이어 스테이트와 동기화 */
-    void OnItemAcquired(const FName& ItemRowName);
-    /** 아이템 드랍 시 플레이어 스테이트와 동기화 */
-    void OnItemDropped(const FName& ItemRowName);
+    /** 아이템 습득 및 드랍 시 플레이어 스테이트와 동기화 */
+    void SyncInventoryToPlayerState();
 
 public:
     /** 인벤토리 슬롯들의 ItemID 배열 반환 (레벨 이동 시 사용) */

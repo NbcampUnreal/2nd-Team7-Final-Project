@@ -21,6 +21,9 @@ UCLASS()
 class LASTCANARY_API UShopWidget : public ULCUserWidgetBase
 {
 	GENERATED_BODY()
+
+public:
+	void SetGold(int gold);
 	
 protected:
 	UPROPERTY(meta = (BindWidget))

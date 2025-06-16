@@ -34,11 +34,30 @@ class ALS_API UAlsAnimationInstance : public UAnimInstance
 
 	friend UAlsLinkedAnimationInstance;
 public:
+	UFUNCTION(BlueprintImplementableEvent)
+	void UpdateIKTransform();
+
+	UPROPERTY(BlueprintReadWrite, Category = "IK")
+	bool IsAiming = false;
+
 	UPROPERTY(BlueprintReadOnly)
 	float WallClipAimOffsetPitch = 0.0f;
 
 	UPROPERTY(BlueprintReadWrite, Category = "IK")
-	FVector RightHandIKTargetLocation;
+	FVector AimSocketLocation;
+
+	UPROPERTY(BlueprintReadWrite, Category = "IK")
+	FRotator AimSocketRotation;
+
+	UPROPERTY(BlueprintReadWrite, Category = "IK")
+	FVector AimPointLocation;
+
+	UPROPERTY(BlueprintReadWrite, Category = "IK")
+	FRotator AimPointRotation;
+
+	UPROPERTY(BlueprintReadWrite, Category = "IK")
+	float AimAlpha = 0.0f;
+
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
 	TObjectPtr<UAlsAnimationInstanceSettings> Settings;

@@ -174,10 +174,10 @@ void ABaseDrone::MoveDown(const FInputActionValue& Value)
 	VerticalInputAxis = FMath::Clamp(-Value.Get<float>(), -1.f, 0.f);
 }
 
-void ABaseDrone::Input_Look(const FInputActionValue& Value)
+void ABaseDrone::Input_Look(const FInputActionValue& Value, float Sensivity)
 {
 	const FVector2D LookInput = Value.Get<FVector2D>();
-	Server_Look(LookInput);
+	Server_Look(LookInput * Sensivity);
 }
 
 void ABaseDrone::Server_Look_Implementation(FVector2D InputVector)
@@ -267,7 +267,7 @@ void ABaseDrone::Multicast_ReturnToPlayer_Implementation()
 	APlayerController* PC = Cast<APlayerController>(GetOwner());
 	if (ABasePlayerController* MyPC = Cast<ABasePlayerController>(PC))
 	{
-		MyPC->Input_DroneExit();
+		MyPC->Input_DroneExit(0);
 	}
 }
 // CPP 구현

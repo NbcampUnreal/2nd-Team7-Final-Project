@@ -224,8 +224,6 @@ void UItemSpawnerComponent::SetupBasicMeshPhysics(UPrimitiveComponent* MeshCompo
         // 안정성 설정
         MeshComponent->SetLinearDamping(0.5f);  // 자원 아이템은 더 빠르게 안정화
         MeshComponent->SetAngularDamping(0.5f);
-
-        LOG_Item_WARNING(TEXT("[UItemSpawnerComponent::SetupBasicMeshPhysics] 기본 물리 시뮬레이션 활성화 성공"));
     }
     else
     {
@@ -241,7 +239,7 @@ void UItemSpawnerComponent::ApplyItemSettings(AItemBase* Item, FName ItemRowName
     // 기본 속성 설정
     Item->ItemRowName = ItemRowName;
     Item->Quantity = Quantity;
-    Item->Durability = Durability;
+    Item->Durability = FMath::Clamp(Durability, 0.0f, Item->MaxDurability);
     Item->bIsEquipped = false;
 
     // 데이터 테이블 적용

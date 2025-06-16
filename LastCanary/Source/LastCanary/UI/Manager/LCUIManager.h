@@ -27,6 +27,7 @@ class UConfirmPopup;
 class UChecklistWidget;
 class UResultMenu;
 class URoomWidget;
+class UNotePopupWidget;
 
 UENUM(BlueprintType)
 enum class ELCUIContext : uint8
@@ -60,7 +61,7 @@ public:
 	void HidePauseMenu();
 	bool IsPauseMenuOpen() const;
 	void ShowConfirmPopup(TFunction<void()> OnConfirm, const FText& Message);
-	void ShowShopPopup();
+	void ShowShopPopup(int Gold);
 	void HideShopPopup();
 	void ShowMapSelectPopup();
 	void HideMapSelectPopup();
@@ -88,9 +89,15 @@ public:
 	void ShowLoadingLevel();
 	void HideLoadingLevel();
 
+	UFUNCTION(BlueprintCallable, Category = "UI|Note")
+	void ShowNotePopup(const FText& NoteText, const TArray<TSoftObjectPtr<UTexture2D>>& CandidateImages, int32 SelectedIndex);
+	UFUNCTION(BlueprintCallable, Category = "UI|Note")
+	void HideNotePopup();
+
 	/* 입력 모드 제어 */
 	void SetInputModeUIOnly(UUserWidget* FocusWidget = nullptr);
 	void SetInputModeGameOnly();
+	void SetInputModeGameAndUI();
 
 	/* 위젯 게터 */
 	FORCEINLINE UTitleMenu* GetTitleMenu() const { return CachedTitleMenu; }
@@ -157,6 +164,8 @@ private:
 	UPROPERTY()
 	TSubclassOf<URoomWidget> RoomWidgetClass;
 
+	UPROPERTY()
+	TSubclassOf<UUserWidget> NotePopupWidgetClass;
 
 	// 위젯 캐싱
 	UPROPERTY()
@@ -190,6 +199,8 @@ private:
 	UResultMenu* CachedResultMenu;
 	UPROPERTY()
 	URoomWidget* CachedRoomWidget;
+	UPROPERTY()
+	UNotePopupWidget* CachedNotePopupWidget;
 
 	UPROPERTY()
 	ELCUIContext CurrentContext;
