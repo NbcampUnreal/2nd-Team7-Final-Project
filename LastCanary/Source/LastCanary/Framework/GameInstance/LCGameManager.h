@@ -23,6 +23,9 @@ public:
 
 	void StartGame();
 	void EndCurrentRound();
+
 	int GetGold() const;
 	void AddGold(int Amount);
+
+	int GetPlayerCount() const { return CurrentPlayerCount; }
 };
