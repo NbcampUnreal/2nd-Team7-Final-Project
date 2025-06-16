@@ -1,12 +1,10 @@
-#include "AI/LCBossVampire.h"
+﻿#include "AI/LCBossVampire.h"
 #include "TimerManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
-#include "GameFramework/DamageType.h"
-#include "Engine/World.h"
-#include "Animation/AnimInstance.h"
-#include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Engine/World.h"
+#include "NiagaraFunctionLibrary.h"
 
 ALCBossVampire::ALCBossVampire()
 {
@@ -18,7 +16,7 @@ void ALCBossVampire::BeginPlay()
 {
     Super::BeginPlay();
 
-    // Ÿ�̸� ����
+    // 배트 스웜 & 악몽의 시선
     GetWorldTimerManager().SetTimer(BatSwarmTimerHandle, this, &ALCBossVampire::ExecuteBatSwarm, BatSwarmInterval, true);
     GetWorldTimerManager().SetTimer(GazeTimerHandle, this, &ALCBossVampire::ExecuteNightmareGaze, GazeInterval, true);
 }
@@ -30,8 +28,78 @@ void ALCBossVampire::ExecuteBatSwarm()
     {
         FVector Dir = FMath::VRand();
         Dir.Z = 0.5f;
-        FVector SpawnLoc = GetActorLocation() + Dir * 300.f + FVector(0, 0, 100);
-        GetWorld()->SpawnActor<AActor>(BatSwarmClass, SpawnLoc, Dir.Rotation());
+        FVector Loc = GetActorLocation() + Dir * 300.f + FVector(0, 0, 100);
+        GetWorld()->SpawnActor<AActor>(BatSwarmClass, Loc, Dir.Rotation());
+    }
+}
+
+void ALCBossVampire::ExecuteNightmareGaze()
+{
+    if (!HasAuthority()) return;
+    TArray<FHitResult> Hits;
+    FCollisionShape Sphere = FCollisionShape::MakeSphere(GazeRadius);
+    if (GetWorld()->SweepMultiByChannel(Hits, GetActorLocation(), GetActorLocation(),
+        FQuat::Identity, ECC_Pawn, Sphere))
+    {
+        for (auto& H : Hits)
+        {
+            if (ACharacter* Ch = Cast<ACharacter>(H.GetActor()))
+            {
+                if (Ch->IsPlayerControlled())
+                {
+                    float Orig = Ch->GetCharacterMovement()->MaxWalkSpeed;
+                    Ch->GetCharacterMovement()->MaxWalkSpeed = Orig * 0.5f;
+                    //  데미지 없음, 디버프만
+                    FTimerHandle Tmp;
+                    FTimerDelegate D = FTimerDelegate::CreateLambda([Ch, Orig]() { Ch->GetCharacterMovement()->MaxWalkSpeed = Orig; });
+                    GetWorldTimerManager().SetTimer(Tmp, D, GazeDebuffDuration, false);
+                }
+            }
+        }
+    }
+}
+
+void ALCBossVampire::ExecuteCrimsonSlash()
+{
+    GetWorldTimerManager().SetTimer(CrimsonSlashHandle, CrimsonSlashCooldown, false);
+
+    TArray<FHitResult> Hits;
+    FCollisionShape S = FCollisionShape::MakeSphere(CrimsonSlashRadius);
+    if (GetWorld()->SweepMultiByChannel(Hits, GetActorLocation(), GetActorLocation(),
+        FQuat::Identity, ECC_Pawn, S))
+    {
+        float Heal = CrimsonSlashDamage * BloodDrainEfficiency;
+        for (auto& H : Hits)
+        {
+            if (ACharacter* C = Cast<ACharacter>(H.GetActor()))
+            {
+                UGameplayStatics::ApplyDamage(C, CrimsonSlashDamage, GetController(), this, nullptr);
+            }
+        }
+        // 피흡
+        UGameplayStatics::ApplyDamage(this, -Heal, GetController(), this, nullptr);
+    }
+}
+
+void ALCBossVampire::ExecuteSanguineBurst()
+{
+    GetWorldTimerManager().SetTimer(BurstHandle, SanguineBurstCooldown, false);
+
+    TArray<FHitResult> Hits;
+    FCollisionShape S = FCollisionShape::MakeSphere(SanguineBurstRadius);
+    if (GetWorld()->SweepMultiByChannel(Hits, GetActorLocation(), GetActorLocation(),
+        FQuat::Identity, ECC_Pawn, S))
+    {
+        float Heal = SanguineBurstDamage * BloodDrainEfficiency;
+        for (auto& H : Hits)
+        {
+            if (ACharacter* C = Cast<ACharacter>(H.GetActor()))
+            {
+                UGameplayStatics::ApplyDamage(C, SanguineBurstDamage, GetController(), this, nullptr);
+            }
+        }
+        // 피흡
+        UGameplayStatics::ApplyDamage(this, -Heal, GetController(), this, nullptr);
     }
 }
 
@@ -41,12 +109,10 @@ void ALCBossVampire::EnterMistForm()
     bIsMistForm = true;
     Multicast_StartMistForm();
 
-    // ���� ����(�ǰ� �鿪)
     SetCanBeDamaged(false);
-
-    // Mist ���� ����
-    GetWorldTimerManager().SetTimer(MistCooldownHandle, this, &ALCBossVampire::EndMistForm, MistDuration, false);
     bCanUseMist = false;
+
+    GetWorldTimerManager().SetTimer(MistDurationHandle, this, &ALCBossVampire::EndMistForm, MistDuration, false);
 }
 
 void ALCBossVampire::EndMistForm()
@@ -54,13 +120,8 @@ void ALCBossVampire::EndMistForm()
     bIsMistForm = false;
     OnRep_MistForm();
 
-    // ��ٿ� �� ���� ����
-    GetWorldTimerManager().SetTimer(MistResetTimerHandle, this, &ALCBossVampire::ResetMist, MistCooldown, false);
-}
-
-void ALCBossVampire::ResetMist()
-{
-    bCanUseMist = true;
+    GetWorldTimerManager().SetTimer(MistResetHandle, [this]() { bCanUseMist = true; },
+        MistCooldown, false);
 }
 
 void ALCBossVampire::OnRep_MistForm()
@@ -68,7 +129,7 @@ void ALCBossVampire::OnRep_MistForm()
     if (bIsMistForm)
     {
         UE_LOG(LogTemp, Warning, TEXT("[Vampire] Enter Mist Form"));
-        // Ŭ���̾�Ʈ�� ����Ʈ/���� �߰�
+        Multicast_StartMistForm();
     }
     else
     {
@@ -82,70 +143,162 @@ void ALCBossVampire::Multicast_StartMistForm_Implementation()
     OnRep_MistForm();
 }
 
-void ALCBossVampire::ExecuteNightmareGaze()
-{
-    if (!HasAuthority()) return;
-
-    // �ݰ� �� �÷��̾� �������� Fear ���� (�̵��ӵ� ����)
-    TArray<FHitResult> Hits;
-    FCollisionShape Sphere = FCollisionShape::MakeSphere(GazeRadius);
-    bool bHit = GetWorld()->SweepMultiByChannel(
-        Hits,
-        GetActorLocation(), GetActorLocation(),
-        FQuat::Identity, ECC_Pawn, Sphere);
-
-    if (bHit)
-    {
-        for (auto& Hit : Hits)
-        {
-            if (APawn* P = Cast<APawn>(Hit.GetActor()))
-            {
-                if (P->IsPlayerControlled())
-                {
-                    ACharacter* Ch = Cast<ACharacter>(P);
-                    if (Ch)
-                    {
-                        float OrigSpeed = Ch->GetCharacterMovement()->MaxWalkSpeed;
-                        Ch->GetCharacterMovement()->MaxWalkSpeed = OrigSpeed * 0.5f;
-
-                        // 5�� �� ���� �ӵ��� ����
-                        FTimerHandle RestoreHandle;
-                        FTimerDelegate RestoreDel = FTimerDelegate::CreateLambda([Ch, OrigSpeed]()
-                            {
-                                Ch->GetCharacterMovement()->MaxWalkSpeed = OrigSpeed;
-                            });
-                        GetWorldTimerManager().SetTimer(RestoreHandle, RestoreDel, 5.f, false);
-
-                        UE_LOG(LogTemp, Log, TEXT("[Vampire] %s is Feared"), *P->GetName());
-                    }
-                }
-            }
-        }
-    }
-}
-
-
 void ALCBossVampire::OnRep_Bloodlust()
 {
     if (bIsBloodlust)
     {
-        // ���� ��ٿ� ���ҡ�Ȯ�� ����, �̵��ӵ� ���
-        StrongAttackCooldown *= 0.5f;
-        StrongAttackChance = FMath::Clamp(StrongAttackChance * 2.f, 0.f, 1.f);
-        GetCharacterMovement()->MaxWalkSpeed *= 1.2f;
-        UE_LOG(LogTemp, Warning, TEXT("[Vampire] Eternal Bloodlust activated"));
+        // Mist Form 즉시 사용 가능, 흡수 2배
+        bCanUseMist = true;
+        BloodDrainEfficiency = 2.0f;
+
+        // 캐시
+        OriginalMoveSpeed = GetCharacterMovement()->MaxWalkSpeed;
+        OriginalCrimsonCooldown = CrimsonSlashCooldown;
+        OriginalBurstCooldown = SanguineBurstCooldown;
+
+        // 속도 증가
+        GetCharacterMovement()->MaxWalkSpeed *= 1.3f;
+        // 쿨다운 감소
+        CrimsonSlashCooldown *= 0.7f;
+        SanguineBurstCooldown *= 0.7f;
+
+        UE_LOG(LogTemp, Warning, TEXT("[Vampire] Eternal Bloodlust Activated"));
+    }
+    else
+    {
+        // 복구
+        BloodDrainEfficiency = 1.0f;
+        GetCharacterMovement()->MaxWalkSpeed = OriginalMoveSpeed;
+        CrimsonSlashCooldown = OriginalCrimsonCooldown;
+        SanguineBurstCooldown = OriginalBurstCooldown;
+
+        UE_LOG(LogTemp, Warning, TEXT("[Vampire] Eternal Bloodlust Ended"));
     }
 }
 
 void ALCBossVampire::Multicast_StartBloodlust_Implementation()
 {
+    bIsBloodlust = true;
     OnRep_Bloodlust();
+
+    // 지속시간 후 bIsBloodlust=false → OnRep_Bloodlust() 호출
+    GetWorldTimerManager().ClearTimer(BloodlustDurationHandle);
+    GetWorldTimerManager().SetTimer(BloodlustDurationHandle, [this]()
+        {
+            bIsBloodlust = false;
+            OnRep_Bloodlust();
+        }, BloodlustDuration, false);
+}
+
+// --- RepNotify 에서 클라이언트에서도 연출/해제 ---
+void ALCBossVampire::OnRep_IsBerserk()
+{
+    Super::OnRep_IsBerserk();
+
+    if (bIsBerserk)
+        StartBerserk();
+    else
+        EndBerserk();
+}
+
+// --- 서버에서 Rage 가 Max 에 도달했을 때 최초 진입 (입장직후, Enter→Start 자동 실행) ---
+void ALCBossVampire::EnterBerserkState()
+{
+    Super::EnterBerserkState();
+    UE_LOG(LogTemp, Warning, TEXT("[Vampire] Enter Eternal Bloodlust"));
+
+    // 이때 특수 상태 플래그 켜기 → 기존 Multicast_StartBloodlust 에서
+    // Mist Form 즉시 재사용, 효율 2배, 속도↑ 등의 로직이 실행됩니다.
+    Multicast_StartBloodlust();
+}
+
+// --- bIsBerserk=true 직후(클라이언트/서버 공통) 이펙트 & 사운드 ---
+void ALCBossVampire::StartBerserk()
+{
+    Super::StartBerserk();
+
+    // (1) 붉은 안개 FX
+    if (BloodlustEffectFX)
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAttached(
+            BloodlustEffectFX,
+            GetRootComponent(),
+            NAME_None,
+            FVector::ZeroVector,
+            FRotator::ZeroRotator,
+            EAttachLocation::KeepRelativeOffset,
+            true
+        );
+    }
+
+    // (2) 심장 박동음 재생
+    if (BloodlustSound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(
+            this,
+            BloodlustSound,
+            GetActorLocation()
+        );
+    }
+}
+
+// --- Duration 동안 유지하고 싶을 때 사용 (예: 20초) ---
+void ALCBossVampire::StartBerserk(float Duration)
+{
+    // 기본 StartBerserk() 의 연출 재생
+    StartBerserk();
+
+    // Duration 초 뒤 EndBerserk() 호출 예약
+    GetWorldTimerManager().ClearTimer(BerserkTimerHandle);
+    GetWorldTimerManager().SetTimer(
+        BerserkTimerHandle,
+        this, &ALCBossVampire::EndBerserk,
+        Duration, false
+    );
+}
+
+// --- bIsBerserk=false 로 전환(클라이언트/서버) 시 실행 ---
+void ALCBossVampire::EndBerserk()
+{
+    Super::EndBerserk();
+    UE_LOG(LogTemp, Warning, TEXT("[Vampire] Exit Eternal Bloodlust"));
+
+    // (선택) 추가 연출이 필요하면 여기에
+    // 예: 붉은 안개 FX 제거, 사운드 정지 등
+}
+
+bool ALCBossVampire::RequestAttack(float TargetDistance)
+{
+    if (!HasAuthority()) return false;
+
+    struct FEntry { float W; TFunction<void()> A; };
+    TArray<FEntry> Entries;
+
+    // Crimson Slash (근접)
+    if (TargetDistance <= CrimsonSlashRadius && !GetWorldTimerManager().IsTimerActive(CrimsonSlashHandle))
+        Entries.Add({ 3.f, [this]() { ExecuteCrimsonSlash(); } });
+
+    // Sanguine Burst (중거리)
+    if (TargetDistance <= SanguineBurstRadius && !GetWorldTimerManager().IsTimerActive(BurstHandle))
+        Entries.Add({ 2.f, [this]() { ExecuteSanguineBurst(); } });
+
+    // Mist Form (Fallback)
+    if (bCanUseMist)
+        Entries.Add({ 1.f, [this]() { EnterMistForm(); } });
+
+    float Total = 0; for (auto& e : Entries) Total += e.W;
+    float Pick = FMath::FRandRange(0.f, Total), Acc = 0;
+    for (auto& e : Entries)
+    {
+        Acc += e.W;
+        if (Pick <= Acc) { e.A(); return true; }
+    }
+    return false;
 }
 
 void ALCBossVampire::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
     DOREPLIFETIME(ALCBossVampire, bIsMistForm);
     DOREPLIFETIME(ALCBossVampire, bIsBloodlust);
 }

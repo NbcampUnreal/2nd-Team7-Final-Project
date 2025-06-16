@@ -3,6 +3,8 @@
 
 #include "Item/EquipmentItem/FlashlightItem.h"
 #include "Net/UnrealNetwork.h"
+#include "Components/SphereComponent.h"
+#include "AI/EliteMonster/CaveEliteMonster.h"
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundAttenuation.h"
 #include "LastCanary.h"
@@ -22,6 +24,46 @@ AFlashlightItem::AFlashlightItem()
     GlassGlowComponent->SetVisibility(false);
 
     bIsLightOn = false;
+
+    //몬스터 이벤트
+    LightDetectionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("LightDetectionSphere"));
+    LightDetectionSphere->SetupAttachment(RootComponent);
+    LightDetectionSphere->SetSphereRadius(1000.0f);
+    LightDetectionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+    LightDetectionSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
+    LightDetectionSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+    LightDetectionSphere->SetIsReplicated(true);
+
+    //오버랩
+    LightDetectionSphere->OnComponentBeginOverlap.AddDynamic(this, &AFlashlightItem::OnLightOverlapBegin);
+    LightDetectionSphere->OnComponentEndOverlap.AddDynamic(this, &AFlashlightItem::OnLightOverlapEnd);
+}
+
+
+void AFlashlightItem::OnLightOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+    UE_LOG(LogTemp, Warning, TEXT("OnLightOverlapBegin 호출됨 - bIsLightOn: %d, HasAuthority: %d"), bIsLightOn, HasAuthority());
+    if (!bIsLightOn) return;
+    if (!HasAuthority()) return; // 서버에서만 처리
+
+    if (ACaveEliteMonster* EliteMonster = Cast<ACaveEliteMonster>(OtherActor))
+    {
+        /*EliteMonster->FreezeAI();*/
+        UE_LOG(LogTemp, Error, TEXT("아무튼 작동됨!"));
+    }
+}
+
+void AFlashlightItem::OnLightOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+    UE_LOG(LogTemp, Warning, TEXT("OnLightOverlapEnd 호출됨 - bIsLightOn: %d, HasAuthority: %d"), bIsLightOn, HasAuthority());
+    if (!bIsLightOn) return;
+    if (!HasAuthority()) return;
+
+    if (ACaveEliteMonster* EliteMonster = Cast<ACaveEliteMonster>(OtherActor))
+    {
+        /*EliteMonster->UnfreezeAI();*/
+        UE_LOG(LogTemp, Error, TEXT("아무튼 작동끝!"));
+    }
 }
 
 void AFlashlightItem::UseItem()
@@ -92,6 +134,45 @@ void AFlashlightItem::Multicast_UpdateLightState_Implementation(bool bNewState)
     SpotLightComponent->SetVisibility(bIsLightOn);
     GlassGlowComponent->SetVisibility(bIsLightOn);
 
+    if (HasAuthority())
+    {
+        UE_LOG(LogTemp, Error, TEXT("서버에서 몬스터 검사 시작"));
+
+        // ✅ 월드의 모든 ACaveEliteMonster 검사
+        TArray<AActor*> AllMonsters;
+        UGameplayStatics::GetAllActorsOfClass(GetWorld(), ACaveEliteMonster::StaticClass(), AllMonsters);
+        UE_LOG(LogTemp, Error, TEXT("월드의 전체 CaveEliteMonster 수: %d"), AllMonsters.Num());
+
+        // 각 몬스터와의 거리 확인
+        FVector SphereLocation = LightDetectionSphere->GetComponentLocation();
+        float SphereRadius = LightDetectionSphere->GetScaledSphereRadius();
+
+        for (AActor* Monster : AllMonsters)
+        {
+            float Distance = FVector::Dist(SphereLocation, Monster->GetActorLocation());
+            UE_LOG(LogTemp, Error, TEXT("몬스터 %s - 거리: %f, Sphere반지름: %f, 범위내: %s"),
+                *Monster->GetName(), Distance, SphereRadius,
+                (Distance <= SphereRadius) ? TEXT("YES") : TEXT("NO"));
+
+            // 몬스터의 Collision 정보 확인
+            if (APawn* MonsterPawn = Cast<APawn>(Monster))
+            {
+                if (UPrimitiveComponent* RootPrimitive = Cast<UPrimitiveComponent>(MonsterPawn->GetRootComponent()))
+                {
+                    UE_LOG(LogTemp, Error, TEXT("몬스터 %s Collision - ObjectType: %d, Channel: %s"),
+                        *Monster->GetName(),
+                        (int32)RootPrimitive->GetCollisionObjectType(),
+                        *UEnum::GetValueAsString(RootPrimitive->GetCollisionObjectType()));
+                }
+            }
+        }
+
+        // 기존 오버랩 검사
+        TArray<AActor*> OverlappingActors;
+        LightDetectionSphere->GetOverlappingActors(OverlappingActors);
+        UE_LOG(LogTemp, Error, TEXT("전체 오버랩 액터 수: %d"), OverlappingActors.Num());
+
+    }
     // 빛 강도 설정
     if (!bIsLightOn)
     {
@@ -302,6 +383,17 @@ void AFlashlightItem::BeginPlay()
     {
         UE_LOG(LogTemp, Warning, TEXT("[AFlashlightItem::BeginPlay] SpotLightComponent 복제 활성화"));
         SpotLightComponent->SetIsReplicated(true);
+    }
+
+    if (LightDetectionSphere)
+    {
+        LightDetectionSphere->SetHiddenInGame(false);
+        LightDetectionSphere->SetVisibility(true);
+
+        // 디버그: Sphere 위치와 크기 로그
+        UE_LOG(LogTemp, Error, TEXT("LightDetectionSphere 위치: %s, 반지름: %f"),
+            *LightDetectionSphere->GetComponentLocation().ToString(),
+            LightDetectionSphere->GetScaledSphereRadius());
     }
 }
 

@@ -1113,6 +1113,7 @@ void ABaseCharacter::Multicast_PlayReload_Implementation()
 	if (Duration > 0.f)
 	{
 		RifleItem->Multicast_PlayReloadAnimation_Implementation();
+		RifleItem->Multicast_PlayReloadSound_Implementation();
 		SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 		bIsReloading = true;
 		FOnMontageEnded EndDelegate;
@@ -1985,6 +1986,7 @@ void ABaseCharacter::HandlePlayerDeath()
 	{
 		return;
 	}
+
 	//if 캐릭터가 죽으면
 	//장착 아이템 제거
 	//캐릭터 래그돌
@@ -1992,6 +1994,8 @@ void ABaseCharacter::HandlePlayerDeath()
 	//캐릭터 상태 변경 -> 멀티캐스트까지
 	//관전 상태로 넘어갈 준비
 	//게이트 액터 or 게임 스테이트 or 게임 모드에 어떻게든 상태 알리기
+
+	DropAllItemsOnDeath();
 	UnequipCurrentItem();
 	StartRagdolling();
 	Client_HandlePlayerVoiceChattingState();
@@ -2592,6 +2596,10 @@ bool ABaseCharacter::UseEquippedItem(float ActionValue)
 	else
 	{
 		bIsUsingItem = false;
+		if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.WalkieTalkie")))
+		{
+			EquippedItem->UseItem();
+		}
 		AGunBase* Rifle = Cast<AGunBase>(EquippedItem);
 		if (!IsValid(Rifle))
 		{
@@ -2675,6 +2683,23 @@ void ABaseCharacter::DropItemAtSlot(int32 SlotIndex, int32 Quantity)
 	else
 	{
 		LOG_Item_WARNING(TEXT("[ABaseCharacter::DropItemAtSlot] 드롭 요청 실패"));
+	}
+}
+
+void ABaseCharacter::DropAllItemsOnDeath()
+{
+	if (!ToolbarInventoryComponent) return;
+
+	int32 NumSlots = ToolbarInventoryComponent->ItemSlots.Num();
+
+	for (int32 i = 0; i < NumSlots; ++i)
+	{
+		// 슬롯이 유효하고, Default가 아니고, 수량이 1 이상인 아이템만 드랍
+		FBaseItemSlotData* SlotData = ToolbarInventoryComponent->GetItemDataAtSlot(i);
+		if (SlotData && SlotData->bIsValid && !ToolbarInventoryComponent->IsDefaultItem(SlotData->ItemRowName) && SlotData->Quantity > 0)
+		{
+			ToolbarInventoryComponent->TryDropItemAtSlot(i, SlotData->Quantity);
+		}
 	}
 }
 

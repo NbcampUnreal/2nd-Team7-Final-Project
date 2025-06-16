@@ -634,6 +634,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Character|Inventory")
 	void DropItemAtSlot(int32 SlotIndex, int32 Quantity = 1);
 
+	/** 캐릭터 사망 시 모든 슬롯 아이템 드랍 */
+	UFUNCTION(BlueprintCallable, Category = "Character|Inventory")
+	void DropAllItemsOnDeath();
+
 	//-----------------------------------------------------
 	// 가방 관리 (간소화)
 	//-----------------------------------------------------
