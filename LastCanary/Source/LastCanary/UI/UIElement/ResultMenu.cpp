@@ -180,11 +180,11 @@ void UResultMenu::OnAcceptClicked()
 	{
 		if (GameDataManager->CurrentRound == GameDataManager->MaxRounds)
 		{
-			if (ULCGameInstance* GI = Cast<ULCGameInstance>(GetGameInstance()))
-			{
-				GI->DestroySession();
-				
-			}
+			//if (ULCGameInstance* GI = Cast<ULCGameInstance>(GetGameInstance()))
+			//{
+			//	GI->DestroySession();
+			//	
+			//}
 
 		}
 		else
