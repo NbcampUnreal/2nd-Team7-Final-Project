@@ -280,7 +280,7 @@ void ULCUIManager::ShowConfirmPopup(TFunction<void()> OnConfirm, const FText& Me
 	}
 }
 
-void ULCUIManager::ShowShopPopup()
+void ULCUIManager::ShowShopPopup(int Gold)
 {
 	if (OwningPlayer == nullptr)
 	{
@@ -304,6 +304,7 @@ void ULCUIManager::ShowShopPopup()
 	}*/
 
 	SwitchToWidget(CachedShopWidget);
+	CachedShopWidget->SetGold(Gold);
 	HideInventoryMainWidget();
 
 	if (OwningPlayer)
