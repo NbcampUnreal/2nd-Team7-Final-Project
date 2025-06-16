@@ -25,9 +25,13 @@ protected:
     // 컴포넌트
     //-----------------------------------------------------
 public:
-    /** 손전등의 빛을 생성하는 스팟 라이트 컴포넌트 */
+    /** 손전등의 빛을 생성하는 스포트라이트 컴포넌트 */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Flashlight|Components")
     USpotLightComponent* SpotLightComponent;
+
+    /** 손전등의 On, Off 여부를 확인하기 위한 스포트라이트 */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Flashlight|Components")
+    USpotLightComponent* GlassGlowComponent;
     
     //-----------------------------------------------------
     // 손전등 상태 및 속성

@@ -74,6 +74,12 @@ protected:
     void OnTimelineFinished();
 
 public:
+    UPROPERTY(EditAnywhere, Category = "Sound")
+    USoundBase* OpenDoorSoundCue;
+
+    UPROPERTY(EditAnywhere, Category = "Sound")
+    USoundBase* CloseDoorSoundCue;
+
     // Server 호출 → 클라이언트에 전파
     UFUNCTION(Server, Reliable)
     void Server_OpenDoors();

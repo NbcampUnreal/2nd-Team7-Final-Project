@@ -217,6 +217,11 @@ public:
 	virtual void Input_DroneExit();
 
 public:
+	UFUNCTION(Server, Reliable)
+	void Server_DroneExit();
+	void Server_DroneExit_Implementation();
+	
+public:
 	void ChangeToNextQuickSlot();
 	void ChangeToPreviousQuickSlot();
 	void SelectQuickSlot(int32 SlotIndex);

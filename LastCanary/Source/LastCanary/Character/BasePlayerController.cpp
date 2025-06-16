@@ -15,6 +15,7 @@
 #include "Inventory/ToolbarInventoryComponent.h"
 
 #include "SaveGame/LCLocalPlayerSaveGame.h"
+#include "LastCanary.h"
 
 void ABasePlayerController::BeginPlay()
 {
@@ -432,7 +433,7 @@ void ABasePlayerController::Input_OnLookMouse(const FInputActionValue& ActionVal
 		ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn);
 		if (IsValid(Drone))
 		{
-			Drone->Input_Look(ActionValue);
+			Drone->Input_Look(ActionValue, MouseSensivity);
 		}
 	}
 	if (CurrentPossessedPawn->IsA<ABaseSpectatorPawn>())
@@ -879,8 +880,8 @@ void ABasePlayerController::Input_OnItemUse(const FInputActionValue& ActionValue
 	{
 		return;
 	}
-
-	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
+	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
+	if (IsValid(PlayerCharacter))
 	{
 		PlayerCharacter->UseEquippedItem(Value);
 	}
@@ -955,6 +956,10 @@ void ABasePlayerController::SetShootingSetting()
 void ABasePlayerController::Input_ChangeQuickSlot(const FInputActionValue& ActionValue)
 {
 	// 휠의 Y 방향만 사용 (위: +1, 아래: -1)
+	if (!IsValid(CurrentPossessedPawn))
+	{
+		return;
+	}
 	const float ScrollValue = ActionValue.Get<float>();
 	if (ScrollValue > 0.f)
 	{
@@ -985,7 +990,7 @@ void ABasePlayerController::ChangeToNextQuickSlot()
 	{
 		return;
 	}
-
+		
 	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
 		PlayerCharacter->SetCurrentQuickSlotIndex(PlayerCharacter->GetCurrentQuickSlotIndex() + 1);
@@ -1099,8 +1104,9 @@ AActor* ABasePlayerController::TraceInteractable(float TraceDistance)
 		Hit, Start, End, ECC_GameTraceChannel1, Params);
 
 	// 디버그용
+#if WITH_EDITOR
 	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 1.0f);
-
+#endif
 	return bHit ? Hit.GetActor() : nullptr;
 }
 
@@ -1147,35 +1153,53 @@ void ABasePlayerController::Input_DroneExit()
 	{
 		return;
 	}
+	ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn);
 
-	if (ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn))
+	if (!IsValid(Drone))
 	{
-		CurrentPossessedPawn = SpanwedPlayerCharacter;
-		//Possess(SpanwedPlayerCharacter);
-		SetViewTargetWithBlend(SpanwedPlayerCharacter, 0.5f);
-
-		if (SpawnedPlayerDrone)
-		{
-			SpawnedPlayerDrone->ReturnAsItem();
-			SpawnedPlayerDrone = nullptr;
-		}
+		return;		
 	}
-	if (!IsValid(CurrentPossessedPawn))
+	CurrentPossessedPawn = SpanwedPlayerCharacter;
+	Server_DroneExit();
+	//Possess(SpanwedPlayerCharacter);
+	SetViewTargetWithBlend(SpanwedPlayerCharacter, 0.5f);
+
+	if (IsValid(SpawnedPlayerDrone))
+	{
+		SpawnedPlayerDrone->ReturnAsItem();
+		SpawnedPlayerDrone = nullptr;
+	}
+	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
+	if (!IsValid(PlayerCharacter))
 	{
 		return;
 	}
-	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
+	PlayerCharacter->StopTrackingDrone();
+	PlayerCharacter->Server_UnPossessDrone();
+	if (IsLocalController())
 	{
-		PlayerCharacter->StopTrackingDrone();
+		PlayerCharacter->SwapHeadMaterialTransparent(true);
 		PlayerCharacter->Server_UnPossessDrone();
+	}
+
+	ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
+	if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
+	{
 		if (IsLocalController())
 		{
-			PlayerCharacter->SwapHeadMaterialTransparent(true);
-			PlayerCharacter->Server_UnPossessDrone();
+			UIManager->ShowInGameHUD();
 		}
 	}
 }
 
+void ABasePlayerController::Server_DroneExit_Implementation()
+{
+	if (!IsValid(SpanwedPlayerCharacter))
+	{
+		return;
+	}
+	CurrentPossessedPawn = SpanwedPlayerCharacter;
+}
 
 void ABasePlayerController::SpawnDrone()
 {
@@ -1188,6 +1212,7 @@ void ABasePlayerController::Server_SpawnDrone_Implementation()
 {
 	if (!IsValid(CurrentPossessedPawn))
 	{
+		LOG_Char_WARNING(TEXT("CurrentPossessedPawn Is Not Valid"));
 		return;
 	}
 	if (!(CurrentPossessedPawn->IsA<ABaseCharacter>()))
@@ -1218,6 +1243,10 @@ void ABasePlayerController::Server_SpawnDrone_Implementation()
 	Params.Owner = this;
 	// ABasedrone 포인터로 받아서 타입 안전하게 캐스팅
 	ABaseDrone* Drone = GetWorld()->SpawnActor<ABaseDrone>(DroneClass, Location, Rotation, Params);
+	if (!IsValid(Drone))
+	{
+		LOG_Char_WARNING(TEXT("소환한 드론이 유효하지 않음"));
+	}
 	SpawnedPlayerDrone = Drone;
 	SpawnedPlayerDrone->SetOwner(this);	
 
@@ -1235,11 +1264,10 @@ void ABasePlayerController::OnRep_SpawnedPlayerDrone()
 {
 	if (!IsValid(SpawnedPlayerDrone))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("SpawnedPlayerDrone is invalid on client!"));
+		LOG_Char_WARNING(TEXT("SpawnedPlayerDrone is invalid on client!"));
 		return;
 	}
-
-	UE_LOG(LogTemp, Warning, TEXT("Client received replicated drone: %s"), *SpawnedPlayerDrone->GetName());
+	LOG_Char_WARNING(TEXT("Client received replicated drone: %s"), *SpawnedPlayerDrone->GetName());
 	if (IsValid(SpanwedPlayerCharacter))
 	{
 		SpanwedPlayerCharacter->ControlledDrone = SpawnedPlayerDrone;
@@ -1271,6 +1299,15 @@ void ABasePlayerController::PossessOnDrone()
 
 	
 	SetViewTargetWithBlend(SpawnedPlayerDrone, 0.5f);
+	ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
+	// HUD 숨기고 관전 모드 전환
+	if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
+	{
+		if (IsLocalController())
+		{
+			UIManager->HideInGameHUD();
+		}
+	}
 }
 
 void ABasePlayerController::CameraSetOnScope()
@@ -1294,7 +1331,7 @@ void ABasePlayerController::InteractGimmick(ALCBaseGimmick* Target)
 	}
 	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
 	Server_InteractWithGimmick(Target);
-	PlayerCharacter->PlayInteractionMontage(Target);
+	//PlayerCharacter->PlayInteractionMontage(Target);
 }
 
 void ABasePlayerController::Server_InteractWithGimmick_Implementation(ALCBaseGimmick* Target)

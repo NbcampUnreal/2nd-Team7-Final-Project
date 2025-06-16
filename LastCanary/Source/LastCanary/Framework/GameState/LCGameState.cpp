@@ -8,6 +8,7 @@
 #include "Framework/PlayerController/LCRoomPlayerController.h"
 #include "EngineUtils.h"
 #include "Framework/GameMode/LCRoomGameMode.h"
+#include "Framework/GameMode/LCInGameModeBase.h"
 
 #include "LastCanary.h"
 
@@ -126,7 +127,7 @@ void ALCGameState::CheckGameEndCondition()
 			LOG_Frame_WARNING(TEXT("게임모드 가져오기 오류"));
 			return;
 		}
-		ALCRoomGameMode* MyGameMode = Cast<ALCRoomGameMode>(GameModeBase);
+		ALCInGameModeBase* MyGameMode = Cast<ALCInGameModeBase>(GameModeBase);
 		if (!MyGameMode)
 		{
 			LOG_Frame_WARNING(TEXT("게임모드 캐스팅 오류"));

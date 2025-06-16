@@ -13,7 +13,7 @@
 void UInventoryMainWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
-	
+
 	AutoInitializeWithPlayer();
 
 	ShowToolbarOnly();
@@ -94,9 +94,12 @@ bool UInventoryMainWidget::IsBackpackInventoryOpen() const
 
 void UInventoryMainWidget::ShowToolbarSlotItemText(const FText& ItemName)
 {
-	if (!SlotItemText) return;
+	if (SlotItemText == nullptr)
+	{
+		return;
+	}
 
-	SlotItemText->SetText(FText::Format(NSLOCTEXT("UI", "CurrentSlotItem", "현재 아이템 : {0}"), ItemName));
+	SlotItemText->SetText(FText::Format(NSLOCTEXT("UI", "CurrentSlotItem", "{0}"), ItemName));
 	SlotItemText->SetVisibility(ESlateVisibility::Visible);
 
 	GetWorld()->GetTimerManager().ClearTimer(SlotItemTextTimerHandle);

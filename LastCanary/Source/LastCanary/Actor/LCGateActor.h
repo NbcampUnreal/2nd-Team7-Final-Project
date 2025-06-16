@@ -12,6 +12,7 @@ enum class EGateTravelType : uint8
 	ToInGame
 };
 
+class UInputAction;
 UCLASS()
 class LASTCANARY_API ALCGateActor : public AActor, public IInteractableInterface
 {
@@ -44,4 +45,11 @@ public:
 
     void ReturnToBaseCamp(APlayerController* Controller);
     void IntoGameLevel(APlayerController* Controller);
+
+public:
+    UPROPERTY(EditDefaultsOnly, Category = "Input")
+    UInputAction* IA_Interact;
+
+    UFUNCTION(BlueprintCallable, Category = "Input")
+    FString GetCurrentKeyNameForAction(UInputAction* InputAction) const;
 };
