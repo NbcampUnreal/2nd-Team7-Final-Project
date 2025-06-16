@@ -13,10 +13,10 @@ UCLASS()
 class LASTCANARY_API AFlashlightItem : public AEquipmentItemBase
 {
     GENERATED_BODY()
-    
+
 public:
     AFlashlightItem();
-    
+
 protected:
     virtual void BeginPlay() override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
@@ -32,56 +32,59 @@ public:
     /** 손전등의 On, Off 여부를 확인하기 위한 스포트라이트 */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Flashlight|Components")
     USpotLightComponent* GlassGlowComponent;
-    
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Flashlight|Components")
+    class USphereComponent* LightDetectionSphere;
+
     //-----------------------------------------------------
     // 손전등 상태 및 속성
     //-----------------------------------------------------
-    
+
     /** 손전등 빛이 켜져 있는지 여부 */
     UPROPERTY(BlueprintReadOnly, Replicated, Category = "Flashlight|State")
     bool bIsLightOn;
-    
+
     /** 손전등 빛의 강도 */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Flashlight|Properties")
     float LightIntensity = 10000.0f;
-    
+
     /** 손전등 빛의 색상 */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Flashlight|Properties")
     FLinearColor LightColor = FLinearColor(1.0f, 0.9f, 0.8f, 1.0f);
-    
+
     /** 손전등 빛의 내부 원뿔 각도 */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Flashlight|Properties")
     float InnerConeAngle = 0.0f;
-    
+
     /** 손전등 빛의 외부 원뿔 각도 */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Flashlight|Properties")
     float OuterConeAngle = 40.0f;
-    
+
     /** 초당 배터리 소모율 */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Flashlight|Battery")
     float BatteryConsumptionRate = 0.2f;
-    
+
     /** 배터리 소모 타이머 핸들 */
     FTimerHandle BatteryTimerHandle;
-    
+
     //-----------------------------------------------------
     // 아이템 기본 기능 (오버라이드)
     //-----------------------------------------------------
-    
+
     /** 아이템 사용 함수 (손전등 켜기/끄기) */
     virtual void UseItem() override;
-    
+
     /** 아이템 장착 상태 설정 */
     virtual void SetEquipped(bool bNewEquipped) override;
-    
+
     //-----------------------------------------------------
     // 손전등 고유 기능
     //-----------------------------------------------------
-    
+
     /** 손전등 빛 상태 토글 */
     UFUNCTION(BlueprintCallable, Category = "Flashlight|Actions")
     void ToggleLight(bool bTurnOn);
-    
+
     /** 배터리 소모 처리 */
     UFUNCTION(BlueprintCallable, Category = "Flashlight|Battery")
     void ConsumeBattery();
@@ -112,19 +115,28 @@ public:
     /** 모든 클라이언트에서 사운드 재생 */
     UFUNCTION(NetMulticast, Reliable)
     void Multicast_PlayFlashlightSound(bool bTurnOn);
-    
+
     //-----------------------------------------------------
     // 네트워크 함수
     //-----------------------------------------------------
-    
+
     /** 서버에서 손전등 상태 변경 요청 */
     UFUNCTION(Server, Reliable)
     void Server_ToggleLight(bool bNewState);
-    
+
     /** 모든 클라이언트에게 손전등 상태 업데이트 */
     UFUNCTION(NetMulticast, Reliable)
     void Multicast_UpdateLightState(bool bNewState);
 
     /** 리플리케이션 속성 설정 */
     void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+
+private:
+    /** 몬스터 오버랩 감지 */
+    UFUNCTION()
+    void OnLightOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+    UFUNCTION()
+    void OnLightOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 };

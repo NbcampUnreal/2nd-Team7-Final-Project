@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "AI/BaseBossMonsterCharacter.h"
+#include "NiagaraSystem.h"
 #include "LCBossGumiho.generated.h"
 
 UCLASS()
@@ -15,34 +16,76 @@ public:
 protected:
     virtual void BeginPlay() override;
     virtual void Tick(float DeltaTime) override;
+    virtual void UpdateRage(float DeltaSeconds) override;
+
+    // ── RequestAttack override ─────────────────────────
+protected:
+    virtual bool RequestAttack(float TargetDistance) override;
+
+    // ── 광폭화 ────────────────────────────────
+    virtual void EnterBerserkState() override;
+    virtual void StartBerserk() override;
+    virtual void StartBerserk(float Duration) override;
+    virtual void EndBerserk() override;
+
+    /** 면역·버프 연출용 이펙트 */
+    UPROPERTY(EditAnywhere, Category = "Gumiho|Berserk")
+    UNiagaraSystem* BerserkEffectFX;
+
+    /** 현악기 선율 사운드 */
+    UPROPERTY(EditAnywhere, Category = "Gumiho|Berserk")
+    USoundBase* BerserkSound;
+
+    /** 이동 속도 버프 배수 */
+    UPROPERTY(EditAnywhere, Category = "Gumiho|Berserk")
+    float BerserkSpeedMultiplier = 2.0f;
+
+    /** 공격력 버프 배수 */
+    UPROPERTY(EditAnywhere, Category = "Gumiho|Berserk")
+    float BerserkDamageMultiplier = 1.5f;
 
     // ── Illusion Dance ──
-    /** 소환할 환영 클래스 */
     UPROPERTY(EditAnywhere, Category = "Gumiho|Illusion")
     TSubclassOf<AActor> IllusionClass;
 
-    /** 한 번에 생성할 환영 수 */
     UPROPERTY(EditAnywhere, Category = "Gumiho|Illusion", meta = (ClampMin = "1", ClampMax = "10"))
     int32 NumIllusions = 3;
 
-    /** 환영 소환 주기(초) */
     UPROPERTY(EditAnywhere, Category = "Gumiho|Illusion")
     float IllusionInterval = 20.f;
+
+    UPROPERTY(EditAnywhere, Category = "Gumiho|Illusion")
+    float IllusionRagePerSecond = 1.f;
+
+    UPROPERTY(EditAnywhere, Category = "Gumiho|Illusion")
+    float IllusionDeathPenalty = 10.f;
 
     FTimerHandle IllusionTimerHandle;
     TArray<AActor*> IllusionActors;
     void SpawnIllusions();
+    UFUNCTION()
+    void OnIllusionDestroyed(AActor* DestroyedActor);
+
+    // ── Tail Strike ──
+    UPROPERTY(EditAnywhere, Category = "Gumiho|TailStrike")
+    float TailStrikeRadius = 400.f;
+
+    UPROPERTY(EditAnywhere, Category = "Gumiho|TailStrike")
+    float TailStrikeDamage = 30.f;
+
+    UPROPERTY(EditAnywhere, Category = "Gumiho|TailStrike")
+    float TailStrikeCooldown = 15.f;
+
+    FTimerHandle TailStrikeTimerHandle;
+    void ExecuteTailStrike();
 
     // ── Foxfire Volley ──
-    /** 발사할 불꽃 투사체 클래스 */
     UPROPERTY(EditAnywhere, Category = "Gumiho|Foxfire")
     TSubclassOf<AActor> FoxfireProjectileClass;
 
-    /** 투사체 개수 */
     UPROPERTY(EditAnywhere, Category = "Gumiho|Foxfire", meta = (ClampMin = "1"))
     int32 FoxfireCount = 5;
 
-    /** 투사 주기(초) */
     UPROPERTY(EditAnywhere, Category = "Gumiho|Foxfire")
     float FoxfireInterval = 15.f;
 
@@ -50,7 +93,6 @@ protected:
     void ExecuteFoxfireVolley();
 
     // ── Illusion Swap ──
-    /** 환영 위치 교체 주기(초) */
     UPROPERTY(EditAnywhere, Category = "Gumiho|Illusion")
     float IllusionSwapInterval = 25.f;
 
@@ -58,12 +100,14 @@ protected:
     void PerformIllusionSwap();
 
     // ── Charm Gaze ──
-    /** 매 CharmInterval 초마다 반경 내 플레이어 매혹 */
     UPROPERTY(EditAnywhere, Category = "Gumiho|Charm")
     float CharmRadius = 500.f;
 
     UPROPERTY(EditAnywhere, Category = "Gumiho|Charm")
     float CharmInterval = 10.f;
+
+    UPROPERTY(EditAnywhere, Category = "Gumiho|Charm")
+    float CharmRagePerSecond = 5.f;
 
     FTimerHandle CharmTimerHandle;
     void ExecuteCharmGaze();
@@ -73,7 +117,7 @@ protected:
     void ExecuteNineTailBurst();
 
     // ── Divine Grace ──
-    UPROPERTY(ReplicatedUsing = OnRep_DivineGrace, BlueprintReadOnly, Category = "Gumiho|Divine")
+    UPROPERTY(ReplicatedUsing = OnRep_DivineGrace)
     bool bIsDivineGrace = false;
 
     UFUNCTION()
@@ -82,7 +126,19 @@ protected:
     UFUNCTION(NetMulticast, Reliable)
     void Multicast_StartDivineGrace();
 
-    // 복제 설정
+    // ── Rage ──
+    UPROPERTY(EditAnywhere, Category = "Gumiho|Rage", meta = (ClampMin = "0"))
+    float MaxRage = 100.f;
+
+    void AddRage(float Amount);
+
+    // ── 스킬 쿨다운 추적용 타임스탬프 ───────────────────
+    float LastFoxfireTime = -FLT_MAX;
+    float LastTailStrikeTime = -FLT_MAX;
+    float LastIllusionSwapTime = -FLT_MAX;
+
+    // ── Replication ──
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 	
 };
