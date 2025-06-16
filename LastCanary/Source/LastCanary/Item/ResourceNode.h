@@ -26,8 +26,17 @@ enum class EResourceSpawnLocationType : uint8
     CustomOffset UMETA(DisplayName = "커스텀 오프셋(ResourceNode 기준)")
 };
 
-class AResourceItemSpawnManager;
+UENUM(BlueprintType)
+enum class EResourceInteractionType : uint8
+{
+    Harvest		UMETA(DisplayName = "Harvest"),  
+    Mine		UMETA(DisplayName = "Mine"),     
+    Loot		UMETA(DisplayName = "Loot"),     
+    GetNote		UMETA(DisplayName = "Get Note"), 
+};
 
+class AResourceItemSpawnManager;
+class UInputAction;
 UCLASS()
 class LASTCANARY_API AResourceNode : public AActor, public IInteractableInterface
 {
@@ -48,11 +57,21 @@ public:
 
     void HarvestResource(APlayerController* Interactor);
 
-    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interact")
-    FString GetInteractMessage() const;
+    FText GetDefaultMessageForType(EResourceInteractionType Type) const;
+
+    /*UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interact")
+    FString GetInteractMessage() const;*/
     virtual FString GetInteractMessage_Implementation() const;
 
     FVector CalculateResourceSpawnLocation(APlayerController* Interactor) const;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Input")
+    UInputAction* IA_Interact;
+
+    FString GetCurrentKeyNameForInteract() const;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interact")
+    EResourceInteractionType InteractionType = EResourceInteractionType::Harvest;
 
     UPROPERTY(EditAnywhere)
     AResourceItemSpawnManager* ResourceItemSpawnManager;

@@ -7,7 +7,9 @@
 #include "Components/ScrollBox.h"
 #include "Kismet/GameplayStatics.h"
 
+#include "Framework/GameInstance/LCGameInstance.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "Framework/GameInstance/LCGameManager.h"
 #include "Framework/PlayerController/LCRoomPlayerController.h"
 #include "Framework/Manager/ChecklistManager.h"
 
@@ -172,13 +174,36 @@ void UResultMenu::OnAcceptClicked()
 
 	LOG_Frame_WARNING(TEXT("ResultMenu - AcceptClicked → 호스트이므로 BaseCamp로 이동"));
 
-	// 호스트만 처리
-	if (ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+
+
+	if (ULCGameManager* GameDataManager = GetGameInstance()->GetSubsystem<ULCGameManager>())
 	{
-		const FName BaseCampMapName = TEXT("BaseCamp");
-		const int32 BaseCampID = FCrc::StrCrc32(*BaseCampMapName.ToString());
-		GISubsystem->ChangeLevelByMapID(BaseCampID);
+		if (GameDataManager->CurrentRound == GameDataManager->MaxRounds)
+		{
+			if (ULCGameInstance* GI = Cast<ULCGameInstance>(GetGameInstance()))
+			{
+				GI->DestroySession();
+				
+			}
+
+		}
+		else
+		{
+			// 게임 데이터 초기화
+			GameDataManager->EndCurrentRound();
+			GameDataManager->AddGold(3000); // 예시: 1000 골드 추가
+			LOG_Frame_WARNING(TEXT("ResultMenu - AcceptClicked → EndCurrentRound 호출"));
+
+			// 호스트만 처리
+			if (ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+			{
+				const FName BaseCampMapName = TEXT("BaseCamp");
+				const int32 BaseCampID = FCrc::StrCrc32(*BaseCampMapName.ToString());
+				GISubsystem->ChangeLevelByMapID(BaseCampID);
+			}
+		}
 	}
+	
 }
 
 void UResultMenu::ActivateResultCamera()

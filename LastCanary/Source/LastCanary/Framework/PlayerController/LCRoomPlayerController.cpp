@@ -1,6 +1,7 @@
 ﻿#include "Framework/PlayerController/LCRoomPlayerController.h"
-#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Framework/GameInstance/LCGameInstance.h"
+#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "Framework/GameInstance/LCGameManager.h"
 #include "Framework/PlayerState/LCPlayerState.h"
 #include "Framework/GameMode/LCRoomGameMode.h"
 #include "Framework/GameState/LCGameState.h"
@@ -138,6 +139,26 @@ void ALCRoomPlayerController::UpdatePlayerList(const TArray<FSessionPlayerInfo>&
 	}
 }
 
+void ALCRoomPlayerController::Server_ShowShopWidget_Implementation()
+{
+	if (UGameInstance* GameInstance = GetGameInstance())
+	{
+		ULCGameManager* GM = GameInstance->GetSubsystem<ULCGameManager>();
+		Client_ShowShopWidget(GM->GetGold());
+	}
+}
+
+void ALCRoomPlayerController::Client_ShowShopWidget_Implementation(int Gold)
+{
+	LCUIManager->ShowShopPopup(Gold);
+}
+
+void ALCRoomPlayerController::Client_NotifyGameStart_Implementation(const FText& LevelName)
+{
+	LOG_Frame_WARNING(TEXT("Client_NotifyGameStart called with LevelName: %s"), *LevelName.ToString());
+	LCUIManager->ShowPopupNotice(FText::Format(NSLOCTEXT("LastCanary", "GameStartNotice", "게임이 시작됩니다: {0}"), LevelName));
+}
+
 void ALCRoomPlayerController::Server_RequestPurchase_Implementation(const TArray<FItemDropData>& DropList)
 {
 	if (DropList.IsEmpty())
@@ -175,6 +196,13 @@ void ALCRoomPlayerController::Server_RequestPurchase_Implementation(const TArray
 
 	ULCGameInstanceSubsystem* GISubsystem = GameInstance->GetSubsystem<ULCGameInstanceSubsystem>();
 	if (GISubsystem == nullptr)
+	{
+		LOG_Frame_WARNING(TEXT("Server_RequestPurchase called with invalid GISubsystem."));
+		return;
+	}
+
+	ULCGameManager* LCGM = GameInstance->GetSubsystem<ULCGameManager>();
+	if (LCGM == nullptr)
 	{
 		LOG_Frame_WARNING(TEXT("Server_RequestPurchase called with invalid GISubsystem."));
 		return;
@@ -218,6 +246,8 @@ void ALCRoomPlayerController::Server_RequestPurchase_Implementation(const TArray
 		LOG_Frame_WARNING(TEXT("구매 실패: 골드 부족 (보유: %d, 필요: %d)"), PS->GetTotalGold(), TotalPrice);
 		return;
 	}
+
+	LCGM->AddGold(-TotalPrice);
 
 	// 골드 차감
 	PS->Server_SpendGold(TotalPrice);

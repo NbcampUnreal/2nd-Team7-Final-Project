@@ -1,11 +1,16 @@
 #include "Item/ItemBase.h"
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "Inventory/BackpackInventoryComponent.h"
+
 #include "Character/BaseCharacter.h"
 #include "Components/SphereComponent.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Net/UnrealNetwork.h"
+
 #include "Kismet/GameplayStatics.h"
+#include "EnhancedInputSubsystems.h"
+#include "EnhancedActionKeyMapping.h"
+
 #include "LastCanary.h"
 
 AItemBase::AItemBase()
@@ -375,20 +380,27 @@ void AItemBase::Interact_Implementation(APlayerController* Interactor)
 
 FString AItemBase::GetInteractMessage_Implementation() const
 {
+	if (IA_Interact == nullptr)
+	{
+		return TEXT("No Interact Key Assigned");
+	}
+
+	FString InteractKeyName = GetCurrentKeyNameForAction(IA_Interact);
+
 	if (ItemRowName.IsNone())
 	{
-		return FString(TEXT("아이템 습득"));
+		return FString::Printf(TEXT("Press [%s] to Pick Up Item"), *InteractKeyName);
 	}
 
 	if (ItemDataTable)
 	{
 		if (const FItemDataRow* Found = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("GetInteractMessage")))
 		{
-			return FString::Printf(TEXT("%s 습득 (x%d)"), *Found->ItemName.ToString(), Quantity);
+			return FString::Printf(TEXT("Press [%s] Pick Up %s (x%d)"), *InteractKeyName, *Found->ItemName.ToString(), Quantity);
 		}
 	}
 
-	return FString::Printf(TEXT("%s 습득 (x%d)"), *ItemRowName.ToString(), Quantity);
+	return FString::Printf(TEXT("Press [%s] Pick Up %s (x%d)"), *InteractKeyName, *ItemRowName.ToString(), Quantity);
 }
 
 void AItemBase::Server_TryPickupByPlayer_Implementation(APlayerController* PlayerController)
@@ -564,4 +576,35 @@ void AItemBase::MulticastPlayItemUseSound_Implementation(bool bIsStart)
 	}
 
 	Internal_PlaySound(SoundToPlay);
+}
+
+FString AItemBase::GetCurrentKeyNameForAction(UInputAction* InputAction) const
+{
+	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+	if (!IsValid(PC))
+	{
+		return TEXT("Invalid");
+	}
+
+	ULocalPlayer* LocalPlayer = PC->GetLocalPlayer();
+	if (!IsValid(LocalPlayer))
+	{
+		return TEXT("Invalid");
+	}
+
+	UEnhancedInputLocalPlayerSubsystem* Subsystem = LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
+	if (!IsValid(Subsystem))
+	{
+		return TEXT("Invalid");
+	}
+	const TArray<FEnhancedActionKeyMapping> Mappings = Subsystem->GetAllPlayerMappableActionKeyMappings();
+
+	for (const FEnhancedActionKeyMapping& Mapping : Mappings)
+	{
+		if (Mapping.Action == InputAction)
+		{
+			return Mapping.Key.GetDisplayName().ToString();
+		}
+	}
+	return TEXT("Unbound");
 }

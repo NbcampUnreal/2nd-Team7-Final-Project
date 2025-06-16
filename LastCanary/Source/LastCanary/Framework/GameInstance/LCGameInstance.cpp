@@ -83,23 +83,6 @@ void ULCGameInstance::LoadItemData()
 	// LOG_Frame_WARNING(TEXT("총 %d개의 상점 아이템을 로딩했습니다."), AllItems.Num());
 }
 
-// BluePrint에서 Create Session을 합니다.
-void ULCGameInstance::CreateSession_Implementation(const FSessionInfo& SessionInfo)
-{
-	LOG_Server_WARNING(TEXT("CreateSession called in C++"));
-}
-
-void ULCGameInstance::UpdateSession_Implementation(bool bAdvertise, bool bAllowJoin, int32 NumPublicConnections)
-{
-	LOG_Server_WARNING(TEXT("UpdateSession called in C++"));
-}
-
-void ULCGameInstance::Shutdown()
-{
-	Super::Shutdown();
-
-}
-
 void ULCGameInstance::LoadGunData()
 {
 	if (GunDataTable == nullptr)
@@ -122,4 +105,32 @@ void ULCGameInstance::LoadGunData()
 			//GunDataRow->GunID = HashedID;
 		}
 	}
+}
+
+
+#pragma region Session Handling
+
+// BluePrint에서 Create Session을 합니다.
+void ULCGameInstance::CreateSession_Implementation(const FSessionInfo& SessionInfo)
+{
+	LOG_Server_WARNING(TEXT("CreateSession called in C++"));
+}
+
+void ULCGameInstance::UpdateSession_Implementation(bool bAdvertise, bool bAllowJoin, int32 NumPublicConnections)
+{
+	LOG_Server_WARNING(TEXT("UpdateSession called in C++"));
+}
+
+void ULCGameInstance::DestroySession_Implementation()
+{
+	LOG_Server_WARNING(TEXT("DestroySession called in C++"));
+}
+
+#pragma endregion
+
+
+void ULCGameInstance::Shutdown()
+{
+	Super::Shutdown();
+
 }

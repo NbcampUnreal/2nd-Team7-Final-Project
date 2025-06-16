@@ -7,6 +7,7 @@
 
 class UStaticMeshComponent;
 class UWidgetComponent;
+class UInputAction;
 UCLASS()
 class LASTCANARY_API AShopInteractor : public AActor, public IInteractableInterface
 {
@@ -26,6 +27,13 @@ protected:
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<UUserWidget> ShopWidgetClass;
 
+	//UFUNCTION(Server, Reliable)
+	//void Server_ShowPopupShopWidget();
+	//void Server_ShowPopupShopWidget_Implementation();
+	//UFUNCTION(Client, Reliable)
+	//void Client_ShowPopupShopWidget(int Gold);
+	//void Client_ShowPopupShopWidget_Implementation(int Gold);
+
 	virtual void BeginPlay() override;
 
 public:
@@ -33,4 +41,11 @@ public:
 	virtual FString GetInteractMessage_Implementation() const override;
 
 	UWidgetComponent* GetShopWidgetComponent() const;
+
+public:
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	UInputAction* IA_Interact;
+
+	UFUNCTION(BlueprintCallable, Category = "Input")
+	FString GetCurrentKeyNameForAction(UInputAction* InputAction) const;
 };

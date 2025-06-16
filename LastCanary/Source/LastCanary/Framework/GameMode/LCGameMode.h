@@ -1,6 +1,8 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
+#include "LastCanary.h"
+#include "Framework/GameInstance/LCGameManager.h"
 #include "GameFramework/GameModeBase.h"
 #include "LCGameMode.generated.h"
 
@@ -17,17 +19,14 @@ class LASTCANARY_API ALCGameMode : public AGameModeBase
 	
 	// SeamlessTravel 시 : PostSeamlessTravel -> HandleSeamlessTravelPlayer(호스트입장) -> HandleStartingNewPlayer(호스트입장) -> StartPlay -> Begin Play
 	// HandleSeamlessTravelPlayer(Client 입장) -> HandleStartingNewPlayer(Client 입장)
-
 public:
 	void PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage) override;
 
 	virtual void PostLogin(APlayerController* NewPlayer) override;
-	
-	virtual void HandleSeamlessTravelPlayer(AController*& C) override;
 
 	virtual void PostSeamlessTravel() override;
 
-	void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
+	virtual void HandleSeamlessTravelPlayer(AController*& C) override;
 
 	// GameModeBase의 StartPlay -> BeginPlay와 같은 역할을 함
 	virtual void StartPlay() override;
@@ -35,7 +34,13 @@ public:
 	// Actor의 BeginPlay -> StartPlay 에서 호출 함
 	virtual void BeginPlay() override;
 
+	void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
+
 	virtual void Logout(AController* Exiting) override;
+
+private:
+	bool CanJoinSessionMap();
+	void UpdateSessionState();
 
 public:
 	UFUNCTION(BlueprintCallable)
@@ -43,15 +48,11 @@ public:
 
 	void SetPlayerInfo(const FSessionPlayerInfo& RequestInfo);
 
-	void UpdatePlayers();
+	virtual void UpdatePlayers();
 
 	bool IsAllPlayersReady() const;
 
 protected:
-	// 플레이어 컨트롤러를 생성하고, 플레이어 캐릭터를 스폰하는 함수
-	virtual void SpawnPlayerCharacter(APlayerController* Controller);
-
-private:
 	TArray<APlayerController*> AllPlayerControllers;
 	TArray<FSessionPlayerInfo> SessionPlayerInfos;
 
@@ -69,8 +70,8 @@ public:
 	void TravelMapByPath(FString Path);
 
 	void ShowLoading();
+	void HideLoading();
 
 protected:
 	void SendMessageToAllPC(const FString& Message);
-
 };
