@@ -346,6 +346,14 @@ void AGunBase::Multicast_PlayFireEffects_Implementation()
     }
 }
 
+void AGunBase::Multicast_PlayReloadSound_Implementation()
+{
+    if (GunData.ReloadSound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(this, GunData.ReloadSound, GetActorLocation());
+    }
+}
+
 void AGunBase::Client_PlayCameraShake_Implementation()
 {
     if (ABaseCharacter* OwnerCharacter = Cast<ABaseCharacter>(GetOwner()))

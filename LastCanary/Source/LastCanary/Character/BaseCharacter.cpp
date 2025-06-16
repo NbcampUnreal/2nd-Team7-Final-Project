@@ -1111,6 +1111,7 @@ void ABaseCharacter::Multicast_PlayReload_Implementation()
 	if (Duration > 0.f)
 	{
 		RifleItem->Multicast_PlayReloadAnimation_Implementation();
+		RifleItem->Multicast_PlayReloadSound_Implementation();
 		SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 		bIsReloading = true;
 		FOnMontageEnded EndDelegate;

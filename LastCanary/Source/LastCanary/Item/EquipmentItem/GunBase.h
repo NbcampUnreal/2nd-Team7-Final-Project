@@ -93,7 +93,7 @@ public:
 public:
     /** 현재 발사 모드 */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|FireMode")
-    EFireMode CurrentFireMode;
+    EFireMode CurrentFireMode = EFireMode::FullAuto;
 
     /** 연발 사격 중인지 여부 */
     UPROPERTY(BlueprintReadOnly, Category = "Gun|FireMode")
@@ -220,6 +220,11 @@ public:
     UFUNCTION(NetMulticast, Unreliable)
     void Multicast_PlayFireEffects();
     void Multicast_PlayFireEffects_Implementation();
+
+    /** 재장전 사운드 및 이펙트 재생 */
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_PlayReloadSound();
+    void Multicast_PlayReloadSound_Implementation();
 
     /** 총기 반동 효과 적용 */
     UFUNCTION(Client, Unreliable)
