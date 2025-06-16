@@ -128,7 +128,7 @@ void ALCInGameModeBase::CreateCheckListManager()
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-		if (ChecklistManagerClass.IsValid())
+		if (IsValid(ChecklistManagerClass))
 		{
 			ChecklistManager = GetWorld()->SpawnActor<AChecklistManager>(
 				ChecklistManagerClass.Get(),               // UClass*
