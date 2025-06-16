@@ -375,6 +375,9 @@ public:
 	UFUNCTION()
 	void PlayInteractionMontage(AActor* Target);
 
+	void InteractAfterPlayMontage(AActor* TargetActor);
+	void OnNotified();
+
 	UFUNCTION(Server, Unreliable)
 	void Server_PlayMontage(UAnimMontage* MontageToPlay);
 	void Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay);
@@ -394,6 +397,30 @@ public:
 
 	bool bIsPlayingInteractionMontage = false;
 
+
+
+	void UseItemAfterPlayMontage(AItemBase* EquippedItem);
+	void UseItemAnimationNotified();
+
+	UPROPERTY()
+	UAnimMontage* CurrentUseItemMontage;
+
+	UPROPERTY()
+	AItemBase* CurrentUsingItem;
+
+	void CancelUseItem();
+
+	UFUNCTION(Server, Unreliable)
+	void Server_CancelUseItem();
+	void Server_CancelUseItem_Implementation();
+
+	bool bIsPlayingUseItemMontage = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UAnimMontage* UsingBandageMontage;
+
+
+
 	//Check Player Focus Everytime
 public:
 	/*About Interact*/
@@ -409,9 +436,7 @@ public:
 
 	void TraceInteractableActor();
 
-	void InteractAfterPlayMontage(AActor* TargetActor);
 
-	void OnNotified();
 
 	UPROPERTY()
 	AActor* InteractTargetActor;
@@ -420,6 +445,8 @@ public:
 	/*Player Damage, Death*/
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	void HandlePlayerDeath();
+
+	void NotifyPlayerDeathToGameState();
 
 	UFUNCTION(Client, Reliable)
 	void Client_HandlePlayerVoiceChattingState();
