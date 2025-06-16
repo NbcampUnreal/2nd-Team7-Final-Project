@@ -203,7 +203,7 @@ void ABaseCharacter::NotifyControllerChanged()
 		PC->InputYawScale_DEPRECATED = 1.0f;
 		PC->InputPitchScale_DEPRECATED = 1.0f;
 		PC->InputRollScale_DEPRECATED = 1.0f;
-
+		UE_LOG(LogTemp, Log, TEXT("PC->InitInputComponent();"));
 		PC->InitInputComponent();
 		auto* InputSubsystem{ ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()) };
 		if (IsValid(InputSubsystem))
@@ -223,11 +223,11 @@ void ABaseCharacter::NotifyControllerChanged()
 		if (IsValid(MyPlayerState))
 		{
 			//SetMovementSetting();
-			UE_LOG(LogTemp, Warning, TEXT("플레이어 무브먼트 세팅 초기화 성공"));
+			LOG_Char_WARNING(TEXT("플레이어 무브먼트 세팅 초기화 성공"));
 		}
 		else
 		{
-			UE_LOG(LogTemp, Warning, TEXT("플레이어 무브먼트 세팅 초기화 실패"));
+			LOG_Char_WARNING(TEXT("플레이어 무브먼트 세팅 초기화 실패"));
 		}
 	}
 
@@ -1234,6 +1234,11 @@ void ABaseCharacter::Handle_Interact(const FInputActionValue& ActionValue)
 
 	UE_LOG(LogTemp, Log, TEXT("Interacted with: %s"), *CurrentFocusedActor->GetName());
 
+	if (bIsPlayingInteractionMontage)
+	{
+		return;
+	}
+
 	if (CurrentFocusedActor->Implements<UInteractableInterface>())
 	{
 		AActor* actor = CurrentFocusedActor;
@@ -1244,7 +1249,7 @@ void ABaseCharacter::Handle_Interact(const FInputActionValue& ActionValue)
 		APlayerController* PC = Cast<APlayerController>(GetController());
 		if (PC)
 		{
-			CancelInteraction();
+			//CancelInteraction();
 			//IInteractableInterface::Execute_Interact(CurrentFocusedActor, PC);
 			UE_LOG(LogTemp, Log, TEXT("Handle_Interact: Called Interact on %s"), *actor->GetName());
 			UE_LOG(LogTemp, Log, TEXT("Equipped item on slot"));
@@ -1252,15 +1257,14 @@ void ABaseCharacter::Handle_Interact(const FInputActionValue& ActionValue)
 		}
 		else
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Handle_Interacty: Controller is nullptr"));
+			LOG_Char_WARNING(TEXT("Handle_Interact: Controller is nullptr"));
 		}
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Handle_Interact: %s does not implement IInteractableInterface"), *CurrentFocusedActor->GetName());
+		LOG_Char_WARNING(TEXT("Handle_Interact: %s does not implement IInteractableInterface"), *CurrentFocusedActor->GetName());
 	}
-
-	UE_LOG(LogTemp, Log, TEXT("Interact Ended"));
+	LOG_Char_WARNING(TEXT("Interact Ended"));
 }
 
 void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
@@ -1274,26 +1278,34 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 	InteractTargetActor = TargetActor;
 	if (InteractTargetActor->Tags.Contains("Roll"))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("태그는 Roll"));
+		LOG_Char_WARNING(TEXT("태그는 Roll"));
 		MontageToPlay = OpeningValveMontage;
 	}
 	else if (InteractTargetActor->Tags.Contains("Kick"))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("태그는 Kick"));
+		LOG_Char_WARNING(TEXT("태그는 Kick"));
 		MontageToPlay = KickMontage;
 	}
 	else if (InteractTargetActor->Tags.Contains("Press"))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("태그는 Press"));
+		LOG_Char_WARNING(TEXT("태그는 Press"));
 		MontageToPlay = PressButtonMontage;
 	}
 	else if (InteractTargetActor->Tags.Contains("Crystal"))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("태그는 Crystal"));
+		LOG_Char_WARNING(TEXT("태그는 Crystal"));
 		MontageToPlay = PickAxeMontage;
+	}
+	else if (InteractTargetActor->Tags.Contains("GameplayTags"))
+	{
+		//게임플레이 태그가 있다면...
+		//TODO: 게임플레이 태그 읽어오기.
+		//게임 플레이 태그는 직접 액터에서 구현하고 Get 함수를 만들어줘야 가능
 	}
 	else
 	{
+		LOG_Char_WARNING(TEXT("태그가 없음"));
+		MontageToPlay = InteractMontageOnUnderObject;
 		//당장 태그 없는 거 빠르게 테스트 하기 위해서 넣어놨습니다.
 		APlayerController* PC = Cast<APlayerController>(GetController());
 		if (PC)
@@ -1302,19 +1314,20 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 			{
 				return;
 			}
-			UE_LOG(LogTemp, Warning, TEXT("excute interact"));
+			LOG_Char_WARNING(TEXT("excute interact"));
 			IInteractableInterface::Execute_Interact(InteractTargetActor, PC);
 		}
 		return;
+		//
 	}
 	if (!IsValid(MontageToPlay))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Anim Montage does not exist."));
+		LOG_Char_WARNING(TEXT("Anim Montage does not exist."));
 		return;
 	}
 	CurrentInteractMontage = MontageToPlay;
 	bIsPlayingInteractionMontage = true;
-	UE_LOG(LogTemp, Warning, TEXT("플레이 애니메이션."));
+	LOG_Char_WARNING(TEXT("플레이 애니메이션."));
 	Server_PlayMontage(MontageToPlay);
 }
 
@@ -2469,6 +2482,10 @@ bool ABaseCharacter::UseEquippedItem(float ActionValue)
 	else
 	{
 		bIsUsingItem = false;
+		if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.WalkieTalkie")))
+		{
+			EquippedItem->UseItem();
+		}
 		AGunBase* Rifle = Cast<AGunBase>(EquippedItem);
 		if (!IsValid(Rifle))
 		{

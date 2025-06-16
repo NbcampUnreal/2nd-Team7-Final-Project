@@ -338,13 +338,14 @@ void UKeySettingWidget::OnKeySelectedExitDrone(FInputChord SelectedKey)
 
 void UKeySettingWidget::RefreshMappings(const TArray<FEnhancedActionKeyMapping>& KeyMappings)
 {
+	UE_LOG(LogTemp, Warning, TEXT("RefreshMappings(const TArray<FEnhancedActionKeyMapping>& KeyMappings)"));
 	for (const FEnhancedActionKeyMapping& Mapping : KeyMappings)
 	{
 		if (!Mapping.Action)
 			continue;
 
 		const FName MappingName = Mapping.GetMappingName();
-		//UE_LOG(LogTemp, Warning, TEXT("Mapping Name: %s"), *MappingName.ToString());
+		UE_LOG(LogTemp, Warning, TEXT("Mapping Name: %s"), *MappingName.ToString());
 
 		if (MappingName == "MoveFront" && SelectorMoveForward)
 		{
@@ -508,7 +509,7 @@ void UKeySettingWidget::InitialMappings()
 	const TArray<FSaveKeyMapping> LoadedMappings = ULCLocalPlayerSaveGame::LoadKeyBindings(GetWorld());
 	if (LoadedMappings.Num() == 0)
 	{
-		return;
+		//return; 일단 지금 저장이 안되는 거 같아서 일단 막아놓았습니다.
 	}
 
 	UEnhancedInputUserSettings* UserSettings = Subsystem->GetUserSettings();

@@ -172,24 +172,26 @@ void UGeneralOptionWidget::OnEffectVolumeChanged(float Value)
 void UGeneralOptionWidget::OnSensitivityChanged(float Value)
 {
 	LOG_Frame_WARNING(TEXT("SenSitivity Changed"));
+	const float MinValue = 0.01f;
+	float AdjustedValue = FMath::Max(Value, MinValue);
 
 	if (MouseSensitivityText)
 	{
-		MouseSensitivityText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), Value * 100.f)));
+		MouseSensitivityText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), AdjustedValue * 100.f)));
 	}
 
 	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
 	{
-		OptionManager->MouseSensitivity = Value;
+		OptionManager->MouseSensitivity = AdjustedValue;
 	}
 
-	ULCLocalPlayerSaveGame::SaveMouseSensitivity(GetWorld(), Value);
+	ULCLocalPlayerSaveGame::SaveMouseSensitivity(GetWorld(), AdjustedValue);
 
 	if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
 	{
 		if (ABasePlayerController* MyPC = Cast<ABasePlayerController>(PC))
 		{
-			MyPC->SetMouseSensitivity(Value);
+			MyPC->SetMouseSensitivity(AdjustedValue);
 		}
 	}
 }
