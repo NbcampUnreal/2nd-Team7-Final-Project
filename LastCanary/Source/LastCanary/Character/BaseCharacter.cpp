@@ -1995,6 +1995,7 @@ void ABaseCharacter::HandlePlayerDeath()
 	//관전 상태로 넘어갈 준비
 	//게이트 액터 or 게임 스테이트 or 게임 모드에 어떻게든 상태 알리기
 
+	NotifyPlayerDeathToGameState();
 	DropAllItemsOnDeath();
 	UnequipCurrentItem();
 	StartRagdolling();
@@ -2003,7 +2004,6 @@ void ABaseCharacter::HandlePlayerDeath()
 	MyPlayerState->SetInGameStatus(EPlayerInGameStatus::Spectating);
 	Multicast_SetPlayerInGameStateOnDie();
 	PC->PlayerExitActivePlayOnDeath();
-	NotifyPlayerDeathToGameState();
 }
 
 void ABaseCharacter::NotifyPlayerDeathToGameState()
