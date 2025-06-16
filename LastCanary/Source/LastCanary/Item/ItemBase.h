@@ -9,6 +9,7 @@
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnItemStateChanged);
 
+class UInputAction;
 UCLASS()
 class LASTCANARY_API AItemBase : public AActor, public IInteractableInterface
 {
@@ -202,4 +203,11 @@ protected:
 protected:
     /** 타이머 제거를 위해 사용 */ 
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
+public:
+    UPROPERTY(EditDefaultsOnly, Category = "Input")
+    UInputAction* IA_Interact;
+
+    UFUNCTION(BlueprintCallable, Category = "Input")
+    FString GetCurrentKeyNameForAction(UInputAction * InputAction) const;
 };

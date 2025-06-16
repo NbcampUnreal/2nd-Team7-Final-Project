@@ -8,6 +8,10 @@
 
 #include "Framework/PlayerController/LCRoomPlayerController.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "Framework/GameInstance/LCGameManager.h"
+
+#include "EnhancedInputSubsystems.h"
+#include "EnhancedActionKeyMapping.h"
 
 #include "LastCanary.h"
 
@@ -50,21 +54,32 @@ void AShopInteractor::Interact_Implementation(APlayerController* InteractingPlay
 		return;
 	}
 
+	ALCRoomPlayerController* RoomPC = Cast<ALCRoomPlayerController>(InteractingPlayerController);
+	if (!IsValid(RoomPC))
+	{
+		LOG_Frame_WARNING(TEXT("Fail To casting"));
+		return;
+	}
+
 	InteractingPlayerController->SetViewTargetWithBlend(ShopCamera, 0.5f);
 
 	FTimerHandle TimerHandle;
 	FTimerDelegate TimerDel;
-	TimerDel.BindLambda([this, InteractingPlayerController]()
+
+	TimerDel.BindLambda([this, RoomPC]()
 		{
-			if (UGameInstance* GameInstance = InteractingPlayerController->GetGameInstance())
+			if (UGameInstance* GameInstance = GetGameInstance())
 			{
+				//UGameDataManager* GM = GameInstance->GetSubsystem<UGameDataManager>();
 				if (ULCGameInstanceSubsystem* GI = GameInstance->GetSubsystem<ULCGameInstanceSubsystem>())
 				{
 					if (ULCUIManager* UIManager = GI->GetUIManager())
 					{
 						UIManager->SetLastShopInteractor(this);
-						LOG_Frame_WARNING(TEXT("PC : %s"), *InteractingPlayerController->GetActorNameOrLabel());
-						UIManager->ShowShopPopup();
+						LOG_Frame_WARNING(TEXT("PC : %s"), *RoomPC->GetActorNameOrLabel());
+						//GM->GetGold();
+						RoomPC->Server_ShowShopWidget();
+						//UIManager->ShowShopPopup(GM->GetGold());
 
 						ShopWidgetComponent->SetVisibility(false);
 					}
@@ -81,7 +96,45 @@ void AShopInteractor::Interact_Implementation(APlayerController* InteractingPlay
 
 FString AShopInteractor::GetInteractMessage_Implementation() const
 {
-	return TEXT("Press [F] to Visit Shop");
+	if (IA_Interact == nullptr)
+	{
+		return TEXT("No Interact Key Assigned");
+	}
+
+	FString InteractKeyName = GetCurrentKeyNameForAction(IA_Interact);
+
+	return FString::Printf(TEXT("Press [%s] to Visit Shop"), *InteractKeyName);
+}
+
+FString AShopInteractor::GetCurrentKeyNameForAction(UInputAction* InputAction) const
+{
+	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+	if (!IsValid(PC))
+	{
+		return TEXT("Invalid");
+	}
+
+	ULocalPlayer* LocalPlayer = PC->GetLocalPlayer();
+	if (!IsValid(LocalPlayer))
+	{
+		return TEXT("Invalid");
+	}
+
+	UEnhancedInputLocalPlayerSubsystem* Subsystem = LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
+	if (!IsValid(Subsystem))
+	{
+		return TEXT("Invalid");
+	}
+	const TArray<FEnhancedActionKeyMapping> Mappings = Subsystem->GetAllPlayerMappableActionKeyMappings();
+
+	for (const FEnhancedActionKeyMapping& Mapping : Mappings)
+	{
+		if (Mapping.Action == InputAction)
+		{
+			return Mapping.Key.GetDisplayName().ToString();
+		}
+	}
+	return TEXT("Unbound");
 }
 
 UWidgetComponent* AShopInteractor::GetShopWidgetComponent() const

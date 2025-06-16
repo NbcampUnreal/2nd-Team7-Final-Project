@@ -43,14 +43,15 @@ public:
 public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Session")
 	void CreateSession(const FSessionInfo& SessionInfo);
-
 	virtual void CreateSession_Implementation(const FSessionInfo& SessionInfo);
 
-public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Session")
 	void UpdateSession(bool bAdvertise, bool bAllowJoin, int32 NumPublicConnections);
-
 	virtual void UpdateSession_Implementation(bool bAdvertise, bool bAllowJoin, int32 NumPublicConnections);
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Session")
+	void DestroySession();
+	virtual void DestroySession_Implementation();
 
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Session")

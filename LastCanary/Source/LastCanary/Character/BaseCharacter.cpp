@@ -156,6 +156,9 @@ void ABaseCharacter::BeginPlay()
 		// 블렌드 웨이트 1.0으로 보정 적용 보장
 		CustomPostProcessComponent->BlendWeight = 1.0f;
 	}
+	LOG_Char_WARNING(TEXT("플레이어 비긴플레이"));
+
+	SetMovementSetting();
 }
 
 float ABaseCharacter::GetBrightness()
@@ -214,11 +217,12 @@ void ABaseCharacter::NotifyControllerChanged()
 		PC->SetInputMode(FInputModeGameOnly());
 		PC->bShowMouseCursor = false;
 
+		UE_LOG(LogTemp, Log, TEXT("SetMovementSetting notify controller Change"));
 
 		ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 		if (IsValid(MyPlayerState))
 		{
-			SetMovementSetting();
+			//SetMovementSetting();
 			UE_LOG(LogTemp, Warning, TEXT("플레이어 무브먼트 세팅 초기화 성공"));
 		}
 		else
@@ -612,16 +616,21 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 	{
 		return;
 	}
-	if (CheckHardLandState())
-	{
-		return;
-	}
+
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
 	{
 		return;
 	}
-
+	if (CheckHardLandState())
+	{
+		bIsSprinting = false;
+		FootSoundModifier = MyPlayerState->RunningFootSoundModifier;
+		SetDesiredGait(AlsGaitTags::Running);
+		StopStaminaDrain();
+		StartStaminaRecoverAfterDelay();
+		return;
+	}
 	//만약 지친 상태라면 불가
 	if (MyPlayerState->MovementState == ECharacterMovementState::Exhausted)
 	{
@@ -1046,6 +1055,10 @@ void ABaseCharacter::Handle_Reload()
 	{
 		return;
 	}
+	if (bIsReloading)
+	{
+		return;
+	}
 	if (bIsUsingItem)
 	{
 		return;
@@ -1122,6 +1135,25 @@ void ABaseCharacter::OnGunReloadAnimComplete(UAnimMontage* CompletedMontage, boo
 	}
 }
 
+
+void ABaseCharacter::StopReload()
+{
+	Server_StopReload();
+}
+
+void ABaseCharacter::Server_StopReload_Implementation()
+{
+	Multicast_StopReload();
+}
+
+void ABaseCharacter::Multicast_StopReload_Implementation()
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && ReloadMontage)
+	{
+		AnimInstance->Montage_Stop(0.2f, ReloadMontage); // 부드럽게 블렌드 아웃
+	}
+}
 
 void ABaseCharacter::Handle_ViewMode()
 {
@@ -1220,7 +1252,7 @@ void ABaseCharacter::Handle_Interact(const FInputActionValue& ActionValue)
 		}
 		else
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Handle_Interact: Controller is nullptr"));
+			UE_LOG(LogTemp, Warning, TEXT("Handle_Interacty: Controller is nullptr"));
 		}
 	}
 	else
@@ -1242,18 +1274,22 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 	InteractTargetActor = TargetActor;
 	if (InteractTargetActor->Tags.Contains("Roll"))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("태그는 Roll"));
 		MontageToPlay = OpeningValveMontage;
 	}
 	else if (InteractTargetActor->Tags.Contains("Kick"))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("태그는 Kick"));
 		MontageToPlay = KickMontage;
 	}
 	else if (InteractTargetActor->Tags.Contains("Press"))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("태그는 Press"));
 		MontageToPlay = PressButtonMontage;
 	}
 	else if (InteractTargetActor->Tags.Contains("Crystal"))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("태그는 Crystal"));
 		MontageToPlay = PickAxeMontage;
 	}
 	else
@@ -1269,6 +1305,7 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 			UE_LOG(LogTemp, Warning, TEXT("excute interact"));
 			IInteractableInterface::Execute_Interact(InteractTargetActor, PC);
 		}
+		return;
 	}
 	if (!IsValid(MontageToPlay))
 	{
@@ -1277,6 +1314,7 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 	}
 	CurrentInteractMontage = MontageToPlay;
 	bIsPlayingInteractionMontage = true;
+	UE_LOG(LogTemp, Warning, TEXT("플레이 애니메이션."));
 	Server_PlayMontage(MontageToPlay);
 }
 
@@ -1345,11 +1383,13 @@ void ABaseCharacter::PlayInteractionMontage(AActor* Target)
 
 void ABaseCharacter::Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay)
 {
+	UE_LOG(LogTemp, Warning, TEXT("플레이 애니메이션. 서버에서"));
 	Multicast_PlayMontage(MontageToPlay);
 }
 
 void ABaseCharacter::Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay)
 {
+	UE_LOG(LogTemp, Warning, TEXT("플레이 애니메이션. 멀티에서"));
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	AnimInstance->Montage_Play(MontageToPlay);
 	CurrentInteractMontage = MontageToPlay;
@@ -1433,8 +1473,9 @@ void ABaseCharacter::TraceInteractableActor()
 		bIsCloseToWall = false;
 	}
 
-
+#if WITH_EDITOR
 	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 0.1f);
+#endif
 	//여기가 로그가 안찍힘 수정해야됨
 
 	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
@@ -1551,7 +1592,9 @@ void ABaseCharacter::UpdateGunWallClipOffset(float DeltaTime)
 	bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Visibility, Params);
 
 	// 디버그 라인도 수정된 시작점 기준으로
+#if WITH_EDITOR
 	DrawDebugLine(GetWorld(), TraceStart, TraceEnd, FColor::Red, false, 0.1f);
+#endif
 	// 3. 벽과의 거리 비율 계산
 	//float WallRatio = 0.0f;
 	//if (bHit)
@@ -1980,15 +2023,18 @@ EPlayerInGameStatus ABaseCharacter::CheckPlayerCurrentState()
 
 void ABaseCharacter::Client_SetMovementSetting_Implementation()
 {
+	LOG_Char_WARNING(TEXT("SetMovementSetting 클라이언트에서"));
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
 	{
+		LOG_Char_WARNING(TEXT("SetMovementSetting 클라이언트에서 스테이트 없음"));
 		return;
 	}
 
 	TArray<float> CalculatedSpeedArray = CalculateMovementSpeedWithWeigth();
 	if (CalculatedSpeedArray.Num() < 5)
 	{
+		LOG_Char_WARNING(TEXT("SetMovementSetting 클라이언트에서 스피드 배열도 이상함"));
 		return;
 	}
 
@@ -2002,24 +2048,29 @@ void ABaseCharacter::Client_SetMovementSetting_Implementation()
 
 	AlsCharacterMovement->SetGaitSettings(CalculatedSpeedArray[0], CalculatedSpeedArray[0], CalculatedSpeedArray[1], CalculatedSpeedArray[1], CalculatedSpeedArray[2], CalculatedSpeedArray[3]);
 	AlsCharacterMovement->JumpZVelocity = CalculatedSpeedArray[4];
+	LOG_Char_WARNING(TEXT("SetMovementSetting 클라이언트에서 설정 완료"));
 }
 
 void ABaseCharacter::SetMovementSetting()
 {
+	LOG_Char_WARNING(TEXT("SetMovementSetting()"));
 	if (HasAuthority())
 	{
 		Client_SetMovementSetting();
+		return;
 	}
-
+	LOG_Char_WARNING(TEXT("SetMovementSetting() On Server"));
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
 	{
+		LOG_Char_WARNING(TEXT("서버에서 플레이어 스테이트 못찾음"));
 		return;
 	}
 
 	TArray<float> CalculatedSpeedArray = CalculateMovementSpeedWithWeigth();
 	if (CalculatedSpeedArray.Num() < 5)
 	{
+		LOG_Char_WARNING(TEXT("스피드 배열 크기가 이상홤"));
 		return;
 	}
 
@@ -2032,11 +2083,12 @@ void ABaseCharacter::SetMovementSetting()
 
 	AlsCharacterMovement->SetGaitSettings(CalculatedSpeedArray[0], CalculatedSpeedArray[0], CalculatedSpeedArray[1], CalculatedSpeedArray[1], CalculatedSpeedArray[2], CalculatedSpeedArray[3]);
 	AlsCharacterMovement->JumpZVelocity = CalculatedSpeedArray[4];
-
+	LOG_Char_WARNING(TEXT("SetMovementSetting 서버에서 설정 완료"));
 }
 
 TArray<float> ABaseCharacter::CalculateMovementSpeedWithWeigth()
 {
+	LOG_Char_WARNING(TEXT("스피드 배열 크기 보는 중"));
 	TArray<float> Calculated;
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
@@ -2055,6 +2107,7 @@ TArray<float> ABaseCharacter::CalculateMovementSpeedWithWeigth()
 	Calculated.Add(CalculatedSprintSpeed);
 	Calculated.Add(CalculatedCrouchSpeed);
 	Calculated.Add(CalculatedJumpZVelocity);
+	LOG_Char_WARNING(TEXT("계산한 속도 값 리턴"));	
 	return Calculated;
 }
 
@@ -2339,8 +2392,7 @@ void ABaseCharacter::Server_UnequipCurrentItem_Implementation()
 bool ABaseCharacter::UseEquippedItem(float ActionValue)
 {
 	UE_LOG(LogTemp, Warning, TEXT("아이템 사용 : %f"), ActionValue);
-
-	if (bIsReloading)
+	if (bIsMantling || bIsReloading)
 	{
 		return true;
 	}
@@ -2460,6 +2512,8 @@ bool ABaseCharacter::IsInventoryOpen() const
 
 void ABaseCharacter::DropCurrentItem()
 {
+	StopAiming();
+	StopReload();
 	if (!ToolbarInventoryComponent)
 	{
 		LOG_Item_WARNING(TEXT("[DropCurrentItem] ToolbarInventoryComponent is null"));
