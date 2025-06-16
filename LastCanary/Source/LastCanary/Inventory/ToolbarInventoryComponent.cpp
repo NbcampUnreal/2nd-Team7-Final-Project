@@ -1079,30 +1079,49 @@ bool UToolbarInventoryComponent::UpdateCurrentBackpackSlots(const TArray<FBackpa
 
 bool UToolbarInventoryComponent::AddItemToBackpack(FName ItemRowName, int32 Quantity, int32 BackpackSlotIndex)
 {
-    if (!ItemSlots.IsValidIndex(BackpackSlotIndex)) return false;
+    if (!ItemSlots.IsValidIndex(BackpackSlotIndex))
+    {
+        LOG_Item_WARNING(TEXT("[UToolbarInventoryComponent::AddItemToBackpack] 존재하지 않는 슬롯입니다"));
+        return false;
+    }
+
     FBaseItemSlotData& SlotData = ItemSlots[BackpackSlotIndex];
-    if (!SlotData.bIsBackpack) return false;
+    if (!SlotData.bIsBackpack)
+    {
+        LOG_Item_WARNING(TEXT("[UToolbarInventoryComponent::AddItemToBackpack] 가방이 아닙니다"));
+        return false;
+    }
+
+    const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("AddItemToBackpack"));
+    if (!ItemData)
+    {
+        LOG_Item_WARNING(TEXT("[UToolbarInventoryComponent::AddItemToBackpack] 존재하지 않는 아이템입니다"));
+        return false;
+    }
+
+    int32 MaxStack = ItemData->MaxStack;
 
     for (FBackpackSlotData& BackpackSlot : SlotData.BackpackSlots)
     {
-        // 빈 슬롯 "Default" 또는 수량0
         if (IsDefaultItem(BackpackSlot.ItemRowName) || BackpackSlot.Quantity <= 0)
         {
+            int32 Addable = FMath::Min(Quantity, MaxStack);
             BackpackSlot.ItemRowName = ItemRowName;
-            BackpackSlot.Quantity = Quantity;
+            BackpackSlot.Quantity = Addable;
             OnInventoryUpdated.Broadcast();
-
             OnItemAcquired(ItemRowName);
-
-            return true;
+            return Addable == Quantity;
         }
-        // 스택 가능
         else if (BackpackSlot.ItemRowName == ItemRowName)
         {
-            BackpackSlot.Quantity += Quantity;
-            OnInventoryUpdated.Broadcast();
-
-            return true;
+            int32 StackSpace = MaxStack - BackpackSlot.Quantity;
+            int32 Addable = FMath::Min(Quantity, StackSpace);
+            if (Addable > 0)
+            {
+                BackpackSlot.Quantity += Addable;
+                OnInventoryUpdated.Broadcast();
+                return Addable == Quantity;
+            }
         }
     }
     return false;
