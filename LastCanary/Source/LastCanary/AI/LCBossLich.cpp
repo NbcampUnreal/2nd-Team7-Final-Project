@@ -4,12 +4,12 @@
 #include "Engine/World.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "GameFramework/Character.h"
-#include "AIController.h"
 #include "Net/UnrealNetwork.h"
 #include "Particles/ParticleSystem.h"
 #include "NiagaraFunctionLibrary.h"
 #include "Sound/SoundBase.h"
 #include "AI/Projectile/ArcaneBolt.h"
+#include "AI/LCBaseBossAIController.h"
 
 ALCBossLich::ALCBossLich()
 {
@@ -41,6 +41,15 @@ void ALCBossLich::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
     UpdateRage(DeltaTime);
+
+    if (auto* AICon = Cast<ALCBaseBossAIController>(GetController()))
+    {
+        if (auto* BB = AICon->GetBlackboardComponent())
+        {
+            BB->SetValueAsFloat(TEXT("RagePercent"), Rage / MaxRage);
+            BB->SetValueAsBool(TEXT("IsBerserkMode"), bIsBerserk);
+        }
+    }
 }
 
 void ALCBossLich::UpdateRage(float DeltaSeconds)
@@ -239,60 +248,6 @@ void ALCBossLich::ExecuteManaPulse()
     }
 }
 
-bool ALCBossLich::RequestAttack(float TargetDistance)
-{
-    if (!HasAuthority()) return false;
-    const float Now = GetWorld()->GetTimeSeconds();
-
-    AActor* Target = nullptr;
-    if (auto AC = Cast<AAIController>(GetController()))
-        Target = Cast<AActor>(AC->GetBlackboardComponent()->GetValueAsObject(TEXT("TargetActor")));
-
-    struct FEntry { float W; TFunction<void()> A; };
-    TArray<FEntry> Entries;
-
-    // Arcane Bolt
-    {
-        float CD = bIsBerserk ? ArcaneBoltCooldown * BerserkCooldownFactor : ArcaneBoltCooldown;
-        float Dmg = bIsBerserk ? NormalAttackDamage * BerserkDamageFactor : NormalAttackDamage;
-        if (Target && TargetDistance <= ArcaneBoltRange && Now - LastArcaneBoltTime >= CD)
-        {
-            Entries.Add({ 3.f, [this, Now, Target, Dmg]() {
-                LastArcaneBoltTime = Now;
-                ExecuteArcaneBolt(Target);
-            } });
-        }
-    }
-
-    // Soul Bind
-    {
-        float CD = bIsBerserk ? SoulBindCooldown * BerserkCooldownFactor : SoulBindCooldown;
-        if (Target && TargetDistance <= SoulBindRange && Now - LastSoulBindTime >= CD)
-        {
-            Entries.Add({ 2.f, [this, Now, Target]() {
-                LastSoulBindTime = Now;
-                ExecuteSoulBind(Target);
-            } });
-        }
-    }
-
-    // Soul Absorb (fallback)
-    {
-        Entries.Add({ 1.f, [this, Target]() {
-            ExecuteSoulAbsorb(Target);
-        } });
-    }
-
-    float Total = 0; for (auto& e : Entries) Total += e.W;
-    float Pick = FMath::FRandRange(0.f, Total), Acc = 0;
-    for (auto& e : Entries)
-    {
-        Acc += e.W;
-        if (Pick <= Acc) { e.A(); return true; }
-    }
-    return false;
-}
-
 void ALCBossLich::ExecuteArcaneBolt(AActor* Target)
 {
     if (!HasAuthority() || !Target || !ArcaneBoltClass)
@@ -368,4 +323,58 @@ void ALCBossLich::ExecuteDeathNova()
             if (auto C = Cast<ACharacter>(H.GetActor()))
                 UGameplayStatics::ApplyDamage(C, DeathNovaDamage, GetController(), this, nullptr);
     }
+}
+
+bool ALCBossLich::RequestAttack(float TargetDistance)
+{
+    if (!HasAuthority()) return false;
+    const float Now = GetWorld()->GetTimeSeconds();
+
+    AActor* Target = nullptr;
+    if (auto AC = Cast<AAIController>(GetController()))
+        Target = Cast<AActor>(AC->GetBlackboardComponent()->GetValueAsObject(TEXT("TargetActor")));
+
+    struct FEntry { float W; TFunction<void()> A; };
+    TArray<FEntry> Entries;
+
+    // Arcane Bolt
+    {
+        float CD = bIsBerserk ? ArcaneBoltCooldown * BerserkCooldownFactor : ArcaneBoltCooldown;
+        float Dmg = bIsBerserk ? NormalAttackDamage * BerserkDamageFactor : NormalAttackDamage;
+        if (Target && TargetDistance <= ArcaneBoltRange && Now - LastArcaneBoltTime >= CD)
+        {
+            Entries.Add({ 3.f, [this, Now, Target, Dmg]() {
+                LastArcaneBoltTime = Now;
+                ExecuteArcaneBolt(Target);
+            } });
+        }
+    }
+
+    // Soul Bind
+    {
+        float CD = bIsBerserk ? SoulBindCooldown * BerserkCooldownFactor : SoulBindCooldown;
+        if (Target && TargetDistance <= SoulBindRange && Now - LastSoulBindTime >= CD)
+        {
+            Entries.Add({ 2.f, [this, Now, Target]() {
+                LastSoulBindTime = Now;
+                ExecuteSoulBind(Target);
+            } });
+        }
+    }
+
+    // Soul Absorb (fallback)
+    {
+        Entries.Add({ 1.f, [this, Target]() {
+            ExecuteSoulAbsorb(Target);
+        } });
+    }
+
+    float Total = 0; for (auto& e : Entries) Total += e.W;
+    float Pick = FMath::FRandRange(0.f, Total), Acc = 0;
+    for (auto& e : Entries)
+    {
+        Acc += e.W;
+        if (Pick <= Acc) { e.A(); return true; }
+    }
+    return false;
 }

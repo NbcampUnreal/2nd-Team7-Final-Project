@@ -27,6 +27,11 @@ protected:
     virtual bool RequestAttack(float TargetDistance) override;
 
 	// ── 광폭화 ────────────────────────────────
+    virtual void EnterBerserkState() override;
+    virtual void StartBerserk() override;
+    virtual void StartBerserk(float Duration) override;
+    virtual void EndBerserk() override;
+
     UPROPERTY(EditAnywhere, Category = "Lich|Berserk")
     float BerserkCooldownFactor = 0.5f;
 
@@ -39,11 +44,6 @@ protected:
 
     UPROPERTY(EditAnywhere, Category = "Lich|Berserk")
     USoundBase* BerserkSound;
-
-    virtual void EnterBerserkState() override;
-    virtual void StartBerserk() override;
-    virtual void StartBerserk(float Duration) override;
-    virtual void EndBerserk() override;
 
     // ── Sound/Effect FX ───────────────
     UPROPERTY(EditAnywhere, Category = "Lich|Effects")
