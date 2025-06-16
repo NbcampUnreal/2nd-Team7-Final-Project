@@ -216,7 +216,7 @@ public:
     void Multicast_SpawnImpactEffects(const TArray<FHitResult>& Hits);
     void Multicast_SpawnImpactEffects_Implementation(const TArray<FHitResult>& Hits);
 
-    /** 사운드 및 이펙트 재생 */
+    /** 총기 발사 사운드 및 이펙트 재생 */
     UFUNCTION(NetMulticast, Unreliable)
     void Multicast_PlayFireEffects();
     void Multicast_PlayFireEffects_Implementation();

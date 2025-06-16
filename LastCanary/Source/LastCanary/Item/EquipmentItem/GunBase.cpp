@@ -41,9 +41,6 @@ AGunBase::AGunBase()
 
 void AGunBase::UseItem()
 {
-    LOG_Item_WARNING(TEXT("[UseItem] 발사 시도 - 모드: %s"),
-        CurrentFireMode == EFireMode::Single ? TEXT("단발") : TEXT("연발"));
-
     if (!CanFire())
     {
         return;
@@ -61,13 +58,11 @@ void AGunBase::UseItem()
         {
             // 연발 중이면 중단
             StopAutoFire();
-            LOG_Item_WARNING(TEXT("[UseItem] 연발 사격 중단"));
         }
         else
         {
             // 연발 중이 아니면 시작
             StartAutoFire();
-            LOG_Item_WARNING(TEXT("[UseItem] 연발 사격 시작"));
         }
     }
 }
