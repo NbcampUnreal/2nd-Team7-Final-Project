@@ -211,11 +211,6 @@ bool UToolbarInventoryComponent::TryRemoveItemAtSlot(int32 SlotIndex)
         return false;
     }
 
-    if (!IsDefaultItem(ItemSlots[SlotIndex].ItemRowName) && ItemSlots[SlotIndex].bIsValid)
-    {
-        OnItemDropped(ItemSlots[SlotIndex].ItemRowName);
-    }
-
     ItemSlots[SlotIndex] = FBaseItemSlotData();
     ItemSlots[SlotIndex].ItemRowName = FName("Default");
     ItemSlots[SlotIndex].Quantity = 0;
@@ -223,6 +218,7 @@ bool UToolbarInventoryComponent::TryRemoveItemAtSlot(int32 SlotIndex)
     ItemSlots[SlotIndex].bIsValid = false;
     ItemSlots[SlotIndex].BackpackSlots.Empty();
 
+    SyncInventoryToPlayerState();
     OnInventoryUpdated.Broadcast();
 
     return true;
@@ -757,10 +753,8 @@ bool UToolbarInventoryComponent::TryStoreItem(AItemBase* ItemActor)
 
     ItemSlots[EmptySlotIndex] = NewSlot;
 
-    // 플레이어 스테이트에 동기화
-    OnItemAcquired(ItemActor->ItemRowName);
-
     // 정리
+    SyncInventoryToPlayerState();
     OnInventoryUpdated.Broadcast();
     if (GetOwner()->HasAuthority() && ItemActor)
     {
@@ -881,7 +875,6 @@ bool UToolbarInventoryComponent::Internal_DropEquippedItemAtSlot(int32 SlotIndex
     SlotData->Quantity -= DropItemData.Quantity;
     if (SlotData->Quantity <= 0)
     {
-        OnItemDropped(SlotData->ItemRowName);
         SetSlotToDefault(SlotIndex);
     }
 
@@ -909,6 +902,7 @@ bool UToolbarInventoryComponent::Internal_DropEquippedItemAtSlot(int32 SlotIndex
     }
 
     UpdateWeight();
+    SyncInventoryToPlayerState();
     OnInventoryUpdated.Broadcast();
 
     LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::Internal_DropEquippedItemAtSlot] 드롭 성공"));
@@ -1079,30 +1073,49 @@ bool UToolbarInventoryComponent::UpdateCurrentBackpackSlots(const TArray<FBackpa
 
 bool UToolbarInventoryComponent::AddItemToBackpack(FName ItemRowName, int32 Quantity, int32 BackpackSlotIndex)
 {
-    if (!ItemSlots.IsValidIndex(BackpackSlotIndex)) return false;
+    if (!ItemSlots.IsValidIndex(BackpackSlotIndex))
+    {
+        LOG_Item_WARNING(TEXT("[UToolbarInventoryComponent::AddItemToBackpack] 존재하지 않는 슬롯입니다"));
+        return false;
+    }
+
     FBaseItemSlotData& SlotData = ItemSlots[BackpackSlotIndex];
-    if (!SlotData.bIsBackpack) return false;
+    if (!SlotData.bIsBackpack)
+    {
+        LOG_Item_WARNING(TEXT("[UToolbarInventoryComponent::AddItemToBackpack] 가방이 아닙니다"));
+        return false;
+    }
+
+    const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("AddItemToBackpack"));
+    if (!ItemData)
+    {
+        LOG_Item_WARNING(TEXT("[UToolbarInventoryComponent::AddItemToBackpack] 존재하지 않는 아이템입니다"));
+        return false;
+    }
+
+    int32 MaxStack = ItemData->MaxStack;
 
     for (FBackpackSlotData& BackpackSlot : SlotData.BackpackSlots)
     {
-        // 빈 슬롯 "Default" 또는 수량0
         if (IsDefaultItem(BackpackSlot.ItemRowName) || BackpackSlot.Quantity <= 0)
         {
+            int32 Addable = FMath::Min(Quantity, MaxStack);
             BackpackSlot.ItemRowName = ItemRowName;
-            BackpackSlot.Quantity = Quantity;
+            BackpackSlot.Quantity = Addable;
             OnInventoryUpdated.Broadcast();
-
-            OnItemAcquired(ItemRowName);
-
-            return true;
+            SyncInventoryToPlayerState();
+            return Addable == Quantity;
         }
-        // 스택 가능
         else if (BackpackSlot.ItemRowName == ItemRowName)
         {
-            BackpackSlot.Quantity += Quantity;
-            OnInventoryUpdated.Broadcast();
-
-            return true;
+            int32 StackSpace = MaxStack - BackpackSlot.Quantity;
+            int32 Addable = FMath::Min(Quantity, StackSpace);
+            if (Addable > 0)
+            {
+                BackpackSlot.Quantity += Addable;
+                OnInventoryUpdated.Broadcast();
+                return Addable == Quantity;
+            }
         }
     }
     return false;
@@ -1116,11 +1129,6 @@ bool UToolbarInventoryComponent::RemoveItemFromBackpack(int32 BackpackSlotIndex,
         if (SlotData.bIsBackpack && SlotData.BackpackSlots.IsValidIndex(BackpackSlotIndex))
         {
             FBackpackSlotData& BackpackSlot = SlotData.BackpackSlots[BackpackSlotIndex];
-            
-            if (BackpackSlot.Quantity <= Quantity && !IsDefaultItem(BackpackSlot.ItemRowName))
-            {
-                OnItemDropped(BackpackSlot.ItemRowName);
-            }
 
             BackpackSlot.Quantity -= Quantity;
 
@@ -1130,6 +1138,7 @@ bool UToolbarInventoryComponent::RemoveItemFromBackpack(int32 BackpackSlotIndex,
                 BackpackSlot.Quantity = 0;
             }
 
+            SyncInventoryToPlayerState();
             OnInventoryUpdated.Broadcast();
             return true;
         }
@@ -1167,32 +1176,22 @@ TArray<int32> UToolbarInventoryComponent::GetAllBackpackItemIDs() const
     return Result;
 }
 
-void UToolbarInventoryComponent::OnItemAcquired(const FName& ItemRowName)
+void UToolbarInventoryComponent::SyncInventoryToPlayerState()
 {
     if (IsOwnerCharacterValid())
     {
         if (ABasePlayerState* PS = CachedOwnerCharacter->GetPlayerState<ABasePlayerState>())
         {
-            int32 ItemID = GetItemIDFromRowName(ItemRowName);
-            if (ItemID > 0 && !PS->AquiredItemIDs.Contains(ItemID))
-            {
-                PS->AquiredItemIDs.Add(ItemID);
-            }
-        }
-    }
-}
+            PS->AquiredItemIDs = GetInventoryItemIDs();
 
-void UToolbarInventoryComponent::OnItemDropped(const FName& ItemRowName)
-{
-    if (IsOwnerCharacterValid())
-    {
-        if (ABasePlayerState* PS = CachedOwnerCharacter->GetPlayerState<ABasePlayerState>())
-        {
-            int32 ItemID = GetItemIDFromRowName(ItemRowName);
-            if (ItemID > 0)
+            // [디버그 로그] 현재 PS의 AquiredItemIDs를 이름으로 출력
+            FString DebugList;
+            for (int32 SavedItemID : PS->AquiredItemIDs)
             {
-                PS->AquiredItemIDs.Remove(ItemID);
+                FName RowName = GetItemRowNameFromID(SavedItemID);
+                DebugList += RowName.ToString() + TEXT(", ");
             }
+            LOG_Item_WARNING(TEXT("[Sync] PS에 저장된 아이템 목록: %s"), *DebugList);
         }
     }
 }
