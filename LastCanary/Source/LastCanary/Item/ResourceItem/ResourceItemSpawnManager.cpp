@@ -59,10 +59,7 @@ void AResourceItemSpawnManager::OnDayNightChanged(EDayPhase NewPhase)
 				{
 					Point->TrySpawnItemFromManager(AvailableItems, ItemSpawnerComponent);
 				}
-				else
-				{
-					LOG_Item_WARNING(TEXT("  Always point - already spawned"));
-				}
+
 				continue;
 			}
 
@@ -193,7 +190,6 @@ TArray<FName> AResourceItemSpawnManager::GetSpawnableItemsByTags() const
 			if (bRegionMatch)
 			{
 				SpawnableItems.Add(ItemName);
-				LOG_Item_WARNING(TEXT("[ResourceItemSpawnManager] Added spawnable item: %s"), *ItemName.ToString());
 			}
 		}
 	}
