@@ -105,6 +105,7 @@ void ABasePlayerController::PlayerExitActivePlayOnDeath()
 	}
 	SpawnSpectatablePawn();
 
+	NotifyAtGameState();
 }
 
 void ABasePlayerController::OnExitGate()
@@ -162,6 +163,16 @@ void ABasePlayerController::PlayerExitActivePlayOnEscapeGate()
 		//MyPawn->DetachFromControllerPendingDestroy();
 		MyPawn->Destroy();
 	}
+
+	NotifyAtGameState();
+}
+
+void ABasePlayerController::NotifyAtGameState()
+{
+	if (GetWorld()->GetGameState<ALCGameState>())
+	{
+		GetWorld()->GetGameState<ALCGameState>()->MarkPlayerAsEscaped(PlayerState);
+	}
 }
 
 void ABasePlayerController::Client_OnPlayerExitActivePlay_Implementation()
@@ -213,6 +224,7 @@ void ABasePlayerController::SpawnSpectatablePawn()
 		//클라이언트에서 해야할 것.
 		OnUnPossess();
 		Possess(Spectator);
+
 		Client_StartSpectation();
 	}
 	else
@@ -885,8 +897,14 @@ TArray<ABasePlayerState*> ABasePlayerController::GetPlayerArray()
 		return SpectatorTargets;
 	}
 }
+
 void ABasePlayerController::CheckCurrentSpectatedCharacterStatus()
 {
+	//if (LCUIManager)
+	//{
+	//	LCUIManager->HideLoadingLevel();
+	//}
+
 	UE_LOG(LogTemp, Warning, TEXT("체크"));
 	if (!IsValid(CurrentSpectatedPlayer) || CurrentSpectatedPlayer->GetInGameStatus() != EPlayerInGameStatus::Alive)
 	{
@@ -904,8 +922,6 @@ void ABasePlayerController::CheckCurrentSpectatedCharacterStatus()
 		SpectateNextPlayer();
 	}
 }
-
-
 
 void ABasePlayerController::Input_OnItemUse(const FInputActionValue& ActionValue)
 {

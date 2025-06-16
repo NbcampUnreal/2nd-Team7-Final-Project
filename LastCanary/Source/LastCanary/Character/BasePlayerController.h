@@ -248,6 +248,8 @@ public:
 
 	void HandleExitGate();
 
+	void NotifyAtGameState();
+
 	UFUNCTION()
 	void PlayerExitActivePlayOnDeath();
 	
