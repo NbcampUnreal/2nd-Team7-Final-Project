@@ -2675,4 +2675,62 @@ void ABaseCharacter::StopHealing()
 	HealingTicksRemaining = 0;
 }
 
+void ABaseCharacter::ApplyMovementDebuff_Implementation(float SlowRate, float Duration)
+{
+	LOG_Art(Log, TEXT("[BaseCharacter] ApplyMovementDebuff called → SlowRate: %.2f"), SlowRate);
 
+	if (bIsMovementDebuffed || !AlsCharacterMovement)
+	{
+		LOG_Art_ERROR(TEXT("AlsCharacterMovement is null"));
+
+		return;
+	}
+
+	bIsMovementDebuffed = true;
+	DebuffSlowRate = SlowRate;
+
+	// 현재 속도값을 백업
+	OriginalWalkSpeed = AlsCharacterMovement->WalkForwardSpeed;
+	OriginalRunSpeed = AlsCharacterMovement->RunForwardSpeed;
+	OriginalSprintSpeed = AlsCharacterMovement->SprintSpeed;
+
+
+	const float NewRunSpeed = AlsCharacterMovement->RunForwardSpeed * SlowRate;
+	LOG_Art(Log, TEXT("[BaseCharacter] NewRunSpeed: %.2f"), NewRunSpeed)
+
+	// 느려진 값으로 설정
+	AlsCharacterMovement->SetGaitSettings(
+		OriginalWalkSpeed * SlowRate,
+		OriginalWalkSpeed * SlowRate,
+		OriginalRunSpeed * SlowRate,
+		OriginalRunSpeed * SlowRate,
+		OriginalSprintSpeed * SlowRate,
+		OriginalRunSpeed * SlowRate / 2
+	);
+}
+
+void ABaseCharacter::RemoveMovementDebuff_Implementation()
+{
+	if (!bIsMovementDebuffed || !AlsCharacterMovement)
+	{
+		return;
+	}
+
+	bIsMovementDebuffed = false;
+	DebuffSlowRate = 1.f;
+
+	// 원래 속도로 복원
+	AlsCharacterMovement->SetGaitSettings(
+		OriginalWalkSpeed,
+		OriginalWalkSpeed,
+		OriginalRunSpeed,
+		OriginalRunSpeed,
+		OriginalSprintSpeed,
+		OriginalRunSpeed / 2
+	);
+}
+
+void ABaseCharacter::GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) const
+{
+	TagContainer = OwnedTags;
+}

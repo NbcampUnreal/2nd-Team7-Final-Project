@@ -7,6 +7,7 @@
 #include "Components/BoxComponent.h"
 #include "Sound/SoundBase.h"
 #include "DataType/GimmickActivationType.h"
+#include "Actor/Gimmick/Component/DebuffDamageComponent.h"
 #include "LCBaseGimmick.generated.h"
 
 UCLASS(Abstract)
