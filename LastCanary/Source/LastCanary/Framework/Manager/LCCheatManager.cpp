@@ -7,10 +7,13 @@
 #include "Character/BasePlayerState.h"
 #include "Character/BaseCharacter.h"
 
+
 #include "AI/BaseAIController.h"
+#include "AI/MonsterSpawnComponent.h"
 #include "AIController.h"
 
 #include "Item/ItemBase.h"
+#include "Item/ItemSpawner.h"
 #include "DataTable/ItemDataRow.h"
 
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
@@ -143,10 +146,87 @@ void ULCCheatManager::KillAllEnemies()
 	UE_LOG(LogCheat, Warning, TEXT("[치트] AI 제거 완료: %d마리 제거됨"), KilledCount);
 }
 
+void ULCCheatManager::StopSpawning()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		UE_LOG(LogCheat, Warning, TEXT("World가 유효하지 않습니다."));
+		return;
+	}
+
+	int32 FoundCount = 0;
+
+	for (TActorIterator<AActor> It(World); It; ++It)
+	{
+		AActor* Actor = *It;
+		if (!IsValid(Actor))
+		{
+			continue;
+		}
+
+		TArray<UMonsterSpawnComponent*> SpawnComponents;
+		Actor->GetComponents(SpawnComponents);
+
+		for (UMonsterSpawnComponent* Comp : SpawnComponents)
+		{
+			if (IsValid(Comp))
+			{
+				Comp->StopSpawning();
+				FoundCount++;
+			}
+		}
+	}
+
+	UE_LOG(LogCheat, Warning, TEXT("[치트] 스폰 중지됨 - %d개 MonsterSpawnComponent 처리됨"), FoundCount);
+}
+
+void ULCCheatManager::StartSpawning()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		UE_LOG(LogCheat, Warning, TEXT("World가 유효하지 않습니다."));
+		return;
+	}
+
+	int32 FoundCount = 0;
+
+	for (TActorIterator<AActor> It(World); It; ++It)
+	{
+		AActor* Actor = *It;
+		if (!IsValid(Actor))
+		{
+			continue;
+		}
+
+		TArray<UMonsterSpawnComponent*> SpawnComponents;
+		Actor->GetComponents(SpawnComponents);
+
+		for (UMonsterSpawnComponent* Comp : SpawnComponents)
+		{
+			if (IsValid(Comp))
+			{
+				Comp->StartSpawning();
+				FoundCount++;
+			}
+		}
+	}
+
+	UE_LOG(LogCheat, Warning, TEXT("[치트] 스폰 중지됨 - %d개 MonsterSpawnComponent 처리됨"), FoundCount);
+}
+
 void ULCCheatManager::SpawnItem(FName ItemRowName)
 {
 	if (APlayerController* PC = GetOuterAPlayerController())
 	{
+		APawn* PlayerPawn = PC->GetPawn();
+		if (!IsValid(PlayerPawn))
+		{
+			UE_LOG(LogCheat, Warning, TEXT("플레이어가 존재하지 않음"));
+			return;
+		}
+
 		if (ULCGameInstance* GI = Cast<ULCGameInstance>(PC->GetGameInstance()))
 		{
 			if (ULCGameInstanceSubsystem* Subsystem = GI->GetSubsystem<ULCGameInstanceSubsystem>())
@@ -158,35 +238,60 @@ void ULCCheatManager::SpawnItem(FName ItemRowName)
 					return;
 				}
 
-				const FString ContextString(TEXT("Cheat: SpawnItem"));
-				const FItemDataRow* Row = ItemTable->FindRow<FItemDataRow>(ItemRowName, ContextString);
-
-				if (Row && Row->ItemActorClass)
+				const FItemDataRow* Row = ItemTable->FindRow<FItemDataRow>(ItemRowName, TEXT("Cheat SpawnItem"));
+				if (!Row || !Row->ItemActorClass)
 				{
-					APawn* PlayerPawn = PC->GetPawn();
-					FVector SpawnLoc = PlayerPawn->GetActorLocation() + PlayerPawn->GetActorForwardVector() * 100.f;
-
-					FActorSpawnParameters Params;
-					Params.Owner = PlayerPawn;
-
-					AItemBase* NewItem = PC->GetWorld()->SpawnActor<AItemBase>(Row->ItemActorClass, SpawnLoc, FRotator::ZeroRotator, Params);
-					if (NewItem)
-					{
-						// NewItem->ApplyItemData(ItemRowName); // 내부에 정의된 데이터 적용 함수
-						UE_LOG(LogCheat, Warning, TEXT("[치트] 아이템 생성: %s"), *ItemRowName.ToString());
-					}
-					else
-					{
-						UE_LOG(LogCheat, Warning, TEXT("아이템 생성 실패"));
-					}
+					UE_LOG(LogCheat, Warning, TEXT("잘못된 ItemRow: %s"), *ItemRowName.ToString());
+					return;
 				}
-				else
+
+				// 스폰 위치
+				FVector SpawnLoc = PlayerPawn->GetActorLocation() + PlayerPawn->GetActorForwardVector() * 100.f;
+
+				// 치트 전용 임시 스포너 생성
+				FActorSpawnParameters Params;
+				Params.Owner = PC;
+				Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+				AItemSpawner* TempSpawner = PC->GetWorld()->SpawnActor<AItemSpawner>(AItemSpawner::StaticClass(), SpawnLoc, FRotator::ZeroRotator, Params);
+				if (!TempSpawner)
 				{
-					UE_LOG(LogCheat, Warning, TEXT("아이템 정보가 존재하지 않거나 ItemClass가 누락됨: %s"), *ItemRowName.ToString());
+					UE_LOG(LogCheat, Warning, TEXT("임시 스포너 생성 실패"));
+					return;
 				}
+
+				// 아이템 설정 후 즉시 스폰
+				FSpawnableItemInfo Info;
+				Info.ItemClass = Row->ItemActorClass;
+				Info.ItemRowName = ItemRowName;
+				Info.MinQuantity = 1;
+				Info.MaxQuantity = 1;
+				Info.MinDurability = 100.f;
+				Info.MaxDurability = 100.f;
+				Info.SpawnProbability = 1.0f;
+
+				TempSpawner->SpawnableItems.Add(Info);
+				TempSpawner->SpawnItems();
+
+				UE_LOG(LogCheat, Warning, TEXT("[치트] 아이템 생성 완료: %s"), *ItemRowName.ToString());
+
+				// 필요 시 스포너 제거
+				TempSpawner->Destroy();
 			}
 		}
 	}
+}
+
+void ULCCheatManager::SpawnItemByRowHandle(FDataTableRowHandle ItemRowHandle)
+{
+	if (!ItemRowHandle.DataTable || !ItemRowHandle.RowName.IsValid())
+	{
+		UE_LOG(LogCheat, Warning, TEXT("[치트] ItemRowHandle이 유효하지 않습니다."));
+		return;
+	}
+
+	// 기존 SpawnItem 함수 재사용
+	SpawnItem(ItemRowHandle.RowName);
 }
 
 void ULCCheatManager::ToggleGodMode()

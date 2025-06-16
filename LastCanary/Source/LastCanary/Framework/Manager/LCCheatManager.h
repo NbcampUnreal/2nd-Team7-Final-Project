@@ -43,9 +43,20 @@ public:
 	UFUNCTION(exec)
 	void KillAllEnemies();
 
+	// 몬스터 스폰 중지
+	UFUNCTION(exec)
+	void StopSpawning();
+	
+	// 몬스터 스폰 재개
+	UFUNCTION(exec)
+	void StartSpawning();
+
 	// 아이템 생성
 	UFUNCTION(exec)
 	void SpawnItem(FName ItemRowName);
+
+	UFUNCTION(exec)
+	void SpawnItemByRowHandle(FDataTableRowHandle ItemRowHandle);
 
 	/** 무적모드 전환 */
 	UFUNCTION(exec)
