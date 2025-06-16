@@ -33,6 +33,9 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Flashlight|Components")
     USpotLightComponent* GlassGlowComponent;
 
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Flashlight|Components")
+    class USphereComponent* LightDetectionSphere;
+
     //-----------------------------------------------------
     // 손전등 상태 및 속성
     //-----------------------------------------------------
@@ -127,4 +130,13 @@ public:
 
     /** 리플리케이션 속성 설정 */
     void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+
+private:
+    /** 몬스터 오버랩 감지 */
+    UFUNCTION()
+    void OnLightOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+    UFUNCTION()
+    void OnLightOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 };
