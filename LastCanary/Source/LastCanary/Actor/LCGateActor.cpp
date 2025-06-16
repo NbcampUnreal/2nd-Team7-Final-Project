@@ -6,6 +6,7 @@
 #include "Framework/GameState/LCGameState.h"
 #include "Framework/GameMode/LCGameMode.h"
 #include "Framework/PlayerController/LCRoomPlayerController.h"
+#include "Framework/PlayerController/LCInGamePlayerController.h"
 #include "Character/BaseCharacter.h"
 #include "Character/BasePlayerState.h"
 #include "Inventory/ToolbarInventoryComponent.h"
@@ -63,13 +64,18 @@ void ALCGateActor::ReturnToBaseCamp(APlayerController* Controller)
 		LOG_Frame_WARNING(TEXT("컨트롤러가 유효하지 않음"));
 		return;
 	}
-	ALCRoomPlayerController* RoomPC = Cast<ALCRoomPlayerController>(Controller);
-	if (!IsValid(RoomPC))
+	//ALCRoomPlayerController* RoomPC = Cast<ALCRoomPlayerController>(Controller);
+	//if (!IsValid(RoomPC))
+	//{
+	//	LOG_Frame_WARNING(TEXT("컨트롤러 캐스팅이 실패함"));
+	//	return;
+	//}
+	ALCInGamePlayerController* InGamePC = Cast<ALCInGamePlayerController>(Controller);
+	if (!IsValid(InGamePC))
 	{
 		LOG_Frame_WARNING(TEXT("컨트롤러 캐스팅이 실패함"));
 		return;
 	}
-	RoomPC->Server_MarkPlayerAsEscaped();
 	ULCGameInstance* LCGameInstance = GetGameInstance<ULCGameInstance>();
 	if (!IsValid(LCGameInstance))
 	{
@@ -82,35 +88,38 @@ void ALCGateActor::ReturnToBaseCamp(APlayerController* Controller)
 		LOG_Frame_WARNING(TEXT("게임 인스턴스 서브시스템이 유효하지 않음"));
 		return;
 	}
-	ABasePlayerState* PlayerState = RoomPC->GetPlayerState<ABasePlayerState>();
+	ABasePlayerState* PlayerState = InGamePC->GetPlayerState<ABasePlayerState>();
 	if (!IsValid(PlayerState))
 	{
 		LOG_Frame_WARNING(TEXT("플레이어 스테이트를 가져오지 못함"));
 		return;
 	}
 	// 아이템 ID 복사
-	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(RoomPC->GetPawn());
+	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(InGamePC->GetPawn());
 	if (!IsValid(PlayerCharacter))
 	{
 		LOG_Frame_WARNING(TEXT("플레이어 캐릭터가 유효하지 않음"));
 		return;
 	}
 
-	//PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetToolbarInventoryComponent()->GetInventoryItemIDs());
-	//PlayerState->AquiredItemIDs.Append(PlayerCharacter->GetToolbarInventoryComponent()->GetAllBackpackItemIDs());
+	// 캐릭터에서 사망처리 및 탐사결과 보고서 제출 후 처리
+	//InGamePC->Server_MarkPlayerAsEscaped();
+
+
 	if (!HasAuthority()) // 서버에서만 처리
 	{
 		LOG_Frame_WARNING(TEXT("서버가 아님"));
-		RoomPC->OnExitGate();
+		InGamePC->OnExitGate();
 		return;
 	}
-	// 자원 수집 기록
 
+	// 자원 수집 기록
 	UDataTable* ItemTable = LCGameInstanceSubsystem->GetItemDataTable();
 	if (!IsValid(ItemTable))
 	{
 		return;
 	}
+
 	for (int32 ItemID : PlayerState->AquiredItemIDs)
 	{
 		FName RowName = *FString::Printf(TEXT("Item_%d"), ItemID);
@@ -122,7 +131,9 @@ void ALCGateActor::ReturnToBaseCamp(APlayerController* Controller)
 			LOG_Frame_WARNING(TEXT("자원 기록: %s → %d개 누적"), *RowName.ToString(), PlayerState->CollectedResourceMap[RowName]);
 		}
 	}
-	RoomPC->OnExitGate();
+
+	InGamePC->OnExitGate();
+
 	//if (RoomPC->HasAuthority())
 	//{
 	//	RoomPC->Server_MarkPlayerAsEscaped_Implementation();

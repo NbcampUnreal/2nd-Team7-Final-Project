@@ -6,6 +6,7 @@
 #include "Character/BasePlayerState.h"
 #include "Framework/Manager/ChecklistManager.h"
 #include "Framework/PlayerController/LCRoomPlayerController.h"
+#include "Framework/PlayerController/LCInGamePlayerController.h"
 #include "EngineUtils.h"
 #include "Framework/GameMode/LCRoomGameMode.h"
 #include "Framework/GameMode/LCInGameModeBase.h"
@@ -142,7 +143,7 @@ void ALCGameState::CheckGameEndCondition()
 
 		for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 		{
-			if (ALCRoomPlayerController* PC = Cast<ALCRoomPlayerController>(*It))
+			if (ALCInGamePlayerController* PC = Cast<ALCInGamePlayerController>(*It))
 			{
 				UE_LOG(LogTemp, Log, TEXT("검사 중인 컨트롤러 이름: %s"), *PC->GetName());
 				PC->Client_StartChecklist(ChecklistManager);

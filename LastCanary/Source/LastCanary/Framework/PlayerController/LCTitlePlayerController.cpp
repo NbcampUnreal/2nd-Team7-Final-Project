@@ -5,7 +5,7 @@
 
 void ALCTitlePlayerController::BeginPlay()
 {
-	 Super::BeginPlay();
+	Super::BeginPlay();
 
 	FInputModeUIOnly InputMode;
 	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);

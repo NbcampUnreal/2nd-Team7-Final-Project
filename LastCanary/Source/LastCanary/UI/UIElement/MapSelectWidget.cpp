@@ -165,7 +165,7 @@ void UMapSelectWidget::OnConfirmButtonClicked()
 				return;
 			}
 
-			LCPC->StartGame(SoftPath);
+			//LCPC->StartGame(SoftPath);
 		}
 	}
 }

@@ -3,17 +3,28 @@
 #include "Framework/GameMode/LCGameMode.h"
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+
+#include "Character/BasePlayerState.h"
+#include "Character/BaseCharacter.h"
+#include "Inventory/ToolbarInventoryComponent.h"
+
 #include "Framework/Manager/LCCheatManager.h"
+#include "UI/Manager/LCUIManager.h"
+#include "UI/UIElement/RoomWidget.h"
 
 #include "Kismet/GameplayStatics.h"
-
 #include "Blueprint/UserWidget.h"
-#include "UI/Manager/LCUIManager.h"
-#include "LastCanary.h"
+
 
 ALCPlayerController::ALCPlayerController()
 {
     CheatClass = ULCCheatManager::StaticClass();
+}
+
+void ALCPlayerController::PostSeamlessTravel()
+{
+    Super::PostSeamlessTravel();
+
 }
 
 void ALCPlayerController::BeginPlay()
@@ -29,8 +40,10 @@ void ALCPlayerController::BeginPlay()
         }
     }
 
+    // 복구 타이머
+    FTimerHandle InventoryRestoreHandle;
+    GetWorld()->GetTimerManager().SetTimer(InventoryRestoreHandle, this, &ALCPlayerController::TryRestoreInventory, 0.3f, false);
 }
-
 
 void ALCPlayerController::Server_SetPlayerInfo_Implementation(const FSessionPlayerInfo& PlayerInfo)
 {
@@ -45,7 +58,62 @@ void ALCPlayerController::Server_SetPlayerInfo_Implementation(const FSessionPlay
 
 void ALCPlayerController::Client_UpdatePlayerList_Implementation(const TArray<FSessionPlayerInfo>& PlayerInfos)
 {
+    UpdatePlayerList(PlayerInfos);
 
+}
+
+void ALCPlayerController::UpdatePlayerList(const TArray<FSessionPlayerInfo>& PlayerInfos)
+{
+    if (IsValid(LCUIManager))
+    {
+        LOG_Frame_WARNING(TEXT("LCUIManager Is Not Null Null!"));
+        URoomWidget* RoomWidget = LCUIManager->GetRoomWidgetInstance();
+        RoomWidget->UpdatePlayerLists(PlayerInfos);
+
+        GetWorld()->GetTimerManager().ClearTimer(UpdatePlayerListTimerHandle);
+    }
+    else
+    {
+        TWeakObjectPtr<ALCPlayerController> WeakPtr(this);
+        TArray<FSessionPlayerInfo> InfosCopy = PlayerInfos;
+
+        GetWorld()->GetTimerManager().SetTimer
+        (
+            UpdatePlayerListTimerHandle,
+            [WeakPtr, InfosCopy]()
+            {
+                if (WeakPtr.IsValid())
+                {
+                    UE_LOG(LogTemp, Warning, TEXT("Update Lobby UI!!"));
+                    WeakPtr->UpdatePlayerList(InfosCopy);
+                }
+            },
+            RePeatRate,
+            false
+        );
+    }
+}
+
+void ALCPlayerController::ToggleShowRoomWidget()
+{
+    Super::ToggleShowRoomWidget();
+    bIsShowRoomUI = !bIsShowRoomUI;
+    LOG_Frame_WARNING(TEXT("ToggleShowRoomWidget: %s"), bIsShowRoomUI ? TEXT("Show") : TEXT("Hide"));
+
+    if (bIsShowRoomUI)
+    {
+        LCUIManager->ShowRoomWidget();
+        FInputModeGameAndUI GameAndUIInputMode;
+        SetInputMode(GameAndUIInputMode);
+    }
+    else
+    {
+        LCUIManager->HideRoomWidget();
+        FInputModeGameOnly GameInputMode;
+        SetInputMode(GameInputMode);
+    }
+
+    bShowMouseCursor = bIsShowRoomUI;
 }
 
 void ALCPlayerController::Client_ShowLoading_Implementation()
@@ -75,6 +143,21 @@ void ALCPlayerController::Client_ReceiveMessageFromGM_Implementation(const FStri
 
 }
 
+void ALCPlayerController::TryRestoreInventory()
+{
+    if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+    {
+        if (ABaseCharacter* Char = Cast<ABaseCharacter>(GetPawn()))
+        {
+            if (UToolbarInventoryComponent* Toolbar = Char->GetToolbarInventoryComponent())
+            {
+                Toolbar->SetInventoryFromItemIDs(PS->AquiredItemIDs);
+                LOG_Frame_WARNING(TEXT("[TryRestoreInventory] 복원 시도 완료. 아이템 수: %d"), PS->AquiredItemIDs.Num());
+            }
+        }
+    }
+}
+
 void ALCPlayerController::ClientReturnToMainMenuWithTextReason_Implementation(const FText& ReturnReason)
 {
     Super::ClientReturnToMainMenuWithTextReason_Implementation(ReturnReason);
@@ -90,7 +173,6 @@ void ALCPlayerController::ClientWasKicked_Implementation(const FText& KickReason
 		LCUIManager->SetSessionErrorState(KickReason);
     }
 }
-
 
 void ALCPlayerController::StartGame(FString SoftPath)
 {
