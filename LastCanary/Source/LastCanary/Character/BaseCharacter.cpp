@@ -612,16 +612,21 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 	{
 		return;
 	}
-	if (CheckHardLandState())
-	{
-		return;
-	}
+
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
 	{
 		return;
 	}
-
+	if (CheckHardLandState())
+	{
+		bIsSprinting = false;
+		FootSoundModifier = MyPlayerState->RunningFootSoundModifier;
+		SetDesiredGait(AlsGaitTags::Running);
+		StopStaminaDrain();
+		StartStaminaRecoverAfterDelay();
+		return;
+	}
 	//만약 지친 상태라면 불가
 	if (MyPlayerState->MovementState == ECharacterMovementState::Exhausted)
 	{
@@ -1046,6 +1051,10 @@ void ABaseCharacter::Handle_Reload()
 	{
 		return;
 	}
+	if (bIsReloading)
+	{
+		return;
+	}
 	if (bIsUsingItem)
 	{
 		return;
@@ -1122,6 +1131,25 @@ void ABaseCharacter::OnGunReloadAnimComplete(UAnimMontage* CompletedMontage, boo
 	}
 }
 
+
+void ABaseCharacter::StopReload()
+{
+	Server_StopReload();
+}
+
+void ABaseCharacter::Server_StopReload_Implementation()
+{
+	Multicast_StopReload();
+}
+
+void ABaseCharacter::Multicast_StopReload_Implementation()
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && ReloadMontage)
+	{
+		AnimInstance->Montage_Stop(0.2f, ReloadMontage); // 부드럽게 블렌드 아웃
+	}
+}
 
 void ABaseCharacter::Handle_ViewMode()
 {
@@ -1220,7 +1248,7 @@ void ABaseCharacter::Handle_Interact(const FInputActionValue& ActionValue)
 		}
 		else
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Handle_Interact: Controller is nullptr"));
+			UE_LOG(LogTemp, Warning, TEXT("Handle_Interacty: Controller is nullptr"));
 		}
 	}
 	else
@@ -1242,18 +1270,22 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 	InteractTargetActor = TargetActor;
 	if (InteractTargetActor->Tags.Contains("Roll"))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("태그는 Roll"));
 		MontageToPlay = OpeningValveMontage;
 	}
 	else if (InteractTargetActor->Tags.Contains("Kick"))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("태그는 Kick"));
 		MontageToPlay = KickMontage;
 	}
 	else if (InteractTargetActor->Tags.Contains("Press"))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("태그는 Press"));
 		MontageToPlay = PressButtonMontage;
 	}
 	else if (InteractTargetActor->Tags.Contains("Crystal"))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("태그는 Crystal"));
 		MontageToPlay = PickAxeMontage;
 	}
 	else
@@ -1269,6 +1301,7 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 			UE_LOG(LogTemp, Warning, TEXT("excute interact"));
 			IInteractableInterface::Execute_Interact(InteractTargetActor, PC);
 		}
+		return;
 	}
 	if (!IsValid(MontageToPlay))
 	{
@@ -1277,6 +1310,7 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 	}
 	CurrentInteractMontage = MontageToPlay;
 	bIsPlayingInteractionMontage = true;
+	UE_LOG(LogTemp, Warning, TEXT("플레이 애니메이션."));
 	Server_PlayMontage(MontageToPlay);
 }
 
@@ -1345,11 +1379,13 @@ void ABaseCharacter::PlayInteractionMontage(AActor* Target)
 
 void ABaseCharacter::Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay)
 {
+	UE_LOG(LogTemp, Warning, TEXT("플레이 애니메이션. 서버에서"));
 	Multicast_PlayMontage(MontageToPlay);
 }
 
 void ABaseCharacter::Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay)
 {
+	UE_LOG(LogTemp, Warning, TEXT("플레이 애니메이션. 멀티에서"));
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	AnimInstance->Montage_Play(MontageToPlay);
 	CurrentInteractMontage = MontageToPlay;
@@ -1433,8 +1469,9 @@ void ABaseCharacter::TraceInteractableActor()
 		bIsCloseToWall = false;
 	}
 
-
+#if WITH_EDITOR
 	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 0.1f);
+#endif
 	//여기가 로그가 안찍힘 수정해야됨
 
 	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
@@ -1551,7 +1588,9 @@ void ABaseCharacter::UpdateGunWallClipOffset(float DeltaTime)
 	bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Visibility, Params);
 
 	// 디버그 라인도 수정된 시작점 기준으로
+#if WITH_EDITOR
 	DrawDebugLine(GetWorld(), TraceStart, TraceEnd, FColor::Red, false, 0.1f);
+#endif
 	// 3. 벽과의 거리 비율 계산
 	//float WallRatio = 0.0f;
 	//if (bHit)
@@ -2339,8 +2378,7 @@ void ABaseCharacter::Server_UnequipCurrentItem_Implementation()
 bool ABaseCharacter::UseEquippedItem(float ActionValue)
 {
 	UE_LOG(LogTemp, Warning, TEXT("아이템 사용 : %f"), ActionValue);
-
-	if (bIsReloading)
+	if (bIsMantling || bIsReloading)
 	{
 		return true;
 	}
@@ -2379,13 +2417,6 @@ bool ABaseCharacter::UseEquippedItem(float ActionValue)
 			ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
 			if (PC)
 			{
-				ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
-				// HUD 숨기고 관전 모드 전환
-				if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
-				{
-					UIManager->HideInGameHUD();
-				}
-
 				PC->SpawnDrone();
 				//현재 들고 있는 인벤토리에서 제거하기
 
@@ -2467,6 +2498,8 @@ bool ABaseCharacter::IsInventoryOpen() const
 
 void ABaseCharacter::DropCurrentItem()
 {
+	StopAiming();
+	StopReload();
 	if (!ToolbarInventoryComponent)
 	{
 		LOG_Item_WARNING(TEXT("[DropCurrentItem] ToolbarInventoryComponent is null"));
