@@ -242,6 +242,7 @@ void ABasePlayerController::SetMyPawn(APawn* NewPawn)
 	CurrentPossessedPawn = NewPawn;
 }
 
+/*
 void ABasePlayerController::ApplyInputMappingContext(UInputMappingContext* IMC)
 {
 	UE_LOG(LogTemp, Warning, TEXT("Apply Input Mapping Context"));
@@ -257,6 +258,8 @@ void ABasePlayerController::ApplyInputMappingContext(UInputMappingContext* IMC)
 		}
 	}
 }
+
+*/
 
 void ABasePlayerController::RemoveInputMappingContext(UInputMappingContext* IMC)
 {
@@ -346,6 +349,8 @@ void ABasePlayerController::ClientRestart(APawn* NewPawn)
 
 void ABasePlayerController::InitInputComponent()
 {
+	Super::InitInputComponent();
+	/*
 	EnhancedInput = Cast<UEnhancedInputComponent>(InputComponent);
 
 	if (!IsValid(EnhancedInput))
@@ -409,8 +414,8 @@ void ABasePlayerController::InitInputComponent()
 		
 		EnhancedInput->BindAction(ExitDroneAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_DroneExit);
 	}
-
-	ApplyInputMappingContext(InputMappingContext);
+	*/
+	//ApplyInputMappingContext(InputMappingContext);
 }
 
 void ABasePlayerController::Input_OnLookMouse(const FInputActionValue& ActionValue)
@@ -643,7 +648,7 @@ void ABasePlayerController::Input_OnAim(const FInputActionValue& ActionValue)
 }
 
 
-void ABasePlayerController::Input_OnViewMode()
+void ABasePlayerController::Input_OnViewMode(const FInputActionValue& ActionValue)
 {
 	if (!IsValid(CurrentPossessedPawn))
 	{
@@ -688,7 +693,7 @@ void ABasePlayerController::Input_OnInteract(const FInputActionValue& ActionValu
 }
 
 
-void ABasePlayerController::Input_Reload()
+void ABasePlayerController::Input_Reload(const FInputActionValue& ActionValue)
 {
 	if (!IsValid(CurrentPossessedPawn))
 	{
@@ -888,7 +893,7 @@ void ABasePlayerController::Input_OnItemUse(const FInputActionValue& ActionValue
 }
 
 
-void ABasePlayerController::Input_OnItemThrow()
+void ABasePlayerController::Input_OnItemThrow(const FInputActionValue& ActionValue)
 {
 	UE_LOG(LogTemp, Warning, TEXT("Throw Item"));
 	
@@ -936,7 +941,7 @@ void ABasePlayerController::Input_VoiceChat(const FInputActionValue& ActionValue
 }
 
 
-void ABasePlayerController::Input_ChangeShootingSetting()
+void ABasePlayerController::Input_ChangeShootingSetting(const FInputActionValue& ActionValue)
 {
 	//TODO: 필요하다면 UI와 연동해야할지도?
 	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
@@ -1031,22 +1036,22 @@ void ABasePlayerController::SelectQuickSlot(int32 SlotIndex)
 	}
 }
 
-void ABasePlayerController::Input_SelectQuickSlot1()
+void ABasePlayerController::Input_SelectQuickSlot1(const FInputActionValue& ActionValue)
 {
 	SelectQuickSlot(0);
 }
 
-void ABasePlayerController::Input_SelectQuickSlot2()
+void ABasePlayerController::Input_SelectQuickSlot2(const FInputActionValue& ActionValue)
 {
 	SelectQuickSlot(1);
 }
 
-void ABasePlayerController::Input_SelectQuickSlot3()
+void ABasePlayerController::Input_SelectQuickSlot3(const FInputActionValue& ActionValue)
 {
 	SelectQuickSlot(2);
 }
 
-void ABasePlayerController::Input_SelectQuickSlot4()
+void ABasePlayerController::Input_SelectQuickSlot4(const FInputActionValue& ActionValue)
 {
 	SelectQuickSlot(3);
 }
@@ -1065,7 +1070,7 @@ void ABasePlayerController::UpdateQuickSlotUI()
 }
 
 
-void ABasePlayerController::Input_OpenPauseMenu()
+void ABasePlayerController::Input_OpenPauseMenu(const FInputActionValue& ActionValue)
 {
 	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 	{
@@ -1147,7 +1152,7 @@ void ABasePlayerController::SetSprintingStateToPlayerState(bool flag)
 }
 
 
-void ABasePlayerController::Input_DroneExit()
+void ABasePlayerController::Input_DroneExit(const FInputActionValue& ActionValue)
 {
 	if (!IsValid(CurrentPossessedPawn))
 	{

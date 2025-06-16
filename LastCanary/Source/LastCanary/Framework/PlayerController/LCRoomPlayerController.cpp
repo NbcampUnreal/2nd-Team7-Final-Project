@@ -270,7 +270,7 @@ void ALCRoomPlayerController::Server_RequestPurchase_Implementation(const TArray
 void ALCRoomPlayerController::InitInputComponent()
 {
 	Super::InitInputComponent();
-
+	/*
 	if (IsValid(EnhancedInput))
 	{
 		if (RoomUIAction)
@@ -278,11 +278,12 @@ void ALCRoomPlayerController::InitInputComponent()
 			EnhancedInput->BindAction(RoomUIAction, ETriggerEvent::Started, this, &ALCRoomPlayerController::ToggleShowRoomWidget);
 		}
 	}
-
+	*/
 }
 
 void ALCRoomPlayerController::ToggleShowRoomWidget()
 {
+	Super::ToggleShowRoomWidget();
 	bIsShowRoomUI = !bIsShowRoomUI;
 	LOG_Frame_WARNING(TEXT("ToggleShowRoomWidget: %s"), bIsShowRoomUI ? TEXT("Show") : TEXT("Hide"));
 
