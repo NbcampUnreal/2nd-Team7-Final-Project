@@ -169,11 +169,23 @@ void APlayerChecker::Server_CloseDoors_Implementation()
 void APlayerChecker::Multicast_OpenDoors_Implementation()
 {
     PlayDoorTimelineForward();
+
+    const FVector LeftPos = LeftDoorMesh->GetComponentLocation();
+    const FVector RightPos = RightDoorMesh->GetComponentLocation();
+    const FVector CenterPos = (LeftPos + RightPos) * 0.5f;
+
+    UGameplayStatics::PlaySoundAtLocation(this, OpenDoorSoundCue, CenterPos);
 }
 
 void APlayerChecker::Multicast_CloseDoors_Implementation()
 {
     PlayDoorTimelineReverse();
+
+    const FVector LeftPos = LeftDoorMesh->GetComponentLocation();
+    const FVector RightPos = RightDoorMesh->GetComponentLocation();
+    const FVector CenterPos = (LeftPos + RightPos) * 0.5f;
+
+    UGameplayStatics::PlaySoundAtLocation(this, CloseDoorSoundCue, CenterPos);
 }
 
 void APlayerChecker::PlayDoorTimelineForward()

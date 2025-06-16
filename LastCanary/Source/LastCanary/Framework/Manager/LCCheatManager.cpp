@@ -196,12 +196,9 @@ void ULCCheatManager::ToggleGodMode()
 	FString Status = bGodMode ? TEXT("ON") : TEXT("OFF");
 	UE_LOG(LogCheat, Warning, TEXT("[치트] GodMode 전환됨: %s"), *Status);
 
-	if (APlayerController* PC = GetOuterAPlayerController())
+	if (ABasePlayerState* PlayerState = GetPlayerController()->GetPlayerState<ABasePlayerState>())
 	{
-		if (ACharacter* Character = PC->GetCharacter())
-		{
-			Character->SetCanBeDamaged(!bGodMode);
-		}
+		bGodMode? PlayerState->bInfiniteHP = true : PlayerState->bInfiniteHP = false;
 	}
 }
 

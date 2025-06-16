@@ -2415,6 +2415,13 @@ bool ABaseCharacter::UseEquippedItem(float ActionValue)
 			ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
 			if (PC)
 			{
+				ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
+				// HUD 숨기고 관전 모드 전환
+				if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
+				{
+					UIManager->HideInGameHUD();
+				}
+
 				PC->SpawnDrone();
 				//현재 들고 있는 인벤토리에서 제거하기
 

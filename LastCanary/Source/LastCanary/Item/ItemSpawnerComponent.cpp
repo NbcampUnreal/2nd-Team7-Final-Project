@@ -241,7 +241,7 @@ void UItemSpawnerComponent::ApplyItemSettings(AItemBase* Item, FName ItemRowName
     // 기본 속성 설정
     Item->ItemRowName = ItemRowName;
     Item->Quantity = Quantity;
-    Item->Durability = Durability;
+    Item->Durability = FMath::Clamp(Durability, 0.0f, Item->MaxDurability);
     Item->bIsEquipped = false;
 
     // 데이터 테이블 적용
