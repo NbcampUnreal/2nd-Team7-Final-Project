@@ -34,6 +34,9 @@ void ULCGameInstanceSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		}
 	}
 #endif
+
+	//세이브 데이터 불러오기
+	LoadSaveData();
 }
 
 ULCUIManager* ULCGameInstanceSubsystem::GetUIManager() const
@@ -109,4 +112,13 @@ UDataTable* ULCGameInstanceSubsystem::GetItemDataTable() const
 UDataTable* ULCGameInstanceSubsystem::GetGunDataTable() const
 {
 	return GunDataTable;
+}
+
+void ULCGameInstanceSubsystem::LoadSaveData()
+{
+	if (!IsValid(GetUIManager()))
+	{
+		UE_LOG(LogTemp, Log, TEXT("UIManager가 유효하지 않음"));
+		return;
+	}
 }
