@@ -2887,12 +2887,33 @@ void ABaseCharacter::SetWalkieTalkieChannelStatus(bool bActive)
 	{
 		if (bActive)
 		{
-			UE_LOG(LogTemp, Log, TEXT("[BaseCharacter] 워키토키 채널 추가"));
+			LOG_Item_WARNING(TEXT("[SetWalkieTalkieChannelStatus] 워키토키 채널 추가"));
 			AddWalkieTalkieChannel();
 		}
 		else
 		{
-			UE_LOG(LogTemp, Log, TEXT("[BaseCharacter] 워키토키 채널 제거"));
+			LOG_Item_WARNING(TEXT("[SetWalkieTalkieChannelStatus] 워키토키 채널 제거"));
+			RemoveWalkieTalkieChannel();
+		}
+	}
+}
+
+void ABaseCharacter::Client_SetWalkieTalkieChannelStatus_Implementation(bool bActive)
+{
+	bool bPreviousStatus = bHasWalkieTalkieChannel;
+	bHasWalkieTalkieChannel = bActive;
+
+	// 상태가 변경된 경우에만 블루프린트 이벤트 호출
+	if (bPreviousStatus != bActive)
+	{
+		if (bActive)
+		{
+			LOG_Item_WARNING(TEXT("[Client_SetWalkieTalkieChannelStatus] 클라이언트에서 워키토키 채널 추가"));
+			AddWalkieTalkieChannel();
+		}
+		else
+		{
+			LOG_Item_WARNING(TEXT("[Client_SetWalkieTalkieChannelStatus] 클라이언트에서 워키토키 채널 제거"));
 			RemoveWalkieTalkieChannel();
 		}
 	}

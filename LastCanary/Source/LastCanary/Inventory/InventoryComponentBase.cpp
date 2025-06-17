@@ -539,7 +539,40 @@ void UInventoryComponentBase::UpdateWalkieTalkieChannelStatus()
 	UE_LOG(LogTemp, Log, TEXT("[UpdateWalkieTalkieChannelStatus] 워키토키 상태 업데이트: %s"),
 		bHasWalkieTalkie ? TEXT("있음") : TEXT("없음"));
 
-	CachedOwnerCharacter->SetWalkieTalkieChannelStatus(bHasWalkieTalkie);
+	// 서버에서 실행 중인지 확인
+	if (!GetOwner() || !GetOwner()->HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[UpdateWalkieTalkieChannelStatus] 클라이언트에서 호출됨 - 무시"));
+		return;
+	}
+
+	// 소유자의 컨트롤러 확인
+	ABaseCharacter* OwnerCharacter = CachedOwnerCharacter;
+	if (!OwnerCharacter)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[UpdateWalkieTalkieChannelStatus] OwnerCharacter가 없음"));
+		return;
+	}
+
+	APlayerController* PC = OwnerCharacter->GetController<APlayerController>();
+	if (!PC)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[UpdateWalkieTalkieChannelStatus] PlayerController가 없음"));
+		return;
+	}
+
+	// 로컬 플레이어인지 확인 (리슨 서버의 호스트 플레이어)
+	if (PC->IsLocalController())
+	{
+		UE_LOG(LogTemp, Log, TEXT("[UpdateWalkieTalkieChannelStatus] 리슨 서버 호스트 플레이어 - 직접 업데이트"));
+		CachedOwnerCharacter->SetWalkieTalkieChannelStatus(bHasWalkieTalkie);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Log, TEXT("[UpdateWalkieTalkieChannelStatus] 원격 클라이언트 - Client RPC 전송"));
+		// 원격 클라이언트에게 RPC 전송
+		CachedOwnerCharacter->Client_SetWalkieTalkieChannelStatus(bHasWalkieTalkie);
+	}
 }
 
 bool UInventoryComponentBase::IsWalkieTalkieItem(FName ItemRowName) const
