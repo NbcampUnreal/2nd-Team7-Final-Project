@@ -4,6 +4,8 @@
 #include "Actor/Gimmick/LCBaseGimmick.h"
 #include "LCTransformGimmick.generated.h"
 
+class UAttachedSyncComponent;
+
 UENUM(BlueprintType)
 enum class EGimmickRotationAxis : uint8
 {
@@ -223,7 +225,7 @@ public:
 #pragma region Rotation Functions
 
 	/** 회전 시작 (서버) */
-	void StartRotation();
+	virtual void StartRotation();
 
 	/** 회전 완료 */
 	virtual void CompleteRotation();
@@ -258,13 +260,13 @@ public:
 	void CacheOriginalRotation();
 
 	/** 서버 보간 회전 시작 */
-	void StartServerRotation(const FQuat& From, const FQuat& To, float Duration);
+	virtual void StartServerRotation(const FQuat& From, const FQuat& To, float Duration);
 
 	/** 서버 보간 회전 실행 */
 	//void StepServerRotation();
 
 	/** 클라이언트 보간 회전 시작 */
-	void StartClientRotation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration, bool bReturn);
+	virtual void StartClientRotation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration, bool bReturn);
 
 	/** 클라이언트 보간 회전 실행 */
 	void StepClientRotation();
@@ -277,6 +279,10 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_StartRotation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration, bool bIsReturnRotation);
 	void Multicast_StartRotation_Implementation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration, bool bIsReturnRotation);
+
+	/** 부착된 액터 동기화용 컴포넌트 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Sync")
+	UAttachedSyncComponent* AttachedSyncComponent;
 
 #pragma endregion
 };

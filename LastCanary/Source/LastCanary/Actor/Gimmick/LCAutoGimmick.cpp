@@ -31,7 +31,7 @@ void ALCAutoGimmick::StartLoop()
 {
 	if (!HasAuthority()) return;
 
-	LOG_Art(Log, TEXT("▶ [StartLoop] 루프 시작"));
+	//LOG_Art(Log, TEXT("▶ [StartLoop] 루프 시작"));
 
 	bLoopingEnabled = true;
 	HandleLoop();
@@ -50,7 +50,7 @@ void ALCAutoGimmick::HandleLoop()
 	if (!HasAuthority() || !bLoopingEnabled || LoopType == EGimmickLoopType::None)
 		return;
 
-	LOG_Art(Log, TEXT("[HandleLoop] 루프 실행 - 타입: %d"), static_cast<int32>(LoopType));
+	//LOG_Art(Log, TEXT("[HandleLoop] 루프 실행 - 타입: %d"), static_cast<int32>(LoopType));
 
 	if (IsGimmickBusy_Implementation())
 	{
@@ -77,7 +77,7 @@ void ALCAutoGimmick::HandleLoop()
 
 	case EGimmickLoopType::PingPong:
 	{
-		LOG_Art(Log, TEXT("[HandleLoop] PingPong - ActivateGimmick 호출"));
+		//LOG_Art(Log, TEXT("[HandleLoop] PingPong - ActivateGimmick 호출"));
 
 		bUseAlternateToggle = true;
 
@@ -87,7 +87,7 @@ void ALCAutoGimmick::HandleLoop()
 			CurrentRotationQuat = OriginalRotationQuat;
 			RotationIndex = 0; 
 
-			LOG_Art(Log, TEXT("✅ 최초 회전 상태 저장됨: %s"), *OriginalRotationQuat.Rotator().ToCompactString());
+			//LOG_Art(Log, TEXT("✅ 최초 회전 상태 저장됨: %s"), *OriginalRotationQuat.Rotator().ToCompactString());
 		}
 		
 		ILCGimmickInterface::Execute_ActivateGimmick(this);
@@ -103,18 +103,18 @@ void ALCAutoGimmick::HandleLoop()
 
 void ALCAutoGimmick::ScheduleNextLoop()
 {
-	LOG_Art(Log, TEXT("🔄 [ScheduleNextLoop] 호출됨 - Interval: %.2f"), LoopInterval);
+	//LOG_Art(Log, TEXT("🔄 [ScheduleNextLoop] 호출됨 - Interval: %.2f"), LoopInterval);
 
 	if (!HasAuthority() || !bLoopingEnabled) return;
 
 	if (LoopInterval <= 0.f)
 	{
-		LOG_Art(Log, TEXT("▶ [ScheduleNextLoop] 즉시 HandleLoop 호출"));
+		//LOG_Art(Log, TEXT("▶ [ScheduleNextLoop] 즉시 HandleLoop 호출"));
 		HandleLoop();
 	}
 	else
 	{
-		LOG_Art(Log, TEXT("▶ [ScheduleNextLoop] 타이머로 HandleLoop 예약"));
+		//LOG_Art(Log, TEXT("▶ [ScheduleNextLoop] 타이머로 HandleLoop 예약"));
 		GetWorldTimerManager().SetTimer(LoopTimerHandle, this, &ALCAutoGimmick::HandleLoop, LoopInterval, false);
 	}
 }
@@ -124,7 +124,7 @@ void ALCAutoGimmick::ActivateGimmick_Implementation()
 	if (!HasAuthority()) return;
 	if (!ILCGimmickInterface::Execute_CanActivate(this)) return;
 
-	LOG_Art(Log, TEXT("▶ [ActivateGimmick] 실행"));
+	//LOG_Art(Log, TEXT("▶ [ActivateGimmick] 실행"));
 
 	if (LoopType == EGimmickLoopType::PingPong)
 	{
@@ -135,7 +135,7 @@ void ALCAutoGimmick::ActivateGimmick_Implementation()
 
 		const bool bIsForward = (RotationIndex % 2 == 0);
 
-		LOG_Art(Log, TEXT("[ActivateGimmick] PingPong - 방향: %s"), bIsForward ? TEXT("Forward") : TEXT("Backward"));
+		//LOG_Art(Log, TEXT("[ActivateGimmick] PingPong - 방향: %s"), bIsForward ? TEXT("Forward") : TEXT("Backward"));
 
 		MoveDuration = bIsForward ? ForwardMoveDuration : BackwardMoveDuration;
 		RotationDuration = bIsForward ? ForwardRotationDuration : BackwardRotationDuration;
@@ -177,13 +177,13 @@ void ALCAutoGimmick::DeactivateGimmick_Implementation()
 
 void ALCAutoGimmick::CompleteMovement()
 {
-	LOG_Art(Log, TEXT("✔️ [CompleteMovement] 이동 완료"));
+	//LOG_Art(Log, TEXT("✔️ [CompleteMovement] 이동 완료"));
 
 	const bool bShouldReturn = !bLoopingEnabled && !bToggleState;
 
 	if (bShouldReturn)
 	{
-		LOG_Art(Log, TEXT("▶ [CompleteMovement] 복귀 예약"));
+		//LOG_Art(Log, TEXT("▶ [CompleteMovement] 복귀 예약"));
 		Super::CompleteMovement();
 	}
 	else
@@ -192,11 +192,23 @@ void ALCAutoGimmick::CompleteMovement()
 		bIsMovingServer = false;
 	}
 
-	ScheduleNextLoop();
+	// ✅ 루프 처리
+	if (bLoopingEnabled)
+	{
+		if (LoopInterval > 0.f)
+		{
+			GetWorldTimerManager().SetTimer(LoopTimerHandle, this, &ALCAutoGimmick::HandleLoop, LoopInterval, false);
+		}
+		else
+		{
+			HandleLoop(); // 즉시 반복
+		}
+	}
 }
+
 void ALCAutoGimmick::CompleteRotation()
 {
-	LOG_Art(Log, TEXT("✔️ [CompleteRotation] 회전 완료"));
+	//LOG_Art(Log, TEXT("✔️ [CompleteRotation] 회전 완료"));
 
 	const bool bShouldReturn = !bLoopingEnabled && !bToggleState;
 
@@ -211,38 +223,59 @@ void ALCAutoGimmick::CompleteRotation()
 		bIsRotatingServer = false;
 	}
 
-	ScheduleNextLoop();
+	// ✅ 루프 처리
+	if (bLoopingEnabled)
+	{
+		if (LoopInterval > 0.f)
+		{
+			GetWorldTimerManager().SetTimer(LoopTimerHandle, this, &ALCAutoGimmick::HandleLoop, LoopInterval, false);
+		}
+		else
+		{
+			HandleLoop(); // 즉시 반복
+		}
+	}
 }
 
 void ALCAutoGimmick::CompleteReturn()
 {
-	LOG_Art(Log, TEXT("✅ [CompleteReturn] 복귀 이동 완료"));
-
+	//LOG_Art(Log, TEXT("✅ [CompleteReturn] 복귀 이동 완료"));
 	Super::CompleteReturn();
 
 	if (LoopType == EGimmickLoopType::PingPong && bLoopingEnabled)
 	{
-		LOG_Art(Log, TEXT("🔁 [CompleteReturn] 다음 루프 예약"));
-		ScheduleNextLoop();
+		if (LoopInterval > 0.f)
+		{
+			GetWorldTimerManager().SetTimer(LoopTimerHandle, this, &ALCAutoGimmick::HandleLoop, LoopInterval, false);
+		}
+		else
+		{
+			HandleLoop();
+		}
 	}
 }
 
 void ALCAutoGimmick::CompleteRotationReturn()
 {
-	LOG_Art(Log, TEXT("✅ [CompleteRotationReturn] 복귀 회전 완료"));
-
+	//LOG_Art(Log, TEXT("✅ [CompleteRotationReturn] 복귀 회전 완료"));
 	Super::CompleteRotationReturn();
 
 	if (LoopType == EGimmickLoopType::PingPong && bLoopingEnabled)
 	{
-		LOG_Art(Log, TEXT("🔁 [CompleteRotationReturn] 다음 루프 예약"));
-		ScheduleNextLoop();
+		if (LoopInterval > 0.f)
+		{
+			GetWorldTimerManager().SetTimer(LoopTimerHandle, this, &ALCAutoGimmick::HandleLoop, LoopInterval, false);
+		}
+		else
+		{
+			HandleLoop();
+		}
 	}
 }
 
 void ALCAutoGimmick::ReturnToInitialState_Implementation()
 {
-	LOG_Art(Log, TEXT("🔁 [ReturnToInitialState] 복귀 시작"));
+	//LOG_Art(Log, TEXT("🔁 [ReturnToInitialState] 복귀 시작"));
 
 	if (LoopType == EGimmickLoopType::PingPong)
 	{
@@ -258,7 +291,7 @@ void ALCAutoGimmick::ReturnToInitialState_Implementation()
 
 	if (LoopRestartDelay > 0.f && LoopType != EGimmickLoopType::None)
 	{
-		LOG_Art(Log, TEXT("⏳ [ReturnToInitialState] %.2f초 후 루프 재시작 예약"), LoopRestartDelay);
+		//LOG_Art(Log, TEXT("⏳ [ReturnToInitialState] %.2f초 후 루프 재시작 예약"), LoopRestartDelay);
 		GetWorldTimerManager().SetTimer(LoopTimerHandle, this, &ALCAutoGimmick::StartLoop, LoopRestartDelay, false);
 	}
 }

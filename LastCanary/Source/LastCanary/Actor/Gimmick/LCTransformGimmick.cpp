@@ -1,6 +1,7 @@
 #include "LCTransformGimmick.h"
 #include "TimerManager.h"
 #include "Net/UnrealNetwork.h"
+#include "Component/AttachedSyncComponent.h"
 #include "LastCanary.h"
 
 ALCTransformGimmick::ALCTransformGimmick()
@@ -484,7 +485,7 @@ void ALCTransformGimmick::StartRotation()
 	CurrentRotationQuat = TargetRotation;
 	TotalRotationIndex += RotationCount;
 
-	LOG_Art(Log, TEXT("▶ StartRotation - Axis: %s | Angle: %.1f | From: %s | To: %s"),
+	LOG_Art(Log, TEXT(" StartRotation - Axis: %s | Angle: %.1f | From: %s | To: %s"),
 		*Axis.ToString(),
 		RotationAngle * RotationCount,
 		*InitialRotation.Rotator().ToCompactString(),
@@ -496,6 +497,15 @@ void ALCTransformGimmick::StartRotation()
 	if (GetNetMode() != NM_DedicatedServer)
 	{
 		StartClientRotation(InitialRotation, TargetRotation, RotationDuration, false);
+	}
+
+	if (UAttachedSyncComponent* Sync = FindComponentByClass<UAttachedSyncComponent>())
+	{
+		Sync->BroadcastStartRotation(InitialRotation, TargetRotation, RotationDuration);
+	}
+	else
+	{
+		LOG_Art_WARNING(TEXT("회전 시작 시 Sync 컴포넌트 찾기 실패 (FindComponentByClass)"));
 	}
 }
 
