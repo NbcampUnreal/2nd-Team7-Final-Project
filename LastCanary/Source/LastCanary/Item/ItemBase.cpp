@@ -345,6 +345,7 @@ void AItemBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetim
 	DOREPLIFETIME(AItemBase, bIsEquipped);
 	DOREPLIFETIME_CONDITION_NOTIFY(AItemBase, Durability, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME(AItemBase, bIgnoreCharacterCollision);
+	DOREPLIFETIME(AItemBase, bIsSoundActive);
 }
 
 void AItemBase::OnRepItemRowName()
@@ -607,4 +608,78 @@ FString AItemBase::GetCurrentKeyNameForAction(UInputAction* InputAction) const
 		}
 	}
 	return TEXT("Unbound");
+}
+
+void AItemBase::PlaySoundByType()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	switch (ItemData.SoundType)
+	{
+	case EItemSoundType::Click:
+		HandleClickSound();
+		break;
+
+	case EItemSoundType::Toggle:
+		HandleToggleSound();
+		break;
+
+	case EItemSoundType::Hold:
+		HandleHoldSoundStart();
+		break;
+
+	default:
+		break;
+	}
+}
+
+void AItemBase::HandleClickSound()
+{
+	// 클릭: 항상 시작 사운드만 재생
+	PlayItemUseSound(true);
+
+	LOG_Item_WARNING(TEXT("[%s] Click Sound: %s"), *GetName(), *ItemRowName.ToString());
+}
+
+void AItemBase::HandleToggleSound()
+{
+	// 토글: 상태에 따라 시작/종료 사운드 전환
+	bIsSoundActive = !bIsSoundActive;
+	PlayItemUseSound(bIsSoundActive);
+
+	LOG_Item_WARNING(TEXT("[%s] Toggle Sound: %s (%s)"),
+		*GetName(), *ItemRowName.ToString(),
+		bIsSoundActive ? TEXT("ON") : TEXT("OFF"));
+}
+
+void AItemBase::HandleHoldSoundStart()
+{
+	// 홀드: 시작 사운드 재생 및 상태 변경
+	if (!bIsSoundActive)
+	{
+		bIsSoundActive = true;
+		PlayItemUseSound(true);
+
+		LOG_Item_WARNING(TEXT("[%s] Hold Sound Start: %s"), *GetName(), *ItemRowName.ToString());
+	}
+}
+
+void AItemBase::StopHoldSound()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	// 홀드 타입에서만 종료 사운드 처리
+	if (ItemData.SoundType == EItemSoundType::Hold && bIsSoundActive)
+	{
+		bIsSoundActive = false;
+		PlayItemUseSound(false);
+
+		LOG_Item_WARNING(TEXT("[%s] Hold Sound Stop: %s"), *GetName(), *ItemRowName.ToString());
+	}
 }
