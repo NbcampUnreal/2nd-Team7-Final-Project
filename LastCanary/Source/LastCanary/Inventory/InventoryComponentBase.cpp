@@ -309,6 +309,8 @@ bool UInventoryComponentBase::Internal_TryDropItemAtSlot(int32 SlotIndex, int32 
 	}
 
 	UpdateWeight(); // ⭐ 무게 갱신 추가
+	UpdateWalkieTalkieChannelStatus();
+
 	OnInventoryUpdated.Broadcast();
 
 	LOG_Item_WARNING(TEXT("[Internal_TryDropItemAtSlot] ✅ 드롭 성공: %s (수량: %d)"),
@@ -508,4 +510,66 @@ void UInventoryComponentBase::ClearInventorySlots()
 	CurrentTotalWeight = 0.0f;
 
 	LOG_Item_WARNING(TEXT("[ClearInventorySlots] 인벤토리 초기화 완료"));
+}
+
+bool UInventoryComponentBase::HasWalkieTalkieInToolbar() const
+{
+	for (const FBaseItemSlotData& Slot : ItemSlots)
+	{
+		if (Slot.bIsValid && !IsDefaultItem(Slot.ItemRowName) && Slot.Quantity > 0)
+		{
+			if (IsWalkieTalkieItem(Slot.ItemRowName))
+			{
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+void UInventoryComponentBase::UpdateWalkieTalkieChannelStatus()
+{
+	if (!IsOwnerCharacterValid())
+	{
+		return;
+	}
+
+	bool bHasWalkieTalkie = HasWalkieTalkieInToolbar();
+
+	UE_LOG(LogTemp, Log, TEXT("[UpdateWalkieTalkieChannelStatus] 워키토키 상태 업데이트: %s"),
+		bHasWalkieTalkie ? TEXT("있음") : TEXT("없음"));
+
+	CachedOwnerCharacter->SetWalkieTalkieChannelStatus(bHasWalkieTalkie);
+}
+
+bool UInventoryComponentBase::IsWalkieTalkieItem(FName ItemRowName) const
+{
+	if (ItemRowName.IsNone())
+	{
+		return false;
+	}
+
+	// Default 아이템은 워키토키가 아님
+	if (IsDefaultItem(ItemRowName))
+	{
+		return false;
+	}
+
+	// ItemDataTable에서 아이템 데이터 조회
+	if (!ItemDataTable)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[IsWalkieTalkieItem] ItemDataTable이 없습니다."));
+		return false;
+	}
+
+	const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("IsWalkieTalkieItem"));
+	if (!ItemData)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[IsWalkieTalkieItem] 아이템 데이터를 찾을 수 없습니다: %s"), *ItemRowName.ToString());
+		return false;
+	}
+
+	// 게임플레이태그로 워키토키 확인
+	static const FGameplayTag WalkieTalkieTag = FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.WalkieTalkie"));
+	return ItemData->ItemType.MatchesTag(WalkieTalkieTag);
 }
