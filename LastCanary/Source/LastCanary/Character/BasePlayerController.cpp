@@ -1242,6 +1242,7 @@ void ABasePlayerController::Input_DroneExit(const FInputActionValue& ActionValue
 	{
 		if (IsLocalController())
 		{
+			UIManager->HideDroneHUD();
 			UIManager->ShowInGameHUD();
 		}
 	}
@@ -1361,6 +1362,7 @@ void ABasePlayerController::PossessOnDrone()
 		if (IsLocalController())
 		{
 			UIManager->HideInGameHUD();
+			UIManager->ShowDroneHUD();
 		}
 	}
 }
