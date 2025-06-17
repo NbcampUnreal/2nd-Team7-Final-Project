@@ -164,6 +164,10 @@ void ABaseCharacter::BeginPlay()
 
 float ABaseCharacter::GetBrightness()
 {
+	if (!IsValid(GetController()))
+	{
+		return 0.0f;
+	}
 	ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
 	if (!IsValid(PC))
 	{
@@ -520,19 +524,6 @@ void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue, floa
 	AddControllerPitchInput(Value.Y * Sensivity);
 }
 
-void ABaseCharacter::CameraShake(float Vertical, float Horizontal)
-{
-	// 새로운 반동량을 기존 값에 누적
-	RecoilStepPitch += Vertical / RecoilMaxSteps;
-	RecoilStepYaw += FMath::RandRange(-Horizontal, Horizontal) / RecoilMaxSteps;
-
-	// 타이머가 안 돌고 있을 때만 시작
-	if (!GetWorld()->GetTimerManager().IsTimerActive(RecoilTimerHandle))
-	{
-		RecoilStep = 0;
-		GetWorld()->GetTimerManager().SetTimer(RecoilTimerHandle, this, &ABaseCharacter::ApplyRecoilStep, 0.02f, true);
-	}
-}
 
 void ABaseCharacter::StartTrackingDrone()
 {
@@ -568,6 +559,20 @@ void ABaseCharacter::UpdateRotationToDrone()
 		SetActorRotation(NewRotation);
 		SpringArm->SetWorldRotation(NewRotation);
 		Controller->SetControlRotation(NewRotation); // 컨트롤러 회전도 고정
+	}
+}
+
+void ABaseCharacter::CameraShake(float Vertical, float Horizontal)
+{
+	// 새로운 반동량을 기존 값에 누적
+	RecoilStepPitch += Vertical / RecoilMaxSteps;
+	RecoilStepYaw += FMath::RandRange(-Horizontal, Horizontal) / RecoilMaxSteps;
+
+	// 타이머가 안 돌고 있을 때만 시작
+	if (!GetWorld()->GetTimerManager().IsTimerActive(RecoilTimerHandle))
+	{
+		RecoilStep = 0;
+		GetWorld()->GetTimerManager().SetTimer(RecoilTimerHandle, this, &ABaseCharacter::ApplyRecoilStep, 0.02f, true);
 	}
 }
 

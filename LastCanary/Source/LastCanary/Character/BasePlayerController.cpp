@@ -302,7 +302,10 @@ void ABasePlayerController::RemoveInputMappingContext(UInputMappingContext* IMC)
 
 void ABasePlayerController::ChangeInputMappingContext(UInputMappingContext* IMC)
 {
-	CurrentIMC = IMC;
+	if (IMC)
+	{
+		CurrentIMC = IMC;
+	}
 }
 
 void ABasePlayerController::OnPossess(APawn* InPawn)
@@ -327,7 +330,7 @@ void ABasePlayerController::OnPossess(APawn* InPawn)
 	}
 
 	
-	ApplyInputMappingContext(CurrentIMC);
+	//ApplyInputMappingContext(CurrentIMC);  << 필요가 없는 거 같기도???
 	
 }
 
@@ -477,6 +480,7 @@ void ABasePlayerController::Input_OnLookMouse(const FInputActionValue& ActionVal
 
 void ABasePlayerController::Input_OnLook(const FInputActionValue& ActionValue)
 {
+	/*   필요가 없는 기능
 	if (!IsValid(CurrentPossessedPawn))
 	{
 		return;
@@ -490,6 +494,7 @@ void ABasePlayerController::Input_OnLook(const FInputActionValue& ActionValue)
 			PlayerCharacter->Handle_Look(ActionValue);
 		}
 	}
+	*/  
 }
 
 void ABasePlayerController::Input_OnMove(const FInputActionValue& ActionValue)
@@ -502,13 +507,13 @@ void ABasePlayerController::Input_OnMove(const FInputActionValue& ActionValue)
 
 	if (!IsValid(CurrentPossessedPawn))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_OnMove"));
+		//UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_OnMove"));
 		return;
 	}
 
 	if (MyPlayerState->InGameState != EPlayerInGameStatus::Alive)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is Spectating"));
+		//UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is Spectating"));
 		const auto Value{ ActionValue.Get<FVector2D>() };
 		if (Value.X != 0.0f)
 		{
@@ -573,7 +578,7 @@ void ABasePlayerController::Input_OnMove(const FInputActionValue& ActionValue)
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Unknown pawn type in Input_OnMove: %s"), *CurrentPossessedPawn->GetName());
+		//UE_LOG(LogTemp, Warning, TEXT("Unknown pawn type in Input_OnMove: %s"), *CurrentPossessedPawn->GetName());
 	}
 }
 
@@ -582,17 +587,15 @@ void ABasePlayerController::Input_OnSprint(const FInputActionValue& ActionValue)
 {
 	if (!IsValid(CurrentPossessedPawn))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_OnSprint"));
 		return;
 	}
-
-	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
+	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
 	{
-		PlayerCharacter->Handle_Sprint(ActionValue);
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is not an ABaseCharacter: %s"), *CurrentPossessedPawn->GetName());
+		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
+		if (IsValid(PlayerCharacter))
+		{
+			PlayerCharacter->Handle_Sprint(ActionValue);
+		}
 	}
 }
 
@@ -600,17 +603,15 @@ void ABasePlayerController::Input_OnWalk(const FInputActionValue& ActionValue)
 {
 	if (!IsValid(CurrentPossessedPawn))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_OnWalk"));
 		return;
 	}
-
-	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
+	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
 	{
-		PlayerCharacter->Handle_Walk(ActionValue);
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is not an ABaseCharacter: %s"), *CurrentPossessedPawn->GetName());
+		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
+		if (IsValid(PlayerCharacter))
+		{
+			PlayerCharacter->Handle_Walk(ActionValue);
+		}
 	}
 }
 
@@ -618,21 +619,21 @@ void ABasePlayerController::Input_OnCrouch(const FInputActionValue& ActionValue)
 {
 	if (!IsValid(CurrentPossessedPawn))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_OnCrouch"));
 		return;
 	}
-
-	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
+	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
 	{
-		PlayerCharacter->Handle_Crouch(ActionValue);
+		if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
+		{
+			PlayerCharacter->Handle_Crouch(ActionValue);
+		}
 	}
-	else if (ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn))
+	else if (CurrentPossessedPawn->IsA<ABaseDrone>())
 	{
-		Drone->Input_MoveDown(ActionValue);
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn has no valid input handler for crouch: %s"), *CurrentPossessedPawn->GetName());
+		if (ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn))
+		{
+			Drone->Input_MoveDown(ActionValue);
+		}
 	}
 }
 
@@ -643,18 +644,19 @@ void ABasePlayerController::Input_OnJump(const FInputActionValue& ActionValue)
 		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_OnJump"));
 		return;
 	}
-
-	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
+	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
 	{
-		PlayerCharacter->Handle_Jump(ActionValue);
+		if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
+		{
+			PlayerCharacter->Handle_Jump(ActionValue);
+		}
 	}
-	else if (ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn))
+	else if (CurrentPossessedPawn->IsA<ABaseDrone>())
 	{
-		Drone->Input_MoveUp(ActionValue);
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn has no valid input handler for jump: %s"), *CurrentPossessedPawn->GetName());
+		if (ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn))
+		{
+			Drone->Input_MoveUp(ActionValue);
+		}
 	}
 }
 
@@ -664,10 +666,12 @@ void ABasePlayerController::Input_OnAim(const FInputActionValue& ActionValue)
 	{
 		return;
 	}
-
-	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
+	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
 	{
-		PlayerCharacter->Handle_Aim(ActionValue);
+		if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
+		{
+			PlayerCharacter->Handle_Aim(ActionValue);
+		}
 	}
 }
 
@@ -676,10 +680,9 @@ void ABasePlayerController::Input_OnViewMode(const FInputActionValue& ActionValu
 {
 	if (!IsValid(CurrentPossessedPawn))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_OnViewMode"));
 		return;
 	}
-
+#if WITH_EDITOR
 	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
 		PlayerCharacter->Handle_ViewMode();
@@ -688,6 +691,7 @@ void ABasePlayerController::Input_OnViewMode(const FInputActionValue& ActionValu
 	{
 		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is not an ABaseCharacter: %s"), *CurrentPossessedPawn->GetName());
 	}
+#endif
 }
 
 
@@ -731,12 +735,15 @@ void ABasePlayerController::Input_Reload(const FInputActionValue& ActionValue)
 	}
 	else
 	{
+#if WITH_EDITOR
 		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is not an ABaseCharacter: %s"), *CurrentPossessedPawn->GetName());
+#endif
 	}
 }
 
 void ABasePlayerController::Input_OnStrafe(const FInputActionValue& ActionValue)
 {
+#if WITH_EDITOR
 	if (!IsValid(CurrentPossessedPawn))
 	{
 		return;
@@ -748,6 +755,7 @@ void ABasePlayerController::Input_OnStrafe(const FInputActionValue& ActionValue)
 		UE_LOG(LogTemp, Warning, TEXT("Toggle Inventory"));
 		PlayerCharacter->ToggleInventory();
 	}
+#endif
 }
 
 
@@ -849,7 +857,9 @@ TArray<ABasePlayerState*> ABasePlayerController::GetPlayerArray()
 	AGameStateBase* GameState = GetWorld()->GetGameState<AGameStateBase>();
 	if (!IsValid(GameState))
 	{
+#if WITH_EDITOR
 		LOG_Char_WARNING(TEXT("GameState is Not Valid"));
+#endif
 		return SpectatorTargets;
 	}
 
@@ -861,21 +871,13 @@ TArray<ABasePlayerState*> ABasePlayerController::GetPlayerArray()
 			ABasePlayerState* MyPS = Cast<ABasePlayerState>(PS);
 			if (MyPS)
 			{
+#if WITH_EDITOR
 				UE_LOG(LogTemp, Log, TEXT("Checking PlayerState: %s | InGameState: %d"), *MyPS->GetPlayerName(), (int32)MyPS->InGameState);
-
+#endif
 				if (MyPS->InGameState != EPlayerInGameStatus::Spectating)
 				{
-					UE_LOG(LogTemp, Log, TEXT("→ Added to SpectatorTargets: %s"), *MyPS->GetPlayerName());
 					SpectatorTargets.Add(MyPS);
 				}
-				else
-				{
-					UE_LOG(LogTemp, Log, TEXT("→ Skipped (Spectating): %s"), *MyPS->GetPlayerName());
-				}
-			}
-			else
-			{
-				UE_LOG(LogTemp, Warning, TEXT("Failed to cast PlayerState to ABasePlayerState"));
 			}
 		}
 		return SpectatorTargets;
@@ -905,7 +907,6 @@ void ABasePlayerController::CheckCurrentSpectatedCharacterStatus()
 	//	LCUIManager->HideLoadingLevel();
 	//}
 
-	UE_LOG(LogTemp, Warning, TEXT("체크"));
 	if (!IsValid(CurrentSpectatedPlayer) || CurrentSpectatedPlayer->GetInGameStatus() != EPlayerInGameStatus::Alive)
 	{
 		SpectatorTargets = GetPlayerArray();
@@ -914,9 +915,7 @@ void ABasePlayerController::CheckCurrentSpectatedCharacterStatus()
 
 		if (AliveCount <= 0)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("No more alive players to spectate."));
 			GetWorldTimerManager().ClearTimer(SpectatorCheckHandle);
-
 			return;
 		}
 		SpectateNextPlayer();
@@ -940,8 +939,6 @@ void ABasePlayerController::Input_OnItemUse(const FInputActionValue& ActionValue
 
 void ABasePlayerController::Input_OnItemThrow(const FInputActionValue& ActionValue)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Throw Item"));
-	
 	if (!IsValid(CurrentPossessedPawn))
 	{
 		return;
@@ -956,7 +953,9 @@ void ABasePlayerController::Input_OnItemThrow(const FInputActionValue& ActionVal
 
 void ABasePlayerController::Input_VoiceChat(const FInputActionValue& ActionValue)
 {
+#if WITH_EDITOR
 	UE_LOG(LogTemp, Warning, TEXT("Voice Chatting Triggered"));
+#endif
 	//TODO: Voice 기능을 잘 추가해보기
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
@@ -989,6 +988,10 @@ void ABasePlayerController::Input_VoiceChat(const FInputActionValue& ActionValue
 void ABasePlayerController::Input_ChangeShootingSetting(const FInputActionValue& ActionValue)
 {
 	//TODO: 필요하다면 UI와 연동해야할지도?
+	if (!IsValid(CurrentPossessedPawn))
+	{
+		return;
+	}
 	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
 		PlayerCharacter->ToggleFireMode();
@@ -1224,6 +1227,10 @@ void ABasePlayerController::Input_DroneExit(const FInputActionValue& ActionValue
 		SpawnedPlayerDrone->ReturnAsItem();
 		SpawnedPlayerDrone = nullptr;
 	}
+	if (!IsValid(CurrentPossessedPawn))
+	{
+		return;
+	}
 	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
 	if (!IsValid(PlayerCharacter))
 	{
@@ -1238,13 +1245,20 @@ void ABasePlayerController::Input_DroneExit(const FInputActionValue& ActionValue
 	}
 
 	ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
-	if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
+	if (!IsValid(GISubsystem))
 	{
-		if (IsLocalController())
-		{
-			UIManager->ShowInGameHUD();
-		}
+		return;
 	}
+	ULCUIManager* UIManager = GISubsystem->GetUIManager();
+	if (!IsValid(UIManager))
+	{
+		return;
+	}
+	if (!IsLocalController())
+	{
+		return;
+	}
+	UIManager->ShowInGameHUD();
 }
 
 void ABasePlayerController::Server_DroneExit_Implementation()
@@ -1336,7 +1350,10 @@ void ABasePlayerController::OnRep_SpawnedPlayerDrone()
 void ABasePlayerController::PossessOnDrone()
 {
 	if (!IsValid(SpawnedPlayerDrone))
+	{
 		return;
+	}
+
 
 	if (!IsValid(CurrentPossessedPawn))
 	{
@@ -1348,11 +1365,12 @@ void ABasePlayerController::PossessOnDrone()
 	}
 
 	CurrentPossessedPawn = SpawnedPlayerDrone;
-
+	if (!IsValid(CurrentPossessedPawn))
+	{
+		return;
+	}
+	//플레이어와의 거리를 측정하기 위한 함수
 	SpawnedPlayerDrone->SetCharacterLocation(SpanwedPlayerCharacter->GetActorLocation());
-	
-
-	
 	SetViewTargetWithBlend(SpawnedPlayerDrone, 0.5f);
 	ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
 	// HUD 숨기고 관전 모드 전환
@@ -1385,6 +1403,10 @@ void ABasePlayerController::InteractGimmick(ALCBaseGimmick* Target)
 		return;
 	}
 	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
+	if (!IsValid(PlayerCharacter))
+	{
+		return;
+	}
 	Server_InteractWithGimmick(Target);
 	//PlayerCharacter->PlayInteractionMontage(Target);
 }
@@ -1395,8 +1417,6 @@ void ABasePlayerController::Server_InteractWithGimmick_Implementation(ALCBaseGim
 	{
 		return;
 	}
-
-
 	Target->SetOwner(this);
 
 	IInteractableInterface::Execute_Interact(Target, this);
