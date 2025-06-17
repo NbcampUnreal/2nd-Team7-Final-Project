@@ -6,6 +6,9 @@
 #include "Kismet/GameplayStatics.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedActionKeyMapping.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
+#include "Net/UnrealNetwork.h"
 
 #include "LastCanary.h"
 
@@ -13,6 +16,10 @@ AResourceNode::AResourceNode()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
+	bReplicates = true;
+	MaxHarvestCount = 5;
+	CurrentHarvestCount = 0;
+	bInfiniteHarvest = false;
 }
 
 void AResourceNode::BeginPlay()
@@ -25,6 +32,13 @@ void AResourceNode::BeginPlay()
 	{
 		LOG_Item_WARNING(TEXT("[AResourceNode::BeginPlay] ResourceItemSpawnManager not found in level!"));
 	}
+}
+
+void AResourceNode::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AResourceNode, CurrentHarvestCount);
 }
 
 void AResourceNode::Interact_Implementation(APlayerController* Interactor)
@@ -45,6 +59,12 @@ void AResourceNode::Server_RequestInteract_Implementation(APlayerController* Int
 
 void AResourceNode::HarvestResource(APlayerController* Interactor)
 {
+	if (!CanHarvest())
+	{
+		LOG_Item_WARNING(TEXT("[AResourceNode::HarvestResource] 채취 불가능 - 자원이 고갈됨"));
+		return;
+	}
+
 	if (!ResourceItemSpawnManager)
 	{
 		LOG_Item_WARNING(TEXT("[AResourceNode::HarvestResource] ResourceItemSpawnManager not initialized!"));
@@ -87,7 +107,22 @@ void AResourceNode::HarvestResource(APlayerController* Interactor)
 	FVector SpawnLocation = CalculateResourceSpawnLocation(Interactor);
 	ResourceItemSpawnManager->SpawnItemAtLocation(SelectedItemRow, SpawnLocation);
 
-	// TODO : 내구도 차감, 재사용 쿨타임 적용, 디스폰 등 부가 로직
+	if (!bInfiniteHarvest)
+	{
+		CurrentHarvestCount++;
+		LOG_Item_WARNING(TEXT("[ResourceNode] 채취 완료 (%d/%d)"), CurrentHarvestCount, MaxHarvestCount);
+
+		// 최대 채취 수량에 도달했으면 파괴 예약
+		if (CurrentHarvestCount >= MaxHarvestCount)
+		{
+			LOG_Item_WARNING(TEXT("[ResourceNode] 자원 고갈! 파괴 예약"));
+			DestroyResourceNode();
+		}
+	}
+	else
+	{
+		LOG_Item_WARNING(TEXT("[ResourceNode] ✅ 무한 자원 채취 완료"));
+	}
 }
 
 FText AResourceNode::GetDefaultMessageForType(EResourceInteractionType Type) const
@@ -190,4 +225,74 @@ FVector AResourceNode::CalculateResourceSpawnLocation(APlayerController* Interac
 	default:
 		return NodeLocation;
 	}
+}
+
+bool AResourceNode::CanHarvest() const
+{
+	if (bInfiniteHarvest)
+	{
+		return true;
+	}
+
+	return CurrentHarvestCount < MaxHarvestCount;
+}
+
+int32 AResourceNode::GetRemainingHarvestCount() const
+{
+	if (bInfiniteHarvest)
+	{
+		return -1; // 무한
+	}
+
+	return FMath::Max(0, MaxHarvestCount - CurrentHarvestCount);
+}
+
+float AResourceNode::GetHarvestProgress() const
+{
+	if (bInfiniteHarvest || MaxHarvestCount <= 0)
+	{
+		return 0.0f;
+	}
+
+	return static_cast<float>(CurrentHarvestCount) / static_cast<float>(MaxHarvestCount);
+}
+
+void AResourceNode::Multicast_PlayDestroyEffect_Implementation()
+{
+	// 나이아가라 이펙트 재생
+	if (DestroyEffect)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			GetWorld(),
+			DestroyEffect,
+			GetActorLocation(),
+			GetActorRotation(),
+			FVector(3.0f)
+		);
+	}
+
+	// 사운드 재생
+	if (DestroySound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			this,
+			DestroySound,
+			GetActorLocation()
+		);
+	}
+
+	LOG_Item_WARNING(TEXT("[ResourceNode] 파괴 연출 재생"));
+}
+
+void AResourceNode::DestroyResourceNode()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	Multicast_PlayDestroyEffect();
+
+	LOG_Item_WARNING(TEXT("[ResourceNode] 자원 노드 파괴됨"));
+	Destroy();
 }
