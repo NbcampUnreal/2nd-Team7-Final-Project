@@ -2915,4 +2915,23 @@ void ABaseCharacter::StopHealing()
 	HealingTicksRemaining = 0;
 }
 
+void ABaseCharacter::SetWalkieTalkieChannelStatus(bool bActive)
+{
+	bool bPreviousStatus = bHasWalkieTalkieChannel;
+	bHasWalkieTalkieChannel = bActive;
 
+	// 상태가 변경된 경우에만 블루프린트 이벤트 호출
+	if (bPreviousStatus != bActive)
+	{
+		if (bActive)
+		{
+			UE_LOG(LogTemp, Log, TEXT("[BaseCharacter] 워키토키 채널 추가"));
+			AddWalkieTalkieChannel();
+		}
+		else
+		{
+			UE_LOG(LogTemp, Log, TEXT("[BaseCharacter] 워키토키 채널 제거"));
+			RemoveWalkieTalkieChannel();
+		}
+	}
+}
