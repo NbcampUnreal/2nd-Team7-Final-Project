@@ -226,23 +226,55 @@ public:
 public:
 	void SetCameraMode(bool bIsFirstPersonView);
 
-	void ApplyRecoilStep();
-	void CameraShake(float Vertical, float Horizontal);
+
 
 
 	void SwapHeadMaterialTransparent(bool bUseTransparent);
 public:
 
-	// Recoil 상태
-	FTimerHandle RecoilTimerHandle;
+	// Header 파일에 추가할 변수들
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
+	float BaseRecoilPitch = 1.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite);
-	float YawRecoilRange = 1.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
+	float BaseRecoilYaw = 0.5f;
 
-	int32 RecoilStep = 0;
-	int32 RecoilMaxSteps = 10;
-	float RecoilStepPitch = 0.f;
-	float RecoilStepYaw = 0.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
+	float RecoilMultiplier = 1.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
+	float RecoilRecoverySpeed = 2.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
+	int32 MaxConsecutiveShots = 10;
+
+	// 현재 연사 상태
+	int32 CurrentShotCount = 0;
+	FVector2D AccumulatedRecoil = FVector2D::ZeroVector;
+	FVector2D TargetRecoil = FVector2D::ZeroVector;
+	FTimerHandle RecoilRecoveryTimer;
+	FTimerHandle ShotResetTimer;
+
+	// 반동 패턴 (선택사항 - CS:GO 스타일)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
+	TArray<FVector2D> RecoilPattern;
+
+	// 반동 상태 변수들
+
+	//void ApplyRecoilStep();
+	//void CameraShake(float Vertical, float Horizontal);
+	void ApplyRecoil(float Vertical, float Horizontal);
+	void RecoverFromRecoil();
+	void ApplySmoothRecoil(float Vertical, float Horizontal);
+	void ApplySmoothRecoilStep();
+	void ResetShotCounter();
+	void UpdateRecoil();
+	bool HasActiveRecoil() const;
+	void ReduceRecoil(float ReductionFactor = 0.5f);
+	void ResetRecoilYaw();
+	void ResetRecoilPitch();
+	void ResetRecoil();
+	FVector2D GetCurrentRecoil() const;
 	// Character Input Handle Function
 
 public:

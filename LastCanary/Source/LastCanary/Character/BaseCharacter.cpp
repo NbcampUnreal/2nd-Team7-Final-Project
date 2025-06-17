@@ -519,7 +519,7 @@ void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue, floa
 	const FVector2f Value{ ActionValue.Get<FVector2D>() };
 
 	if (!Controller) return;
-
+	ReduceRecoil(0.3f);
 	AddControllerYawInput(Value.X * Sensivity);
 	AddControllerPitchInput(Value.Y * Sensivity);
 }
@@ -562,6 +562,242 @@ void ABaseCharacter::UpdateRotationToDrone()
 	}
 }
 
+// 방법 1: 즉시 반동 + 점진적 복구 (일반적인 방식)
+void ABaseCharacter::ApplyRecoil(float Vertical, float Horizontal)
+{
+	if (!Controller) return;
+
+	// 연사 배수 계산
+	float ShotMultiplier = FMath::Min(1.0f + (CurrentShotCount * 0.15f), 2.5f);
+
+	// 목표 반동량 설정
+	TargetRecoil.X += Vertical * ShotMultiplier;
+	TargetRecoil.Y += FMath::RandRange(-Horizontal, Horizontal) * ShotMultiplier;
+
+	CurrentShotCount++;
+
+	// 반동 적용 타이머 시작
+	if (!GetWorld()->GetTimerManager().IsTimerActive(RecoilRecoveryTimer))
+	{
+		GetWorld()->GetTimerManager().SetTimer(RecoilRecoveryTimer, this,
+			&ABaseCharacter::UpdateRecoil, 0.016f, true);
+	}
+
+	// 연사 리셋 타이머
+	GetWorld()->GetTimerManager().ClearTimer(ShotResetTimer);
+	GetWorld()->GetTimerManager().SetTimer(ShotResetTimer, this,
+		&ABaseCharacter::ResetShotCounter, 0.3f, false);
+}
+
+void ABaseCharacter::RecoverFromRecoil()
+{
+	if (!Controller || AccumulatedRecoil.IsNearlyZero(0.01f))
+	{
+		GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
+		return;
+	}
+
+	float DeltaTime = GetWorld()->GetDeltaSeconds();
+	float RecoveryAmount = RecoilRecoverySpeed * DeltaTime;
+
+	// 점진적으로 원래 위치로 복구
+	FVector2D RecoveryVector = AccumulatedRecoil;
+	RecoveryVector.Normalize();
+	RecoveryVector *= RecoveryAmount;
+
+	if (RecoveryVector.Size() >= AccumulatedRecoil.Size())
+	{
+		// 완전 복구
+		AddControllerPitchInput(AccumulatedRecoil.X);
+		AddControllerYawInput(-AccumulatedRecoil.Y);
+		AccumulatedRecoil = FVector2D::ZeroVector;
+	}
+	else
+	{
+		// 부분 복구
+		AddControllerPitchInput(RecoveryVector.X);
+		AddControllerYawInput(-RecoveryVector.Y);
+		AccumulatedRecoil -= RecoveryVector;
+	}
+}
+
+// 스무스하게 반동주기
+void ABaseCharacter::ApplySmoothRecoil(float Vertical, float Horizontal)
+{
+	if (!Controller) return;
+
+	// 목표 반동량 설정
+	float ShotMultiplier = FMath::Min(1.0f + (CurrentShotCount * 0.15f), 2.5f);
+	TargetRecoil.X += Vertical * ShotMultiplier;
+	TargetRecoil.Y += FMath::RandRange(-Horizontal, Horizontal) * ShotMultiplier;
+
+	CurrentShotCount++;
+
+	// 스무딩된 반동 적용 시작
+	if (!GetWorld()->GetTimerManager().IsTimerActive(RecoilRecoveryTimer))
+	{
+		GetWorld()->GetTimerManager().SetTimer(RecoilRecoveryTimer, this,
+			&ABaseCharacter::ApplySmoothRecoilStep, 0.016f, true);
+	}
+
+	// 연사 리셋 타이머
+	GetWorld()->GetTimerManager().ClearTimer(ShotResetTimer);
+	GetWorld()->GetTimerManager().SetTimer(ShotResetTimer, this,
+		&ABaseCharacter::ResetShotCounter, 0.1f, false);
+}
+
+void ABaseCharacter::ApplySmoothRecoilStep()
+{
+	if (!Controller)
+	{
+		GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
+		return;
+	}
+
+	float DeltaTime = GetWorld()->GetDeltaSeconds();
+
+	// 목표 반동량으로 보간
+	FVector2D RecoilDelta = (TargetRecoil - AccumulatedRecoil) * (5.0f * DeltaTime);
+
+	if (!RecoilDelta.IsNearlyZero(0.01f))
+	{
+		AddControllerPitchInput(RecoilDelta.X);
+		AddControllerYawInput(RecoilDelta.Y);
+		AccumulatedRecoil += RecoilDelta;
+	}
+
+	// 자동 복구 (사격이 멈춘 후)
+	if (GetWorld()->GetTimerManager().GetTimerRemaining(ShotResetTimer) <= 0.0f)
+	{
+		FVector2D RecoveryDelta = AccumulatedRecoil * (RecoilRecoverySpeed * DeltaTime);
+
+		if (RecoveryDelta.Size() >= AccumulatedRecoil.Size())
+		{
+			// 완전 복구
+			AddControllerPitchInput(-AccumulatedRecoil.X);
+			AddControllerYawInput(-AccumulatedRecoil.Y);
+			AccumulatedRecoil = FVector2D::ZeroVector;
+			TargetRecoil = FVector2D::ZeroVector;
+			GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
+		}
+		else
+		{
+			AddControllerPitchInput(-RecoveryDelta.X);
+			AddControllerYawInput(-RecoveryDelta.Y);
+			AccumulatedRecoil -= RecoveryDelta;
+			TargetRecoil -= RecoveryDelta;
+		}
+	}
+}
+
+void ABaseCharacter::UpdateRecoil()
+{
+	if (!Controller)
+	{
+		GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
+		return;
+	}
+
+	float DeltaTime = GetWorld()->GetDeltaSeconds();
+
+	// 1. 목표 반동량으로 이동 (반동 적용 단계)
+	FVector2D RecoilDelta = (TargetRecoil - AccumulatedRecoil) * (5.0f * DeltaTime);
+
+	if (!RecoilDelta.IsNearlyZero(0.01f))
+	{
+		AddControllerPitchInput(-RecoilDelta.X);
+		AddControllerYawInput(RecoilDelta.Y);
+		AccumulatedRecoil += RecoilDelta;
+	}
+
+	// 2. 사격이 멈춘 후 자동 복구
+	if (GetWorld()->GetTimerManager().GetTimerRemaining(ShotResetTimer) <= 0.0f)
+	{
+		if (AccumulatedRecoil.IsNearlyZero(0.01f))
+		{
+			// 완전히 복구됨 - 타이머 정리
+			AccumulatedRecoil = FVector2D::ZeroVector;
+			TargetRecoil = FVector2D::ZeroVector;
+			GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
+			return;
+		}
+
+		FVector2D RecoveryDelta = AccumulatedRecoil * (RecoilRecoverySpeed * DeltaTime);
+
+		if (RecoveryDelta.Size() >= AccumulatedRecoil.Size())
+		{
+			// 완전 복구
+			AddControllerPitchInput(AccumulatedRecoil.X);
+			AddControllerYawInput(-AccumulatedRecoil.Y);
+			AccumulatedRecoil = FVector2D::ZeroVector;
+			TargetRecoil = FVector2D::ZeroVector;
+			GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
+		}
+		else
+		{
+			// 점진적 복구
+			AddControllerPitchInput(RecoveryDelta.X);
+			AddControllerYawInput(-RecoveryDelta.Y);
+			AccumulatedRecoil -= RecoveryDelta;
+			TargetRecoil -= RecoveryDelta;
+		}
+	}
+}
+
+void ABaseCharacter::ResetShotCounter()
+{
+	CurrentShotCount = 0;
+}
+
+// ===== 이 부분이 핵심! 직접 반동 초기화 함수들 =====
+
+// 반동 완전 리셋
+void ABaseCharacter::ResetRecoil()
+{
+	AccumulatedRecoil = FVector2D::ZeroVector;
+	TargetRecoil = FVector2D::ZeroVector;
+	GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
+}
+
+// 반동 부분 리셋 (특정 축만)
+void ABaseCharacter::ResetRecoilPitch()
+{
+	AccumulatedRecoil.X = 0.0f;
+	TargetRecoil.X = 0.0f;
+}
+
+void ABaseCharacter::ResetRecoilYaw()
+{
+	AccumulatedRecoil.Y = 0.0f;
+	TargetRecoil.Y = 0.0f;
+}
+
+// 반동 감소 (완전 리셋이 아닌 부분 감소)
+void ABaseCharacter::ReduceRecoil(float ReductionFactor)
+{
+	AccumulatedRecoil *= (1.0f - FMath::Clamp(ReductionFactor, 0.0f, 1.0f));
+	TargetRecoil *= (1.0f - FMath::Clamp(ReductionFactor, 0.0f, 1.0f));
+
+	// 거의 0에 가까우면 완전 리셋
+	if (AccumulatedRecoil.Size() < 0.1f)
+	{
+		ResetRecoil();
+	}
+}
+
+// 현재 반동 상태 확인용
+FVector2D ABaseCharacter::GetCurrentRecoil() const
+{
+	return AccumulatedRecoil;
+}
+
+bool ABaseCharacter::HasActiveRecoil() const
+{
+	return !AccumulatedRecoil.IsNearlyZero(0.01f);
+}
+
+
+/*
 void ABaseCharacter::CameraShake(float Vertical, float Horizontal)
 {
 	// 새로운 반동량을 기존 값에 누적
@@ -614,7 +850,7 @@ void ABaseCharacter::ApplyRecoilStep()
 		GetWorld()->GetTimerManager().ClearTimer(RecoilTimerHandle);
 	}
 }
-
+*/
 
 void ABaseCharacter::Handle_Look(const FInputActionValue& ActionValue)
 {
