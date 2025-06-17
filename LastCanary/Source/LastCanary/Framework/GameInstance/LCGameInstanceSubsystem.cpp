@@ -129,6 +129,9 @@ void ULCGameInstanceSubsystem::LoadSaveData()
 
 	if (UGameUserSettings* Settings = GEngine->GetGameUserSettings())
 	{
+		
+		LOG_Char_WARNING(TEXT("Settings->LoadSettings(true)"));
 		Settings->LoadSettings(true);
+		Settings->ApplySettings(false);	
 	}
 }

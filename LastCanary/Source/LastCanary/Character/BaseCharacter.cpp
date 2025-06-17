@@ -237,6 +237,7 @@ void ABaseCharacter::NotifyControllerChanged()
 
 void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo)
 {
+	if (!IsLocallyControlled()) return; 
 	Super::CalcCamera(DeltaTime, ViewInfo);
 	UpdateGunWallClipOffset(DeltaTime);
 	if (bIsMantling)
@@ -283,22 +284,53 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 		if (Distance < 2.0f) // 2.0f 단위 이내로 가까워지면
 		{
 			bIsTransitioning = false;
-
+			SpringArm->bEnableCameraLag = false;
+			SpringArm->bEnableCameraRotationLag = false;
 			if (bIsAiming && IsValid(CurrentRifleMesh) && !bIsReloading)
 			{
 				// Scope에 붙이기
-				SpringArm->AttachToComponent(CurrentRifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
+				UE_LOG(LogTemp, Warning, TEXT("스프링암이 스코프에 붙었음"));
+				//SpringArm->AttachToComponent(CurrentRifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
+				AttachCameraToRifle();
+				SpringArm->bUsePawnControlRotation = false;
 			}
 			else
 			{
 				// FirstPersonCamera에 붙이기
-				SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+				UE_LOG(LogTemp, Warning, TEXT("스프링암이 FPS에 붙었음"));
+				AttachCameraToCharacter();
+				//SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 				SpringArm->TargetArmLength = bIsFPSCamera ? 0.0f : 200.0f;
+				SpringArm->bUsePawnControlRotation = true;
 			}
-			SpringArm->bUsePawnControlRotation = true;
+		}
+	}
+	ViewInfo.Rotation.Roll = 0.0f;
+	
+}
+
+void ABaseCharacter::AttachCameraToRifle()
+{
+	if (IsValid(CurrentRifleMesh))
+	{
+		if (IsLocallyControlled())
+		{
+			SpringArm->AttachToComponent(CurrentRifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
 		}
 	}
 }
+
+void ABaseCharacter::AttachCameraToCharacter()
+{
+	if (IsValid(GetMesh()))
+	{
+		if (IsLocallyControlled())
+		{
+			SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+		}
+	}
+}
+
 
 void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 {
@@ -343,6 +375,7 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 				}
 				else
 				{
+					SpringArm->bUsePawnControlRotation = true;
 					StopAiming();
 					return;
 				}
@@ -515,6 +548,10 @@ void ABaseCharacter::StopTrackingDrone()
 void ABaseCharacter::UpdateRotationToDrone()
 {
 	if (!IsValid(ControlledDrone))
+	{
+		return;
+	}
+	if (!IsValid(Controller))
 	{
 		return;
 	}
@@ -2552,6 +2589,7 @@ bool ABaseCharacter::UseEquippedItem(float ActionValue)
 		if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Consumable")))
 		{
 			UseItemAfterPlayMontage(EquippedItem);
+			return true;
 		}
 
 		if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))

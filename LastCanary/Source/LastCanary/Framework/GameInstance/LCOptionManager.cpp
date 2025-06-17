@@ -80,13 +80,15 @@ void ULCOptionManager::ApplyOptions()
 {
 	if (UGameUserSettings* Settings = GEngine->GetGameUserSettings())
 	{
-		Settings->SaveSettings();/*
+		//Settings->SaveSettings();
 		UE_LOG(LogTemp, Warning, TEXT("APPLYING SETTINGS"));
 		UE_LOG(LogTemp, Warning, TEXT("ScreenResolution: %d x %d"), ScreenResolution.X, ScreenResolution.Y);
 		UE_LOG(LogTemp, Warning, TEXT("ScreenMode: %s"), ScreenMode == EScreenMode::FullScreen ? TEXT("Fullscreen") : TEXT("Windowed"));
 
 		Settings->SetScreenResolution(ScreenResolution);
 		Settings->SetFullscreenMode(ScreenMode == EScreenMode::FullScreen ? EWindowMode::Fullscreen : EWindowMode::Windowed);
+
+		Settings->SetFrameRateLimit(60);
 		Settings->ApplySettings(false);
 		FSlateApplication::Get().Tick();
 
@@ -106,6 +108,6 @@ void ULCOptionManager::ApplyOptions()
 		LOG_Frame_WARNING(TEXT("Options Applied: %d x %d, Mode: %s"),
 			ScreenResolution.X, ScreenResolution.Y,
 			ScreenMode == EScreenMode::FullScreen ? TEXT("Fullscreen") : TEXT("Windowed"));
-			*/
+		Settings->SaveSettings();
 	}
 }

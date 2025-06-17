@@ -134,6 +134,12 @@ protected:
 
 	virtual void CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo) override;
 
+	void AttachCameraToRifle();
+	void AttachCameraToCharacter();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CurrentRifleMesh;
+
 	FTimerHandle MoveTimerHandle;
 	FVector StartLocation;
 	//FVector TargetLocation;
