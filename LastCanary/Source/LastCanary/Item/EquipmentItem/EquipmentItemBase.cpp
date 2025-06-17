@@ -1,6 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "Item/EquipmentItem/EquipmentItemBase.h"
 
 AEquipmentItemBase::AEquipmentItemBase()
@@ -9,8 +6,7 @@ AEquipmentItemBase::AEquipmentItemBase()
 
 void AEquipmentItemBase::UseItem()
 {
-    //Super::UseItem();
-    //OnItemStateChanged.Broadcast();
+    PlaySoundByType();
 }
 
 void AEquipmentItemBase::SetEquipped(bool bNewEquipped)

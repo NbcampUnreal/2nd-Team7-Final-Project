@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "../Plugins/ALS-Refactored-4.15/Source/ALS/Public/AlsCharacter.h"
 #include "Character/PlayerData/PlayerDataTypes.h"
+#include "Interface/GimmickDebuffInterface.h"
+#include "GameplayTagAssetInterface.h"
 #include "BaseCharacter.generated.h"
 
 struct FInputActionValue;
@@ -22,7 +24,7 @@ class UPostProcessComponent;
 class AResourceNode;
 
 UCLASS()
-class LASTCANARY_API ABaseCharacter : public AAlsCharacter
+class LASTCANARY_API ABaseCharacter : public AAlsCharacter , public IGimmickDebuffInterface , public IGameplayTagAssetInterface
 {
 	GENERATED_BODY()
 
@@ -562,7 +564,7 @@ private:
 
 	// 인벤토리 아이템 관련 변수 및 함수
 public:
-	UPROPERTY()
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tags")
 	FGameplayTagContainer OwnedTags;
 
 	UChildActorComponent* ChildActorComponent;
@@ -690,6 +692,22 @@ public:
 	UFUNCTION()
 	void StopHealing();
 
+	// 디버프 인터페이스 
+	virtual void ApplyMovementDebuff_Implementation(float SlowRate, float Duration) override;
+	virtual void RemoveMovementDebuff_Implementation() override;
+
+	virtual void GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) const override;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Debuff")
+	bool bIsMovementDebuffed = false;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Debuff")
+	float DebuffSlowRate = 1.f;
+
+	// 원래 속도 저장용
+	float OriginalWalkSpeed = 0.f;
+	float OriginalRunSpeed = 0.f;
+	float OriginalSprintSpeed = 0.f;
 	//-----------------------------------------------------
 	// 보이스 채팅을 위한 함수들
 	//-----------------------------------------------------
@@ -715,4 +733,9 @@ public:
 	/** 워키토키 채널 상태 설정 (C++에서 호출용) */
 	UFUNCTION(BlueprintCallable, Category = "WalkieTalkie")
 	void SetWalkieTalkieChannelStatus(bool bActive);
+
+	/** 특정 클라이언트에서 워키토키 획득 시 채널 상태 업데이트 */
+	UFUNCTION(Client, Reliable, Category = "WalkieTalkie")
+	void Client_SetWalkieTalkieChannelStatus(bool bActive);
+	void Client_SetWalkieTalkieChannelStatus_Implementation(bool bActive);
 };

@@ -5,6 +5,13 @@
 #include "GunDataRow.generated.h"
 
 
+UENUM(BlueprintType)
+enum class EFireMode : uint8
+{
+    Single      UMETA(DisplayName = "단발"),
+    FullAuto    UMETA(DisplayName = "연발")
+};
+
 class UNiagaraSystem;
 /**
  * 
@@ -57,13 +64,7 @@ struct FGunDataRow : public FTableRowBase
 
     // 탄약 관련
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Ammo")
-    int32 MagazineSize;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Ammo")
     int32 MaxAmmo;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Ammo")
-    FName AmmoType;
 
     // 시각 효과
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Effects")
@@ -114,8 +115,15 @@ struct FGunDataRow : public FTableRowBase
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Misc")
     TArray<FName> AllowedAttachments;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Misc")
-    bool bIsAutomatic;
+    // 발사 모드 관련 설정
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|FireMode")
+    EFireMode DefaultFireMode = EFireMode::Single;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|FireMode")
+    bool bCanToggleFireMode = true;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|FireMode")
+    TArray<EFireMode> AvailableFireModes;
 
     // 부착물 관련 추가
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Attachments")

@@ -212,6 +212,7 @@ void AScannerItem::Client_ApplyScanEffect_Implementation(bool bStartScan)
 
         GetWorld()->GetTimerManager().SetTimer(AlphaInterpolationTimerHandle,
             this, &AScannerItem::InterpolateScanAlpha, 0.02f, true);
+        PlaySoundByType();
     }
     else
     {
@@ -222,6 +223,7 @@ void AScannerItem::Client_ApplyScanEffect_Implementation(bool bStartScan)
 
         GetWorld()->GetTimerManager().SetTimer(AlphaInterpolationTimerHandle,
             this, &AScannerItem::InterpolateScanAlpha, 0.02f, true);
+        PlaySoundByType();
     }
 }
 
