@@ -17,4 +17,12 @@ public:
 	
 	UFUNCTION(BlueprintImplementableEvent)
 	void StartWalkieTalkie();
+
+	UFUNCTION(Server, Reliable, Category = "WalkieTalkie")
+	void Server_UseWalkieTalkie(APlayerController* UserController);
+	void Server_UseWalkieTalkie_Implementation(APlayerController* UserController);
+
+	UFUNCTION(Client, Reliable, Category = "WalkieTalkie")
+	void Client_StartWalkieTalkie();
+	void Client_StartWalkieTalkie_Implementation();
 };
