@@ -139,6 +139,10 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Lich|Combat")
     float DeathNovaDamage = 50.f;
 
+    /** Death Nova 스턴 지속 시간 */
+    UPROPERTY(EditAnywhere, Category = "Lich|Combat")
+    float DeathNovaStunDuration = 2.f;
+
     UPROPERTY(EditAnywhere, Category = "Lich|Combat")
     float DeathNovaRadius = 800.f;
 

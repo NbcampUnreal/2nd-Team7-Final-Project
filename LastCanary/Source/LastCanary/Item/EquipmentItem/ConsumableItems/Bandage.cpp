@@ -37,8 +37,8 @@ void ABandage::UseItem()
 		return;
 	}
 
-	// 사용 시작 소리 출력(false로 값을 입력할 시 사용 종료 시 소리를 출력합니다.)
-	PlayItemUseSound(true);
+	// 아이템의 사운드 타입에 따라 재생
+	PlaySoundByType();
 
 	//1. 총 회복량 2. 소요 시간
 	OwnerCharacter->StartHealing(HealingAmount, HealDuration);

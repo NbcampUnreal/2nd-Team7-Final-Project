@@ -27,6 +27,7 @@ class UChecklistWidget;
 class UResultMenu;
 class URoomWidget;
 class UNotePopupWidget;
+class UDroneHUD;
 
 UCLASS(BlueprintType)
 class LASTCANARY_API ULCUIManagerSettings : public UDataAsset
@@ -70,4 +71,6 @@ public:
 	TSubclassOf<URoomWidget> FromBPRoomWidgetClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UNotePopupWidget> FromBPNotePopupWidgetClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UDroneHUD> FromBPDroneHUDClass;
 };

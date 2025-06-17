@@ -1247,18 +1247,12 @@ void ABasePlayerController::Input_DroneExit(const FInputActionValue& ActionValue
 	ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
 	if (!IsValid(GISubsystem))
 	{
-		return;
-	}
-	ULCUIManager* UIManager = GISubsystem->GetUIManager();
-	if (!IsValid(UIManager))
-	{
-		return;
-	}
-	if (!IsLocalController())
-	{
-		return;
-	}
-	UIManager->ShowInGameHUD();
+		if (IsLocalController())
+		{
+			UIManager->HideDroneHUD();
+			UIManager->ShowInGameHUD();
+		}
+
 }
 
 void ABasePlayerController::Server_DroneExit_Implementation()
@@ -1379,6 +1373,7 @@ void ABasePlayerController::PossessOnDrone()
 		if (IsLocalController())
 		{
 			UIManager->HideInGameHUD();
+			UIManager->ShowDroneHUD();
 		}
 	}
 }
