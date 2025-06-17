@@ -2415,8 +2415,6 @@ bool ABaseCharacter::UseEquippedItem(float ActionValue)
 		return true;
 	}
 
-
-
 	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
 	if (!EquippedItem)
 	{
@@ -2428,6 +2426,7 @@ bool ABaseCharacter::UseEquippedItem(float ActionValue)
 	{
 		if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))
 		{
+			EquippedItem->UseItem();
 			ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
 			if (PC)
 			{

@@ -1,6 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "Item/Drone/BaseDrone.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -11,6 +8,8 @@
 #include "GameFramework/FloatingPawnMovement.h"
 #include "Net/UnrealNetwork.h"
 #include "Item/ItemSpawnerComponent.h"
+#include "UI/UIElement/DroneHUD.h"
+#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 
 ABaseDrone::ABaseDrone()
 {
@@ -56,12 +55,30 @@ void ABaseDrone::BeginPlay()
 	MoveDirection = FVector::ForwardVector;
 
 	TargetDroneRotation.Yaw = GetActorRotation().Yaw;
+
+	if (const UWorld* World = GetWorld())
+	{
+		if (ULCGameInstanceSubsystem* GIS = World->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+		{
+			if (ULCUIManager* UIManager = GIS->GetUIManager())
+			{
+				CachedDroneHUD = UIManager->GetDroneHUD();
+			}
+		}
+	}
+
+	GetWorldTimerManager().SetTimer(
+		DroneDistanceTimerHandle,
+		this,
+		&ABaseDrone::UpdateDistanceCheck,
+		0.2f,
+		true
+	);
 }
 
 void ABaseDrone::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 
 	// --- 수평 이동 ---
 	if (!CurrentVelocity.IsNearlyZero())
@@ -82,24 +99,42 @@ void ABaseDrone::Tick(float DeltaTime)
 		VerticalVelocity += VerticalInputAxis * VerticalAcceleration * DeltaTime;
 		VerticalVelocity = FMath::Clamp(VerticalVelocity, -VerticalMaxSpeed, VerticalMaxSpeed);
 	}
-
 	const FVector VerticalOffset = FVector::UpVector * VerticalVelocity * DeltaTime;
 
 	// 최종 이동
 	AddActorWorldOffset(HorizontalOffset + VerticalOffset, true);
 
+	////check Dist to PlayCharacter
+	//FVector MyLocation = GetActorLocation();
+	//float Distance = FVector::Dist(MyLocation, CharacterLocation);
 
-	//check Dist to PlayCharacter
+	////UE_LOG(LogTemp, Log, TEXT("Distance to CharacterLocation: %.2f"), Distance);
+	//if (Distance > MaxDistanceToPlayer)
+	//{
+	//	Multicast_ReturnToPlayer();
+	//}
+}
 
-	FVector MyLocation = GetActorLocation();
-	float Distance = FVector::Dist(MyLocation, CharacterLocation);
+void ABaseDrone::UpdateDistanceCheck()
+{
+	const float DistSquared = FVector::DistSquared(GetActorLocation(), CharacterLocation);
+	const float MaxDistSquared = MaxDistanceToPlayer * MaxDistanceToPlayer;
 
-
-	//UE_LOG(LogTemp, Log, TEXT("Distance to CharacterLocation: %.2f"), Distance);
-
-	if (Distance > MaxDistanceToPlayer)
+	if (DistSquared > MaxDistSquared)
 	{
 		Multicast_ReturnToPlayer();
+		GetWorldTimerManager().ClearTimer(DroneDistanceTimerHandle);
+		return;
+	}
+
+	if (CachedDroneHUD)
+	{
+		float CurrentDistance = FMath::Sqrt(DistSquared);
+		if (!FMath::IsNearlyEqual(CurrentDistance, LastDistanceForHUD, 10.0f))
+		{
+			CachedDroneHUD->UpdateDistanceDisplay(CurrentDistance, MaxDistanceToPlayer);
+			LastDistanceForHUD = CurrentDistance;
+		}
 	}
 }
 
@@ -108,11 +143,13 @@ void ABaseDrone::Input_Move(const FInputActionValue& Value)
 	const FVector2D InputVector = Value.Get<FVector2D>();
 	Server_Move(InputVector);
 }
+
 void ABaseDrone::Server_Move_Implementation(FVector2D InputVector)
 {
 	FInputActionValue WrappedValue(InputVector);
 	Move(WrappedValue);
 }
+
 void ABaseDrone::Move(const FInputActionValue& Value)
 {
 	const FVector2D InputVector = Value.Get<FVector2D>();
@@ -167,6 +204,7 @@ void ABaseDrone::Server_MoveDown_Implementation(float Value)
 {
 	VerticalInputAxis = FMath::Clamp(-Value, -1.f, 0.f);
 }
+
 void ABaseDrone::MoveDown(const FInputActionValue& Value)
 {
 	const float Input = Value.Get<float>();
@@ -220,7 +258,6 @@ void ABaseDrone::OnRep_CameraPitch()
 	}
 }
 
-
 void ABaseDrone::Server_ReturnAsItem_Implementation()
 {
 	if (!HasAuthority())
@@ -270,6 +307,7 @@ void ABaseDrone::Multicast_ReturnToPlayer_Implementation()
 		MyPC->Input_DroneExit();
 	}
 }
+
 // CPP 구현
 void ABaseDrone::OnDroneHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
@@ -333,5 +371,48 @@ void ABaseDrone::SpawnDroneItemAtCurrentLocation()
 	else
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[SpawnDroneItemAtCurrentLocation] 드론 아이템 스폰 실패"));
+	}
+}
+
+void ABaseDrone::TogglePostProcessEffect()
+{
+	if (PostProcessMaterials.Num() == 0 || !Camera)
+	{
+		return;
+	}
+
+	int32 NextIndex = (CurrentPPIndex + 1) % (PostProcessMaterials.Num() + 1); // +1은 '없음' 상태 포함
+	Server_TogglePostProcessEffect(); // 서버에 요청
+}
+
+void ABaseDrone::Server_TogglePostProcessEffect_Implementation()
+{
+	int32 NextIndex = (CurrentPPIndex + 1) % (PostProcessMaterials.Num() + 1);
+	ApplyPostProcessMaterial(NextIndex);
+}
+
+void ABaseDrone::ApplyPostProcessMaterial(int32 NewIndex)
+{
+	// 이전 효과 제거
+	Camera->PostProcessSettings.WeightedBlendables.Array.Empty();
+	CurrentPPIndex = NewIndex;
+
+	if (NewIndex < PostProcessMaterials.Num() && PostProcessMaterials[NewIndex])
+	{
+		if (DynamicPPInstances.Num() <= NewIndex || !DynamicPPInstances[NewIndex])
+		{
+			// 동적 인스턴스가 없다면 생성
+			UMaterialInstanceDynamic* Dyn = UMaterialInstanceDynamic::Create(PostProcessMaterials[NewIndex], this);
+			if (DynamicPPInstances.Num() <= NewIndex)
+			{
+				DynamicPPInstances.SetNum(NewIndex + 1);
+			}
+			DynamicPPInstances[NewIndex] = Dyn;
+		}
+
+		FWeightedBlendable Blendable;
+		Blendable.Object = DynamicPPInstances[NewIndex];
+		Blendable.Weight = 1.0f;
+		Camera->PostProcessSettings.WeightedBlendables.Array.Add(Blendable);
 	}
 }
