@@ -40,6 +40,7 @@
 #include "../Plugins/ALS-Refactored-4.15/Source/ALS/Public/AlsLinkedAnimationInstance.h"
 #include "SaveGame/LCLocalPlayerSaveGame.h"
 #include "Components/CapsuleComponent.h"
+#include "Framework/GameState/LCGameState.h"
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -513,22 +514,23 @@ void ABaseCharacter::StopTrackingDrone()
 
 void ABaseCharacter::UpdateRotationToDrone()
 {
-	if (ControlledDrone)
+	if (!IsValid(ControlledDrone))
 	{
-		FVector ToDrone = ControlledDrone->GetActorLocation() - GetActorLocation();
-		ToDrone.Z = 0; // Pitch는 무시해서 Yaw 회전만
+		return;
+	}
+	FVector ToDrone = ControlledDrone->GetActorLocation() - GetActorLocation();
+	ToDrone.Z = 0; // Pitch는 무시해서 Yaw 회전만
 
-		if (!ToDrone.IsNearlyZero())
-		{
-			FRotator LookAtRotation = ToDrone.Rotation();
+	if (!ToDrone.IsNearlyZero())
+	{
+		FRotator LookAtRotation = ToDrone.Rotation();
 
-			// 부드러운 회전 (선택)
-			FRotator NewRotation = FMath::RInterpTo(GetActorRotation(), LookAtRotation, GetWorld()->GetDeltaSeconds(), 5.0f);
+		// 부드러운 회전 (선택)
+		FRotator NewRotation = FMath::RInterpTo(GetActorRotation(), LookAtRotation, GetWorld()->GetDeltaSeconds(), 5.0f);
 
-			SetActorRotation(NewRotation);
-			SpringArm->SetWorldRotation(NewRotation);
-			Controller->SetControlRotation(NewRotation); // 컨트롤러 회전도 고정
-		}
+		SetActorRotation(NewRotation);
+		SpringArm->SetWorldRotation(NewRotation);
+		Controller->SetControlRotation(NewRotation); // 컨트롤러 회전도 고정
 	}
 }
 
@@ -1111,6 +1113,7 @@ void ABaseCharacter::Multicast_PlayReload_Implementation()
 	if (Duration > 0.f)
 	{
 		RifleItem->Multicast_PlayReloadAnimation_Implementation();
+		RifleItem->Multicast_PlayReloadSound_Implementation();
 		SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 		bIsReloading = true;
 		FOnMontageEnded EndDelegate;
@@ -1336,6 +1339,7 @@ void ABaseCharacter::CancelInteraction()
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && CurrentInteractMontage)
 	{
+		UE_LOG(LogTemp, Log, TEXT("Stopping montage: %s"), *CurrentInteractMontage->GetName());
 		AnimInstance->Montage_Stop(0.2f, CurrentInteractMontage); // 부드럽게 블렌드 아웃
 		Server_CancelInteraction();
 		bIsPlayingInteractionMontage = false;
@@ -1405,7 +1409,72 @@ void ABaseCharacter::Multicast_PlayMontage_Implementation(UAnimMontage* MontageT
 	UE_LOG(LogTemp, Warning, TEXT("플레이 애니메이션. 멀티에서"));
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	AnimInstance->Montage_Play(MontageToPlay);
-	CurrentInteractMontage = MontageToPlay;
+	//CurrentInteractMontage = MontageToPlay;
+}
+
+void ABaseCharacter::UseItemAfterPlayMontage(AItemBase* EquippedItem)
+{
+	UAnimMontage* MontageToPlay = nullptr;
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (!IsValid(AnimInstance))
+	{
+		return;
+	}
+	CurrentUsingItem = EquippedItem;
+	if (CurrentUsingItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Consumable")))
+	{
+		MontageToPlay = UsingBandageMontage;
+	}
+	else
+	{
+		LOG_Char_WARNING(TEXT("태그가 없음"));
+		return;
+	}
+	if (!IsValid(MontageToPlay))
+	{
+		LOG_Char_WARNING(TEXT("Anim Montage does not exist."));
+		return;
+	}
+	CurrentUseItemMontage = MontageToPlay;
+	bIsPlayingUseItemMontage = true;
+	LOG_Char_WARNING(TEXT("플레이 애니메이션."));
+	Server_PlayMontage(MontageToPlay);
+}
+
+void ABaseCharacter::UseItemAnimationNotified()
+{
+	//재생 후 notify로
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!IsValid(PC))
+	{
+		return;
+	}
+	if (!IsValid(CurrentUsingItem))
+	{
+		return;
+	}
+	CurrentUsingItem->UseItem();
+	bIsPlayingUseItemMontage = false;
+}
+
+void ABaseCharacter::CancelUseItem()
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && CurrentUseItemMontage)
+	{
+		AnimInstance->Montage_Stop(0.2f, CurrentUseItemMontage); // 부드럽게 블렌드 아웃
+		Server_CancelUseItem();
+		bIsPlayingUseItemMontage = false;
+	}
+}
+
+void ABaseCharacter::Server_CancelUseItem_Implementation()
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && CurrentUseItemMontage)
+	{
+		AnimInstance->Montage_Stop(0.2f, CurrentUseItemMontage); // 부드럽게 블렌드 아웃
+	}
 }
 
 void ABaseCharacter::PickupItem()
@@ -1903,7 +1972,6 @@ void ABaseCharacter::GetFallDamage(float Velocity)
 void ABaseCharacter::HandlePlayerDeath()
 {
 	UE_LOG(LogTemp, Log, TEXT("Character Died"));
-	Client_HandlePlayerVoiceChattingState();
 	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
@@ -1912,19 +1980,56 @@ void ABaseCharacter::HandlePlayerDeath()
 	if (!IsValid(PC))
 	{
 		return;
-	}	
+	}
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
 	{
 		return;
 	}
-	
-	MyPlayerState->CurrentState = EPlayerState::Dead;
-	MyPlayerState->SetInGameStatus(EPlayerInGameStatus::Spectating);
-	PC->OnPlayerExitActivePlay();
-	Multicast_SetPlayerInGameStateOnDie();
+
+	//if 캐릭터가 죽으면
+	//장착 아이템 제거
+	//캐릭터 래그돌
+	//보이스 채팅 관련 로직 -> 블루프린트에서 마저 진행
+	//캐릭터 상태 변경 -> 멀티캐스트까지
+	//관전 상태로 넘어갈 준비
+	//게이트 액터 or 게임 스테이트 or 게임 모드에 어떻게든 상태 알리기
+
+	NotifyPlayerDeathToGameState();
+	DropAllItemsOnDeath();
 	UnequipCurrentItem();
 	StartRagdolling();
+	Client_HandlePlayerVoiceChattingState();
+	MyPlayerState->CurrentState = EPlayerState::Dead;
+	MyPlayerState->SetInGameStatus(EPlayerInGameStatus::Spectating);
+	Multicast_SetPlayerInGameStateOnDie();
+	PC->PlayerExitActivePlayOnDeath();
+}
+
+void ABaseCharacter::NotifyPlayerDeathToGameState()
+{
+	AGameStateBase* GameState = GetWorld()->GetGameState<AGameStateBase>();
+	if (!GameState)
+	{
+		UE_LOG(LogTemp, Log, TEXT("게임스테이트가 유효하지 않음"));
+		return;
+	}
+	ALCGameState* LCGameState = Cast<ALCGameState>(GameState);
+	if (!LCGameState)
+	{
+		UE_LOG(LogTemp, Log, TEXT("LCGameState가 유효하지 않음"));
+		return;
+	}
+
+	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
+	if (!IsValid(MyPlayerState))
+	{
+		UE_LOG(LogTemp, Log, TEXT("PlayerState가 유효하지 않음"));
+		return;
+	}
+
+	//여기서부터는 게임스테이트의 코드가 바뀔 것은 알지만 테스트를 위해서 임의로 넣은 코드입니다.
+	LCGameState->MarkPlayerAsEscaped(MyPlayerState);
 }
 
 void ABaseCharacter::Client_HandlePlayerVoiceChattingState_Implementation()
@@ -1971,6 +2076,10 @@ float ABaseCharacter::CalculateFallDamage(float Velocity)
 
 void ABaseCharacter::EscapeThroughGate()
 {
+	//if 캐릭터가 게이트에 상호작용을 하면
+	//보이스 채팅 관련 로직 -> 블루프린트에서 마저 진행
+	//캐릭터 상태 변경 -> 멀티캐스트까지
+	//관전 상태로 넘어갈 준비
 	Client_HandlePlayerVoiceChattingState();
 	ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
 	if (!IsValid(PC))
@@ -1984,8 +2093,8 @@ void ABaseCharacter::EscapeThroughGate()
 	}
 	MyPlayerState->CurrentState = EPlayerState::Escape;
 	MyPlayerState->SetInGameStatus(EPlayerInGameStatus::Spectating);	
-	PC->OnPlayerExitActivePlay();
 	Multicast_SetPlayerInGameStateOnEscapeGate();
+	PC->PlayerExitActivePlayOnEscapeGate();
 }
 
 void ABaseCharacter::Multicast_SetPlayerInGameStateOnEscapeGate_Implementation()
@@ -2428,8 +2537,6 @@ bool ABaseCharacter::UseEquippedItem(float ActionValue)
 		return true;
 	}
 
-
-
 	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
 	if (!EquippedItem)
 	{
@@ -2439,8 +2546,15 @@ bool ABaseCharacter::UseEquippedItem(float ActionValue)
 
 	if (ActionValue >= 0.5f)
 	{
+
+		if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Consumable")))
+		{
+			UseItemAfterPlayMontage(EquippedItem);
+		}
+
 		if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))
 		{
+			EquippedItem->UseItem();
 			ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
 			if (PC)
 			{
@@ -2472,7 +2586,6 @@ bool ABaseCharacter::UseEquippedItem(float ActionValue)
 				UE_LOG(LogTemp, Warning, TEXT("조준하세요"));
 				return true;
 			}
-
 		}
 		UE_LOG(LogTemp, Warning, TEXT("UseItem"));
 		EquippedItem->UseItem();
@@ -2569,6 +2682,23 @@ void ABaseCharacter::DropItemAtSlot(int32 SlotIndex, int32 Quantity)
 	else
 	{
 		LOG_Item_WARNING(TEXT("[ABaseCharacter::DropItemAtSlot] 드롭 요청 실패"));
+	}
+}
+
+void ABaseCharacter::DropAllItemsOnDeath()
+{
+	if (!ToolbarInventoryComponent) return;
+
+	int32 NumSlots = ToolbarInventoryComponent->ItemSlots.Num();
+
+	for (int32 i = 0; i < NumSlots; ++i)
+	{
+		// 슬롯이 유효하고, Default가 아니고, 수량이 1 이상인 아이템만 드랍
+		FBaseItemSlotData* SlotData = ToolbarInventoryComponent->GetItemDataAtSlot(i);
+		if (SlotData && SlotData->bIsValid && !ToolbarInventoryComponent->IsDefaultItem(SlotData->ItemRowName) && SlotData->Quantity > 0)
+		{
+			ToolbarInventoryComponent->TryDropItemAtSlot(i, SlotData->Quantity);
+		}
 	}
 }
 
@@ -2804,4 +2934,24 @@ void ABaseCharacter::RemoveMovementDebuff_Implementation()
 void ABaseCharacter::GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) const
 {
 	TagContainer = OwnedTags;
+}
+void ABaseCharacter::SetWalkieTalkieChannelStatus(bool bActive)
+{
+	bool bPreviousStatus = bHasWalkieTalkieChannel;
+	bHasWalkieTalkieChannel = bActive;
+
+	// 상태가 변경된 경우에만 블루프린트 이벤트 호출
+	if (bPreviousStatus != bActive)
+	{
+		if (bActive)
+		{
+			UE_LOG(LogTemp, Log, TEXT("[BaseCharacter] 워키토키 채널 추가"));
+			AddWalkieTalkieChannel();
+		}
+		else
+		{
+			UE_LOG(LogTemp, Log, TEXT("[BaseCharacter] 워키토키 채널 제거"));
+			RemoveWalkieTalkieChannel();
+		}
+	}
 }

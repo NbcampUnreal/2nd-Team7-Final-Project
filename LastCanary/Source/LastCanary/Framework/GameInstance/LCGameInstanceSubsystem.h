@@ -19,6 +19,8 @@ private:
 protected:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 
+	void LoadSaveData();
+
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Map Data")
 	TObjectPtr<UDataTable> MapDataTable;
