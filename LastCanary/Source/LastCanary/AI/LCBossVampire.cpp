@@ -3,6 +3,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Character/BaseCharacter.h"
 #include "Engine/World.h"
 #include "NiagaraFunctionLibrary.h"
 
@@ -36,14 +37,31 @@ void ALCBossVampire::ExecuteBatSwarm()
 void ALCBossVampire::ExecuteNightmareGaze()
 {
     if (!HasAuthority()) return;
+
+    UE_LOG(LogTemp, Warning, TEXT("[Vampire] NightmareGaze"));
+
     TArray<FHitResult> Hits;
     FCollisionShape Sphere = FCollisionShape::MakeSphere(GazeRadius);
+
+    DrawDebugSphere(
+        GetWorld(),
+        GetActorLocation(),
+        GazeRadius,
+        16,
+        FColor::Purple,
+        false,
+        2.0f,
+        0,
+        5.0f
+    );
+
+
     if (GetWorld()->SweepMultiByChannel(Hits, GetActorLocation(), GetActorLocation(),
         FQuat::Identity, ECC_Pawn, Sphere))
     {
         for (auto& H : Hits)
         {
-            if (ACharacter* Ch = Cast<ACharacter>(H.GetActor()))
+            if (ACharacter* Ch = Cast<ABaseCharacter>(H.GetActor()))
             {
                 if (Ch->IsPlayerControlled())
                 {
@@ -63,6 +81,8 @@ void ALCBossVampire::ExecuteCrimsonSlash()
 {
     GetWorldTimerManager().SetTimer(CrimsonSlashHandle, CrimsonSlashCooldown, false);
 
+    UE_LOG(LogTemp, Warning, TEXT("[Vampire] CrimsonSlash"));
+
     TArray<FHitResult> Hits;
     FCollisionShape S = FCollisionShape::MakeSphere(CrimsonSlashRadius);
     if (GetWorld()->SweepMultiByChannel(Hits, GetActorLocation(), GetActorLocation(),
@@ -71,7 +91,7 @@ void ALCBossVampire::ExecuteCrimsonSlash()
         float Heal = CrimsonSlashDamage * BloodDrainEfficiency;
         for (auto& H : Hits)
         {
-            if (ACharacter* C = Cast<ACharacter>(H.GetActor()))
+            if (ACharacter* C = Cast<ABaseCharacter>(H.GetActor()))
             {
                 UGameplayStatics::ApplyDamage(C, CrimsonSlashDamage, GetController(), this, nullptr);
             }
@@ -85,33 +105,36 @@ void ALCBossVampire::ExecuteSanguineBurst()
 {
     GetWorldTimerManager().SetTimer(BurstHandle, SanguineBurstCooldown, false);
 
+    UE_LOG(LogTemp, Warning, TEXT("[Vampire] SanguineBurst"));
+
     TArray<FHitResult> Hits;
     FCollisionShape S = FCollisionShape::MakeSphere(SanguineBurstRadius);
     if (GetWorld()->SweepMultiByChannel(Hits, GetActorLocation(), GetActorLocation(),
         FQuat::Identity, ECC_Pawn, S))
     {
-        float Heal = SanguineBurstDamage * BloodDrainEfficiency;
         for (auto& H : Hits)
         {
-            if (ACharacter* C = Cast<ACharacter>(H.GetActor()))
+            if (ACharacter* C = Cast<ABaseCharacter>(H.GetActor()))
             {
                 UGameplayStatics::ApplyDamage(C, SanguineBurstDamage, GetController(), this, nullptr);
             }
         }
-        // 피흡
-        UGameplayStatics::ApplyDamage(this, -Heal, GetController(), this, nullptr);
+
     }
 }
 
 void ALCBossVampire::EnterMistForm()
 {
     if (!HasAuthority() || !bCanUseMist) return;
+
+    bCanUseMist = false;
     bIsMistForm = true;
+
+    UE_LOG(LogTemp, Warning, TEXT("[Vampire] Enter Mist Form"));
+
     Multicast_StartMistForm();
 
     SetCanBeDamaged(false);
-    bCanUseMist = false;
-
     GetWorldTimerManager().SetTimer(MistDurationHandle, this, &ALCBossVampire::EndMistForm, MistDuration, false);
 }
 
@@ -120,21 +143,87 @@ void ALCBossVampire::EndMistForm()
     bIsMistForm = false;
     OnRep_MistForm();
 
-    GetWorldTimerManager().SetTimer(MistResetHandle, [this]() { bCanUseMist = true; },
-        MistCooldown, false);
+    // 무형 해제용 이펙트 & 사운드 재생
+    if (MistExitEffectFX)
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+            GetWorld(),
+            MistExitEffectFX,
+            GetActorLocation(),
+            GetActorRotation()
+        );
+    }
+    if (MistExitSound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(
+            this,
+            MistExitSound,
+            GetActorLocation()
+        );
+    }
+
+    // 쿨다운 후 재사용 가능하도록
+    GetWorldTimerManager().SetTimer(
+        MistResetHandle,
+        [this]() { bCanUseMist = true; },
+        MistCooldown,
+        false
+    );
 }
 
 void ALCBossVampire::OnRep_MistForm()
 {
     if (bIsMistForm)
     {
-        UE_LOG(LogTemp, Warning, TEXT("[Vampire] Enter Mist Form"));
-        Multicast_StartMistForm();
+        // 1) 무형 진입 이펙트 재생 (Niagara)
+        if (MistEnterEffectFX)
+        {
+            UNiagaraFunctionLibrary::SpawnSystemAttached(
+                MistEnterEffectFX,
+                GetRootComponent(),
+                NAME_None,
+                FVector::ZeroVector,
+                FRotator::ZeroRotator,
+                EAttachLocation::KeepRelativeOffset,
+                true
+            );
+        }
+
+        // 2) 무형 진입 사운드 재생
+        if (MistEnterSound)
+        {
+            UGameplayStatics::PlaySoundAtLocation(
+                this,
+                MistEnterSound,
+                GetActorLocation()
+            );
+        }
     }
     else
     {
-        UE_LOG(LogTemp, Warning, TEXT("[Vampire] Exit Mist Form"));
-        SetCanBeDamaged(true);
+        // 1) 무형 해제 이펙트 재생
+        if (MistExitEffectFX)
+        {
+            UNiagaraFunctionLibrary::SpawnSystemAttached(
+                MistExitEffectFX,
+                GetRootComponent(),
+                NAME_None,
+                FVector::ZeroVector,
+                FRotator::ZeroRotator,
+                EAttachLocation::KeepRelativeOffset,
+                true
+            );
+        }
+
+        // 2) 무형 해제 사운드 재생
+        if (MistExitSound)
+        {
+            UGameplayStatics::PlaySoundAtLocation(
+                this,
+                MistExitSound,
+                GetActorLocation()
+            );
+        }
     }
 }
 

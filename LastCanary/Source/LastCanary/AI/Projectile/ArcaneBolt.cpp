@@ -1,5 +1,5 @@
 ﻿#include "AI/Projectile/ArcaneBolt.h"
-#include "GameFramework/ProjectileMovementComponent.h"  // ← 이 줄 추가
+#include "GameFramework/ProjectileMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 
 AArcaneBolt::AArcaneBolt()

@@ -74,14 +74,14 @@ protected:
     float TailStrikeDamage = 30.f;
 
     UPROPERTY(EditAnywhere, Category = "Gumiho|TailStrike")
-    float TailStrikeCooldown = 15.f;
+    float TailStrikeCooldown = 10.f;
 
     FTimerHandle TailStrikeTimerHandle;
     void ExecuteTailStrike();
 
     // ── Foxfire Volley ──
     UPROPERTY(EditAnywhere, Category = "Gumiho|Foxfire")
-    TSubclassOf<AActor> FoxfireProjectileClass;
+    TSubclassOf<AActor> FoxfireClass;
 
     UPROPERTY(EditAnywhere, Category = "Gumiho|Foxfire", meta = (ClampMin = "1"))
     int32 FoxfireCount = 5;
@@ -101,7 +101,7 @@ protected:
 
     // ── Charm Gaze ──
     UPROPERTY(EditAnywhere, Category = "Gumiho|Charm")
-    float CharmRadius = 500.f;
+    float CharmRadius = 1000.f;
 
     UPROPERTY(EditAnywhere, Category = "Gumiho|Charm")
     float CharmInterval = 10.f;
@@ -119,7 +119,7 @@ protected:
     // ── Divine Grace ──
     UPROPERTY(ReplicatedUsing = OnRep_DivineGrace)
     bool bIsDivineGrace = false;
-
+    
     UFUNCTION()
     void OnRep_DivineGrace();
 

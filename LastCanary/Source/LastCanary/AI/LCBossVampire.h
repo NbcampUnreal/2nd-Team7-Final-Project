@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "AI/BaseBossMonsterCharacter.h"
 #include "NiagaraSystem.h"
+#include "Sound/SoundBase.h" 
 #include "LCBossVampire.generated.h"
 
 UCLASS()
@@ -49,6 +50,23 @@ protected:
     void ExecuteBatSwarm();
 
     // ── Mist Form ──
+    // ── Mist Form FX/Sound ────────────────────────
+    /** 무형 진입 시 재생할 Niagara 이펙트 */
+    UPROPERTY(EditAnywhere, Category = "Vampire|Mist")
+    UNiagaraSystem* MistEnterEffectFX;
+
+    /** 무형 해제 시 재생할 Niagara 이펙트 */
+    UPROPERTY(EditAnywhere, Category = "Vampire|Mist")
+    UNiagaraSystem* MistExitEffectFX;
+
+    /** 무형 진입 시 재생할 사운드 */
+    UPROPERTY(EditAnywhere, Category = "Vampire|Mist")
+    USoundBase* MistEnterSound;
+
+    /** 무형 해제 시 재생할 사운드 */
+    UPROPERTY(EditAnywhere, Category = "Vampire|Mist")
+    USoundBase* MistExitSound;
+
     UPROPERTY(EditAnywhere, Category = "Vampire|Mist")
     float MistDuration = 5.f;
     UPROPERTY(EditAnywhere, Category = "Vampire|Mist")
