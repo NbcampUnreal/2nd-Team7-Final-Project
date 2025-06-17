@@ -88,7 +88,6 @@ void ULCOptionManager::ApplyOptions()
 		Settings->SetScreenResolution(ScreenResolution);
 		Settings->SetFullscreenMode(ScreenMode == EScreenMode::FullScreen ? EWindowMode::Fullscreen : EWindowMode::Windowed);
 
-		Settings->SetFrameRateLimit(60);
 		Settings->ApplySettings(false);
 		FSlateApplication::Get().Tick();
 

@@ -72,6 +72,38 @@ protected:
 
 	UFUNCTION()
 	void UpdateToggleStates();
+
+
 	UFUNCTION()
 	void OnGraphicsOptionChanged(FName OptionKey, int32 SelectedIndex);
+	UFUNCTION()
+	void OnMaxFPSOptionChanged(FName OptionKey, int32 SelectedIndex);
+	UFUNCTION()
+	void OnTextureQualityOptionChanged(FName OptionKey, int32 SelectedIndex);
+	UFUNCTION()
+	void OnShadowQualityOptionChanged(FName OptionKey, int32 SelectedIndex);
+	UFUNCTION()
+	void OnIndirectLightingOptionChanged(FName OptionKey, int32 SelectedIndex);
+	UFUNCTION()
+	void OnReflectionQualityOptionChanged(FName OptionKey, int32 SelectedIndex);
+	UFUNCTION()
+	void OnOverallQualiatyPresetOptionChanged(FName OptionKey, int32 SelectedIndex);
+	UFUNCTION()
+	void OnViewDistanceOptionChanged(FName OptionKey, int32 SelectedIndex);
+	UFUNCTION()
+	void OnAntiAliasingOptionChanged(FName OptionKey, int32 SelectedIndex);
+	UFUNCTION()
+	void OnVFXQualityOptionChanged(FName OptionKey, int32 SelectedIndex);
+	UFUNCTION()
+	void OnPostProcessingQualityOptionChanged(FName OptionKey, int32 SelectedIndex);
+	UFUNCTION()
+	void OnFoliageQualityOptionChanged(FName OptionKey, int32 SelectedIndex);
+	UFUNCTION()
+	void OnShadingQualityOptionChanged(FName OptionKey, int32 SelectedIndex);
+
+	
+	int32 CalculateMinumumSettingIndex();
+	
+	UFUNCTION()
+	void UpdateGraphicsSettings();
 };
