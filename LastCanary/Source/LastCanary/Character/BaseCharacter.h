@@ -124,7 +124,7 @@ protected:
 	virtual void NotifyControllerChanged() override;
 	virtual void BeginPlay() override;
 
-	
+
 	// Camera Settings
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Camera", Meta = (ClampMin = 0, ClampMax = 90, ForceUnits = "deg"))
@@ -278,7 +278,7 @@ public:
 	bool bIsPossessed;
 	bool bIsReloading = false;
 	bool bIsClose = false;
-	bool bIsUsingItem= false;
+	bool bIsUsingItem = false;
 	void SetPossess(bool IsPossessed);
 	bool bRecoveringFromRecoil = false;
 
@@ -683,10 +683,36 @@ public:
 
 	UFUNCTION()
 	void StartHealing(float TotalHealAmount, float Duration);
-	
+
 	UFUNCTION()
 	void HealStep();
 
 	UFUNCTION()
 	void StopHealing();
+
+	//-----------------------------------------------------
+	// 보이스 채팅을 위한 함수들
+	//-----------------------------------------------------
+public:
+	/** 워키토키 채널 추가 (블루프린트에서 구현) */
+	UFUNCTION(BlueprintImplementableEvent)
+	void AddWalkieTalkieChannel();
+
+	/** 워키토키 채널 제거 (블루프린트에서 구현) */
+	UFUNCTION(BlueprintImplementableEvent)
+	void RemoveWalkieTalkieChannel();
+
+private:
+	/** 현재 워키토키 채널이 활성화되어 있는지 */
+	UPROPERTY(BlueprintReadOnly, Category = "WalkieTalkie", meta = (AllowPrivateAccess = "true"))
+	bool bHasWalkieTalkieChannel = false;
+
+public:
+	/** 워키토키 채널 상태 확인 */
+	UFUNCTION(BlueprintPure, Category = "WalkieTalkie")
+	bool HasWalkieTalkieChannel() const { return bHasWalkieTalkieChannel; }
+
+	/** 워키토키 채널 상태 설정 (C++에서 호출용) */
+	UFUNCTION(BlueprintCallable, Category = "WalkieTalkie")
+	void SetWalkieTalkieChannelStatus(bool bActive);
 };
