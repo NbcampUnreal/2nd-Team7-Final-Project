@@ -13,55 +13,19 @@
 #include "Actor/LCDroneDelivery.h"
 #include "Item/ItemBase.h"
 
-#include "UI/UIElement/RoomWidget.h"
 #include "UI/UIElement/ResultMenu.h"
 
 #include "Engine/World.h"
-#include "Misc/PackageName.h"
 #include "EngineUtils.h"
+#include "Misc/PackageName.h"
 
-#include "UI/Manager/LCUIManager.h"
 #include "Blueprint/UserWidget.h"
-#include "DataType/SessionPlayerInfo.h"
 
 #include "EnhancedInputComponent.h"
-#include "LastCanary.h"
 
 ALCRoomPlayerController::ALCRoomPlayerController()
 {
-	CheatClass = ULCCheatManager::StaticClass();
-}
-
-void ALCRoomPlayerController::BeginPlay()
-{
-	Super::BeginPlay();
-
-	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
-	{
-		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
-		{
-			UIManager->SetUIContext(ELCUIContext::Room);
-		}
-	}
-
-	// 복구 타이머
-	FTimerHandle InventoryRestoreHandle;
-	GetWorld()->GetTimerManager().SetTimer(InventoryRestoreHandle, this, &ALCRoomPlayerController::TryRestoreInventory, 0.3f, false);
-}
-
-void ALCRoomPlayerController::TryRestoreInventory()
-{
-	if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
-	{
-		if (ABaseCharacter* Char = Cast<ABaseCharacter>(GetPawn()))
-		{
-			if (UToolbarInventoryComponent* Toolbar = Char->GetToolbarInventoryComponent())
-			{
-				Toolbar->SetInventoryFromItemIDs(PS->AquiredItemIDs);
-				LOG_Frame_WARNING(TEXT("[TryRestoreInventory] 복원 시도 완료. 아이템 수: %d"), PS->AquiredItemIDs.Num());
-			}
-		}
-	}
+	//CheatClass = ULCCheatManager::StaticClass();
 }
 
 void ALCRoomPlayerController::PostSeamlessTravel()
@@ -82,6 +46,23 @@ void ALCRoomPlayerController::PostSeamlessTravel()
 	GetWorldTimerManager().SetTimerForNextTick(this, &ALCRoomPlayerController::DelayedPostTravelSetup);
 }
 
+void ALCRoomPlayerController::BeginPlay()
+{
+	Super::BeginPlay();
+
+	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+	{
+		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+		{
+			UIManager->SetUIContext(ELCUIContext::Room);
+		}
+	}
+
+	//// 복구 타이머
+	//FTimerHandle InventoryRestoreHandle;
+	//GetWorld()->GetTimerManager().SetTimer(InventoryRestoreHandle, this, &ALCRoomPlayerController::TryRestoreInventory, 0.3f, false);
+}
+
 void ALCRoomPlayerController::DelayedPostTravelSetup()
 {
 	LOG_Frame_WARNING(TEXT("PostSeamlessTravel(Delayed): %s - 여전히 IsLocalController: %d"), *GetName(), IsLocalController());
@@ -99,45 +80,20 @@ void ALCRoomPlayerController::DelayedPostTravelSetup()
 	}
 }
 
-
-void ALCRoomPlayerController::Client_UpdatePlayerList_Implementation(const TArray<FSessionPlayerInfo>& PlayerInfos)
-{
-	Super::Client_UpdatePlayerList_Implementation(PlayerInfos);
-
-	UpdatePlayerList(PlayerInfos);
-}
-
-void ALCRoomPlayerController::UpdatePlayerList(const TArray<FSessionPlayerInfo>& PlayerInfos)
-{
-	if (IsValid(LCUIManager))
-	{
-		LOG_Frame_WARNING(TEXT("LCUIManager Is Not Null Null!"));
-		URoomWidget* RoomWidget = LCUIManager->GetRoomWidgetInstance();
-		RoomWidget->UpdatePlayerLists(PlayerInfos);
-
-		GetWorld()->GetTimerManager().ClearTimer(UpdatePlayerListTimerHandle);
-	}
-	else
-	{
-		TWeakObjectPtr<ALCRoomPlayerController> WeakPtr(this);
-		TArray<FSessionPlayerInfo> InfosCopy = PlayerInfos;
-
-		GetWorld()->GetTimerManager().SetTimer
-		(
-			UpdatePlayerListTimerHandle,
-			[WeakPtr, InfosCopy]()
-			{
-				if (WeakPtr.IsValid())
-				{
-					UE_LOG(LogTemp, Warning, TEXT("Update Lobby UI!!"));
-					WeakPtr->UpdatePlayerList(InfosCopy);
-				}
-			},
-			RePeatRate,
-			false
-		);
-	}
-}
+//void ALCRoomPlayerController::TryRestoreInventory()
+//{
+//	//if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+//	//{
+//	//	if (ABaseCharacter* Char = Cast<ABaseCharacter>(GetPawn()))
+//	//	{
+//	//		if (UToolbarInventoryComponent* Toolbar = Char->GetToolbarInventoryComponent())
+//	//		{
+//	//			Toolbar->SetInventoryFromItemIDs(PS->AquiredItemIDs);
+//	//			LOG_Frame_WARNING(TEXT("[TryRestoreInventory] 복원 시도 완료. 아이템 수: %d"), PS->AquiredItemIDs.Num());
+//	//		}
+//	//	}
+//	//}
+//}
 
 void ALCRoomPlayerController::Server_ShowShopWidget_Implementation()
 {
@@ -153,11 +109,11 @@ void ALCRoomPlayerController::Client_ShowShopWidget_Implementation(int Gold)
 	LCUIManager->ShowShopPopup(Gold);
 }
 
-void ALCRoomPlayerController::Client_NotifyGameStart_Implementation(const FText& LevelName)
-{
-	LOG_Frame_WARNING(TEXT("Client_NotifyGameStart called with LevelName: %s"), *LevelName.ToString());
-	LCUIManager->ShowPopupNotice(FText::Format(NSLOCTEXT("LastCanary", "GameStartNotice", "게임이 시작됩니다: {0}"), LevelName));
-}
+//void ALCRoomPlayerController::Client_NotifyGameStart_Implementation(const FText& LevelName)
+//{
+//	LOG_Frame_WARNING(TEXT("Client_NotifyGameStart called with LevelName: %s"), *LevelName.ToString());
+//	LCUIManager->ShowPopupNotice(FText::Format(NSLOCTEXT("LastCanary", "GameStartNotice", "게임이 시작됩니다: {0}"), LevelName));
+//}
 
 void ALCRoomPlayerController::Server_RequestPurchase_Implementation(const TArray<FItemDropData>& DropList)
 {
@@ -265,101 +221,4 @@ void ALCRoomPlayerController::Server_RequestPurchase_Implementation(const TArray
 		Drone->ItemsToDrop = DropList;
 		Drone->StartDelivery();
 	}
-}
-
-void ALCRoomPlayerController::InitInputComponent()
-{
-	Super::InitInputComponent();
-
-	if (IsValid(EnhancedInput))
-	{
-		if (RoomUIAction)
-		{
-			EnhancedInput->BindAction(RoomUIAction, ETriggerEvent::Started, this, &ALCRoomPlayerController::ToggleShowRoomWidget);
-		}
-	}
-
-}
-
-void ALCRoomPlayerController::ToggleShowRoomWidget()
-{
-	bIsShowRoomUI = !bIsShowRoomUI;
-	LOG_Frame_WARNING(TEXT("ToggleShowRoomWidget: %s"), bIsShowRoomUI ? TEXT("Show") : TEXT("Hide"));
-
-	if (bIsShowRoomUI)
-	{
-		LCUIManager->ShowRoomWidget();
-		FInputModeGameAndUI GameAndUIInputMode;
-		SetInputMode(GameAndUIInputMode);
-	}
-	else
-	{
-		LCUIManager->HideRoomWidget();
-		FInputModeGameOnly GameInputMode;
-		SetInputMode(GameInputMode);
-	}
-
-	bShowMouseCursor = bIsShowRoomUI;
-}
-
-void ALCRoomPlayerController::Client_NotifyResultReady_Implementation(const FChecklistResultData& ResultData)
-{
-	LOG_Frame_WARNING(TEXT("[Client] 결과 수신 → 결과 UI 출력 시작"));
-
-	if (ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
-	{
-		if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
-		{
-			UIManager->ShowResultMenu();
-			if (UResultMenu* Menu = UIManager->GetResultMenuClass())
-			{
-				Menu->SetChecklistResult(ResultData);
-			}
-			else
-			{
-				LOG_Frame_WARNING(TEXT("[Client] GetCachedResultMenu가 null을 반환함"));
-			}
-		}
-	}
-}
-
-void ALCRoomPlayerController::Client_StartChecklist_Implementation(AChecklistManager* ChecklistManager)
-{
-	LOG_Frame_WARNING(TEXT("로컬 컨트롤러가 되었고, 체크리스트를 띄울 준비를 하는 중"));
-	if (ChecklistManager)
-	{
-		ChecklistManager->StartChecklist();
-		LOG_Frame_WARNING(TEXT("체크리스트를 게임모드에서 받아서 띄움"));
-	}
-	else
-	{
-		LOG_Frame_WARNING(TEXT("체크리스트가 클라이언트에서 유효하지 않음"));
-	}
-}
-
-void ALCRoomPlayerController::Server_MarkPlayerAsEscaped_Implementation()
-{
-	LOG_Frame_WARNING(TEXT("== Server_MarkPlayerAsEscaped_Implementation Called =="));
-
-	if (GetWorld()->GetGameState<ALCGameState>())
-	{
-		GetWorld()->GetGameState<ALCGameState>()->MarkPlayerAsEscaped(PlayerState);
-	}
-}
-
-void ALCRoomPlayerController::Server_RequestSubmitChecklist_Implementation(const TArray<FChecklistQuestion>& PlayerAnswers)
-{
-	LOG_Frame_WARNING(TEXT("Server_RequestSubmitChecklist_Implementation called"));
-
-	for (TActorIterator<AChecklistManager> It(GetWorld()); It; ++It)
-	{
-		if (AChecklistManager* Manager = *It)
-		{
-			LOG_Frame_WARNING(TEXT("ChecklistManager found → Submitting"));
-			Manager->Server_SubmitChecklist(this, PlayerAnswers);
-			return;
-		}
-	}
-
-	LOG_Frame_WARNING(TEXT("ChecklistManager not found on server"));
 }

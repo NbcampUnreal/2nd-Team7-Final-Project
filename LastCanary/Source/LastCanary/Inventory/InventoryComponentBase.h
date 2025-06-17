@@ -234,4 +234,21 @@ protected:
     FName GetItemRowNameFromID(int32 ItemID) const;
 
     void ClearInventorySlots();
+
+    //-----------------------------------------------------
+    // 보이스 채팅을 위한 함수
+    //-----------------------------------------------------
+public:
+    /** 툴바에 워키토키가 있는지 확인 */
+    UFUNCTION(BlueprintPure, Category = "WalkieTalkie")
+    bool HasWalkieTalkieInToolbar() const;
+
+    /** 워키토키 채널 상태 업데이트 */
+    UFUNCTION(BlueprintCallable, Category = "WalkieTalkie")
+    void UpdateWalkieTalkieChannelStatus();
+
+private:
+    /** 아이템이 워키토키인지 확인 */
+    UFUNCTION(BlueprintPure, Category = "WalkieTalkie")
+    bool IsWalkieTalkieItem(FName ItemRowName) const;
 };

@@ -304,7 +304,7 @@ void ABaseDrone::Multicast_ReturnToPlayer_Implementation()
 	APlayerController* PC = Cast<APlayerController>(GetOwner());
 	if (ABasePlayerController* MyPC = Cast<ABasePlayerController>(PC))
 	{
-		MyPC->Input_DroneExit();
+		MyPC->Input_DroneExit(0);
 	}
 }
 

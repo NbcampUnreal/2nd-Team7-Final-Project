@@ -65,12 +65,12 @@ private:
 	FTimerHandle AutoSpectateHandle;
 	bool bIsWaitingForAutoSpectate = false;
 protected:
-	UEnhancedInputComponent* EnhancedInput;
+	//UEnhancedInputComponent* EnhancedInput;
 	UInputMappingContext* CurrentIMC;
 public:
 	virtual void SetupInputComponent() override;
 
-	void ApplyInputMappingContext(UInputMappingContext* IMC);
+	//void ApplyInputMappingContext(UInputMappingContext* IMC);
 
 	void RemoveInputMappingContext(UInputMappingContext* IMC);
 
@@ -95,7 +95,7 @@ public:
 
 	virtual void BeginPlay() override;
 	virtual void InitInputComponent();
-
+	/*
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
 	TObjectPtr<UInputMappingContext> InputMappingContext;
 
@@ -168,53 +168,53 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
 	TObjectPtr<UInputAction> ExitDroneAction;
 	// ... 필요한 입력들 추가
-
+	*/
 public:
-	virtual void Input_OnLookMouse(const FInputActionValue& ActionValue);
+	virtual void Input_OnLookMouse(const FInputActionValue& ActionValue) override;
 
-	virtual void Input_OnLook(const FInputActionValue& ActionValue);
+	virtual void Input_OnLook(const FInputActionValue& ActionValue) override;
 
-	virtual void Input_OnMove(const FInputActionValue& ActionValue);
+	virtual void Input_OnMove(const FInputActionValue& ActionValue) override;
 
-	virtual void Input_OnSprint(const FInputActionValue& ActionValue);
+	virtual void Input_OnSprint(const FInputActionValue& ActionValue) override;
 
-	virtual void Input_OnWalk(const FInputActionValue& ActionValue);
+	virtual void Input_OnWalk(const FInputActionValue& ActionValue) override;
 
-	virtual void Input_OnCrouch(const FInputActionValue& ActionValue);
+	virtual void Input_OnCrouch(const FInputActionValue& ActionValue) override;
 
-	virtual void Input_OnJump(const FInputActionValue& ActionValue);
+	virtual void Input_OnJump(const FInputActionValue& ActionValue) override;
 
-	virtual void Input_OnAim(const FInputActionValue& ActionValue);
+	virtual void Input_OnAim(const FInputActionValue& ActionValue) override;
 
-	virtual void Input_OnViewMode();
+	virtual void Input_OnViewMode(const FInputActionValue& ActionValue) override;
 
-	virtual void Input_OnInteract(const FInputActionValue& ActionValue);
+	virtual void Input_OnInteract(const FInputActionValue& ActionValue) override;
 
-	virtual void Input_OnStrafe(const FInputActionValue& ActionValue);
+	virtual void Input_OnStrafe(const FInputActionValue& ActionValue) override;
 
-	virtual void Input_OnItemUse(const FInputActionValue& ActionValue);
+	virtual void Input_OnItemUse(const FInputActionValue& ActionValue) override;
 
-	virtual void Input_OnItemThrow();
+	virtual void Input_OnItemThrow(const FInputActionValue& ActionValue) override;
 
-	virtual void Input_VoiceChat(const FInputActionValue& ActionValue);
+	virtual void Input_VoiceChat(const FInputActionValue& ActionValue) override;
 
-	virtual void Input_ChangeShootingSetting();
+	virtual void Input_ChangeShootingSetting(const FInputActionValue& ActionValue) override;
 
-	virtual void Input_Reload();
+	virtual void Input_Reload(const FInputActionValue& ActionValue) override;
 
-	virtual void Input_ChangeQuickSlot(const FInputActionValue& ActionValue);
+	virtual void Input_ChangeQuickSlot(const FInputActionValue& ActionValue) override;
 
-	virtual void Input_SelectQuickSlot1();
+	virtual void Input_SelectQuickSlot1(const FInputActionValue& ActionValue) override;
 
-	virtual void Input_SelectQuickSlot2();
+	virtual void Input_SelectQuickSlot2(const FInputActionValue& ActionValue) override;
 
-	virtual void Input_SelectQuickSlot3();
+	virtual void Input_SelectQuickSlot3(const FInputActionValue& ActionValue) override;
 
-	virtual void Input_SelectQuickSlot4();
+	virtual void Input_SelectQuickSlot4(const FInputActionValue& ActionValue) override;
 
-	virtual void Input_OpenPauseMenu();
+	virtual void Input_OpenPauseMenu(const FInputActionValue& ActionValue) override;
 
-	virtual void Input_DroneExit();
+	virtual void Input_DroneExit(const FInputActionValue& ActionValue) override;
 
 public:
 	UFUNCTION(Server, Reliable)
@@ -248,8 +248,13 @@ public:
 
 	void HandleExitGate();
 
+	void NotifyAtGameState();
+
 	UFUNCTION()
-	void OnPlayerExitActivePlay();
+	void PlayerExitActivePlayOnDeath();
+	
+	UFUNCTION()
+	void PlayerExitActivePlayOnEscapeGate();
 
 	UFUNCTION(Client, Reliable)
 	void Client_OnPlayerExitActivePlay();

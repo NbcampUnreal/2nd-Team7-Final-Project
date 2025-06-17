@@ -34,6 +34,9 @@ void ABasePlayerState::BeginPlay()
 	{
 		MyCharacter->SetMovementSetting();
 	}
+
+	UE_LOG(LogTemp, Log, TEXT("플레이어 스테이트 비긴 플레이"));
+	SetInGameStatus(EPlayerInGameStatus::Alive);
 }
 
 void ABasePlayerState::SetInGameStatus(EPlayerInGameStatus Status)

@@ -3,6 +3,7 @@
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Framework/GameState/LCGameState.h"
 #include "Framework/PlayerController/LCRoomPlayerController.h"
+#include "Framework/PlayerController/LCInGamePlayerController.h"
 #include "Character/BasePlayerState.h"
 #include "UI/UIElement/ChecklistWidget.h"
 #include "UI/UIElement/ResultMenu.h"
@@ -219,9 +220,9 @@ void AChecklistManager::Server_SubmitChecklist_Implementation(APlayerController*
 
 		for (const TPair<APlayerController*, FChecklistResultData>& Pair : PlayerResults)
 		{
-			if (ALCRoomPlayerController* RoomPC = Cast<ALCRoomPlayerController>(Pair.Key))
+			if (ALCInGamePlayerController* InGamePC = Cast<ALCInGamePlayerController>(Pair.Key))
 			{
-				RoomPC->Client_NotifyResultReady(Pair.Value);
+				InGamePC->Client_NotifyResultReady(Pair.Value);
 			}
 		}
 	}
