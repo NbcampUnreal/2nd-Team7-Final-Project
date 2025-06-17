@@ -85,7 +85,7 @@ void AHarvestingTool::Server_RequestHarvest_Implementation()
     LastHarvestTime = GetWorld()->GetTimeSeconds();
 
     // 사운드 재생
-    PlayItemUseSound(true);
+    PlaySoundByType();
 
     LOG_Item_WARNING(TEXT("[Server_RequestHarvest] ✅ 자원 채취 완료"));
 }
