@@ -17,6 +17,7 @@
 #include "UI/UIElement/ChecklistWidget.h"
 #include "UI/UIElement/ResultMenu.h"
 #include "UI/UIElement/RoomWidget.h"
+#include "UI/UIElement/DroneHUD.h"
 
 #include "UI/UIObject/ConfirmPopup.h"
 
@@ -62,6 +63,7 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			ResultMenuClass = Settings->FromBPResultMenuClass;
 			RoomWidgetClass = Settings->FromBPRoomWidgetClass;
 			NotePopupWidgetClass = Settings->FromBPNotePopupWidgetClass;
+			DroneHUDClass = Settings->FromBPDroneHUDClass;
 
 			if ((CachedTitleMenu == nullptr) && TitleMenuClass)
 			{
@@ -123,6 +125,10 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			if ((CachedNotePopupWidget == nullptr) && NotePopupWidgetClass)
 			{
 				CachedNotePopupWidget = CreateWidget<UNotePopupWidget>(PlayerController, NotePopupWidgetClass);
+			}
+			if ((CachedDroneHUD == nullptr) && DroneHUDClass)
+			{
+				CachedDroneHUD = CreateWidget<UDroneHUD>(PlayerController, DroneHUDClass);
 			}
 		}
 	}
@@ -492,6 +498,36 @@ void ULCUIManager::HideRoomWidget()
 	else
 	{
 		LOG_Frame_ERROR(TEXT("HideRoomWidget: CachedRoomWidget is nullptr"));
+	}
+}
+
+void ULCUIManager::ShowDroneHUD()
+{
+	if (CachedDroneHUD)
+	{
+		if (!CachedDroneHUD->IsInViewport())
+		{
+			CachedDroneHUD->AddToViewport(1);
+		}
+	}
+	else
+	{
+		LOG_Frame_ERROR(TEXT("ShowDroneHUD: CachedDroneHUD is nullptr"));
+	}
+}
+
+void ULCUIManager::HideDroneHUD()
+{
+	if (CachedDroneHUD)
+	{
+		if (CachedDroneHUD->IsInViewport())
+		{
+			CachedDroneHUD->RemoveFromParent();
+		}
+	}
+	else
+	{
+		LOG_Frame_ERROR(TEXT("HideDroneHUD: CachedDroneHUD is nullptr"));
 	}
 }
 
