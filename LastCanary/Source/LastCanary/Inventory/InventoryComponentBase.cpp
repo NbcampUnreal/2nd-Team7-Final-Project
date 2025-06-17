@@ -440,6 +440,8 @@ void UInventoryComponentBase::SetSlotToDefault(int32 SlotIndex)
 	Slot.bIsEquipped = false;
 	Slot.BackpackSlots.Empty();
 
+	OnInventoryUpdated.Broadcast();
+
 	LOG_Item_WARNING(TEXT("[SetSlotToDefault] 슬롯 %d를 Default 아이템으로 설정"), SlotIndex);
 }
 
