@@ -4,6 +4,16 @@
 #include "Actor/Gimmick/LCBaseGimmick.h"
 #include "LCTransformGimmick.generated.h"
 
+class UAttachedSyncComponent;
+
+UENUM(BlueprintType)
+enum class EGimmickRotationAxis : uint8
+{
+	X	UMETA(DisplayName = "X (Pitch)"),
+	Y	UMETA(DisplayName = "Y (Roll)"),
+	Z	UMETA(DisplayName = "Z (Yaw)")
+};
+
 /**
  * 
  */
@@ -29,7 +39,7 @@ public:
 	FVector AlternateLocation;
 
 	/** 회전 토글용 두 번째 회전값 */
-	FRotator AlternateRotation;
+	FQuat GetAlternateRotationQuat() const;
 
 	virtual void ReturnToInitialState_Implementation() override;
 
@@ -40,11 +50,11 @@ public:
 	FVector MoveVector;
 
 	/** 이동 속도 (cm/s) */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Movement", meta = (ClampMin = "1.0"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Movement", meta = (ClampMin = "0.1"))
 	float MoveDuration;
 
 	/** 복귀 이동 속도 (cm/s) */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Movement", meta = (ClampMin = "1.0"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Movement", meta = (ClampMin = "0.1"))
 	float ReturnMoveDuration;
 
 	/** 이동 인덱스 (몇 번 이동했는지) */
@@ -55,7 +65,7 @@ public:
 	FVector InitialLocation;
 
 	/** 목표 위치 */
-	FVector TargetLocation;
+	FVector TargetLocation;	
 
 	/** 원래 위치 (복귀용) */
 	FVector OriginalLocation;
@@ -91,33 +101,46 @@ public:
 
 #pragma region Rotation Variables
 
-	/** 회전 축 (Pitch, Yaw, Roll) */
+	/** 회전 축 (X/Y/Z 중 하나만 선택) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Rotation")
-	FVector RotationAxis;
+	EGimmickRotationAxis RotationAxisEnum;
+
+	/** 회전 각도 (1회 회전 시 몇 도 회전할지) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Rotation")
+	float RotationAngle;
 
 	/** 회전 속도 (deg/sec) */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Rotation", meta = (ClampMin = "1.0"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Rotation", meta = (ClampMin = "0.1"))
 	float RotationDuration;
 
 	/** 복귀 회전 속도 (deg/sec) */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Rotation", meta = (ClampMin = "1.0"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Rotation", meta = (ClampMin = "0.1"))
 	float ReturnRotationDuration;
+
+	/** 회전 반복 횟수 (기본값: 1) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Rotation")
+	int32 RotationCount;
 
 	/** 회전 인덱스 */
 	UPROPERTY(VisibleInstanceOnly, Category = "Gimmick|Rotation")
 	int32 RotationIndex;
 
-	/** 최초 회전값 */
 	FRotator OriginalRotation;
 
+	/** 최초 회전값 */
+	FQuat OriginalRotationQuat;
+
 	/** 회전 시작값 */
-	FRotator InitialRotation;
+	FQuat InitialRotation;
 
 	/** 회전 목표값 */
-	FRotator TargetRotation;
+	FQuat TargetRotation;
 
-	/** 누적 회전량 (Yaw 기준으로 누적) */
-	FRotator AccumulatedDeltaRotation;
+	/** 누적 회전량 */
+	FQuat RotationDeltaQuat;
+
+	/** 누적 회전 인덱스 (ex. 3 → 3번 회전) */
+	int32 TotalRotationIndex;
 
 	/** 서버 회전 중 여부 */
 	bool bIsRotatingServer;
@@ -131,17 +154,19 @@ public:
 	/** 복귀 회전 타이머 */
 	FTimerHandle ReturnRotationTimerHandle;
 
+	FQuat CurrentRotationQuat;
+
 	/** 클라이언트 보간 회전용 */
-	FRotator AccumulatedRotation;
-	FRotator ClientStartRotation;
-	FRotator ClientTargetRotation;
+	//FRotator AccumulatedRotation;
+	FQuat ClientStartRotation;
+	FQuat ClientTargetRotation;
 	float ClientRotationDuration;
 	float ClientRotationElapsed;
 	FTimerHandle ClientRotationTimer;
 
 	/** 서버 보간 회전용 */
-	FRotator ServerStartRotation;
-	FRotator ServerTargetRotation;
+	FQuat ServerStartRotation;
+	FQuat ServerTargetRotation;
 	float ServerRotationDuration;
 	float ServerRotationElapsed;
 	FTimerHandle ServerRotationTimer;
@@ -166,7 +191,7 @@ public:
 	void StartServerMovement(const FVector& From, const FVector& To, float Duration);
 
 	/** 서버 보간 이동 실행 */
-	void StepServerMovement();
+	//void StepServerMovement();
 
 	/** 클라이언트 보간 이동 시작 */
 	void StartClientMovement(const FVector& From, const FVector& To, float Duration);
@@ -175,10 +200,10 @@ public:
 	void StepClientMovement();
 
 	/** 감지된 액터 클라이언트 회전 보간 */
-	void StartClientAttachedRotation(const FRotator& DeltaRot, float Duration);
+	void StartClientAttachedRotation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration);
 
 	/** 감지된 액터 서버 회전 보간 */
-	void StartServerAttachedRotation(const FRotator& DeltaRot, float Duration);
+	void StartServerAttachedRotation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration);
 
 	/** 감지된 액터 이동 보간 (서버 전용) */
 	void StartServerAttachedMovement(const FVector& DeltaLocation, float Duration);
@@ -195,31 +220,53 @@ public:
 	void Multicast_StartMovement(const FVector& From, const FVector& To, float Duration);
 	void Multicast_StartMovement_Implementation(const FVector& From, const FVector& To, float Duration);
 
-
 #pragma endregion
 
 #pragma region Rotation Functions
 
 	/** 회전 시작 (서버) */
-	void StartRotation();
+	virtual void StartRotation();
 
 	/** 회전 완료 */
-	void CompleteRotation();
+	virtual void CompleteRotation();
+
+	/** 회전 복귀 시작 */
+	void StartReturnRotation();
+
+	/** 회전 복귀 보간 단계 (서버) */
+	//void StepServerReturnRotation();
 
 	/** 복귀 회전 시작 */
-	void ReturnToInitialRotation();
+	//void ReturnToInitialRotation();
 
 	/** 복귀 회전 완료 */
 	void CompleteRotationReturn();
 
+	FQuat ReturnRotationDeltaQuat; // 되감기용 쿼터니언
+
+	/** 회전 축 Enum → 방향 벡터로 변환 */
+	FVector GetRotationAxisVector(EGimmickRotationAxis AxisEnum) const;
+
+	/** 마지막 회전 시작 지점 (서버 기준) */
+	FQuat LastRotationStartQuat;
+
+	/** 마지막 회전 델타 (서버 기준) */
+	FQuat LastRotationDeltaQuat;
+
+	bool bOriginalRotationCached = false;
+
+	bool bIsReturningRotationClient = false;
+
+	void CacheOriginalRotation();
+
 	/** 서버 보간 회전 시작 */
-	void StartServerRotation(const FRotator& From, const FRotator& To, float Duration);
+	virtual void StartServerRotation(const FQuat& From, const FQuat& To, float Duration);
 
 	/** 서버 보간 회전 실행 */
-	void StepServerRotation();
+	//void StepServerRotation();
 
 	/** 클라이언트 보간 회전 시작 */
-	void StartClientRotation(const FRotator& From, const FRotator& To, float Duration);
+	virtual void StartClientRotation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration, bool bReturn);
 
 	/** 클라이언트 보간 회전 실행 */
 	void StepClientRotation();
@@ -228,10 +275,14 @@ public:
 	UPROPERTY()
 	TMap<AActor*, FTimerHandle> AttachedRotationTimers;
 
-	/** 멀티캐스트 회전 시작 */
+	/** 회전 시작 - 멀티캐스트 */
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_StartRotation(const FRotator& From, const FRotator& To, float Duration);
-	void Multicast_StartRotation_Implementation(const FRotator& From, const FRotator& To, float Duration);
+	void Multicast_StartRotation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration, bool bIsReturnRotation);
+	void Multicast_StartRotation_Implementation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration, bool bIsReturnRotation);
+
+	/** 부착된 액터 동기화용 컴포넌트 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Sync")
+	UAttachedSyncComponent* AttachedSyncComponent;
 
 #pragma endregion
 };
