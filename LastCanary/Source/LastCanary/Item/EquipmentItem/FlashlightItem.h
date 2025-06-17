@@ -94,29 +94,6 @@ public:
     void Server_SetBatteryDepleted_Implementation();
 
     //-----------------------------------------------------
-    // 사운드 효과
-    //-----------------------------------------------------
-
-    /** 손전등 켤 때 재생할 사운드 */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Flashlight|Sound")
-    USoundBase* TurnOnSound;
-
-    /** 손전등 끌 때 재생할 사운드 */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Flashlight|Sound")
-    USoundBase* TurnOffSound;
-
-    /** 손전등 사운드 볼륨 */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Flashlight|Sound", meta = (ClampMin = "0.0", ClampMax = "1.0"))
-    float SoundVolume = 0.8f;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Flashlight|Sound")
-    USoundAttenuation* FlashlightSoundAttenuation;
-
-    /** 모든 클라이언트에서 사운드 재생 */
-    UFUNCTION(NetMulticast, Reliable)
-    void Multicast_PlayFlashlightSound(bool bTurnOn);
-
-    //-----------------------------------------------------
     // 네트워크 함수
     //-----------------------------------------------------
 

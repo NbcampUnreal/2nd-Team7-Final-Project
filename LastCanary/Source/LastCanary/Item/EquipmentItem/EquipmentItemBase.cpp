@@ -6,8 +6,7 @@ AEquipmentItemBase::AEquipmentItemBase()
 
 void AEquipmentItemBase::UseItem()
 {
-    //Super::UseItem();
-    //OnItemStateChanged.Broadcast();
+    PlaySoundByType();
 }
 
 void AEquipmentItemBase::SetEquipped(bool bNewEquipped)

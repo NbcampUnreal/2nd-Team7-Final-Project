@@ -37,6 +37,7 @@ enum class EResourceInteractionType : uint8
 
 class AResourceItemSpawnManager;
 class UInputAction;
+class UNiagaraSystem;
 UCLASS()
 class LASTCANARY_API AResourceNode : public AActor, public IInteractableInterface
 {
@@ -95,4 +96,43 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resource|Spawn", meta = (EditCondition = "SpawnLocationType==EResourceSpawnLocationType::CustomOffset"))
     FVector CustomSpawnOffset = FVector(0, 0, 100);
+
+    // 채취 수량 제한
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resource|Harvest", meta = (ClampMin = 1))
+    int32 MaxHarvestCount = 5;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Resource|Harvest", Replicated)
+    int32 CurrentHarvestCount = 0;
+
+    // 무한 채취 가능 여부 (MaxHarvestCount 무시)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resource|Harvest")
+    bool bInfiniteHarvest = false;
+
+    // 나이아가라를 이용한 파괴 연출 
+    UPROPERTY(EditDefaultsOnly, Category = "Effects")
+    UNiagaraSystem* DestroyEffect;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Effects")
+    USoundBase* DestroySound;
+
+    // 네트워크 함수
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_PlayDestroyEffect();
+    void Multicast_PlayDestroyEffect_Implementation();
+
+    // 유틸리티 함수
+    UFUNCTION(BlueprintCallable, Category = "Resource")
+    bool CanHarvest() const;
+
+    UFUNCTION(BlueprintCallable, Category = "Resource")
+    int32 GetRemainingHarvestCount() const;
+
+    UFUNCTION(BlueprintCallable, Category = "Resource")
+    float GetHarvestProgress() const;
+
+protected:
+    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+private:
+    void DestroyResourceNode();
 };

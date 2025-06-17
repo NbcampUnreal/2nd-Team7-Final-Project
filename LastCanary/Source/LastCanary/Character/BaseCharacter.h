@@ -733,4 +733,9 @@ public:
 	/** 워키토키 채널 상태 설정 (C++에서 호출용) */
 	UFUNCTION(BlueprintCallable, Category = "WalkieTalkie")
 	void SetWalkieTalkieChannelStatus(bool bActive);
+
+	/** 특정 클라이언트에서 워키토키 획득 시 채널 상태 업데이트 */
+	UFUNCTION(Client, Reliable, Category = "WalkieTalkie")
+	void Client_SetWalkieTalkieChannelStatus(bool bActive);
+	void Client_SetWalkieTalkieChannelStatus_Implementation(bool bActive);
 };
