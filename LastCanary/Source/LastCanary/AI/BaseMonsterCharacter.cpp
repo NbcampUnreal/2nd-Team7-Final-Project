@@ -6,11 +6,12 @@
 #include "Perception/AISenseConfig_Hearing.h"
 #include "Perception/AISenseConfig_Touch.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "BehaviorTree/BlackboardComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Components/SphereComponent.h"
 #include "GameFramework/Character.h"
-#include "Engine/DamageEvents.h" 
+#include "Engine/DamageEvents.h"
 #include "Net/UnrealNetwork.h"
 
 ABaseMonsterCharacter::ABaseMonsterCharacter()
@@ -61,6 +62,52 @@ ABaseMonsterCharacter::ABaseMonsterCharacter()
     }
 }
 
+void ABaseMonsterCharacter::BeginPlay()
+{
+    Super::BeginPlay();
+
+    EnableStencilForAllMeshes(1);
+
+    if (AIPerceptionComponent)
+    {
+        AIPerceptionComponent->OnTargetPerceptionUpdated.AddDynamic(
+            this, &ABaseMonsterCharacter::OnTargetPerceptionUpdated
+        );
+    }
+}
+
+void ABaseMonsterCharacter::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
+{
+    HandlePerceptionUpdate(Actor, Stimulus);//퍼셉션 업데이트 오버라이드 불가능 대신 사용
+}
+
+void ABaseMonsterCharacter::HandlePerceptionUpdate(AActor* Actor, FAIStimulus Stimulus)
+{
+    if (!Actor) return;
+
+    if (ABaseAIController* AIController = Cast<ABaseAIController>(GetController()))
+    {
+        if (UBlackboardComponent* BlackboardComp = AIController->GetBlackboardComponent())
+        {
+            if (Stimulus.WasSuccessfullySensed())
+            {
+                if (ABaseCharacter* BaseCharacter = Cast<ABaseCharacter>(Actor))
+                {
+                    BlackboardComp->SetValueAsObject(FName("TargetActor"), BaseCharacter);
+                }
+            }
+            else
+            {
+                UObject* CurrentTarget = BlackboardComp->GetValueAsObject(FName("TargetActor"));
+                if (CurrentTarget == Actor)
+                {
+                    BlackboardComp->ClearValue(FName("TargetActor"));
+                }
+            }
+        }
+    }
+}
+
 float ABaseMonsterCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
     class AController* EventInstigator, AActor* DamageCauser)
 {
@@ -90,7 +137,6 @@ float ABaseMonsterCharacter::TakeDamage(float DamageAmount, struct FDamageEvent 
 
         MulticastAIDeath();
 
-        // 🔥 델리게이트 발사! (죽을 때)
         if (OnMonsterDeath.IsBound())
         {
             OnMonsterDeath.Broadcast(this);
@@ -172,12 +218,6 @@ void ABaseMonsterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
     DOREPLIFETIME(ABaseMonsterCharacter, bIsAttacking);
 }
 
-void ABaseMonsterCharacter::BeginPlay()
-{
-    Super::BeginPlay();
-
-    EnableStencilForAllMeshes(1);
-}
 
 void ABaseMonsterCharacter::PerformAttack()
 {

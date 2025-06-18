@@ -18,20 +18,18 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Movement")
     float MyAcceptableRadius;
 
-    /** 이동 체크 타이머 핸들 */
     FTimerHandle MoveCheckTimer;
 
-    /** 타이머로 이동 상태 체크 */
     UFUNCTION()
-    void CheckMoveStatus();
+    void CheckMoveStatus(UBehaviorTreeComponent* OwnerComp);
 
-    /** 현재 BehaviorTreeComponent 참조 저장 */
     UPROPERTY()
     UBehaviorTreeComponent* CurrentOwnerComp;
+
+    TMap<UBehaviorTreeComponent*, FTimerHandle> MoveTimerMap;
+    TMap<UBehaviorTreeComponent*, float> LastSoundTimeMap;
 
 private:
     UPROPERTY(EditAnywhere)
     float SoundTimer = 2.5f;
-
-    float LastSoundTime = 0.0f;
 };

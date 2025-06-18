@@ -1,13 +1,13 @@
 #include "AI/EliteMonster/CaveEliteMonster.h"
 #include "Components/CapsuleComponent.h"
-#include "Components/SpotLightComponent.h"
-#include "Components/SphereComponent.h"
-#include "Item/EquipmentItem/FlashlightItem.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "AI/BaseAIController.h"
+#include "Perception/AIPerceptionComponent.h"
+#include "BehaviorTree/BlackboardComponent.h"
+#include "Perception/AISense_Hearing.h"
 #include "AIController.h"
-//#include "Engine/World.h"
-#include "Net/UnrealNetwork.h"
+#include "Item/EquipmentItem/GunBase.h"
+#include "Character/BaseCharacter.h"
 
 ACaveEliteMonster::ACaveEliteMonster()
 {
@@ -17,76 +17,13 @@ ACaveEliteMonster::ACaveEliteMonster()
 	{
 		CapsuleComp->SetGenerateOverlapEvents(true);
 		CapsuleComp->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Overlap);
-		/*CapsuleComp->OnComponentBeginOverlap.AddDynamic(this, &ACaveEliteMonster::BeginOverlap);
-		CapsuleComp->OnComponentEndOverlap.AddDynamic(this, &ACaveEliteMonster::EndOverlap);*/
 	}
-
 }
-
-//void ACaveEliteMonster::BeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-//{
-//
-//	if (!HasAuthority())
-//	{
-//		return;
-//	}
-//
-//	/*if (USpotLightComponent* SpotLight = Cast<USpotLightComponent>(OtherComp))
-//	{
-//		if (SpotLight->IsVisible() && !bIsFrozen)
-//		{
-//			FreezeAI();
-//		}
-//	}*/
-//	// StaticMeshComponent와 오버랩하는지 확인
-//	if (UStaticMeshComponent* MeshComp = Cast<UStaticMeshComponent>(OtherComp))
-//	{
-//		if (AFlashlightItem* Flashlight = Cast<AFlashlightItem>(OtherActor))
-//		{
-//			if (Flashlight->bIsLightOn && !bIsFrozen)
-//			{
-//				FreezeAI();
-//			}
-//		}
-//	}
-//
-//}
-//void ACaveEliteMonster::EndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-//{
-//	if (!HasAuthority())
-//	{
-//		return;
-//	}
-//
-//	// SphereComponent와 오버랩 종료인지 확인
-//	if (UStaticMeshComponent* MeshComp = Cast<UStaticMeshComponent>(OtherComp))
-//	{
-//		// 손전등 아이템인지 확인
-//		if (AFlashlightItem* Flashlight = Cast<AFlashlightItem>(OtherActor))
-//		{
-//			if (bIsFrozen)
-//			{
-//				UnfreezeAI();
-//			}
-//		}
-//	}
-//	/*if (USpotLightComponent* SpotLight = Cast<USpotLightComponent>(OtherComp))
-//	{
-//		if (bIsFrozen)
-//		{
-//			UnfreezeAI();
-//		}
-//	}*/
-//}
 
 void ACaveEliteMonster::FreezeAI()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Cave Elite Monster now Freeze!!!!!!!!!"));
+	if (bIsFrozen || CooldownTimerHandle.IsValid()) return;
 
-	if (bIsFrozen)
-	{
-		return;
-	}
 	bIsFrozen = true;
 
 	if (UCharacterMovementComponent* MovementComp = GetCharacterMovement())
@@ -95,10 +32,29 @@ void ACaveEliteMonster::FreezeAI()
 		MovementComp->SetMovementMode(MOVE_None);//moveto 무시
 	}
 
+	if (ABaseAIController* BaseAIController = Cast<ABaseAIController>(GetController()))
+	{
+		if (UAIPerceptionComponent* PerceptionComp = BaseAIController->GetPerceptionComponent())
+		{
+			// 청각 완전 비활성화
+			PerceptionComp->SetSenseEnabled(UAISense_Hearing::StaticClass(), false);
+
+			PerceptionComp->SetActive(false);
+		}
+	}
+
+	/*if (ABaseAIController* BaseAIController = Cast<ABaseAIController>(GetController()))
+	{
+		if (UBlackboardComponent* BlackboardComp = BaseAIController->GetBlackboardComponent())
+		{
+			BlackboardComp->SetValueAsObject("TargetActor", nullptr);
+		}
+	}*/
+
+
 	if (AAIController* AIController = Cast<AAIController>(GetController()))
 	{
 		AIController->StopMovement();
-		
 	}
 
 	if (ABaseAIController* BaseAIController = Cast<ABaseAIController>(GetController()))
@@ -117,13 +73,33 @@ void ACaveEliteMonster::FreezeAI()
 		);
 	}
 }
+
 void ACaveEliteMonster::UnfreezeAI()
 {
 	if (!bIsFrozen)
 	{
 		return;
 	}
+
 	bIsFrozen = false;
+
+	if (ABaseAIController* BaseAIController = Cast<ABaseAIController>(GetController()))
+	{
+		if (UAIPerceptionComponent* PerceptionComp = BaseAIController->GetPerceptionComponent())
+		{
+			PerceptionComp->SetSenseEnabled(UAISense_Hearing::StaticClass(), true);
+
+			PerceptionComp->SetActive(true);
+		}
+	}
+
+	if (ABaseAIController* BaseAIController = Cast<ABaseAIController>(GetController()))
+	{
+		if (UBlackboardComponent* BlackboardComp = BaseAIController->GetBlackboardComponent())
+		{
+			BlackboardComp->SetValueAsObject("TargetActor", nullptr);
+		}
+	}
 
 	if (UCharacterMovementComponent* MovementComp = GetCharacterMovement())
 	{
@@ -138,5 +114,146 @@ void ACaveEliteMonster::UnfreezeAI()
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().ClearTimer(FreezeTimerHandle);
+
+		World->GetTimerManager().SetTimer(
+			CooldownTimerHandle,
+			this,
+			&ACaveEliteMonster::CooldownEnd,
+			FreezeCooldown,
+			false
+		);
 	}
 }
+
+void ACaveEliteMonster::CooldownEnd()
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(CooldownTimerHandle);
+	}
+}
+
+void ACaveEliteMonster::HandlePerceptionUpdate(AActor* Actor, FAIStimulus Stimulus)
+{
+	if (!Actor) return;
+
+	if (ABaseAIController* AIController = Cast<ABaseAIController>(GetController()))
+	{
+		if (UBlackboardComponent* BlackboardComp = AIController->GetBlackboardComponent())
+		{
+			if (Stimulus.WasSuccessfullySensed() && Stimulus.Tag.IsEqual(FName("CaveMonster")))
+			{
+				if (ABaseCharacter* BaseCharacter = Cast<ABaseCharacter>(Actor))
+				{
+					BlackboardComp->SetValueAsObject(FName("TargetActor"), BaseCharacter);
+				}
+				else if (AGunBase* GunBase = Cast<AGunBase>(Actor))
+				{
+					if (AActor* GunOwner = GunBase->GetOwner())
+					{
+						if (ABaseCharacter* GunOwnerCharacter = Cast<ABaseCharacter>(GunOwner))
+						{
+							BlackboardComp->SetValueAsObject(FName("TargetActor"), GunOwnerCharacter);
+							BlackboardComp->SetValueAsVector(FName("LastHeardLocation"), Stimulus.StimulusLocation);
+						}
+					}
+				}
+
+				if (UWorld* World = GetWorld())
+				{
+					World->GetTimerManager().ClearTimer(ForgetTargetTimerHandle);
+				}
+			}
+			else
+			{
+				if (UWorld* World = GetWorld())
+				{
+					if (!ForgetTargetTimerHandle.IsValid())
+					{
+						World->GetTimerManager().SetTimer(
+							ForgetTargetTimerHandle,
+							this,
+							&ACaveEliteMonster::ForgetTarget,
+							HearingMaxAge,
+							false
+						);
+					}
+				}
+			}
+		}
+	}
+}
+
+void ACaveEliteMonster::ForgetTarget()
+{
+	if (ABaseAIController* AIController = Cast<ABaseAIController>(GetController()))
+	{
+		if (UBlackboardComponent* BlackboardComp = AIController->GetBlackboardComponent())
+		{
+			BlackboardComp->ClearValue(FName("TargetActor"));
+			BlackboardComp->ClearValue(FName("LastHeardLocation"));
+		}
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(ForgetTargetTimerHandle);
+	}
+}
+
+//void ACaveEliteMonster::HandlePerceptionUpdate(AActor* Actor, FAIStimulus Stimulus)
+//{
+//	if (!Actor) return;
+//
+//	if (Stimulus.WasSuccessfullySensed())
+//	{
+//		if (Stimulus.Tag.IsEqual(FName("Boss")))
+//		{
+//			UE_LOG(LogTemp, Warning, TEXT("Boss tag - IGNORING"));
+//			return;
+//		}
+//
+//		if (!Stimulus.Tag.IsEqual(FName("CaveMonster")))
+//		{
+//			return;
+//		}
+//	}
+//	
+//	if (ABaseAIController* AIController = Cast<ABaseAIController>(GetController()))
+//	{
+//		if (UBlackboardComponent* BlackboardComp = AIController->GetBlackboardComponent())
+//		{
+//			if (Stimulus.WasSuccessfullySensed())
+//			{
+//				if (ABaseCharacter* BaseCharacter = Cast<ABaseCharacter>(Actor))
+//				{
+//					BlackboardComp->SetValueAsObject(FName("TargetActor"), BaseCharacter);
+//				}
+//
+//				else if (AGunBase* GunBase = Cast<AGunBase>(Actor))
+//				{
+//					if (AActor* GunOwner = GunBase->GetOwner())
+//					{
+//						if (ABaseCharacter* GunOwnerCharacter = Cast<ABaseCharacter>(GunOwner))
+//						{
+//							BlackboardComp->SetValueAsObject(FName("TargetActor"), GunOwnerCharacter);
+//							BlackboardComp->SetValueAsVector(FName("LastHeardLocation"), Stimulus.StimulusLocation);
+//						}
+//					}
+//				}
+//			}
+//			else
+//			{
+//				if (!Stimulus.WasSuccessfullySensed())
+//				{
+//					UObject* CurrentTarget = BlackboardComp->GetValueAsObject(FName("TargetActor"));
+//					if (CurrentTarget == Actor)
+//					{
+//						BlackboardComp->ClearValue(FName("TargetActor"));
+//						BlackboardComp->ClearValue(FName("LastHeardLocation"));
+//					}
+//				}
+//			}
+//		}
+//	}
+//}

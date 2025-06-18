@@ -186,6 +186,14 @@ protected:
     UFUNCTION()
     void DestroyActor();
 
+    /*UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
+    FName HearingTag = "None";*/
+
+    UFUNCTION()
+    void OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus);
+
+    virtual void HandlePerceptionUpdate(AActor* Actor, FAIStimulus Stimulus);
+
 private:
     float LastAttackTime = 0.f;
 
