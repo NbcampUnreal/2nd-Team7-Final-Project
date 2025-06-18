@@ -76,7 +76,6 @@ void AGunBase::Server_Fire_Implementation()
 
     HandleFire();
 
-    // ✅ 디버깅 추가
     LOG_Item_WARNING(TEXT("[Server_Fire] RecentHits 개수: %d"), RecentHits.Num());
 
     for (int32 i = 0; i < RecentHits.Num(); i++)
@@ -669,7 +668,6 @@ void AGunBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetime
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
     DOREPLIFETIME(AGunBase, RecentHits);
     DOREPLIFETIME(AGunBase, CurrentFireMode);
-    //DOREPLIFETIME(AGunBase, bIsAutoFiring);
 }
 
 bool AGunBase::CanFire()
@@ -696,7 +694,7 @@ bool AGunBase::CanFire()
 
     float CurrentTime = GetWorld()->GetTimeSeconds();
     float TimeSinceLastFire = CurrentTime - LastFireTime;
-    if (TimeSinceLastFire < FireRate)
+    if (TimeSinceLastFire + 0.005f < FireRate)
     {
         LOG_Item_WARNING(TEXT("[AGunBase::CanFire] 발사 간격 부족 - 남은 시간: %.2f초"), FireRate - TimeSinceLastFire);
         return false;
@@ -769,12 +767,9 @@ void AGunBase::FireAuto()
 
     if (!CanFire())
     {
-        // 탄약이 부족하거나 다른 이유로 발사할 수 없으면 연발 중단
         StopAutoFire();
         return;
     }
-
-    LOG_Item_WARNING(TEXT("[FireAuto] 연발 사격 중"));
 
     Server_Fire();
 
@@ -997,10 +992,6 @@ void AGunBase::AttachScope(UStaticMesh* ScopeMesh, FName SocketName)
 
     // 스코프 메시 설정
     ScopeComponent->SetStaticMesh(ScopeMesh);
-
-    // 상대 위치/회전 조정 (데이터 테이블에서 설정된 값 적용)
-    //ScopeComponent->SetRelativeLocation(GunData.ScopeRelativeLocation);
-    //ScopeComponent->SetRelativeRotation(GunData.ScopeRelativeRotation);
 
     // 스코프 표시
     ScopeComponent->SetVisibility(true);

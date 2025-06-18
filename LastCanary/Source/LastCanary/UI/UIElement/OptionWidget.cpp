@@ -25,6 +25,10 @@ void UOptionWidget::NativeConstruct()
 	{
 		CloseButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnCloseButtonClicked);
 	}
+	if (ResetButton)
+	{
+		ResetButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnResetButtonClicked);
+	}
 	if (GeneralTabButton)
 	{
 		GeneralTabButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnGeneralTabButtonClicked);
@@ -58,6 +62,10 @@ void UOptionWidget::NativeDestruct()
 	{
 		CloseButton->OnClicked.RemoveDynamic(this, &UOptionWidget::OnCloseButtonClicked);
 	}
+	if (ResetButton)
+	{
+		ResetButton->OnClicked.RemoveDynamic(this, &UOptionWidget::OnResetButtonClicked);
+	}
 	if (GeneralTabButton)
 	{
 		GeneralTabButton->OnClicked.RemoveDynamic(this, &UOptionWidget::OnGeneralTabButtonClicked);
@@ -87,6 +95,11 @@ void UOptionWidget::OnApplyButtonClicked()
 void UOptionWidget::OnCloseButtonClicked()
 {
 	RemoveFromParent();
+}
+
+void UOptionWidget::OnResetButtonClicked()
+{
+	//TODO : 초기화 기능 구현
 }
 
 void UOptionWidget::OnGeneralTabButtonClicked()

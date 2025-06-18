@@ -16,6 +16,7 @@
 #include "Item/ItemSpawner.h"
 #include "DataTable/ItemDataRow.h"
 
+#include "Framework/GameInstance/LCGameManager.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Framework/GameInstance/LCGameInstance.h"
 
@@ -119,12 +120,23 @@ void ULCCheatManager::AddGold(int32 Amount)
 {
 	if (APlayerController* PC = GetOuterAPlayerController())
 	{
-		if (ABasePlayerState* PS = Cast<ABasePlayerState>(PC->PlayerState))
+		if (ULCGameInstance* GI = Cast<ULCGameInstance>(PC->GetGameInstance()))
 		{
-			PS->AddTotalGold(Amount);
-			UE_LOG(LogCheat, Warning, TEXT("[치트] 골드 지급: %d"), Amount);
+			if (ULCGameManager* LCGM = GI->GetSubsystem<ULCGameManager>())
+			{
+				LCGM->AddGold(Amount);
+			}
 		}
 	}
+
+	//if (APlayerController* PC = GetOuterAPlayerController())
+	//{
+	//	if (ABasePlayerState* PS = Cast<ABasePlayerState>(PC->PlayerState))
+	//	{
+	//		PS->AddTotalGold(Amount);
+	//		UE_LOG(LogCheat, Warning, TEXT("[치트] 골드 지급: %d"), Amount);
+	//	}
+	//}
 }
 
 void ULCCheatManager::KillAllEnemies()
@@ -365,6 +377,18 @@ void ULCCheatManager::ShowPlayerFrameworkInfo()
 		UE_LOG(LogCheat, Warning, TEXT("[치트] PlayerController 없음"));
 		return;
 	}
+	ULCGameInstance* GI = Cast<ULCGameInstance>(PC->GetGameInstance());
+	if (!GI)
+	{
+		UE_LOG(LogCheat, Warning, TEXT("[치트] GameInstance 없음"));
+		return;
+	}
+	ULCGameManager* LCGM = GI->GetSubsystem<ULCGameManager>();
+	if (!LCGM)
+	{
+		UE_LOG(LogCheat, Warning, TEXT("[치트] LCGameManager 없음"));
+		return;
+	}
 
 	// PlayerState
 	ABasePlayerState* PS = PC->GetPlayerState<ABasePlayerState>();
@@ -389,7 +413,7 @@ void ULCCheatManager::ShowPlayerFrameworkInfo()
 		InfoString += FString::Printf(TEXT("\n - PlayerState: %s"), *PS->GetName());
 		InfoString += FString::Printf(TEXT("\n   HP         : %.1f"), PS->GetHP());
 		InfoString += FString::Printf(TEXT("\n   Stamina    : %.1f"), PS->GetStamina());
-		InfoString += FString::Printf(TEXT("\n   Gold       : %d"), PS->GetTotalGold());
+		InfoString += FString::Printf(TEXT("\n   Gold       : %d"), LCGM->GetGold());
 		InfoString += FString::Printf(TEXT("\n   Exp        : %d"), PS->GetTotalExp());
 	}
 	else
