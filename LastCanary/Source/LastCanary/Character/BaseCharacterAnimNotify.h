@@ -12,6 +12,7 @@ enum class ECharacterNotifyType : uint8
     None        UMETA(DisplayName = "None"),
     Interact    UMETA(DisplayName = "Interact"),
     ItemUse     UMETA(DisplayName = "Item Use"),
+    Reload      UMETA(DisplayName = "Gun Reload")
 };
 
 

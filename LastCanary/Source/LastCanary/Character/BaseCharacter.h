@@ -507,6 +507,11 @@ public:
 	void Multicast_SetPlayerInGameStateOnEscapeGate_Implementation();
 
 
+	void RequestReload(class AGunBase* Gun);
+	void StartReload();
+	void GunReloadAnimationNotified();
+
+
 	UFUNCTION(Server, Reliable)
 	void Server_PlayReload();
 	void Server_PlayReload_Implementation();
@@ -517,6 +522,8 @@ public:
 
 	void StopReload();
 
+	
+	
 	UFUNCTION(Server, Reliable)
 	void Server_StopReload();
 	void Server_StopReload_Implementation();
