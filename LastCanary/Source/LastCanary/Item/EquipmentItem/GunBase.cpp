@@ -37,6 +37,9 @@ AGunBase::AGunBase()
     DebugDrawDuration = 10.0f;
 
     ShellEjectionComponent = CreateDefaultSubobject<UShellEjectionComponent>(TEXT("ShellEjectionComponent"));
+
+    CurrentFireMode = EFireMode::Single;
+    bCanToggleFireMode = false;
 }
 
 void AGunBase::UseItem()
@@ -73,7 +76,6 @@ void AGunBase::Server_Fire_Implementation()
 
     HandleFire();
 
-    // ✅ 디버깅 추가
     LOG_Item_WARNING(TEXT("[Server_Fire] RecentHits 개수: %d"), RecentHits.Num());
 
     for (int32 i = 0; i < RecentHits.Num(); i++)
@@ -359,7 +361,9 @@ void AGunBase::Client_PlayCameraShake_Implementation()
     if (ABaseCharacter* OwnerCharacter = Cast<ABaseCharacter>(GetOwner()))
     {
         LOG_Item_WARNING(TEXT("Client_PlayCameraShake called"));
-        OwnerCharacter->CameraShake(2.0f, 1.0);
+        //OwnerCharacter->ApplyRecoil(2.0f, 1.0);
+        OwnerCharacter->ApplySmoothRecoil(2.0f, 1.0);
+
     }
 }
 
@@ -562,6 +566,9 @@ void AGunBase::ApplyGunDataFromDataTable()
     Spread = GunData.Spread;
     BulletsPerShot = GunData.BulletsPerShot;
     MaxAmmo = GunData.MaxAmmo;
+    CurrentFireMode = GunData.DefaultFireMode;
+    bCanToggleFireMode = GunData.bCanToggleFireMode;
+    AvailableFireModes = GunData.AvailableFireModes;
 
     if (Durability > MaxAmmo)
     {
@@ -641,8 +648,7 @@ void AGunBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetime
 {
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
     DOREPLIFETIME(AGunBase, RecentHits);
-    //DOREPLIFETIME(AGunBase, CurrentFireMode);
-    //DOREPLIFETIME(AGunBase, bIsAutoFiring);
+    DOREPLIFETIME(AGunBase, CurrentFireMode);
 }
 
 bool AGunBase::CanFire()
@@ -664,6 +670,14 @@ bool AGunBase::CanFire()
     if (OwnerCharacter->bIsReloading)
     {
         LOG_Item_WARNING(TEXT("[AGunBase::CanFire] 재장전 중 - 발사 불가"));
+        return false;
+    }
+
+    float CurrentTime = GetWorld()->GetTimeSeconds();
+    float TimeSinceLastFire = CurrentTime - LastFireTime;
+    if (TimeSinceLastFire + 0.005f < FireRate)
+    {
+        LOG_Item_WARNING(TEXT("[AGunBase::CanFire] 발사 간격 부족 - 남은 시간: %.2f초"), FireRate - TimeSinceLastFire);
         return false;
     }
 
@@ -734,12 +748,9 @@ void AGunBase::FireAuto()
 
     if (!CanFire())
     {
-        // 탄약이 부족하거나 다른 이유로 발사할 수 없으면 연발 중단
         StopAutoFire();
         return;
     }
-
-    LOG_Item_WARNING(TEXT("[FireAuto] 연발 사격 중"));
 
     Server_Fire();
 
@@ -770,6 +781,16 @@ void AGunBase::StopAutoFire()
     }
 }
 
+bool AGunBase::CanToggleFireMode() const
+{
+    return bCanToggleFireMode && AvailableFireModes.Num() > 1;
+}
+
+bool AGunBase::IsFireModeAvailable(EFireMode FireMode) const
+{
+    return AvailableFireModes.Contains(FireMode);
+}
+
 void AGunBase::ToggleFireMode()
 {
     if (!HasAuthority())
@@ -783,6 +804,13 @@ void AGunBase::ToggleFireMode()
 
 void AGunBase::Server_ToggleFireMode_Implementation()
 {
+    // 발사 모드 전환이 불가능한 총기라면 리턴
+    if (!CanToggleFireMode())
+    {
+        LOG_Item_WARNING(TEXT("[Server_ToggleFireMode] 이 총기는 발사 모드 전환이 불가능합니다."));
+        return;
+    }
+
     // 연발 중이면 먼저 중단
     if (bIsAutoFiring)
     {
@@ -791,13 +819,24 @@ void AGunBase::Server_ToggleFireMode_Implementation()
 
     // 발사 모드 전환
     EFireMode OldMode = CurrentFireMode;
-    CurrentFireMode = (CurrentFireMode == EFireMode::Single) ? EFireMode::FullAuto : EFireMode::Single;
+    int32 CurrentIndex = AvailableFireModes.Find(CurrentFireMode);
 
-    FString ModeString = (CurrentFireMode == EFireMode::Single) ? TEXT("단발") : TEXT("연발");
+    if (CurrentIndex != INDEX_NONE)
+    {
+        // 다음 인덱스로 이동 (순환)
+        int32 NextIndex = (CurrentIndex + 1) % AvailableFireModes.Num();
+        CurrentFireMode = AvailableFireModes[NextIndex];
+    }
+    else
+    {
+        // 현재 모드가 목록에 없다면 첫 번째 모드로 설정
+        CurrentFireMode = AvailableFireModes.Num() > 0 ? AvailableFireModes[0] : EFireMode::Single;
+    }
 
-    LOG_Item_WARNING(TEXT("[Server_ToggleFireMode] 발사 모드 변경: %s → %s"),
-        OldMode == EFireMode::Single ? TEXT("단발") : TEXT("연발"),
-        *ModeString);
+    FString OldModeString = (OldMode == EFireMode::Single) ? TEXT("단발") : TEXT("연발");
+    FString NewModeString = (CurrentFireMode == EFireMode::Single) ? TEXT("단발") : TEXT("연발");
+
+    LOG_Item_WARNING(TEXT("[Server_ToggleFireMode] 발사 모드 변경: %s → %s"), *OldModeString, *NewModeString);
 }
 
 
@@ -934,10 +973,6 @@ void AGunBase::AttachScope(UStaticMesh* ScopeMesh, FName SocketName)
 
     // 스코프 메시 설정
     ScopeComponent->SetStaticMesh(ScopeMesh);
-
-    // 상대 위치/회전 조정 (데이터 테이블에서 설정된 값 적용)
-    //ScopeComponent->SetRelativeLocation(GunData.ScopeRelativeLocation);
-    //ScopeComponent->SetRelativeRotation(GunData.ScopeRelativeRotation);
 
     // 스코프 표시
     ScopeComponent->SetVisibility(true);

@@ -1,5 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -19,7 +17,6 @@ public:
 
     // 장비 아이템 사용 함수를 가상 함수로 선언
     virtual void UseItem() override;
-
 
     // 장비 상태 확인
     UFUNCTION(BlueprintCallable, Category = "Equipment")

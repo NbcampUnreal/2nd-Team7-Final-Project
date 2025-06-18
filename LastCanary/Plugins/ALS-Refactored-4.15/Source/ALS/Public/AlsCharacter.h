@@ -25,8 +25,7 @@ class ALS_API AAlsCharacter : public ACharacter
 
 
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* CurrentRifleMesh;
+
 
 	virtual void NotifyNoiseToAI(FVector Velocity);
 	virtual void NotifyNoiseToAI(float LandVelocity);

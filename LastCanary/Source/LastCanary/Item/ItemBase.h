@@ -210,4 +210,26 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Input")
     FString GetCurrentKeyNameForAction(UInputAction * InputAction) const;
+
+    //-----------------------------------------------------
+    // 사운드 관리
+    //-----------------------------------------------------
+
+    /** 아이템이 현재 사용 중인지 상태 (사운드 토글용) */
+    UPROPERTY(Replicated, BlueprintReadWrite, Category = "Item|Sound")
+    bool bIsSoundActive = false;
+
+    /** 아이템 사운드 타입에 따른 자동 재생 */
+    UFUNCTION(BlueprintCallable, Category = "Item|Sound")
+    void PlaySoundByType();
+
+    /** 홀드 타입 아이템의 사용 종료 */
+    UFUNCTION(BlueprintCallable, Category = "Item|Sound")
+    void StopHoldSound();
+
+protected:
+    /** 사운드 타입별 처리 함수들 */
+    void HandleClickSound();
+    void HandleToggleSound();
+    void HandleHoldSoundStart();
 };

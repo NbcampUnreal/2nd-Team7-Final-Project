@@ -11,6 +11,7 @@
 #include "LastCanary.h"
 
 #include "UI/UIObject/KeySettingWidget.h"
+#include "UI/UIObject/GraphicsSettingPanel.h"
 
 
 void UOptionWidget::NativeConstruct()
@@ -24,6 +25,10 @@ void UOptionWidget::NativeConstruct()
 	{
 		CloseButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnCloseButtonClicked);
 	}
+	if (ResetButton)
+	{
+		ResetButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnResetButtonClicked);
+	}
 	if (GeneralTabButton)
 	{
 		GeneralTabButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnGeneralTabButtonClicked);
@@ -35,6 +40,10 @@ void UOptionWidget::NativeConstruct()
 	if (VoiceOptionTabButton)
 	{
 		VoiceOptionTabButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnKeyVoiceOptionTabButtonClicked);
+	}
+	if (GraphicsOptionButton)
+	{
+		GraphicsOptionButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnGraphicsSettingButtonClicked);
 	}
 	if (OptionSwitcher)
 	{
@@ -53,6 +62,10 @@ void UOptionWidget::NativeDestruct()
 	{
 		CloseButton->OnClicked.RemoveDynamic(this, &UOptionWidget::OnCloseButtonClicked);
 	}
+	if (ResetButton)
+	{
+		ResetButton->OnClicked.RemoveDynamic(this, &UOptionWidget::OnResetButtonClicked);
+	}
 	if (GeneralTabButton)
 	{
 		GeneralTabButton->OnClicked.RemoveDynamic(this, &UOptionWidget::OnGeneralTabButtonClicked);
@@ -64,6 +77,10 @@ void UOptionWidget::NativeDestruct()
 	if (VoiceOptionTabButton)
 	{
 		VoiceOptionTabButton->OnClicked.RemoveDynamic(this, &UOptionWidget::OnKeyVoiceOptionTabButtonClicked);
+	}
+	if (GraphicsOptionButton)
+	{
+		GraphicsOptionButton->OnClicked.RemoveDynamic(this, &UOptionWidget::OnGraphicsSettingButtonClicked);
 	}
 }
 
@@ -78,6 +95,11 @@ void UOptionWidget::OnApplyButtonClicked()
 void UOptionWidget::OnCloseButtonClicked()
 {
 	RemoveFromParent();
+}
+
+void UOptionWidget::OnResetButtonClicked()
+{
+	//TODO : 초기화 기능 구현
 }
 
 void UOptionWidget::OnGeneralTabButtonClicked()
@@ -125,6 +147,18 @@ void UOptionWidget::OnKeyVoiceOptionTabButtonClicked()
 	}
 	//SetTabButtonStyle(GeneralTabButton, false);
 	//SetTabButtonStyle(KeySettingTabButton, false);
+}
+
+void UOptionWidget::OnGraphicsSettingButtonClicked()
+{
+	if (OptionSwitcher)
+	{
+		OptionSwitcher->SetActiveWidgetIndex(3);
+	}
+	else
+	{
+		LOG_Frame_ERROR(TEXT("Graphics Widget is nullptr"));
+	}
 }
 
 //void UOptionWidget::SetTabButtonStyle(UButton* Button, bool bIsSelected)
