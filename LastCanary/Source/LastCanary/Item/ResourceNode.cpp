@@ -44,17 +44,17 @@ void AResourceNode::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 void AResourceNode::Interact_Implementation(APlayerController* Interactor)
 {
 	// 현재는 채취 아이템에서 처리
-	//if (ABaseCharacter* Character = Cast<ABaseCharacter>(Interactor->GetPawn()))
-	//{
-	//	Character->Server_InteractWithResourceNode(this);
-	//}
+	// if (ABaseCharacter* Character = Cast<ABaseCharacter>(Interactor->GetPawn()))
+	// {
+	// 	Character->Server_InteractWithResourceNode(this);
+	// }
 }
 
 void AResourceNode::Server_RequestInteract_Implementation(APlayerController* Interactor)
 {
 	// 현재는 채취 아이템에서 처리
 	// 서버에서 실제 상호작용 처리
-	//HarvestResource(Interactor);
+	// HarvestResource(Interactor);
 }
 
 void AResourceNode::HarvestResource(APlayerController* Interactor)
@@ -182,9 +182,16 @@ FString AResourceNode::GetInteractMessage_Implementation() const
 		? Cast<ABaseCharacter>(GetWorld()->GetFirstPlayerController()->GetPawn())
 		: nullptr;
 
-	if (!Character)
+	if (Character == nullptr)
 	{
 		return TEXT("No interaction (no players)");
+	}
+
+	// Core 타입은 도구 없이도 가능
+	if (InteractionType == EResourceInteractionType::Core)
+	{
+		FText Template = GetDefaultMessageForType(InteractionType);
+		return FText::Format(Template, FFormatNamedArguments{ {"Key", FText::FromString(KeyName)} }).ToString();
 	}
 
 	if (AItemBase* Equipped = Character->GetToolbarInventoryComponent()->GetCurrentEquippedItem())
