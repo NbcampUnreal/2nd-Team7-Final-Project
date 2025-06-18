@@ -14,6 +14,14 @@ enum class ENoteType : uint8
 	Noise			UMETA(DisplayName = "Noise"),		
 };
 
+UENUM(BlueprintType)
+enum class EItemSoundType : uint8
+{
+    Click       UMETA(DisplayName = "Click"),
+    Toggle      UMETA(DisplayName = "Toggle"),
+    Hold        UMETA(DisplayName = "Hold")
+};
+
 /**
  * 
  */
@@ -86,6 +94,8 @@ struct FItemDataRow : public FTableRowBase
     USoundBase* UseStartSound = nullptr;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "8. Sound Settings")
     USoundBase* UseEndSound = nullptr;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "8. Sound Settings")
+    EItemSoundType SoundType = EItemSoundType::Click;
 
 
 public:

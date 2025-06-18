@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "../Plugins/ALS-Refactored-4.15/Source/ALS/Public/AlsCharacter.h"
 #include "Character/PlayerData/PlayerDataTypes.h"
+#include "Interface/GimmickDebuffInterface.h"
+#include "GameplayTagAssetInterface.h"
 #include "BaseCharacter.generated.h"
 
 struct FInputActionValue;
@@ -22,7 +24,7 @@ class UPostProcessComponent;
 class AResourceNode;
 
 UCLASS()
-class LASTCANARY_API ABaseCharacter : public AAlsCharacter
+class LASTCANARY_API ABaseCharacter : public AAlsCharacter , public IGimmickDebuffInterface , public IGameplayTagAssetInterface
 {
 	GENERATED_BODY()
 
@@ -124,7 +126,7 @@ protected:
 	virtual void NotifyControllerChanged() override;
 	virtual void BeginPlay() override;
 
-	
+
 	// Camera Settings
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Camera", Meta = (ClampMin = 0, ClampMax = 90, ForceUnits = "deg"))
@@ -133,6 +135,12 @@ protected:
 	float MinPitchAngle{ -60.0f };
 
 	virtual void CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo) override;
+
+	void AttachCameraToRifle();
+	void AttachCameraToCharacter();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CurrentRifleMesh;
 
 	FTimerHandle MoveTimerHandle;
 	FVector StartLocation;
@@ -220,23 +228,55 @@ public:
 public:
 	void SetCameraMode(bool bIsFirstPersonView);
 
-	void ApplyRecoilStep();
-	void CameraShake(float Vertical, float Horizontal);
+
 
 
 	void SwapHeadMaterialTransparent(bool bUseTransparent);
 public:
 
-	// Recoil 상태
-	FTimerHandle RecoilTimerHandle;
+	// Header 파일에 추가할 변수들
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
+	float BaseRecoilPitch = 1.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite);
-	float YawRecoilRange = 1.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
+	float BaseRecoilYaw = 0.5f;
 
-	int32 RecoilStep = 0;
-	int32 RecoilMaxSteps = 10;
-	float RecoilStepPitch = 0.f;
-	float RecoilStepYaw = 0.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
+	float RecoilMultiplier = 1.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
+	float RecoilRecoverySpeed = 2.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
+	int32 MaxConsecutiveShots = 10;
+
+	// 현재 연사 상태
+	int32 CurrentShotCount = 0;
+	FVector2D AccumulatedRecoil = FVector2D::ZeroVector;
+	FVector2D TargetRecoil = FVector2D::ZeroVector;
+	FTimerHandle RecoilRecoveryTimer;
+	FTimerHandle ShotResetTimer;
+
+	// 반동 패턴 (선택사항 - CS:GO 스타일)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
+	TArray<FVector2D> RecoilPattern;
+
+	// 반동 상태 변수들
+
+	//void ApplyRecoilStep();
+	//void CameraShake(float Vertical, float Horizontal);
+	void ApplyRecoil(float Vertical, float Horizontal);
+	void RecoverFromRecoil();
+	void ApplySmoothRecoil(float Vertical, float Horizontal);
+	void ApplySmoothRecoilStep();
+	void ResetShotCounter();
+	void UpdateRecoil();
+	bool HasActiveRecoil() const;
+	void ReduceRecoil(float ReductionFactor = 0.5f);
+	void ResetRecoilYaw();
+	void ResetRecoilPitch();
+	void ResetRecoil();
+	FVector2D GetCurrentRecoil() const;
 	// Character Input Handle Function
 
 public:
@@ -278,7 +318,7 @@ public:
 	bool bIsPossessed;
 	bool bIsReloading = false;
 	bool bIsClose = false;
-	bool bIsUsingItem= false;
+	bool bIsUsingItem = false;
 	void SetPossess(bool IsPossessed);
 	bool bRecoveringFromRecoil = false;
 
@@ -375,6 +415,9 @@ public:
 	UFUNCTION()
 	void PlayInteractionMontage(AActor* Target);
 
+	void InteractAfterPlayMontage(AActor* TargetActor);
+	void OnNotified();
+
 	UFUNCTION(Server, Unreliable)
 	void Server_PlayMontage(UAnimMontage* MontageToPlay);
 	void Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay);
@@ -394,6 +437,30 @@ public:
 
 	bool bIsPlayingInteractionMontage = false;
 
+
+
+	void UseItemAfterPlayMontage(AItemBase* EquippedItem);
+	void UseItemAnimationNotified();
+
+	UPROPERTY()
+	UAnimMontage* CurrentUseItemMontage;
+
+	UPROPERTY()
+	AItemBase* CurrentUsingItem;
+
+	void CancelUseItem();
+
+	UFUNCTION(Server, Unreliable)
+	void Server_CancelUseItem();
+	void Server_CancelUseItem_Implementation();
+
+	bool bIsPlayingUseItemMontage = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UAnimMontage* UsingBandageMontage;
+
+
+
 	//Check Player Focus Everytime
 public:
 	/*About Interact*/
@@ -409,9 +476,7 @@ public:
 
 	void TraceInteractableActor();
 
-	void InteractAfterPlayMontage(AActor* TargetActor);
 
-	void OnNotified();
 
 	UPROPERTY()
 	AActor* InteractTargetActor;
@@ -420,6 +485,8 @@ public:
 	/*Player Damage, Death*/
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	void HandlePlayerDeath();
+
+	void NotifyPlayerDeathToGameState();
 
 	UFUNCTION(Client, Reliable)
 	void Client_HandlePlayerVoiceChattingState();
@@ -440,6 +507,11 @@ public:
 	void Multicast_SetPlayerInGameStateOnEscapeGate_Implementation();
 
 
+	void RequestReload(class AGunBase* Gun);
+	void StartReload();
+	void GunReloadAnimationNotified();
+
+
 	UFUNCTION(Server, Reliable)
 	void Server_PlayReload();
 	void Server_PlayReload_Implementation();
@@ -450,6 +522,8 @@ public:
 
 	void StopReload();
 
+	
+	
 	UFUNCTION(Server, Reliable)
 	void Server_StopReload();
 	void Server_StopReload_Implementation();
@@ -535,7 +609,7 @@ private:
 
 	// 인벤토리 아이템 관련 변수 및 함수
 public:
-	UPROPERTY()
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tags")
 	FGameplayTagContainer OwnedTags;
 
 	UChildActorComponent* ChildActorComponent;
@@ -656,10 +730,57 @@ public:
 
 	UFUNCTION()
 	void StartHealing(float TotalHealAmount, float Duration);
-	
+
 	UFUNCTION()
 	void HealStep();
 
 	UFUNCTION()
 	void StopHealing();
+
+	// 디버프 인터페이스 
+	virtual void ApplyMovementDebuff_Implementation(float SlowRate, float Duration) override;
+	virtual void RemoveMovementDebuff_Implementation() override;
+
+	virtual void GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) const override;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Debuff")
+	bool bIsMovementDebuffed = false;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Debuff")
+	float DebuffSlowRate = 1.f;
+
+	// 원래 속도 저장용
+	float OriginalWalkSpeed = 0.f;
+	float OriginalRunSpeed = 0.f;
+	float OriginalSprintSpeed = 0.f;
+	//-----------------------------------------------------
+	// 보이스 채팅을 위한 함수들
+	//-----------------------------------------------------
+public:
+	/** 워키토키 채널 추가 (블루프린트에서 구현) */
+	UFUNCTION(BlueprintImplementableEvent)
+	void AddWalkieTalkieChannel();
+
+	/** 워키토키 채널 제거 (블루프린트에서 구현) */
+	UFUNCTION(BlueprintImplementableEvent)
+	void RemoveWalkieTalkieChannel();
+
+private:
+	/** 현재 워키토키 채널이 활성화되어 있는지 */
+	UPROPERTY(BlueprintReadOnly, Category = "WalkieTalkie", meta = (AllowPrivateAccess = "true"))
+	bool bHasWalkieTalkieChannel = false;
+
+public:
+	/** 워키토키 채널 상태 확인 */
+	UFUNCTION(BlueprintPure, Category = "WalkieTalkie")
+	bool HasWalkieTalkieChannel() const { return bHasWalkieTalkieChannel; }
+
+	/** 워키토키 채널 상태 설정 (C++에서 호출용) */
+	UFUNCTION(BlueprintCallable, Category = "WalkieTalkie")
+	void SetWalkieTalkieChannelStatus(bool bActive);
+
+	/** 특정 클라이언트에서 워키토키 획득 시 채널 상태 업데이트 */
+	UFUNCTION(Client, Reliable, Category = "WalkieTalkie")
+	void Client_SetWalkieTalkieChannelStatus(bool bActive);
+	void Client_SetWalkieTalkieChannelStatus_Implementation(bool bActive);
 };

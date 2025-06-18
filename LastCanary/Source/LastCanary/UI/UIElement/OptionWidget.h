@@ -9,7 +9,9 @@ class UButton;
 class UGeneralOptionWidget;
 class UKeySettingWidget;
 class UVoiceOptionWidget;
+class UGraphicsSettingPanel;
 class UTextBlock;
+
 UCLASS()
 class LASTCANARY_API UOptionWidget : public ULCUserWidgetBase
 {
@@ -29,13 +31,19 @@ private:
 	UPROPERTY(meta = (BindWidget)) 
 	UButton* VoiceOptionTabButton;
 	UPROPERTY(meta = (BindWidget)) 
+	UButton* GraphicsOptionButton;
+	UPROPERTY(meta = (BindWidget)) 
 	UButton* ApplyButton;
 	UPROPERTY(meta = (BindWidget)) 
 	UButton* CloseButton;
+	UPROPERTY(meta = (BindWidget)) 
+	UButton* ResetButton;
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* GeneralTabText;
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* KeySettingTabText;
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* GraphicsOptionTabText;
 
 
 	UPROPERTY(meta = (BindWidget))
@@ -44,6 +52,9 @@ private:
 	UKeySettingWidget* KeySettingWidget;
 	UPROPERTY(meta = (BindWidget))
 	UVoiceOptionWidget* VoiceOptionWidget;
+	UPROPERTY(meta = (BindWidget))
+	UGraphicsSettingPanel* GraphicsSettingPanel;
+
 	
 	//FLinearColor SelectedColor = FLinearColor(0.87f, 0.87f, 0.87f);   
 	//FLinearColor UnselectedColor = FLinearColor(0.5f, 0.5f, 0.5f);    
@@ -53,11 +64,15 @@ private:
 	UFUNCTION()
 	void OnCloseButtonClicked();
 	UFUNCTION()
+	void OnResetButtonClicked();
+	UFUNCTION()
 	void OnGeneralTabButtonClicked();
 	UFUNCTION()
 	void OnKeySettingTabButtonClicked();
 	UFUNCTION()
 	void OnKeyVoiceOptionTabButtonClicked();
+	UFUNCTION()
+	void OnGraphicsSettingButtonClicked();
 
 public:
 	/* 위젯 게터 */

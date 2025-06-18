@@ -34,6 +34,8 @@ void ABasePlayerState::BeginPlay()
 	{
 		MyCharacter->SetMovementSetting();
 	}
+
+	SetInGameStatus(EPlayerInGameStatus::Alive);
 }
 
 void ABasePlayerState::SetInGameStatus(EPlayerInGameStatus Status)

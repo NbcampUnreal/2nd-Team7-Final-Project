@@ -452,18 +452,45 @@ void ALCBossEoduksini::VoidGrasp()
 {
     UE_LOG(LogTemp, Log, TEXT("[Eoduksini] VoidGrasp 실행: 대미지 %.1f"), StrongAttackDamage);
 
+    FVector BossLoc = GetActorLocation();
     TArray<FHitResult> Hits;
-    FCollisionShape Sphere = FCollisionShape::MakeSphere(600.f);
-    if (GetWorld()->SweepMultiByChannel(Hits, GetActorLocation(), GetActorLocation(), FQuat::Identity, ECC_Pawn, Sphere))
+    FCollisionShape Sphere = FCollisionShape::MakeSphere(VoidGraspRange);
+
+    // 반경 내 Pawn 검색
+    if (GetWorld()->SweepMultiByChannel(Hits, BossLoc, BossLoc, FQuat::Identity, ECC_Pawn, Sphere))
     {
         for (auto& Hit : Hits)
         {
             if (APawn* P = Cast<APawn>(Hit.GetActor()))
             {
-                FVector PullLoc = GetActorLocation() + GetActorForwardVector() * 200.f;
-                P->SetActorLocation(PullLoc);
-                DrawDebugSphere(GetWorld(), GetActorLocation(), 600.f, 16, FColor::Red, false, 1.f, 0, 2.f);
-                UGameplayStatics::ApplyDamage(P, StrongAttackDamage, GetController(), this, nullptr);
+                // 당기는 방향 계산
+                FVector PullDir = (BossLoc - P->GetActorLocation()).GetSafeNormal();
+
+                // 캐릭터라면 LaunchCharacter 로 물리 이동
+                if (ACharacter* Ch = Cast<ACharacter>(P))
+                {
+                    const float PullStrength = 1500.f; // 필요에 따라 조정
+                    // XY/Z 모두 덮어쓰도록 true,true
+                    Ch->LaunchCharacter(PullDir * PullStrength, true, true);
+                }
+                // 만약 물리 시뮬레이션 컴포넌트라면 AddImpulse 사용
+                else if (UPrimitiveComponent* Prim = Hit.GetComponent())
+                {
+                    if (Prim->IsSimulatingPhysics())
+                    {
+                        const float ImpulseStrength = 800.f;
+                        Prim->AddImpulse(PullDir * ImpulseStrength, NAME_None, true);
+                    }
+                }
+
+                // 대미지 적용
+                UGameplayStatics::ApplyDamage(
+                    P,
+                    StrongAttackDamage,
+                    GetController(),
+                    this,
+                    nullptr
+                );
             }
         }
     }

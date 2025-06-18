@@ -1,5 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -7,8 +5,8 @@
 #include "Item/EquipmentItem/EquipmentItemBase.h"
 #include "BaseDrone.generated.h"
 
-
 struct FInputActionValue;
+class UDroneHUD;
 
 UCLASS()
 class LASTCANARY_API ABaseDrone : public APawn
@@ -16,27 +14,18 @@ class LASTCANARY_API ABaseDrone : public APawn
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this pawn's properties
+	///////////////////////////////////////////////////////////////////////////////
+	//// Constructor & Overrides
+	///////////////////////////////////////////////////////////////////////////////
+
 	ABaseDrone();
-protected:
 	virtual void BeginPlay() override;
-
-	void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const;
-public:
-
-	FVector CharacterLocation;
-	void SetCharacterLocation(FVector Location);
-
-	UPROPERTY(EditAnywhere, Category = "Drone | Distance")
-	float MaxDistanceToPlayer = 2000.f;
-
-	// 충돌 이벤트 함수 선언 (OnComponentHit 시그니처)
-	UFUNCTION()
-	void OnDroneHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
-
-public:
 	virtual void Tick(float DeltaTime) override;
-
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	
+	///////////////////////////////////////////////////////////////////////////////
+	//// Components
+	///////////////////////////////////////////////////////////////////////////////
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* DroneMesh;
@@ -50,80 +39,30 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement", meta = (AllowPrivateAccess = "true"))
 	class UFloatingPawnMovement* MovementComponent;
 
-	// 상하 카메라 회전값 (Pitch)
-	UPROPERTY(ReplicatedUsing = OnRep_CameraPitch)
-	float CameraPitch = 0.f;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	class UItemSpawnerComponent* ItemSpawner;
 
-	UFUNCTION()
-	void OnRep_CameraPitch();
+	///////////////////////////////////////////////////////////////////////////////
+	//// Movement Settings
+	///////////////////////////////////////////////////////////////////////////////
 
-	// Movement input
-	FVector2D MoveInput; // X: Forward/Back, Y: Right/Left
-	float VerticalInput;
-
-	// 수직 속도
-	float VerticalVelocity = 0.f;
-
-	// 상승 / 하강 입력 상태
-	float VerticalInputAxis = 0.f;
-
-	// Settings
-	UPROPERTY(EditAnywhere)
-	float MoveSpeed = 600.f;
-
-	UPROPERTY(EditAnywhere)
-	float VerticalSpeed = 400.f;
-
-	FRotator TargetDroneRotation;
-
-	UPROPERTY(EditAnywhere, Category = "Drone | Look")
-	float LookSensitivity = 100.f;
-
-	UPROPERTY(EditAnywhere, Category = "Drone | Look")
-	float RotationInterpSpeed = 5.f;
-
-
-	void Input_Move(const FInputActionValue& Value);
-	UFUNCTION(Server, Reliable)
-	void Server_Move(FVector2D InputVector);
-	void Server_Move_Implementation(FVector2D InputVector);
-	void Move(const FInputActionValue& Value);
-
-
-	void Input_MoveUp(const FInputActionValue& Value);
-	UFUNCTION(Server, Reliable)
-	void Server_MoveUp(float Value);
-	void Server_MoveUp_Implementation(float Value);
-	void MoveUp(const FInputActionValue& Value);
-
-
-
-	void Input_MoveDown(const FInputActionValue& Value);
-	UFUNCTION(Server, Reliable)
-	void Server_MoveDown(float Value);
-	void Server_MoveDown_Implementation(float Value);
-	void MoveDown(const FInputActionValue& Value);
-
-	void Input_Look(const FInputActionValue& Value, float Sensivity);
-	UFUNCTION(Server, Reliable)
-	void Server_Look(FVector2D InputVector);
-	void Server_Look_Implementation(FVector2D InputVector);
-	void Look(const FInputActionValue& Value);
-
-	// 현재 속도 벡터
-	FVector CurrentVelocity = FVector::ZeroVector;
-
-	// 움직임 목표 방향 (Y=앞뒤, X=좌우), VerticalInput은 그대로 둠
-	FVector MoveDirection = FVector::ZeroVector;
+	UPROPERTY(EditAnywhere, Category = "Drone | Distance")
+	float MaxDistanceToPlayer = 2000.f;
 
 	UPROPERTY(EditAnywhere, Category = "Drone | Movement")
-	float HorizontalAcceleration = 500.0;
+	float MoveSpeed = 600.f;
+
+	UPROPERTY(EditAnywhere, Category = "Drone | Movement")
+	float VerticalSpeed = 400.f;
+
+	UPROPERTY(EditAnywhere, Category = "Drone | Movement")
+	float HorizontalAcceleration = 500.f;
 
 	UPROPERTY(EditAnywhere, Category = "Drone | Movement")
 	float HorizontalDeceleration = 150.f;
 
 	UPROPERTY(EditAnywhere, Category = "Drone | Movement")
-	float VerticalAcceleration = 300.0f;
+	float VerticalAcceleration = 300.f;
 
 	UPROPERTY(EditAnywhere, Category = "Drone | Movement")
 	float VerticalDeceleration = 1.5f;
@@ -134,7 +73,15 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Drone | Movement")
 	float VerticalMaxSpeed = 1200.f;
 
-protected:
+	///////////////////////////////////////////////////////////////////////////////
+	//// Look Settings
+	///////////////////////////////////////////////////////////////////////////////
+
+	UPROPERTY(EditAnywhere, Category = "Drone | Look")
+	float LookSensitivity = 100.f;
+
+	UPROPERTY(EditAnywhere, Category = "Drone | Look")
+	float RotationInterpSpeed = 5.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|MouseSensitivity", Meta = (ClampMin = 0, ForceUnits = "x"))
 	float LookUpMouseSensitivity{ 1.0f };
@@ -154,37 +101,144 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Camera", Meta = (ClampMin = -80, ClampMax = 0, ForceUnits = "deg"))
 	float MinPitchAngle{ -60.0f };
 
+	///////////////////////////////////////////////////////////////////////////////
+	//// Replication
+	///////////////////////////////////////////////////////////////////////////////
+
+	UPROPERTY(ReplicatedUsing = OnRep_CameraPitch)
+	float CameraPitch = 0.f;
+
+	UFUNCTION()
+	void OnRep_CameraPitch();
+
+	///////////////////////////////////////////////////////////////////////////////
+	//// Input Handling
+	///////////////////////////////////////////////////////////////////////////////
+
+	UPROPERTY()
+	APlayerController* OwningController;
 
 
+	void Input_Move(const FInputActionValue& Value);
+	void Input_MoveUp(const FInputActionValue& Value);
+	void Input_MoveDown(const FInputActionValue& Value);
+	void Input_Look(const FInputActionValue& Value, float Sensivity);
+	void Look(const FInputActionValue& Value);
+	void Move(const FInputActionValue& Value);
+	void MoveUp(const FInputActionValue& Value);
+	void MoveDown(const FInputActionValue& Value);
+	void Interact(const FInputActionValue& Value, APlayerController* CallingController);
 
-public:
+	UFUNCTION(Server, Reliable)
+	void Server_Move(FVector2D InputVector);
+	void Server_Move_Implementation(FVector2D InputVector);
+
+	UFUNCTION(Server, Reliable)
+	void Server_MoveUp(float Value);
+	void Server_MoveUp_Implementation(float Value);
+
+	UFUNCTION(Server, Reliable)
+	void Server_MoveDown(float Value);
+	void Server_MoveDown_Implementation(float Value);
+
+	UFUNCTION(Server, Reliable)
+	void Server_Look(FVector2D InputVector);
+	void Server_Look_Implementation(FVector2D InputVector);
+
+	///////////////////////////////////////////////////////////////////////////////
+	//// Drone Return Logic
+	///////////////////////////////////////////////////////////////////////////////
+
 	UFUNCTION(Server, Reliable)
 	void Server_ReturnAsItem();
-
 	void Server_ReturnAsItem_Implementation();
 	void ReturnAsItem();
 
-
-public:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_ReturnToPlayer();
 	void Multicast_ReturnToPlayer_Implementation();
 
-
-
-protected:
 	UFUNCTION()
 	void SpawnDroneItemAtCurrentLocation();
 
-	/** 드론 아이템 스폰을 위한 ItemSpawner 컴포넌트 */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	class UItemSpawnerComponent* ItemSpawner;
-
-	/** 드론 아이템의 데이터 테이블 Row Name */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drone|Item")
 	FName DroneItemRowName = FName("Drone");
 
-	/** 아이템 스폰 위치 오프셋 (드론 기준) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drone|Item")
 	FVector ItemSpawnOffset = FVector(0.0f, 0.0f, -50.0f);
+
+	///////////////////////////////////////////////////////////////////////////////
+	//// Utility
+	///////////////////////////////////////////////////////////////////////////////
+	
+	FTimerHandle DroneDistanceTimerHandle;
+	UDroneHUD* CachedDroneHUD = nullptr;
+	float LastDistanceForHUD = -1.f;
+
+	void UpdateDistanceCheck();
+
+	UPROPERTY()
+	FVector CharacterLocation;
+
+	void SetCharacterLocation(FVector Location);
+
+	UPROPERTY()
+	FRotator TargetDroneRotation;
+
+	UPROPERTY()
+	FVector2D MoveInput;
+
+	UPROPERTY()
+	float VerticalInput;
+
+	UPROPERTY()
+	float VerticalInputAxis = 0.f;
+
+	UPROPERTY()
+	float VerticalVelocity = 0.f;
+
+	UPROPERTY()
+	FVector MoveDirection = FVector::ZeroVector;
+
+	UPROPERTY()
+	FVector CurrentVelocity = FVector::ZeroVector;
+
+	UFUNCTION()
+	void OnDroneHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,
+		UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interact")
+	AActor* CurrentFocusedActor;
+
+	void TraceInteractableActor();
+	FTimerHandle InteractionTraceTimerHandle;
+
+	float TraceDistance = 300.f;
+protected:
+	///////////////////////////////////////////////////////////////////////////////
+	//// PostProcess Handling
+	///////////////////////////////////////////////////////////////////////////////
+
+	// 사용할 포스트 프로세스 머티리얼 배열
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drone|PostProcess")
+	TArray<UMaterialInterface*> PostProcessMaterials;
+
+	// 현재 활성화된 머티리얼 인덱스
+	UPROPERTY(VisibleAnywhere, Category = "Drone|PostProcess")
+	int32 CurrentPPIndex = -1;
+
+	// 드론 카메라에 적용할 다이나믹 머티리얼 (렌더링 시 사용)
+	UPROPERTY()
+	TArray<UMaterialInstanceDynamic*> DynamicPPInstances;
+
+	// 클릭 시 호출되는 함수
+	void TogglePostProcessEffect();
+
+	// 서버에서 효과 전환 요청
+	UFUNCTION(Server, Reliable)
+	void Server_TogglePostProcessEffect();
+	void Server_TogglePostProcessEffect_Implementation();
+
+	// 실제 전환 로직 (서버 & 클라에서 공통 호출)
+	void ApplyPostProcessMaterial(int32 NewIndex);
 };

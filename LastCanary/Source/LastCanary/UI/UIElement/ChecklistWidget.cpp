@@ -2,6 +2,7 @@
 #include "UI/UIObject/ChecklistQuestionEntryWidget.h"
 #include "Framework/Manager/ChecklistManager.h"
 #include "Framework/PlayerController/LCRoomPlayerController.h"
+#include "Framework/PlayerController/LCInGamePlayerController.h"
 #include "Components/ScrollBox.h"
 #include "Components/Button.h"
 #include "Algo/AllOf.h"
@@ -113,10 +114,10 @@ void UChecklistWidget::SubmitChecklist()
 
 	if (APlayerController* PC = GetOwningPlayer())
 	{
-		if (ALCRoomPlayerController* RPC = Cast<ALCRoomPlayerController>(PC))
+		if (ALCInGamePlayerController* InGamePC = Cast<ALCInGamePlayerController>(PC))
 		{
 			LOG_Frame_WARNING(TEXT("ChecklistWidget → 컨트롤러 통해 서버에 제출 요청"));
-			RPC->Server_RequestSubmitChecklist(Questions);
+			InGamePC->Server_RequestSubmitChecklist(Questions);
 		}
 		else
 		{

@@ -4,6 +4,8 @@
 #include "Engine/World.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "Character/BaseCharacter.h"
 #include "Net/UnrealNetwork.h"
 #include "Particles/ParticleSystem.h"
 #include "NiagaraFunctionLibrary.h"
@@ -248,11 +250,24 @@ void ALCBossLich::ExecuteManaPulse()
     TArray<FHitResult> Hits;
     FCollisionShape Sphere = FCollisionShape::MakeSphere(ManaPulseRadius);
 
+    // 1) Debug: 폭발 위치에 보라색 구 그리기 (2초간, 두께 5)
+    DrawDebugSphere(
+        GetWorld(),
+        O,
+        ManaPulseRadius,
+        16,
+        FColor::Blue,
+        false,
+        2.0f,
+        0,
+        5.0f
+    );
+
     if (GetWorld()->SweepMultiByChannel(Hits, O, O, FQuat::Identity, ECC_Pawn, Sphere))
     {
         for (auto& H : Hits)
         {
-            if (auto C = Cast<ACharacter>(H.GetActor()))
+            if (auto C = Cast<ABaseCharacter>(H.GetActor()))
             {
                 UE_LOG(LogTemp, Warning, TEXT("[Lich] ManaPulse → %s 입혔습니다"), *C->GetName());
                 UGameplayStatics::ApplyDamage(C, ManaPulseDamage, GetController(), this, nullptr);
@@ -332,20 +347,36 @@ void ALCBossLich::ExecuteDeathNova()
 {
     if (!HasAuthority()) return;
 
-    UE_LOG(LogTemp, Warning, TEXT("[Lich] ExecuteDeathNova 시작 → Damage=%.1f, Radius=%.1f"), DeathNovaDamage, DeathNovaRadius);
+    UE_LOG(LogTemp, Warning, TEXT("[Lich] ExecuteDeathNova 시작 → Damage=%.1f (전범위), StunDuration=%.1f"), DeathNovaDamage, DeathNovaStunDuration);
 
-    FVector O = GetActorLocation();
-    TArray<FHitResult> Hits;
-    FCollisionShape Sphere = FCollisionShape::MakeSphere(DeathNovaRadius);
+    // (1) 모든 Pawn 가져오기
+    TArray<AActor*> AllPawns;
+    UGameplayStatics::GetAllActorsOfClass(GetWorld(), APawn::StaticClass(), AllPawns);
 
-    if (GetWorld()->SweepMultiByChannel(Hits, O, O, FQuat::Identity, ECC_Pawn, Sphere))
+    for (AActor* Actor : AllPawns)
     {
-        for (auto& H : Hits)
+        if (ABaseCharacter* C = Cast<ABaseCharacter>(Actor))
         {
-            if (auto C = Cast<ACharacter>(H.GetActor()))
+            // (2) 대미지 적용
+            UGameplayStatics::ApplyDamage(C, DeathNovaDamage, GetController(), this, nullptr);
+            UE_LOG(LogTemp, Warning, TEXT("[Lich] DeathNova → %s 입혔습니다"), *C->GetName());
+
+            // (3) 스턴:  이동 비활성화
+            if (UCharacterMovementComponent* MoveComp = C->GetCharacterMovement())
             {
-                UE_LOG(LogTemp, Warning, TEXT("[Lich] DeathNova → %s 입혔습니다"), *C->GetName());
-                UGameplayStatics::ApplyDamage(C, DeathNovaDamage, GetController(), this, nullptr);
+                MoveComp->DisableMovement();
+
+                // (4) 일정 시간 후 이동 복구
+                FTimerHandle StunHandle;
+                FTimerDelegate RestoreDel = FTimerDelegate::CreateLambda([MoveComp]() {
+                    MoveComp->SetMovementMode(MOVE_Walking);
+                    });
+                GetWorldTimerManager().SetTimer(
+                    StunHandle,
+                    RestoreDel,
+                    DeathNovaStunDuration,
+                    false
+                );
             }
         }
     }

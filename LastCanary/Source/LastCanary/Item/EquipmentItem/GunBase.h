@@ -13,14 +13,6 @@
  * 라인트레이스 기반 발사 시스템과 탄약 관리를 구현합니다.
  */
 
- /** 발사 모드 열거형 */
-UENUM(BlueprintType)
-enum class EFireMode : uint8
-{
-    Single      UMETA(DisplayName = "단발"),
-    FullAuto    UMETA(DisplayName = "연발")
-};
-
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAnimationComplete, UAnimMontage*, CompletedMontage);
 
 class UShellEjectionComponent;
@@ -92,8 +84,16 @@ public:
 
 public:
     /** 현재 발사 모드 */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|FireMode")
-    EFireMode CurrentFireMode = EFireMode::FullAuto;
+    UPROPERTY(BlueprintReadOnly, Replicated, Category = "Gun|FireMode")
+    EFireMode CurrentFireMode = EFireMode::Single;
+
+    /** 발사 모드 전환 가능 여부 */
+    UPROPERTY(BlueprintReadOnly, Category = "Gun|FireMode")
+    bool bCanToggleFireMode = false;
+
+    /** 사용 가능한 발사 모드들 */
+    UPROPERTY(BlueprintReadOnly, Category = "Gun|FireMode")
+    TArray<EFireMode> AvailableFireModes;
 
     /** 연발 사격 중인지 여부 */
     UPROPERTY(BlueprintReadOnly, Category = "Gun|FireMode")
@@ -142,6 +142,9 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Gun|Actions")
     virtual bool Reload();
 
+    UFUNCTION(BlueprintCallable, Category = "Gun|Actions")
+    virtual void CheckReloadCondition();
+
 protected:
     /** 단발 사격 실행 */
     UFUNCTION(BlueprintCallable, Category = "Gun|Fire")
@@ -172,6 +175,14 @@ public:
 
     /** 재장전 타이머 핸들 */
     FTimerHandle ReloadTimerHandle;
+
+    /** 발사 모드 전환 가능 여부 확인 */
+    UFUNCTION(BlueprintPure, Category = "Gun|FireMode")
+    bool CanToggleFireMode() const;
+
+    /** 특정 발사 모드 사용 가능 여부 확인 */
+    UFUNCTION(BlueprintPure, Category = "Gun|FireMode")
+    bool IsFireModeAvailable(EFireMode FireMode) const;
 
     /** 발사 모드 전환 */
     UFUNCTION(BlueprintCallable, Category = "Gun|FireMode")

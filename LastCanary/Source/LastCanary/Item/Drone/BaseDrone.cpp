@@ -1,6 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "Item/Drone/BaseDrone.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -11,6 +8,9 @@
 #include "GameFramework/FloatingPawnMovement.h"
 #include "Net/UnrealNetwork.h"
 #include "Item/ItemSpawnerComponent.h"
+#include "UI/UIElement/DroneHUD.h"
+#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "UI/UIElement/InGameHUD.h"
 
 ABaseDrone::ABaseDrone()
 {
@@ -56,12 +56,38 @@ void ABaseDrone::BeginPlay()
 	MoveDirection = FVector::ForwardVector;
 
 	TargetDroneRotation.Yaw = GetActorRotation().Yaw;
+
+	if (const UWorld* World = GetWorld())
+	{
+		if (ULCGameInstanceSubsystem* GIS = World->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+		{
+			if (ULCUIManager* UIManager = GIS->GetUIManager())
+			{
+				CachedDroneHUD = UIManager->GetDroneHUD();
+			}
+		}
+	}
+
+	GetWorldTimerManager().SetTimer(
+		DroneDistanceTimerHandle,
+		this,
+		&ABaseDrone::UpdateDistanceCheck,
+		0.2f,
+		true
+	);
+
+	GetWorld()->GetTimerManager().SetTimer(
+		InteractionTraceTimerHandle,
+		this,
+		&ABaseDrone::TraceInteractableActor,
+		0.1f,
+		true
+	);
 }
 
 void ABaseDrone::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 
 	// --- 수평 이동 ---
 	if (!CurrentVelocity.IsNearlyZero())
@@ -82,24 +108,42 @@ void ABaseDrone::Tick(float DeltaTime)
 		VerticalVelocity += VerticalInputAxis * VerticalAcceleration * DeltaTime;
 		VerticalVelocity = FMath::Clamp(VerticalVelocity, -VerticalMaxSpeed, VerticalMaxSpeed);
 	}
-
 	const FVector VerticalOffset = FVector::UpVector * VerticalVelocity * DeltaTime;
 
 	// 최종 이동
 	AddActorWorldOffset(HorizontalOffset + VerticalOffset, true);
 
+	////check Dist to PlayCharacter
+	//FVector MyLocation = GetActorLocation();
+	//float Distance = FVector::Dist(MyLocation, CharacterLocation);
 
-	//check Dist to PlayCharacter
+	////UE_LOG(LogTemp, Log, TEXT("Distance to CharacterLocation: %.2f"), Distance);
+	//if (Distance > MaxDistanceToPlayer)
+	//{
+	//	Multicast_ReturnToPlayer();
+	//}
+}
 
-	FVector MyLocation = GetActorLocation();
-	float Distance = FVector::Dist(MyLocation, CharacterLocation);
+void ABaseDrone::UpdateDistanceCheck()
+{
+	const float DistSquared = FVector::DistSquared(GetActorLocation(), CharacterLocation);
+	const float MaxDistSquared = MaxDistanceToPlayer * MaxDistanceToPlayer;
 
-
-	//UE_LOG(LogTemp, Log, TEXT("Distance to CharacterLocation: %.2f"), Distance);
-
-	if (Distance > MaxDistanceToPlayer)
+	if (DistSquared > MaxDistSquared)
 	{
 		Multicast_ReturnToPlayer();
+		GetWorldTimerManager().ClearTimer(DroneDistanceTimerHandle);
+		return;
+	}
+
+	if (CachedDroneHUD)
+	{
+		float CurrentDistance = FMath::Sqrt(DistSquared);
+		if (!FMath::IsNearlyEqual(CurrentDistance, LastDistanceForHUD, 10.0f))
+		{
+			CachedDroneHUD->UpdateDistanceDisplay(CurrentDistance, MaxDistanceToPlayer);
+			LastDistanceForHUD = CurrentDistance;
+		}
 	}
 }
 
@@ -108,11 +152,13 @@ void ABaseDrone::Input_Move(const FInputActionValue& Value)
 	const FVector2D InputVector = Value.Get<FVector2D>();
 	Server_Move(InputVector);
 }
+
 void ABaseDrone::Server_Move_Implementation(FVector2D InputVector)
 {
 	FInputActionValue WrappedValue(InputVector);
 	Move(WrappedValue);
 }
+
 void ABaseDrone::Move(const FInputActionValue& Value)
 {
 	const FVector2D InputVector = Value.Get<FVector2D>();
@@ -167,6 +213,7 @@ void ABaseDrone::Server_MoveDown_Implementation(float Value)
 {
 	VerticalInputAxis = FMath::Clamp(-Value, -1.f, 0.f);
 }
+
 void ABaseDrone::MoveDown(const FInputActionValue& Value)
 {
 	const float Input = Value.Get<float>();
@@ -210,6 +257,113 @@ void ABaseDrone::Look(const FInputActionValue& Value)
 	}
 }	
 
+void ABaseDrone::Interact(const FInputActionValue& Value, APlayerController* CallingController)
+{
+	if (!CurrentFocusedActor)
+	{
+		LOG_Char_WARNING(TEXT("Handle_Interact: No focused actor."));
+		return;
+	}
+
+	LOG_Char_WARNING(TEXT("Interacted with: %s"), *CurrentFocusedActor->GetName());
+
+	if (CurrentFocusedActor->Implements<UInteractableInterface>())
+	{
+		AActor* actor = CurrentFocusedActor;
+		if (!IsValid(actor))
+		{
+			return;
+		}
+		if(IsValid(CallingController))
+		
+		if (CallingController)
+		{
+			IInteractableInterface::Execute_Interact(CurrentFocusedActor, CallingController); /// 여기는 이거 말고 드론에 붙이는 함수가 필요할 것 같습니다...
+			LOG_Char_WARNING(TEXT("Handle_Interact: Called Interact on %s"), *actor->GetName());
+			LOG_Char_WARNING(TEXT("Equipped item on slot"));
+		}
+		else
+		{
+			LOG_Char_WARNING(TEXT("Handle_Interact: Controller is nullptr"));
+		}
+	}
+	else
+	{
+		LOG_Char_WARNING(TEXT("Handle_Interact: %s does not implement IInteractableInterface"), *CurrentFocusedActor->GetName());
+	}
+	LOG_Char_WARNING(TEXT("Interact Ended"));
+}
+
+void ABaseDrone::TraceInteractableActor()
+{// 카메라 컴포넌트가 Drone에 붙어있다고 가정
+	if (!IsValid(Camera))
+	{
+		return;
+	}
+	FVector ViewLocation = Camera->GetComponentLocation();
+	FRotator ViewRotation = Camera->GetComponentRotation();
+
+	FVector Start = ViewLocation;
+	FVector End = Start + (ViewRotation.Vector() * TraceDistance);
+
+	FHitResult Hit;
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+	
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(
+		Hit, Start, End, ECC_Visibility, Params);
+
+#if WITH_EDITOR
+	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 0.1f);
+#endif
+
+	if (bHit && Hit.GetActor() && Hit.GetActor()->Implements<UInteractableInterface>())
+	{
+
+		LOG_Char_WARNING(TEXT("Interactable object"));
+		if (CurrentFocusedActor != Hit.GetActor())
+		{
+			CurrentFocusedActor = Hit.GetActor();
+
+			FString Message = IInteractableInterface::Execute_GetInteractMessage(CurrentFocusedActor);
+
+			if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+			{
+				if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+				{
+					if (UInGameHUD* HUD = Cast<UInGameHUD>(UIManager->GetInGameHUD()))
+					{
+						UE_LOG(LogTemp, Warning, TEXT("SetInteractMessage to %s"), *Message);
+						HUD->SetInteractMessage(Message);
+						HUD->SetInteractMessageVisible(true);
+					}
+				}
+			}
+		}
+	}
+	else
+	{
+
+		LOG_Char_WARNING(TEXT("no focus actor"));
+		if (CurrentFocusedActor)
+		{
+			CurrentFocusedActor = nullptr;
+
+			if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+			{
+				if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+				{
+					if (UInGameHUD* HUD = Cast<UInGameHUD>(UIManager->GetInGameHUD()))
+					{
+						HUD->SetInteractMessageVisible(false);
+					}
+				}
+			}
+		}
+	}
+}
+
 void ABaseDrone::OnRep_CameraPitch()
 {
 	if (Camera)
@@ -219,7 +373,6 @@ void ABaseDrone::OnRep_CameraPitch()
 		Camera->SetRelativeRotation(CameraRot);
 	}
 }
-
 
 void ABaseDrone::Server_ReturnAsItem_Implementation()
 {
@@ -270,6 +423,7 @@ void ABaseDrone::Multicast_ReturnToPlayer_Implementation()
 		MyPC->Input_DroneExit(0);
 	}
 }
+
 // CPP 구현
 void ABaseDrone::OnDroneHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
@@ -333,5 +487,48 @@ void ABaseDrone::SpawnDroneItemAtCurrentLocation()
 	else
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[SpawnDroneItemAtCurrentLocation] 드론 아이템 스폰 실패"));
+	}
+}
+
+void ABaseDrone::TogglePostProcessEffect()
+{
+	if (PostProcessMaterials.Num() == 0 || !Camera)
+	{
+		return;
+	}
+
+	int32 NextIndex = (CurrentPPIndex + 1) % (PostProcessMaterials.Num() + 1); // +1은 '없음' 상태 포함
+	Server_TogglePostProcessEffect(); // 서버에 요청
+}
+
+void ABaseDrone::Server_TogglePostProcessEffect_Implementation()
+{
+	int32 NextIndex = (CurrentPPIndex + 1) % (PostProcessMaterials.Num() + 1);
+	ApplyPostProcessMaterial(NextIndex);
+}
+
+void ABaseDrone::ApplyPostProcessMaterial(int32 NewIndex)
+{
+	// 이전 효과 제거
+	Camera->PostProcessSettings.WeightedBlendables.Array.Empty();
+	CurrentPPIndex = NewIndex;
+
+	if (NewIndex < PostProcessMaterials.Num() && PostProcessMaterials[NewIndex])
+	{
+		if (DynamicPPInstances.Num() <= NewIndex || !DynamicPPInstances[NewIndex])
+		{
+			// 동적 인스턴스가 없다면 생성
+			UMaterialInstanceDynamic* Dyn = UMaterialInstanceDynamic::Create(PostProcessMaterials[NewIndex], this);
+			if (DynamicPPInstances.Num() <= NewIndex)
+			{
+				DynamicPPInstances.SetNum(NewIndex + 1);
+			}
+			DynamicPPInstances[NewIndex] = Dyn;
+		}
+
+		FWeightedBlendable Blendable;
+		Blendable.Object = DynamicPPInstances[NewIndex];
+		Blendable.Weight = 1.0f;
+		Camera->PostProcessSettings.WeightedBlendables.Array.Add(Blendable);
 	}
 }

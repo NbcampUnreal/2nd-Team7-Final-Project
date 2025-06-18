@@ -3,6 +3,7 @@
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "Framework/GameMode/LCRoomGameMode.h"
 #include "Kismet/GameplayStatics.h"
+#include "GameFramework/GameUserSettings.h"
 
 #include "LastCanary.h"
 
@@ -34,6 +35,9 @@ void ULCGameInstanceSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		}
 	}
 #endif
+
+	//세이브 데이터 불러오기
+	LoadSaveData();
 }
 
 ULCUIManager* ULCGameInstanceSubsystem::GetUIManager() const
@@ -109,4 +113,25 @@ UDataTable* ULCGameInstanceSubsystem::GetItemDataTable() const
 UDataTable* ULCGameInstanceSubsystem::GetGunDataTable() const
 {
 	return GunDataTable;
+}
+
+void ULCGameInstanceSubsystem::LoadSaveData()
+{
+	if (!IsValid(GetUIManager()))
+	{
+		LOG_Char_WARNING(TEXT("UIManager가 유효하지 않음"));		
+		return;
+	}
+	else
+	{
+		LOG_Char_WARNING(TEXT("UIManager가 유효함"));
+	}
+
+	if (UGameUserSettings* Settings = GEngine->GetGameUserSettings())
+	{
+		
+		LOG_Char_WARNING(TEXT("Settings->LoadSettings(true)"));
+		Settings->LoadSettings(true);
+		Settings->ApplySettings(false);	
+	}
 }

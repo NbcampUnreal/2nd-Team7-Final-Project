@@ -40,6 +40,7 @@
 #include "../Plugins/ALS-Refactored-4.15/Source/ALS/Public/AlsLinkedAnimationInstance.h"
 #include "SaveGame/LCLocalPlayerSaveGame.h"
 #include "Components/CapsuleComponent.h"
+#include "Framework/GameState/LCGameState.h"
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -163,6 +164,10 @@ void ABaseCharacter::BeginPlay()
 
 float ABaseCharacter::GetBrightness()
 {
+	if (!IsValid(GetController()))
+	{
+		return 0.0f;
+	}
 	ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
 	if (!IsValid(PC))
 	{
@@ -236,6 +241,7 @@ void ABaseCharacter::NotifyControllerChanged()
 
 void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo)
 {
+	if (!IsLocallyControlled()) return; 
 	Super::CalcCamera(DeltaTime, ViewInfo);
 	UpdateGunWallClipOffset(DeltaTime);
 	if (bIsMantling)
@@ -282,22 +288,53 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 		if (Distance < 2.0f) // 2.0f 단위 이내로 가까워지면
 		{
 			bIsTransitioning = false;
-
+			SpringArm->bEnableCameraLag = false;
+			SpringArm->bEnableCameraRotationLag = false;
 			if (bIsAiming && IsValid(CurrentRifleMesh) && !bIsReloading)
 			{
 				// Scope에 붙이기
-				SpringArm->AttachToComponent(CurrentRifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
+				UE_LOG(LogTemp, Warning, TEXT("스프링암이 스코프에 붙었음"));
+				//SpringArm->AttachToComponent(CurrentRifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
+				AttachCameraToRifle();
+				SpringArm->bUsePawnControlRotation = false;
 			}
 			else
 			{
 				// FirstPersonCamera에 붙이기
-				SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+				UE_LOG(LogTemp, Warning, TEXT("스프링암이 FPS에 붙었음"));
+				AttachCameraToCharacter();
+				//SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 				SpringArm->TargetArmLength = bIsFPSCamera ? 0.0f : 200.0f;
+				SpringArm->bUsePawnControlRotation = true;
 			}
-			SpringArm->bUsePawnControlRotation = true;
+		}
+	}
+	ViewInfo.Rotation.Roll = 0.0f;
+	
+}
+
+void ABaseCharacter::AttachCameraToRifle()
+{
+	if (IsValid(CurrentRifleMesh))
+	{
+		if (IsLocallyControlled())
+		{
+			SpringArm->AttachToComponent(CurrentRifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
 		}
 	}
 }
+
+void ABaseCharacter::AttachCameraToCharacter()
+{
+	if (IsValid(GetMesh()))
+	{
+		if (IsLocallyControlled())
+		{
+			SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+		}
+	}
+}
+
 
 void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 {
@@ -342,6 +379,7 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 				}
 				else
 				{
+					SpringArm->bUsePawnControlRotation = true;
 					StopAiming();
 					return;
 				}
@@ -481,24 +519,11 @@ void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue, floa
 	const FVector2f Value{ ActionValue.Get<FVector2D>() };
 
 	if (!Controller) return;
-
+	ReduceRecoil(0.3f);
 	AddControllerYawInput(Value.X * Sensivity);
 	AddControllerPitchInput(Value.Y * Sensivity);
 }
 
-void ABaseCharacter::CameraShake(float Vertical, float Horizontal)
-{
-	// 새로운 반동량을 기존 값에 누적
-	RecoilStepPitch += Vertical / RecoilMaxSteps;
-	RecoilStepYaw += FMath::RandRange(-Horizontal, Horizontal) / RecoilMaxSteps;
-
-	// 타이머가 안 돌고 있을 때만 시작
-	if (!GetWorld()->GetTimerManager().IsTimerActive(RecoilTimerHandle))
-	{
-		RecoilStep = 0;
-		GetWorld()->GetTimerManager().SetTimer(RecoilTimerHandle, this, &ABaseCharacter::ApplyRecoilStep, 0.02f, true);
-	}
-}
 
 void ABaseCharacter::StartTrackingDrone()
 {
@@ -513,22 +538,277 @@ void ABaseCharacter::StopTrackingDrone()
 
 void ABaseCharacter::UpdateRotationToDrone()
 {
-	if (ControlledDrone)
+	if (!IsValid(ControlledDrone))
 	{
-		FVector ToDrone = ControlledDrone->GetActorLocation() - GetActorLocation();
-		ToDrone.Z = 0; // Pitch는 무시해서 Yaw 회전만
+		return;
+	}
+	if (!IsValid(Controller))
+	{
+		return;
+	}
+	FVector ToDrone = ControlledDrone->GetActorLocation() - GetActorLocation();
+	ToDrone.Z = 0; // Pitch는 무시해서 Yaw 회전만
 
-		if (!ToDrone.IsNearlyZero())
+	if (!ToDrone.IsNearlyZero())
+	{
+		FRotator LookAtRotation = ToDrone.Rotation();
+
+		// 부드러운 회전 (선택)
+		FRotator NewRotation = FMath::RInterpTo(GetActorRotation(), LookAtRotation, GetWorld()->GetDeltaSeconds(), 5.0f);
+
+		SetActorRotation(NewRotation);
+		SpringArm->SetWorldRotation(NewRotation);
+		Controller->SetControlRotation(NewRotation); // 컨트롤러 회전도 고정
+	}
+}
+
+// 방법 1: 즉시 반동 + 점진적 복구 (일반적인 방식)
+void ABaseCharacter::ApplyRecoil(float Vertical, float Horizontal)
+{
+	if (!Controller) return;
+
+	// 연사 배수 계산
+	float ShotMultiplier = FMath::Min(1.0f + (CurrentShotCount * 0.15f), 2.5f);
+
+	// 목표 반동량 설정
+	TargetRecoil.X += Vertical * ShotMultiplier;
+	TargetRecoil.Y += FMath::RandRange(-Horizontal, Horizontal) * ShotMultiplier;
+
+	CurrentShotCount++;
+
+	// 반동 적용 타이머 시작
+	if (!GetWorld()->GetTimerManager().IsTimerActive(RecoilRecoveryTimer))
+	{
+		GetWorld()->GetTimerManager().SetTimer(RecoilRecoveryTimer, this,
+			&ABaseCharacter::UpdateRecoil, 0.016f, true);
+	}
+
+	// 연사 리셋 타이머
+	GetWorld()->GetTimerManager().ClearTimer(ShotResetTimer);
+	GetWorld()->GetTimerManager().SetTimer(ShotResetTimer, this,
+		&ABaseCharacter::ResetShotCounter, 0.3f, false);
+}
+
+void ABaseCharacter::RecoverFromRecoil()
+{
+	if (!Controller || AccumulatedRecoil.IsNearlyZero(0.01f))
+	{
+		GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
+		return;
+	}
+
+	float DeltaTime = GetWorld()->GetDeltaSeconds();
+	float RecoveryAmount = RecoilRecoverySpeed * DeltaTime;
+
+	// 점진적으로 원래 위치로 복구
+	FVector2D RecoveryVector = AccumulatedRecoil;
+	RecoveryVector.Normalize();
+	RecoveryVector *= RecoveryAmount;
+
+	if (RecoveryVector.Size() >= AccumulatedRecoil.Size())
+	{
+		// 완전 복구
+		AddControllerPitchInput(AccumulatedRecoil.X);
+		AddControllerYawInput(-AccumulatedRecoil.Y);
+		AccumulatedRecoil = FVector2D::ZeroVector;
+	}
+	else
+	{
+		// 부분 복구
+		AddControllerPitchInput(RecoveryVector.X);
+		AddControllerYawInput(-RecoveryVector.Y);
+		AccumulatedRecoil -= RecoveryVector;
+	}
+}
+
+// 스무스하게 반동주기
+void ABaseCharacter::ApplySmoothRecoil(float Vertical, float Horizontal)
+{
+	if (!Controller) return;
+
+	// 목표 반동량 설정
+	float ShotMultiplier = FMath::Min(1.0f + (CurrentShotCount * 0.15f), 2.5f);
+	TargetRecoil.X += Vertical * ShotMultiplier;
+	TargetRecoil.Y += FMath::RandRange(-Horizontal, Horizontal) * ShotMultiplier;
+
+	CurrentShotCount++;
+
+	// 스무딩된 반동 적용 시작
+	if (!GetWorld()->GetTimerManager().IsTimerActive(RecoilRecoveryTimer))
+	{
+		GetWorld()->GetTimerManager().SetTimer(RecoilRecoveryTimer, this,
+			&ABaseCharacter::ApplySmoothRecoilStep, 0.016f, true);
+	}
+
+	// 연사 리셋 타이머
+	GetWorld()->GetTimerManager().ClearTimer(ShotResetTimer);
+	GetWorld()->GetTimerManager().SetTimer(ShotResetTimer, this,
+		&ABaseCharacter::ResetShotCounter, 0.1f, false);
+}
+
+void ABaseCharacter::ApplySmoothRecoilStep()
+{
+	if (!Controller)
+	{
+		GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
+		return;
+	}
+
+	float DeltaTime = GetWorld()->GetDeltaSeconds();
+
+	// 목표 반동량으로 보간
+	FVector2D RecoilDelta = (TargetRecoil - AccumulatedRecoil) * (5.0f * DeltaTime);
+
+	if (!RecoilDelta.IsNearlyZero(0.01f))
+	{
+		AddControllerPitchInput(RecoilDelta.X);
+		AddControllerYawInput(RecoilDelta.Y);
+		AccumulatedRecoil += RecoilDelta;
+	}
+
+	// 자동 복구 (사격이 멈춘 후)
+	if (GetWorld()->GetTimerManager().GetTimerRemaining(ShotResetTimer) <= 0.0f)
+	{
+		FVector2D RecoveryDelta = AccumulatedRecoil * (RecoilRecoverySpeed * DeltaTime);
+
+		if (RecoveryDelta.Size() >= AccumulatedRecoil.Size())
 		{
-			FRotator LookAtRotation = ToDrone.Rotation();
-
-			// 부드러운 회전 (선택)
-			FRotator NewRotation = FMath::RInterpTo(GetActorRotation(), LookAtRotation, GetWorld()->GetDeltaSeconds(), 5.0f);
-
-			SetActorRotation(NewRotation);
-			SpringArm->SetWorldRotation(NewRotation);
-			Controller->SetControlRotation(NewRotation); // 컨트롤러 회전도 고정
+			// 완전 복구
+			AddControllerPitchInput(-AccumulatedRecoil.X);
+			AddControllerYawInput(-AccumulatedRecoil.Y);
+			AccumulatedRecoil = FVector2D::ZeroVector;
+			TargetRecoil = FVector2D::ZeroVector;
+			GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
 		}
+		else
+		{
+			AddControllerPitchInput(-RecoveryDelta.X);
+			AddControllerYawInput(-RecoveryDelta.Y);
+			AccumulatedRecoil -= RecoveryDelta;
+			TargetRecoil -= RecoveryDelta;
+		}
+	}
+}
+
+void ABaseCharacter::UpdateRecoil()
+{
+	if (!Controller)
+	{
+		GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
+		return;
+	}
+
+	float DeltaTime = GetWorld()->GetDeltaSeconds();
+
+	// 1. 목표 반동량으로 이동 (반동 적용 단계)
+	FVector2D RecoilDelta = (TargetRecoil - AccumulatedRecoil) * (5.0f * DeltaTime);
+
+	if (!RecoilDelta.IsNearlyZero(0.01f))
+	{
+		AddControllerPitchInput(-RecoilDelta.X);
+		AddControllerYawInput(RecoilDelta.Y);
+		AccumulatedRecoil += RecoilDelta;
+	}
+
+	// 2. 사격이 멈춘 후 자동 복구
+	if (GetWorld()->GetTimerManager().GetTimerRemaining(ShotResetTimer) <= 0.0f)
+	{
+		if (AccumulatedRecoil.IsNearlyZero(0.01f))
+		{
+			// 완전히 복구됨 - 타이머 정리
+			AccumulatedRecoil = FVector2D::ZeroVector;
+			TargetRecoil = FVector2D::ZeroVector;
+			GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
+			return;
+		}
+
+		FVector2D RecoveryDelta = AccumulatedRecoil * (RecoilRecoverySpeed * DeltaTime);
+
+		if (RecoveryDelta.Size() >= AccumulatedRecoil.Size())
+		{
+			// 완전 복구
+			AddControllerPitchInput(AccumulatedRecoil.X);
+			AddControllerYawInput(-AccumulatedRecoil.Y);
+			AccumulatedRecoil = FVector2D::ZeroVector;
+			TargetRecoil = FVector2D::ZeroVector;
+			GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
+		}
+		else
+		{
+			// 점진적 복구
+			AddControllerPitchInput(RecoveryDelta.X);
+			AddControllerYawInput(-RecoveryDelta.Y);
+			AccumulatedRecoil -= RecoveryDelta;
+			TargetRecoil -= RecoveryDelta;
+		}
+	}
+}
+
+void ABaseCharacter::ResetShotCounter()
+{
+	CurrentShotCount = 0;
+}
+
+// ===== 이 부분이 핵심! 직접 반동 초기화 함수들 =====
+
+// 반동 완전 리셋
+void ABaseCharacter::ResetRecoil()
+{
+	AccumulatedRecoil = FVector2D::ZeroVector;
+	TargetRecoil = FVector2D::ZeroVector;
+	GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
+}
+
+// 반동 부분 리셋 (특정 축만)
+void ABaseCharacter::ResetRecoilPitch()
+{
+	AccumulatedRecoil.X = 0.0f;
+	TargetRecoil.X = 0.0f;
+}
+
+void ABaseCharacter::ResetRecoilYaw()
+{
+	AccumulatedRecoil.Y = 0.0f;
+	TargetRecoil.Y = 0.0f;
+}
+
+// 반동 감소 (완전 리셋이 아닌 부분 감소)
+void ABaseCharacter::ReduceRecoil(float ReductionFactor)
+{
+	AccumulatedRecoil *= (1.0f - FMath::Clamp(ReductionFactor, 0.0f, 1.0f));
+	TargetRecoil *= (1.0f - FMath::Clamp(ReductionFactor, 0.0f, 1.0f));
+
+	// 거의 0에 가까우면 완전 리셋
+	if (AccumulatedRecoil.Size() < 0.1f)
+	{
+		ResetRecoil();
+	}
+}
+
+// 현재 반동 상태 확인용
+FVector2D ABaseCharacter::GetCurrentRecoil() const
+{
+	return AccumulatedRecoil;
+}
+
+bool ABaseCharacter::HasActiveRecoil() const
+{
+	return !AccumulatedRecoil.IsNearlyZero(0.01f);
+}
+
+
+/*
+void ABaseCharacter::CameraShake(float Vertical, float Horizontal)
+{
+	// 새로운 반동량을 기존 값에 누적
+	RecoilStepPitch += Vertical / RecoilMaxSteps;
+	RecoilStepYaw += FMath::RandRange(-Horizontal, Horizontal) / RecoilMaxSteps;
+
+	// 타이머가 안 돌고 있을 때만 시작
+	if (!GetWorld()->GetTimerManager().IsTimerActive(RecoilTimerHandle))
+	{
+		RecoilStep = 0;
+		GetWorld()->GetTimerManager().SetTimer(RecoilTimerHandle, this, &ABaseCharacter::ApplyRecoilStep, 0.02f, true);
 	}
 }
 
@@ -570,7 +850,7 @@ void ABaseCharacter::ApplyRecoilStep()
 		GetWorld()->GetTimerManager().ClearTimer(RecoilTimerHandle);
 	}
 }
-
+*/
 
 void ABaseCharacter::Handle_Look(const FInputActionValue& ActionValue)
 {
@@ -1063,8 +1343,58 @@ void ABaseCharacter::Handle_Reload()
 	{
 		return;
 	}
+	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
+	if (!IsValid(EquippedItem))
+	{
+		return;
+	}
+	AGunBase* Gun = Cast<AGunBase>(EquippedItem);
+	if (!IsValid(Gun))
+	{
+		return;
+	}
+	RequestReload(Gun);
+}
+
+void ABaseCharacter::RequestReload(AGunBase* Gun)
+{
+	if (!IsValid(Gun))
+	{
+		return;
+	}
+	Gun->CheckReloadCondition();
+}
+
+void ABaseCharacter::StartReload()
+{
 	CancelInteraction();
-	Server_PlayReload();
+	bIsReloading = true;
+	Server_PlayMontage(ReloadMontage);
+	//Server_PlayReload();
+}
+
+void ABaseCharacter::GunReloadAnimationNotified()
+{
+	//재생 후 notify로
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!IsValid(PC))
+	{
+		return;
+	}
+	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
+	if (!IsValid(EquippedItem))
+	{
+		return;
+	}
+	AGunBase* Gun = Cast<AGunBase>(EquippedItem);
+	if (!IsValid(Gun))
+	{
+		return;
+	}		
+	LOG_Item_WARNING(TEXT("총 리로드!"));
+
+	Gun->Reload();
+	bIsReloading = false;
 }
 
 void ABaseCharacter::Server_PlayReload_Implementation()
@@ -1074,10 +1404,6 @@ void ABaseCharacter::Server_PlayReload_Implementation()
 
 void ABaseCharacter::Multicast_PlayReload_Implementation()
 {
-	if (HasAuthority())
-	{
-		UE_LOG(LogTemp, Warning, TEXT("AnimInstance on server: %s"), *GetNameSafe(GetMesh()->GetAnimInstance()));
-	}
 	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
 	if (!EquippedItem)
 	{
@@ -1152,6 +1478,7 @@ void ABaseCharacter::Multicast_StopReload_Implementation()
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && ReloadMontage)
 	{
+		bIsReloading = false;
 		AnimInstance->Montage_Stop(0.2f, ReloadMontage); // 부드럽게 블렌드 아웃
 	}
 }
@@ -1229,11 +1556,11 @@ void ABaseCharacter::Handle_Interact(const FInputActionValue& ActionValue)
 
 	if (!CurrentFocusedActor)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Handle_Interact: No focused actor."));
+		LOG_Char_WARNING(TEXT("Handle_Interact: No focused actor."));
 		return;
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("Interacted with: %s"), *CurrentFocusedActor->GetName());
+	LOG_Char_WARNING(TEXT("Interacted with: %s"), *CurrentFocusedActor->GetName());
 
 	if (bIsPlayingInteractionMontage)
 	{
@@ -1252,8 +1579,8 @@ void ABaseCharacter::Handle_Interact(const FInputActionValue& ActionValue)
 		{
 			//CancelInteraction();
 			//IInteractableInterface::Execute_Interact(CurrentFocusedActor, PC);
-			UE_LOG(LogTemp, Log, TEXT("Handle_Interact: Called Interact on %s"), *actor->GetName());
-			UE_LOG(LogTemp, Log, TEXT("Equipped item on slot"));
+			LOG_Char_WARNING(TEXT("Handle_Interact: Called Interact on %s"), *actor->GetName());
+			LOG_Char_WARNING(TEXT("Equipped item on slot"));
 			InteractAfterPlayMontage(actor);
 		}
 		else
@@ -1337,6 +1664,7 @@ void ABaseCharacter::CancelInteraction()
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && CurrentInteractMontage)
 	{
+		UE_LOG(LogTemp, Log, TEXT("Stopping montage: %s"), *CurrentInteractMontage->GetName());
 		AnimInstance->Montage_Stop(0.2f, CurrentInteractMontage); // 부드럽게 블렌드 아웃
 		Server_CancelInteraction();
 		bIsPlayingInteractionMontage = false;
@@ -1406,7 +1734,72 @@ void ABaseCharacter::Multicast_PlayMontage_Implementation(UAnimMontage* MontageT
 	UE_LOG(LogTemp, Warning, TEXT("플레이 애니메이션. 멀티에서"));
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	AnimInstance->Montage_Play(MontageToPlay);
-	CurrentInteractMontage = MontageToPlay;
+	//CurrentInteractMontage = MontageToPlay;
+}
+
+void ABaseCharacter::UseItemAfterPlayMontage(AItemBase* EquippedItem)
+{
+	UAnimMontage* MontageToPlay = nullptr;
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (!IsValid(AnimInstance))
+	{
+		return;
+	}
+	CurrentUsingItem = EquippedItem;
+	if (CurrentUsingItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Consumable")))
+	{
+		MontageToPlay = UsingBandageMontage;
+	}
+	else
+	{
+		LOG_Char_WARNING(TEXT("태그가 없음"));
+		return;
+	}
+	if (!IsValid(MontageToPlay))
+	{
+		LOG_Char_WARNING(TEXT("Anim Montage does not exist."));
+		return;
+	}
+	CurrentUseItemMontage = MontageToPlay;
+	bIsPlayingUseItemMontage = true;
+	LOG_Char_WARNING(TEXT("플레이 애니메이션."));
+	Server_PlayMontage(MontageToPlay);
+}
+
+void ABaseCharacter::UseItemAnimationNotified()
+{
+	//재생 후 notify로
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!IsValid(PC))
+	{
+		return;
+	}
+	if (!IsValid(CurrentUsingItem))
+	{
+		return;
+	}
+	CurrentUsingItem->UseItem();
+	bIsPlayingUseItemMontage = false;
+}
+
+void ABaseCharacter::CancelUseItem()
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && CurrentUseItemMontage)
+	{
+		AnimInstance->Montage_Stop(0.2f, CurrentUseItemMontage); // 부드럽게 블렌드 아웃
+		Server_CancelUseItem();
+		bIsPlayingUseItemMontage = false;
+	}
+}
+
+void ABaseCharacter::Server_CancelUseItem_Implementation()
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && CurrentUseItemMontage)
+	{
+		AnimInstance->Montage_Stop(0.2f, CurrentUseItemMontage); // 부드럽게 블렌드 아웃
+	}
 }
 
 void ABaseCharacter::PickupItem()
@@ -1669,6 +2062,8 @@ void ABaseCharacter::SetCurrentQuickSlotIndex(int32 NewIndex)
 	{
 		return;
 	}
+
+	StopReload();
 	UE_LOG(LogTemp, Warning, TEXT("Request Server to change QuickSlotindex"));
 	Server_SetQuickSlotIndex(NewIndex);
 }
@@ -1904,7 +2299,6 @@ void ABaseCharacter::GetFallDamage(float Velocity)
 void ABaseCharacter::HandlePlayerDeath()
 {
 	UE_LOG(LogTemp, Log, TEXT("Character Died"));
-	Client_HandlePlayerVoiceChattingState();
 	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
@@ -1913,21 +2307,56 @@ void ABaseCharacter::HandlePlayerDeath()
 	if (!IsValid(PC))
 	{
 		return;
-	}	
+	}
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
 	{
 		return;
 	}
 
-	DropAllItemsOnDeath();
+	//if 캐릭터가 죽으면
+	//장착 아이템 제거
+	//캐릭터 래그돌
+	//보이스 채팅 관련 로직 -> 블루프린트에서 마저 진행
+	//캐릭터 상태 변경 -> 멀티캐스트까지
+	//관전 상태로 넘어갈 준비
+	//게이트 액터 or 게임 스테이트 or 게임 모드에 어떻게든 상태 알리기
 
-	MyPlayerState->CurrentState = EPlayerState::Dead;
-	MyPlayerState->SetInGameStatus(EPlayerInGameStatus::Spectating);
-	PC->OnPlayerExitActivePlay();
-	Multicast_SetPlayerInGameStateOnDie();
+	NotifyPlayerDeathToGameState();
+	DropAllItemsOnDeath();
 	UnequipCurrentItem();
 	StartRagdolling();
+	Client_HandlePlayerVoiceChattingState();
+	MyPlayerState->CurrentState = EPlayerState::Dead;
+	MyPlayerState->SetInGameStatus(EPlayerInGameStatus::Spectating);
+	Multicast_SetPlayerInGameStateOnDie();
+	PC->PlayerExitActivePlayOnDeath();
+}
+
+void ABaseCharacter::NotifyPlayerDeathToGameState()
+{
+	AGameStateBase* GameState = GetWorld()->GetGameState<AGameStateBase>();
+	if (!GameState)
+	{
+		UE_LOG(LogTemp, Log, TEXT("게임스테이트가 유효하지 않음"));
+		return;
+	}
+	ALCGameState* LCGameState = Cast<ALCGameState>(GameState);
+	if (!LCGameState)
+	{
+		UE_LOG(LogTemp, Log, TEXT("LCGameState가 유효하지 않음"));
+		return;
+	}
+
+	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
+	if (!IsValid(MyPlayerState))
+	{
+		UE_LOG(LogTemp, Log, TEXT("PlayerState가 유효하지 않음"));
+		return;
+	}
+
+	//여기서부터는 게임스테이트의 코드가 바뀔 것은 알지만 테스트를 위해서 임의로 넣은 코드입니다.
+	LCGameState->MarkPlayerAsEscaped(MyPlayerState);
 }
 
 void ABaseCharacter::Client_HandlePlayerVoiceChattingState_Implementation()
@@ -1974,6 +2403,10 @@ float ABaseCharacter::CalculateFallDamage(float Velocity)
 
 void ABaseCharacter::EscapeThroughGate()
 {
+	//if 캐릭터가 게이트에 상호작용을 하면
+	//보이스 채팅 관련 로직 -> 블루프린트에서 마저 진행
+	//캐릭터 상태 변경 -> 멀티캐스트까지
+	//관전 상태로 넘어갈 준비
 	Client_HandlePlayerVoiceChattingState();
 	ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
 	if (!IsValid(PC))
@@ -1987,8 +2420,8 @@ void ABaseCharacter::EscapeThroughGate()
 	}
 	MyPlayerState->CurrentState = EPlayerState::Escape;
 	MyPlayerState->SetInGameStatus(EPlayerInGameStatus::Spectating);	
-	PC->OnPlayerExitActivePlay();
 	Multicast_SetPlayerInGameStateOnEscapeGate();
+	PC->PlayerExitActivePlayOnEscapeGate();
 }
 
 void ABaseCharacter::Multicast_SetPlayerInGameStateOnEscapeGate_Implementation()
@@ -2431,8 +2864,6 @@ bool ABaseCharacter::UseEquippedItem(float ActionValue)
 		return true;
 	}
 
-
-
 	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
 	if (!EquippedItem)
 	{
@@ -2442,8 +2873,16 @@ bool ABaseCharacter::UseEquippedItem(float ActionValue)
 
 	if (ActionValue >= 0.5f)
 	{
+
+		if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Consumable")))
+		{
+			UseItemAfterPlayMontage(EquippedItem);
+			return true;
+		}
+
 		if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))
 		{
+			EquippedItem->UseItem();
 			ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
 			if (PC)
 			{
@@ -2475,7 +2914,6 @@ bool ABaseCharacter::UseEquippedItem(float ActionValue)
 				UE_LOG(LogTemp, Warning, TEXT("조준하세요"));
 				return true;
 			}
-
 		}
 		UE_LOG(LogTemp, Warning, TEXT("UseItem"));
 		EquippedItem->UseItem();
@@ -2766,4 +3204,103 @@ void ABaseCharacter::StopHealing()
 	HealingTicksRemaining = 0;
 }
 
+void ABaseCharacter::ApplyMovementDebuff_Implementation(float SlowRate, float Duration)
+{
+	LOG_Art(Log, TEXT("[BaseCharacter] ApplyMovementDebuff called → SlowRate: %.2f"), SlowRate);
 
+	if (bIsMovementDebuffed || !AlsCharacterMovement)
+	{
+		LOG_Art_ERROR(TEXT("AlsCharacterMovement is null"));
+
+		return;
+	}
+
+	bIsMovementDebuffed = true;
+	DebuffSlowRate = SlowRate;
+
+	// 현재 속도값을 백업
+	OriginalWalkSpeed = AlsCharacterMovement->WalkForwardSpeed;
+	OriginalRunSpeed = AlsCharacterMovement->RunForwardSpeed;
+	OriginalSprintSpeed = AlsCharacterMovement->SprintSpeed;
+
+
+	const float NewRunSpeed = AlsCharacterMovement->RunForwardSpeed * SlowRate;
+	LOG_Art(Log, TEXT("[BaseCharacter] NewRunSpeed: %.2f"), NewRunSpeed)
+
+	// 느려진 값으로 설정
+	AlsCharacterMovement->SetGaitSettings(
+		OriginalWalkSpeed * SlowRate,
+		OriginalWalkSpeed * SlowRate,
+		OriginalRunSpeed * SlowRate,
+		OriginalRunSpeed * SlowRate,
+		OriginalSprintSpeed * SlowRate,
+		OriginalRunSpeed * SlowRate / 2
+	);
+}
+
+void ABaseCharacter::RemoveMovementDebuff_Implementation()
+{
+	if (!bIsMovementDebuffed || !AlsCharacterMovement)
+	{
+		return;
+	}
+
+	bIsMovementDebuffed = false;
+	DebuffSlowRate = 1.f;
+
+	// 원래 속도로 복원
+	AlsCharacterMovement->SetGaitSettings(
+		OriginalWalkSpeed,
+		OriginalWalkSpeed,
+		OriginalRunSpeed,
+		OriginalRunSpeed,
+		OriginalSprintSpeed,
+		OriginalRunSpeed / 2
+	);
+}
+
+void ABaseCharacter::GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) const
+{
+	TagContainer = OwnedTags;
+}
+void ABaseCharacter::SetWalkieTalkieChannelStatus(bool bActive)
+{
+	bool bPreviousStatus = bHasWalkieTalkieChannel;
+	bHasWalkieTalkieChannel = bActive;
+
+	// 상태가 변경된 경우에만 블루프린트 이벤트 호출
+	if (bPreviousStatus != bActive)
+	{
+		if (bActive)
+		{
+			LOG_Item_WARNING(TEXT("[SetWalkieTalkieChannelStatus] 워키토키 채널 추가"));
+			AddWalkieTalkieChannel();
+		}
+		else
+		{
+			LOG_Item_WARNING(TEXT("[SetWalkieTalkieChannelStatus] 워키토키 채널 제거"));
+			RemoveWalkieTalkieChannel();
+		}
+	}
+}
+
+void ABaseCharacter::Client_SetWalkieTalkieChannelStatus_Implementation(bool bActive)
+{
+	bool bPreviousStatus = bHasWalkieTalkieChannel;
+	bHasWalkieTalkieChannel = bActive;
+
+	// 상태가 변경된 경우에만 블루프린트 이벤트 호출
+	if (bPreviousStatus != bActive)
+	{
+		if (bActive)
+		{
+			LOG_Item_WARNING(TEXT("[Client_SetWalkieTalkieChannelStatus] 클라이언트에서 워키토키 채널 추가"));
+			AddWalkieTalkieChannel();
+		}
+		else
+		{
+			LOG_Item_WARNING(TEXT("[Client_SetWalkieTalkieChannelStatus] 클라이언트에서 워키토키 채널 제거"));
+			RemoveWalkieTalkieChannel();
+		}
+	}
+}

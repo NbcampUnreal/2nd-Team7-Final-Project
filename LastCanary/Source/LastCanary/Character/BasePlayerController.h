@@ -248,8 +248,13 @@ public:
 
 	void HandleExitGate();
 
+	void NotifyAtGameState();
+
 	UFUNCTION()
-	void OnPlayerExitActivePlay();
+	void PlayerExitActivePlayOnDeath();
+	
+	UFUNCTION()
+	void PlayerExitActivePlayOnEscapeGate();
 
 	UFUNCTION(Client, Reliable)
 	void Client_OnPlayerExitActivePlay();

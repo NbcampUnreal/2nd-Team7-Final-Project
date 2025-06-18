@@ -7,23 +7,39 @@
 
 void UBaseCharacterAnimNotify::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation)
 {
-    if (AActor* Owner = MeshComp->GetOwner())
+    AActor* Owner = MeshComp->GetOwner();
+    if (!IsValid(Owner))
     {
-        // 캐릭터로 캐스팅
-        if (ABaseCharacter* Player = Cast<ABaseCharacter>(Owner))
+        return;
+    }
+    ABaseCharacter* Player = Cast<ABaseCharacter>(Owner);
+    // 캐릭터로 캐스팅
+    if (!IsValid(Player))
+    {
+        return;
+    }
+    if (!Player->IsLocallyControlled())
+    {
+        return;
+    }
+    switch (NotifyType)
+    {
+    case ECharacterNotifyType::Interact:
+        if (Player->InteractTargetActor)
         {
-            // 캐릭터가 가지고 있는 TargetActor 사용해서 함수 호출
-            if (Player->InteractTargetActor)
+            if (Player->IsLocallyControlled())
             {
-                if (Player->IsLocallyControlled())
-                {
-                    Player->OnNotified();
-                }
-            }
-            else
-            {
-                UE_LOG(LogTemp, Warning, TEXT("TargetActor is null!"));
+                Player->OnNotified();
             }
         }
+        break;
+    case ECharacterNotifyType::ItemUse:
+        Player->UseItemAnimationNotified();
+        break;
+    case ECharacterNotifyType::Reload:
+        Player->GunReloadAnimationNotified();
+        break;
+    default:
+        break;
     }
 }

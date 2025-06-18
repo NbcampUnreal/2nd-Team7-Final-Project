@@ -7,6 +7,7 @@
 #include "Components/BoxComponent.h"
 #include "Sound/SoundBase.h"
 #include "DataType/GimmickActivationType.h"
+#include "Actor/Gimmick/Component/DebuffDamageComponent.h"
 #include "LCBaseGimmick.generated.h"
 
 UCLASS(Abstract)
@@ -147,6 +148,10 @@ public:
 	/** 상태 복귀까지 대기 시간 (초) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|State", meta = (EditCondition = "!bToggleState"))
 	float ReturnDelay;
+
+	/** 복귀 호출여부 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Interaction")
+	bool bCallReturnToInitialStateInsteadOfActivate;
 
 public:
 	/** ===== 인터페이스 구현 ===== */

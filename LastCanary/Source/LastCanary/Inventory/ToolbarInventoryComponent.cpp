@@ -107,6 +107,8 @@ bool UToolbarInventoryComponent::TryAddItemSlot(FName ItemRowName, int32 Amount)
     if (RemainAmount == 0)
     {
         UpdateWeight();
+        UpdateWalkieTalkieChannelStatus();
+
         OnInventoryUpdated.Broadcast();
         return true;
     }
@@ -219,6 +221,8 @@ bool UToolbarInventoryComponent::TryRemoveItemAtSlot(int32 SlotIndex)
     ItemSlots[SlotIndex].BackpackSlots.Empty();
 
     SyncInventoryToPlayerState();
+    UpdateWalkieTalkieChannelStatus();
+
     OnInventoryUpdated.Broadcast();
 
     return true;
@@ -771,6 +775,7 @@ bool UToolbarInventoryComponent::TryStoreItem(AItemBase* ItemActor)
         ItemActor->Destroy();
     }
     UpdateWeight();
+    UpdateWalkieTalkieChannelStatus();
 
     LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::TryStoreItem] 저장 성공: %s (슬롯: %d)"), *ItemActor->ItemRowName.ToString(), EmptySlotIndex);
     return true;
@@ -913,6 +918,8 @@ bool UToolbarInventoryComponent::Internal_DropEquippedItemAtSlot(int32 SlotIndex
 
     UpdateWeight();
     SyncInventoryToPlayerState();
+    UpdateWalkieTalkieChannelStatus();
+
     OnInventoryUpdated.Broadcast();
 
     LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::Internal_DropEquippedItemAtSlot] 드롭 성공"));
