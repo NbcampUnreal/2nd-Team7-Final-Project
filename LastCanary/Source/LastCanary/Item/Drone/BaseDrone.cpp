@@ -10,6 +10,7 @@
 #include "Item/ItemSpawnerComponent.h"
 #include "UI/UIElement/DroneHUD.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "UI/UIElement/InGameHUD.h"
 
 ABaseDrone::ABaseDrone()
 {
@@ -72,6 +73,14 @@ void ABaseDrone::BeginPlay()
 		this,
 		&ABaseDrone::UpdateDistanceCheck,
 		0.2f,
+		true
+	);
+
+	GetWorld()->GetTimerManager().SetTimer(
+		InteractionTraceTimerHandle,
+		this,
+		&ABaseDrone::TraceInteractableActor,
+		0.1f,
 		true
 	);
 }
@@ -247,6 +256,113 @@ void ABaseDrone::Look(const FInputActionValue& Value)
 		Camera->SetRelativeRotation(CameraRot);
 	}
 }	
+
+void ABaseDrone::Interact(const FInputActionValue& Value, APlayerController* CallingController)
+{
+	if (!CurrentFocusedActor)
+	{
+		LOG_Char_WARNING(TEXT("Handle_Interact: No focused actor."));
+		return;
+	}
+
+	LOG_Char_WARNING(TEXT("Interacted with: %s"), *CurrentFocusedActor->GetName());
+
+	if (CurrentFocusedActor->Implements<UInteractableInterface>())
+	{
+		AActor* actor = CurrentFocusedActor;
+		if (!IsValid(actor))
+		{
+			return;
+		}
+		if(IsValid(CallingController))
+		
+		if (CallingController)
+		{
+			IInteractableInterface::Execute_Interact(CurrentFocusedActor, CallingController); /// 여기는 이거 말고 드론에 붙이는 함수가 필요할 것 같습니다...
+			LOG_Char_WARNING(TEXT("Handle_Interact: Called Interact on %s"), *actor->GetName());
+			LOG_Char_WARNING(TEXT("Equipped item on slot"));
+		}
+		else
+		{
+			LOG_Char_WARNING(TEXT("Handle_Interact: Controller is nullptr"));
+		}
+	}
+	else
+	{
+		LOG_Char_WARNING(TEXT("Handle_Interact: %s does not implement IInteractableInterface"), *CurrentFocusedActor->GetName());
+	}
+	LOG_Char_WARNING(TEXT("Interact Ended"));
+}
+
+void ABaseDrone::TraceInteractableActor()
+{// 카메라 컴포넌트가 Drone에 붙어있다고 가정
+	if (!IsValid(Camera))
+	{
+		return;
+	}
+	FVector ViewLocation = Camera->GetComponentLocation();
+	FRotator ViewRotation = Camera->GetComponentRotation();
+
+	FVector Start = ViewLocation;
+	FVector End = Start + (ViewRotation.Vector() * TraceDistance);
+
+	FHitResult Hit;
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+	
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(
+		Hit, Start, End, ECC_Visibility, Params);
+
+#if WITH_EDITOR
+	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 0.1f);
+#endif
+
+	if (bHit && Hit.GetActor() && Hit.GetActor()->Implements<UInteractableInterface>())
+	{
+
+		LOG_Char_WARNING(TEXT("Interactable object"));
+		if (CurrentFocusedActor != Hit.GetActor())
+		{
+			CurrentFocusedActor = Hit.GetActor();
+
+			FString Message = IInteractableInterface::Execute_GetInteractMessage(CurrentFocusedActor);
+
+			if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+			{
+				if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+				{
+					if (UInGameHUD* HUD = Cast<UInGameHUD>(UIManager->GetInGameHUD()))
+					{
+						UE_LOG(LogTemp, Warning, TEXT("SetInteractMessage to %s"), *Message);
+						HUD->SetInteractMessage(Message);
+						HUD->SetInteractMessageVisible(true);
+					}
+				}
+			}
+		}
+	}
+	else
+	{
+
+		LOG_Char_WARNING(TEXT("no focus actor"));
+		if (CurrentFocusedActor)
+		{
+			CurrentFocusedActor = nullptr;
+
+			if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+			{
+				if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+				{
+					if (UInGameHUD* HUD = Cast<UInGameHUD>(UIManager->GetInGameHUD()))
+					{
+						HUD->SetInteractMessageVisible(false);
+					}
+				}
+			}
+		}
+	}
+}
 
 void ABaseDrone::OnRep_CameraPitch()
 {

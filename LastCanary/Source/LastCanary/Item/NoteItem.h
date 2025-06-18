@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Item/ItemBase.h"
+#include "Item/EquipmentItem/EquipmentItemBase.h"
 #include "DataTable/ItemDataRow.h"
 #include "NoteItem.generated.h"
 
@@ -9,7 +9,7 @@
  * 
  */
 UCLASS()
-class LASTCANARY_API ANoteItem : public AItemBase
+class LASTCANARY_API ANoteItem : public AEquipmentItemBase
 {
 	GENERATED_BODY()
 	
