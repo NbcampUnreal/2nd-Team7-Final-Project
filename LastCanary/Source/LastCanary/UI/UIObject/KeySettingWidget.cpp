@@ -338,15 +338,12 @@ void UKeySettingWidget::OnKeySelectedExitDrone(FInputChord SelectedKey)
 
 void UKeySettingWidget::RefreshMappings(const TArray<FEnhancedActionKeyMapping>& KeyMappings)
 {
-	UE_LOG(LogTemp, Warning, TEXT("RefreshMappings(const TArray<FEnhancedActionKeyMapping>& KeyMappings)"));
 	for (const FEnhancedActionKeyMapping& Mapping : KeyMappings)
 	{
 		if (!Mapping.Action)
 			continue;
 
 		const FName MappingName = Mapping.GetMappingName();
-		UE_LOG(LogTemp, Warning, TEXT("Mapping Name: %s"), *MappingName.ToString());
-
 		if (MappingName == "MoveFront" && SelectorMoveForward)
 		{
 			SelectorMoveForward->SetSelectedKey(Mapping.Key);
@@ -450,7 +447,6 @@ void UKeySettingWidget::UpdateMappings(FName MappingName, FKey Key)
 		return;
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("Update Mappings Mapping Name: %s"), *MappingName.ToString());
 
 	FMapPlayerKeyArgs Args;
 	Args.MappingName = MappingName;
@@ -462,7 +458,6 @@ void UKeySettingWidget::UpdateMappings(FName MappingName, FKey Key)
 	FGameplayTagContainer FailureReason;
 	UserSettings->MapPlayerKey(Args, FailureReason);
 
-	UE_LOG(LogTemp, Warning, TEXT("Refresh"));
 	FTimerHandle TimerHandle;
 	GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this, Subsystem]()
 		{
@@ -534,7 +529,6 @@ void UKeySettingWidget::InitialMappings()
 
 		if (!FoundMapping)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("No mapping found for mapping name: %s"), *SavedMapping.MappingName.ToString());
 			continue;
 		}
 

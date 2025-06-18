@@ -164,6 +164,10 @@ void ABaseCharacter::BeginPlay()
 
 float ABaseCharacter::GetBrightness()
 {
+	if (!IsValid(GetController()))
+	{
+		return 0.0f;
+	}
 	ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
 	if (!IsValid(PC))
 	{
@@ -237,6 +241,7 @@ void ABaseCharacter::NotifyControllerChanged()
 
 void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo)
 {
+	if (!IsLocallyControlled()) return; 
 	Super::CalcCamera(DeltaTime, ViewInfo);
 	UpdateGunWallClipOffset(DeltaTime);
 	if (bIsMantling)
@@ -283,22 +288,53 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 		if (Distance < 2.0f) // 2.0f 단위 이내로 가까워지면
 		{
 			bIsTransitioning = false;
-
+			SpringArm->bEnableCameraLag = false;
+			SpringArm->bEnableCameraRotationLag = false;
 			if (bIsAiming && IsValid(CurrentRifleMesh) && !bIsReloading)
 			{
 				// Scope에 붙이기
-				SpringArm->AttachToComponent(CurrentRifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
+				UE_LOG(LogTemp, Warning, TEXT("스프링암이 스코프에 붙었음"));
+				//SpringArm->AttachToComponent(CurrentRifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
+				AttachCameraToRifle();
+				SpringArm->bUsePawnControlRotation = false;
 			}
 			else
 			{
 				// FirstPersonCamera에 붙이기
-				SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+				UE_LOG(LogTemp, Warning, TEXT("스프링암이 FPS에 붙었음"));
+				AttachCameraToCharacter();
+				//SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 				SpringArm->TargetArmLength = bIsFPSCamera ? 0.0f : 200.0f;
+				SpringArm->bUsePawnControlRotation = true;
 			}
-			SpringArm->bUsePawnControlRotation = true;
+		}
+	}
+	ViewInfo.Rotation.Roll = 0.0f;
+	
+}
+
+void ABaseCharacter::AttachCameraToRifle()
+{
+	if (IsValid(CurrentRifleMesh))
+	{
+		if (IsLocallyControlled())
+		{
+			SpringArm->AttachToComponent(CurrentRifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
 		}
 	}
 }
+
+void ABaseCharacter::AttachCameraToCharacter()
+{
+	if (IsValid(GetMesh()))
+	{
+		if (IsLocallyControlled())
+		{
+			SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+		}
+	}
+}
+
 
 void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 {
@@ -343,6 +379,7 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 				}
 				else
 				{
+					SpringArm->bUsePawnControlRotation = true;
 					StopAiming();
 					return;
 				}
@@ -482,24 +519,11 @@ void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue, floa
 	const FVector2f Value{ ActionValue.Get<FVector2D>() };
 
 	if (!Controller) return;
-
+	ReduceRecoil(0.3f);
 	AddControllerYawInput(Value.X * Sensivity);
 	AddControllerPitchInput(Value.Y * Sensivity);
 }
 
-void ABaseCharacter::CameraShake(float Vertical, float Horizontal)
-{
-	// 새로운 반동량을 기존 값에 누적
-	RecoilStepPitch += Vertical / RecoilMaxSteps;
-	RecoilStepYaw += FMath::RandRange(-Horizontal, Horizontal) / RecoilMaxSteps;
-
-	// 타이머가 안 돌고 있을 때만 시작
-	if (!GetWorld()->GetTimerManager().IsTimerActive(RecoilTimerHandle))
-	{
-		RecoilStep = 0;
-		GetWorld()->GetTimerManager().SetTimer(RecoilTimerHandle, this, &ABaseCharacter::ApplyRecoilStep, 0.02f, true);
-	}
-}
 
 void ABaseCharacter::StartTrackingDrone()
 {
@@ -518,6 +542,10 @@ void ABaseCharacter::UpdateRotationToDrone()
 	{
 		return;
 	}
+	if (!IsValid(Controller))
+	{
+		return;
+	}
 	FVector ToDrone = ControlledDrone->GetActorLocation() - GetActorLocation();
 	ToDrone.Z = 0; // Pitch는 무시해서 Yaw 회전만
 
@@ -531,6 +559,256 @@ void ABaseCharacter::UpdateRotationToDrone()
 		SetActorRotation(NewRotation);
 		SpringArm->SetWorldRotation(NewRotation);
 		Controller->SetControlRotation(NewRotation); // 컨트롤러 회전도 고정
+	}
+}
+
+// 방법 1: 즉시 반동 + 점진적 복구 (일반적인 방식)
+void ABaseCharacter::ApplyRecoil(float Vertical, float Horizontal)
+{
+	if (!Controller) return;
+
+	// 연사 배수 계산
+	float ShotMultiplier = FMath::Min(1.0f + (CurrentShotCount * 0.15f), 2.5f);
+
+	// 목표 반동량 설정
+	TargetRecoil.X += Vertical * ShotMultiplier;
+	TargetRecoil.Y += FMath::RandRange(-Horizontal, Horizontal) * ShotMultiplier;
+
+	CurrentShotCount++;
+
+	// 반동 적용 타이머 시작
+	if (!GetWorld()->GetTimerManager().IsTimerActive(RecoilRecoveryTimer))
+	{
+		GetWorld()->GetTimerManager().SetTimer(RecoilRecoveryTimer, this,
+			&ABaseCharacter::UpdateRecoil, 0.016f, true);
+	}
+
+	// 연사 리셋 타이머
+	GetWorld()->GetTimerManager().ClearTimer(ShotResetTimer);
+	GetWorld()->GetTimerManager().SetTimer(ShotResetTimer, this,
+		&ABaseCharacter::ResetShotCounter, 0.3f, false);
+}
+
+void ABaseCharacter::RecoverFromRecoil()
+{
+	if (!Controller || AccumulatedRecoil.IsNearlyZero(0.01f))
+	{
+		GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
+		return;
+	}
+
+	float DeltaTime = GetWorld()->GetDeltaSeconds();
+	float RecoveryAmount = RecoilRecoverySpeed * DeltaTime;
+
+	// 점진적으로 원래 위치로 복구
+	FVector2D RecoveryVector = AccumulatedRecoil;
+	RecoveryVector.Normalize();
+	RecoveryVector *= RecoveryAmount;
+
+	if (RecoveryVector.Size() >= AccumulatedRecoil.Size())
+	{
+		// 완전 복구
+		AddControllerPitchInput(AccumulatedRecoil.X);
+		AddControllerYawInput(-AccumulatedRecoil.Y);
+		AccumulatedRecoil = FVector2D::ZeroVector;
+	}
+	else
+	{
+		// 부분 복구
+		AddControllerPitchInput(RecoveryVector.X);
+		AddControllerYawInput(-RecoveryVector.Y);
+		AccumulatedRecoil -= RecoveryVector;
+	}
+}
+
+// 스무스하게 반동주기
+void ABaseCharacter::ApplySmoothRecoil(float Vertical, float Horizontal)
+{
+	if (!Controller) return;
+
+	// 목표 반동량 설정
+	float ShotMultiplier = FMath::Min(1.0f + (CurrentShotCount * 0.15f), 2.5f);
+	TargetRecoil.X += Vertical * ShotMultiplier;
+	TargetRecoil.Y += FMath::RandRange(-Horizontal, Horizontal) * ShotMultiplier;
+
+	CurrentShotCount++;
+
+	// 스무딩된 반동 적용 시작
+	if (!GetWorld()->GetTimerManager().IsTimerActive(RecoilRecoveryTimer))
+	{
+		GetWorld()->GetTimerManager().SetTimer(RecoilRecoveryTimer, this,
+			&ABaseCharacter::ApplySmoothRecoilStep, 0.016f, true);
+	}
+
+	// 연사 리셋 타이머
+	GetWorld()->GetTimerManager().ClearTimer(ShotResetTimer);
+	GetWorld()->GetTimerManager().SetTimer(ShotResetTimer, this,
+		&ABaseCharacter::ResetShotCounter, 0.1f, false);
+}
+
+void ABaseCharacter::ApplySmoothRecoilStep()
+{
+	if (!Controller)
+	{
+		GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
+		return;
+	}
+
+	float DeltaTime = GetWorld()->GetDeltaSeconds();
+
+	// 목표 반동량으로 보간
+	FVector2D RecoilDelta = (TargetRecoil - AccumulatedRecoil) * (5.0f * DeltaTime);
+
+	if (!RecoilDelta.IsNearlyZero(0.01f))
+	{
+		AddControllerPitchInput(RecoilDelta.X);
+		AddControllerYawInput(RecoilDelta.Y);
+		AccumulatedRecoil += RecoilDelta;
+	}
+
+	// 자동 복구 (사격이 멈춘 후)
+	if (GetWorld()->GetTimerManager().GetTimerRemaining(ShotResetTimer) <= 0.0f)
+	{
+		FVector2D RecoveryDelta = AccumulatedRecoil * (RecoilRecoverySpeed * DeltaTime);
+
+		if (RecoveryDelta.Size() >= AccumulatedRecoil.Size())
+		{
+			// 완전 복구
+			AddControllerPitchInput(-AccumulatedRecoil.X);
+			AddControllerYawInput(-AccumulatedRecoil.Y);
+			AccumulatedRecoil = FVector2D::ZeroVector;
+			TargetRecoil = FVector2D::ZeroVector;
+			GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
+		}
+		else
+		{
+			AddControllerPitchInput(-RecoveryDelta.X);
+			AddControllerYawInput(-RecoveryDelta.Y);
+			AccumulatedRecoil -= RecoveryDelta;
+			TargetRecoil -= RecoveryDelta;
+		}
+	}
+}
+
+void ABaseCharacter::UpdateRecoil()
+{
+	if (!Controller)
+	{
+		GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
+		return;
+	}
+
+	float DeltaTime = GetWorld()->GetDeltaSeconds();
+
+	// 1. 목표 반동량으로 이동 (반동 적용 단계)
+	FVector2D RecoilDelta = (TargetRecoil - AccumulatedRecoil) * (5.0f * DeltaTime);
+
+	if (!RecoilDelta.IsNearlyZero(0.01f))
+	{
+		AddControllerPitchInput(-RecoilDelta.X);
+		AddControllerYawInput(RecoilDelta.Y);
+		AccumulatedRecoil += RecoilDelta;
+	}
+
+	// 2. 사격이 멈춘 후 자동 복구
+	if (GetWorld()->GetTimerManager().GetTimerRemaining(ShotResetTimer) <= 0.0f)
+	{
+		if (AccumulatedRecoil.IsNearlyZero(0.01f))
+		{
+			// 완전히 복구됨 - 타이머 정리
+			AccumulatedRecoil = FVector2D::ZeroVector;
+			TargetRecoil = FVector2D::ZeroVector;
+			GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
+			return;
+		}
+
+		FVector2D RecoveryDelta = AccumulatedRecoil * (RecoilRecoverySpeed * DeltaTime);
+
+		if (RecoveryDelta.Size() >= AccumulatedRecoil.Size())
+		{
+			// 완전 복구
+			AddControllerPitchInput(AccumulatedRecoil.X);
+			AddControllerYawInput(-AccumulatedRecoil.Y);
+			AccumulatedRecoil = FVector2D::ZeroVector;
+			TargetRecoil = FVector2D::ZeroVector;
+			GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
+		}
+		else
+		{
+			// 점진적 복구
+			AddControllerPitchInput(RecoveryDelta.X);
+			AddControllerYawInput(-RecoveryDelta.Y);
+			AccumulatedRecoil -= RecoveryDelta;
+			TargetRecoil -= RecoveryDelta;
+		}
+	}
+}
+
+void ABaseCharacter::ResetShotCounter()
+{
+	CurrentShotCount = 0;
+}
+
+// ===== 이 부분이 핵심! 직접 반동 초기화 함수들 =====
+
+// 반동 완전 리셋
+void ABaseCharacter::ResetRecoil()
+{
+	AccumulatedRecoil = FVector2D::ZeroVector;
+	TargetRecoil = FVector2D::ZeroVector;
+	GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
+}
+
+// 반동 부분 리셋 (특정 축만)
+void ABaseCharacter::ResetRecoilPitch()
+{
+	AccumulatedRecoil.X = 0.0f;
+	TargetRecoil.X = 0.0f;
+}
+
+void ABaseCharacter::ResetRecoilYaw()
+{
+	AccumulatedRecoil.Y = 0.0f;
+	TargetRecoil.Y = 0.0f;
+}
+
+// 반동 감소 (완전 리셋이 아닌 부분 감소)
+void ABaseCharacter::ReduceRecoil(float ReductionFactor)
+{
+	AccumulatedRecoil *= (1.0f - FMath::Clamp(ReductionFactor, 0.0f, 1.0f));
+	TargetRecoil *= (1.0f - FMath::Clamp(ReductionFactor, 0.0f, 1.0f));
+
+	// 거의 0에 가까우면 완전 리셋
+	if (AccumulatedRecoil.Size() < 0.1f)
+	{
+		ResetRecoil();
+	}
+}
+
+// 현재 반동 상태 확인용
+FVector2D ABaseCharacter::GetCurrentRecoil() const
+{
+	return AccumulatedRecoil;
+}
+
+bool ABaseCharacter::HasActiveRecoil() const
+{
+	return !AccumulatedRecoil.IsNearlyZero(0.01f);
+}
+
+
+/*
+void ABaseCharacter::CameraShake(float Vertical, float Horizontal)
+{
+	// 새로운 반동량을 기존 값에 누적
+	RecoilStepPitch += Vertical / RecoilMaxSteps;
+	RecoilStepYaw += FMath::RandRange(-Horizontal, Horizontal) / RecoilMaxSteps;
+
+	// 타이머가 안 돌고 있을 때만 시작
+	if (!GetWorld()->GetTimerManager().IsTimerActive(RecoilTimerHandle))
+	{
+		RecoilStep = 0;
+		GetWorld()->GetTimerManager().SetTimer(RecoilTimerHandle, this, &ABaseCharacter::ApplyRecoilStep, 0.02f, true);
 	}
 }
 
@@ -572,7 +850,7 @@ void ABaseCharacter::ApplyRecoilStep()
 		GetWorld()->GetTimerManager().ClearTimer(RecoilTimerHandle);
 	}
 }
-
+*/
 
 void ABaseCharacter::Handle_Look(const FInputActionValue& ActionValue)
 {
@@ -2550,6 +2828,7 @@ bool ABaseCharacter::UseEquippedItem(float ActionValue)
 		if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Consumable")))
 		{
 			UseItemAfterPlayMontage(EquippedItem);
+			return true;
 		}
 
 		if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))

@@ -14,6 +14,9 @@ ABaseSpectatorPawn::ABaseSpectatorPawn()
     SpringArm->SetupAttachment(RootComponent);
     SpringArm->TargetArmLength = DefaultZoom;
     SpringArm->bUsePawnControlRotation = false;
+	SpringArm->bDoCollisionTest = true;
+	SpringArm->ProbeChannel = ECC_Camera;
+	SpringArm->ProbeSize = 12.0f;
 
     Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
     Camera->SetupAttachment(SpringArm);
