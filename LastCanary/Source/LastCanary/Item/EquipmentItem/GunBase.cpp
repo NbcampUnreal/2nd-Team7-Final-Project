@@ -361,7 +361,9 @@ void AGunBase::Client_PlayCameraShake_Implementation()
     if (ABaseCharacter* OwnerCharacter = Cast<ABaseCharacter>(GetOwner()))
     {
         LOG_Item_WARNING(TEXT("Client_PlayCameraShake called"));
-        OwnerCharacter->CameraShake(2.0f, 1.0);
+        //OwnerCharacter->ApplyRecoil(2.0f, 1.0);
+        OwnerCharacter->ApplySmoothRecoil(2.0f, 1.0);
+
     }
 }
 

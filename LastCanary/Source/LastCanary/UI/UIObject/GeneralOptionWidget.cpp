@@ -411,13 +411,19 @@ void UGeneralOptionWidget::InitializeScreenMode()
 {
 	if (UWorld* World = GetWorld())
 	{
-		bool SavedScreenMode = ULCLocalPlayerSaveGame::LoadFullScreenMode(World);
+		bool bIsFullScreenMode = ULCLocalPlayerSaveGame::LoadFullScreenMode(World);
 
 		if (FullScreenCheckBox)
 		{
-			FullScreenCheckBox->SetIsChecked(SavedScreenMode);
+			FullScreenCheckBox->SetIsChecked(bIsFullScreenMode);
+		}
+		if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
+		{
+			OptionManager->ChangeScreen(bIsFullScreenMode == true ? EScreenMode::FullScreen : EScreenMode::Window);
 		}
 	}
+
+	
 }
 
 void UGeneralOptionWidget::InitializeAllOptions() 
