@@ -117,7 +117,7 @@ void ABaseCharacter::BeginPlay()
 		// "head"는 스켈레탈 메시의 머리 본에 해당하는 이름
 
 		//GetMesh()->HideBoneByName(TEXT("head"), EPhysBodyOp::PBO_None);
-		SwapHeadMaterialTransparent(true);
+		SwapHeadMaterialTransparent(true); 
 	}
 	//애니메이션 오버레이 활성화.
 	RefreshOverlayObject(0);
@@ -1514,7 +1514,7 @@ void ABaseCharacter::SetCameraMode(bool bIsFirstPersonView)
 void ABaseCharacter::SwapHeadMaterialTransparent(bool bUseTransparent)
 {
 	if (!GetMesh()) return;
-
+	
 	if (bUseTransparent && TransparentHeadMaterial)
 	{
 		GetMesh()->SetMaterial(7, TransparentHeadMaterial);
@@ -1536,6 +1536,7 @@ void ABaseCharacter::SwapHeadMaterialTransparent(bool bUseTransparent)
 		GetMesh()->SetMaterial(14, DefaultHeadMaterial_CORNEA);
 		GetMesh()->SetMaterial(15, DefaultHeadMaterial_EYEBALL);
 	}
+	
 	// 7 10 11  13  14 15 
 }
 

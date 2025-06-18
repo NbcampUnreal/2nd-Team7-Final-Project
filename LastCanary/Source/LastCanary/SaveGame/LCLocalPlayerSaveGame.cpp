@@ -147,12 +147,21 @@ ULCLocalPlayerSaveGame* ULCLocalPlayerSaveGame::GetSaveInstance(UWorld* World)
 {
     if (!World) return nullptr;
 
-    ULocalPlayer* LocalPlayer = World->GetFirstLocalPlayerFromController();
-    if (!LocalPlayer) return nullptr;
+    if (UGameInstance* GameInstance = World->GetGameInstance())
+    {
+        if (ULocalPlayer* LocalPlayer = GameInstance->GetFirstGamePlayer())
+        {
+            FString SlotName = UMySaveGameUtils::MakeSlotName(LocalPlayer->GetControllerId());
 
-    FString SlotName = UMySaveGameUtils::MakeSlotName(LocalPlayer->GetControllerId());
+            return Cast<ULCLocalPlayerSaveGame>(
+                ULocalPlayerSaveGame::LoadOrCreateSaveGameForLocalPlayer(
+                    ULCLocalPlayerSaveGame::StaticClass(),
+                    LocalPlayer,
+                    SlotName
+                ));
+        }
+    }
 
-    return Cast<ULCLocalPlayerSaveGame>(
-        ULocalPlayerSaveGame::LoadOrCreateSaveGameForLocalPlayer(ULCLocalPlayerSaveGame::StaticClass(), LocalPlayer, SlotName)
-    );
+    UE_LOG(LogTemp, Warning, TEXT("ULCLocalPlayerSaveGame::GetSaveInstance - LocalPlayer not found."));
+    return nullptr;
 }

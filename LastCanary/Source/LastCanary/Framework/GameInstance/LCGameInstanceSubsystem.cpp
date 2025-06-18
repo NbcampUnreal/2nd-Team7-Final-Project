@@ -4,6 +4,8 @@
 #include "Framework/GameMode/LCRoomGameMode.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/GameUserSettings.h"
+#include "SaveGame/LCLocalPlayerSaveGame.h"
+#include "LCOptionManager.h"
 
 #include "LastCanary.h"
 
@@ -133,5 +135,33 @@ void ULCGameInstanceSubsystem::LoadSaveData()
 		LOG_Char_WARNING(TEXT("Settings->LoadSettings(true)"));
 		Settings->LoadSettings(true);
 		Settings->ApplySettings(false);	
+	}
+}
+
+void ULCGameInstanceSubsystem::LoadUserSettings()
+{
+	if (!IsValid(LCUIManager))
+	{
+		return;
+	}
+	if (UWorld* World = GetWorld())
+	{
+		//ApplyAudio(); // 볼륨은 바로 적용
+		float SavedMasterVolume = ULCLocalPlayerSaveGame::LoadMasterVolume(World);
+		float SavedBGMVolume = ULCLocalPlayerSaveGame::LoadBGMVolume(World);
+		float SavedEffectVolume = ULCLocalPlayerSaveGame::LoadEffectVolume(World);
+		if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
+		{
+#if WITH_EDITOR
+			LOG_Char_WARNING(TEXT("OptionManager Exist"));
+			LOG_Char_WARNING(TEXT("SavedMasterVolume : %f"), SavedMasterVolume);
+			LOG_Char_WARNING(TEXT("SavedBGMVolume : %f"), SavedBGMVolume);
+			LOG_Char_WARNING(TEXT("SavedEffectVolume : %f"), SavedEffectVolume);
+#endif
+			OptionManager->MasterVolume = SavedMasterVolume;
+			OptionManager->BGMVolume = SavedBGMVolume;
+			OptionManager->EffectVolume = SavedEffectVolume;
+			OptionManager->ApplyAudio(); // 볼륨은 바로 적용
+		}
 	}
 }
