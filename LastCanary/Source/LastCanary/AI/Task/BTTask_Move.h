@@ -13,15 +13,23 @@ public:
     UBTTask_Move();
 
     virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
-    virtual void TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds) override;
 
 protected:
     UPROPERTY(EditAnywhere, Category = "Movement")
     float MyAcceptableRadius;
 
+    FTimerHandle MoveCheckTimer;
+
+    UFUNCTION()
+    void CheckMoveStatus(UBehaviorTreeComponent* OwnerComp);
+
+    UPROPERTY()
+    UBehaviorTreeComponent* CurrentOwnerComp;
+
+    TMap<UBehaviorTreeComponent*, FTimerHandle> MoveTimerMap;
+    TMap<UBehaviorTreeComponent*, float> LastSoundTimeMap;
+
 private:
     UPROPERTY(EditAnywhere)
     float SoundTimer = 2.5f;
-
-    float LastSoundTime = 0.0f;
 };

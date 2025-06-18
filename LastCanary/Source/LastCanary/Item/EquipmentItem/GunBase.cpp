@@ -2,6 +2,7 @@
 #include "Item/ItemBase.h"
 #include "Item/ShellEjectionComponent.h"
 #include "Inventory/ToolbarInventoryComponent.h"
+#include "Perception/AISenseConfig_Hearing.h"
 #include "Character/BaseCharacter.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/DamageEvents.h"
@@ -195,6 +196,20 @@ void AGunBase::HandleFire()
     }
 
     UpdateAmmoState();
+
+    //수정
+    FVector SoundLocation = GetActorLocation();
+
+    AActor* SoundCauser = this;
+
+    UAISense_Hearing::ReportNoiseEvent(
+        GetWorld(),
+        SoundLocation,
+        1.0f,
+        SoundCauser,
+        2000.f,
+        "CaveMonster"
+    );
 
     LOG_Item_WARNING(TEXT("[HandleFire] 총알 소모: %.0f → %.0f (남은 총알: %.0f/%.0f)"),
         OldDurability, Durability, Durability, MaxAmmo);
