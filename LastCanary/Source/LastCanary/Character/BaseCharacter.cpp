@@ -1556,11 +1556,11 @@ void ABaseCharacter::Handle_Interact(const FInputActionValue& ActionValue)
 
 	if (!CurrentFocusedActor)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Handle_Interact: No focused actor."));
+		LOG_Char_WARNING(TEXT("Handle_Interact: No focused actor."));
 		return;
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("Interacted with: %s"), *CurrentFocusedActor->GetName());
+	LOG_Char_WARNING(TEXT("Interacted with: %s"), *CurrentFocusedActor->GetName());
 
 	if (bIsPlayingInteractionMontage)
 	{
@@ -1579,8 +1579,8 @@ void ABaseCharacter::Handle_Interact(const FInputActionValue& ActionValue)
 		{
 			//CancelInteraction();
 			//IInteractableInterface::Execute_Interact(CurrentFocusedActor, PC);
-			UE_LOG(LogTemp, Log, TEXT("Handle_Interact: Called Interact on %s"), *actor->GetName());
-			UE_LOG(LogTemp, Log, TEXT("Equipped item on slot"));
+			LOG_Char_WARNING(TEXT("Handle_Interact: Called Interact on %s"), *actor->GetName());
+			LOG_Char_WARNING(TEXT("Equipped item on slot"));
 			InteractAfterPlayMontage(actor);
 		}
 		else

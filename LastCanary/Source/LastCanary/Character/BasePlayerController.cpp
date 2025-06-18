@@ -699,20 +699,29 @@ void ABasePlayerController::Input_OnInteract(const FInputActionValue& ActionValu
 {
 	if (!IsValid(CurrentPossessedPawn))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_OnInteract"));
 		return;
 	}
 
 	AActor* HitActor = TraceInteractable(1000.0f);
 	if (!HitActor)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("No interactable actor found in trace."));
+		LOG_Char_WARNING(TEXT("No interactable actor found in trace."));
 		return;
 	}
 
-	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
+	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
 	{
-		PlayerCharacter->Handle_Interact(ActionValue);
+		if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
+		{
+			PlayerCharacter->Handle_Interact(ActionValue);
+		}
+	}
+	else if (CurrentPossessedPawn->IsA<ABaseDrone>())
+	{
+		if (ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn))
+		{
+			Drone->Interact(ActionValue, this);
+		}
 	}
 	else
 	{
@@ -1357,7 +1366,7 @@ void ABasePlayerController::PossessOnDrone()
 	{
 		PlayerCharacter->SwapHeadMaterialTransparent(false);
 	}
-
+	SpawnedPlayerDrone->OwningController = this;
 	CurrentPossessedPawn = SpawnedPlayerDrone;
 	if (!IsValid(CurrentPossessedPawn))
 	{
