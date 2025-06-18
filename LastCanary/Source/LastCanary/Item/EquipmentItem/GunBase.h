@@ -242,6 +242,15 @@ public:
     void Client_PlayCameraShake();
     void Client_PlayCameraShake_Implementation();
 
+    /** 피격 대상의 사운드 확인 */
+    UFUNCTION(BlueprintCallable, Category = "Gun|Impact")
+    USoundBase* GetImpactSoundForTarget(AActor* HitActor);
+
+    /** 태그별 피격 사운드 재생 */
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_PlayImpactSoundAtLocation(USoundBase* Sound, FVector Location);
+    void Multicast_PlayImpactSoundAtLocation_Implementation(USoundBase* Sound, FVector Location);
+
     //-----------------------------------------------------
     // 애니메이션 관련
     //-----------------------------------------------------
@@ -332,4 +341,25 @@ public:
 protected:
     /** 데이터 테이블에서 부착물 적용 */
     void ApplyAttachmentsFromDataTable();
+
+    //-----------------------------------------------------
+    // 피격 대상의 게임플레이 태그
+    //-----------------------------------------------------
+
+protected:
+    /** 캐시된 게임플레이 태그들 */
+    UPROPERTY()
+    FGameplayTag MetalTag;
+
+    UPROPERTY()
+    FGameplayTag WoodTag;
+
+    UPROPERTY()
+    FGameplayTag FleshTag;
+
+    UPROPERTY()
+    FGameplayTag StoneTag;
+
+    /** 태그 초기화 */
+    void InitializeGameplayTags();
 };

@@ -138,7 +138,8 @@ bool ALCPushGimmick::IsBlockedByWall(const FVector& Direction)
 {
 	FHitResult Hit;
 	const FVector Start = GetActorLocation();
-	const FVector End = Start + Direction * 500.f;
+	const FVector AdjustedDirection = (Direction + FVector(0.f, 0.f, -0.7f)).GetSafeNormal();
+	const FVector End = Start + AdjustedDirection * 500.f;
 
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(this);

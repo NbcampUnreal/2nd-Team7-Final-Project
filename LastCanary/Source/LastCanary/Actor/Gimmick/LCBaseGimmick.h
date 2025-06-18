@@ -10,6 +10,14 @@
 #include "Actor/Gimmick/Component/DebuffDamageComponent.h"
 #include "LCBaseGimmick.generated.h"
 
+UENUM(BlueprintType)
+enum class EGimmickTriggerSource : uint8
+{
+	None			UMETA(DisplayName = "None"),
+	Overlap			UMETA(DisplayName = "Overlap Trigger"),
+	Interaction		UMETA(DisplayName = "Interact Trigger")
+};
+
 UCLASS(Abstract)
 class LASTCANARY_API ALCBaseGimmick : public AActor, public ILCGimmickInterface, public IInteractableInterface
 {
@@ -71,6 +79,14 @@ public:
 	/** 오버랩 감지 캐릭터 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gimmick|Detection")
 	TSet<AActor*> OverlappingActors;
+
+	/** 오버랩으로 기믹을 작동시킬 수 있는 액터 태그들 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Detection")
+	TArray<FName> ValidActivatorTags;
+
+	/** 유효한 액터인지 확인 (Player, Actor 태그 기반) */
+	UFUNCTION(BlueprintCallable, Category = "Gimmick|Detection")
+	bool IsValidActivator(AActor* OtherActor) const;
 
 	/**ActivateAfterDelay 전용 타이머 */
 	FTimerHandle ActivationDelayHandle;
@@ -191,6 +207,4 @@ public:
 
 public:
 	FORCEINLINE const TArray<AActor*>& GetAttachedActors() const { return AttachedActors; }
-
-
 };

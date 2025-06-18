@@ -189,7 +189,7 @@ public:
 	float MaxSoundRange = 1000.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AISettings")
-	FName AISoundCheckTag = "None";
+	FName AISoundCheckTag = "CaveMonster";
 
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
