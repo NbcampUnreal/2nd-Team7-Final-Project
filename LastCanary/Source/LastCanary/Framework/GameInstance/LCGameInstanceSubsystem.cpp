@@ -3,6 +3,7 @@
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "Framework/GameMode/LCRoomGameMode.h"
 #include "Kismet/GameplayStatics.h"
+#include "GameFramework/GameUserSettings.h"
 
 #include "LastCanary.h"
 
@@ -118,7 +119,19 @@ void ULCGameInstanceSubsystem::LoadSaveData()
 {
 	if (!IsValid(GetUIManager()))
 	{
-		UE_LOG(LogTemp, Log, TEXT("UIManager가 유효하지 않음"));
+		LOG_Char_WARNING(TEXT("UIManager가 유효하지 않음"));		
 		return;
+	}
+	else
+	{
+		LOG_Char_WARNING(TEXT("UIManager가 유효함"));
+	}
+
+	if (UGameUserSettings* Settings = GEngine->GetGameUserSettings())
+	{
+		
+		LOG_Char_WARNING(TEXT("Settings->LoadSettings(true)"));
+		Settings->LoadSettings(true);
+		Settings->ApplySettings(false);	
 	}
 }

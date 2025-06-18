@@ -103,10 +103,120 @@ void ALCBaseGimmick::OnActorExit(UPrimitiveComponent* OverlappedComp, AActor* Ot
 
 #pragma region TriggerOverlap
 
+//void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+//	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+//{
+//	if (!HasAuthority() || !IsValid(OtherActor)) return;
+//
+//	if (!OverlappingActors.Contains(OtherActor))
+//	{
+//		OverlappingActors.Add(OtherActor);
+//	}
+//
+//	switch (ActivationType)
+//	{
+//	case EGimmickActivationType::ActivateOnStep:
+//		if (bCallReturnToInitialStateInsteadOfActivate)
+//		{
+//			ILCGimmickInterface::Execute_ReturnToInitialState(this);
+//			for (AActor* Target : LinkedTargets)
+//			{
+//				ILCGimmickInterface::Execute_ReturnToInitialState(Target);
+//			}
+//		}
+//		else
+//		{
+//			ILCGimmickInterface::Execute_ActivateGimmick(this);
+//			for (AActor* Target : LinkedTargets)
+//			{
+//				ILCGimmickInterface::Execute_ActivateGimmick(Target);
+//			}
+//		}
+//		break;
+//
+//	case EGimmickActivationType::ActivateWhileStepping:
+//		if (!bActivated && OverlappingActors.Num() >= RequiredCount)
+//		{
+//			if (ILCGimmickInterface::Execute_CanActivate(this))
+//			{
+//				if (bCallReturnToInitialStateInsteadOfActivate)
+//				{
+//					ILCGimmickInterface::Execute_ReturnToInitialState(this);
+//				}
+//				else
+//				{
+//					ILCGimmickInterface::Execute_ActivateGimmick(this);
+//				}
+//			}
+//		}
+//		break;
+//
+//	case EGimmickActivationType::ActivateAfterDelay:
+//		if (!bActivated && OverlappingActors.Num() >= RequiredCount)
+//		{
+//			GetWorld()->GetTimerManager().SetTimer(
+//				ActivationDelayHandle,
+//				[this]()
+//				{
+//					if (!bActivated && OverlappingActors.Num() >= RequiredCount)
+//					{
+//						if (bCallReturnToInitialStateInsteadOfActivate)
+//						{
+//							ILCGimmickInterface::Execute_ReturnToInitialState(this);
+//						}
+//						else
+//						{
+//							ILCGimmickInterface::Execute_ActivateGimmick(this);
+//						}
+//					}
+//				},
+//				ActivationDelay,
+//				false
+//			);
+//		}
+//		break;
+//
+//	default:
+//		break;
+//	}
+//}
+//
+//void ALCBaseGimmick::OnTriggerExit(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+//	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+//{
+//	if (!HasAuthority() || !IsValid(OtherActor)) return;
+//
+//	OverlappingActors.Remove(OtherActor);
+//
+//	switch (ActivationType)
+//	{
+//	case EGimmickActivationType::ActivateWhileStepping:
+//		if (bActivated && OverlappingActors.Num() < RequiredCount)
+//		{
+//			ILCGimmickInterface::Execute_DeactivateGimmick(this);
+//
+//			if (!bToggleState)
+//			{
+//				ILCGimmickInterface::Execute_ReturnToInitialState(this);
+//			}
+//		}
+//		break;
+//
+//	case EGimmickActivationType::ActivateAfterDelay:
+//		GetWorld()->GetTimerManager().ClearTimer(ActivationDelayHandle);
+//		break;
+//
+//	default:
+//		break;
+//	}
+//
+//}
+
 void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	if (!HasAuthority() || !IsValid(OtherActor)) return;
+	if (!IsValidActivator(OtherActor)) return;
 
 	if (!OverlappingActors.Contains(OtherActor))
 	{
@@ -119,10 +229,18 @@ void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor*
 		if (bCallReturnToInitialStateInsteadOfActivate)
 		{
 			ILCGimmickInterface::Execute_ReturnToInitialState(this);
+			for (AActor* Target : LinkedTargets)
+			{
+				ILCGimmickInterface::Execute_ReturnToInitialState(Target);
+			}
 		}
 		else
 		{
 			ILCGimmickInterface::Execute_ActivateGimmick(this);
+			for (AActor* Target : LinkedTargets)
+			{
+				ILCGimmickInterface::Execute_ActivateGimmick(Target);
+			}
 		}
 		break;
 
@@ -177,6 +295,7 @@ void ALCBaseGimmick::OnTriggerExit(UPrimitiveComponent* OverlappedComp, AActor* 
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
 	if (!HasAuthority() || !IsValid(OtherActor)) return;
+	if (!IsValidActivator(OtherActor)) return;
 
 	OverlappingActors.Remove(OtherActor);
 
@@ -203,12 +322,35 @@ void ALCBaseGimmick::OnTriggerExit(UPrimitiveComponent* OverlappedComp, AActor* 
 	}
 }
 
+bool ALCBaseGimmick::IsValidActivator(AActor* OtherActor) const
+{
+	if (!IsValid(OtherActor)) return false;
+
+	for (const FName& Tag : ValidActivatorTags)
+	{
+		if (OtherActor->ActorHasTag(Tag))
+		{
+			LOG_Art(Log, TEXT("[감지] 감지 성공 - 태그: %s"), *Tag.ToString());
+			return true;
+		}
+	}
+
+	LOG_Art(Log, TEXT("[감지] 감지 실패 - 태그 없음"));
+	return false;
+}
+
 #pragma endregion
 
 #pragma region Interact
 
 void ALCBaseGimmick::Interact_Implementation(APlayerController* Interactor)
 {
+	if (ActivationType != EGimmickActivationType::ActivateOnPress)
+	{
+		LOG_Art_WARNING(TEXT("❌ 이 기믹은 상호작용 타입이 아님"));
+		return;
+	}
+
 	if (!HasAuthority())
 	{
 		if (IsValid(Interactor))

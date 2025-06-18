@@ -42,6 +42,85 @@ AGunBase::AGunBase()
     bCanToggleFireMode = false;
 }
 
+void AGunBase::BeginPlay()
+{
+    Super::BeginPlay();
+
+    UWorld* World = GetWorld();
+    if (!World)
+    {
+        LOG_Item_WARNING(TEXT("[GunBase::BeginPlay] World is null!"));
+        return;
+    }
+
+    UGameInstance* GI = World->GetGameInstance();
+    if (!GI)
+    {
+        LOG_Item_WARNING(TEXT("[GunBase::BeginPlay] GameInstance is null!"));
+        return;
+    }
+
+    ULCGameInstanceSubsystem* GISubsystem = GI->GetSubsystem<ULCGameInstanceSubsystem>();
+    if (!GISubsystem)
+    {
+        LOG_Item_WARNING(TEXT("[GunBase::BeginPlay] GameInstanceSubsystem is null!"));
+        return;
+    }
+
+    // 게임인스턴스 서브시스템에서 데이터 테이블 참조 가져오기
+    if (GISubsystem->GunDataTable)
+    {
+        GunDataTable = GISubsystem->GunDataTable;
+    }
+    else
+    {
+        LOG_Item_WARNING(TEXT("[GunBase::BeginPlay] 게임인스턴스 서브시스템의 GunDataTable이 null입니다!"));
+    }
+
+    if (Durability > MaxAmmo || Durability <= 0.0f)
+    {
+        Durability = MaxAmmo;
+    }
+
+    UpdateAmmoState();
+    InitializeGameplayTags();
+
+    if (USkeletalMeshComponent* ActiveMesh = GetSkeletalMeshComponent())
+    {
+        UAnimInstance* AnimInstance = ActiveMesh->GetAnimInstance();
+        if (AnimInstance)
+        {
+            LOG_Item_WARNING(TEXT("GunBase: AnimInstance found on SkeletalMeshComponent"));
+        }
+        else
+        {
+            LOG_Item_WARNING(TEXT("GunBase: No AnimInstance on SkeletalMeshComponent - animations will not work"));
+        }
+    }
+    else
+    {
+        LOG_Item_WARNING(TEXT("GunBase: No SkeletalMeshComponent found"));
+    }
+}
+
+void AGunBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    // 연발 중단
+    if (bIsAutoFiring)
+    {
+        StopAutoFire();
+    }
+
+    // 모든 타이머 정리
+    if (GetWorld())
+    {
+        GetWorld()->GetTimerManager().ClearTimer(AutoFireTimerHandle);
+        GetWorld()->GetTimerManager().ClearTimer(FireTimerHandle);
+    }
+
+    Super::EndPlay(EndPlayReason);
+}
+
 void AGunBase::UseItem()
 {
     if (!CanFire())
@@ -76,7 +155,6 @@ void AGunBase::Server_Fire_Implementation()
 
     HandleFire();
 
-    // ✅ 디버깅 추가
     LOG_Item_WARNING(TEXT("[Server_Fire] RecentHits 개수: %d"), RecentHits.Num());
 
     for (int32 i = 0; i < RecentHits.Num(); i++)
@@ -227,28 +305,19 @@ void AGunBase::ProcessHit(const FHitResult& HitResult, const FVector& StartLocat
         if (TagInterface && TagInterface->HasMatchingGameplayTag(EnemyTag))
         {
             float AppliedDamage = BaseDamage;
-            LOG_Item_WARNING(TEXT("ProcessHit: Applying %.1f damage to enemy %s"),
-                AppliedDamage, *HitActor->GetName());
+            LOG_Item_WARNING(TEXT("ProcessHit: Applying %.1f damage to enemy %s"), AppliedDamage, *HitActor->GetName());
 
-            FPointDamageEvent DamageEvent(
-                AppliedDamage,
-                HitResult,
-                (HitResult.ImpactPoint - StartLocation).GetSafeNormal(),
-                nullptr
-            );
+            FPointDamageEvent DamageEvent(AppliedDamage, HitResult, (HitResult.ImpactPoint - StartLocation).GetSafeNormal(), nullptr);
 
-            float ActualDamage = HitActor->TakeDamage(
-                AppliedDamage,
-                DamageEvent,
-                GetInstigatorController(),
-                this
-            );
+            float ActualDamage = HitActor->TakeDamage(AppliedDamage, DamageEvent, GetInstigatorController(), this);
         }
         else
         {
-            LOG_Item_WARNING(TEXT("ProcessHit: Hit non-enemy actor %s. No damage applied"),
-                *HitActor->GetName());
+            LOG_Item_WARNING(TEXT("ProcessHit: Hit non-enemy actor %s. No damage applied"), *HitActor->GetName());
         }
+
+        USoundBase* ImpactSoundToPlay = GetImpactSoundForTarget(HitActor);
+        Multicast_PlayImpactSoundAtLocation(ImpactSoundToPlay, HitResult.ImpactPoint);
     }
 }
 
@@ -260,10 +329,7 @@ void AGunBase::Multicast_SpawnImpactEffects_Implementation(const TArray<FHitResu
     {
         const FHitResult& Hit = Hits[i];
 
-        LOG_Item_WARNING(TEXT("[Client] Processing Hit %d: %s at %s"),
-            i,
-            Hit.GetActor() ? *Hit.GetActor()->GetName() : TEXT("None"),
-            *Hit.ImpactPoint.ToString());
+        LOG_Item_WARNING(TEXT("[Client] Processing Hit %d: %s at %s"), i, Hit.GetActor() ? *Hit.GetActor()->GetName() : TEXT("None"), *Hit.ImpactPoint.ToString());
 
         FVector EnhancedDecalSize = DecalSize * 5.0f;
         FVector AdjustedLocation = Hit.ImpactPoint + Hit.ImpactNormal * 0.5f;
@@ -282,11 +348,6 @@ void AGunBase::Multicast_SpawnImpactEffects_Implementation(const TArray<FHitResu
         else
         {
             LOG_Item_WARNING(TEXT("[Client] ImpactDecalMaterial이 null입니다"));
-        }
-
-        if (ImpactSound)
-        {
-            UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, Hit.ImpactPoint);
         }
     }
 }
@@ -362,7 +423,58 @@ void AGunBase::Client_PlayCameraShake_Implementation()
     if (ABaseCharacter* OwnerCharacter = Cast<ABaseCharacter>(GetOwner()))
     {
         LOG_Item_WARNING(TEXT("Client_PlayCameraShake called"));
-        OwnerCharacter->CameraShake(2.0f, 1.0);
+        //OwnerCharacter->ApplyRecoil(2.0f, 1.0);
+        OwnerCharacter->ApplySmoothRecoil(2.0f, 1.0);
+
+    }
+}
+
+USoundBase* AGunBase::GetImpactSoundForTarget(AActor* HitActor)
+{
+    if (!HitActor)
+    {
+        return GunData.DefaultImpactSound;
+    }
+
+    // 피격당한 액터의 게임플레이 태그 인터페이스 확인
+    IGameplayTagAssetInterface* TagInterface = Cast<IGameplayTagAssetInterface>(HitActor);
+    if (!TagInterface)
+    {
+        LOG_Item_WARNING(TEXT("[GetImpactSoundForTarget] %s는 GameplayTagAssetInterface를 구현하지 않음"),
+            *HitActor->GetName());
+        return GunData.DefaultImpactSound;
+    }
+
+    // 액터의 모든 태그 가져오기
+    FGameplayTagContainer ActorTags;
+    TagInterface->GetOwnedGameplayTags(ActorTags);
+
+    LOG_Item_WARNING(TEXT("[GetImpactSoundForTarget] %s의 태그: %s"),
+        *HitActor->GetName(), *ActorTags.ToString());
+
+    // 피격 사운드 매핑에서 일치하는 태그 찾기
+    for (const FImpactSoundMapping& Mapping : GunData.ImpactSoundMappings)
+    {
+        if (ActorTags.HasTag(Mapping.TargetTag))
+        {
+            LOG_Item_WARNING(TEXT("[GetImpactSoundForTarget] 태그 매칭: %s -> %s"),
+                *Mapping.TargetTag.ToString(),
+                Mapping.ImpactSound ? *Mapping.ImpactSound->GetName() : TEXT("None"));
+            return Mapping.ImpactSound;
+        }
+    }
+
+    // 매칭되는 태그가 없으면 기본 사운드 사용
+    LOG_Item_WARNING(TEXT("[GetImpactSoundForTarget] 매칭되는 태그 없음 - 기본 사운드 사용"));
+    return GunData.DefaultImpactSound;
+}
+
+void AGunBase::Multicast_PlayImpactSoundAtLocation_Implementation(USoundBase* Sound, FVector Location)
+{
+    if (Sound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(this, Sound, Location);
+        LOG_Item_WARNING(TEXT("[Multicast_PlayImpactSoundAtLocation] 사운드 재생: %s"), *Sound->GetName());
     }
 }
 
@@ -437,84 +549,6 @@ void AGunBase::PlayGunAnimation(UAnimMontage* AnimMontage, float PlayRate)
     }
 }
 
-void AGunBase::BeginPlay()
-{
-    Super::BeginPlay();
-
-    UWorld* World = GetWorld();
-    if (!World)
-    {
-        LOG_Item_WARNING(TEXT("[GunBase::BeginPlay] World is null!"));
-        return;
-    }
-
-    UGameInstance* GI = World->GetGameInstance();
-    if (!GI)
-    {
-        LOG_Item_WARNING(TEXT("[GunBase::BeginPlay] GameInstance is null!"));
-        return;
-    }
-
-    ULCGameInstanceSubsystem* GISubsystem = GI->GetSubsystem<ULCGameInstanceSubsystem>();
-    if (!GISubsystem)
-    {
-        LOG_Item_WARNING(TEXT("[GunBase::BeginPlay] GameInstanceSubsystem is null!"));
-        return;
-    }
-
-    // 게임인스턴스 서브시스템에서 데이터 테이블 참조 가져오기
-    if (GISubsystem->GunDataTable)
-    {
-        GunDataTable = GISubsystem->GunDataTable;
-    }
-    else
-    {
-        LOG_Item_WARNING(TEXT("[GunBase::BeginPlay] 게임인스턴스 서브시스템의 GunDataTable이 null입니다!"));
-    }
-
-    if (Durability > MaxAmmo || Durability <= 0.0f)
-    {
-        Durability = MaxAmmo;
-    }
-
-    UpdateAmmoState();
-
-    if (USkeletalMeshComponent* ActiveMesh = GetSkeletalMeshComponent())
-    {
-        UAnimInstance* AnimInstance = ActiveMesh->GetAnimInstance();
-        if (AnimInstance)
-        {
-            LOG_Item_WARNING(TEXT("GunBase: AnimInstance found on SkeletalMeshComponent"));
-        }
-        else
-        {
-            LOG_Item_WARNING(TEXT("GunBase: No AnimInstance on SkeletalMeshComponent - animations will not work"));
-        }
-    }
-    else
-    {
-        LOG_Item_WARNING(TEXT("GunBase: No SkeletalMeshComponent found"));
-    }
-}
-
-void AGunBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
-{
-    // 연발 중단
-    if (bIsAutoFiring)
-    {
-        StopAutoFire();
-    }
-
-    // 모든 타이머 정리
-    if (GetWorld())
-    {
-        GetWorld()->GetTimerManager().ClearTimer(AutoFireTimerHandle);
-        GetWorld()->GetTimerManager().ClearTimer(FireTimerHandle);
-    }
-
-    Super::EndPlay(EndPlayReason);
-}
-
 void AGunBase::OnAnimMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 {
     LOG_Item_WARNING(TEXT("OnAnimMontageEnded: %s (Interrupted: %s)"),
@@ -581,7 +615,6 @@ void AGunBase::ApplyGunDataFromDataTable()
     DecalLifeSpan = GunData.DecalLifeSpan;
     FireSound = GunData.FireSound;
     EmptySound = GunData.EmptySound;
-    ImpactSound = GunData.ImpactSound;
 
     // 탄피 이펙트 설정
     if (ShellEjectionComponent && GunData.ShellEjectEffect)
@@ -619,21 +652,40 @@ bool AGunBase::Reload()
         return false;
     }
 
-    if (OwnerCharacter->bIsReloading)
-    {
-        return false;
-    }
-
     if (FMath::IsNearlyEqual(Durability, MaxAmmo))
     {
         return false;
     }
+    LOG_Item_WARNING(TEXT("리로드 완료!!."));
 
     Durability = MaxAmmo;
     UpdateAmmoState();
     OnItemStateChanged.Broadcast();
 
     return true;
+}
+
+void AGunBase::CheckReloadCondition()
+{
+    if (FMath::IsNearlyEqual(Durability, MaxAmmo)) //이미 꽉차있으면 중지
+    {
+        LOG_Item_WARNING(TEXT("총이 꽉 차있음"));
+        return;
+    }
+    AActor* OwnerActor = GetOwner();
+    if (!IsValid(OwnerActor))
+    {
+        LOG_Item_WARNING(TEXT("Owner is NULL"));
+        return;
+    }
+
+    ABaseCharacter* OwnerCharacter = Cast<ABaseCharacter>(OwnerActor);
+    if (!IsValid(OwnerCharacter))
+    {
+        LOG_Item_WARNING(TEXT("Owner Cast Fail"));
+        return;
+    }
+    OwnerCharacter->StartReload();
 }
 
 void AGunBase::OnRepDurability()
@@ -648,7 +700,6 @@ void AGunBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetime
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
     DOREPLIFETIME(AGunBase, RecentHits);
     DOREPLIFETIME(AGunBase, CurrentFireMode);
-    //DOREPLIFETIME(AGunBase, bIsAutoFiring);
 }
 
 bool AGunBase::CanFire()
@@ -675,7 +726,7 @@ bool AGunBase::CanFire()
 
     float CurrentTime = GetWorld()->GetTimeSeconds();
     float TimeSinceLastFire = CurrentTime - LastFireTime;
-    if (TimeSinceLastFire < FireRate)
+    if (TimeSinceLastFire + 0.005f < FireRate)
     {
         LOG_Item_WARNING(TEXT("[AGunBase::CanFire] 발사 간격 부족 - 남은 시간: %.2f초"), FireRate - TimeSinceLastFire);
         return false;
@@ -748,12 +799,9 @@ void AGunBase::FireAuto()
 
     if (!CanFire())
     {
-        // 탄약이 부족하거나 다른 이유로 발사할 수 없으면 연발 중단
         StopAutoFire();
         return;
     }
-
-    LOG_Item_WARNING(TEXT("[FireAuto] 연발 사격 중"));
 
     Server_Fire();
 
@@ -977,10 +1025,6 @@ void AGunBase::AttachScope(UStaticMesh* ScopeMesh, FName SocketName)
     // 스코프 메시 설정
     ScopeComponent->SetStaticMesh(ScopeMesh);
 
-    // 상대 위치/회전 조정 (데이터 테이블에서 설정된 값 적용)
-    //ScopeComponent->SetRelativeLocation(GunData.ScopeRelativeLocation);
-    //ScopeComponent->SetRelativeRotation(GunData.ScopeRelativeRotation);
-
     // 스코프 표시
     ScopeComponent->SetVisibility(true);
 
@@ -1013,4 +1057,12 @@ void AGunBase::DetachScope()
 bool AGunBase::HasScopeAttached() const
 {
     return CurrentAttachedScope != nullptr && ScopeComponent && ScopeComponent->IsVisible();
+}
+
+void AGunBase::InitializeGameplayTags()
+{
+    MetalTag = FGameplayTag::RequestGameplayTag(TEXT("Material.Metal"));
+    WoodTag = FGameplayTag::RequestGameplayTag(TEXT("Material.Wood"));
+    FleshTag = FGameplayTag::RequestGameplayTag(TEXT("Material.Flesh"));
+    StoneTag = FGameplayTag::RequestGameplayTag(TEXT("Material.Stone"));
 }

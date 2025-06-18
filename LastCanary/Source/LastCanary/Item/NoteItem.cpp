@@ -12,6 +12,8 @@
 
 void ANoteItem::UseItem()
 {
+	Super::UseItem();
+
 	InitializeNoteImageIndex();
 
 	// NoteContent가 비어있다면 무시
