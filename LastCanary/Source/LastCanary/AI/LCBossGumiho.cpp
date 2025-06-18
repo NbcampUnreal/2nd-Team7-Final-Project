@@ -180,6 +180,42 @@ void ALCBossGumiho::EndBerserk()
     NormalAttackDamage /= BerserkDamageMultiplier;
 }
 
+void ALCBossGumiho::OnRep_IsBerserk()
+{
+    Super::OnRep_IsBerserk();
+
+    // 클라이언트 연출: 광폭화 시작 시 이펙트 및 사운드 재생
+    if (bIsBerserk)
+    {
+        if (BerserkEffectFX)
+        {
+            UNiagaraFunctionLibrary::SpawnSystemAttached(
+                BerserkEffectFX,
+                GetRootComponent(),
+                NAME_None,
+                FVector::ZeroVector,
+                FRotator::ZeroRotator,
+                EAttachLocation::KeepRelativeOffset,
+                true
+            );
+        }
+
+        if (BerserkSound)
+        {
+            UGameplayStatics::PlaySoundAtLocation(
+                this,
+                BerserkSound,
+                GetActorLocation()
+            );
+        }
+    }
+    else
+    {
+        // (선택) 광폭화 해제 시 클라이언트 연출 추가 가능
+    }
+}
+
+
 void ALCBossGumiho::SpawnIllusions()
 {
     if (!HasAuthority() || !IllusionClass) return;
@@ -272,15 +308,51 @@ void ALCBossGumiho::PerformIllusionSwap()
 {
     if (!HasAuthority() || IllusionActors.Num() == 0) return;
 
-    int32 Idx = FMath::RandRange(0, IllusionActors.Num() - 1);
-    AActor* Ill = IllusionActors[Idx];
+    // (1) 환영 중 하나를 랜덤 선택
+    int32 IllIdx = FMath::RandRange(0, IllusionActors.Num() - 1);
+    AActor* Ill = IllusionActors[IllIdx];
     if (!Ill) return;
 
-    FVector BossLoc = GetActorLocation();
-    FVector IllLoc = Ill->GetActorLocation();
+    // (2) 반경 내 SweepMulti로 플레이어 Pawn 수집
+    TArray<FHitResult> Hits;
+    FCollisionShape Sphere = FCollisionShape::MakeSphere(IllusionSwapRadius);
 
-    SetActorLocation(IllLoc);
-    Ill->SetActorLocation(BossLoc);
+    bool bHit = GetWorld()->SweepMultiByChannel(
+        Hits,
+        GetActorLocation(),
+        GetActorLocation(),
+        FQuat::Identity,
+        ECC_Pawn,
+        Sphere
+    );
+    if (!bHit) return;
+
+    // (3) 플레이어 Pawn 필터링
+    TArray<APawn*> ValidPlayers;
+    for (auto& Hit : Hits)
+    {
+        APawn* P = Cast<APawn>(Hit.GetActor());
+        if (P && P->IsPlayerControlled())
+        {
+            ValidPlayers.Add(P);
+        }
+    }
+    if (ValidPlayers.Num() == 0) return;
+
+    // (4) 플레이어 중 하나 랜덤 선택
+    int32 PlyIdx = FMath::RandRange(0, ValidPlayers.Num() - 1);
+    APawn* TargetPlayer = ValidPlayers[PlyIdx];
+    if (!TargetPlayer) return;
+
+    // (5) 위치 스왑
+    const FVector IllLoc = Ill->GetActorLocation();
+    const FVector PlayerLoc = TargetPlayer->GetActorLocation();
+
+    Ill->SetActorLocation(PlayerLoc);
+    TargetPlayer->SetActorLocation(IllLoc);
+
+    UE_LOG(LogTemp, Warning, TEXT("[Gumiho] Swapped Illusion[%s] with Player[%s]"),
+        *Ill->GetName(), *TargetPlayer->GetName());
 }
 
 void ALCBossGumiho::ExecuteCharmGaze()
@@ -376,6 +448,9 @@ bool ALCBossGumiho::RequestAttack(float TargetDistance)
 {
     if (!HasAuthority()) return false;
     const float Now = GetWorld()->GetTimeSeconds();
+
+    if(TargetDistance > 600.f)
+		return false; // 너무 멀면 공격하지 않음
 
     AActor* Target = nullptr;
     if (auto* AC = Cast<AAIController>(GetController()))

@@ -16,9 +16,6 @@ protected:
     virtual void BeginPlay() override;
     virtual void Tick(float DeltaTime) override;
 
-    /** 분신 생존 시간 (초) */
-    UPROPERTY(EditDefaultsOnly, Category = "Clone")
-    float LifeTime = 10.f;
 
     /** 사라질 때 페이드 아웃 시간 (초) */
     UPROPERTY(EditDefaultsOnly, Category = "Clone")
@@ -27,9 +24,6 @@ protected:
     /** 체력이 0 이하가 되면 즉시 사라짐 */
     UPROPERTY(EditAnywhere, Category = "Clone")
     float Health = 1.f;
-
-    /** 타이머 핸들 */
-    FTimerHandle LifeTimerHandle;
 
     /** 페이드 아웃용 머티리얼 인스턴스 */
     UPROPERTY()

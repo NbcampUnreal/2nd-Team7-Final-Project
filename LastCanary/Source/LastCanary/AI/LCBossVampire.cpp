@@ -17,9 +17,13 @@ void ALCBossVampire::BeginPlay()
 {
     Super::BeginPlay();
 
-    // 배트 스웜 & 악몽의 시선
+    // 악몽의 시선 & 피 비 & 피 체인
     GetWorldTimerManager().SetTimer(BatSwarmTimerHandle, this, &ALCBossVampire::ExecuteBatSwarm, BatSwarmInterval, true);
     GetWorldTimerManager().SetTimer(GazeTimerHandle, this, &ALCBossVampire::ExecuteNightmareGaze, GazeInterval, true);
+
+    // 신규 기믹 타이머
+    GetWorldTimerManager().SetTimer(CrimsonChainsTimerHandle, this, &ALCBossVampire::ExecuteCrimsonChains, CrimsonChainsCooldown, true);
+    GetWorldTimerManager().SetTimer(RainTimerHandle, this, &ALCBossVampire::ExecuteSanguineRain, SanguineBurstCooldown /*or 원하는 간격*/, true);
 }
 
 void ALCBossVampire::ExecuteBatSwarm()
@@ -77,6 +81,52 @@ void ALCBossVampire::ExecuteNightmareGaze()
     }
 }
 
+void ALCBossVampire::ExecuteCrimsonChains()
+{
+    if (!HasAuthority() || !CrimsonChainsEffectFX) return;
+
+    // (1) FX
+    UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+        GetWorld(),
+        CrimsonChainsEffectFX,
+        GetActorLocation(),
+        FRotator::ZeroRotator
+    );
+
+    // (2) 범위 내 Pawn 수집
+    TArray<FHitResult> Hits;
+    FCollisionShape Sphere = FCollisionShape::MakeSphere(CrimsonChainsRadius);
+    GetWorld()->SweepMultiByChannel(
+        Hits,
+        GetActorLocation(), GetActorLocation(),
+        FQuat::Identity,
+        ECC_Pawn,
+        Sphere
+    );
+
+    // (3) 끌어당기기
+    for (auto& H : Hits)
+    {
+        if (APawn* P = Cast<APawn>(H.GetActor()))
+        {
+            FVector Dir = (GetActorLocation() - P->GetActorLocation()).GetSafeNormal();
+            if (UCharacterMovementComponent* Move = P->FindComponentByClass<UCharacterMovementComponent>())
+            {
+                Move->AddImpulse(Dir * CrimsonChainsPullStrength, true);
+            }
+        }
+    }
+
+    // (4) 지속시간 후 연쇄 폭발 (간단히 두 번째 FX만)
+    FTimerHandle Tmp;
+    GetWorldTimerManager().SetTimer(Tmp, [this]()
+        {
+            // 연쇄 폭발 FX, 데미지 및 출혈 디버프 로직 추가 가능
+            // 예시: SanguineBurst를 호출해도 됩니다.
+            ExecuteSanguineBurst();
+        }, CrimsonChainsDuration, false);
+}
+
 void ALCBossVampire::ExecuteCrimsonSlash()
 {
     GetWorldTimerManager().SetTimer(CrimsonSlashHandle, CrimsonSlashCooldown, false);
@@ -98,6 +148,78 @@ void ALCBossVampire::ExecuteCrimsonSlash()
         }
         // 피흡
         UGameplayStatics::ApplyDamage(this, -Heal, GetController(), this, nullptr);
+    }
+}
+
+void ALCBossVampire::ExecuteSanguineRain()
+{
+    if (!HasAuthority() || !SanguineRainEffectFX) return;
+
+    // (1) 비 FX
+    UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+        GetWorld(),
+        SanguineRainEffectFX,
+        GetActorLocation(),
+        FRotator::ZeroRotator
+    );
+
+    // (2) 주기적 데미지·감속 시작
+    GetWorldTimerManager().SetTimer(RainTickHandle, this, &ALCBossVampire::TickRainDamage, 1.f, true);
+
+    // (3) 지속시간 후 종료
+    GetWorldTimerManager().SetTimer(RainTimerHandle, this, &ALCBossVampire::EndSanguineRain, RainDuration, false);
+}
+
+void ALCBossVampire::TickRainDamage()
+{
+    // 영역 내 플레이어에게 출혈·감속
+    TArray<FHitResult> Hits;
+    FCollisionShape Sphere = FCollisionShape::MakeSphere(RainRadius);
+    GetWorld()->SweepMultiByChannel(
+        Hits,
+        GetActorLocation(), GetActorLocation(),
+        FQuat::Identity,
+        ECC_Pawn,
+        Sphere
+    );
+
+    for (auto& H : Hits)
+    {
+        if (ABaseCharacter* C = Cast<ABaseCharacter>(H.GetActor()))
+        {
+            if (C->IsPlayerControlled())
+            {
+                // 출혈 데미지
+                UGameplayStatics::ApplyDamage(C, RainDotDamage, GetController(), this, nullptr);
+
+                // 속도 감소
+                auto* Move = C->GetCharacterMovement();
+                float Orig = Move->MaxWalkSpeed;
+                Move->MaxWalkSpeed = Orig * (1.f - RainSlowPercent);
+
+                // 일정시간 후 속도 복구
+                FTimerHandle Tmp;
+                GetWorldTimerManager().SetTimer(Tmp, [Move, Orig]() {
+                    Move->MaxWalkSpeed = Orig;
+                    }, 1.f, false);
+            }
+        }
+    }
+}
+
+void ALCBossVampire::EndSanguineRain()
+{
+    // (1) 주기 타이머 해제
+    GetWorldTimerManager().ClearTimer(RainTickHandle);
+
+    // (2) 피 웅덩이 소환
+    if (BloodPuddleClass)
+    {
+        GetWorld()->SpawnActor<AActor>(
+            BloodPuddleClass,
+            GetActorLocation(),
+            FRotator::ZeroRotator
+        );
     }
 }
 
@@ -236,7 +358,7 @@ void ALCBossVampire::OnRep_Bloodlust()
 {
     if (bIsBloodlust)
     {
-        // Mist Form 즉시 사용 가능, 흡수 2배
+        // Mist Form 즉시 사용 가능
         bCanUseMist = true;
         BloodDrainEfficiency = 2.0f;
 
@@ -297,7 +419,6 @@ void ALCBossVampire::EnterBerserkState()
     UE_LOG(LogTemp, Warning, TEXT("[Vampire] Enter Eternal Bloodlust"));
 
     // 이때 특수 상태 플래그 켜기 → 기존 Multicast_StartBloodlust 에서
-    // Mist Form 즉시 재사용, 효율 2배, 속도↑ 등의 로직이 실행됩니다.
     Multicast_StartBloodlust();
 }
 

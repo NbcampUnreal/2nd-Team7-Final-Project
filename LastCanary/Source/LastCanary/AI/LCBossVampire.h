@@ -102,6 +102,49 @@ protected:
     FTimerHandle CrimsonSlashHandle;
     void ExecuteCrimsonSlash();
 
+    // ── Crimson Chains ────────────────────────────────
+    /** 사슬 FX */
+    UPROPERTY(EditAnywhere, Category = "Vampire|CrimsonChains")
+    UNiagaraSystem* CrimsonChainsEffectFX;
+    /** 범위(구형) */
+    UPROPERTY(EditAnywhere, Category = "Vampire|CrimsonChains")
+    float CrimsonChainsRadius = 800.f;
+    /** 끌어당기는 힘 */
+    UPROPERTY(EditAnywhere, Category = "Vampire|CrimsonChains")
+    float CrimsonChainsPullStrength = 1200.f;
+    /** 지속시간 */
+    UPROPERTY(EditAnywhere, Category = "Vampire|CrimsonChains")
+    float CrimsonChainsDuration = 3.f;
+    /** 재사용 대기시간 */
+    UPROPERTY(EditAnywhere, Category = "Vampire|CrimsonChains")
+    float CrimsonChainsCooldown = 20.f;
+    FTimerHandle CrimsonChainsTimerHandle;
+    void ExecuteCrimsonChains();
+
+    // ── Sanguine Rain ────────────────────────────────
+    /** 비 FX */
+    UPROPERTY(EditAnywhere, Category = "Vampire|SanguineRain")
+    UNiagaraSystem* SanguineRainEffectFX;
+    /** 영역 반경 */
+    UPROPERTY(EditAnywhere, Category = "Vampire|SanguineRain")
+    float RainRadius = 600.f;
+    /** 비 지속시간 */
+    UPROPERTY(EditAnywhere, Category = "Vampire|SanguineRain")
+    float RainDuration = 8.f;
+    /** 초당 출혈 데미지 */
+    UPROPERTY(EditAnywhere, Category = "Vampire|SanguineRain")
+    float RainDotDamage = 5.f;
+    /** 이동 속도 감소 비율 */
+    UPROPERTY(EditAnywhere, Category = "Vampire|SanguineRain")
+    float RainSlowPercent = 0.5f;
+    /** 피 웅덩이 클래스 */
+    UPROPERTY(EditAnywhere, Category = "Vampire|SanguineRain")
+    TSubclassOf<AActor> BloodPuddleClass;
+    FTimerHandle RainTimerHandle, RainTickHandle;
+    void ExecuteSanguineRain();
+    void TickRainDamage();
+    void EndSanguineRain();
+
     // ── Sanguine Burst ──
     UPROPERTY(EditAnywhere, Category = "Vampire|SanguineBurst")
     float SanguineBurstRadius = 400.f;
@@ -111,6 +154,8 @@ protected:
     float SanguineBurstCooldown = 12.f;
     FTimerHandle BurstHandle;
     void ExecuteSanguineBurst();
+
+
 
     // ── Eternal Bloodlust (특수 상태) ──
     UPROPERTY(ReplicatedUsing = OnRep_Bloodlust)

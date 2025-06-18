@@ -21,6 +21,18 @@ protected:
     virtual void UpdateRage(float DeltaSeconds) override;
     virtual bool RequestAttack(float TargetDistance) override;
 
+    /** 플레이어가 바라보는 시야 허용 한계 (Dot>Threshold 일 때만 Rage 증가) */
+    UPROPERTY(EditAnywhere, Category = "Slenderman|Rage")
+    float LookDotThreshold = 0.95f;
+
+    /** 플레이어가 바라볼 때 초당 증가시킬 Rage 양 */
+    UPROPERTY(EditAnywhere, Category = "Slenderman|Rage")
+    float LookRagePerSecond = 50.f;
+
+    /** 플레이어가 바라보지 않을 때 초당 감소시킬 Rage 양 */
+    UPROPERTY(EditAnywhere, Category = "Slenderman|Rage")
+    float LoseRagePerSecond = 20.f;
+
     // ── Fear Wave (공포 파동) ──
     UPROPERTY(EditAnywhere, Category = "Slenderman|Fear")
     float FearRadius = 1200.f;

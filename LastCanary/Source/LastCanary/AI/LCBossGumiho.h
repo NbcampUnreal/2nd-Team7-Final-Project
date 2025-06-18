@@ -19,7 +19,6 @@ protected:
     virtual void UpdateRage(float DeltaSeconds) override;
 
     // ── RequestAttack override ─────────────────────────
-protected:
     virtual bool RequestAttack(float TargetDistance) override;
 
     // ── 광폭화 ────────────────────────────────
@@ -27,6 +26,8 @@ protected:
     virtual void StartBerserk() override;
     virtual void StartBerserk(float Duration) override;
     virtual void EndBerserk() override;
+
+    virtual void OnRep_IsBerserk() override;
 
     /** 면역·버프 연출용 이펙트 */
     UPROPERTY(EditAnywhere, Category = "Gumiho|Berserk")
@@ -95,6 +96,10 @@ protected:
     // ── Illusion Swap ──
     UPROPERTY(EditAnywhere, Category = "Gumiho|Illusion")
     float IllusionSwapInterval = 25.f;
+
+    /** Swap할 플레이어를 찾을 반경 */
+    UPROPERTY(EditAnywhere, Category = "Illusion|Swap")
+    float IllusionSwapRadius = 800.f;
 
     FTimerHandle SwapTimerHandle;
     void PerformIllusionSwap();
