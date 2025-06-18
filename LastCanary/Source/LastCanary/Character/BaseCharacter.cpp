@@ -1343,8 +1343,58 @@ void ABaseCharacter::Handle_Reload()
 	{
 		return;
 	}
+	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
+	if (!IsValid(EquippedItem))
+	{
+		return;
+	}
+	AGunBase* Gun = Cast<AGunBase>(EquippedItem);
+	if (!IsValid(Gun))
+	{
+		return;
+	}
+	RequestReload(Gun);
+}
+
+void ABaseCharacter::RequestReload(AGunBase* Gun)
+{
+	if (!IsValid(Gun))
+	{
+		return;
+	}
+	Gun->CheckReloadCondition();
+}
+
+void ABaseCharacter::StartReload()
+{
 	CancelInteraction();
-	Server_PlayReload();
+	bIsReloading = true;
+	Server_PlayMontage(ReloadMontage);
+	//Server_PlayReload();
+}
+
+void ABaseCharacter::GunReloadAnimationNotified()
+{
+	//재생 후 notify로
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!IsValid(PC))
+	{
+		return;
+	}
+	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
+	if (!IsValid(EquippedItem))
+	{
+		return;
+	}
+	AGunBase* Gun = Cast<AGunBase>(EquippedItem);
+	if (!IsValid(Gun))
+	{
+		return;
+	}		
+	LOG_Item_WARNING(TEXT("총 리로드!"));
+
+	Gun->Reload();
+	bIsReloading = false;
 }
 
 void ABaseCharacter::Server_PlayReload_Implementation()
@@ -1354,10 +1404,6 @@ void ABaseCharacter::Server_PlayReload_Implementation()
 
 void ABaseCharacter::Multicast_PlayReload_Implementation()
 {
-	if (HasAuthority())
-	{
-		UE_LOG(LogTemp, Warning, TEXT("AnimInstance on server: %s"), *GetNameSafe(GetMesh()->GetAnimInstance()));
-	}
 	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
 	if (!EquippedItem)
 	{
@@ -1432,6 +1478,7 @@ void ABaseCharacter::Multicast_StopReload_Implementation()
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && ReloadMontage)
 	{
+		bIsReloading = false;
 		AnimInstance->Montage_Stop(0.2f, ReloadMontage); // 부드럽게 블렌드 아웃
 	}
 }
@@ -1509,11 +1556,11 @@ void ABaseCharacter::Handle_Interact(const FInputActionValue& ActionValue)
 
 	if (!CurrentFocusedActor)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Handle_Interact: No focused actor."));
+		LOG_Char_WARNING(TEXT("Handle_Interact: No focused actor."));
 		return;
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("Interacted with: %s"), *CurrentFocusedActor->GetName());
+	LOG_Char_WARNING(TEXT("Interacted with: %s"), *CurrentFocusedActor->GetName());
 
 	if (bIsPlayingInteractionMontage)
 	{
@@ -1532,8 +1579,8 @@ void ABaseCharacter::Handle_Interact(const FInputActionValue& ActionValue)
 		{
 			//CancelInteraction();
 			//IInteractableInterface::Execute_Interact(CurrentFocusedActor, PC);
-			UE_LOG(LogTemp, Log, TEXT("Handle_Interact: Called Interact on %s"), *actor->GetName());
-			UE_LOG(LogTemp, Log, TEXT("Equipped item on slot"));
+			LOG_Char_WARNING(TEXT("Handle_Interact: Called Interact on %s"), *actor->GetName());
+			LOG_Char_WARNING(TEXT("Equipped item on slot"));
 			InteractAfterPlayMontage(actor);
 		}
 		else
@@ -2015,6 +2062,8 @@ void ABaseCharacter::SetCurrentQuickSlotIndex(int32 NewIndex)
 	{
 		return;
 	}
+
+	StopReload();
 	UE_LOG(LogTemp, Warning, TEXT("Request Server to change QuickSlotindex"));
 	Server_SetQuickSlotIndex(NewIndex);
 }

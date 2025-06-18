@@ -36,6 +36,8 @@ private:
 	UButton* ApplyButton;
 	UPROPERTY(meta = (BindWidget)) 
 	UButton* CloseButton;
+	UPROPERTY(meta = (BindWidget)) 
+	UButton* ResetButton;
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* GeneralTabText;
 	UPROPERTY(meta = (BindWidget))
@@ -61,6 +63,8 @@ private:
 	void OnApplyButtonClicked();
 	UFUNCTION()
 	void OnCloseButtonClicked();
+	UFUNCTION()
+	void OnResetButtonClicked();
 	UFUNCTION()
 	void OnGeneralTabButtonClicked();
 	UFUNCTION()

@@ -22,7 +22,7 @@ public:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
+	
 	///////////////////////////////////////////////////////////////////////////////
 	//// Components
 	///////////////////////////////////////////////////////////////////////////////
@@ -115,6 +115,10 @@ public:
 	//// Input Handling
 	///////////////////////////////////////////////////////////////////////////////
 
+	UPROPERTY()
+	APlayerController* OwningController;
+
+
 	void Input_Move(const FInputActionValue& Value);
 	void Input_MoveUp(const FInputActionValue& Value);
 	void Input_MoveDown(const FInputActionValue& Value);
@@ -123,6 +127,7 @@ public:
 	void Move(const FInputActionValue& Value);
 	void MoveUp(const FInputActionValue& Value);
 	void MoveDown(const FInputActionValue& Value);
+	void Interact(const FInputActionValue& Value, APlayerController* CallingController);
 
 	UFUNCTION(Server, Reliable)
 	void Server_Move(FVector2D InputVector);
@@ -165,7 +170,7 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	//// Utility
 	///////////////////////////////////////////////////////////////////////////////
-
+	
 	FTimerHandle DroneDistanceTimerHandle;
 	UDroneHUD* CachedDroneHUD = nullptr;
 	float LastDistanceForHUD = -1.f;
@@ -202,6 +207,13 @@ public:
 	void OnDroneHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,
 		UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interact")
+	AActor* CurrentFocusedActor;
+
+	void TraceInteractableActor();
+	FTimerHandle InteractionTraceTimerHandle;
+
+	float TraceDistance = 300.f;
 protected:
 	///////////////////////////////////////////////////////////////////////////////
 	//// PostProcess Handling

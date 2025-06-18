@@ -142,6 +142,9 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Gun|Actions")
     virtual bool Reload();
 
+    UFUNCTION(BlueprintCallable, Category = "Gun|Actions")
+    virtual void CheckReloadCondition();
+
 protected:
     /** 단발 사격 실행 */
     UFUNCTION(BlueprintCallable, Category = "Gun|Fire")

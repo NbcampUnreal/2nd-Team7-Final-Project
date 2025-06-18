@@ -36,6 +36,9 @@ void UBaseCharacterAnimNotify::Notify(USkeletalMeshComponent* MeshComp, UAnimSeq
     case ECharacterNotifyType::ItemUse:
         Player->UseItemAnimationNotified();
         break;
+    case ECharacterNotifyType::Reload:
+        Player->GunReloadAnimationNotified();
+        break;
     default:
         break;
     }
