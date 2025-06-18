@@ -43,18 +43,22 @@ void AResourceNode::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 
 void AResourceNode::Interact_Implementation(APlayerController* Interactor)
 {
-	// 현재는 채취 아이템에서 처리
-	//if (ABaseCharacter* Character = Cast<ABaseCharacter>(Interactor->GetPawn()))
-	//{
-	//	Character->Server_InteractWithResourceNode(this);
-	//}
+	if (bRequireTool)
+	{
+		LOG_Item_WARNING(TEXT("[ResourceNode] 해당 자원은 도구로만 채취 가능합니다."));
+		return;
+	}
+
+	if (ABaseCharacter* Character = Cast<ABaseCharacter>(Interactor->GetPawn()))
+	{
+		Server_RequestInteract(Interactor);
+	}
 }
 
 void AResourceNode::Server_RequestInteract_Implementation(APlayerController* Interactor)
 {
-	// 현재는 채취 아이템에서 처리
 	// 서버에서 실제 상호작용 처리
-	//HarvestResource(Interactor);
+	HarvestResource(Interactor);
 }
 
 void AResourceNode::HarvestResource(APlayerController* Interactor)
@@ -62,6 +66,39 @@ void AResourceNode::HarvestResource(APlayerController* Interactor)
 	if (!CanHarvest())
 	{
 		LOG_Item_WARNING(TEXT("[AResourceNode::HarvestResource] 채취 불가능 - 자원이 고갈됨"));
+		return;
+	}
+
+	if (bRequireTool)
+	{
+		ABaseCharacter* Character = GetWorld()->GetFirstPlayerController()
+			? Cast<ABaseCharacter>(GetWorld()->GetFirstPlayerController()->GetPawn())
+			: nullptr;
+
+		if (!Character)
+		{
+			LOG_Item_WARNING(TEXT("[ResourceNode] 플레이어를 찾을 수 없습니다."));
+			return;
+		}
+
+		if (AItemBase* Equipped = Character->GetToolbarInventoryComponent()->GetCurrentEquippedItem())
+		{
+			if (!Equipped->ItemData.ItemType.MatchesTag(RequiredToolTag))
+			{
+				LOG_Item_WARNING(TEXT("[ResourceNode] 올바른 도구가 필요합니다."));
+				return;
+			}
+		}
+		else
+		{
+			LOG_Item_WARNING(TEXT("[ResourceNode] 도구를 장착해야 합니다."));
+			return;
+		}
+	}
+
+	if (!ResourceItemSpawnManager)
+	{
+		LOG_Item_WARNING(TEXT("[ResourceNode::HarvestResource] ResourceItemSpawnManager not initialized!"));
 		return;
 	}
 

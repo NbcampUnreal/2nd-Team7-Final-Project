@@ -108,6 +108,10 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resource|Harvest")
     bool bInfiniteHarvest = false;
 
+    // 도구를 통해 자원 채취할 것인지 확인
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
+    bool bRequireTool = true;
+
     // 나이아가라를 이용한 파괴 연출 
     UPROPERTY(EditDefaultsOnly, Category = "Effects")
     UNiagaraSystem* DestroyEffect;
