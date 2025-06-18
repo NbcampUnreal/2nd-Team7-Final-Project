@@ -219,9 +219,16 @@ FString AResourceNode::GetInteractMessage_Implementation() const
 		? Cast<ABaseCharacter>(GetWorld()->GetFirstPlayerController()->GetPawn())
 		: nullptr;
 
-	if (!Character)
+	if (Character == nullptr)
 	{
 		return TEXT("No interaction (no players)");
+	}
+
+	// Core 타입은 도구 없이도 가능
+	if (InteractionType == EResourceInteractionType::Core)
+	{
+		FText Template = GetDefaultMessageForType(InteractionType);
+		return FText::Format(Template, FFormatNamedArguments{ {"Key", FText::FromString(KeyName)} }).ToString();
 	}
 
 	if (AItemBase* Equipped = Character->GetToolbarInventoryComponent()->GetCurrentEquippedItem())
