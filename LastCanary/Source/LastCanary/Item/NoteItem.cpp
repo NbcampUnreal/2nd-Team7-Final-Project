@@ -5,6 +5,8 @@
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 
+#include "Character/BasePlayerController.h"
+
 #include "Blueprint/UserWidget.h"
 #include "Net/UnrealNetwork.h"
 
@@ -12,6 +14,12 @@
 
 void ANoteItem::UseItem()
 {
+	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+	if (PC->IsLocalController() == false)
+	{
+		return;
+	}
+
 	Super::UseItem();
 
 	InitializeNoteImageIndex();

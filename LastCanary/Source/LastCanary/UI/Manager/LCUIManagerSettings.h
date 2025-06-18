@@ -28,6 +28,7 @@ class UResultMenu;
 class URoomWidget;
 class UNotePopupWidget;
 class UDroneHUD;
+class USpectatorWidget;
 
 UCLASS(BlueprintType)
 class LASTCANARY_API ULCUIManagerSettings : public UDataAsset
@@ -73,4 +74,6 @@ public:
 	TSubclassOf<UNotePopupWidget> FromBPNotePopupWidgetClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UDroneHUD> FromBPDroneHUDClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<USpectatorWidget> FromBPSpectatorWidgetClass;
 };

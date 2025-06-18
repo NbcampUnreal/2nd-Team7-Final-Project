@@ -18,6 +18,7 @@
 #include "UI/UIElement/ResultMenu.h"
 #include "UI/UIElement/RoomWidget.h"
 #include "UI/UIElement/DroneHUD.h"
+#include "UI/UIElement/SpectatorWidget.h"
 
 #include "UI/UIObject/ConfirmPopup.h"
 
@@ -64,6 +65,7 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			RoomWidgetClass = Settings->FromBPRoomWidgetClass;
 			NotePopupWidgetClass = Settings->FromBPNotePopupWidgetClass;
 			DroneHUDClass = Settings->FromBPDroneHUDClass;
+			SpectatorWidgetClass = Settings->FromBPSpectatorWidgetClass;
 
 			if ((CachedTitleMenu == nullptr) && TitleMenuClass)
 			{
@@ -129,6 +131,10 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			if ((CachedDroneHUD == nullptr) && DroneHUDClass)
 			{
 				CachedDroneHUD = CreateWidget<UDroneHUD>(PlayerController, DroneHUDClass);
+			}
+			if ((CachedSpectatorWidget == nullptr) && SpectatorWidgetClass)
+			{
+				CachedSpectatorWidget = CreateWidget<USpectatorWidget>(PlayerController, SpectatorWidgetClass);
 			}
 		}
 	}
@@ -528,6 +534,36 @@ void ULCUIManager::HideDroneHUD()
 	else
 	{
 		LOG_Frame_ERROR(TEXT("HideDroneHUD: CachedDroneHUD is nullptr"));
+	}
+}
+
+void ULCUIManager::ShowSpectatorWidget()
+{
+	if (CachedSpectatorWidget)
+	{
+		if (!CachedSpectatorWidget->IsInViewport())
+		{
+			CachedSpectatorWidget->AddToViewport(1);
+		}
+	}
+	else
+	{
+		LOG_Frame_ERROR(TEXT("ShowSpectatorWidget: CachedSpectatorWidget is nullptr"));
+	}
+}
+
+void ULCUIManager::HideSpectatorWidget()
+{
+	if (CachedSpectatorWidget)
+	{
+		if (CachedSpectatorWidget->IsInViewport())
+		{
+			CachedSpectatorWidget->RemoveFromParent();
+		}
+	}
+	else
+	{
+		LOG_Frame_ERROR(TEXT("HideSpectatorWidget: CachedSpectatorWidget is nullptr"));
 	}
 }
 

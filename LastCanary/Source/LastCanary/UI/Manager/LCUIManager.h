@@ -29,6 +29,7 @@ class UResultMenu;
 class URoomWidget;
 class UNotePopupWidget;
 class UDroneHUD;
+class USpectatorWidget;
 
 UENUM(BlueprintType)
 enum class ELCUIContext : uint8
@@ -74,6 +75,8 @@ public:
 	void HideRoomWidget();
 	void ShowDroneHUD();
 	void HideDroneHUD();
+	void ShowSpectatorWidget();
+	void HideSpectatorWidget();
 
 	void SwitchToWidget(UUserWidget* Widget);
 
@@ -113,6 +116,7 @@ public:
 	FORCEINLINE UResultMenu* GetResultMenuClass() const { return CachedResultMenu; }
 	FORCEINLINE URoomWidget* GetRoomWidgetInstance() const { return CachedRoomWidget; }
 	FORCEINLINE UDroneHUD* GetDroneHUD() const { return CachedDroneHUD; }
+	FORCEINLINE USpectatorWidget* GetSpectatorWidget() const { return CachedSpectatorWidget; }
 
 	void SetLastShopInteractor(AShopInteractor* Interactor);
 	void SetLastMapSelectInteractor(AMapSelectInteractor* Interactor);
@@ -172,6 +176,8 @@ private:
 	TSubclassOf<UUserWidget> NotePopupWidgetClass;
 	UPROPERTY()
 	TSubclassOf<UDroneHUD> DroneHUDClass;
+	UPROPERTY()
+	TSubclassOf<USpectatorWidget> SpectatorWidgetClass;
 
 	// 위젯 캐싱
 	UPROPERTY()
@@ -209,6 +215,8 @@ private:
 	UNotePopupWidget* CachedNotePopupWidget;
 	UPROPERTY()
 	UDroneHUD* CachedDroneHUD;
+	UPROPERTY()
+	USpectatorWidget* CachedSpectatorWidget;
 
 	UPROPERTY()
 	ELCUIContext CurrentContext;
