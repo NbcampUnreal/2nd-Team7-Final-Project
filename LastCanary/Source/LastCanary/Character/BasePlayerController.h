@@ -252,6 +252,7 @@ public:
 	void HandleExitGate();
 
 	void NotifyAtGameState();
+	void SubmitMyResources();
 
 	UFUNCTION()
 	void PlayerExitActivePlayOnDeath();

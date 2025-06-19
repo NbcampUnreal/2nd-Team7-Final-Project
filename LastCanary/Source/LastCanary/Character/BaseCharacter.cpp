@@ -2293,13 +2293,15 @@ void ABaseCharacter::HandlePlayerDeath()
 	//관전 상태로 넘어갈 준비
 	//게이트 액터 or 게임 스테이트 or 게임 모드에 어떻게든 상태 알리기
 
-	NotifyPlayerDeathToGameState();
+	//NotifyPlayerDeathToGameState();
 	DropAllItemsOnDeath();
 	UnequipCurrentItem();
 	StartRagdolling();
-	Client_HandlePlayerVoiceChattingState();
+
+	// State 변경
 	MyPlayerState->CurrentState = EPlayerState::Dead;
 	MyPlayerState->SetInGameStatus(EPlayerInGameStatus::Spectating);
+	Client_HandlePlayerVoiceChattingState();
 	Multicast_SetPlayerInGameStateOnDie();
 	PC->PlayerExitActivePlayOnDeath();
 }
@@ -2327,7 +2329,7 @@ void ABaseCharacter::NotifyPlayerDeathToGameState()
 	}
 
 	//여기서부터는 게임스테이트의 코드가 바뀔 것은 알지만 테스트를 위해서 임의로 넣은 코드입니다.
-	LCGameState->MarkPlayerAsEscaped(MyPlayerState);
+	//LCGameState->MarkPlayerAsEscaped(MyPlayerState);
 }
 
 void ABaseCharacter::Client_HandlePlayerVoiceChattingState_Implementation()
