@@ -158,6 +158,13 @@ void ABaseCharacter::BeginPlay()
 		CustomPostProcessComponent->BlendWeight = 1.0f;
 	}
 	SetMovementSetting();
+	if (ABasePlayerController* PC = Cast<ABasePlayerController>(GetController()))
+	{
+		if (IsLocallyControlled())
+		{
+			PC->RequestShowInGameHUD();
+		}
+	}
 }
 
 float ABaseCharacter::GetBrightness()
@@ -2028,13 +2035,13 @@ void ABaseCharacter::SetCurrentQuickSlotIndex(int32 NewIndex)
 	}
 
 	StopReload();
-	UE_LOG(LogTemp, Warning, TEXT("Request Server to change QuickSlotindex"));
+	LOG_Char_WARNING(TEXT("Request Server to change QuickSlotindex"));
 	Server_SetQuickSlotIndex(NewIndex);
 }
 
 void ABaseCharacter::Server_SetQuickSlotIndex_Implementation(int32 NewIndex)
 {
-	UE_LOG(LogTemp, Warning, TEXT("change QuickSlotindex on Server"));
+	LOG_Char_WARNING(TEXT("change QuickSlotindex on Server"));
 	if (!IsValid(ToolbarInventoryComponent))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("툴바 없음."));
@@ -2061,13 +2068,13 @@ void ABaseCharacter::Server_SetQuickSlotIndex_Implementation(int32 NewIndex)
 
 void ABaseCharacter::Multicast_EquipItemFromQuickSlot_Implementation(int32 Index)
 {
-	UE_LOG(LogTemp, Warning, TEXT("refresh animation on Client"));
+	LOG_Char_WARNING(TEXT("refresh animation on Client"));
 	EquipItemFromCurrentQuickSlot(Index);
 }
 
 void ABaseCharacter::EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Change Equip Item"));
+	LOG_Char_WARNING(TEXT("Change Equip Item"));
 
 	//카메라 초기화(총 줌 쓰고 있다가 바뀔 가능성 대비)
 	SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
@@ -2134,7 +2141,7 @@ int32 ABaseCharacter::GetCurrentQuickSlotIndex()
 
 void ABaseCharacter::StopCurrentPlayingMontage()
 {
-	UE_LOG(LogTemp, Warning, TEXT("애님 몽타주 강종"));
+	LOG_Char_WARNING(TEXT("애님 몽타주 강종"));
 	//Mesh의 애니메이션 인스턴스 가져오기
 	UAnimInstance* FPSAnimInstance = GetMesh()->GetAnimInstance();
 	if (FPSAnimInstance && FPSAnimInstance->IsAnyMontagePlaying())
@@ -2146,7 +2153,7 @@ void ABaseCharacter::StopCurrentPlayingMontage()
 
 void ABaseCharacter::HandleInventoryUpdated()
 {
-	UE_LOG(LogTemp, Log, TEXT("Inventory updated!"));
+	LOG_Char_WARNING(TEXT("Inventory updated!"));
 	//ToolbarInventoryComponent->GetCurrentEquippedSlotIndex();
 
 	RefreshOverlayObject(0);
@@ -2157,7 +2164,7 @@ void ABaseCharacter::UnequipCurrentItem()
 {
 	HeldItem = nullptr;
 	//TODO: 손에서 제거, 메시 해제, 이펙트 제거 등 처리
-	UE_LOG(LogTemp, Log, TEXT("Unequipped current item"));
+	LOG_Char_WARNING(TEXT("Unequipped current item"));
 
 	if (!IsEquipped())
 	{
@@ -2204,7 +2211,7 @@ void ABaseCharacter::UnequipCurrentItem()
 
 float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
-	UE_LOG(LogTemp, Log, TEXT("Character Take Damage"));
+	LOG_Char_WARNING(TEXT("Character Take Damage"));
 	if (!HasAuthority())
 	{
 		return 0;
@@ -2223,7 +2230,7 @@ float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageE
 	float MaxHP = MyPlayerState->MaxHP;
 	float CalCulatedHP = FMath::Clamp(CurrentHP - FinalDamage, 0.0f, MaxHP);
 	MyPlayerState->SetHP(CalCulatedHP);
-	UE_LOG(LogTemp, Warning, TEXT("Current HP : %f"), CalCulatedHP);
+	LOG_Char_WARNING(TEXT("Current HP : %f"), CalCulatedHP);
 	if (CalCulatedHP <= 0.f)
 	{
 		HandlePlayerDeath(); // 사망 처리
@@ -2252,7 +2259,7 @@ void ABaseCharacter::GetFallDamage(float Velocity)
 	float CurrentHP = MyPlayerState->GetHP();
 	float MaxHP = MyPlayerState->MaxHP;
 	float CalCulatedHP = FMath::Clamp(CurrentHP - FinalDamage, 0.0f, MaxHP);
-	UE_LOG(LogTemp, Warning, TEXT("Current HP : %f"), CalCulatedHP);
+	LOG_Char_WARNING(TEXT("Current HP : %f"), CalCulatedHP);
 	MyPlayerState->SetHP(CalCulatedHP);
 	if (CalCulatedHP <= 0.f)
 	{
@@ -2262,7 +2269,7 @@ void ABaseCharacter::GetFallDamage(float Velocity)
 
 void ABaseCharacter::HandlePlayerDeath()
 {
-	UE_LOG(LogTemp, Log, TEXT("Character Died"));
+	LOG_Char_WARNING(TEXT("Character Died"));
 	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
@@ -2302,20 +2309,20 @@ void ABaseCharacter::NotifyPlayerDeathToGameState()
 	AGameStateBase* GameState = GetWorld()->GetGameState<AGameStateBase>();
 	if (!GameState)
 	{
-		UE_LOG(LogTemp, Log, TEXT("게임스테이트가 유효하지 않음"));
+		LOG_Char_WARNING(TEXT("게임스테이트가 유효하지 않음"));
 		return;
 	}
 	ALCGameState* LCGameState = Cast<ALCGameState>(GameState);
 	if (!LCGameState)
 	{
-		UE_LOG(LogTemp, Log, TEXT("LCGameState가 유효하지 않음"));
+		LOG_Char_WARNING(TEXT("LCGameState가 유효하지 않음"));
 		return;
 	}
 
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
 	{
-		UE_LOG(LogTemp, Log, TEXT("PlayerState가 유효하지 않음"));
+		LOG_Char_WARNING(TEXT("PlayerState가 유효하지 않음"));
 		return;
 	}
 
@@ -2393,7 +2400,7 @@ void ABaseCharacter::Multicast_SetPlayerInGameStateOnEscapeGate_Implementation()
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
 	{
-		UE_LOG(LogTemp, Log, TEXT("PlayerState Isn`t Valid"));
+		LOG_Char_WARNING(TEXT("PlayerState Isn`t Valid"));
 		return;
 	}
 	MyPlayerState->CurrentState = EPlayerState::Escape;
@@ -2741,7 +2748,7 @@ bool ABaseCharacter::TryPickupItem(AItemBase* HitItem)
 {
 	if (!HitItem)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[ABaseCharacter::TryPickupItem] ItemActor가 NULL"));
+		LOG_Item_WARNING(TEXT("[ABaseCharacter::TryPickupItem] ItemActor가 NULL"));
 		return false;
 	}
 	//서버
@@ -2804,7 +2811,7 @@ void ABaseCharacter::Server_UnequipCurrentItem_Implementation()
 
 bool ABaseCharacter::UseEquippedItem(float ActionValue)
 {
-	UE_LOG(LogTemp, Warning, TEXT("아이템 사용 : %f"), ActionValue);
+	LOG_Item_WARNING(TEXT("아이템 사용 : %f"), ActionValue);
 	if (bIsMantling || bIsReloading)
 	{
 		return true;
