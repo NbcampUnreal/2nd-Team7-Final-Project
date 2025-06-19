@@ -469,7 +469,7 @@ void ABaseCharacter::MakeNoiseSoundToAI(float Force)
 	UAISense_Hearing::ReportNoiseEvent(
 		GetWorld(),
 		SoundLocation,              // FVector: 소리가 발생한 위치
-		SoundLoudness,                   // float: 소리의 크기 (기본값은 1.0f, 감지 거리 등에 영향을 줌)
+		SoundLoudness*1.5,                   // float: 소리의 크기 (기본값은 1.0f, 감지 거리 등에 영향을 줌)
 		SoundCauser,                 // AActor*: 소리의 주체 (보통 this)
 		MaxSoundRange,                   // float: 소리를 들을 수 있는 최대 거리
 		AISoundCheckTag                         // FName: 태그로 필터링 가능 (선택사항)
@@ -499,10 +499,10 @@ void ABaseCharacter::MakeNoiseSoundToBoss(float Force)
 	UAISense_Hearing::ReportNoiseEvent(
 		GetWorld(),
 		SoundLocation,              // FVector: 소리가 발생한 위치
-		SoundLoudness*1000,                   // float: 소리의 크기 (기본값은 1.0f, 감지 거리 등에 영향을 줌)
+		SoundLoudness*2,                   // float: 소리의 크기 (기본값은 1.0f, 감지 거리 등에 영향을 줌)
 		SoundCauser,                 // AActor*: 소리의 주체 (보통 this)
 		MaxSoundRange,                   // float: 소리를 들을 수 있는 최대 거리
-		"Boss"                         // FName: 태그로 필터링 가능 (선택사항)
+		FName("Boss")                         // FName: 태그로 필터링 가능 (선택사항)
 	);
 }
 

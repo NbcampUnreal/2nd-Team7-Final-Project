@@ -28,6 +28,8 @@ public:
     void StopSpawning();
 
     void CurrentMap();
+
+    void SwitchDayNight();
 protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Spawner")
     TArray<TSubclassOf<ABaseMonsterCharacter>> MonsterClasses;
@@ -35,7 +37,7 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     UDataTable* MonsterDataTable;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Spawner", meta = (ClampMin = "1"))
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Spawner", meta = (ClampMin = "0"))
     int32 MaxMonsterCount = 4;
 
     /*UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Spawner", meta = (ClampMin = "1"))
@@ -49,6 +51,9 @@ protected:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Spawner", meta = (ClampMin = "0"))
     float SpawnCooldown = 15.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Spawner", meta = (ClampMin = "0"))
+    float AvoidSpawnRadius = 200.f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Spawner")
     bool bAutoStart = false;
