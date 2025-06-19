@@ -16,7 +16,7 @@ ABaseSpectatorPawn::ABaseSpectatorPawn()
     SpringArm->bUsePawnControlRotation = false;
 	SpringArm->bDoCollisionTest = true;
 	SpringArm->ProbeChannel = ECC_Camera;
-	SpringArm->ProbeSize = 12.0f;
+	SpringArm->ProbeSize = 3.0f;
 
     Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
     Camera->SetupAttachment(SpringArm);
@@ -60,7 +60,7 @@ void ABaseSpectatorPawn::Handle_LookMouse(const FInputActionValue& ActionValue, 
 	const float NewPitchInput = Value.Y * Sensivity;
 
 	// Pitch 제한 적용
-	float NewPitch = FMath::Clamp(CurrentPitch + NewPitchInput, -MaxPitchAngle, MaxPitchAngle);
+	float NewPitch = FMath::Clamp(CurrentPitch + NewPitchInput, MinPitchAngle, MaxPitchAngle);
 
 	// Yaw는 그대로
 	float NewYaw = CurrentRotation.Yaw + Value.X * Sensivity;
@@ -97,7 +97,7 @@ void ABaseSpectatorPawn::SpectateOtherUser(ABaseCharacter* TargetCharacter)
 		if (TargetCharacter->GetMesh())
 		{
 			AttachToComponent(TargetCharacter->GetMesh(), FAttachmentTransformRules::KeepRelativeTransform); 
-			SetActorRelativeLocation(FVector(0, 0, 200));  // 예: 위로 50만큼 띄우기
+			SetActorRelativeLocation(FVector(0, 0, 200));  // 예: 위로 200만큼 띄우기
 		}
 	}
 }

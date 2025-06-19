@@ -56,8 +56,8 @@ protected:
 	float MaxZoom = 400.f;
 
 	UPROPERTY(EditAnywhere, Category = "Camera")
-	float MinPitchAngle = 10.f;
+	float MinPitchAngle = -80.f;
 
 	UPROPERTY(EditAnywhere, Category = "Camera")
-	float MaxPitchAngle = 80.0f;
+	float MaxPitchAngle = 30.0f;
 };
