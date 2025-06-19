@@ -1421,7 +1421,6 @@ void ABaseCharacter::GunReloadAnimationNotified()
 	bIsReloading = false;
 }
 
-
 void ABaseCharacter::StopReload()
 {
 	Server_StopReload();

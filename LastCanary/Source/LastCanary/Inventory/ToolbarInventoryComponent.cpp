@@ -1270,6 +1270,17 @@ void UToolbarInventoryComponent::SetInventoryFromItemIDs(const TArray<int32>& It
             SlotData.bIsValid = true;
             SlotData.bIsEquipped = false;
 
+            ULCGameInstanceSubsystem* GameSubsystem = GetOwner()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
+            if (GameSubsystem && GameSubsystem->GunDataTable)
+            {
+                FGunDataRow* GunRowData = GameSubsystem->GunDataTable->FindRow<FGunDataRow>(ItemRowName, TEXT("SetInventoryFromItemIDs"));
+                if (GunRowData)
+                {
+                    SlotData.FireMode = static_cast<int32>(GunRowData->DefaultFireMode);
+                    SlotData.bWasAutoFiring = false;
+                }
+            }
+
             if (IsBackpackItem(ItemRowName))
             {
                 SlotData.bIsBackpack = true;
