@@ -2,6 +2,7 @@
 #include "Item/ItemBase.h"
 #include "Item/ShellEjectionComponent.h"
 #include "Inventory/ToolbarInventoryComponent.h"
+#include "Perception/AISenseConfig_Hearing.h"
 #include "Character/BaseCharacter.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/DamageEvents.h"
@@ -40,6 +41,85 @@ AGunBase::AGunBase()
 
     CurrentFireMode = EFireMode::Single;
     bCanToggleFireMode = false;
+}
+
+void AGunBase::BeginPlay()
+{
+    Super::BeginPlay();
+
+    UWorld* World = GetWorld();
+    if (!World)
+    {
+        LOG_Item_WARNING(TEXT("[GunBase::BeginPlay] World is null!"));
+        return;
+    }
+
+    UGameInstance* GI = World->GetGameInstance();
+    if (!GI)
+    {
+        LOG_Item_WARNING(TEXT("[GunBase::BeginPlay] GameInstance is null!"));
+        return;
+    }
+
+    ULCGameInstanceSubsystem* GISubsystem = GI->GetSubsystem<ULCGameInstanceSubsystem>();
+    if (!GISubsystem)
+    {
+        LOG_Item_WARNING(TEXT("[GunBase::BeginPlay] GameInstanceSubsystem is null!"));
+        return;
+    }
+
+    // 게임인스턴스 서브시스템에서 데이터 테이블 참조 가져오기
+    if (GISubsystem->GunDataTable)
+    {
+        GunDataTable = GISubsystem->GunDataTable;
+    }
+    else
+    {
+        LOG_Item_WARNING(TEXT("[GunBase::BeginPlay] 게임인스턴스 서브시스템의 GunDataTable이 null입니다!"));
+    }
+
+    if (Durability > MaxAmmo || Durability <= 0.0f)
+    {
+        Durability = MaxAmmo;
+    }
+
+    UpdateAmmoState();
+    InitializeGameplayTags();
+
+    if (USkeletalMeshComponent* ActiveMesh = GetSkeletalMeshComponent())
+    {
+        UAnimInstance* AnimInstance = ActiveMesh->GetAnimInstance();
+        if (AnimInstance)
+        {
+            LOG_Item_WARNING(TEXT("GunBase: AnimInstance found on SkeletalMeshComponent"));
+        }
+        else
+        {
+            LOG_Item_WARNING(TEXT("GunBase: No AnimInstance on SkeletalMeshComponent - animations will not work"));
+        }
+    }
+    else
+    {
+        LOG_Item_WARNING(TEXT("GunBase: No SkeletalMeshComponent found"));
+    }
+}
+
+void AGunBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    // 연발 중단
+    if (bIsAutoFiring)
+    {
+        StopAutoFire();
+    }
+
+    // 모든 타이머 정리
+    if (GetWorld())
+    {
+        GetWorld()->GetTimerManager().ClearTimer(AutoFireTimerHandle);
+        GetWorld()->GetTimerManager().ClearTimer(FireTimerHandle);
+    }
+
+    Super::EndPlay(EndPlayReason);
 }
 
 void AGunBase::UseItem()
@@ -116,6 +196,20 @@ void AGunBase::HandleFire()
     }
 
     UpdateAmmoState();
+
+    //수정
+    FVector SoundLocation = GetActorLocation();
+
+    AActor* SoundCauser = this;
+
+    UAISense_Hearing::ReportNoiseEvent(
+        GetWorld(),
+        SoundLocation,
+        1.0f,
+        SoundCauser,
+        2000.f,
+        "CaveMonster"
+    );
 
     LOG_Item_WARNING(TEXT("[HandleFire] 총알 소모: %.0f → %.0f (남은 총알: %.0f/%.0f)"),
         OldDurability, Durability, Durability, MaxAmmo);
@@ -226,28 +320,19 @@ void AGunBase::ProcessHit(const FHitResult& HitResult, const FVector& StartLocat
         if (TagInterface && TagInterface->HasMatchingGameplayTag(EnemyTag))
         {
             float AppliedDamage = BaseDamage;
-            LOG_Item_WARNING(TEXT("ProcessHit: Applying %.1f damage to enemy %s"),
-                AppliedDamage, *HitActor->GetName());
+            LOG_Item_WARNING(TEXT("ProcessHit: Applying %.1f damage to enemy %s"), AppliedDamage, *HitActor->GetName());
 
-            FPointDamageEvent DamageEvent(
-                AppliedDamage,
-                HitResult,
-                (HitResult.ImpactPoint - StartLocation).GetSafeNormal(),
-                nullptr
-            );
+            FPointDamageEvent DamageEvent(AppliedDamage, HitResult, (HitResult.ImpactPoint - StartLocation).GetSafeNormal(), nullptr);
 
-            float ActualDamage = HitActor->TakeDamage(
-                AppliedDamage,
-                DamageEvent,
-                GetInstigatorController(),
-                this
-            );
+            float ActualDamage = HitActor->TakeDamage(AppliedDamage, DamageEvent, GetInstigatorController(), this);
         }
         else
         {
-            LOG_Item_WARNING(TEXT("ProcessHit: Hit non-enemy actor %s. No damage applied"),
-                *HitActor->GetName());
+            LOG_Item_WARNING(TEXT("ProcessHit: Hit non-enemy actor %s. No damage applied"), *HitActor->GetName());
         }
+
+        USoundBase* ImpactSoundToPlay = GetImpactSoundForTarget(HitActor);
+        Multicast_PlayImpactSoundAtLocation(ImpactSoundToPlay, HitResult.ImpactPoint);
     }
 }
 
@@ -259,10 +344,7 @@ void AGunBase::Multicast_SpawnImpactEffects_Implementation(const TArray<FHitResu
     {
         const FHitResult& Hit = Hits[i];
 
-        LOG_Item_WARNING(TEXT("[Client] Processing Hit %d: %s at %s"),
-            i,
-            Hit.GetActor() ? *Hit.GetActor()->GetName() : TEXT("None"),
-            *Hit.ImpactPoint.ToString());
+        LOG_Item_WARNING(TEXT("[Client] Processing Hit %d: %s at %s"), i, Hit.GetActor() ? *Hit.GetActor()->GetName() : TEXT("None"), *Hit.ImpactPoint.ToString());
 
         FVector EnhancedDecalSize = DecalSize * 5.0f;
         FVector AdjustedLocation = Hit.ImpactPoint + Hit.ImpactNormal * 0.5f;
@@ -281,11 +363,6 @@ void AGunBase::Multicast_SpawnImpactEffects_Implementation(const TArray<FHitResu
         else
         {
             LOG_Item_WARNING(TEXT("[Client] ImpactDecalMaterial이 null입니다"));
-        }
-
-        if (ImpactSound)
-        {
-            UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, Hit.ImpactPoint);
         }
     }
 }
@@ -367,6 +444,55 @@ void AGunBase::Client_PlayCameraShake_Implementation()
     }
 }
 
+USoundBase* AGunBase::GetImpactSoundForTarget(AActor* HitActor)
+{
+    if (!HitActor)
+    {
+        return GunData.DefaultImpactSound;
+    }
+
+    // 피격당한 액터의 게임플레이 태그 인터페이스 확인
+    IGameplayTagAssetInterface* TagInterface = Cast<IGameplayTagAssetInterface>(HitActor);
+    if (!TagInterface)
+    {
+        LOG_Item_WARNING(TEXT("[GetImpactSoundForTarget] %s는 GameplayTagAssetInterface를 구현하지 않음"),
+            *HitActor->GetName());
+        return GunData.DefaultImpactSound;
+    }
+
+    // 액터의 모든 태그 가져오기
+    FGameplayTagContainer ActorTags;
+    TagInterface->GetOwnedGameplayTags(ActorTags);
+
+    LOG_Item_WARNING(TEXT("[GetImpactSoundForTarget] %s의 태그: %s"),
+        *HitActor->GetName(), *ActorTags.ToString());
+
+    // 피격 사운드 매핑에서 일치하는 태그 찾기
+    for (const FImpactSoundMapping& Mapping : GunData.ImpactSoundMappings)
+    {
+        if (ActorTags.HasTag(Mapping.TargetTag))
+        {
+            LOG_Item_WARNING(TEXT("[GetImpactSoundForTarget] 태그 매칭: %s -> %s"),
+                *Mapping.TargetTag.ToString(),
+                Mapping.ImpactSound ? *Mapping.ImpactSound->GetName() : TEXT("None"));
+            return Mapping.ImpactSound;
+        }
+    }
+
+    // 매칭되는 태그가 없으면 기본 사운드 사용
+    LOG_Item_WARNING(TEXT("[GetImpactSoundForTarget] 매칭되는 태그 없음 - 기본 사운드 사용"));
+    return GunData.DefaultImpactSound;
+}
+
+void AGunBase::Multicast_PlayImpactSoundAtLocation_Implementation(USoundBase* Sound, FVector Location)
+{
+    if (Sound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(this, Sound, Location);
+        LOG_Item_WARNING(TEXT("[Multicast_PlayImpactSoundAtLocation] 사운드 재생: %s"), *Sound->GetName());
+    }
+}
+
 void AGunBase::Multicast_PlayFireAnimation_Implementation()
 {
     EnsureGunDataLoaded();
@@ -438,84 +564,6 @@ void AGunBase::PlayGunAnimation(UAnimMontage* AnimMontage, float PlayRate)
     }
 }
 
-void AGunBase::BeginPlay()
-{
-    Super::BeginPlay();
-
-    UWorld* World = GetWorld();
-    if (!World)
-    {
-        LOG_Item_WARNING(TEXT("[GunBase::BeginPlay] World is null!"));
-        return;
-    }
-
-    UGameInstance* GI = World->GetGameInstance();
-    if (!GI)
-    {
-        LOG_Item_WARNING(TEXT("[GunBase::BeginPlay] GameInstance is null!"));
-        return;
-    }
-
-    ULCGameInstanceSubsystem* GISubsystem = GI->GetSubsystem<ULCGameInstanceSubsystem>();
-    if (!GISubsystem)
-    {
-        LOG_Item_WARNING(TEXT("[GunBase::BeginPlay] GameInstanceSubsystem is null!"));
-        return;
-    }
-
-    // 게임인스턴스 서브시스템에서 데이터 테이블 참조 가져오기
-    if (GISubsystem->GunDataTable)
-    {
-        GunDataTable = GISubsystem->GunDataTable;
-    }
-    else
-    {
-        LOG_Item_WARNING(TEXT("[GunBase::BeginPlay] 게임인스턴스 서브시스템의 GunDataTable이 null입니다!"));
-    }
-
-    if (Durability > MaxAmmo || Durability <= 0.0f)
-    {
-        Durability = MaxAmmo;
-    }
-
-    UpdateAmmoState();
-
-    if (USkeletalMeshComponent* ActiveMesh = GetSkeletalMeshComponent())
-    {
-        UAnimInstance* AnimInstance = ActiveMesh->GetAnimInstance();
-        if (AnimInstance)
-        {
-            LOG_Item_WARNING(TEXT("GunBase: AnimInstance found on SkeletalMeshComponent"));
-        }
-        else
-        {
-            LOG_Item_WARNING(TEXT("GunBase: No AnimInstance on SkeletalMeshComponent - animations will not work"));
-        }
-    }
-    else
-    {
-        LOG_Item_WARNING(TEXT("GunBase: No SkeletalMeshComponent found"));
-    }
-}
-
-void AGunBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
-{
-    // 연발 중단
-    if (bIsAutoFiring)
-    {
-        StopAutoFire();
-    }
-
-    // 모든 타이머 정리
-    if (GetWorld())
-    {
-        GetWorld()->GetTimerManager().ClearTimer(AutoFireTimerHandle);
-        GetWorld()->GetTimerManager().ClearTimer(FireTimerHandle);
-    }
-
-    Super::EndPlay(EndPlayReason);
-}
-
 void AGunBase::OnAnimMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 {
     LOG_Item_WARNING(TEXT("OnAnimMontageEnded: %s (Interrupted: %s)"),
@@ -582,7 +630,6 @@ void AGunBase::ApplyGunDataFromDataTable()
     DecalLifeSpan = GunData.DecalLifeSpan;
     FireSound = GunData.FireSound;
     EmptySound = GunData.EmptySound;
-    ImpactSound = GunData.ImpactSound;
 
     // 탄피 이펙트 설정
     if (ShellEjectionComponent && GunData.ShellEjectEffect)
@@ -620,21 +667,40 @@ bool AGunBase::Reload()
         return false;
     }
 
-    if (OwnerCharacter->bIsReloading)
-    {
-        return false;
-    }
-
     if (FMath::IsNearlyEqual(Durability, MaxAmmo))
     {
         return false;
     }
+    LOG_Item_WARNING(TEXT("리로드 완료!!."));
 
     Durability = MaxAmmo;
     UpdateAmmoState();
     OnItemStateChanged.Broadcast();
 
     return true;
+}
+
+void AGunBase::CheckReloadCondition()
+{
+    if (FMath::IsNearlyEqual(Durability, MaxAmmo)) //이미 꽉차있으면 중지
+    {
+        LOG_Item_WARNING(TEXT("총이 꽉 차있음"));
+        return;
+    }
+    AActor* OwnerActor = GetOwner();
+    if (!IsValid(OwnerActor))
+    {
+        LOG_Item_WARNING(TEXT("Owner is NULL"));
+        return;
+    }
+
+    ABaseCharacter* OwnerCharacter = Cast<ABaseCharacter>(OwnerActor);
+    if (!IsValid(OwnerCharacter))
+    {
+        LOG_Item_WARNING(TEXT("Owner Cast Fail"));
+        return;
+    }
+    OwnerCharacter->StartReload();
 }
 
 void AGunBase::OnRepDurability()
@@ -1006,4 +1072,12 @@ void AGunBase::DetachScope()
 bool AGunBase::HasScopeAttached() const
 {
     return CurrentAttachedScope != nullptr && ScopeComponent && ScopeComponent->IsVisible();
+}
+
+void AGunBase::InitializeGameplayTags()
+{
+    MetalTag = FGameplayTag::RequestGameplayTag(TEXT("Material.Metal"));
+    WoodTag = FGameplayTag::RequestGameplayTag(TEXT("Material.Wood"));
+    FleshTag = FGameplayTag::RequestGameplayTag(TEXT("Material.Flesh"));
+    StoneTag = FGameplayTag::RequestGameplayTag(TEXT("Material.Stone"));
 }

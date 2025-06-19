@@ -110,10 +110,7 @@ public:
 
 
 private:
-    /** 몬스터 오버랩 감지 */
-    UFUNCTION()
-    void OnLightOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+    FTimerHandle OverlapCheckTimer;
 
-    UFUNCTION()
-    void OnLightOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+    void CheckOverlap();
 };

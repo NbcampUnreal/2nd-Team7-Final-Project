@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataTable.h"
+#include "GameplayTagContainer.h"
 #include "GunDataRow.generated.h"
 
 
@@ -16,6 +17,20 @@ class UNiagaraSystem;
 /**
  * 
  */
+USTRUCT(BlueprintType)
+struct FImpactSoundMapping
+{
+    GENERATED_BODY()
+
+    /** 대상 게임플레이 태그 */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Impact")
+    FGameplayTag TargetTag;
+
+    /** 해당 태그에 대한 피격 사운드 */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Impact")
+    USoundBase* ImpactSound;
+};
+
 USTRUCT(BlueprintType)
 struct FGunDataRow : public FTableRowBase
 {
@@ -93,13 +108,16 @@ struct FGunDataRow : public FTableRowBase
     USoundBase* FireSound;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Sound")
-    USoundBase* ImpactSound;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Sound")
     USoundBase* ReloadSound;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Sound")
     USoundBase* EmptySound;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Sound")
+    USoundBase* DefaultImpactSound;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Sound")
+    TArray<FImpactSoundMapping> ImpactSoundMappings;
 
     // 애니메이션
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Animation")

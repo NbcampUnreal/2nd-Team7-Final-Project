@@ -120,6 +120,9 @@ public:
 	void UpdateInputModeByContext();
 	void SetUIContext(ELCUIContext NewContext);
 
+	UFUNCTION(BlueprintCallable)
+	UInGameHUD* GetInGameHUDBlueprint() const { return CachedInGameHUD; }
+
 private:
 	UPROPERTY()
 	AShopInteractor* LastShopInteractor;

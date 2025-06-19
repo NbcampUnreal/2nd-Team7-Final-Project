@@ -1,6 +1,7 @@
 #include "Framework/Manager/LCTimeManager.h"
 #include "Net/UnrealNetwork.h"
 #include "TimerManager.h"
+#include "AI/MonsterSpawnComponent.h"
 
 #include "LastCanary.h"
 
@@ -36,6 +37,15 @@ void ALCTimeManager::UpdateTime()
 	ElapsedTime += UpdateInterval * TimeScale;
 	CheckTimePhaseTransition();
 
+	for (TObjectIterator<UMonsterSpawnComponent> CompItr; CompItr; ++CompItr)//모든 컴포넌트 순회
+	{
+		UMonsterSpawnComponent* MonsterSpawner = *CompItr;
+		if (IsValid(MonsterSpawner) && MonsterSpawner->GetWorld() == GetWorld())
+		{
+			MonsterSpawner->SwitchDayNight();
+		}
+	}
+
 	if (bEnableDebugLog)
 	{
 		FString Message = FString::Printf(TEXT("[TimeManager] Phase: %s | Elapsed: %.2f | Day: %d"),
@@ -53,7 +63,6 @@ void ALCTimeManager::UpdateTime()
 			);
 		}
 	}
-
 }
 
 void ALCTimeManager::CheckTimePhaseTransition()
