@@ -737,12 +737,6 @@ bool AGunBase::CanFire()
     {
         LOG_Item_WARNING(TEXT("[AGunBase::CanFire] 탄약 부족"));
 
-        if (GEngine)
-        {
-            GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Red,
-                FString::Printf(TEXT("탄약 부족! 현재: %.0f/%.0f"), Durability, MaxAmmo));
-        }
-
         if (EmptySound)
         {
             UGameplayStatics::PlaySoundAtLocation(this, EmptySound, GetActorLocation());
@@ -779,14 +773,7 @@ void AGunBase::StartAutoFire()
     }
 
     // 연발 타이머 시작
-    GetWorld()->GetTimerManager().SetTimer(AutoFireTimerHandle,
-        this, &AGunBase::FireAuto, FireRate, true);
-
-    if (GEngine)
-    {
-        GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Cyan,
-            FString::Printf(TEXT("연발 사격 시작! (%.1f초 간격)"), FireRate));
-    }
+    GetWorld()->GetTimerManager().SetTimer(AutoFireTimerHandle, this, &AGunBase::FireAuto, FireRate, true);
 }
 
 void AGunBase::FireAuto()
@@ -799,7 +786,6 @@ void AGunBase::FireAuto()
 
     if (!CanFire())
     {
-        StopAutoFire();
         return;
     }
 
@@ -823,12 +809,6 @@ void AGunBase::StopAutoFire()
     if (GetWorld() && AutoFireTimerHandle.IsValid())
     {
         GetWorld()->GetTimerManager().ClearTimer(AutoFireTimerHandle);
-    }
-
-    if (GEngine)
-    {
-        GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Orange,
-            FString::Printf(TEXT("연발 사격 중단")));
     }
 }
 
