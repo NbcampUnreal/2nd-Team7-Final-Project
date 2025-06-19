@@ -7,6 +7,7 @@
 
 class UTextBlock;
 class UInputAction;
+class UInputMappingContext;
 UCLASS()
 class LASTCANARY_API USpectatorWidget : public ULCUserWidgetBase
 {
@@ -21,13 +22,11 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* NextKeyText;
 
-	/** 매핑된 키를 가져오기 위한 InputAction 참조 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-	UInputAction* IA_SpectatePrev;
-
+	UInputMappingContext* IMC_Default;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-	UInputAction* IA_SpectateNext;
+	UInputAction* IA_Move;
 
 private:
-	FString GetCurrentKeyNameForAction(UInputAction* InputAction) const;
+	FString GetDirectionalKeyName(UInputAction* InputAction, float DirectionThreshold) const;
 };
