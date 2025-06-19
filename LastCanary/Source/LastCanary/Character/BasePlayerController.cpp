@@ -20,6 +20,16 @@
 void ABasePlayerController::BeginPlay()
 {
 	Super::BeginPlay();
+	/*
+	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+	{
+		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+		{
+			UIManager->ShowInGameHUD();
+		}
+	}
+	*/
+	/*
 	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 	{
 		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
@@ -38,12 +48,23 @@ void ABasePlayerController::BeginPlay()
 			}
 		}
 	}
-
+	*/
 	LoadMouseSensitivity();
 	LoadBrightness();
 
 	PlayerCameraManager->ViewPitchMin = -80.0f; // 최소 Pitch 각도 (고개 숙이기)
 	PlayerCameraManager->ViewPitchMax = 80.0f;  // 최대 Pitch 각도 (고개 들기)
+}
+
+void ABasePlayerController::RequestShowInGameHUD()
+{
+	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+	{
+		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+		{
+			UIManager->ShowInGameHUD();
+		}
+	}
 }
 
 void ABasePlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
