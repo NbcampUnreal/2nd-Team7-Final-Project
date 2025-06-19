@@ -124,7 +124,7 @@ void ULCCheatManager::AddGold(int32 Amount)
 		{
 			if (ULCGameManager* LCGM = GI->GetSubsystem<ULCGameManager>())
 			{
-				LCGM->AddGold(Amount);
+				LCGM->UpdateGold(FString::Printf(TEXT("치트매니저를 활용해 골드 추가!")), Amount);
 			}
 		}
 	}

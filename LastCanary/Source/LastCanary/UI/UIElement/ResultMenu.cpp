@@ -178,20 +178,20 @@ void UResultMenu::OnAcceptClicked()
 
 	if (ULCGameManager* GameDataManager = GetGameInstance()->GetSubsystem<ULCGameManager>())
 	{
-		if (GameDataManager->CurrentRound == GameDataManager->MaxRounds)
+		if (GameDataManager->IsGameEnd())
 		{
 			//if (ULCGameInstance* GI = Cast<ULCGameInstance>(GetGameInstance()))
 			//{
 			//	GI->DestroySession();
 			//	
-			//}
+			//}//
 
 		}
 		else
 		{
 			// 게임 데이터 초기화
 			GameDataManager->EndCurrentRound();
-			GameDataManager->AddGold(3000); // 예시: 1000 골드 추가
+			GameDataManager->UpdateGold(FString::Printf(TEXT("게이트 탐사 완료!")), 3000);
 			LOG_Frame_WARNING(TEXT("ResultMenu - AcceptClicked → EndCurrentRound 호출"));
 
 			// 호스트만 처리
