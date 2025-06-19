@@ -140,28 +140,22 @@ void ULCGameInstance::Shutdown()
 void ULCGameInstance::OnStart()
 {
 	Super::OnStart();
-
-	UE_LOG(LogTemp, Warning, TEXT("On Start"));
 	ULocalPlayer* LocalPlayer = GetFirstGamePlayer();
-	if (LocalPlayer)
+	ULCGameInstanceSubsystem* Subsystem = GetSubsystem<ULCGameInstanceSubsystem>();
+
+	LOG_Server_WARNING(TEXT("On Start"));
+	if (!IsValid(LocalPlayer))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("로컬 플레이어 있음"));
-		if (ULCGameInstanceSubsystem* Subsystem = GetSubsystem<ULCGameInstanceSubsystem>())
-		{
-			UE_LOG(LogTemp, Warning, TEXT("Subsystem exist."));
-
-			Subsystem->LoadUserSettings();
-		}
-		else
-		{
-			UE_LOG(LogTemp, Warning, TEXT("Subsystem not exist"));
-		}
+		LOG_Server_WARNING(TEXT("로컬 플레이어 없음"));
+		return;
 	}
-	else
+	LOG_Server_WARNING(TEXT("로컬 플레이어 있음"));
+	if (!IsValid(Subsystem))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("로컬 플레이어 없음"));
+		LOG_Server_WARNING(TEXT("Subsystem not exist"));
+		return;
 	}
+	LOG_Server_WARNING(TEXT("Subsystem exist."));
 
-
-	
+	Subsystem->LoadUserSettings();
 }
