@@ -3,10 +3,13 @@
 #include "CoreMinimal.h"
 #include "Framework/Manager/ChecklistManager.h"
 #include "Character/BasePlayerController.h"
+#include "InputActionValue.h" // For FInputActionInstance
+#include "EnhancedInputComponent.h" // For UEnhancedInputComponent
+#include "InputTriggers.h" // For ETriggerEvent
 #include "LCInGamePlayerController.generated.h"
 
 class AChecklistManager;
-
+class UInputAction;
 UCLASS()
 class LASTCANARY_API ALCInGamePlayerController : public ABasePlayerController
 {
@@ -17,7 +20,7 @@ protected:
 
 	virtual void PostSeamlessTravel() override;
 	virtual void BeginPlay() override;
-	
+
 public:
 	UFUNCTION(Client, Reliable)
 	void Client_OnGameEnd();
@@ -42,4 +45,6 @@ public:
 	UFUNCTION(Client, Reliable)
 	void Client_NotifyResultReady(const FChecklistResultData& ResultData);
 	void Client_NotifyResultReady_Implementation(const FChecklistResultData& ResultData);
+	
+	void SetSpectatingTarget(AActor* NewTarget);
 };
