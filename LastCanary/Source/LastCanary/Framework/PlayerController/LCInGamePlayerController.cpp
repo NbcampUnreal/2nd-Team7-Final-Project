@@ -13,7 +13,8 @@
 
 ALCInGamePlayerController::ALCInGamePlayerController()
 {
-
+	DefaultMouseCursor = EMouseCursor::Default;
+	CurrentMouseCursor = EMouseCursor::Default;
 }
 
 void ALCInGamePlayerController::BeginPlay()

@@ -2531,7 +2531,7 @@ void ABaseCharacter::ResetMovementSetting()
 
 void ABaseCharacter::Multicast_RefreshOverlayObject_Implementation(int index)
 {
-	UE_LOG(LogTemp, Warning, TEXT("멀티캐스트 Overlay Objects"));
+	LOG_Char_WARNING(TEXT("멀티캐스트 Overlay Objects"));
 	bIsSpawnDrone = true;
 	RefreshOverlayObject(index);
 }
@@ -2551,12 +2551,12 @@ void ABaseCharacter::NetMulticast_UnPossessDrone_Implementation()
 
 void ABaseCharacter::RefreshOverlayObject(int index)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Refresh Overlay Objects : %d"), index);
+	LOG_Char_WARNING(TEXT("Refresh Overlay Objects : %d"), index);
 	AItemBase* CurrentItem = GetToolbarInventoryComponent()->GetCurrentEquippedItem();
 	//static FGameplayTag CurrentItemTag = FGameplayTag::RequestGameplayTag(TEXT("Character.Player.Equipped"));  // 참고용
 	if (bIsSpawnDrone == true)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Drone Controller"));
+		LOG_Char_WARNING(TEXT("Drone Controller"));
 		SetDesiredGait(AlsOverlayModeTags::Binoculars);
 		SetOverlayMode(AlsOverlayModeTags::Binoculars);
 		RefreshOverlayLinkedAnimationLayer(4);
@@ -2572,13 +2572,13 @@ void ABaseCharacter::RefreshOverlayObject(int index)
 		RefreshOverlayLinkedAnimationLayer(3);
 		AttachOverlayObject(NULL, NULL, NULL, "Torch", true);
 
-		UE_LOG(LogTemp, Warning, TEXT("Character Equipped None"));
+		LOG_Char_WARNING(TEXT("Character Equipped None"));
 
 		return;
 	}
 	//아이템이 있을 때	
 	FGameplayTag ItemTag = CurrentItem->ItemData.ItemType;
-	UE_LOG(LogTemp, Warning, TEXT("ItemTag: %s"), *ItemTag.ToString());
+	LOG_Char_WARNING(TEXT("ItemTag: %s"), *ItemTag.ToString());
 
 	if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))  // 또는 HasTag 등 비교 방식에 따라
 	{
@@ -2615,12 +2615,12 @@ void ABaseCharacter::RefreshOverlayObject(int index)
 		return;
 	}
 	//아이템은 있는데 매치가 아무것도 안되면
-	UE_LOG(LogTemp, Warning, TEXT("Equipped Item is Valid but doesn`t match any tag"));
+	LOG_Char_WARNING(TEXT("Equipped Item is Valid but doesn`t match any tag"));
 	SetDesiredGait(AlsOverlayModeTags::Default);
 	SetOverlayMode(AlsOverlayModeTags::Default);
 	RefreshOverlayLinkedAnimationLayer(3);
 	AttachOverlayObject(NULL, NULL, NULL, "Torch", true);
-	UE_LOG(LogTemp, Warning, TEXT("Character Equipped Unknown Item"));
+	LOG_Char_WARNING(TEXT("Character Equipped Unknown Item"));
 	return;
 
 	/*
