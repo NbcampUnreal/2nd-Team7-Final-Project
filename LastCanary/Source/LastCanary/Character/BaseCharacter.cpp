@@ -1404,6 +1404,11 @@ void ABaseCharacter::Server_PlayReload_Implementation()
 
 void ABaseCharacter::Multicast_PlayReload_Implementation()
 {
+	if (HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("AnimInstance on server: %s"), *GetNameSafe(GetMesh()->GetAnimInstance()));
+	}
+
 	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
 	if (!EquippedItem)
 	{

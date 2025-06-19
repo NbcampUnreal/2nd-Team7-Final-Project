@@ -702,6 +702,31 @@ void ABasePlayerController::Input_OnInteract(const FInputActionValue& ActionValu
 		return;
 	}
 
+	if (CurrentPossessedPawn->IsA<ABaseDrone>())
+	{
+		ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn);
+		if (!IsValid(Drone))
+		{
+			return;
+		}
+
+		// 이미 아이템을 들고 있으면 상호작용 무시
+		if (Drone->HasItem())
+		{
+			return;
+		}
+
+		// 드론 주변의 아이템 검색
+		AActor* HitActor = TraceInteractable(1000.0f);
+		if (AItemBase* Item = Cast<AItemBase>(HitActor))
+		{
+			// 아이템 픽업
+			Drone->Server_PickupItem(Item);
+		}
+
+		return;
+	}
+
 	AActor* HitActor = TraceInteractable(1000.0f);
 	if (!HitActor)
 	{
@@ -950,6 +975,16 @@ void ABasePlayerController::Input_OnItemThrow(const FInputActionValue& ActionVal
 {
 	if (!IsValid(CurrentPossessedPawn))
 	{
+		return;
+	}
+
+	if (CurrentPossessedPawn->IsA<ABaseDrone>())
+	{
+		ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn);
+		if (IsValid(Drone) && Drone->HasItem())
+		{
+			Drone->Server_DropItem();
+		}
 		return;
 	}
 
