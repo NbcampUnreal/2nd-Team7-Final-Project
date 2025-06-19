@@ -20,6 +20,11 @@ public:
 	virtual void PostSeamlessTravel() override;
 	virtual void BeginPlay() override;
 
+	void TryRestoreInventory();
+	void DelayedPostTravelSetup();
+
+public:
+
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_SetPlayerInfo(const FSessionPlayerInfo& PlayerInfo);
 	virtual void Server_SetPlayerInfo_Implementation(const FSessionPlayerInfo& PlayerInfo);
@@ -54,9 +59,6 @@ public:
 	UFUNCTION(Client, Unreliable)
 	void Client_ReceiveMessageFromGM(const FString& Message);
 	void Client_ReceiveMessageFromGM_Implementation(const FString& Message);
-
-	void TryRestoreInventory();
-
 
 public:
 	void StartGame(FString SoftPath);

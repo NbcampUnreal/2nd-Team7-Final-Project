@@ -155,6 +155,9 @@ public:
     void Server_DropItemAtSlot(int32 SlotIndex, int32 Quantity);
     void Server_DropItemAtSlot_Implementation(int32 SlotIndex, int32 Quantity);
 
+    bool Internal_TryDropItemAtSlot(int32 SlotIndex, int32 Quantity) override;
+    void RemoveResourceItems();
+
 private:
     bool Internal_DropCurrentEquippedItem();
     bool Internal_DropEquippedItemAtSlot(int32 SlotIndex, int32 Quantity);

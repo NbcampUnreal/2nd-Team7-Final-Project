@@ -146,6 +146,10 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 
 void ULCUIManager::SetPlayerController(APlayerController* PlayerController)
 {
+	if (!PlayerController->IsLocalPlayerController())
+	{
+		return;
+	}
 	UE_LOG(LogTemp, Warning, TEXT("ULCUIManager::SetPlayerController - PlayerController: %s"), PlayerController ? *PlayerController->GetName() : TEXT("nullptr"));
 	OwningPlayer = PlayerController;
 }
