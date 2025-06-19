@@ -54,11 +54,7 @@ private:
 	UVoiceOptionWidget* VoiceOptionWidget;
 	UPROPERTY(meta = (BindWidget))
 	UGraphicsSettingPanel* GraphicsSettingPanel;
-
 	
-	//FLinearColor SelectedColor = FLinearColor(0.87f, 0.87f, 0.87f);   
-	//FLinearColor UnselectedColor = FLinearColor(0.5f, 0.5f, 0.5f);    
-
 	UFUNCTION()
 	void OnApplyButtonClicked();
 	UFUNCTION()
@@ -75,8 +71,6 @@ private:
 	void OnGraphicsSettingButtonClicked();
 
 public:
-	/* 위젯 게터 */
 	UKeySettingWidget* GetKeySettingWidget() const { return KeySettingWidget; }
-	//void SetTabButtonStyle(UButton* Button, bool bIsSelected);
 };
 
