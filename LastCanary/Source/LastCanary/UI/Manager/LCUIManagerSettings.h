@@ -14,7 +14,6 @@ class UOptionWidget;
 class UPauseMenu;
 class UInGameHUD;
 class UShopWidget;
-class UMapSelectWidget;
 class UPopupCreateSession;
 class UPopupLoading;
 class UPopupNotice;
@@ -29,6 +28,7 @@ class URoomWidget;
 class UNotePopupWidget;
 class UDroneHUD;
 class USpectatorWidget;
+class UGameOverWidget;
 
 UCLASS(BlueprintType)
 class LASTCANARY_API ULCUIManagerSettings : public UDataAsset
@@ -50,8 +50,6 @@ public:
 	TSubclassOf<UInGameHUD> FromBPInGameHUDClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UShopWidget> FromBPShopWidgetClass;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
-	TSubclassOf<UMapSelectWidget> FromBPMapSelectWidgetClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UPopupCreateSession> FromBPCreateSessionWidgetClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
@@ -76,4 +74,6 @@ public:
 	TSubclassOf<UDroneHUD> FromBPDroneHUDClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<USpectatorWidget> FromBPSpectatorWidgetClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UGameOverWidget> FromBPGameOverWidgetClass;
 };
