@@ -102,8 +102,6 @@ protected:
     void OnUndeadDestroyed(AActor* DestroyedActor);
 
     // ── Rage ─────────────────────────────────────
-    UPROPERTY(EditAnywhere, Category = "Lich|Rage")
-    float MaxRage = 100.f;
 
     void AddRage(float Amount);
 

@@ -57,11 +57,7 @@ protected:
     bool IsPlayerLooking(APlayerController* PC) const;
 
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Sight", meta = (ClampMin = "0", ClampMax = "180"))
-    float LookAngleDeg = 18.f;
-
-    /** ── Rage ── */
-    UPROPERTY(EditAnywhere, Category = "Boss|Rage")
-    float MaxRage = 100.f;
+    float LookAngleDeg = 18.f;    /** ── Rage ── */
 
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Rage")
     float RageGainPerSec = 8.f;

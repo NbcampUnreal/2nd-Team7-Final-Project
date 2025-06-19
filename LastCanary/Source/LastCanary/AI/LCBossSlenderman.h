@@ -135,8 +135,6 @@ protected:
     virtual void EndBerserk() override;
 
     // ── Rage ──
-    UPROPERTY(EditAnywhere, Category = "Slenderman|Rage")
-    float MaxRage = 100.f;
     void AddRage(float Amount);
 
     // ── Helpers ──

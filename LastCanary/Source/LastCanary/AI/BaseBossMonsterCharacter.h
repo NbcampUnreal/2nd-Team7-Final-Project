@@ -34,6 +34,10 @@ public:
     UPROPERTY(EditAnywhere, Category = "Attack")
     float AttackRange = 200.f;
 
+    /** ── Rage ── */
+    UPROPERTY(EditAnywhere, Category = "Boss|Rage")
+    float MaxRage = 100.f;
+
     /** 현재 보유한 Rage 값 (복제) */
     UPROPERTY(Replicated, BlueprintReadOnly, Category = "Boss|Attack")
     float Rage = 0.f;

@@ -133,11 +133,6 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category = "Banshee|Combat")
     float BasicAttackWeight = 5.f;
 
-    /** --- Rage --- */
-
-    UPROPERTY(EditAnywhere, Category = "Banshee|Rage")
-    float MaxRage = 100.f;
-
     UPROPERTY(EditDefaultsOnly, Category = "Banshee|Rage")
     float RageDecayPerSecond = 5.f;
 

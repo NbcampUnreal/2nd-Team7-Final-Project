@@ -132,8 +132,6 @@ protected:
     void Multicast_StartDivineGrace();
 
     // ── Rage ──
-    UPROPERTY(EditAnywhere, Category = "Gumiho|Rage", meta = (ClampMin = "0"))
-    float MaxRage = 100.f;
 
     void AddRage(float Amount);
 

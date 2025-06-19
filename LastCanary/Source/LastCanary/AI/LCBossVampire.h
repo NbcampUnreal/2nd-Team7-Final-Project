@@ -14,6 +14,8 @@ class LASTCANARY_API ALCBossVampire : public ABaseBossMonsterCharacter
 public:
     ALCBossVampire();
 
+    virtual void Tick(float DeltaSeconds) override;
+
 protected:
     virtual void BeginPlay() override;
     virtual bool RequestAttack(float TargetDistance) override;
@@ -25,7 +27,14 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Vampire|Bloodlust")
     USoundBase* BloodlustSound;
 
-    // 그리고 기존에 선언만 해 두셨던 타이머와 가상 함수들을 확인합니다.
+    /** Spawn된 Berserk FX 컴포넌트 보관 */
+    UPROPERTY()
+    UNiagaraComponent* BerserkEffectComp = nullptr;
+
+    /** Spawn된 Berserk Audio 컴포넌트 보관 */
+    UPROPERTY()
+    UAudioComponent* BerserkAudioComp = nullptr;
+
     FTimerHandle BerserkTimerHandle;
     virtual void OnRep_IsBerserk() override;
     virtual void EnterBerserkState() override;
@@ -33,6 +42,8 @@ protected:
     virtual void StartBerserk(float Duration) override;
     virtual void EndBerserk() override;
 
+    UPROPERTY(EditAnywhere, Category = "Vampire|Berserk")
+	float BerserkMistRadius = 1200.f;
 
     // ── Blood Drain (영혼 흡수 힐) ──
     /** 흡수 효율 (1.0 = 100% 피흡, 특수 상태 시 2.0 사용) */
@@ -80,7 +91,39 @@ protected:
     UFUNCTION(NetMulticast, Reliable)
     void Multicast_StartMistForm();
     void EnterMistForm();
+    void TickMistFormRage();
     void EndMistForm();
+    /** MistForm 중 기본 초당 Rage 회복량 */
+    UPROPERTY(EditAnywhere, Category = "Vampire|Mist")
+    float MistRagePerSecond = 20.f;
+
+    /** MistForm 중 플레이어에게 추가로 주는 초당 Rage */
+    UPROPERTY(EditAnywhere, Category = "Vampire|Mist")
+    float MistPlayerBonusRagePerSecond = 10.f;
+
+    /** MistForm 기본 범위(구) */
+    UPROPERTY(EditAnywhere, Category = "Vampire|Mist")
+    float DefaultMistRadius = 800.f;
+
+    /** MistForm 캐시 범위(구) */
+    UPROPERTY(EditAnywhere, Category = "Vampire|Mist")
+    float MistRadius = 800.f;
+
+    /** 플레이어 카메라에 입힐 포스트프로세스 머티리얼 */
+    UPROPERTY(EditAnywhere, Category = "Vampire|Mist")
+    UMaterialInterface* MistPostProcessMaterial;
+
+    /** 포스트프로세스 블렌드 가중치 */
+    UPROPERTY(EditAnywhere, Category = "Vampire|Mist")
+    float MistPostProcessWeight = 0.5f;
+
+    /** Mist Form 자동 발동 간격 */
+    UPROPERTY(EditAnywhere, Category = "Vampire|Mist")
+    float MistFormInterval = 25.f;
+
+    /** Mist Form 발동용 타이머 핸들 */
+    FTimerHandle MistFormTimerHandle;
+    FTimerHandle MistFormRageTimerHandle;
 
     // ── Nightmare Gaze ──
     UPROPERTY(EditAnywhere, Category = "Vampire|Gaze")
@@ -155,8 +198,6 @@ protected:
     FTimerHandle BurstHandle;
     void ExecuteSanguineBurst();
 
-
-
     // ── Eternal Bloodlust (특수 상태) ──
     UPROPERTY(ReplicatedUsing = OnRep_Bloodlust)
     bool bIsBloodlust = false;
@@ -175,8 +216,10 @@ protected:
     float OriginalCrimsonCooldown;
     float OriginalBurstCooldown;
 
-    // ── Helpers ──
+    // ── Rage ──
     void AddRage(float Amount);
+
+    virtual void UpdateRage(float DeltaSeconds) override;
 
     // ── Replication ──
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
