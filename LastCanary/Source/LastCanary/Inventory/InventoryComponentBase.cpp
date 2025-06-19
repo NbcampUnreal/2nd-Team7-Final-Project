@@ -380,12 +380,12 @@ void UInventoryComponentBase::UpdateWeight()
 	float OldWeight = CurrentTotalWeight;
 	float NewWeight = 0.0f;
 
-	// ⭐ 간단하게 전체 슬롯 순회해서 무게 계산
+	// 전체 슬롯 순회해서 무게 계산
 	for (const FBaseItemSlotData& Slot : ItemSlots)
 	{
-		if (!Slot.ItemRowName.IsNone() && Slot.Quantity > 0)
+		if (!UInventoryUtility::IsDefaultItem(Slot.ItemRowName, GetInventoryConfig()) && Slot.Quantity > 0)
 		{
-			float ItemWeight = GetItemWeight(Slot.ItemRowName);
+			float ItemWeight = UInventoryUtility::GetItemWeight(Slot.ItemRowName, ItemDataTable);
 			NewWeight += ItemWeight * Slot.Quantity;
 		}
 	}
@@ -401,7 +401,6 @@ void UInventoryComponentBase::UpdateWeight()
 
 		OnWeightChanged.Broadcast(NewWeight, WeightDifference);
 
-		// 캐릭터에 알림
 		if (AActor* Owner = GetOwner())
 		{
 			if (ABaseCharacter* Character = Cast<ABaseCharacter>(Owner))

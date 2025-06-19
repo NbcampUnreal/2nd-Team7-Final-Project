@@ -2,15 +2,16 @@
 
 #include "CoreMinimal.h"
 #include "Inventory/InventoryComponentBase.h"
+#include "Inventory/BackpackManager.h"
 #include "Item/EquipmentItem/GunBase.h"
 #include "Item/EquipmentItem/BackpackItem.h"
 #include "ToolbarInventoryComponent.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnBackpackEquipped, const TArray<FBackpackSlotData>&, BackpackSlots);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnBackpackUnequipped);
-
 class ABaseCharacter;
 struct FGameplayTag;
+
+class UInventoryNetworkManager;
+class UInventoryUIController;
 
 UCLASS()
 class LASTCANARY_API UToolbarInventoryComponent : public UInventoryComponentBase
@@ -21,7 +22,7 @@ public:
     UToolbarInventoryComponent();
 
 protected:
-    virtual void BeginPlay() override;
+    //virtual void BeginPlay() override;
 
 public:
     /** 장착된 아이템 컴포넌트 (일반 장비용) */
@@ -89,17 +90,17 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Backpack")
     bool UpdateCurrentBackpackSlots(const TArray<FBackpackSlotData>& NewSlots);
 
-    /** 가방에 아이템 추가 (UI에서 직접 호출용) */
-    UFUNCTION(BlueprintCallable, Category = "Backpack")
-    bool AddItemToBackpack(FName ItemRowName, int32 Quantity, int32 BackpackSlotIndex);
+    ///** 가방에 아이템 추가 (UI에서 직접 호출용) */
+    //UFUNCTION(BlueprintCallable, Category = "Backpack")
+    //bool AddItemToBackpack(FName ItemRowName, int32 Quantity, int32 BackpackSlotIndex);
 
     /** 가방에서 아이템 제거 (UI에서 직접 호출용) */
     UFUNCTION(BlueprintCallable, Category = "Backpack")
     bool RemoveItemFromBackpack(int32 BackpackSlotIndex, int32 Quantity);
 
-    /** 가방이 장착되어 있는지 확인 */
-    UFUNCTION(BlueprintPure, Category = "Backapck|Equipment")
-    bool HasBackpackEquipped() const;
+    ///** 가방이 장착되어 있는지 확인 */
+    //UFUNCTION(BlueprintPure, Category = "Backapck|Equipment")
+    //bool HasBackpackEquipped() const;
 
     UFUNCTION(BlueprintCallable, Category = "Inventory|Persistence")
     TArray<int32> GetAllBackpackItemIDs() const;
@@ -194,4 +195,44 @@ public:
     /** 가방 아이템을 툴바로 이동 */
     UFUNCTION(BlueprintCallable, Category = "Backpack|Operations")
     bool TryMoveBackpackItemToToolbar(int32 BackpackIndex, int32 ToolbarIndex);
+
+
+
+
+
+    //-----------------------------------------------------
+    // 리팩토링 중...
+    //-----------------------------------------------------
+
+public:
+    /** 백팩 매니저 */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory|Managers")
+    UBackpackManager* BackpackManager;
+
+    /** 네트워크 매니저 */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory|Managers")
+    UInventoryNetworkManager* NetworkManager;
+
+    /** UI 컨트롤러 */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory|Managers")
+    UInventoryUIController* UIController;
+
+protected:
+    virtual void BeginPlay() override;
+
+    /** 매니저들 초기화 */
+    void InitializeManagers();
+
+    // 기존 가방 관련 함수들 제거하고 BackpackManager로 위임
+public:
+    /** 가방 관련 기능들 - BackpackManager로 위임 */
+    UFUNCTION(BlueprintPure, Category = "Inventory|Backpack")
+    bool HasBackpackEquipped() const;
+
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Backpack")
+    bool AddItemToBackpack(FName ItemRowName, int32 Quantity, int32 BackpackSlotIndex = -1);
+
+    void OnBackpackEquippedHandler(const TArray<FBackpackSlotData>& BackpackSlots);
+    void OnBackpackUnequippedHandler();
+
 };

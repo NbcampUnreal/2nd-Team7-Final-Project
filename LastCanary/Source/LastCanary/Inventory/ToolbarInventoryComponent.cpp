@@ -1,6 +1,8 @@
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "Inventory/InventoryUtility.h"
 #include "Inventory/InventoryDropSystem.h"
+#include "Inventory/InventoryUIController.h"
+#include "Inventory/InventoryNetworkManager.h"
 #include "Character/BaseCharacter.h"
 #include "Character/BasePlayerState.h"
 #include "DataTable/ItemDataRow.h"
@@ -46,8 +48,39 @@ void UToolbarInventoryComponent::BeginPlay()
     }
 
     FAttachmentTransformRules AttachRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::KeepWorld, false);
-
     EquippedItemComponent->AttachToComponent(CachedOwnerCharacter->GetMesh(), AttachRules, TEXT("Rifle"));
+
+    InitializeManagers();
+}
+
+void UToolbarInventoryComponent::InitializeManagers()
+{
+    // 백팩 매니저 초기화
+    BackpackManager = NewObject<UBackpackManager>(this);
+    if (BackpackManager)
+    {
+        BackpackManager->Initialize(this);
+
+        // 델리게이트 연결
+        BackpackManager->OnBackpackEquipped.AddDynamic(this, &UToolbarInventoryComponent::OnBackpackEquippedHandler);
+        BackpackManager->OnBackpackUnequipped.AddDynamic(this, &UToolbarInventoryComponent::OnBackpackUnequippedHandler);
+    }
+
+    // 네트워크 핸들러 초기화
+    NetworkManager = NewObject<UInventoryNetworkManager>(this);
+    if (NetworkManager)
+    {
+        NetworkManager->Initialize(this);
+    }
+
+    // UI 컨트롤러 초기화
+    UIController = NewObject<UInventoryUIController>(this);
+    if (UIController)
+    {
+        UIController->Initialize(this);
+    }
+
+    LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent] 모든 매니저 초기화 완료"));
 }
 
 bool UToolbarInventoryComponent::TryAddItemSlot(FName ItemRowName, int32 Amount)
@@ -919,75 +952,19 @@ void UToolbarInventoryComponent::Server_DropItemAtSlot_Implementation(int32 Slot
 }
 
 void UToolbarInventoryComponent::HandleBackpackEquip(int32 SlotIndex)
-
 {
-    FBaseItemSlotData& SlotData = ItemSlots[SlotIndex];
-    if (!SlotData.bIsBackpack)
+    if (BackpackManager)
     {
-        LOG_Item_WARNING(TEXT("[HandleBackpackEquip] 가방이 아닌 슬롯입니다."));
-        return;
+        BackpackManager->EquipBackpack(SlotIndex);
     }
-
-    if (SlotData.BackpackSlots.Num() < 20)
-    {
-        for (int32 i = SlotData.BackpackSlots.Num(); i < 20; ++i)
-        {
-            FBackpackSlotData DefaultSlot;
-            DefaultSlot.ItemRowName = FName("Default");
-            DefaultSlot.Quantity = 0;
-            SlotData.BackpackSlots.Add(DefaultSlot);
-        }
-    }
-
-    // 가방 UI 활성화 (델리게이트 통해 UI에 알림)
-    if (OnBackpackEquipped.IsBound())
-    {
-        OnBackpackEquipped.Broadcast(SlotData.BackpackSlots);
-    }
-
-    // 가방 메시 생성 (보이지 않게)
-    ULCGameInstanceSubsystem* GISubsystem = GetOwner()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
-    if (GISubsystem)
-    {
-        FItemDataRow* ItemData = GISubsystem->GetItemDataByRowName(SlotData.ItemRowName);
-        if (ItemData && ItemData->ItemActorClass)
-        {
-            FName TargetSocket = ItemData->AttachSocketName.IsNone() ? TEXT("Backpack") : ItemData->AttachSocketName;
-            SetupEquippedItem(EquippedItemComponent, CachedOwnerCharacter->GetMesh(), TargetSocket, ItemData, &SlotData);
-
-            // 메시 숨김
-            Multicast_SetBackpackVisibility(false);
-        }
-    }
-
-    LOG_Item_WARNING(TEXT("[HandleBackpackEquip] 가방 장착 완료: %d개 슬롯"), SlotData.BackpackSlots.Num());
 }
 
 void UToolbarInventoryComponent::HandleBackpackUnequip(int32 SlotIndex)
 {
-    FBaseItemSlotData& SlotData = ItemSlots[SlotIndex];
-    if (!SlotData.bIsBackpack)
+    if (BackpackManager)
     {
-        return;
+        BackpackManager->UnequipBackpack(SlotIndex);
     }
-
-    // 가방 UI 비활성화
-    if (OnBackpackUnequipped.IsBound())
-    {
-        OnBackpackUnequipped.Broadcast();
-    }
-
-    // Actor 해제
-    if (AItemBase* CurrentItem = Cast<AItemBase>(EquippedItemComponent->GetChildActor()))
-    {
-        if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(CurrentItem))
-        {
-            EquipmentItem->SetEquipped(false);
-        }
-    }
-    EquippedItemComponent->DestroyChildActor();
-
-    LOG_Item_WARNING(TEXT("[HandleBackpackUnequip] 가방 해제 완료"));
 }
 
 bool UToolbarInventoryComponent::IsBackpackItem(const FItemDataRow* ItemData) const
@@ -1064,52 +1041,23 @@ bool UToolbarInventoryComponent::UpdateCurrentBackpackSlots(const TArray<FBackpa
 
 bool UToolbarInventoryComponent::AddItemToBackpack(FName ItemRowName, int32 Quantity, int32 BackpackSlotIndex)
 {
-    if (!ItemSlots.IsValidIndex(BackpackSlotIndex))
-    {
-        LOG_Item_WARNING(TEXT("[AddItemToBackpack] 존재하지 않는 슬롯입니다"));
-        return false;
-    }
+    return BackpackManager ? BackpackManager->AddItemToBackpack(ItemRowName, Quantity, BackpackSlotIndex) : false;
+}
 
-    FBaseItemSlotData& SlotData = ItemSlots[BackpackSlotIndex];
-    if (!SlotData.bIsBackpack)
+void UToolbarInventoryComponent::OnBackpackEquippedHandler(const TArray<FBackpackSlotData>& BackpackSlots)
+{
+    if (UIController)
     {
-        LOG_Item_WARNING(TEXT("[AddItemToBackpack] 가방이 아닙니다"));
-        return false;
+        UIController->ShowBackpackUI(BackpackSlots);
     }
+}
 
-    const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("AddItemToBackpack"));
-    if (!ItemData)
+void UToolbarInventoryComponent::OnBackpackUnequippedHandler()
+{
+    if (UIController)
     {
-        LOG_Item_WARNING(TEXT("[AddItemToBackpack] 존재하지 않는 아이템입니다"));
-        return false;
+        UIController->HideBackpackUI();
     }
-
-    int32 MaxStack = ItemData->MaxStack;
-
-    for (FBackpackSlotData& BackpackSlot : SlotData.BackpackSlots)
-    {
-        if (UInventoryUtility::IsDefaultItem(BackpackSlot.ItemRowName, GetInventoryConfig()) || BackpackSlot.Quantity <= 0)
-        {
-            int32 Addable = FMath::Min(Quantity, MaxStack);
-            BackpackSlot.ItemRowName = ItemRowName;
-            BackpackSlot.Quantity = Addable;
-            OnInventoryUpdated.Broadcast();
-            SyncInventoryToPlayerState();
-            return Addable == Quantity;
-        }
-        else if (BackpackSlot.ItemRowName == ItemRowName)
-        {
-            int32 StackSpace = MaxStack - BackpackSlot.Quantity;
-            int32 Addable = FMath::Min(Quantity, StackSpace);
-            if (Addable > 0)
-            {
-                BackpackSlot.Quantity += Addable;
-                OnInventoryUpdated.Broadcast();
-                return Addable == Quantity;
-            }
-        }
-    }
-    return false;
 }
 
 bool UToolbarInventoryComponent::RemoveItemFromBackpack(int32 BackpackSlotIndex, int32 Quantity)
@@ -1139,11 +1087,7 @@ bool UToolbarInventoryComponent::RemoveItemFromBackpack(int32 BackpackSlotIndex,
 
 bool UToolbarInventoryComponent::HasBackpackEquipped() const
 {
-    if (CurrentEquippedSlotIndex >= 0 && ItemSlots.IsValidIndex(CurrentEquippedSlotIndex))
-    {
-        return ItemSlots[CurrentEquippedSlotIndex].bIsBackpack;
-    }
-    return false;
+    return BackpackManager ? BackpackManager->HasBackpackEquipped() : false;
 }
 
 TArray<int32> UToolbarInventoryComponent::GetAllBackpackItemIDs() const
@@ -1309,21 +1253,9 @@ void UToolbarInventoryComponent::SetInventoryFromItemIDs(const TArray<int32>& It
 
 void UToolbarInventoryComponent::MulticastUpdateItemText_Implementation(const FText& ItemName)
 {
-    // 각 클라이언트에서 실행
-    if (!IsOwnerCharacterValid()) return;
-
-    APlayerController* PC = CachedOwnerCharacter->GetController<APlayerController>();
-    if (!PC || !PC->IsLocalController()) return; // 로컬 컨트롤러만
-
-    ULCGameInstanceSubsystem* GISubsystem = GetOwner()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
-    if (!GISubsystem) return;
-
-    if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
+    if (UIController)
     {
-        if (UInventoryMainWidget* InventoryWidget = UIManager->GetInventoryMainWidget())
-        {
-            InventoryWidget->ShowToolbarSlotItemText(ItemName);
-        }
+        UIController->Multicast_UpdateItemText(ItemName);
     }
 }
 
