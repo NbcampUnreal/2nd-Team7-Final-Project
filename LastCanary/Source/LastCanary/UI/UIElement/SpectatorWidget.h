@@ -21,6 +21,8 @@ protected:
 	UTextBlock* PrevKeyText;
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* NextKeyText;
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* PlayerName;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	UInputMappingContext* IMC_Default;
