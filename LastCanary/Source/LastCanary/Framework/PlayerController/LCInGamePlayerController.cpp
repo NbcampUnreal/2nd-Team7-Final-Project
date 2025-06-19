@@ -20,7 +20,6 @@ ALCInGamePlayerController::ALCInGamePlayerController()
 void ALCInGamePlayerController::BeginPlay()
 {
 	Super::BeginPlay();
-
 }
 
 void ALCInGamePlayerController::PostSeamlessTravel()

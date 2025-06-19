@@ -260,6 +260,7 @@ void ULCUIManager::ShowPauseMenu()
 {
 	if (OwningPlayer == nullptr)
 	{
+		
 		return;
 	}
 	if (OwningPlayer->IsLocalPlayerController() == false)

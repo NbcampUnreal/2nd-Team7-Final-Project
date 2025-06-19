@@ -5,6 +5,8 @@
 #include "EnhancedInputComponent.h"
 #include "InputMappingContext.h"
 #include "Kismet/GameplayStatics.h"
+#include "Framework/PlayerState/LCPlayerState.h"
+#include "Framework/PlayerController/LCInGamePlayerController.h"
 
 void USpectatorWidget::NativeConstruct()
 {
@@ -14,7 +16,6 @@ void USpectatorWidget::NativeConstruct()
 	{
 		PrevKeyText->SetText(FText::FromString(GetDirectionalKeyName(IA_Move, -1.f))); // A 방향
 	}
-
 	if (NextKeyText && IA_Move)
 	{
 		NextKeyText->SetText(FText::FromString(GetDirectionalKeyName(IA_Move, +1.f))); // D 방향
