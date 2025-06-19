@@ -20,7 +20,7 @@ ALCInGameModeBase::ALCInGameModeBase()
 void ALCInGameModeBase::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
 {
 	Super::InitGame(MapName, Options, ErrorMessage);
-	UE_LOG(LogTemp, Log, TEXT("1. InitGame 호출됨"));
+	LOG_Server(Log, TEXT("1. InitGame 호출됨"));
 
 }
 
@@ -63,6 +63,8 @@ void ALCInGameModeBase::HandleStartingNewPlayer_Implementation(APlayerController
 {
 	Super::HandleStartingNewPlayer_Implementation(NewPlayer);
 
+	LOG_Server_WARNING(TEXT("Player : %s 시작함!!"), *NewPlayer->PlayerState->GetPlayerName());
+
 	// 연결된 클라이언트에게 ChecklistManager의 Owner 지정
 	if (ChecklistManager && NewPlayer)
 	{
@@ -95,9 +97,15 @@ void ALCInGameModeBase::StartGame()
 
 	LCGM->StartGame();
 
-	InitPlayerAliveCount(LCGM->GetPlayerCount());
+	InitGameState(LCGM->GetPlayerCount());
 
 	//ShowGameLevelInfo();
+
+}
+
+void ALCInGameModeBase::GameEnd()
+{
+
 
 }
 
@@ -111,7 +119,7 @@ void ALCInGameModeBase::Logout(AController* Exiting)
 	}
 }
 
-void ALCInGameModeBase::InitPlayerAliveCount(int PlayerCount)
+void ALCInGameModeBase::InitGameState(int PlayerCount)
 {
 	// 생존자 수 초기화
 	if (ALCGameState* LCGameState = GetGameState<ALCGameState>())

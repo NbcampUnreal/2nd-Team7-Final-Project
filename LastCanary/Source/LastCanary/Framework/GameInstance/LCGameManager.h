@@ -4,6 +4,30 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "LCGameManager.generated.h"
 
+USTRUCT(BlueprintType)
+struct FResultInfo
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bIsDead;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TMap<FName, int32> PlayerResources;
+};
+
+USTRUCT(BlueprintType)
+struct FGamePlayData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FString MapName;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int Round;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TMap<FString, FResultInfo> PlayerResult;
+};
+
 
 UCLASS()
 class LASTCANARY_API ULCGameManager : public UGameInstanceSubsystem
@@ -22,10 +46,25 @@ public:
 	int CurrentGold = 5000; // 현재 골드
 
 	void StartGame();
+	void InitCurrentRoundResult();
 	void EndCurrentRound();
+	void EndGame();
+
+	bool IsGameEnd();
+
+	void SubmitExplorationResults(FString PlayerName, bool bIsDeade, TMap<FName, int32> Results);
 
 	int GetGold() const;
-	void AddGold(int Amount);
+	void UpdateGold(FString Reason, int Amount);
+	TArray<TPair<FString, int>> GoldHistory;
+	void PrintGoldHistory();
 
 	int GetPlayerCount() const { return CurrentPlayerCount; }
+
+	FGamePlayData CurrentGamePlayData;
+	TArray<FGamePlayData> AllGamePlayData; // 라운드 결과 정보
+
+private:
+	bool bIsGameStarted = false; // 게임 시작 여부
+
 };
