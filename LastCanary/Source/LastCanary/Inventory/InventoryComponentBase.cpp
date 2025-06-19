@@ -1,4 +1,7 @@
 #include "Inventory/InventoryComponentBase.h"
+#include "Inventory/InventoryUtility.h"
+#include "Inventory/InventoryDropSystem.h"
+#include "Inventory/InventoryConfig.h"
 #include "Item/ItemSpawnerComponent.h"
 #include "Item/EquipmentItem/GunBase.h"
 #include "Character/BaseCharacter.h"
@@ -216,12 +219,20 @@ FVector UInventoryComponentBase::CalculateDropLocation() const
 
 bool UInventoryComponentBase::TryDropItemAtSlot(int32 SlotIndex, int32 Quantity)
 {
-	return Internal_TryDropItemAtSlot(SlotIndex, Quantity);
+	if (GetOwner() && GetOwner()->HasAuthority())
+	{
+		return UInventoryDropSystem::ExecuteDropItem(this, SlotIndex, Quantity);
+	}
+	else
+	{
+		Server_TryDropItemAtSlot(SlotIndex, Quantity);
+		return true;
+	}
 }
 
 void UInventoryComponentBase::Server_TryDropItemAtSlot_Implementation(int32 SlotIndex, int32 Quantity)
 {
-	Internal_TryDropItemAtSlot(SlotIndex, Quantity);
+	UInventoryDropSystem::ExecuteDropItem(this, SlotIndex, Quantity);
 }
 
 bool UInventoryComponentBase::Internal_TryDropItemAtSlot(int32 SlotIndex, int32 Quantity)
@@ -323,7 +334,7 @@ bool UInventoryComponentBase::TryDropItem(FName ItemRowName, int32 Quantity)
 {
 	if (GetOwner() && GetOwner()->HasAuthority())
 	{
-		return TryDropItem_Internal(ItemRowName, Quantity);
+		return UInventoryDropSystem::ExecuteDropItemByName(this, ItemRowName, Quantity);
 	}
 	else
 	{
@@ -334,7 +345,7 @@ bool UInventoryComponentBase::TryDropItem(FName ItemRowName, int32 Quantity)
 
 void UInventoryComponentBase::Server_TryDropItem_Implementation(FName ItemRowName, int32 Quantity)
 {
-	TryDropItem_Internal(ItemRowName, Quantity);
+	UInventoryDropSystem::ExecuteDropItemByName(this, ItemRowName, Quantity);
 }
 
 bool UInventoryComponentBase::TryDropItem_Internal(FName ItemRowName, int32 Quantity)
@@ -403,48 +414,23 @@ void UInventoryComponentBase::UpdateWeight()
 
 float UInventoryComponentBase::GetItemWeight(FName ItemRowName) const
 {
-	if (ItemRowName.IsNone())
-		return 0.0f;
-
-	if (ItemDataTable == nullptr)
-	{
-		return 1.0f; // 기본 무게
-	}
-
-	const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("GetItemWeight"));
-	if (!ItemData)
-	{
-		return 1.0f; // 기본 무게
-	}
-
-	return ItemData->Weight;
+	return UInventoryUtility::GetItemWeight(ItemRowName, ItemDataTable);
 }
 
 bool UInventoryComponentBase::IsDefaultItem(FName ItemRowName) const
 {
-	return ItemRowName == DefaultItemRowName;
+	return UInventoryUtility::IsDefaultItem(ItemRowName, GetInventoryConfig());
 }
 
 void UInventoryComponentBase::SetSlotToDefault(int32 SlotIndex)
 {
 	if (!ItemSlots.IsValidIndex(SlotIndex))
 	{
-		LOG_Item_WARNING(TEXT("[SetSlotToDefault] 유효하지 않은 슬롯 인덱스: %d"), SlotIndex);
 		return;
 	}
 
-	FBaseItemSlotData& Slot = ItemSlots[SlotIndex];
-	Slot.ItemRowName = DefaultItemRowName;
-	Slot.Quantity = 1;
-	Slot.Durability = 100.0f;
-	Slot.bIsBackpack = false;
-	Slot.bIsValid = true;
-	Slot.bIsEquipped = false;
-	Slot.BackpackSlots.Empty();
-
+	UInventoryUtility::SetSlotToDefault(ItemSlots[SlotIndex], GetInventoryConfig());
 	OnInventoryUpdated.Broadcast();
-
-	LOG_Item_WARNING(TEXT("[SetSlotToDefault] 슬롯 %d를 Default 아이템으로 설정"), SlotIndex);
 }
 
 UItemSpawnerComponent* UInventoryComponentBase::GetItemSpawner() const
@@ -458,48 +444,12 @@ UItemSpawnerComponent* UInventoryComponentBase::GetItemSpawner() const
 
 int32 UInventoryComponentBase::GetItemIDFromRowName(FName ItemRowName) const
 {
-	if (ItemRowName.IsNone())
-	{
-		return -1;
-	}
-
-	if (!ItemDataTable)
-	{
-		LOG_Item_WARNING(TEXT("[GetItemIDFromRowName] ItemDataTable을 찾을 수 없음: %s"), *ItemRowName.ToString());
-		return -1;
-	}
-
-	const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("GetItemIDFromRowName"));
-	if (ItemData)
-	{
-		return ItemData->ItemID;
-	}
-
-	LOG_Item_WARNING(TEXT("[GetItemIDFromRowName] ItemID를 찾을 수 없음: %s"), *ItemRowName.ToString());
-	return -1;
+	return UInventoryUtility::GetItemIDFromRowName(ItemRowName, ItemDataTable);
 }
 
 FName UInventoryComponentBase::GetItemRowNameFromID(int32 ItemID) const
 {
-	if (!ItemDataTable)
-	{
-		LOG_Item_WARNING(TEXT("[GetItemRowNameFromID] ItemDataTable을 찾을 수 없음"));
-		return NAME_None;
-	}
-
-	// ⭐ 모든 행을 검색해서 ItemID 매칭
-	TArray<FName> RowNames = ItemDataTable->GetRowNames();
-	for (const FName& RowName : RowNames)
-	{
-		const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(RowName, TEXT("GetItemRowNameFromID"));
-		if (ItemData && ItemData->ItemID == ItemID)
-		{
-			return RowName;
-		}
-	}
-
-	LOG_Item_WARNING(TEXT("[GetItemRowNameFromID] ItemID %d에 해당하는 RowName을 찾을 수 없음"), ItemID);
-	return NAME_None;
+	return UInventoryUtility::GetItemRowNameFromID(ItemID, ItemDataTable);
 }
 
 void UInventoryComponentBase::ClearInventorySlots()
@@ -577,32 +527,10 @@ void UInventoryComponentBase::UpdateWalkieTalkieChannelStatus()
 
 bool UInventoryComponentBase::IsWalkieTalkieItem(FName ItemRowName) const
 {
-	if (ItemRowName.IsNone())
-	{
-		return false;
-	}
+	return UInventoryUtility::IsWalkieTalkieItem(ItemRowName, ItemDataTable);
+}
 
-	// Default 아이템은 워키토키가 아님
-	if (IsDefaultItem(ItemRowName))
-	{
-		return false;
-	}
-
-	// ItemDataTable에서 아이템 데이터 조회
-	if (!ItemDataTable)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[IsWalkieTalkieItem] ItemDataTable이 없습니다."));
-		return false;
-	}
-
-	const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("IsWalkieTalkieItem"));
-	if (!ItemData)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[IsWalkieTalkieItem] 아이템 데이터를 찾을 수 없습니다: %s"), *ItemRowName.ToString());
-		return false;
-	}
-
-	// 게임플레이태그로 워키토키 확인
-	static const FGameplayTag WalkieTalkieTag = FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.WalkieTalkie"));
-	return ItemData->ItemType.MatchesTag(WalkieTalkieTag);
+const UInventoryConfig* UInventoryComponentBase::GetInventoryConfig() const
+{
+	return InventoryConfig; // nullptr이어도 유틸리티에서 기본값 처리
 }

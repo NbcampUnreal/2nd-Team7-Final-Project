@@ -14,6 +14,9 @@ class UItemTooltipWidget;
 class ABaseCharacter;
 class UItemSpawnerComponent;
 
+
+class UInventoryConfig;
+
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class LASTCANARY_API UInventoryComponentBase : public UActorComponent
 {
@@ -173,14 +176,14 @@ public:
     UFUNCTION(BlueprintPure, Category = "Inventory|Weight")
     float GetTotalWeight() const { return CurrentTotalWeight; }
 
+    /** 무게 즉시 계산 및 갱신 */
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Weight")
+    virtual void UpdateWeight();
+
 protected:
     /** 현재 총 무게 */
     UPROPERTY(BlueprintReadOnly, Category = "Inventory|Weight")
     float CurrentTotalWeight = 0.0f;
-
-    /** 무게 즉시 계산 및 갱신 */
-    UFUNCTION(BlueprintCallable, Category = "Inventory|Weight")
-    virtual void UpdateWeight();
 
     /** 아이템의 실제 무게 가져오기 */
     UFUNCTION(BlueprintPure, Category = "Inventory|Weight")
@@ -251,4 +254,27 @@ private:
     /** 아이템이 워키토키인지 확인 */
     UFUNCTION(BlueprintPure, Category = "WalkieTalkie")
     bool IsWalkieTalkieItem(FName ItemRowName) const;
+
+
+
+
+
+
+
+
+
+
+    //-----------------------------------------------------
+    // 리팩토링 공사 중...
+    //-----------------------------------------------------
+
+
+
+public:
+    /** 인벤토리 설정 */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory|Config")
+    UInventoryConfig* InventoryConfig;
+
+    /** 설정 가져오기 (없으면 기본값) */
+    const UInventoryConfig* GetInventoryConfig() const;
 };
