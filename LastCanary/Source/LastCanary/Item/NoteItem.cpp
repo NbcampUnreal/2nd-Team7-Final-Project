@@ -14,8 +14,7 @@
 
 void ANoteItem::UseItem()
 {
-	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
-	if (PC->IsLocalController() == false)
+	if (HasAuthority() == false)
 	{
 		return;
 	}
@@ -24,10 +23,31 @@ void ANoteItem::UseItem()
 
 	InitializeNoteImageIndex();
 
-	// NoteContent가 비어있다면 무시
 	if (ItemData.NoteContent.IsEmpty())
 	{
 		LOG_Frame_WARNING(TEXT("[ANoteItem::UseItem] 쪽지 내용이 없습니다."));
+		return;
+	}
+
+	APawn* OwnerPawn = Cast<APawn>(GetOwner());
+	APlayerController* PC = IsValid(OwnerPawn) ? Cast<APlayerController>(OwnerPawn->GetController()) : nullptr;
+	if (IsValid(PC) == false)
+	{
+		LOG_Frame_WARNING(TEXT("[ANoteItem::UseItem] 유효한 컨트롤러를 찾지 못했습니다."));
+		return;
+	}
+
+	// 클라이언트에게 UI 요청
+	Client_ShowNotePopup(ItemData.NoteContent, ItemData.CandidateNoteImages, SelectedNoteImageIndex);
+}
+
+void ANoteItem::Client_ShowNotePopup_Implementation(const FText& Content, const TArray<TSoftObjectPtr<UTexture2D>>& Images, int32 ImageIndex)
+{
+	APawn* OwnerPawn = Cast<APawn>(GetOwner());
+	APlayerController* PC = IsValid(OwnerPawn) ? Cast<APlayerController>(OwnerPawn->GetController()) : nullptr;
+
+	if (IsValid(PC) == false || PC->IsLocalController() == false)
+	{
 		return;
 	}
 
@@ -37,7 +57,7 @@ void ANoteItem::UseItem()
 		{
 			if (ULCUIManager* UIManager = LCGameInstanceSubsystem->GetUIManager())
 			{
-				UIManager->ShowNotePopup(ItemData.NoteContent, ItemData.CandidateNoteImages, SelectedNoteImageIndex);
+				UIManager->ShowNotePopup(Content, Images, ImageIndex);
 			}
 		}
 	}
