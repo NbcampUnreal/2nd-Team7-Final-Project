@@ -60,4 +60,5 @@ protected:
 	UFUNCTION(BlueprintCallable)
 	void Shutdown() override;
 
+	void OnStart() override;
 };

@@ -189,7 +189,7 @@ public:
 	float MaxSoundRange = 1000.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AISettings")
-	FName AISoundCheckTag = "None";
+	FName AISoundCheckTag = "CaveMonster";
 
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
@@ -408,15 +408,8 @@ public:
 
 	class ABaseDrone* ControlledDrone;
 
-
-	UFUNCTION()
-	void OnGunReloadAnimComplete(UAnimMontage* CompletedMontage, bool bInterrupted);
-
-	UFUNCTION()
-	void PlayInteractionMontage(AActor* Target);
-
 	void InteractAfterPlayMontage(AActor* TargetActor);
-	void OnNotified();
+	void OnInteractAnimationNotified();
 
 	UFUNCTION(Server, Unreliable)
 	void Server_PlayMontage(UAnimMontage* MontageToPlay);
@@ -434,6 +427,11 @@ public:
 	UFUNCTION(Server, Unreliable)
 	void Server_CancelInteraction();
 	void Server_CancelInteraction_Implementation();
+
+
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_CancelInteraction();
+	void Multicast_CancelInteraction_Implementation();
 
 	bool bIsPlayingInteractionMontage = false;
 
@@ -453,6 +451,10 @@ public:
 	UFUNCTION(Server, Unreliable)
 	void Server_CancelUseItem();
 	void Server_CancelUseItem_Implementation();
+
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_CancelUseItem();
+	void Multicast_CancelUseItem_Implementation();
 
 	bool bIsPlayingUseItemMontage = false;
 

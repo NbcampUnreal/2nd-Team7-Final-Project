@@ -241,4 +241,39 @@ protected:
 
 	// 실제 전환 로직 (서버 & 클라에서 공통 호출)
 	void ApplyPostProcessMaterial(int32 NewIndex);
+
+	///////////////////////////////////////////////////////////////////////////////
+	//// 아이템 운송 기능
+	///////////////////////////////////////////////////////////////////////////////
+public:
+	// 드론이 들고 있는 아이템
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Drone Item")
+	class AItemBase* CarriedItem;
+
+	// 아이템 부착용 컴포넌트 (ItemSocket 소켓 위치에 부착)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* CarriedItemMesh;
+
+	// 아이템 픽업 함수
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_PickupItem(AItemBase* Item);
+
+	// 아이템 드랍 함수  
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_DropItem();
+
+	// 클라이언트 동기화용
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_AttachItem(AItemBase* Item);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_DetachItem();
+
+	// 아이템 보유 여부 확인
+	UFUNCTION(BlueprintPure)
+	bool HasItem() const { return CarriedItem != nullptr; }
+
+private:
+	void AttachItemToSocket(AItemBase* Item);
+	void DetachItemFromSocket();
 };

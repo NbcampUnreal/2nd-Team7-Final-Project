@@ -154,6 +154,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void SetSessionErrorState(const FText& Reason);
 
+	UFUNCTION(BlueprintCallable)
+	UInGameHUD* GetInGameHUDBlueprint() const { return CachedInGameHUD; }
+
 private:
 	//-----------------
 	// References & Context

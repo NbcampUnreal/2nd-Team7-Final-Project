@@ -155,6 +155,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resource|Harvest")
 	bool bInfiniteHarvest = false;
+	
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
+    bool bRequireTool = true;
 
 	//-------------------------
 	// 이펙트 및 사운드

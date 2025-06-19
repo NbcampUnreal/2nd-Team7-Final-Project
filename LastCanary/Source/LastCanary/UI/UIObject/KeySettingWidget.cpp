@@ -459,6 +459,7 @@ void UKeySettingWidget::UpdateMappings(FName MappingName, FKey Key)
 	UserSettings->MapPlayerKey(Args, FailureReason);
 
 	FTimerHandle TimerHandle;
+	
 	GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this, Subsystem]()
 		{
 			const TArray<FEnhancedActionKeyMapping> Mappings = Subsystem->GetAllPlayerMappableActionKeyMappings();
@@ -476,10 +477,11 @@ void UKeySettingWidget::UpdateMappings(FName MappingName, FKey Key)
 			}
 
 			ULCLocalPlayerSaveGame::SaveKeyBindings(GetWorld(), SaveArray);
-
 			RefreshMappings(Mappings);
 
 		}, 0.1f, false);
+	UserSettings->SaveSettings();  // UserSettings 저장
+	UserSettings->ApplySettings(); // 설정 적용
 }
 
 

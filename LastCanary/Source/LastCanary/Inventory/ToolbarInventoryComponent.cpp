@@ -1270,6 +1270,17 @@ void UToolbarInventoryComponent::SetInventoryFromItemIDs(const TArray<int32>& It
             SlotData.bIsValid = true;
             SlotData.bIsEquipped = false;
 
+            ULCGameInstanceSubsystem* GameSubsystem = GetOwner()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
+            if (GameSubsystem && GameSubsystem->GunDataTable)
+            {
+                FGunDataRow* GunRowData = GameSubsystem->GunDataTable->FindRow<FGunDataRow>(ItemRowName, TEXT("SetInventoryFromItemIDs"));
+                if (GunRowData)
+                {
+                    SlotData.FireMode = static_cast<int32>(GunRowData->DefaultFireMode);
+                    SlotData.bWasAutoFiring = false;
+                }
+            }
+
             if (IsBackpackItem(ItemRowName))
             {
                 SlotData.bIsBackpack = true;
@@ -1314,6 +1325,8 @@ void UToolbarInventoryComponent::SetInventoryFromItemIDs(const TArray<int32>& It
 
     // 무게 갱신 및 UI 새로고침
     UpdateWeight();
+    UpdateWalkieTalkieChannelStatus();
+
     OnInventoryUpdated.Broadcast();
 
     LOG_Item_WARNING(TEXT("[SetInventoryFromItemIDs] ✅ 인벤토리 복원 완료 - 총 %d개 슬롯"), ItemSlots.Num());

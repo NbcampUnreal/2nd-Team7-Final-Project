@@ -29,39 +29,10 @@ AFlashlightItem::AFlashlightItem()
     LightDetectionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("LightDetectionSphere"));
     LightDetectionSphere->SetupAttachment(RootComponent);
     LightDetectionSphere->SetSphereRadius(1000.0f);
-    LightDetectionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+    LightDetectionSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     LightDetectionSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
     LightDetectionSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
     LightDetectionSphere->SetIsReplicated(true);
-
-    //오버랩
-    LightDetectionSphere->OnComponentBeginOverlap.AddDynamic(this, &AFlashlightItem::OnLightOverlapBegin);
-    LightDetectionSphere->OnComponentEndOverlap.AddDynamic(this, &AFlashlightItem::OnLightOverlapEnd);
-}
-
-
-void AFlashlightItem::OnLightOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{
-    if (!bIsLightOn) return;
-    if (!HasAuthority()) return; // 서버에서만 처리
-
-    if (ACaveEliteMonster* EliteMonster = Cast<ACaveEliteMonster>(OtherActor))
-    {
-        /*EliteMonster->FreezeAI();*/
-        UE_LOG(LogTemp, Error, TEXT("아무튼 작동됨!"));
-    }
-}
-
-void AFlashlightItem::OnLightOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-{
-    if (!bIsLightOn) return;
-    if (!HasAuthority()) return;
-
-    if (ACaveEliteMonster* EliteMonster = Cast<ACaveEliteMonster>(OtherActor))
-    {
-        /*EliteMonster->UnfreezeAI();*/
-        UE_LOG(LogTemp, Error, TEXT("아무튼 작동끝!"));
-    }
 }
 
 void AFlashlightItem::UseItem()
@@ -132,6 +103,25 @@ void AFlashlightItem::Multicast_UpdateLightState_Implementation(bool bNewState)
     // 빛 가시성 업데이트
     SpotLightComponent->SetVisibility(bIsLightOn);
     GlassGlowComponent->SetVisibility(bIsLightOn);
+
+    //손전등 스피어 컴포넌트(동굴 엘리트 기믹)
+    if (LightDetectionSphere)
+    {
+        if (bIsLightOn)
+        {
+            LightDetectionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+            LightDetectionSphere->SetGenerateOverlapEvents(true);
+
+            GetWorld()->GetTimerManager().SetTimer(OverlapCheckTimer, this, &AFlashlightItem::CheckOverlap, 0.5f, true);
+        }
+        else
+        {
+            LightDetectionSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+            LightDetectionSphere->SetGenerateOverlapEvents(false);
+
+            GetWorld()->GetTimerManager().ClearTimer(OverlapCheckTimer);
+        }
+    }
 
     // 빛 강도 설정
     if (!bIsLightOn)
@@ -305,4 +295,20 @@ void AFlashlightItem::EndPlay(const EEndPlayReason::Type EndPlayReason)
     }
 
     Super::EndPlay(EndPlayReason);
+}
+
+void AFlashlightItem::CheckOverlap()
+{
+    if (!HasAuthority()) return;
+
+    TArray<AActor*> OverlappingActors;
+    LightDetectionSphere->GetOverlappingActors(OverlappingActors);
+
+    for (AActor* Actor : OverlappingActors)
+    {
+        if (ACaveEliteMonster* EliteMonster = Cast<ACaveEliteMonster>(Actor))
+        {
+            EliteMonster->FreezeAI();
+        }
+    }
 }
