@@ -6,7 +6,9 @@
 #include "DataTable/ItemDataRow.h"
 #include "LCGameInstanceSubsystem.generated.h"
 
+class ULCLocalPlayerSaveGame;
 class ULCUIManager;
+
 UCLASS()
 class LASTCANARY_API ULCGameInstanceSubsystem : public UGameInstanceSubsystem
 {
@@ -18,8 +20,6 @@ private:
 
 protected:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
-
-	void LoadSaveData();
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Map Data")
@@ -45,6 +45,11 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Data")
 	UDataTable* GetGunDataTable() const;
 
+
+
+	void LoadSaveData();
+
+	void LoadUserSettings();
 //public:
 //	int32 UserNum = 0;
 //public:
