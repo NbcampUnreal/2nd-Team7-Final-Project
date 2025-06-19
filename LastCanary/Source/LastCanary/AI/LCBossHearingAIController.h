@@ -18,6 +18,5 @@ protected:
     UAISenseConfig_Hearing* HearingConfig;
 
     virtual void OnPerceptionUpdated(const TArray<AActor*>& UpdatedActors) override;
-
 	
 };

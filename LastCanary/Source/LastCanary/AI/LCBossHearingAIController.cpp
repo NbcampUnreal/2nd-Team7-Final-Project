@@ -22,6 +22,10 @@ ALCBossHearingAIController::ALCBossHearingAIController()
 
 void ALCBossHearingAIController::OnPerceptionUpdated(const TArray<AActor*>& UpdatedActors)
 {
+    // 블랙보드 컴포넌트 가져오기
+    UBlackboardComponent* BBComp = GetBlackboardComponent();
+    if (!BBComp) return;
+
     FAISenseID HearingSenseID = UAISense_Hearing::StaticClass()
         ->GetDefaultObject<UAISense>()->GetSenseID();
 
@@ -64,12 +68,24 @@ void ALCBossHearingAIController::OnPerceptionUpdated(const TArray<AActor*>& Upda
         if (ALCBossBanshee* Banshee = Cast<ALCBossBanshee>(GetPawn()))
         {
             Banshee->OnHeardNoise(ClosestLocation);
-        }
-
-        // 블랙보드에 TargetActor 갱신
-        if (UBlackboardComponent* BBComp = GetBlackboardComponent())
-        {
             BBComp->SetValueAsObject(TargetActorKey, ClosestActor);
+        }
+    }
+
+    // 2) “소실” 처리: 
+    //    현재 블랙보드에 남아 있는 TargetActor 가
+    //    아직 Heard 상태인지 체크, 아니면 Clear
+    UObject* Obj = BBComp->GetValueAsObject(TargetActorKey);
+    if (AActor* CurTarget = Cast<AActor>(Obj))
+    {
+        TArray<AActor*> CurrentlyHeard;
+        PerceptionComponent->GetCurrentlyPerceivedActors(UAISense_Hearing::StaticClass(), CurrentlyHeard);
+
+        // 아직 List 에 없으면 (MaxAge 지나서 소실된 것)
+        if (!CurrentlyHeard.Contains(CurTarget))
+        {
+            BBComp->ClearValue(TargetActorKey);
+            UE_LOG(LogTemp, Warning, TEXT("[HearingAI] TargetActor cleared (no recent noise)"));
         }
     }
 }
