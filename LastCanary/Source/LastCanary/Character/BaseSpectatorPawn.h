@@ -22,6 +22,8 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	virtual void CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo) override;
+
 public:
 	void Handle_LookMouse(const FInputActionValue& ActionValue, float Sensivity);
 	void AdjustCameraZoom(float ZoomDelta); // 선택사항

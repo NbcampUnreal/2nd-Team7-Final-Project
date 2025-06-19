@@ -31,6 +31,14 @@ void ABaseSpectatorPawn::BeginPlay()
 }
 
 
+void ABaseSpectatorPawn::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo)
+{
+	if (!IsLocallyControlled()) return;
+	Super::CalcCamera(DeltaTime, ViewInfo);
+	
+	ViewInfo.Rotation.Roll = 0.0f;
+}
+
 void ABaseSpectatorPawn::Handle_LookMouse(const FInputActionValue& ActionValue, float Sensivity)
 {
 	const FVector2f Value{ ActionValue.Get<FVector2D>() };
