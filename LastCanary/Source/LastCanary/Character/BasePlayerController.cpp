@@ -221,6 +221,15 @@ void ABasePlayerController::SpawnSpectatablePawn()
 		SpawnedSpectatorPawn = Spectator;
 		CurrentPossessedPawn = SpawnedSpectatorPawn;
 		SpawnedSpectatorPawn->SetOwner(this);
+
+		if (ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+		{
+			if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
+			{
+				UIManager->ShowSpectatorWidget();
+			}
+		}
+
 		//클라이언트에서 해야할 것.
 		OnUnPossess();
 		Possess(Spectator);
@@ -254,6 +263,13 @@ void ABasePlayerController::Client_StartSpectation_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Spectate Start On Client"));
 	GetWorldTimerManager().SetTimer(SpectatorCheckHandle, this, &ABasePlayerController::CheckCurrentSpectatedCharacterStatus, 0.5f, true);
+	if (ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+	{
+		if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
+		{
+			UIManager->ShowSpectatorWidget();
+		}
+	}
 }
 
 APawn* ABasePlayerController::GetMyPawn()

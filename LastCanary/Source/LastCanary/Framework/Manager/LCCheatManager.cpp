@@ -105,7 +105,7 @@ void ULCCheatManager::SetPlayerSpeed(float NewSpeed)
 	{
 		if (ABasePlayerState* PS = Cast<ABasePlayerState>(PC->PlayerState))
 		{
-			PS->SetPlayerMovementSetting(NewSpeed*0.5f, NewSpeed * 0.5f, NewSpeed, NewSpeed, NewSpeed * 2);
+			PS->SetPlayerMovementSetting(NewSpeed * 0.5f, NewSpeed * 0.5f, NewSpeed, NewSpeed, NewSpeed * 2);
 			UE_LOG(LogCheat, Warning, TEXT("[치트] 이동 속도 설정: %.1f"), NewSpeed);
 		}
 		else
@@ -315,7 +315,7 @@ void ULCCheatManager::ToggleGodMode()
 
 	if (ABasePlayerState* PlayerState = GetPlayerController()->GetPlayerState<ABasePlayerState>())
 	{
-		bGodMode? PlayerState->bInfiniteHP = true : PlayerState->bInfiniteHP = false;
+		bGodMode ? PlayerState->bInfiniteHP = true : PlayerState->bInfiniteHP = false;
 	}
 }
 
@@ -502,5 +502,34 @@ void ULCCheatManager::PrintAcquiredItems()
 	if (GEngine)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Green, Summary);
+	}
+}
+
+void ULCCheatManager::KillAllOthers()
+{
+	APlayerController* MyPC = GetOuterAPlayerController();
+	if (!MyPC || !MyPC->HasAuthority()) return;
+
+	UWorld* World = MyPC->GetWorld();
+	if (!World) return;
+
+	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+	{
+		APlayerController* OtherPC = It->Get();
+		if (OtherPC && OtherPC != MyPC)
+		{
+			APawn* Pawn = OtherPC->GetPawn();
+			if (Pawn)
+			{
+				// 최대 체력만큼 데미지를 줘서 즉시 사망 유도
+				UGameplayStatics::ApplyDamage(
+					Pawn,
+					10000.f, // 충분히 큰 값
+					MyPC,
+					nullptr,
+					UDamageType::StaticClass()
+				);
+			}
+		}
 	}
 }
