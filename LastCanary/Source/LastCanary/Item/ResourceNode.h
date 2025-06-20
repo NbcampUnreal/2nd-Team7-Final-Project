@@ -168,4 +168,7 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Effects")
 	USoundBase* DestroySound;
+
+	UFUNCTION(BlueprintNativeEvent, Category = "Resource|Interaction")
+	void OnResourceOpened();
 };

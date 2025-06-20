@@ -16,7 +16,7 @@ ABasePlayerState::ABasePlayerState()
 void ABasePlayerState::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
 	if (bAlreadyInitialized)
 	{
 		return;
@@ -66,14 +66,14 @@ void ABasePlayerState::InitializeStats()
 }
 void ABasePlayerState::SetStamina(float NewStamina)
 {
-	CurrentStamina = NewStamina; 
-	UpdateStaminaUI(); 
+	CurrentStamina = NewStamina;
+	UpdateStaminaUI();
 }
-void ABasePlayerState::SetHP(float NewHP) 
+void ABasePlayerState::SetHP(float NewHP)
 {
 	if (HasAuthority())
 	{	//서버는 바로 바꾸기
-		CurrentHP = NewHP; 
+		CurrentHP = NewHP;
 		Client_UpdateHP(NewHP);
 	}
 }
@@ -116,7 +116,8 @@ void ABasePlayerState::UpdateHPUI()
 			{
 				if (UInGameHUD* HUD = UIManager->GetInGameHUD())
 				{
-					HUD->UpdateLowHealthEffect(CurrentHP, InitialStats.MaxHP);
+					float Percent = FMath::Clamp(CurrentHP / InitialStats.MaxHP, 0.0f, 1.0f);
+					HUD->UpdateHPBar(Percent);
 				}
 			}
 		}
@@ -183,6 +184,25 @@ void ABasePlayerState::ApplyDamage(float Damage)
 	////여기는 서버에서 처리
 	CurrentHP = FMath::Clamp(CurrentHP - Damage, 0.f, MaxHP);
 	Client_UpdateHP(CurrentHP);
+
+	if (Damage <= 0)
+	{
+		return;
+	}
+
+	if (APlayerController* PC = Cast<APlayerController>(GetOwner()))
+	{
+		if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+		{
+			if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+			{
+				if (UInGameHUD* HUD = UIManager->GetInGameHUD())
+				{
+					HUD->PlayTakeDamageAnim();
+				}
+			}
+		}
+	}
 }
 
 void ABasePlayerState::OnRep_bHasEscaped()
@@ -280,7 +300,7 @@ void ABasePlayerState::CopyProperties(APlayerState* PlayerState)
 		TargetState->TotalExp = TotalExp;
 
 		// 초기화할 데이터
-		TargetState->CurrentHP = TargetState->MaxHP; 
+		TargetState->CurrentHP = TargetState->MaxHP;
 		TargetState->CurrentStamina = TargetState->InitialStats.MaxStamina;
 	}
 }

@@ -22,9 +22,11 @@ struct FBackpackSlotData;
 class UItemSpawnerComponent;
 class UPostProcessComponent;
 class AResourceNode;
+class UWidgetComponent;
+class UPlayerNameWidget;
 
 UCLASS()
-class LASTCANARY_API ABaseCharacter : public AAlsCharacter , public IGimmickDebuffInterface , public IGameplayTagAssetInterface
+class LASTCANARY_API ABaseCharacter : public AAlsCharacter, public IGimmickDebuffInterface, public IGameplayTagAssetInterface
 {
 	GENERATED_BODY()
 
@@ -523,8 +525,8 @@ public:
 
 	void StopReload();
 
-	
-	
+
+
 	UFUNCTION(Server, Reliable)
 	void Server_StopReload();
 	void Server_StopReload_Implementation();
@@ -771,4 +773,11 @@ public:
 	UFUNCTION(Client, Reliable, Category = "WalkieTalkie")
 	void Client_SetWalkieTalkieChannelStatus(bool bActive);
 	void Client_SetWalkieTalkieChannelStatus_Implementation(bool bActive);
+
+	virtual void OnRep_PlayerState() override;
+	void UpdateNameWidget(); // 위젯 업데이트용 함수
+
+	/** 머리 위에 표시할 3D 위젯 컴포넌트 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
+	UWidgetComponent* NameWidgetComponent;
 };
