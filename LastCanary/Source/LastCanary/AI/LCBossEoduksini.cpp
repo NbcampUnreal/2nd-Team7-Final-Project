@@ -9,8 +9,7 @@
 #include "NavigationSystem.h"
 #include "DrawDebugHelpers.h"
 #include "Net/UnrealNetwork.h"
-#include "Camera/CameraShakeBase.h"
-#include "Camera/PlayerCameraManager.h"
+#include "Camera/CameraComponent.h"
 
 ALCBossEoduksini::ALCBossEoduksini()
 {
@@ -602,31 +601,38 @@ void ALCBossEoduksini::NightTerror()
     if (TerrorSound)
         UGameplayStatics::PlaySound2D(this, TerrorSound);
 
-    // ── 포스트프로세스 적용 ──
     for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
     {
         if (APlayerController* PC = It->Get(); PC->IsLocalController())
         {
-            if (TerrorPostProcessMaterial)
+            APawn* Target = PC->GetPawn();
+            if (!Target) continue;
+
+            // Character에 붙은 CameraComponent의 PostProcessSettings 사용
+            if (UCameraComponent* Cam = Target->FindComponentByClass<UCameraComponent>())
             {
-                // 1) 머티리얼 블렌드 추가
-                PC->PlayerCameraManager->ViewTarget.POV.PostProcessSettings
-                    .AddBlendable(TerrorPostProcessMaterial, TerrorPostProcessWeight);
+                if (TerrorPostProcessMaterial)
+                {
+                    // 1) 포스트 프로세스 머티리얼 블렌드 추가
+                    Cam->PostProcessSettings.AddBlendable(
+                        TerrorPostProcessMaterial,
+                        TerrorPostProcessWeight);
 
-                // 2) 일정 시간 후 제거
-                FTimerHandle TmpHandle;
-                FTimerDelegate  Del = FTimerDelegate::CreateLambda([PC, this]()
-                    {
-                        PC->PlayerCameraManager->ViewTarget.POV.PostProcessSettings
-                            .RemoveBlendable(TerrorPostProcessMaterial);
-                    });
-
-                GetWorldTimerManager().SetTimer(
-                    TmpHandle,
-                    Del,
-                    TerrorPostProcessDuration,
-                    false
-                );
+                    // 2) 일정 시간 후 제거
+                    FTimerHandle RemoveHandle;
+                    GetWorldTimerManager().SetTimer(
+                        RemoveHandle,
+                        FTimerDelegate::CreateLambda([Cam, this]()
+                            {
+                                if (Cam)
+                                {
+                                    Cam->PostProcessSettings.RemoveBlendable(TerrorPostProcessMaterial);
+                                }
+                            }),
+                        TerrorPostProcessDuration,
+                        false
+                    );
+                }
             }
         }
     }
@@ -746,7 +752,7 @@ bool ALCBossEoduksini::RequestAttack(float TargetDistance)
     struct FEntry { float Weight; TFunction<void()> Action; };
     TArray<FEntry> Entries;
 
-    // (1) 특수 액션—예: Night Terror
+    // (1) 특수 액션: Night Terror
     if (!bHasUsedNightTerror && Rage >= NightTerrorRageThreshold)
     {
         bHasUsedNightTerror = true;
