@@ -186,15 +186,31 @@ void ALCBossSlenderman::ExecuteFearWave()
 {
     if (!HasAuthority() || !FearPostProcessMaterial) return;
 
+    // (0) VFX
+    if (FearWaveFX)
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+            GetWorld(),
+            FearWaveFX,
+            GetActorLocation(),
+            FRotator::ZeroRotator
+        );
+    }
+    // (1) SFX
+    if (FearWaveSound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(
+            this,
+            FearWaveSound,
+            GetActorLocation()
+        );
+    }
+
+    // (2) 기존 포스트프로세스 적용 로직…
     TArray<FHitResult> Hits;
     FCollisionShape Sphere = FCollisionShape::MakeSphere(FearRadius);
-    if (GetWorld()->SweepMultiByChannel(
-        Hits,
-        GetActorLocation(),
-        GetActorLocation(),
-        FQuat::Identity,
-        ECC_Pawn,
-        Sphere))
+    if (GetWorld()->SweepMultiByChannel(Hits, GetActorLocation(), GetActorLocation(),
+        FQuat::Identity, ECC_Pawn, Sphere))
     {
         for (auto& Hit : Hits)
         {
@@ -203,16 +219,13 @@ void ALCBossSlenderman::ExecuteFearWave()
                 const float Dist = FVector::Dist(P->GetActorLocation(), GetActorLocation());
                 if (!IsPlayerLookingAtMe(P) && Dist < FearRadius)
                 {
-                    // 폰에 붙은 카메라 컴포넌트를 찾는다
                     if (UCameraComponent* CamComp = P->FindComponentByClass<UCameraComponent>())
                     {
-                        // 포스트프로세스 머티리얼을 블렌더블로 추가
                         CamComp->PostProcessSettings.AddBlendable(FearPostProcessMaterial, FearPPBlendWeight);
-
-                        // 일정 시간 후 제거
                         FTimerHandle TmpHandle;
-                        GetWorldTimerManager().SetTimer(TmpHandle, [CamComp, this]() {
-                            CamComp->PostProcessSettings.RemoveBlendable(FearPostProcessMaterial);
+                        GetWorldTimerManager().SetTimer(TmpHandle, [CamComp, this]()
+                            {
+                                CamComp->PostProcessSettings.RemoveBlendable(FearPostProcessMaterial);
                             }, FearPPDuration, false);
                     }
                 }
@@ -224,12 +237,24 @@ void ALCBossSlenderman::ExecuteFearWave()
 void ALCBossSlenderman::ExecuteAbyssalWhisper()
 {
     if (!HasAuthority()) return;
+
     for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
     {
-        if (auto* PC = Cast<APlayerController>(*It))
+        if (APlayerController* PC = Cast<APlayerController>(*It))
         {
             FVector TrueLoc = PC->GetPawn()->GetActorLocation();
             FVector FakeLoc = TrueLoc + FMath::VRand() * 500.f;
+
+            // SFX
+            if (WhisperSound)
+            {
+                UGameplayStatics::PlaySoundAtLocation(
+                    this,
+                    WhisperSound,
+                    FakeLoc
+                );
+            }
+
             UE_LOG(LogTemp, Warning, TEXT("[Slenderman] Whisper distorted for %s: %s"),
                 *PC->GetName(), *FakeLoc.ToString());
         }
@@ -239,11 +264,34 @@ void ALCBossSlenderman::ExecuteAbyssalWhisper()
 void ALCBossSlenderman::TeleportToRandomLocation()
 {
     if (!HasAuthority()) return;
+
     if (auto* Nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld()))
     {
         FNavLocation Loc;
         if (Nav->GetRandomPointInNavigableRadius(GetActorLocation(), 1000.f, Loc))
+        {
             SetActorLocation(Loc.Location);
+
+            // (0) VFX
+            if (TeleportFX)
+            {
+                UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+                    GetWorld(),
+                    TeleportFX,
+                    Loc.Location,
+                    FRotator::ZeroRotator
+                );
+            }
+            // (1) SFX
+            if (TeleportSound)
+            {
+                UGameplayStatics::PlaySoundAtLocation(
+                    this,
+                    TeleportSound,
+                    Loc.Location
+                );
+            }
+        }
     }
 }
 
@@ -256,7 +304,28 @@ void ALCBossSlenderman::ExecuteDistortion()
 void ALCBossSlenderman::Multicast_DistortionEffect_Implementation()
 {
     UE_LOG(LogTemp, Warning, TEXT("[Slenderman] Distortion Effect Triggered"));
-    // BP 또는 머티리얼로 맵 왜곡 처리
+
+    // (0) VFX
+    if (DistortionFX)
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+            GetWorld(),
+            DistortionFX,
+            GetActorLocation(),
+            FRotator::ZeroRotator
+        );
+    }
+    // (1) SFX
+    if (DistortionSound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(
+            this,
+            DistortionSound,
+            GetActorLocation()
+        );
+    }
+
+    // (2) BP/머티리얼 맵 왜곡 처리…
 }
 
 void ALCBossSlenderman::EnterEndlessStalk()
@@ -274,6 +343,29 @@ void ALCBossSlenderman::OnRep_EndlessStalk()
 
 void ALCBossSlenderman::Multicast_StartEndlessStalk_Implementation()
 {
+    // (0) VFX
+    if (EndlessStalkFX)
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAttached(
+            EndlessStalkFX,
+            GetRootComponent(),
+            NAME_None,
+            FVector::ZeroVector,
+            FRotator::ZeroRotator,
+            EAttachLocation::KeepRelativeOffset,
+            true
+        );
+    }
+    // (1) SFX
+    if (EndlessStalkSound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(
+            this,
+            EndlessStalkSound,
+            GetActorLocation()
+        );
+    }
+
     OnRep_EndlessStalk();
     UE_LOG(LogTemp, Warning, TEXT("[Slenderman] Endless Stalk Activated"));
 }

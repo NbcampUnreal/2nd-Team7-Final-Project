@@ -5,6 +5,7 @@
 #include "NavigationSystem.h"
 #include "Materials/MaterialInterface.h"
 #include "NiagaraSystem.h"
+#include "Sound/SoundBase.h" 
 #include "LCBossSlenderman.generated.h"
 
 UCLASS()
@@ -20,6 +21,59 @@ protected:
     virtual void Tick(float DeltaTime) override;
     virtual void UpdateRage(float DeltaSeconds) override;
     virtual bool RequestAttack(float TargetDistance) override;
+
+    // VFX/SFX
+
+    UPROPERTY(EditAnywhere, Category = "Slenderman|Attack")
+    UNiagaraSystem* ShadowGraspFX;
+
+    UPROPERTY(EditAnywhere, Category = "Slenderman|Attack")
+    USoundBase* ShadowGraspSound;
+
+    UPROPERTY(EditAnywhere, Category = "Slenderman|Berserk")
+    UNiagaraSystem* EndlessStalkFX; 
+
+    UPROPERTY(EditAnywhere, Category = "Slenderman|Berserk")
+    USoundBase* EndlessStalkSound;
+
+    UPROPERTY(EditAnywhere, Category = "Slenderman|Attack")
+    UNiagaraSystem* AttackDistortionFX;
+
+    UPROPERTY(EditAnywhere, Category = "Slenderman|Attack")
+    USoundBase* AttackDistortionSound;
+
+    UPROPERTY(EditAnywhere, Category = "Slenderman|Berserk")
+    UNiagaraSystem* BerserkEffectFX;
+
+    UPROPERTY(EditAnywhere, Category = "Slenderman|Berserk")
+    USoundBase* BerserkSound;
+
+    UPROPERTY(EditAnywhere, Category = "Slenderman|Distortion")
+    UNiagaraSystem* DistortionFX;
+
+    UPROPERTY(EditAnywhere, Category = "Slenderman|Distortion")
+    USoundBase* DistortionSound;
+
+    UPROPERTY(EditAnywhere, Category = "Slenderman|Teleport")
+    UNiagaraSystem* TeleportFX;
+
+    UPROPERTY(EditAnywhere, Category = "Slenderman|Teleport")
+    USoundBase* TeleportSound;
+
+    UPROPERTY(EditAnywhere, Category = "Slenderman|Whisper")
+    USoundBase* WhisperSound;
+
+    UPROPERTY(EditAnywhere, Category = "Slenderman|Attack")
+    UNiagaraSystem* ReachSlashFX;
+
+    UPROPERTY(EditAnywhere, Category = "Slenderman|Attack")
+    USoundBase* ReachSlashSound;
+
+    UPROPERTY(EditAnywhere, Category = "Slenderman|Fear")
+    UNiagaraSystem* FearWaveFX;
+
+    UPROPERTY(EditAnywhere, Category = "Slenderman|Fear")
+    USoundBase* FearWaveSound;
 
     /** 플레이어가 바라보는 시야 허용 한계 (Dot>Threshold 일 때만 Rage 증가) */
     UPROPERTY(EditAnywhere, Category = "Slenderman|Rage")
@@ -112,10 +166,6 @@ protected:
     void ExecuteAttackDistortion();
 
     // ── Berserk ──
-    UPROPERTY(EditAnywhere, Category = "Slenderman|Berserk")
-    UNiagaraSystem* BerserkEffectFX;
-    UPROPERTY(EditAnywhere, Category = "Slenderman|Berserk")
-    USoundBase* BerserkSound;
     UPROPERTY(EditAnywhere, Category = "Slenderman|Berserk")
     float BerserkSpeedMultiplier = 1.5f;
     /** 분신 소환용 클래스(에디터에서 할당) */

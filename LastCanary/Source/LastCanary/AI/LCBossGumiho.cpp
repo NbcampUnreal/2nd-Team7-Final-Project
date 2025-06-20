@@ -429,6 +429,59 @@ void ALCBossGumiho::ExecuteNineTailBurst()
     }
 }
 
+
+void ALCBossGumiho::ExecuteSpiritSpike(AActor* Target)
+{
+    if (!HasAuthority() || !Target) return;
+
+    FVector Loc = Target->GetActorLocation();
+
+    // 1) VFX
+    if (SpiritSpikeFX)
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+            GetWorld(),
+            SpiritSpikeFX,
+            Loc,
+            FRotator::ZeroRotator);
+    }
+
+    // 2) SFX
+    if (SpiritSpikeSound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(
+            this,
+            SpiritSpikeSound,
+            Loc);
+    }
+
+    // 3) 범위 대미지
+    TArray<FHitResult> Hits;
+    FCollisionShape Sphere = FCollisionShape::MakeSphere(SpiritSpikeRadius);
+    bool bHit = GetWorld()->SweepMultiByChannel(
+        Hits,
+        Loc, Loc,
+        FQuat::Identity,
+        ECC_Pawn,
+        Sphere);
+
+    if (bHit)
+    {
+        for (auto& H : Hits)
+        {
+            if (ABaseCharacter* C = Cast<ABaseCharacter>(H.GetActor()))
+            {
+                UGameplayStatics::ApplyDamage(
+                    C,
+                    SpiritSpikeDamage,
+                    GetController(),
+                    this,
+                    nullptr);
+            }
+        }
+    }
+}
+
 void ALCBossGumiho::OnRep_DivineGrace()
 {
     if (bIsDivineGrace)
@@ -500,6 +553,18 @@ bool ALCBossGumiho::RequestAttack(float TargetDistance)
             Entries.Add({ 1.f, [this, Now]() {
                 LastIllusionSwapTime = Now;
                 PerformIllusionSwap();
+            } });
+        }
+    }
+
+    {
+        if (Target && Now - LastSpiritSpikeTime >= SpiritSpikeCooldown)
+        {
+            Entries.Add({ 2.f, [this, Now, Target]()
+            {
+                LastSpiritSpikeTime = Now;
+                UE_LOG(LogTemp, Warning, TEXT("[Gumiho] SpiritSpike 실행 → 대상: %s"), *Target->GetName());
+                ExecuteSpiritSpike(Target);
             } });
         }
     }
