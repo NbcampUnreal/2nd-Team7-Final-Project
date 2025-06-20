@@ -2,7 +2,6 @@
 #include "Inventory/InventoryUtility.h"
 #include "Inventory/InventoryDropSystem.h"
 #include "Inventory/InventoryUIController.h"
-#include "Inventory/InventoryNetworkManager.h"
 #include "Character/BaseCharacter.h"
 #include "Character/BasePlayerState.h"
 #include "DataTable/ItemDataRow.h"
@@ -64,13 +63,6 @@ void UToolbarInventoryComponent::InitializeManagers()
         // 델리게이트 연결
         BackpackManager->OnBackpackEquipped.AddDynamic(this, &UToolbarInventoryComponent::OnBackpackEquippedHandler);
         BackpackManager->OnBackpackUnequipped.AddDynamic(this, &UToolbarInventoryComponent::OnBackpackUnequippedHandler);
-    }
-
-    // 네트워크 핸들러 초기화
-    NetworkManager = NewObject<UInventoryNetworkManager>(this);
-    if (NetworkManager)
-    {
-        NetworkManager->Initialize(this);
     }
 
     // UI 컨트롤러 초기화
@@ -806,20 +798,21 @@ void UToolbarInventoryComponent::Server_DropEquippedItemAtSlot_Implementation(in
 
 bool UToolbarInventoryComponent::DropCurrentEquippedItem()
 {
-    if (GetOwner() && GetOwner()->HasAuthority())
+    if (CurrentEquippedSlotIndex < 0 || !ItemSlots.IsValidIndex(CurrentEquippedSlotIndex))
     {
-        return Internal_DropCurrentEquippedItem();
+        LOG_Item_WARNING(TEXT("[DropCurrentEquippedItem] 드롭 실패: 장착 슬롯 인덱스가 잘못됨"));
+        return false;
     }
-    else
-    {
-        Server_DropCurrentEquippedItem();
-        return true;
-    }
+
+    return UInventoryDropSystem::ExecuteDropItem(this, CurrentEquippedSlotIndex, 1, true);
 }
 
 void UToolbarInventoryComponent::Server_DropCurrentEquippedItem_Implementation()
 {
-    Internal_DropCurrentEquippedItem();
+    if (CurrentEquippedSlotIndex >= 0)
+    {
+        UInventoryDropSystem::ExecuteDropItem(this, CurrentEquippedSlotIndex, 1, true);
+    }
 }
 
 bool UToolbarInventoryComponent::TryDropItemAtSlot(int32 SlotIndex, int32 Quantity)
@@ -842,108 +835,6 @@ bool UToolbarInventoryComponent::TryDropItemAtSlot(int32 SlotIndex, int32 Quanti
         }
         return true;
     }
-}
-
-bool UToolbarInventoryComponent::Internal_DropCurrentEquippedItem()
-{
-    if (CurrentEquippedSlotIndex < 0 || !ItemSlots.IsValidIndex(CurrentEquippedSlotIndex))
-    {
-        LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::Internal_DropCurrentEquippedItem] 현재 장착된 아이템이 없습니다."));
-        return false;
-    }
-
-    if (!GetOwner() || !GetOwner()->HasAuthority())
-    {
-        LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::Internal_DropCurrentEquippedItem] Authority가 없습니다."));
-        return false;
-    }
-
-    // ⭐ 간소화: Internal_DropEquippedItemAtSlot 재사용
-    return Internal_DropEquippedItemAtSlot(CurrentEquippedSlotIndex, 1);
-}
-
-bool UToolbarInventoryComponent::Internal_DropEquippedItemAtSlot(int32 SlotIndex, int32 Quantity)
-{
-    if (!GetOwner() || !GetOwner()->HasAuthority())
-    {
-        LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::Internal_DropEquippedItemAtSlot] Authority가 없습니다."));
-        return false;
-    }
-
-    FBaseItemSlotData* SlotData = GetItemDataAtSlot(SlotIndex);
-    if (!SlotData)
-    {
-        LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::Internal_DropEquippedItemAtSlot] 슬롯 데이터가 없습니다."));
-        return false;
-    }
-
-    if (SlotIndex == CurrentEquippedSlotIndex)
-    {
-        SyncEquippedItemDurabilityToSlot();
-        SyncGunStateToSlot();
-    }
-
-    // 드롭 아이템 생성
-    FVector DropLocation = CalculateDropLocation();
-    FBaseItemSlotData DropItemData = *SlotData;
-    DropItemData.Quantity = FMath::Min(Quantity, SlotData->Quantity);
-    DropItemData.bIsEquipped = false;
-
-    AItemBase* DroppedItem = ItemSpawner->CreateItemFromData(DropItemData, DropLocation);
-    if (!DroppedItem)
-    {
-        LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::Internal_DropEquippedItemAtSlot] 아이템 스폰 실패"));
-        return false;
-    }
-
-    // 가방 전용 후처리
-    if (SlotData->bIsBackpack)
-    {
-        if (ABackpackItem* DroppedBackpack = Cast<ABackpackItem>(DroppedItem))
-        {
-            DroppedBackpack->SetBackpackData(SlotData->BackpackSlots);
-            LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::Internal_DropEquippedItemAtSlot] 드롭된 가방에 데이터 설정 완료"));
-        }
-    }
-
-    // 슬롯 정리
-    SlotData->Quantity -= DropItemData.Quantity;
-    if (SlotData->Quantity <= 0)
-    {
-        SetSlotToDefault(SlotIndex);
-    }
-
-    if (SlotIndex == CurrentEquippedSlotIndex)
-    {
-        SlotData->bIsEquipped = false;
-        CurrentEquippedSlotIndex = -1;
-
-        // Actor 해제
-        if (AItemBase* CurrentItem = Cast<AItemBase>(EquippedItemComponent->GetChildActor()))
-        {
-            if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(CurrentItem))
-            {
-                EquipmentItem->SetEquipped(false);
-            }
-        }
-        EquippedItemComponent->DestroyChildActor();
-
-        // 캐릭터 상태 업데이트
-        if (CachedOwnerCharacter)
-        {
-            bool bHasOtherEquipment = HasOtherEquippedItems();
-            CachedOwnerCharacter->SetEquipped(bHasOtherEquipment);
-        }
-    }
-
-    UpdateWeight();
-    SyncInventoryToPlayerState();
-    UpdateWalkieTalkieChannelStatus();
-
-    OnInventoryUpdated.Broadcast();
-
-    LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::Internal_DropEquippedItemAtSlot] 드롭 성공"));
-    return true;
 }
 
 void UToolbarInventoryComponent::Server_DropItemAtSlot_Implementation(int32 SlotIndex, int32 Quantity)

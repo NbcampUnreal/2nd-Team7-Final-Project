@@ -112,16 +112,6 @@ ABaseCharacter* UInventoryComponentBase::GetCachedOwnerCharacter() const
 	return CachedOwnerCharacter;
 }
 
-void UInventoryComponentBase::ShowTooltipForItem(const FBaseItemSlotData& ItemData, UWidget* TargetWidget)
-{
-	// UI 매니저에서 관리할 예정
-}
-
-void UInventoryComponentBase::HideTooltip()
-{
-	// UI 매니저에서 관리할 예정
-}
-
 void UInventoryComponentBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -164,59 +154,6 @@ int32 UInventoryComponentBase::GetMaxSlots() const
 	return MaxSlots;
 }
 
-FVector UInventoryComponentBase::CalculateDropLocation() const
-{
-	AActor* OwnerActor = GetOwner();
-	if (!OwnerActor)
-	{
-		LOG_Item_WARNING(TEXT("[CalculateDropLocation] Owner is null"));
-		return FVector::ZeroVector;
-	}
-
-	ABaseCharacter* Character = Cast<ABaseCharacter>(OwnerActor);
-	if (!Character)
-	{
-		LOG_Item_WARNING(TEXT("[CalculateDropLocation] Owner is not BaseCharacter"));
-		return FVector::ZeroVector;
-	}
-
-	// ⭐ 카메라 시점 기준으로 던지기 위치 계산
-	AController* Controller = Character->GetController();
-	if (!Controller)
-	{
-		LOG_Item_WARNING(TEXT("[CalculateDropLocation] Controller is null"));
-		return Character->GetActorLocation();
-	}
-
-	FVector CameraLocation;
-	FRotator CameraRotation;
-	Controller->GetPlayerViewPoint(CameraLocation, CameraRotation);
-
-	// ⭐ 카메라 앞쪽 일정 거리에서 생성 (손에서 던지는 느낌)
-	FVector ThrowStartOffset = CameraRotation.Vector() * 150.0f; // 카메라 앞 150cm
-	FVector HandOffset = Character->GetActorUpVector() * -20.0f; // 살짝 아래쪽 (손 높이)
-
-	FVector ThrowStartLocation = CameraLocation + ThrowStartOffset + HandOffset;
-
-	// 바닥과 너무 가까우면 조정
-	FHitResult HitResult;
-	FVector TraceStart = ThrowStartLocation + FVector(0, 0, 100.0f);
-	FVector TraceEnd = ThrowStartLocation - FVector(0, 0, 200.0f);
-
-	FCollisionQueryParams QueryParams;
-	QueryParams.AddIgnoredActor(Character);
-	QueryParams.bTraceComplex = true;
-
-	if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_WorldStatic, QueryParams))
-	{
-		float MinHeight = HitResult.ImpactPoint.Z + 80.0f; // 바닥에서 80cm 위
-		ThrowStartLocation.Z = FMath::Max(ThrowStartLocation.Z, MinHeight);
-	}
-
-	LOG_Item_WARNING(TEXT("[CalculateDropLocation] 던지기 시작 위치: %s"), *ThrowStartLocation.ToString());
-	return ThrowStartLocation;
-}
-
 bool UInventoryComponentBase::TryDropItemAtSlot(int32 SlotIndex, int32 Quantity)
 {
 	if (GetOwner() && GetOwner()->HasAuthority())
@@ -235,101 +172,6 @@ void UInventoryComponentBase::Server_TryDropItemAtSlot_Implementation(int32 Slot
 	UInventoryDropSystem::ExecuteDropItem(this, SlotIndex, Quantity);
 }
 
-bool UInventoryComponentBase::Internal_TryDropItemAtSlot(int32 SlotIndex, int32 Quantity)
-{
-	AActor* Owner = GetOwner();
-	if (!Owner)
-	{
-		LOG_Item_WARNING(TEXT("[UInventoryComponentBase::Internal_TryDropItemAtSlot] Owner is null"));
-		return false;
-	}
-
-	if (!Owner->HasAuthority())
-	{
-		LOG_Item_WARNING(TEXT("[UInventoryComponentBase::Internal_TryDropItemAtSlot] Authority가 없습니다. 서버 RPC를 통해 요청하세요."));
-		LOG_Item_WARNING(TEXT("[UInventoryComponentBase::Internal_TryDropItemAtSlot] Owner: %s, HasAuthority: %s"),
-			*Owner->GetName(), Owner->HasAuthority() ? TEXT("true") : TEXT("false"));
-
-		// ⭐ 클라이언트에서는 자동으로 서버 RPC 호출
-		Server_TryDropItemAtSlot(SlotIndex, Quantity);
-		return true; // 클라이언트에서는 요청 성공으로 처리
-	}
-
-	if (!ItemSlots.IsValidIndex(SlotIndex))
-	{
-		LOG_Item_WARNING(TEXT("[UInventoryComponentBase::Internal_TryDropItemAtSlot] 유효하지 않은 슬롯 인덱스: %d"), SlotIndex);
-		return false;
-	}
-
-	if (!IsOwnerCharacterValid())
-	{
-		LOG_Item_WARNING(TEXT("[UInventoryComponentBase::Internal_TryDropItemAtSlot] CachedOwnerCharacter가 유효하지 않습니다."));
-		return false;
-	}
-
-	FBaseItemSlotData& SlotData = ItemSlots[SlotIndex];
-
-	// ⭐ Default 아이템 체크를 실제 드롭 전으로 이동
-	if (IsDefaultItem(SlotData.ItemRowName))
-	{
-		LOG_Item_WARNING(TEXT("[Internal_TryDropItemAtSlot] Default 아이템은 드롭할 수 없습니다: 슬롯 %d"), SlotIndex);
-		return false;
-	}
-
-	if (SlotData.ItemRowName.IsNone() || SlotData.Quantity <= 0)
-	{
-		LOG_Item_WARNING(TEXT("[Internal_TryDropItemAtSlot] 빈 슬롯입니다: %d"), SlotIndex);
-		return false;
-	}
-
-	int32 DropQuantity = FMath::Min(Quantity, SlotData.Quantity);
-	if (DropQuantity <= 0)
-	{
-		LOG_Item_WARNING(TEXT("[Internal_TryDropItemAtSlot] 드랍할 수량이 0 이하입니다."));
-		return false;
-	}
-
-	FVector DropLocation = CalculateDropLocation();
-	FBaseItemSlotData DropItemData = SlotData;
-	DropItemData.Quantity = DropQuantity;
-
-	if (!ItemSpawner)
-	{
-		LOG_Item_WARNING(TEXT("[Internal_TryDropItemAtSlot] ItemSpawner is null"));
-		return false;
-	}
-
-	AItemBase* DroppedItem = ItemSpawner->CreateItemFromData(DropItemData, DropLocation);
-	if (!DroppedItem)
-	{
-		LOG_Item_WARNING(TEXT("[Internal_TryDropItemAtSlot] 아이템 스폰 실패"));
-		return false;
-	}
-
-	if (AGunBase* DroppedGun = Cast<AGunBase>(DroppedItem))
-	{
-		DroppedGun->CurrentFireMode = static_cast<EFireMode>(DropItemData.FireMode);
-		DroppedGun->bIsAutoFiring = false;
-	}
-
-	// ⭐ 중복 제거 및 정리
-	SlotData.Quantity -= DropQuantity;
-	if (SlotData.Quantity <= 0)
-	{
-		SetSlotToDefault(SlotIndex); // ⭐ 여기서만 Default 설정
-	}
-
-	UpdateWeight(); // ⭐ 무게 갱신 추가
-	UpdateWalkieTalkieChannelStatus();
-
-	OnInventoryUpdated.Broadcast();
-
-	LOG_Item_WARNING(TEXT("[Internal_TryDropItemAtSlot] ✅ 드롭 성공: %s (수량: %d)"),
-		*DropItemData.ItemRowName.ToString(), DropQuantity);
-
-	return true;
-}
-
 bool UInventoryComponentBase::TryDropItem(FName ItemRowName, int32 Quantity)
 {
 	if (GetOwner() && GetOwner()->HasAuthority())
@@ -346,33 +188,6 @@ bool UInventoryComponentBase::TryDropItem(FName ItemRowName, int32 Quantity)
 void UInventoryComponentBase::Server_TryDropItem_Implementation(FName ItemRowName, int32 Quantity)
 {
 	UInventoryDropSystem::ExecuteDropItemByName(this, ItemRowName, Quantity);
-}
-
-bool UInventoryComponentBase::TryDropItem_Internal(FName ItemRowName, int32 Quantity)
-{
-	if (!GetOwner() || !GetOwner()->HasAuthority())
-	{
-		LOG_Item_WARNING(TEXT("[UInventoryComponentBase::TryDropItem_Internal] Authority가 없습니다."));
-		return false;
-	}
-
-	if (ItemRowName.IsNone() || Quantity <= 0)
-	{
-		LOG_Item_WARNING(TEXT("[UInventoryComponentBase::TryDropItem_Internal] 유효하지 않은 매개변수"));
-		return false;
-	}
-
-	for (int32 i = 0; i < ItemSlots.Num(); ++i)
-	{
-		if (ItemSlots[i].ItemRowName == ItemRowName && ItemSlots[i].Quantity > 0)
-		{
-			int32 DropQuantity = FMath::Min(Quantity, ItemSlots[i].Quantity);
-			return Internal_TryDropItemAtSlot(i, DropQuantity);
-		}
-	}
-
-	LOG_Item_WARNING(TEXT("[UInventoryComponentBase::TryDropItem_Internal] 아이템을 찾을 수 없습니다: %s"), *ItemRowName.ToString());
-	return false;
 }
 
 void UInventoryComponentBase::UpdateWeight()
@@ -411,27 +226,6 @@ void UInventoryComponentBase::UpdateWeight()
 	}
 }
 
-float UInventoryComponentBase::GetItemWeight(FName ItemRowName) const
-{
-	return UInventoryUtility::GetItemWeight(ItemRowName, ItemDataTable);
-}
-
-bool UInventoryComponentBase::IsDefaultItem(FName ItemRowName) const
-{
-	return UInventoryUtility::IsDefaultItem(ItemRowName, GetInventoryConfig());
-}
-
-void UInventoryComponentBase::SetSlotToDefault(int32 SlotIndex)
-{
-	if (!ItemSlots.IsValidIndex(SlotIndex))
-	{
-		return;
-	}
-
-	UInventoryUtility::SetSlotToDefault(ItemSlots[SlotIndex], GetInventoryConfig());
-	OnInventoryUpdated.Broadcast();
-}
-
 UItemSpawnerComponent* UInventoryComponentBase::GetItemSpawner() const
 {
 	if (ABaseCharacter* Character = GetCachedOwnerCharacter())
@@ -439,16 +233,6 @@ UItemSpawnerComponent* UInventoryComponentBase::GetItemSpawner() const
 		return Character->ItemSpawner;
 	}
 	return nullptr;
-}
-
-int32 UInventoryComponentBase::GetItemIDFromRowName(FName ItemRowName) const
-{
-	return UInventoryUtility::GetItemIDFromRowName(ItemRowName, ItemDataTable);
-}
-
-FName UInventoryComponentBase::GetItemRowNameFromID(int32 ItemID) const
-{
-	return UInventoryUtility::GetItemRowNameFromID(ItemID, ItemDataTable);
 }
 
 void UInventoryComponentBase::ClearInventorySlots()
@@ -465,7 +249,7 @@ bool UInventoryComponentBase::HasWalkieTalkieInToolbar() const
 {
 	for (const FBaseItemSlotData& Slot : ItemSlots)
 	{
-		if (Slot.bIsValid && !IsDefaultItem(Slot.ItemRowName) && Slot.Quantity > 0)
+		if (Slot.bIsValid && UInventoryUtility::IsDefaultItem(Slot.ItemRowName, GetInventoryConfig()) && Slot.Quantity > 0)
 		{
 			if (IsWalkieTalkieItem(Slot.ItemRowName))
 			{
@@ -532,4 +316,25 @@ bool UInventoryComponentBase::IsWalkieTalkieItem(FName ItemRowName) const
 const UInventoryConfig* UInventoryComponentBase::GetInventoryConfig() const
 {
 	return InventoryConfig; // nullptr이어도 유틸리티에서 기본값 처리
+}
+
+bool UInventoryComponentBase::IsDefaultItem(FName ItemRowName) const
+{
+	return UInventoryUtility::IsDefaultItem(ItemRowName, GetInventoryConfig());
+}
+
+void UInventoryComponentBase::SetSlotToDefault(int32 SlotIndex)
+{
+	if (ItemSlots.IsValidIndex(SlotIndex))
+		UInventoryUtility::SetSlotToDefault(ItemSlots[SlotIndex], GetInventoryConfig());
+}
+
+int32 UInventoryComponentBase::GetItemIDFromRowName(FName ItemRowName) const
+{
+	return UInventoryUtility::GetItemIDFromRowName(ItemRowName, ItemDataTable);
+}
+
+FName UInventoryComponentBase::GetItemRowNameFromID(int32 ItemID) const
+{
+	return UInventoryUtility::GetItemRowNameFromID(ItemID, ItemDataTable);
 }

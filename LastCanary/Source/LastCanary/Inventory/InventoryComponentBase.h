@@ -117,18 +117,6 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Inventory|Operations")
     virtual bool TryAddItem(AItemBase* ItemActor) PURE_VIRTUAL(UInventoryComponentBase::TryAddItem, return false;);
 
-    //-----------------------------------------------------
-    // UI 관련 함수 (임시, UI 매니저로 이동 예정)
-    //-----------------------------------------------------
-
-    /** 아이템 데이터에 대한 툴팁 표시 */
-    UFUNCTION(BlueprintCallable, Category = "Inventory|UI")
-    void ShowTooltipForItem(const FBaseItemSlotData& ItemData, UWidget* TargetWidget);
-
-    /** 툴팁 숨김 */
-    UFUNCTION(BlueprintCallable, Category = "Inventory|UI")
-    void HideTooltip();
-
 public:
     //-----------------------------------------------------
     // 아이템 드랍 기능 (RPC 패턴 적용)
@@ -152,18 +140,6 @@ public:
     void Server_TryDropItem(FName ItemRowName, int32 Quantity);
     void Server_TryDropItem_Implementation(FName ItemRowName, int32 Quantity);
 
-protected:
-    /** 실제 슬롯 드랍 로직 (서버에서만 실행) */
-    virtual bool Internal_TryDropItemAtSlot(int32 SlotIndex, int32 Quantity);
-
-    /** 실제 아이템 드랍 로직 (서버에서만 실행) */
-    virtual bool TryDropItem_Internal(FName ItemRowName, int32 Quantity);
-
-    /** 드랍 위치 계산 */
-    UFUNCTION(BlueprintPure, Category = "Inventory|Utility")
-    FVector CalculateDropLocation() const;
-
-
     //-----------------------------------------------------
     // 무게 관리 시스템
     //-----------------------------------------------------
@@ -184,10 +160,6 @@ protected:
     /** 현재 총 무게 */
     UPROPERTY(BlueprintReadOnly, Category = "Inventory|Weight")
     float CurrentTotalWeight = 0.0f;
-
-    /** 아이템의 실제 무게 가져오기 */
-    UFUNCTION(BlueprintPure, Category = "Inventory|Weight")
-    float GetItemWeight(FName ItemRowName) const;
 
     //-----------------------------------------------------
     // 네트워크 기능
@@ -218,24 +190,7 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory|Default")
     FName DefaultItemRowName = FName("Default");
 
-public:
-    /** Default 아이템인지 확인 */
-    UFUNCTION(BlueprintPure, Category = "Inventory|Utility")
-    bool IsDefaultItem(FName ItemRowName) const;
-
-    /** 빈 슬롯을 Default 아이템으로 설정 */
-    UFUNCTION(BlueprintCallable, Category = "Inventory|Utility")
-    void SetSlotToDefault(int32 SlotIndex);
-
 protected:
-    /** ItemRowName을 ItemID로 변환 */
-    UFUNCTION(BlueprintPure, Category = "Inventory|Utility")
-    int32 GetItemIDFromRowName(FName ItemRowName) const;
-
-    /** ItemID를 ItemRowName으로 변환 */
-    UFUNCTION(BlueprintPure, Category = "Inventory|Utility")
-    FName GetItemRowNameFromID(int32 ItemID) const;
-
     void ClearInventorySlots();
 
     //-----------------------------------------------------
@@ -277,4 +232,15 @@ public:
 
     /** 설정 가져오기 (없으면 기본값) */
     const UInventoryConfig* GetInventoryConfig() const;
+
+    UFUNCTION(BlueprintPure, Category = "Inventory|Utility")
+    bool IsDefaultItem(FName ItemRowName) const;
+
+    void SetSlotToDefault(int32 SlotIndex);
+
+    UFUNCTION(BlueprintPure, Category = "Inventory|Utility")
+    int32 GetItemIDFromRowName(FName RowName) const;
+
+    UFUNCTION(BlueprintPure, Category = "Inventory|Utility")
+    FName GetItemRowNameFromID(int32 ID) const;
 };

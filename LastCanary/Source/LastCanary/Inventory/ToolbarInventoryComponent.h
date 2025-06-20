@@ -157,9 +157,6 @@ public:
     void Server_DropItemAtSlot_Implementation(int32 SlotIndex, int32 Quantity);
 
 private:
-    bool Internal_DropCurrentEquippedItem();
-    bool Internal_DropEquippedItemAtSlot(int32 SlotIndex, int32 Quantity);
-
     /** 아이템 습득 및 드랍 시 플레이어 스테이트와 동기화 */
     void SyncInventoryToPlayerState();
 
@@ -208,10 +205,6 @@ public:
     /** 백팩 매니저 */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory|Managers")
     UBackpackManager* BackpackManager;
-
-    /** 네트워크 매니저 */
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory|Managers")
-    UInventoryNetworkManager* NetworkManager;
 
     /** UI 컨트롤러 */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory|Managers")
