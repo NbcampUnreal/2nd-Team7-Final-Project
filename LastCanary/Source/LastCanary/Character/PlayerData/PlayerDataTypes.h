@@ -89,6 +89,9 @@ public:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stat")
     float WeightSlowdownMultiplier = 50.0f;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spirit")
+    float MaxSpirit = 100.0f;
 };
 
 // ------------------------------

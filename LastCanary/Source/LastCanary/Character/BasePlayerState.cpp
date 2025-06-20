@@ -38,6 +38,16 @@ void ABasePlayerState::BeginPlay()
 	SetInGameStatus(EPlayerInGameStatus::Alive);
 }
 
+void ABasePlayerState::SetPlayerInGameName(FString Name)
+{
+	PlayerInGameName = Name;
+}
+
+FString ABasePlayerState::GetInGameName()
+{
+	return PlayerInGameName;
+}
+
 void ABasePlayerState::SetInGameStatus(EPlayerInGameStatus Status)
 {
 	InGameState = Status;
@@ -51,6 +61,7 @@ void ABasePlayerState::InitializeStats()
 {
 	CurrentHP = InitialStats.MaxHP;
 	CurrentStamina = InitialStats.MaxStamina;
+	CurrentSpirit = InitialStats.MaxSpirit;
 
 }
 void ABasePlayerState::SetStamina(float NewStamina)
@@ -67,10 +78,26 @@ void ABasePlayerState::SetHP(float NewHP)
 	}
 }
 
+void ABasePlayerState::SetSpirit(float NewSpirit)
+{
+	if (HasAuthority())
+	{
+		CurrentSpirit = NewSpirit;
+		Client_UpdateSpirit(NewSpirit);
+	}
+	
+}
+
 void ABasePlayerState::Client_UpdateHP_Implementation(float NewHP)
 {
 	CurrentHP = NewHP;
 	UpdateHPUI();
+}
+
+void ABasePlayerState::Client_UpdateSpirit_Implementation(float NewSpirit)
+{
+	CurrentSpirit = NewSpirit;
+	UpdateSpiritUI();
 }
 
 void ABasePlayerState::OnRep_CurrentStamina()
@@ -125,6 +152,23 @@ void ABasePlayerState::UpdateDeathUI()
 			if (ULCUIManager* UIManager = Subsystem->GetUIManager())
 			{
 
+			}
+		}
+	}
+}
+
+void ABasePlayerState::UpdateSpiritUI()
+{
+	if (APlayerController* PC = Cast<APlayerController>(GetOwner()))
+	{
+		if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+		{
+			if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+			{
+				if (UInGameHUD* HUD = UIManager->GetInGameHUD())
+				{
+					//TODO: HUD->UpdateSpiritEffect(CurrentSpirit, InitialStats.MaxSpirit);
+				}
 			}
 		}
 	}
@@ -289,8 +333,10 @@ void ABasePlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 
 	DOREPLIFETIME(ABasePlayerState, CurrentHP);
 	DOREPLIFETIME(ABasePlayerState, CurrentStamina);
+	DOREPLIFETIME(ABasePlayerState, CurrentSpirit);
 	DOREPLIFETIME(ABasePlayerState, TotalGold);
 	DOREPLIFETIME(ABasePlayerState, TotalExp);
 	DOREPLIFETIME(ABasePlayerState, CurrentState);
 	DOREPLIFETIME(ABasePlayerState, AquiredItemIDs);
+	DOREPLIFETIME(ABasePlayerState, PlayerInGameName);
 }
