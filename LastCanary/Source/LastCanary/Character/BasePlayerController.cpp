@@ -9,8 +9,10 @@
 #include "Net/UnrealNetwork.h"
 #include "UI/Manager/LCUIManager.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "Framework/GameInstance/LCGameManager.h"
 #include "Actor/Gimmick/LCBaseGimmick.h"
 
+#include "Character/PlayerData/PlayerDataTypes.h"
 #include "Character/BaseSpectatorPawn.h"
 #include "Inventory/ToolbarInventoryComponent.h"
 
@@ -20,6 +22,17 @@
 void ABasePlayerController::BeginPlay()
 {
 	Super::BeginPlay();
+	/*
+	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+	{
+		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+		{
+			UIManager->ShowInGameHUD();
+		}
+	}
+	*/
+	/*
+
 	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 	{
 		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
@@ -38,12 +51,23 @@ void ABasePlayerController::BeginPlay()
 			}
 		}
 	}
-
+	*/
 	LoadMouseSensitivity();
 	LoadBrightness();
 
 	PlayerCameraManager->ViewPitchMin = -80.0f; // 최소 Pitch 각도 (고개 숙이기)
 	PlayerCameraManager->ViewPitchMax = 80.0f;  // 최대 Pitch 각도 (고개 들기)
+}
+
+void ABasePlayerController::RequestShowInGameHUD()
+{
+	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+	{
+		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+		{
+			UIManager->ShowInGameHUD();
+		}
+	}
 }
 
 void ABasePlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -94,20 +118,6 @@ void ABasePlayerController::SetupInputComponent()
 	//InitInputComponent();
 }
 
-void ABasePlayerController::PlayerExitActivePlayOnDeath()
-{
-	Client_OnPlayerExitActivePlay();
-	APawn* MyPawn = GetPawn();
-	if (IsValid(MyPawn))
-	{
-		SpectatorSpawnLocation = MyPawn->GetActorLocation();
-		SpectatorSpawnRotation = MyPawn->GetActorRotation();
-	}
-	SpawnSpectatablePawn();
-
-	NotifyAtGameState();
-}
-
 void ABasePlayerController::OnExitGate()
 {
 	if (!IsValid(CurrentPossessedPawn))
@@ -142,7 +152,27 @@ void ABasePlayerController::HandleExitGate()
 	{
 		return;
 	}
+
 	PlayerCharacter->EscapeThroughGate();
+
+	//PlayerExitActivePlayOnEscapeGate();
+
+	// 여기서 GameManager에 수집한 자원 및 생존여부 업데이트
+
+}
+
+void ABasePlayerController::PlayerExitActivePlayOnDeath()
+{
+	Client_OnPlayerExitActivePlay();
+	APawn* MyPawn = GetPawn();
+	if (IsValid(MyPawn))
+	{
+		SpectatorSpawnLocation = MyPawn->GetActorLocation();
+		SpectatorSpawnRotation = MyPawn->GetActorRotation();
+	}
+	SpawnSpectatablePawn();
+
+	NotifyAtGameState();
 }
 
 void ABasePlayerController::PlayerExitActivePlayOnEscapeGate()
@@ -169,10 +199,23 @@ void ABasePlayerController::PlayerExitActivePlayOnEscapeGate()
 
 void ABasePlayerController::NotifyAtGameState()
 {
+	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
+	if (!IsValid(MyPlayerState))
+	{
+		return;
+	}
+
+	if (ULCGameManager* LCGM = GetGameInstance()->GetSubsystem<ULCGameManager>())
+	{
+		bool bIsDead = MyPlayerState->CurrentState == EPlayerState::Dead;
+		LCGM->SubmitExplorationResults(MyPlayerState->GetPlayerName(), bIsDead, MyPlayerState->CollectedResourceMap);
+	}
+
 	if (GetWorld()->GetGameState<ALCGameState>())
 	{
 		GetWorld()->GetGameState<ALCGameState>()->MarkPlayerAsEscaped(PlayerState);
 	}
+
 }
 
 void ABasePlayerController::Client_OnPlayerExitActivePlay_Implementation()
@@ -221,6 +264,15 @@ void ABasePlayerController::SpawnSpectatablePawn()
 		SpawnedSpectatorPawn = Spectator;
 		CurrentPossessedPawn = SpawnedSpectatorPawn;
 		SpawnedSpectatorPawn->SetOwner(this);
+
+		if (ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+		{
+			if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
+			{
+				UIManager->ShowSpectatorWidget();
+			}
+		}
+
 		//클라이언트에서 해야할 것.
 		OnUnPossess();
 		Possess(Spectator);
@@ -254,6 +306,13 @@ void ABasePlayerController::Client_StartSpectation_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Spectate Start On Client"));
 	GetWorldTimerManager().SetTimer(SpectatorCheckHandle, this, &ABasePlayerController::CheckCurrentSpectatedCharacterStatus, 0.5f, true);
+	if (ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+	{
+		if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
+		{
+			UIManager->ShowSpectatorWidget();
+		}
+	}
 }
 
 APawn* ABasePlayerController::GetMyPawn()
@@ -906,7 +965,7 @@ TArray<ABasePlayerState*> ABasePlayerController::GetPlayerArray()
 			if (MyPS)
 			{
 #if WITH_EDITOR
-				UE_LOG(LogTemp, Log, TEXT("Checking PlayerState: %s | InGameState: %d"), *MyPS->GetPlayerName(), (int32)MyPS->InGameState);
+				LOG_Char(Log, TEXT("Checking PlayerState: %s | InGameState: %d"), *MyPS->GetPlayerName(), (int32)MyPS->InGameState);
 #endif
 				if (MyPS->InGameState != EPlayerInGameStatus::Spectating)
 				{

@@ -1,5 +1,6 @@
 #include "UI/UIObject/VoiceOptionWidget.h"
 #include "Framework/GameInstance/LCOptionManager.h"
+#include "SaveGame/LCLocalPlayerSaveGame.h"
 
 #include "Components/Slider.h"
 #include "Components/TextBlock.h"
@@ -33,6 +34,7 @@ void UVoiceOptionWidget::NativeConstruct()
 		}
 		VoiceVolumeSlider->OnValueChanged.AddUniqueDynamic(this, &UVoiceOptionWidget::OnVoiceVolumeChanged);
 	}
+	InitializeAllOptions();
 }
 
 void UVoiceOptionWidget::NativeDestruct()
@@ -74,6 +76,8 @@ void UVoiceOptionWidget::OnMicVolumeChanged(float Value)
 		MyMicVolumeText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), Value * 100.f)));
 	}
 
+	ULCLocalPlayerSaveGame::SaveMicrophoneVolume(GetWorld(), Value);
+
 	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
 	{
 		OptionManager->MyMicVolume = Value;
@@ -90,9 +94,53 @@ void UVoiceOptionWidget::OnVoiceVolumeChanged(float Value)
 		VoiceVolumeText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), Value * 100.f)));
 	}
 
+	ULCLocalPlayerSaveGame::SaveVoiceChatVolume(GetWorld(), Value);
+
 	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
 	{
 		OptionManager->VoiceVolume = Value;
 		OptionManager->ApplyAudio(); // 볼륨은 바로 적용
 	}
+}
+
+void UVoiceOptionWidget::InitializeVoiceChatVolume()
+{
+	if (UWorld* World = GetWorld())
+	{
+		float SavedVoiceChatVolume = ULCLocalPlayerSaveGame::LoadVoiceChatVolume(World);
+
+		if (VoiceVolumeSlider)
+		{
+			VoiceVolumeSlider->SetValue(SavedVoiceChatVolume);
+		}
+
+		if (VoiceVolumeText)
+		{
+			VoiceVolumeText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), SavedVoiceChatVolume * 100.f)));
+		}
+	}
+}
+
+void UVoiceOptionWidget::InitializeMicrophoneVolume()
+{
+	if (UWorld* World = GetWorld())
+	{
+		float SavedMicrophoneVolume = ULCLocalPlayerSaveGame::LoadMicrophoneVolume(World);
+
+		if (MyMicVolumeSlider)
+		{
+			MyMicVolumeSlider->SetValue(SavedMicrophoneVolume);
+		}
+
+		if (MyMicVolumeText)
+		{
+			MyMicVolumeText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), SavedMicrophoneVolume * 100.f)));
+		}
+	}
+}
+
+void UVoiceOptionWidget::InitializeAllOptions()
+{
+	InitializeVoiceChatVolume();
+	InitializeMicrophoneVolume();
 }

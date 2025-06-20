@@ -84,7 +84,7 @@ private:
     void RemoveWallBetween(const FIntPoint& From, const FIntPoint& To);
 
     /** 벽 생성 함수 */
-    void SpawnWall(const FVector& Location, const FRotator& Rotation);
+    void SpawnWall(const FVector& Location, const FRotator& Rotation, const FIntPoint& Cell, const FString& Direction);
 
     /** === 유틸리티 === */
 
@@ -155,4 +155,17 @@ private:
 
     /** 유효 경로 찾기 */
     TArray<FIntPoint> MainPathCells;
+
+    TMap<TPair<FIntPoint, FString>, ARuinsMazeWall*> WallCache;
+
+    void HideWall(const FIntPoint& Cell, const FString& Direction);
+
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_SpawnWall(const FVector& Location, const FRotator& Rotation, const FIntPoint& Cell, const FString& Direction);
+    void Multicast_SpawnWall_Implementation(const FVector& Location, const FRotator& Rotation, const FIntPoint& Cell, const FString& Direction);
+
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_HideWall(const FIntPoint& Cell, const FString& Direction);
+    void Multicast_HideWall_Implementation(const FIntPoint& Cell, const FString& Direction);
+
 };

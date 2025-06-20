@@ -89,7 +89,7 @@ void UTitleMenu::OnOptionButtonClicked()
 {
 	LOG_Frame_WARNING(TEXT("Option Button Clicked"));
 	ULCUIManager* UIManager = ResolveUIManager();
-	UIManager->ShowOptionPopup();
+	UIManager->ShowOptionWidget();
 }
 
 void UTitleMenu::OnExitButtonClicked()

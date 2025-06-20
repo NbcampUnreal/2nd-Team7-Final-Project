@@ -143,16 +143,78 @@ TArray<FSaveKeyMapping> ULCLocalPlayerSaveGame::LoadKeyBindings(UWorld* World)
     return SaveGame->Settings.SavedMappings;
 }
 
+bool ULCLocalPlayerSaveGame::SaveMicrophoneVolume(UWorld* World, float NewVolume)
+{
+    if (ULCLocalPlayerSaveGame* SaveGame = GetSaveInstance(World))
+    {
+        SaveGame->Settings.MicrophoneVolume = NewVolume;
+        return SaveGame->SaveGameToSlotForLocalPlayer();
+    }
+    return false;
+}
+
+float ULCLocalPlayerSaveGame::LoadMicrophoneVolume(UWorld* World)
+{
+    if (ULCLocalPlayerSaveGame* SaveGame = GetSaveInstance(World))
+    {
+        return SaveGame->Settings.MicrophoneVolume;
+    }
+
+    return DefaultSettings::DEFAULT_VOLUME; // 기본값
+}
+
+
+bool ULCLocalPlayerSaveGame::SaveVoiceChatVolume(UWorld* World, float NewVolume)
+{
+    if (ULCLocalPlayerSaveGame* SaveGame = GetSaveInstance(World))
+    {
+        SaveGame->Settings.VoiceChatVolume = NewVolume;
+        return SaveGame->SaveGameToSlotForLocalPlayer();
+    }
+    return false;
+}
+
+float ULCLocalPlayerSaveGame::LoadVoiceChatVolume(UWorld* World)
+{
+    if (ULCLocalPlayerSaveGame* SaveGame = GetSaveInstance(World))
+    {
+        return SaveGame->Settings.VoiceChatVolume;
+    }
+
+    return DefaultSettings::DEFAULT_VOLUME; // 기본값
+}
+
+bool ULCLocalPlayerSaveGame::SaveMicrophoneMode(UWorld* World, bool NewSetting)
+{
+    //TODO: 보이스 기능 홀드 토글 들어오면 나중에 추가하기
+    return true;
+}
+
+bool ULCLocalPlayerSaveGame::LoadMicrophoneMode(UWorld* World)
+{
+    //TODO: 보이스 기능 홀드 토글 들어오면 나중에 추가하기
+    return true;
+}
+
 ULCLocalPlayerSaveGame* ULCLocalPlayerSaveGame::GetSaveInstance(UWorld* World)
 {
     if (!World) return nullptr;
 
-    ULocalPlayer* LocalPlayer = World->GetFirstLocalPlayerFromController();
-    if (!LocalPlayer) return nullptr;
+    if (UGameInstance* GameInstance = World->GetGameInstance())
+    {
+        if (ULocalPlayer* LocalPlayer = GameInstance->GetFirstGamePlayer())
+        {
+            FString SlotName = UMySaveGameUtils::MakeSlotName(LocalPlayer->GetControllerId());
 
-    FString SlotName = UMySaveGameUtils::MakeSlotName(LocalPlayer->GetControllerId());
+            return Cast<ULCLocalPlayerSaveGame>(
+                ULocalPlayerSaveGame::LoadOrCreateSaveGameForLocalPlayer(
+                    ULCLocalPlayerSaveGame::StaticClass(),
+                    LocalPlayer,
+                    SlotName
+                ));
+        }
+    }
 
-    return Cast<ULCLocalPlayerSaveGame>(
-        ULocalPlayerSaveGame::LoadOrCreateSaveGameForLocalPlayer(ULCLocalPlayerSaveGame::StaticClass(), LocalPlayer, SlotName)
-    );
+    UE_LOG(LogTemp, Warning, TEXT("ULCLocalPlayerSaveGame::GetSaveInstance - LocalPlayer not found."));
+    return nullptr;
 }

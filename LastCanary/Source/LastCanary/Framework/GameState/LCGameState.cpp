@@ -30,6 +30,27 @@ void ALCGameState::OnRep_ReplicatedHasBegunPlay()
 
 }
 
+void ALCGameState::BeginPlay()
+{
+	Super::BeginPlay();
+
+}
+
+void ALCGameState::InitGameState()
+{
+	
+}
+
+void ALCGameState::OnGameStart()
+{
+
+}
+
+void ALCGameState::OnGameEnd()
+{
+
+}
+
 void ALCGameState::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
@@ -58,6 +79,11 @@ void ALCGameState::OnRep_AlivePlayerCount()
 {
 	// 클라이언트 HUD 업데이트 등
 	UE_LOG(LogTemp, Log, TEXT("AlivePlayerCount updated: %d"), AlivePlayerCount);
+}
+
+void ALCGameState::OnPlayerDeath(APlayerState* DeadPlayer)
+{
+
 }
 
 void ALCGameState::MarkPlayerAsEscaped(APlayerState* EscapedPlayer)
