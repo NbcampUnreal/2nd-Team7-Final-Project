@@ -31,6 +31,7 @@ protected:
 	// InGameMode Start Game
 	void OnAllPlayersJoined();
 	virtual void StartGame();
+	virtual void GameEnd();
 
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Checklist")
@@ -41,7 +42,7 @@ public:
 	AChecklistManager* ChecklistManager;
 
 private:
-	void InitPlayerAliveCount(int PlayerCount);
+	void InitGameState(int PlayerCount);
 	void CreateCheckListManager();
 	void ShowGameLevelInfo();
 };

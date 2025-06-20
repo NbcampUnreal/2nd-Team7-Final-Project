@@ -931,6 +931,19 @@ void UToolbarInventoryComponent::Server_DropItemAtSlot_Implementation(int32 Slot
     Super::TryDropItemAtSlot(SlotIndex, Quantity);
 }
 
+bool UToolbarInventoryComponent::Internal_TryDropItemAtSlot(int32 SlotIndex, int32 Quantity)
+{
+    bool bReutnValue = Super::Internal_TryDropItemAtSlot(SlotIndex, Quantity);
+
+    SyncInventoryToPlayerState();
+    return bReutnValue;
+}
+
+void UToolbarInventoryComponent::RemoveResourceItems()
+{
+
+}
+
 void UToolbarInventoryComponent::HandleBackpackEquip(int32 SlotIndex)
 
 {
@@ -1209,6 +1222,58 @@ void UToolbarInventoryComponent::SyncInventoryToPlayerState()
                 DebugList += RowName.ToString() + TEXT(", ");
             }
             LOG_Item_WARNING(TEXT("[Sync] PS에 저장된 아이템 목록: %s"), *DebugList);
+
+
+            TMap<FName, int32> CollectedResource;
+            for (int32 i = 0; i < ItemSlots.Num(); ++i)
+            {
+                const FBaseItemSlotData& SlotData = ItemSlots[i];
+
+                if (SlotData.bIsBackpack)
+                {
+                    for (const FBackpackSlotData& BackpackSlot : SlotData.BackpackSlots)
+                    {
+                        // 빈 아이템 제외 (Default 등)
+                        if (!IsDefaultItem(BackpackSlot.ItemRowName) && BackpackSlot.Quantity > 0)
+                        {
+                            const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(BackpackSlot.ItemRowName, TEXT("GetItemIDFromRowName"));
+                            if (!ItemData->bIsResourceItem)
+                            {
+                                continue;
+                            }
+
+                            if (CollectedResource.Contains(BackpackSlot.ItemRowName))
+                            {
+                                CollectedResource[BackpackSlot.ItemRowName]++;
+                            }
+                            else
+                            {
+                                CollectedResource.Add(BackpackSlot.ItemRowName, BackpackSlot.Quantity);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(SlotData.ItemRowName, TEXT("GetItemIDFromRowName"));
+                    if (!ItemData->bIsResourceItem)
+                    {
+                        continue;
+                    }
+
+                    if (CollectedResource.Contains(SlotData.ItemRowName))
+                    {
+                        CollectedResource[SlotData.ItemRowName]++;
+                    }
+                    else
+                    {
+                        CollectedResource.Add(SlotData.ItemRowName, SlotData.Quantity);
+                    }
+                }
+                //int32 ItemID = GetItemIDFromRowName(SlotData.ItemRowName);
+            }
+
+            PS->CollectedResourceMap = CollectedResource;
         }
     }
 }
@@ -1269,6 +1334,17 @@ void UToolbarInventoryComponent::SetInventoryFromItemIDs(const TArray<int32>& It
             SlotData.Durability = 100.0f;
             SlotData.bIsValid = true;
             SlotData.bIsEquipped = false;
+
+            ULCGameInstanceSubsystem* GameSubsystem = GetOwner()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
+            if (GameSubsystem && GameSubsystem->GunDataTable)
+            {
+                FGunDataRow* GunRowData = GameSubsystem->GunDataTable->FindRow<FGunDataRow>(ItemRowName, TEXT("SetInventoryFromItemIDs"));
+                if (GunRowData)
+                {
+                    SlotData.FireMode = static_cast<int32>(GunRowData->DefaultFireMode);
+                    SlotData.bWasAutoFiring = false;
+                }
+            }
 
             if (IsBackpackItem(ItemRowName))
             {
