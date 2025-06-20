@@ -1,6 +1,5 @@
 #include "Item/ItemBase.h"
 #include "Inventory/ToolbarInventoryComponent.h"
-#include "Inventory/BackpackInventoryComponent.h"
 
 #include "Character/BaseCharacter.h"
 #include "Components/SphereComponent.h"

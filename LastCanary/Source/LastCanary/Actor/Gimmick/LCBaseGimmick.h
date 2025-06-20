@@ -207,4 +207,7 @@ public:
 
 public:
 	FORCEINLINE const TArray<AActor*>& GetAttachedActors() const { return AttachedActors; }
+
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
 };

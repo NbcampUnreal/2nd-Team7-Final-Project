@@ -245,18 +245,16 @@ void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor*
 		break;
 
 	case EGimmickActivationType::ActivateWhileStepping:
-		if (!bActivated && OverlappingActors.Num() >= RequiredCount)
+		// 쿨타임 무시, 진입 시마다 다시 작동 가능
+		if (OverlappingActors.Num() >= RequiredCount)
 		{
-			if (ILCGimmickInterface::Execute_CanActivate(this))
+			if (bCallReturnToInitialStateInsteadOfActivate)
 			{
-				if (bCallReturnToInitialStateInsteadOfActivate)
-				{
-					ILCGimmickInterface::Execute_ReturnToInitialState(this);
-				}
-				else
-				{
-					ILCGimmickInterface::Execute_ActivateGimmick(this);
-				}
+				ILCGimmickInterface::Execute_ReturnToInitialState(this);
+			}
+			else
+			{
+				ILCGimmickInterface::Execute_ActivateGimmick(this);
 			}
 		}
 		break;
@@ -299,6 +297,13 @@ void ALCBaseGimmick::OnTriggerExit(UPrimitiveComponent* OverlappedComp, AActor* 
 
 	OverlappingActors.Remove(OtherActor);
 
+	LOG_Art(Log, TEXT("🚪 Exit ▶ %s | 남은 오버랩 수: %d | bActivated: %s | bToggleState: %s"),
+		*OtherActor->GetName(),
+		OverlappingActors.Num(),
+		bActivated ? TEXT("✔️") : TEXT("❌"),
+		bToggleState ? TEXT("✔️") : TEXT("❌")
+	);
+
 	switch (ActivationType)
 	{
 	case EGimmickActivationType::ActivateWhileStepping:
@@ -315,12 +320,19 @@ void ALCBaseGimmick::OnTriggerExit(UPrimitiveComponent* OverlappedComp, AActor* 
 
 	case EGimmickActivationType::ActivateAfterDelay:
 		GetWorld()->GetTimerManager().ClearTimer(ActivationDelayHandle);
+
+		if (!bToggleState)
+		{
+			bActivated = false;
+			LOG_Art(Log, TEXT("🧹 Exit ▶ 상태 초기화 - bActivated = false"));
+		}
 		break;
 
 	default:
 		break;
 	}
 }
+
 
 bool ALCBaseGimmick::IsValidActivator(AActor* OtherActor) const
 {
@@ -507,6 +519,16 @@ void ALCBaseGimmick::Multicast_PlaySound_Implementation()
 	if (InteractSound)
 	{
 		UGameplayStatics::PlaySoundAtLocation(this, InteractSound, GetActorLocation());
+	}
+}
+
+void ALCBaseGimmick::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	Super::EndPlay(EndPlayReason);
+
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearAllTimersForObject(this);
 	}
 }
 

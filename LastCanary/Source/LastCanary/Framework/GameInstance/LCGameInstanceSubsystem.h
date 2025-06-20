@@ -34,6 +34,8 @@ public:
 	void ChangeLevelByMapName(const FName& MapName);
 	void ChangeLevelByMapID(int32 MapID);
 
+	FMapDataRow* GetMapDataByRowName(FName MapRowName) const;
+	FMapDataRow* GetMapDataByMapID(int32 MapID) const;
 	FItemDataRow* GetItemDataByRowName(FName ItemRowName) const;
 
 	UFUNCTION(BlueprintPure, Category = "Data")
