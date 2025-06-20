@@ -8,6 +8,7 @@
 #include "Framework/Manager/LCCheatManager.h"
 
 #include "UI/UIElement/ResultMenu.h"
+#include "UI/Popup/PopupLevelInfo.h"
 
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -36,7 +37,30 @@ void ALCInGamePlayerController::BeginPlay()
 		}
 	}
 
+	if (IsLocalController())
+	{
+		if (PopupLevelInfoClass)
+		{
+			PopupLevelInfoInstance = CreateWidget<UPopupLevelInfo>(this, PopupLevelInfoClass);
+		}
+	}
+
 }
+
+void ALCInGamePlayerController::Client_ShowLevelInfo_Implementation(int32 MapId)
+{
+	if (PopupLevelInfoInstance)
+	{
+		PopupLevelInfoInstance->AddToViewport();
+
+		if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+		{
+			FMapDataRow* MapData = Subsystem->GetMapDataByMapID(MapId);
+			PopupLevelInfoInstance->InitLevelInfoWidget(MapData);
+		}
+	}
+}
+
 
 void ALCInGamePlayerController::Client_OnGameEnd_Implementation()
 {
