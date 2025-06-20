@@ -841,6 +841,32 @@ void UToolbarInventoryComponent::RemoveResourceItems()
 
 }
 
+bool UToolbarInventoryComponent::DropItemFromBackpack(int32 BackpackSlotIndex, int32 Quantity)
+{
+    if (!BackpackManager)
+    {
+        return false;
+    }
+
+    if (GetOwner() && GetOwner()->HasAuthority())
+    {
+        return BackpackManager->DropItemFromBackpack(BackpackSlotIndex, Quantity);
+    }
+    else
+    {
+        Server_DropBackpackItem(BackpackSlotIndex, Quantity);
+        return true;
+    }
+}
+
+void UToolbarInventoryComponent::Server_DropBackpackItem_Implementation(int32 BackpackSlotIndex, int32 Quantity)
+{
+    if (BackpackManager)
+    {
+        BackpackManager->DropItemFromBackpack(BackpackSlotIndex, Quantity);
+    }
+}
+
 void UToolbarInventoryComponent::HandleBackpackEquip(int32 SlotIndex)
 {
     if (BackpackManager)

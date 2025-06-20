@@ -2,6 +2,8 @@
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "Inventory/InventoryUtility.h"
 #include "Inventory/InventoryConfig.h"
+#include "Inventory/InventoryDropSystem.h"
+#include "Item/ItemSpawnerComponent.h"
 #include "DataTable/ItemDataRow.h"
 #include "LastCanary.h"
 
@@ -372,6 +374,83 @@ bool UBackpackManager::SwapBackpackSlots(int32 FromIndex, int32 ToIndex)
 
     BackpackOwnerSlot.BackpackSlots.Swap(FromIndex, ToIndex);
     OwnerInventory->OnInventoryUpdated.Broadcast();
+    return true;
+}
+
+bool UBackpackManager::DropItemFromBackpack(int32 BackpackSlotIndex, int32 Quantity)
+{
+    if (!OwnerInventory || !HasBackpackEquipped())
+    {
+        return false;
+    }
+
+    FBaseItemSlotData ItemData;
+    if (!ConvertBackpackSlotToItemData(BackpackSlotIndex, Quantity, ItemData))
+    {
+        return false;
+    }
+
+    UItemSpawnerComponent* ItemSpawner = OwnerInventory->GetItemSpawner();
+    if (!ItemSpawner)
+    {
+        return false;
+    }
+
+    FVector DropLocation = UInventoryDropSystem::CalculateDropLocation(OwnerInventory->GetOwner(), OwnerInventory->GetInventoryConfig());
+
+    AItemBase* DroppedItem = ItemSpawner->CreateItemFromData(ItemData, DropLocation);
+    if (!DroppedItem)
+    {
+        return false;
+    }
+
+    FBaseItemSlotData& BackpackOwnerSlot = OwnerInventory->ItemSlots[CurrentBackpackSlotIndex];
+    FBackpackSlotData& BackpackSlot = BackpackOwnerSlot.BackpackSlots[BackpackSlotIndex];
+
+    BackpackSlot.Quantity -= Quantity;
+    if (BackpackSlot.Quantity <= 0)
+    {
+        BackpackSlot.ItemRowName = FName("Default");
+        BackpackSlot.Quantity = 0;
+    }
+
+    OwnerInventory->UpdateWeight();
+    OwnerInventory->UpdateWalkieTalkieChannelStatus();
+    OwnerInventory->OnInventoryUpdated.Broadcast();
+
+    return true;
+}
+
+bool UBackpackManager::ConvertBackpackSlotToItemData(int32 BackpackSlotIndex, int32 Quantity, FBaseItemSlotData& OutItemData)
+{
+    if (!ValidateBackpackSlot(BackpackSlotIndex))
+    {
+        return false;
+    }
+
+    const FBaseItemSlotData& BackpackOwnerSlot = OwnerInventory->ItemSlots[CurrentBackpackSlotIndex];
+    const FBackpackSlotData& BackpackSlot = BackpackOwnerSlot.BackpackSlots[BackpackSlotIndex];
+
+    // Default 아이템 체크
+    if (UInventoryUtility::IsDefaultItem(BackpackSlot.ItemRowName, OwnerInventory->GetInventoryConfig()))
+    {
+        return false;
+    }
+
+    // 수량 검증
+    if (BackpackSlot.Quantity <= 0 || Quantity > BackpackSlot.Quantity || Quantity <= 0)
+    {
+        return false;
+    }
+
+    // 단순히 데이터 변환만
+    OutItemData.ItemRowName = BackpackSlot.ItemRowName;
+    OutItemData.Quantity = Quantity;
+    OutItemData.Durability = 100.0f;
+    OutItemData.bIsValid = true;
+    OutItemData.bIsEquipped = false;
+    OutItemData.bIsBackpack = false;
+
     return true;
 }
 

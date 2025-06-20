@@ -33,12 +33,12 @@ public:
         int32 Quantity
     );
 
+    /** 드롭 위치 계산 */
+    static FVector CalculateDropLocation(AActor* Owner, const UInventoryConfig* Config = nullptr);
+
 private:
     /** 드롭 요청 검증 */
     static bool ValidateDropRequest(UInventoryComponentBase* Inventory, int32 SlotIndex, int32 Quantity);
-
-    /** 드롭 위치 계산 */
-    static FVector CalculateDropLocation(AActor* Owner, const UInventoryConfig* Config = nullptr);
 
     /** 장착된 아이템 특별 처리 */
     static void HandleEquippedItemDrop(UToolbarInventoryComponent* Toolbar, int32 SlotIndex);
