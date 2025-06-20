@@ -136,6 +136,33 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category = "Banshee|Rage")
     float RageDecayPerSecond = 5.f;
 
+    // 포스트프로세스 머티리얼 에셋
+    UPROPERTY(EditAnywhere, Category = "Banshee|Debuff")
+    UMaterialInterface* FearPostProcessMat;
+
+    // DesperateWail 에서 쓸 변수들
+    UPROPERTY(EditAnywhere, Category = "Banshee|Debuff")
+    float FearDuration = 4.f;
+
+    /** 포스트프로세스 블렌드 가중치 */
+    UPROPERTY(EditAnywhere, Category = "Banshee|Debuff")
+    float FearPostProcessWeight = 0.5f;
+
+    UPROPERTY(EditAnywhere, Category = "Banshee|Debuff")
+    float SlowDuration = 4.f;
+
+    UPROPERTY(EditAnywhere, Category = "Banshee|Debuff")
+    float SlowMultiplier = 0.6f; // 속도 60% 유지
+
+    // RPC: 특정 플레이어 클라이언트에 공포 연출
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_ApplyFear(ACharacter* Target);
+    void Multicast_ApplyFear_Implementation(ACharacter* Target);
+
+    /** Desperate Wail 사운드 감쇠 설정 */
+    UPROPERTY(EditAnywhere, Category = "Banshee|Sound")
+    USoundAttenuation* DesperateWailAttenuation;
+
     virtual bool RequestAttack(float TargetDistance) override;
 
 private:

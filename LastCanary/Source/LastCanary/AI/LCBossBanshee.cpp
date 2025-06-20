@@ -7,6 +7,9 @@
 #include "NiagaraFunctionLibrary.h"
 #include "GameFramework/Character.h"
 #include "Engine/World.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "Character/BaseCharacter.h"   
+#include "Camera/CameraComponent.h"
 
 ALCBossBanshee::ALCBossBanshee()
 {
@@ -335,48 +338,100 @@ void ALCBossBanshee::EchoSlash()
 
 void ALCBossBanshee::DesperateWail()
 {
+    // 1) 사운드
     if (DesperateWailSound)
-        UGameplayStatics::PlaySoundAtLocation(this, DesperateWailSound, GetActorLocation());
+    {
+        UGameplayStatics::PlaySoundAtLocation(
+            this,
+            DesperateWailSound,
+            GetActorLocation(),
+            1.f,               // Volume
+            1.f,               // Pitch
+            0.f,               // StartTime
+            DesperateWailAttenuation  // 감쇠 에셋
+        );
+    }
 
+    // 2) SweepMultiByObjectType 로 모든 Pawn 검색
     const float MapRadius = 10000.f;
     const FVector Origin = GetActorLocation();
-
     TArray<FHitResult> HitResults;
     FCollisionShape Sphere = FCollisionShape::MakeSphere(MapRadius);
     FCollisionQueryParams Params;
     Params.AddIgnoredActor(this);
 
     if (GetWorld()->SweepMultiByObjectType(
-        HitResults,
-        Origin,
-        Origin,
-        FQuat::Identity,
-        FCollisionObjectQueryParams(ECC_Pawn),
-        Sphere,
-        Params))
+        HitResults, Origin, Origin, FQuat::Identity,
+        FCollisionObjectQueryParams(ECC_Pawn), Sphere, Params))
     {
         for (const FHitResult& Hit : HitResults)
         {
-            ACharacter* Target = Cast<ACharacter>(Hit.GetActor());
+            ABaseCharacter* Target = Cast<ABaseCharacter>(Hit.GetActor());
             if (!Target) continue;
 
-            // 공포 + 슬로우 디버프 적용
-            // Target->ApplyDebuff("Fear", 4.f);
-            // Target->ApplyDebuff("Slow", 4.f);
+            // --- 공포 디버프: Multicast 로 클라이언트 연출 ---
+            Multicast_ApplyFear(Target);
+
+            // --- 슬로우 디버프: 서버에서 즉시 적용 & 타이머로 원복 ---
+            if (auto* MoveComp = Target->GetCharacterMovement())
+            {
+                float OrigSpeed = MoveComp->MaxWalkSpeed;
+                MoveComp->MaxWalkSpeed = OrigSpeed * SlowMultiplier;
+
+                // 일정 시간 후 원복
+                FTimerHandle TimerHandle;
+                FTimerDelegate RestoreDel = FTimerDelegate::CreateLambda(
+                    [MoveComp, OrigSpeed]()
+                    {
+                        if (MoveComp) MoveComp->MaxWalkSpeed = OrigSpeed;
+                    });
+                GetWorldTimerManager().SetTimer(TimerHandle, RestoreDel, SlowDuration, false);
+            }
         }
     }
 
+    // 3) FX
     if (DesperateWailFX)
     {
         UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-            GetWorld(),
-            DesperateWailFX,
-            Origin,
-            FRotator::ZeroRotator
-        );
+            GetWorld(), DesperateWailFX,
+            Origin, FRotator::ZeroRotator);
     }
 
-    UE_LOG(LogTemp, Warning, TEXT("[Banshee] DesperateWail executed (HitResult sweep)"));
+    UE_LOG(LogTemp, Warning, TEXT("[Banshee] DesperateWail executed"));
+}
+
+// --- Multicast RPC 구현 ---
+void ALCBossBanshee::Multicast_ApplyFear_Implementation(ACharacter* Target)
+{
+    if (!Target)
+        return;
+
+    // 로컬 플레이어 클라이언트에만 포스트프로세스 적용
+    if (APlayerController* PC = Cast<APlayerController>(Target->GetController()))
+    {
+        if (!PC->IsLocalController())
+            return;
+
+        // Character에 붙은 CameraComponent의 PostProcessSettings 사용
+        if (UCameraComponent* Cam = Target->FindComponentByClass<UCameraComponent>())
+        {
+            // 포스트프로세스 머티리얼 추가
+            Cam->PostProcessSettings.AddBlendable(FearPostProcessMat, FearPostProcessWeight);
+
+            // 일정 시간 후 Blendable 제거
+            FTimerHandle RemoveHandle;
+            GetWorldTimerManager().SetTimer(RemoveHandle, FTimerDelegate::CreateLambda(
+                [Cam, this]()
+                {
+                    if (Cam)
+                        Cam->PostProcessSettings.RemoveBlendable(FearPostProcessMat);
+                }),
+                FearDuration,
+                false
+            );
+        }
+    }
 }
 
 void ALCBossBanshee::SpawnBansheeClones()
