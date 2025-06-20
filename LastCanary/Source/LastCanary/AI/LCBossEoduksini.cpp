@@ -345,9 +345,8 @@ void ALCBossEoduksini::TryTriggerDarkness()
     // **Sound**: 어둠 시작
     if (DarknessEnterSound)
     {
-        UGameplayStatics::PlaySoundAtLocation(
-            this, DarknessEnterSound,
-            GetActorLocation());
+        // 전역 음향 효과
+        UGameplayStatics::PlaySound2D(this, DarknessEnterSound);
     }
 
     GetWorldTimerManager().SetTimer(
@@ -374,9 +373,7 @@ void ALCBossEoduksini::EndDarkness()
     // **Sound**: 어둠 종료
     if (DarknessExitSound)
     {
-        UGameplayStatics::PlaySoundAtLocation(
-            this, DarknessExitSound,
-            GetActorLocation());
+        UGameplayStatics::PlaySound2D(this, DarknessExitSound);
     }
 
 }
