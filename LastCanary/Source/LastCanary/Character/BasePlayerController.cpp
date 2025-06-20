@@ -1385,6 +1385,7 @@ void ABasePlayerController::Server_DroneExit_Implementation()
 	{
 		return;
 	}
+	SpanwedPlayerCharacter->StopTrackingDrone();
 	CurrentPossessedPawn = SpanwedPlayerCharacter;
 }
 
