@@ -240,6 +240,122 @@ void ALCBossLich::OnUndeadDestroyed(AActor* DestroyedActor)
     }
 }
 
+// Phantom Vortex 실행
+void ALCBossLich::PhantomVortex()
+{
+    UE_LOG(LogTemp, Warning, TEXT("[Lich] PhantomVortex 발동"));
+
+    // FX
+    if (PhantomVortexFX)
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAttached(
+            PhantomVortexFX,
+            GetRootComponent(),
+            NAME_None,
+            FVector::ZeroVector,
+            FRotator::ZeroRotator,
+            EAttachLocation::KeepRelativeOffset,
+            true
+        );
+    }
+    // SFX
+    if (PhantomVortexSound)
+    {
+        UGameplayStatics::PlaySound2D(this, PhantomVortexSound);
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("[Lich] PhantomVortex 발동"));
+
+    // 1) 모든 캐릭터 감속
+    TArray<AActor*> AllActors;
+    UGameplayStatics::GetAllActorsOfClass(
+        GetWorld(),
+        ABaseCharacter::StaticClass(),
+        AllActors
+    );
+
+    for (AActor* Actor : AllActors)
+    {
+        if (Actor == this) continue;
+        if (ABaseCharacter* C = Cast<ABaseCharacter>(Actor))
+            if (UCharacterMovementComponent* Move = C->GetCharacterMovement())
+            {
+                Move->MaxWalkSpeed *= PhantomVortexSlowMultiplier;
+            }
+    }
+
+    // 2) Tick 데미지 시작
+    GetWorldTimerManager().SetTimer(
+        PhantomVortexTickHandle,
+        this, &ALCBossLich::TickPhantomVortexDamage,
+        PhantomVortexTickInterval,
+        true
+    );
+
+    // 3) 지속시간 후 → Tick 중지 + 속도 복원
+    FTimerHandle EndHandle;
+    GetWorldTimerManager().SetTimer(
+        EndHandle,
+        FTimerDelegate::CreateLambda([this]()
+            {
+                // Tick 타이머 정리
+                GetWorldTimerManager().ClearTimer(PhantomVortexTickHandle);
+
+                // 3-1) 같은 방식으로 모든 캐릭터 호출해서 속도 복원
+                TArray<AActor*> AllActors2;
+                UGameplayStatics::GetAllActorsOfClass(
+                    GetWorld(),
+                    ABaseCharacter::StaticClass(),
+                    AllActors2
+                );
+
+                for (AActor* Actor : AllActors2)
+                {
+                    if (Actor == this) continue;
+                    if (ABaseCharacter* C = Cast<ABaseCharacter>(Actor))
+                        if (UCharacterMovementComponent* Move = C->GetCharacterMovement())
+                        {
+                            Move->MaxWalkSpeed /= PhantomVortexSlowMultiplier;
+                        }
+                }
+            }),
+        PhantomVortexDuration,
+        false
+    );
+
+}
+
+// Phantom Vortex 범위 데미지 처리
+void ALCBossLich::TickPhantomVortexDamage()
+{
+    UE_LOG(LogTemp, Verbose, TEXT("[Lich] PhantomVortex 전역 Tick 데미지 실행"));
+
+    TArray<AActor*> AllActors;
+    UGameplayStatics::GetAllActorsOfClass(
+        GetWorld(),
+        ABaseCharacter::StaticClass(),
+        AllActors
+    );
+
+    for (AActor* Actor : AllActors)
+    {
+        if (Actor == this)
+            continue;
+
+        if (ABaseCharacter* C = Cast<ABaseCharacter>(Actor))
+        {
+            // **데미지만** 적용 (느려지기는 PhantomVortex()에서 처리)
+            UGameplayStatics::ApplyDamage(
+                C,
+                PhantomVortexDamagePerTick,
+                GetController(),
+                this,
+                nullptr
+            );
+        }
+    }
+}
+
 void ALCBossLich::ExecuteManaPulse()
 {
     if (!HasAuthority()) return;
@@ -386,6 +502,16 @@ bool ALCBossLich::RequestAttack(float TargetDistance)
 {
     if (!HasAuthority()) return false;
     const float Now = GetWorld()->GetTimeSeconds();
+
+    // (1) PhantomVortex 우선 발동
+    float RagePercent = Rage / MaxRage;
+    if (!bHasUsedPhantomVortex && RagePercent >= PhantomVortexRageThreshold)
+    {
+        bHasUsedPhantomVortex = true;
+        PhantomVortex();
+        return true;
+    }
+
 
     AActor* Target = nullptr;
     if (auto AC = Cast<AAIController>(GetController()))

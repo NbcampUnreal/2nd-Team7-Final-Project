@@ -101,6 +101,51 @@ protected:
     UFUNCTION()
     void OnUndeadDestroyed(AActor* DestroyedActor);
 
+    // ── Phantom Vortex 특수기 ─────────────────────────
+/** 팬텀 소용돌이 FX(나이아가라) */
+    UPROPERTY(EditAnywhere, Category = "Lich|Abilities")
+    UNiagaraSystem* PhantomVortexFX;
+
+    /** 팬텀 소용돌이 사운드 */
+    UPROPERTY(EditAnywhere, Category = "Lich|Abilities")
+    USoundBase* PhantomVortexSound;
+
+    /** 소용돌이 지속 시간 */
+    UPROPERTY(EditAnywhere, Category = "Lich|Abilities", meta = (ClampMin = "0.1"))
+    float PhantomVortexDuration = 5.0f;
+
+    /** 소용돌이 반경 */
+    UPROPERTY(EditAnywhere, Category = "Lich|Abilities", meta = (ClampMin = "0.0"))
+    float PhantomVortexRadius = 600.0f;
+
+    /** Tick 당 대미지량 */
+    UPROPERTY(EditAnywhere, Category = "Lich|Abilities", meta = (ClampMin = "0.0"))
+    float PhantomVortexDamagePerTick = 20.0f;
+
+    /** Tick 간격 */
+    UPROPERTY(EditAnywhere, Category = "Lich|Abilities", meta = (ClampMin = "0.1"))
+    float PhantomVortexTickInterval = 1.0f;
+
+    /** Rage 임계치(<= 이하) 도달 시 1회 사용 */
+    UPROPERTY(EditAnywhere, Category = "Lich|Abilities", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+    float PhantomVortexRageThreshold = 0.8f;  // RagePercent 기준
+
+    /** 한 번만 쓰도록 체크 */
+    bool bHasUsedPhantomVortex = false;
+
+    /** 내부 타이머 핸들 */
+    FTimerHandle PhantomVortexTickHandle;
+
+    // 스킬 실행 함수
+    void PhantomVortex();
+
+    // Tick 마다 데미지 처리
+    void TickPhantomVortexDamage();
+
+    /** PhantomVortex 감속 계수 (예: 0.5 = 50% 속도로) */
+    UPROPERTY(EditAnywhere, Category = "Lich|Abilities", meta = (ClampMin = "0.01", ClampMax = "1.0"))
+    float PhantomVortexSlowMultiplier = 0.5f;
+
     // ── Rage ─────────────────────────────────────
 
     void AddRage(float Amount);
