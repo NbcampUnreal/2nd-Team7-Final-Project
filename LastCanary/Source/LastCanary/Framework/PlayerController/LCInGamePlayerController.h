@@ -3,12 +3,10 @@
 #include "CoreMinimal.h"
 #include "Framework/Manager/ChecklistManager.h"
 #include "Character/BasePlayerController.h"
-#include "InputActionValue.h" // For FInputActionInstance
-#include "EnhancedInputComponent.h" // For UEnhancedInputComponent
-#include "InputTriggers.h" // For ETriggerEvent
 #include "LCInGamePlayerController.generated.h"
 
 class AChecklistManager;
+class UPopupLevelInfo;
 class UInputAction;
 UCLASS()
 class LASTCANARY_API ALCInGamePlayerController : public ABasePlayerController
@@ -22,6 +20,15 @@ protected:
 	virtual void BeginPlay() override;
 
 public:
+	UFUNCTION(Client, Reliable)
+	void Client_ShowLevelInfo(int32 MapId);
+	void Client_ShowLevelInfo_Implementation(int32 MapId);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UPopupLevelInfo> PopupLevelInfoClass;
+	UPROPERTY()
+	UPopupLevelInfo* PopupLevelInfoInstance;
+
 	UFUNCTION(Client, Reliable)
 	void Client_OnGameEnd();
 	void Client_OnGameEnd_Implementation();

@@ -4,7 +4,6 @@
 #include "Character/BaseCharacter.h"
 #include "DataType/BaseItemSlotData.h"
 #include "Inventory/ToolbarInventoryComponent.h"
-#include "Inventory/BackpackInventoryComponent.h"
 
 #include "Components/TextBlock.h"
 
