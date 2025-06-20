@@ -28,7 +28,10 @@ protected:
 	UInputMappingContext* IMC_Default;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	UInputAction* IA_Move;
-
+	
 private:
 	FString GetDirectionalKeyName(UInputAction* InputAction, float DirectionThreshold) const;
+
+public:
+	void UpdatePlayerName(FString Name);
 };
