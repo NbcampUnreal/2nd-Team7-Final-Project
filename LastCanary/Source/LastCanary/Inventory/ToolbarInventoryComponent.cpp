@@ -766,7 +766,7 @@ bool UToolbarInventoryComponent::TryStoreItem(AItemBase* ItemActor)
     ItemSlots[EmptySlotIndex] = NewSlot;
 
     // 정리
-    SyncInventoryToPlayerState();
+	//SyncInventoryToPlayerState(); - jhhan 가방에 추가될때는 동기화가 안되서 PostAddProcess에서 처리함
     OnInventoryUpdated.Broadcast();
     if (GetOwner()->HasAuthority() && ItemActor)
     {
@@ -782,6 +782,7 @@ bool UToolbarInventoryComponent::TryStoreItem(AItemBase* ItemActor)
 void UToolbarInventoryComponent::PostAddProcess()
 {
     OnInventoryUpdated.Broadcast();
+    SyncInventoryToPlayerState();
 }
 
 bool UToolbarInventoryComponent::DropCurrentEquippedItem()
@@ -827,7 +828,13 @@ bool UToolbarInventoryComponent::TryDropItemAtSlot(int32 SlotIndex, int32 Quanti
     if (GetOwner() && GetOwner()->HasAuthority())
     {
         bool bIsEquipped = (SlotIndex == CurrentEquippedSlotIndex);
-        return UInventoryDropSystem::ExecuteDropItem(this, SlotIndex, Quantity, bIsEquipped);
+        bool IsSucceessDrop = UInventoryDropSystem::ExecuteDropItem(this, SlotIndex, Quantity, bIsEquipped);
+        if (IsSucceessDrop)
+        {
+            SyncInventoryToPlayerState();
+        }
+
+        return IsSucceessDrop;
     }
     else
     {
