@@ -69,7 +69,7 @@ void UInventoryComponentBase::InitializeSlots()
 {
 	if (!GetInventoryConfig())
 	{
-		UE_LOG(LogTemp, Error, TEXT("[InitializeSlots] InventoryConfig가 null입니다!"));
+		LOG_Item_WARNING(TEXT("[InitializeSlots] InventoryConfig가 null입니다!"));
 		return;
 	}
 
@@ -319,7 +319,25 @@ bool UInventoryComponentBase::IsWalkieTalkieItem(FName ItemRowName) const
 
 const UInventoryConfig* UInventoryComponentBase::GetInventoryConfig() const
 {
-	return InventoryConfig; // nullptr이어도 유틸리티에서 기본값 처리
+	if (InventoryConfig)
+	{
+		return InventoryConfig;
+	}
+
+	// 없을 경우 기본 설정을 반환하거나 생성
+	static UInventoryConfig* DefaultConfig = nullptr;
+	if (!DefaultConfig)
+	{
+		DefaultConfig = NewObject<UInventoryConfig>();
+		// 기본값들 설정
+		DefaultConfig->DefaultItemRowName = FName("Default");
+		DefaultConfig->DefaultBackpackSlots = 20;
+		DefaultConfig->DropDistanceFromPlayer = 150.0f;
+		DefaultConfig->MinDropHeight = 80.0f;
+		DefaultConfig->DefaultDurability = 100.0f;
+	}
+
+	return DefaultConfig;
 }
 
 bool UInventoryComponentBase::IsDefaultItem(FName ItemRowName) const

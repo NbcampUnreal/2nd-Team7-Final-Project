@@ -70,7 +70,7 @@ public:
 
     /** 인벤토리 설정 */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory|Config")
-    UInventoryConfig* InventoryConfig;
+    UInventoryConfig* InventoryConfig = nullptr;
 
     /** 설정 가져오기 (없으면 기본값) */
     const UInventoryConfig* GetInventoryConfig() const;
