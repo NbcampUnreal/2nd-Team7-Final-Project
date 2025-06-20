@@ -3,7 +3,6 @@
 #include "CoreMinimal.h"
 #include "Item/EquipmentItem/EquipmentItemBase.h"
 #include "DataType/BackpackSlotData.h"
-#include "Inventory/BackpackInventoryComponent.h"
 #include "BackpackItem.generated.h"
 
 UCLASS()
