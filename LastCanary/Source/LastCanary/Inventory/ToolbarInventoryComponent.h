@@ -106,6 +106,7 @@ public:
     void Server_DropItem_Implementation(int32 SlotIndex, int32 Quantity);
 
     virtual bool TryDropItemAtSlot(int32 SlotIndex, int32 Quantity = 1) override;
+    void RemoveResourceItems();
 
     //-----------------------------------------------------
     // 백팩 매니저 시스템

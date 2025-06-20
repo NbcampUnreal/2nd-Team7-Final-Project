@@ -836,14 +836,6 @@ bool UToolbarInventoryComponent::TryDropItemAtSlot(int32 SlotIndex, int32 Quanti
     }
 }
 
-bool UToolbarInventoryComponent::Internal_TryDropItemAtSlot(int32 SlotIndex, int32 Quantity)
-{
-    bool bReutnValue = Super::Internal_TryDropItemAtSlot(SlotIndex, Quantity);
-
-    SyncInventoryToPlayerState();
-    return bReutnValue;
-}
-
 void UToolbarInventoryComponent::RemoveResourceItems()
 {
 
