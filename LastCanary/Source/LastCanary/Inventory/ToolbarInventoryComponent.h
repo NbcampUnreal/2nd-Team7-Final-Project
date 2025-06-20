@@ -223,6 +223,8 @@ protected:
     void Multicast_SetBackpackVisibility_Implementation(bool bVisible);
 
     /** 델리게이트 핸들러 */
+    UFUNCTION()
     void OnBackpackEquippedHandler(const TArray<FBackpackSlotData>& BackpackSlots);
+    UFUNCTION()
     void OnBackpackUnequippedHandler();
 };
