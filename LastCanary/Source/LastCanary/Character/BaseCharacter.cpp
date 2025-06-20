@@ -647,7 +647,7 @@ void ABaseCharacter::ApplySmoothRecoil(float Vertical, float Horizontal)
 	// 연사 리셋 타이머
 	GetWorld()->GetTimerManager().ClearTimer(ShotResetTimer);
 	GetWorld()->GetTimerManager().SetTimer(ShotResetTimer, this,
-		&ABaseCharacter::ResetShotCounter, 0.1f, false);
+		&ABaseCharacter::ResetShotCounter, 0.3f, false);
 }
 
 void ABaseCharacter::ApplySmoothRecoilStep()
