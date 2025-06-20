@@ -38,6 +38,16 @@ void ABasePlayerState::BeginPlay()
 	SetInGameStatus(EPlayerInGameStatus::Alive);
 }
 
+void ABasePlayerState::SetPlayerInGameName(FString Name)
+{
+	PlayerInGameName = Name;
+}
+
+FString ABasePlayerState::GetInGameName()
+{
+	return PlayerInGameName;
+}
+
 void ABasePlayerState::SetInGameStatus(EPlayerInGameStatus Status)
 {
 	InGameState = Status;
@@ -273,4 +283,5 @@ void ABasePlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME(ABasePlayerState, TotalExp);
 	DOREPLIFETIME(ABasePlayerState, CurrentState);
 	DOREPLIFETIME(ABasePlayerState, AquiredItemIDs);
+	DOREPLIFETIME(ABasePlayerState, PlayerInGameName);
 }

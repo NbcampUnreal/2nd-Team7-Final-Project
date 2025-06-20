@@ -15,6 +15,7 @@
 #include "Character/PlayerData/PlayerDataTypes.h"
 #include "Character/BaseSpectatorPawn.h"
 #include "Inventory/ToolbarInventoryComponent.h"
+#include "UI/UIElement/SpectatorWidget.h"
 
 #include "SaveGame/LCLocalPlayerSaveGame.h"
 #include "LastCanary.h"
@@ -269,7 +270,10 @@ void ABasePlayerController::SpawnSpectatablePawn()
 		{
 			if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
 			{
-				UIManager->ShowSpectatorWidget();
+				if (IsLocalController())
+				{
+					UIManager->ShowSpectatorWidget();
+				}
 			}
 		}
 
@@ -892,7 +896,16 @@ void ABasePlayerController::SpectatePreviousPlayer()
 	}
 	CurrentSpectatedPlayer = PlayerList[CurrentSpectatedCharacterIndex];
 	Spectator->SpectateOtherUser(TargetCharacter);
-
+	if (ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+	{
+		if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
+		{
+			if (IsLocalPlayerController()) 
+			{
+				UIManager->GetSpectatorWidget()->UpdatePlayerName((PlayerList[CurrentSpectatedCharacterIndex])->GetPlayerName());
+			}
+		}
+	}
 	bIsWaitingForAutoSpectate = false;
 
 	// 타이머 초기화 (중복 실행 방지)
@@ -938,7 +951,14 @@ void ABasePlayerController::SpectateNextPlayer()
 		return;
 	}
 	Spectator->SpectateOtherUser(TargetCharacter);
-
+	if (ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+	{
+		if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
+		{
+			UIManager->GetSpectatorWidget()->UpdatePlayerName((PlayerList[CurrentSpectatedCharacterIndex])->GetPlayerName());
+		}
+	}
+	
 	bIsWaitingForAutoSpectate = false;
 
 	// 타이머 초기화 (중복 실행 방지)
@@ -1017,6 +1037,7 @@ void ABasePlayerController::CheckCurrentSpectatedCharacterStatus()
 
 void ABasePlayerController::Input_OnItemUse(const FInputActionValue& ActionValue)
 {
+	Super::Input_OnItemUse(ActionValue);
 	float Value = ActionValue.Get<float>();
 	if (!IsValid(CurrentPossessedPawn))
 	{
