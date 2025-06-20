@@ -15,7 +15,7 @@ void UVoiceOptionWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 	ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>();
-	
+
 	if (MyMicVolumeSlider)
 	{
 		MyMicVolumeSlider->SetValue(OptionManager->MyMicVolume);
@@ -34,13 +34,15 @@ void UVoiceOptionWidget::NativeConstruct()
 		}
 		VoiceVolumeSlider->OnValueChanged.AddUniqueDynamic(this, &UVoiceOptionWidget::OnVoiceVolumeChanged);
 	}
+
+	RefreshInputModeText();
 	InitializeAllOptions();
 }
 
 void UVoiceOptionWidget::NativeDestruct()
 {
 	Super::NativeDestruct();
-	
+
 	if (MyMicVolumeSlider)
 	{
 		MyMicVolumeSlider->OnValueChanged.RemoveDynamic(this, &UVoiceOptionWidget::OnMicVolumeChanged);
@@ -51,18 +53,28 @@ void UVoiceOptionWidget::NativeDestruct()
 	}
 }
 
-
 void UVoiceOptionWidget::RefreshInputModeText()
 {
-	if (!InputModeText) return;
+	if (InputModeText == nullptr)
+	{
+		return;
+	}
 
 	FString ModeString;
 	switch (CurrentInputMode)
 	{
-	case EVoiceInputMode::Toggle:  ModeString = TEXT("Toggle to Talk"); break;
-	case EVoiceInputMode::Hold:    ModeString = TEXT("Hold to Talk"); break;
-	case EVoiceInputMode::Always:  ModeString = TEXT("Open Mic Always"); break;
-	case EVoiceInputMode::Off:     ModeString = TEXT("Off"); break;
+	case EVoiceInputMode::Toggle:
+		ModeString = TEXT("Toggle to Talk");
+		break;
+	case EVoiceInputMode::Hold:
+		ModeString = TEXT("Hold to Talk");
+		break;
+	case EVoiceInputMode::Always:
+		ModeString = TEXT("Open Mic Always");
+		break;
+	case EVoiceInputMode::Off:
+		ModeString = TEXT("Off");
+		break;
 	}
 	InputModeText->SetText(FText::FromString(ModeString));
 }

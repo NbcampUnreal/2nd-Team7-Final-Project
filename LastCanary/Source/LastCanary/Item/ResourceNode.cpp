@@ -143,6 +143,7 @@ void AResourceNode::HarvestResource(APlayerController* Interactor)
 
 	FVector SpawnLocation = CalculateResourceSpawnLocation(Interactor);
 	ResourceItemSpawnManager->SpawnItemAtLocation(SelectedItemRow, SpawnLocation);
+	OnResourceOpened();
 
 	if (!bInfiniteHarvest)
 	{
@@ -339,4 +340,9 @@ void AResourceNode::DestroyResourceNode()
 
 	LOG_Item_WARNING(TEXT("[ResourceNode] 자원 노드 파괴됨"));
 	Destroy();
+}
+
+void AResourceNode::OnResourceOpened_Implementation()
+{
+	// 기본 연출 없음. 필요시 블루프린트에서 오버라이드.
 }
