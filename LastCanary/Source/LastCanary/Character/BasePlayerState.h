@@ -102,6 +102,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	float JumpStaminaCost{ InitialStats.JumpStaminaCost };
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float MaxSpirit{ InitialStats.MaxSpirit };
+
 	//InputMode
 	//인풋모드 변경(Toggle, Hold)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InputSettings")
@@ -167,6 +170,9 @@ public:
 	UPROPERTY(ReplicatedUsing = OnRep_CurrentStamina)
 	float CurrentStamina;
 
+	UPROPERTY(Replicated)
+	float CurrentSpirit;
+
 	UFUNCTION()
 	void OnRep_CurrentStamina();
 
@@ -175,9 +181,15 @@ public:
 
 	FORCEINLINE float GetStamina() const { return CurrentStamina; }
 	FORCEINLINE float GetHP() const { return CurrentHP; }
-
+	FORCEINLINE float GetSpirit() const { return CurrentSpirit; }
+	
 	void SetStamina(float NewStamina);
 	void SetHP(float NewHP);
+	void SetSpirit(float NewSpirit);
+	
+	UFUNCTION(Client, Reliable)
+	void Client_UpdateSpirit(float NewSpirit);
+	void Client_UpdateSpirit_Implementation(float NewSpirit);
 
 	UFUNCTION(Client, Reliable)
 	void Client_UpdateHP(float NewHP);
@@ -189,6 +201,7 @@ public:
 	void UpdateStaminaUI();
 	void UpdateDeathUI();
 	void UpdateExhaustedUI();
+	void UpdateSpiritUI();
 
 public:
 	// Gold & Exp
