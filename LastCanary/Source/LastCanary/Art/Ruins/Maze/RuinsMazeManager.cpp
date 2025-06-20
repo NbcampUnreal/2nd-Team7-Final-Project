@@ -3,12 +3,16 @@
 #include "Actor/Gimmick/Trigger/LCUnifiedPlate.h"
 #include "Components/BoxComponent.h"
 #include "DrawDebugHelpers.h"
+#include "RuinsMazeWall.h"
+#include "EngineUtils.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "LastCanary.h"
 
 ARuinsMazeManager::ARuinsMazeManager()
 {
     PrimaryActorTick.bCanEverTick = false;
+    bReplicates = true; 
+    bAlwaysRelevant = true;
     MazeBounds = CreateDefaultSubobject<UBoxComponent>(TEXT("MazeBounds"));
     RootComponent = MazeBounds;
 }
@@ -16,7 +20,10 @@ ARuinsMazeManager::ARuinsMazeManager()
 void ARuinsMazeManager::BeginPlay()
 {
     Super::BeginPlay();
-    GenerateMaze();
+    if (HasAuthority())
+    {
+        GetWorldTimerManager().SetTimerForNextTick(this, &ARuinsMazeManager::GenerateMaze);
+    }
 }
 
 void ARuinsMazeManager::GenerateMaze()
@@ -29,8 +36,8 @@ void ARuinsMazeManager::GenerateMaze()
         return;
     }
 
-    const int32 MaxRetry = 80;
-    const int32 MinValidPaths = 10;
+    const int32 MaxRetry = 40;
+    const int32 MinValidPaths = 7;
     int32 RetryCount = 0;
     int32 PathCount = 0;
 
@@ -92,10 +99,11 @@ void ARuinsMazeManager::GenerateMaze()
             const FRuinsMazeCell& Cell = MazeCells[X][Y];
             FVector CellWorld = GetCellWorldPosition(FIntPoint(X, Y));
 
-            if (Cell.bWallTop)     SpawnWall(CellWorld + FVector(0.f, CellSize / 2, 0.f), FRotator(0.f, 0.f, 0.f));
-            if (Cell.bWallBottom)  SpawnWall(CellWorld + FVector(0.f, -CellSize / 2, 0.f), FRotator(0.f, 0.f, 0.f));
-            if (Cell.bWallLeft)    SpawnWall(CellWorld + FVector(-CellSize / 2, 0.f, 0.f), FRotator(0.f, 90.f, 0.f));
-            if (Cell.bWallRight)   SpawnWall(CellWorld + FVector(CellSize / 2, 0.f, 0.f), FRotator(0.f, 90.f, 0.f));
+            if (Cell.bWallTop)    SpawnWall(CellWorld + FVector(0.f, CellSize / 2, 0.f), FRotator(0.f, 0.f, 0.f), FIntPoint(X, Y), "Top");
+            if (Cell.bWallBottom) SpawnWall(CellWorld + FVector(0.f, -CellSize / 2, 0.f), FRotator(0.f, 0.f, 0.f), FIntPoint(X, Y), "Bottom");
+            if (Cell.bWallLeft)   SpawnWall(CellWorld + FVector(-CellSize / 2, 0.f, 0.f), FRotator(0.f, 90.f, 0.f), FIntPoint(X, Y), "Left");
+            if (Cell.bWallRight)  SpawnWall(CellWorld + FVector(CellSize / 2, 0.f, 0.f), FRotator(0.f, 90.f, 0.f), FIntPoint(X, Y), "Right");
+
         }
     }
 
@@ -172,10 +180,34 @@ void ARuinsMazeManager::ConnectLoopsToMainPath()
 
 void ARuinsMazeManager::RemoveWallBetween(const FIntPoint& From, const FIntPoint& To)
 {
-    if (To.X > From.X) { MazeCells[From.X][From.Y].bWallRight = false; MazeCells[To.X][To.Y].bWallLeft = false; }
-    else if (To.X < From.X) { MazeCells[From.X][From.Y].bWallLeft = false; MazeCells[To.X][To.Y].bWallRight = false; }
-    else if (To.Y > From.Y) { MazeCells[From.X][From.Y].bWallTop = false; MazeCells[To.X][To.Y].bWallBottom = false; }
-    else if (To.Y < From.Y) { MazeCells[From.X][From.Y].bWallBottom = false; MazeCells[To.X][To.Y].bWallTop = false; }
+    if (To.X > From.X)
+    {
+        MazeCells[From.X][From.Y].bWallRight = false;
+        MazeCells[To.X][To.Y].bWallLeft = false;
+        Multicast_HideWall(From, "Right");
+        Multicast_HideWall(To, "Left");
+    }
+    else if (To.X < From.X)
+    {
+        MazeCells[From.X][From.Y].bWallLeft = false;
+        MazeCells[To.X][To.Y].bWallRight = false;
+        Multicast_HideWall(From, "Left");
+        Multicast_HideWall(To, "Right");
+    }
+    else if (To.Y > From.Y)
+    {
+        MazeCells[From.X][From.Y].bWallTop = false;
+        MazeCells[To.X][To.Y].bWallBottom = false;
+        Multicast_HideWall(From, "Top");
+        Multicast_HideWall(To, "Bottom");
+    }
+    else if (To.Y < From.Y)
+    {
+        MazeCells[From.X][From.Y].bWallBottom = false;
+        MazeCells[To.X][To.Y].bWallTop = false;
+        Multicast_HideWall(From, "Bottom");
+        Multicast_HideWall(To, "Top");
+    }
 }
 
 TArray<FIntPoint> ARuinsMazeManager::GetShuffledUnvisitedNeighbors(const FIntPoint& Cell)
@@ -226,11 +258,21 @@ FVector ARuinsMazeManager::GetCellWorldPosition(const FIntPoint& Cell) const
     return MazeOrigin + FVector(Cell.X * CellSize, Cell.Y * CellSize, 0.f);
 }
 
-void ARuinsMazeManager::SpawnWall(const FVector& Location, const FRotator& Rotation)
+void ARuinsMazeManager::SpawnWall(const FVector& Location, const FRotator& Rotation, const FIntPoint& Cell, const FString& Direction)
 {
+    if (HasAuthority())
+    {
+        Multicast_SpawnWall(Location, Rotation, Cell, Direction);
+    }
+
     FActorSpawnParameters Params;
     Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-    GetWorld()->SpawnActor<ARuinsMazeWall>(WallClass, Location, Rotation, Params);
+    ARuinsMazeWall* Wall = GetWorld()->SpawnActor<ARuinsMazeWall>(WallClass, Location, Rotation, Params);
+
+    if (IsValid(Wall))
+    {
+        WallCache.Add(TPair<FIntPoint, FString>(Cell, Direction), Wall);
+    }
 }
 
 bool ARuinsMazeManager::IsPathToExitValid(const FIntPoint& Start, const FIntPoint& End)
@@ -495,6 +537,70 @@ void ARuinsMazeManager::SpawnMonsterInMidPath()
     else
     {
         LOG_Art_WARNING(TEXT("[Monster] 몬스터 스폰 실패 → 셀: (%d, %d)"), BestCell.X, BestCell.Y);
+    }
+}
+
+void ARuinsMazeManager::HideWall(const FIntPoint& Cell, const FString& Direction)
+{
+    auto Key = TPair<FIntPoint, FString>(Cell, Direction);
+    ARuinsMazeWall** WallPtr = WallCache.Find(Key);
+
+    if (!WallPtr || !IsValid(*WallPtr))
+    {
+        FVector WorldPos = GetCellWorldPosition(Cell);
+        // 방향에 따라 약간 오프셋 줘서 근처 벽 찾기
+        FVector Offset;
+        if (Direction == "Top") Offset = FVector(0, CellSize / 2, 0);
+        else if (Direction == "Bottom") Offset = FVector(0, -CellSize / 2, 0);
+        else if (Direction == "Left") Offset = FVector(-CellSize / 2, 0, 0);
+        else if (Direction == "Right") Offset = FVector(CellSize / 2, 0, 0);
+        FVector SearchLocation = WorldPos + Offset;
+
+        for (TActorIterator<ARuinsMazeWall> It(GetWorld()); It; ++It)
+        {
+            ARuinsMazeWall* Wall = *It;
+            if (FVector::Dist(Wall->GetActorLocation(), SearchLocation) < 10.f)
+            {
+                WallCache.Add(Key, Wall);
+                WallPtr = &Wall;
+                break;
+            }
+        }
+
+    }
+
+    if (WallPtr && IsValid(*WallPtr))
+    {
+        (*WallPtr)->SetActorHiddenInGame(true);
+        (*WallPtr)->SetActorEnableCollision(false);
+    }
+    else
+    {
+        LOG_Art_WARNING(TEXT("❌ 게스트 HideWall 실패 - 위치: %s 방향: %s"), *Cell.ToString(), *Direction);
+    }
+}
+
+void ARuinsMazeManager::Multicast_HideWall_Implementation(const FIntPoint& Cell, const FString& Direction)
+{
+    HideWall(Cell, Direction);
+}
+
+void ARuinsMazeManager::Multicast_SpawnWall_Implementation(const FVector& Location, const FRotator& Rotation, const FIntPoint& Cell, const FString& Direction)
+{
+    LOG_Art(Log, TEXT("📦 Multicast_SpawnWall 실행 [%s:%s]"), *Cell.ToString(), *Direction); // 이게 안 찍히면 RPC 자체 실패
+
+    FActorSpawnParameters Params;
+    Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+    ARuinsMazeWall* Wall = GetWorld()->SpawnActor<ARuinsMazeWall>(WallClass, Location, Rotation, Params);
+    if (IsValid(Wall))
+    {
+        LOG_Art(Log, TEXT("✅ Wall 생성됨: %s → %s"), *Cell.ToString(), *Direction);
+        WallCache.Add(TPair<FIntPoint, FString>(Cell, Direction), Wall);
+    }
+    else
+    {
+        LOG_Art_WARNING(TEXT("❌ Wall 생성 실패: %s → %s"), *Cell.ToString(), *Direction);
     }
 }
 
