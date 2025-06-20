@@ -41,6 +41,8 @@
 #include "SaveGame/LCLocalPlayerSaveGame.h"
 #include "Components/CapsuleComponent.h"
 #include "Framework/GameState/LCGameState.h"
+#include "Components/WidgetComponent.h"
+#include "UI/UIObject/PlayerNameWidget.h"
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -98,6 +100,25 @@ ABaseCharacter::ABaseCharacter()
 	BackpackMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	ToolbarInventoryComponent = CreateDefaultSubobject<UToolbarInventoryComponent>(TEXT("ToolbarInventoryComponent"));
+
+	// 이름 3D 위젯
+	NameWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("NameWidget"));
+	NameWidgetComponent->SetupAttachment(GetMesh());
+	NameWidgetComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 100.0f)); 
+	NameWidgetComponent->SetWidgetSpace(EWidgetSpace::World);
+	NameWidgetComponent->SetDrawSize(FVector2D(200, 50));
+	NameWidgetComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	NameWidgetComponent->SetIsReplicated(false); 
+	NameWidgetComponent->SetWidgetSpace(EWidgetSpace::World);
+	NameWidgetComponent->SetTickWhenOffscreen(true);
+	NameWidgetComponent->SetTwoSided(true);
+	NameWidgetComponent->SetUsingAbsoluteRotation(false);
+	NameWidgetComponent->SetPivot(FVector2D(0.5f, 0.5f));
+
+	// CustomDepth 설정 (벽 판별에 중요)
+	NameWidgetComponent->SetRenderCustomDepth(true);
+	NameWidgetComponent->SetCustomDepthStencilValue(1); // 머티리얼에서 사용할 값
+
 }
 
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
@@ -163,6 +184,34 @@ void ABaseCharacter::BeginPlay()
 		if (IsLocallyControlled())
 		{
 			PC->RequestShowInGameHUD();
+		}
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("IsLocal: %s / IsServer: %s"),
+		IsLocallyControlled() ? TEXT("YES") : TEXT("NO"),
+		HasAuthority() ? TEXT("YES") : TEXT("NO"));
+
+	if (NameWidgetComponent && IsValid(NameWidgetComponent->GetWidget()))
+	{
+		UUserWidget* Widget = NameWidgetComponent->GetWidget();
+		if (Widget)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Widget Class: %s"), *Widget->GetClass()->GetName());
+		}
+
+		if (UPlayerNameWidget* NameWidget = Cast<UPlayerNameWidget>(NameWidgetComponent->GetWidget()))
+		{
+			// PlayerState에서 이름 가져오기
+			APlayerState* PS = GetPlayerState();
+			if (IsValid(PS))
+			{
+				NameWidget->SetPlayerName(PS->GetPlayerName());
+			}
+		}
+
+		if (IsLocallyControlled())
+		{
+			NameWidgetComponent->SetVisibility(false, true);
 		}
 	}
 }
@@ -416,6 +465,38 @@ void ABaseCharacter::StopAiming()
 void ABaseCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+
+	if (NameWidgetComponent == nullptr)
+	{
+		return;
+	}
+
+	// 누적 시간 계산
+	static float TimeAccumulator = 0.f;
+	TimeAccumulator += DeltaSeconds;
+
+	// 0.1초마다 갱신
+	if (TimeAccumulator > 0.1f)
+	{
+		TimeAccumulator = 0.f;
+
+		// 카메라 참조
+		APlayerCameraManager* CamManager = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0);
+		if (!CamManager) return;
+
+		FVector CameraLocation = CamManager->GetCameraLocation();
+		FVector WidgetLocation = NameWidgetComponent->GetComponentLocation();
+
+		// 거리 측정
+		const float Distance = FVector::Dist(CameraLocation, WidgetLocation);
+		const float MaxVisibleDistance = 2500.f; // 25m 안일 때만 회전 처리
+
+		if (Distance < MaxVisibleDistance)
+		{
+			FRotator LookAtRotation = UKismetMathLibrary::FindLookAtRotation(WidgetLocation, CameraLocation);
+			NameWidgetComponent->SetWorldRotation(LookAtRotation);
+		}
+	}
 }// 전환이 완료되었는지 확인하는 유틸리티 함수 (선택사항)
 
 
@@ -3275,5 +3356,51 @@ void ABaseCharacter::Client_SetWalkieTalkieChannelStatus_Implementation(bool bAc
 			LOG_Item_WARNING(TEXT("[Client_SetWalkieTalkieChannelStatus] 클라이언트에서 워키토키 채널 제거"));
 			RemoveWalkieTalkieChannel();
 		}
+	}
+}
+
+void ABaseCharacter::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+	UE_LOG(LogTemp, Warning, TEXT("[OnRep_PlayerState] for %s"), *GetName());
+
+	UpdateNameWidget(); // PlayerState가 복제될 때 UI 갱신
+	
+	if (IsLocallyControlled() && NameWidgetComponent)
+	{
+		NameWidgetComponent->SetVisibility(false, true);
+	}
+}
+
+void ABaseCharacter::UpdateNameWidget()
+{
+	UE_LOG(LogTemp, Warning, TEXT("[UpdateNameWidget] Called on %s"), *GetName());
+
+	if (!NameWidgetComponent)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[UpdateNameWidget] NameWidgetComponent is NULL"));
+		return;
+	}
+
+	UUserWidget* Widget = NameWidgetComponent->GetWidget();
+	if (!Widget)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[UpdateNameWidget] Widget is NULL"));
+		return;
+	}
+
+	if (UPlayerNameWidget* NameWidget = Cast<UPlayerNameWidget>(Widget))
+	{
+		APlayerState* PS = GetPlayerState();
+		if (!PS)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[UpdateNameWidget] PlayerState is NULL"));
+			return;
+		}
+
+		const FString Name = PS->GetPlayerName();
+		UE_LOG(LogTemp, Warning, TEXT("[UpdateNameWidget] PlayerState name = %s"), *Name);
+
+		NameWidget->SetPlayerName(Name);
 	}
 }
