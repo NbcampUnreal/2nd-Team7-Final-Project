@@ -2,19 +2,15 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "UI/UIObject/ItemTooltipWidget.h"
+#include "DataType/BaseItemSlotData.h"
 #include "Item/ItemBase.h"
 #include "InventoryComponentBase.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInventoryUpdated);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnWeightChanged, float, NewWeight, float, WeightDifference);
 
-class ULCUserWidgetBase;
-class UItemTooltipWidget;
 class ABaseCharacter;
 class UItemSpawnerComponent;
-
-
 class UInventoryConfig;
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
@@ -25,21 +21,17 @@ class LASTCANARY_API UInventoryComponentBase : public UActorComponent
 public:
     UInventoryComponentBase();
 
-    UFUNCTION(BlueprintCallable, Category = "Inventory|Internal")
-    void InitializeSlots();
-
 protected:
     virtual void BeginPlay() override;
+
+    //-----------------------------------------------------
+    // 컴포넌트 참조 및 캐싱
+    //-----------------------------------------------------
 
     /** 아이템 스포너 컴포넌트 */
     UPROPERTY()
     UItemSpawnerComponent* ItemSpawner;
 
-public:
-    /** 캐릭터로부터 ItemSpawner 참조 가져오기 */
-    UItemSpawnerComponent* GetItemSpawner() const;
-
-protected:
     /** 캐싱된 소유자 캐릭터 */
     UPROPERTY(BlueprintReadOnly, Category = "Inventory|Cache")
     ABaseCharacter* CachedOwnerCharacter;
@@ -47,11 +39,14 @@ protected:
     /** 소유자 캐릭터 캐싱 */
     void CacheOwnerCharacter();
 
+public:
+    /** 캐릭터로부터 ItemSpawner 참조 가져오기 */
+    UItemSpawnerComponent* GetItemSpawner() const;
+
     /** 소유자 캐릭터가 유효한지 확인 */
     UFUNCTION(BlueprintPure, Category = "Inventory|Cache")
     bool IsOwnerCharacterValid() const;
 
-public:
     /** 캐싱된 소유자 캐릭터 반환 */
     UFUNCTION(BlueprintPure, Category = "Inventory|Cache")
     ABaseCharacter* GetCachedOwnerCharacter() const;
@@ -73,22 +68,48 @@ public:
     UPROPERTY(BlueprintReadOnly, Category = "Inventory|Data")
     UDataTable* ItemDataTable;
 
+    /** 인벤토리 설정 */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory|Config")
+    UInventoryConfig* InventoryConfig;
+
+    /** 설정 가져오기 (없으면 기본값) */
+    const UInventoryConfig* GetInventoryConfig() const;
+
+    //-----------------------------------------------------
+    // 초기화 및 기본 기능
+    //-----------------------------------------------------
+
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Internal")
+    void InitializeSlots();
+
+    FItemDataRow* GetItemRowByName(FName RowName);
+    int32 GetMaxSlots() const;
+
+protected:
+    void ClearInventorySlots();
+
     //-----------------------------------------------------
     // 이벤트 및 델리게이트
     //-----------------------------------------------------
 
+public:
     /** 인벤토리 상태가 변경될 때 호출되는 델리게이트 */
     UPROPERTY(BlueprintAssignable, Category = "Inventory|Events")
     FOnInventoryUpdated OnInventoryUpdated;
+
+    /** 무게 변경 델리게이트 */
+    UPROPERTY(BlueprintAssignable, Category = "Inventory|Weight")
+    FOnWeightChanged OnWeightChanged;
 
     /** 아이템 슬롯 데이터가 복제될 때 호출 */
     UFUNCTION()
     void OnRep_ItemSlots();
 
     //-----------------------------------------------------
-    // 외부 인터페이스 함수 (공개 API)
+    // 외부 인터페이스 (PURE_VIRTUAL - 하위 클래스에서 구현)
     //-----------------------------------------------------
 
+public:
     /** 아이템 데이터를 기반으로 인벤토리에 아이템 추가 시도 */
     UFUNCTION(BlueprintCallable, Category = "Inventory|Operations")
     virtual bool TryAddItemSlot(FName ItemRowName, int32 Amount) PURE_VIRTUAL(UInventoryComponentBase::TryAddItemSlot, return false;);
@@ -101,10 +122,6 @@ public:
     UFUNCTION(BlueprintPure, Category = "Inventory|Query")
     virtual int32 GetItemCount(FName ItemRowName) const PURE_VIRTUAL(UInventoryComponentBase::GetItemCount, return 0;);
 
-    FItemDataRow* GetItemRowByName(FName RowName);
-
-    int32 GetMaxSlots() const;
-
     /** 두 슬롯 간 아이템 교환 시도 */
     UFUNCTION(BlueprintCallable, Category = "Inventory|Operations")
     virtual bool TrySwapItemSlots(int32 FromIndex, int32 ToIndex) PURE_VIRTUAL(UInventoryComponentBase::TrySwapItemSlots, return false;);
@@ -115,13 +132,13 @@ public:
 
     /** 실제 아이템 액터를 인벤토리에 추가 시도 */
     UFUNCTION(BlueprintCallable, Category = "Inventory|Operations")
-    virtual bool TryAddItem(AItemBase* ItemActor) PURE_VIRTUAL(UInventoryComponentBase::TryAddItem, return false;);
+    virtual bool TryAddItem(AItemBase * ItemActor) PURE_VIRTUAL(UInventoryComponentBase::TryAddItem, return false;);
+
+    //-----------------------------------------------------
+    // 아이템 드랍 기능 (DropSystem으로 위임)
+    //-----------------------------------------------------
 
 public:
-    //-----------------------------------------------------
-    // 아이템 드랍 기능 (RPC 패턴 적용)
-    //-----------------------------------------------------
-
     /** 특정 슬롯의 아이템을 캐릭터 앞에 드랍 (클라이언트용) */
     UFUNCTION(BlueprintCallable, Category = "Inventory|Operations")
     virtual bool TryDropItemAtSlot(int32 SlotIndex, int32 Quantity = 1);
@@ -143,11 +160,8 @@ public:
     //-----------------------------------------------------
     // 무게 관리 시스템
     //-----------------------------------------------------
-public:
-    /** 무게 변경 델리게이트 */
-    UPROPERTY(BlueprintAssignable, Category = "Inventory|Weight")
-    FOnWeightChanged OnWeightChanged;
 
+public:
     /** 현재 총 무게 반환 */
     UFUNCTION(BlueprintPure, Category = "Inventory|Weight")
     float GetTotalWeight() const { return CurrentTotalWeight; }
@@ -162,40 +176,40 @@ protected:
     float CurrentTotalWeight = 0.0f;
 
     //-----------------------------------------------------
-    // 네트워크 기능
+    // 내부 동작 함수 (하위 클래스에서 구현)
     //-----------------------------------------------------
-public:
-    /** 리플리케이션 속성 설정 */
-    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 protected:
-    //-----------------------------------------------------
-    // 내부 동작 함수 (하위 클래스 구현)
-    //-----------------------------------------------------
-
     /** 아이템 추가 가능 여부 확인 */
-    virtual bool CanAddItem(AItemBase* ItemActor) PURE_VIRTUAL(UInventoryComponentBase::CanAddItem, return false;);
+    virtual bool CanAddItem(AItemBase * ItemActor) PURE_VIRTUAL(UInventoryComponentBase::CanAddItem, return false;);
 
     /** 아이템 저장 처리 */
-    virtual bool TryStoreItem(AItemBase* ItemActor) PURE_VIRTUAL(UInventoryComponentBase::TryStoreItem, return false;);
+    virtual bool TryStoreItem(AItemBase * ItemActor) PURE_VIRTUAL(UInventoryComponentBase::TryStoreItem, return false;);
 
     /** 아이템 추가 후 처리 */
     virtual void PostAddProcess() PURE_VIRTUAL(UInventoryComponentBase::PostAddProcess, return;);
 
     //-----------------------------------------------------
-    // 빈 슬롯 아이템 관리
+    // 유틸리티 래퍼 함수들
     //-----------------------------------------------------
-protected:
-    /** Default 아이템 Row Name */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory|Default")
-    FName DefaultItemRowName = FName("Default");
 
-protected:
-    void ClearInventorySlots();
+public:
+    /** UInventoryUtility 래퍼 함수들 */
+    UFUNCTION(BlueprintPure, Category = "Inventory|Utility")
+    bool IsDefaultItem(FName ItemRowName) const;
+
+    void SetSlotToDefault(int32 SlotIndex);
+
+    UFUNCTION(BlueprintPure, Category = "Inventory|Utility")
+    int32 GetItemIDFromRowName(FName RowName) const;
+
+    UFUNCTION(BlueprintPure, Category = "Inventory|Utility")
+    FName GetItemRowNameFromID(int32 ID) const;
 
     //-----------------------------------------------------
-    // 보이스 채팅을 위한 함수
+    // 워키토키 관련 기능
     //-----------------------------------------------------
+
 public:
     /** 툴바에 워키토키가 있는지 확인 */
     UFUNCTION(BlueprintPure, Category = "WalkieTalkie")
@@ -210,37 +224,11 @@ private:
     UFUNCTION(BlueprintPure, Category = "WalkieTalkie")
     bool IsWalkieTalkieItem(FName ItemRowName) const;
 
-
-
-
-
-
-
-
-
-
     //-----------------------------------------------------
-    // 리팩토링 공사 중...
+    // 네트워크
     //-----------------------------------------------------
-
-
 
 public:
-    /** 인벤토리 설정 */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory|Config")
-    UInventoryConfig* InventoryConfig;
-
-    /** 설정 가져오기 (없으면 기본값) */
-    const UInventoryConfig* GetInventoryConfig() const;
-
-    UFUNCTION(BlueprintPure, Category = "Inventory|Utility")
-    bool IsDefaultItem(FName ItemRowName) const;
-
-    void SetSlotToDefault(int32 SlotIndex);
-
-    UFUNCTION(BlueprintPure, Category = "Inventory|Utility")
-    int32 GetItemIDFromRowName(FName RowName) const;
-
-    UFUNCTION(BlueprintPure, Category = "Inventory|Utility")
-    FName GetItemRowNameFromID(int32 ID) const;
+    /** 리플리케이션 속성 설정 */
+    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&OutLifetimeProps) const override;
 };

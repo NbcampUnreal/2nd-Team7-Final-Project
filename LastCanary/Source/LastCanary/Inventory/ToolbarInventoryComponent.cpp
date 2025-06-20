@@ -2,6 +2,7 @@
 #include "Inventory/InventoryUtility.h"
 #include "Inventory/InventoryDropSystem.h"
 #include "Inventory/InventoryUIController.h"
+#include "Inventory/InventoryConfig.h"
 #include "Character/BaseCharacter.h"
 #include "Character/BasePlayerState.h"
 #include "DataTable/ItemDataRow.h"
@@ -262,23 +263,15 @@ bool UToolbarInventoryComponent::TryAddItem(AItemBase* ItemActor)
         return false;
     }
 
-    // 수집 아이템(Collectible)이면 툴바 내 모든 가방 슬롯을 0부터 탐색
+    // 수집 아이템(Collectible)일 때 가방이 있다면 가방 슬롯에 추가
     if (IsCollectibleItem(ItemData))
     {
-        for (int32 i = 0; i < ItemSlots.Num(); ++i)
+        if (BackpackManager && BackpackManager->AddItemToBackpack(ItemActor->ItemRowName, ItemActor->Quantity, -1))
         {
-            if (ItemSlots[i].bIsBackpack)
-            {
-                UE_LOG(LogTemp, Warning, TEXT("TryAddItem: %d번 슬롯, Default=%d, bIsBackpack=%d"),
-                    i, IsDefaultItem(ItemSlots[i].ItemRowName), ItemSlots[i].bIsBackpack ? 1 : 0);
-                if (AddItemToBackpack(ItemActor->ItemRowName, ItemActor->Quantity, i))
-                {
-                    if (GetOwner()->HasAuthority())
-                        ItemActor->Destroy();
-                    PostAddProcess();
-                    return true;
-                }
-            }
+            if (GetOwner()->HasAuthority())
+                ItemActor->Destroy();
+            PostAddProcess();
+            return true;
         }
     }
 
@@ -369,7 +362,7 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
     }
     else
     {
-        // ✅ 일반 장비 처리
+        // 일반 장비 처리
         FName TargetSocket = ItemData->AttachSocketName.IsNone() ? TEXT("Rifle") : ItemData->AttachSocketName;
         if (!CachedOwnerCharacter->GetMesh()->DoesSocketExist(TargetSocket))
         {
@@ -791,11 +784,6 @@ void UToolbarInventoryComponent::PostAddProcess()
     OnInventoryUpdated.Broadcast();
 }
 
-void UToolbarInventoryComponent::Server_DropEquippedItemAtSlot_Implementation(int32 SlotIndex, int32 Quantity)
-{
-    UInventoryDropSystem::ExecuteDropItem(this, SlotIndex, Quantity, true);
-}
-
 bool UToolbarInventoryComponent::DropCurrentEquippedItem()
 {
     if (CurrentEquippedSlotIndex < 0 || !ItemSlots.IsValidIndex(CurrentEquippedSlotIndex))
@@ -804,42 +792,48 @@ bool UToolbarInventoryComponent::DropCurrentEquippedItem()
         return false;
     }
 
-    return UInventoryDropSystem::ExecuteDropItem(this, CurrentEquippedSlotIndex, 1, true);
-}
-
-void UToolbarInventoryComponent::Server_DropCurrentEquippedItem_Implementation()
-{
-    if (CurrentEquippedSlotIndex >= 0)
-    {
-        UInventoryDropSystem::ExecuteDropItem(this, CurrentEquippedSlotIndex, 1, true);
-    }
-}
-
-bool UToolbarInventoryComponent::TryDropItemAtSlot(int32 SlotIndex, int32 Quantity)
-{
-    bool bIsEquipped = (SlotIndex == CurrentEquippedSlotIndex);
-
     if (GetOwner() && GetOwner()->HasAuthority())
     {
-        return UInventoryDropSystem::ExecuteDropItem(this, SlotIndex, Quantity, bIsEquipped);
+        return UInventoryDropSystem::ExecuteDropItem(this, CurrentEquippedSlotIndex, 1, true);
     }
     else
     {
-        if (bIsEquipped)
-        {
-            Server_DropEquippedItemAtSlot(SlotIndex, Quantity);
-        }
-        else
-        {
-            Server_TryDropItemAtSlot(SlotIndex, Quantity);
-        }
+        Server_DropItem(CurrentEquippedSlotIndex, 1);
         return true;
     }
 }
 
-void UToolbarInventoryComponent::Server_DropItemAtSlot_Implementation(int32 SlotIndex, int32 Quantity)
+void UToolbarInventoryComponent::Server_DropItem_Implementation(int32 SlotIndex, int32 Quantity)
 {
-    Super::TryDropItemAtSlot(SlotIndex, Quantity);
+    if (!ItemSlots.IsValidIndex(SlotIndex))
+    {
+        LOG_Item_WARNING(TEXT("[Server_DropItem] 잘못된 슬롯 인덱스: %d"), SlotIndex);
+        return;
+    }
+
+    bool bIsEquipped = (SlotIndex == CurrentEquippedSlotIndex);
+
+    UInventoryDropSystem::ExecuteDropItem(this, SlotIndex, Quantity, bIsEquipped);
+}
+
+bool UToolbarInventoryComponent::TryDropItemAtSlot(int32 SlotIndex, int32 Quantity)
+{
+    if (!ItemSlots.IsValidIndex(SlotIndex))
+    {
+        LOG_Item_WARNING(TEXT("[TryDropItemAtSlot] 잘못된 슬롯 인덱스: %d"), SlotIndex);
+        return false;
+    }
+
+    if (GetOwner() && GetOwner()->HasAuthority())
+    {
+        bool bIsEquipped = (SlotIndex == CurrentEquippedSlotIndex);
+        return UInventoryDropSystem::ExecuteDropItem(this, SlotIndex, Quantity, bIsEquipped);
+    }
+    else
+    {
+        Server_DropItem(SlotIndex, Quantity);
+        return true;
+    }
 }
 
 void UToolbarInventoryComponent::HandleBackpackEquip(int32 SlotIndex)
@@ -1123,7 +1117,7 @@ void UToolbarInventoryComponent::SetInventoryFromItemIDs(const TArray<int32>& It
         {
             // 새 슬롯 추가
             FBaseItemSlotData DefaultSlot;
-            DefaultSlot.ItemRowName = DefaultItemRowName;
+            DefaultSlot.ItemRowName = FName("Default");
             DefaultSlot.Quantity = 1;
             DefaultSlot.Durability = 100.0f;
             DefaultSlot.bIsValid = true;

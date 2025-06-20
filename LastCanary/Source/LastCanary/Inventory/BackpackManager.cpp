@@ -98,26 +98,67 @@ TArray<FBackpackSlotData> UBackpackManager::GetCurrentBackpackSlots() const
 
 bool UBackpackManager::AddItemToBackpack(FName ItemRowName, int32 Quantity, int32 BackpackSlotIndex)
 {
-    if (!HasBackpackEquipped() || !CanAddToBackpack(ItemRowName))
+    int32 TargetBackpackSlotIndex = -1;
+
+    if (HasBackpackEquipped())
     {
+        // 장착된 가방 사용
+        TargetBackpackSlotIndex = CurrentBackpackSlotIndex;
+        LOG_Item_WARNING(TEXT("[AddItemToBackpack] 장착된 가방 사용: 슬롯 %d"), TargetBackpackSlotIndex);
+    }
+    else
+    {
+        // 장착되지 않은 가방 중 첫 번째 가방 찾기
+        for (int32 i = 0; i < OwnerInventory->ItemSlots.Num(); ++i)
+        {
+            if (OwnerInventory->ItemSlots[i].bIsBackpack)
+            {
+                TargetBackpackSlotIndex = i;
+                LOG_Item_WARNING(TEXT("[AddItemToBackpack] 장착되지 않은 가방 사용: 슬롯 %d"), TargetBackpackSlotIndex);
+                break;
+            }
+        }
+    }
+
+    // 가방이 없으면 실패
+    if (TargetBackpackSlotIndex < 0 || !OwnerInventory->ItemSlots.IsValidIndex(TargetBackpackSlotIndex))
+    {
+        LOG_Item_WARNING(TEXT("[AddItemToBackpack] 사용할 수 있는 가방이 없습니다"));
         return false;
     }
 
-    FBaseItemSlotData& BackpackSlot = OwnerInventory->ItemSlots[CurrentBackpackSlotIndex];
+    if (!CanAddToBackpack(ItemRowName))
+    {
+        LOG_Item_WARNING(TEXT("[AddItemToBackpack] 가방에 넣을 수 없는 아이템: %s"), *ItemRowName.ToString());
+        return false;
+    }
+
+    FBaseItemSlotData& BackpackSlot = OwnerInventory->ItemSlots[TargetBackpackSlotIndex];
+
+    // 가방이 맞는지 확인
+    if (!BackpackSlot.bIsBackpack)
+    {
+        LOG_Item_WARNING(TEXT("[AddItemToBackpack] 슬롯 %d는 가방이 아닙니다"), TargetBackpackSlotIndex);
+        return false;
+    }
+
     const FItemDataRow* ItemData = UInventoryUtility::GetItemDataByRowName(ItemRowName, OwnerInventory->ItemDataTable);
     if (!ItemData)
     {
+        LOG_Item_WARNING(TEXT("[AddItemToBackpack] 아이템 데이터를 찾을 수 없음: %s"), *ItemRowName.ToString());
         return false;
     }
 
     int32 MaxStack = ItemData->MaxStack;
     int32 RemainingQuantity = Quantity;
+    int32 OriginalQuantity = RemainingQuantity;
 
     // 특정 슬롯 지정된 경우
     if (BackpackSlotIndex >= 0 && BackpackSlot.BackpackSlots.IsValidIndex(BackpackSlotIndex))
     {
         FBackpackSlotData& TargetSlot = BackpackSlot.BackpackSlots[BackpackSlotIndex];
-        if (UInventoryUtility::IsDefaultItem(TargetSlot.ItemRowName) || TargetSlot.Quantity <= 0)
+
+        if (OwnerInventory->IsDefaultItem(TargetSlot.ItemRowName) || TargetSlot.Quantity <= 0)
         {
             int32 Addable = FMath::Min(RemainingQuantity, MaxStack);
             TargetSlot.ItemRowName = ItemRowName;
@@ -131,16 +172,23 @@ bool UBackpackManager::AddItemToBackpack(FName ItemRowName, int32 Quantity, int3
             TargetSlot.Quantity += Addable;
             RemainingQuantity -= Addable;
         }
+        else
+        {
+            LOG_Item_WARNING(TEXT("[AddItemToBackpack] 슬롯이 다른 아이템으로 점유됨: %s"), *TargetSlot.ItemRowName.ToString());
+        }
     }
     else
     {
         // 자동으로 빈 슬롯 찾기
-        for (FBackpackSlotData& Slot : BackpackSlot.BackpackSlots)
+        for (int32 i = 0; i < BackpackSlot.BackpackSlots.Num(); ++i)
         {
             if (RemainingQuantity <= 0) break;
 
-            if (UInventoryUtility::IsDefaultItem(Slot.ItemRowName) || Slot.Quantity <= 0)
+            FBackpackSlotData& Slot = BackpackSlot.BackpackSlots[i];
+
+            if (OwnerInventory->IsDefaultItem(Slot.ItemRowName) || Slot.Quantity <= 0)
             {
+                // 빈 슬롯에 새 아이템 추가
                 int32 Addable = FMath::Min(RemainingQuantity, MaxStack);
                 Slot.ItemRowName = ItemRowName;
                 Slot.Quantity = Addable;
@@ -148,21 +196,32 @@ bool UBackpackManager::AddItemToBackpack(FName ItemRowName, int32 Quantity, int3
             }
             else if (Slot.ItemRowName == ItemRowName)
             {
+                // 같은 아이템 스택에 추가
                 int32 StackSpace = MaxStack - Slot.Quantity;
-                int32 Addable = FMath::Min(RemainingQuantity, StackSpace);
-                Slot.Quantity += Addable;
-                RemainingQuantity -= Addable;
+                if (StackSpace > 0)
+                {
+                    int32 Addable = FMath::Min(RemainingQuantity, StackSpace);
+                    Slot.Quantity += Addable;
+                    RemainingQuantity -= Addable;
+                }
             }
         }
     }
 
-    if (RemainingQuantity < Quantity)
+    bool bSuccess = (RemainingQuantity < OriginalQuantity);
+
+    if (bSuccess)
     {
         OwnerInventory->OnInventoryUpdated.Broadcast();
-        return RemainingQuantity == 0; // 모두 추가되었으면 true
+        LOG_Item_WARNING(TEXT("[AddItemToBackpack] 성공: %d/%d개 추가됨"),
+            OriginalQuantity - RemainingQuantity, OriginalQuantity);
+    }
+    else
+    {
+        LOG_Item_WARNING(TEXT("[AddItemToBackpack] 실패: 추가할 공간이 없음"));
     }
 
-    return false;
+    return bSuccess;
 }
 
 bool UBackpackManager::RemoveItemFromBackpack(int32 BackpackSlotIndex, int32 Quantity)

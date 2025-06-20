@@ -67,10 +67,16 @@ void UInventoryComponentBase::BeginPlay()
 
 void UInventoryComponentBase::InitializeSlots()
 {
+	if (!GetInventoryConfig())
+	{
+		UE_LOG(LogTemp, Error, TEXT("[InitializeSlots] InventoryConfig가 null입니다!"));
+		return;
+	}
+
 	// 이미 초기화되었다면 건너뛰기
 	if (ItemSlots.Num() > 0)
 	{
-		LOG_Item_WARNING(TEXT("[InventoryComponentBase::InitializeSlots] 슬롯이 이미 초기화되어 있습니다."));
+		LOG_Item_WARNING(TEXT("[InitializeSlots] 슬롯이 이미 초기화되어 있습니다."));
 		return;
 	}
 
@@ -80,7 +86,7 @@ void UInventoryComponentBase::InitializeSlots()
 	for (int32 i = 0; i < MaxSlots; ++i)
 	{
 		FBaseItemSlotData DefaultSlot;
-		DefaultSlot.ItemRowName = DefaultItemRowName;
+		DefaultSlot.ItemRowName = FName("Default");
 		DefaultSlot.Quantity = 1;
 		DefaultSlot.Durability = 100.0f;
 		DefaultSlot.bIsValid = true;
@@ -98,7 +104,7 @@ void UInventoryComponentBase::CacheOwnerCharacter()
 	CachedOwnerCharacter = Cast<ABaseCharacter>(GetOwner());
 	if (!CachedOwnerCharacter)
 	{
-		LOG_Item_WARNING(TEXT("[InventoryComponentBase::CacheOwnerCharacter] 소유자가 BaseCharacter가 아닙니다."));
+		LOG_Item_WARNING(TEXT("[CacheOwnerCharacter] 소유자가 BaseCharacter가 아닙니다."));
 	}
 }
 
@@ -211,8 +217,7 @@ void UInventoryComponentBase::UpdateWeight()
 	// 유의미한 변화가 있을 때만 알림
 	if (FMath::Abs(WeightDifference) > 0.01f)
 	{
-		LOG_Item_WARNING(TEXT("[UpdateWeight] %s 무게 변경: %.2f -> %.2f (차이: %.2f)"),
-			*GetClass()->GetName(), OldWeight, NewWeight, WeightDifference);
+		LOG_Item_WARNING(TEXT("[UpdateWeight] %s 무게 변경: %.2f -> %.2f (차이: %.2f)"), *GetClass()->GetName(), OldWeight, NewWeight, WeightDifference);
 
 		OnWeightChanged.Broadcast(NewWeight, WeightDifference);
 
@@ -269,8 +274,7 @@ void UInventoryComponentBase::UpdateWalkieTalkieChannelStatus()
 
 	bool bHasWalkieTalkie = HasWalkieTalkieInToolbar();
 
-	UE_LOG(LogTemp, Log, TEXT("[UpdateWalkieTalkieChannelStatus] 워키토키 상태 업데이트: %s"),
-		bHasWalkieTalkie ? TEXT("있음") : TEXT("없음"));
+	UE_LOG(LogTemp, Log, TEXT("[UpdateWalkieTalkieChannelStatus] 워키토키 상태 업데이트: %s"), bHasWalkieTalkie ? TEXT("있음") : TEXT("없음"));
 
 	// 서버에서 실행 중인지 확인
 	if (!GetOwner() || !GetOwner()->HasAuthority())
