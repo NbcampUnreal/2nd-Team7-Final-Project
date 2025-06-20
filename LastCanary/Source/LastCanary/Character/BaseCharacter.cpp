@@ -120,7 +120,7 @@ void ABaseCharacter::BeginPlay()
 		SwapHeadMaterialTransparent(true); 
 	}
 	//애니메이션 오버레이 활성화.
-	RefreshOverlayObject(0);
+	RefreshOverlayObject();
 
 
 	GetWorld()->GetTimerManager().SetTimer(
@@ -309,6 +309,14 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 	}
 	ViewInfo.Rotation.Roll = 0.0f;
 	
+}
+
+void ABaseCharacter::ResetCameraLocationToDefault()
+{
+	AttachCameraToCharacter();
+	SpringArm->bUsePawnControlRotation = true;
+	bIsAiming = false;
+	bIsTransitioning = false;
 }
 
 void ABaseCharacter::AttachCameraToRifle()
@@ -1772,16 +1780,6 @@ void ABaseCharacter::Multicast_CancelUseItem_Implementation()
 	AnimInstance->Montage_Stop(0.2f, CurrentUseItemMontage); // 부드럽게 블렌드 아웃
 }
 
-
-void ABaseCharacter::PickupItem()
-{
-	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
-	{
-		return;
-	}
-}
-
-
 void ABaseCharacter::TraceInteractableActor()
 {
 	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
@@ -2020,13 +2018,6 @@ void ABaseCharacter::SetPossess(bool IsPossessed)
 	bIsPossessed = IsPossessed;
 }
 
-
-void ABaseCharacter::GetHeldItem()
-{
-	//TODO: 아이템 반환
-	return;
-}
-
 void ABaseCharacter::SetCurrentQuickSlotIndex(int32 NewIndex)
 {
 	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
@@ -2041,10 +2032,9 @@ void ABaseCharacter::SetCurrentQuickSlotIndex(int32 NewIndex)
 
 void ABaseCharacter::Server_SetQuickSlotIndex_Implementation(int32 NewIndex)
 {
-	LOG_Char_WARNING(TEXT("change QuickSlotindex on Server"));
+	//change QuickSlotindex on Server
 	if (!IsValid(ToolbarInventoryComponent))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("툴바 없음."));
 		return;
 	}
 	int32 AdjustedIndex = NewIndex;
@@ -2056,74 +2046,26 @@ void ABaseCharacter::Server_SetQuickSlotIndex_Implementation(int32 NewIndex)
 	{
 		AdjustedIndex = 3;
 	}
-
-	//if(ToolbarInventoryComponent->GetCurrentEquippedSlotIndex() == AdjustedIndex )  //  인덱스에 변화가 없으면 할 필요가 X
-	// {
-	//	 retturn;
-	// }
-	//ToolbarInventoryComponent->SetCurrentEquippedSlotIndex(AdjustedIndex);
-	// 동기화된 장착 요청
-	Multicast_EquipItemFromQuickSlot(AdjustedIndex);
+	EquipItem(AdjustedIndex); //서버에서 처리
 }
 
-void ABaseCharacter::Multicast_EquipItemFromQuickSlot_Implementation(int32 Index)
+void ABaseCharacter::EquipItem(int32 Index)
 {
-	LOG_Char_WARNING(TEXT("refresh animation on Client"));
-	EquipItemFromCurrentQuickSlot(Index);
+	if (Index == ToolbarInventoryComponent->GetCurrentEquippedSlotIndex())
+	{
+		return;
+	}
+	ToolbarInventoryComponent->EquipItemAtSlot(Index);
+	// 동기화된 장착 요청
+	Multicast_ResetAnimationAndCamera(Index);
 }
 
-void ABaseCharacter::EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex)
+void ABaseCharacter::Multicast_ResetAnimationAndCamera_Implementation(int32 Index)
 {
 	LOG_Char_WARNING(TEXT("Change Equip Item"));
-
 	//카메라 초기화(총 줌 쓰고 있다가 바뀔 가능성 대비)
-	SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
-
-	//Mesh의 애니메이션 인스턴스 가져오기
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if (AnimInstance && AnimInstance->IsAnyMontagePlaying())
-	{
-		//만약 재생중인 몽타주가 있으면(예시: 장전모션) 강제로 해제
-		AnimInstance->Montage_Stop(0.25f); // 페이드 아웃 시간: 0.25초 //AnimInstance->Montage_Stop(0.25f, ReloadMontage);이런 것도 가능
-	}
-
-	if (!ToolbarInventoryComponent)
-	{
-		LOG_Item_WARNING(TEXT("[ABaseCharacter::SwitchToSlot] 툴바 컴포넌트가 없습니다."));
-		RefreshOverlayObject(0);
-		return;
-	}
-
-	if (QuickSlotIndex < 0 || QuickSlotIndex >= ToolbarInventoryComponent->GetMaxSlots())
-	{
-		LOG_Item_WARNING(TEXT("[ABaseCharacter::SwitchToSlot] 유효하지 않은 슬롯 인덱스: %d"), QuickSlotIndex);
-		return;
-	}
-
-	// 클라이언트에서 호출된 경우 서버에 요청
-	if (GetLocalRole() < ROLE_Authority)
-	{
-		Server_EquipItemFromCurrentQuickSlot(QuickSlotIndex); // 클라이언트에서 호출 무시되는 중...
-		return;
-	}
-
-	//  똑같으면 무시하라는 거 같은데...
-	int32 CurrentSlot = ToolbarInventoryComponent->GetCurrentEquippedSlotIndex();
-	if (CurrentSlot == QuickSlotIndex)
-	{
-		return;
-	}
-
-	//TODO: 툴바 index로 읽어서 있는 아이템이 뭔지 받아오고, 그걸 토대로 장착 및 애니메이션 변경하지
-	ToolbarInventoryComponent->EquipItemAtSlot(QuickSlotIndex);
-
-	RefreshOverlayObject(QuickSlotIndex);
-}
-
-
-void ABaseCharacter::Server_EquipItemFromCurrentQuickSlot_Implementation(int32 QuickSlotIndex)
-{
-	EquipItemFromCurrentQuickSlot(QuickSlotIndex);
+	ResetCameraLocationToDefault();
+	StopCurrentPlayingMontage();
 }
 
 int32 ABaseCharacter::GetCurrentQuickSlotIndex()
@@ -2143,41 +2085,29 @@ void ABaseCharacter::StopCurrentPlayingMontage()
 {
 	LOG_Char_WARNING(TEXT("애님 몽타주 강종"));
 	//Mesh의 애니메이션 인스턴스 가져오기
-	UAnimInstance* FPSAnimInstance = GetMesh()->GetAnimInstance();
-	if (FPSAnimInstance && FPSAnimInstance->IsAnyMontagePlaying())
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && AnimInstance->IsAnyMontagePlaying())
 	{
 		//만약 재생중인 몽타주가 있으면(예시: 장전모션) 강제로 해제
-		FPSAnimInstance->Montage_Stop(0.25f); // 페이드 아웃 시간: 0.25초 //AnimInstance->Montage_Stop(0.25f, ReloadMontage);이런 것도 가능
+		AnimInstance->Montage_Stop(0.25f); // 페이드 아웃 시간: 0.25초 //AnimInstance->Montage_Stop(0.25f, ReloadMontage);이런 것도 가능
 	}
 }
 
 void ABaseCharacter::HandleInventoryUpdated()
 {
 	LOG_Char_WARNING(TEXT("Inventory updated!"));
-	//ToolbarInventoryComponent->GetCurrentEquippedSlotIndex();
-
-	RefreshOverlayObject(0);
-	// 여기서 UI 갱신 등 원하는 작업 수행
+	RefreshOverlayObject();
 }
 
 void ABaseCharacter::UnequipCurrentItem()
 {
-	HeldItem = nullptr;
-	//TODO: 손에서 제거, 메시 해제, 이펙트 제거 등 처리
 	LOG_Char_WARNING(TEXT("Unequipped current item"));
 
-	if (!IsEquipped())
+	if (!IsEquipped() || !ToolbarInventoryComponent)
 	{
-		LOG_Item_WARNING(TEXT("[ABaseCharacter::UnequipCurrentItem] 현재 장비 상태가 아닙니다."));
+		LOG_Item_WARNING(TEXT("현재 장비 상태가 아니거나 툴바가 없습니다."));
 		return;
 	}
-
-	if (!ToolbarInventoryComponent)
-	{
-		LOG_Item_WARNING(TEXT("[ABaseCharacter::UnequipCurrentItem] 툴바 컴포넌트가 없습니다."));
-		return;
-	}
-
 	// 클라이언트에서 호출된 경우 서버에 요청
 	if (GetLocalRole() < ROLE_Authority)
 	{
@@ -2185,10 +2115,9 @@ void ABaseCharacter::UnequipCurrentItem()
 		Server_UnequipCurrentItem();
 		return;
 	}
-
-	// 서버에서 실제 처리
-	LOG_Item_WARNING(TEXT("[ABaseCharacter::UnequipCurrentItem] 서버에서 장비 해제 처리"));
-
+#if WITH_EDITOR
+	LOG_Item_WARNING(TEXT("[ABaseCharacter::UnequipCurrentItem] 서버에서 장비 해제 처리")); // 서버에서 실제 처리
+#endif
 	// 현재 장착된 아이템 정보 가져오기 (로그용)
 	AItemBase* CurrentEquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
 	FString ItemName = CurrentEquippedItem ? CurrentEquippedItem->ItemRowName.ToString() : TEXT("Unknown");
@@ -2196,6 +2125,7 @@ void ABaseCharacter::UnequipCurrentItem()
 	// 툴바 컴포넌트에서 실제 해제 처리
 	ToolbarInventoryComponent->UnequipCurrentItem();
 
+#if WITH_EDITOR
 	// 장비 해제 후 상태 확인
 	if (!IsEquipped())
 	{
@@ -2206,6 +2136,12 @@ void ABaseCharacter::UnequipCurrentItem()
 		LOG_Item_WARNING(TEXT("[ABaseCharacter::UnequipCurrentItem] 아이템 해제 실패 - 여전히 장비 상태임"));
 		return;
 	}
+#endif
+}
+
+void ABaseCharacter::Server_UnequipCurrentItem_Implementation()
+{
+	UnequipCurrentItem();
 }
 
 
@@ -2538,11 +2474,11 @@ void ABaseCharacter::ResetMovementSetting()
 	AlsCharacterMovement->ResetGaitSettings();
 }
 
-void ABaseCharacter::Multicast_RefreshOverlayObject_Implementation(int index)
+void ABaseCharacter::Multicast_RefreshOverlayObject_Implementation()
 {
 	LOG_Char_WARNING(TEXT("멀티캐스트 Overlay Objects"));
 	bIsSpawnDrone = true;
-	RefreshOverlayObject(index);
+	RefreshOverlayObject();
 }
 
 void ABaseCharacter::Server_UnPossessDrone_Implementation()
@@ -2555,12 +2491,12 @@ void ABaseCharacter::Server_UnPossessDrone_Implementation()
 void ABaseCharacter::NetMulticast_UnPossessDrone_Implementation()
 {
 	bIsSpawnDrone = false;
-	RefreshOverlayObject(0);
+	RefreshOverlayObject();
 }
 
-void ABaseCharacter::RefreshOverlayObject(int index)
+void ABaseCharacter::RefreshOverlayObject()
 {
-	LOG_Char_WARNING(TEXT("Refresh Overlay Objects : %d"), index);
+	LOG_Char_WARNING(TEXT("Refresh Overlay Objects"));
 	AItemBase* CurrentItem = GetToolbarInventoryComponent()->GetCurrentEquippedItem();
 	//static FGameplayTag CurrentItemTag = FGameplayTag::RequestGameplayTag(TEXT("Character.Player.Equipped"));  // 참고용
 	if (bIsSpawnDrone == true)
@@ -2806,14 +2742,18 @@ bool ABaseCharacter::TryPickupItem_Internal(AItemBase* ItemActor)
 	return false;
 }
 
-void ABaseCharacter::Server_UnequipCurrentItem_Implementation()
-{
-	UnequipCurrentItem();
-}
-
 bool ABaseCharacter::UseEquippedItem(float ActionValue)
 {
 	LOG_Item_WARNING(TEXT("아이템 사용 : %f"), ActionValue);
+
+	if (ActionValue >= 0.5f)
+	{
+		bIsUsingItem = true;
+	}
+	else
+	{
+		bIsUsingItem = false;
+	}
 	if (bIsMantling || bIsReloading)
 	{
 		return true;
@@ -2870,8 +2810,8 @@ bool ABaseCharacter::UseEquippedItem(float ActionValue)
 				UnequipCurrentItem();
 				ToolbarInventoryComponent->EquippedItemComponent->DestroyChildActor();
 				bIsSpawnDrone = true;
-				RefreshOverlayObject(50); 
-				Multicast_RefreshOverlayObject(50);
+				RefreshOverlayObject(); 
+				Multicast_RefreshOverlayObject();
 				return true;
 			}
 		}
@@ -2962,7 +2902,7 @@ void ABaseCharacter::DropCurrentItem()
 	DropItemAtSlot(CurrentSlotIndex, 1);
 
 	// 장착 해제 및 UI 새로고침
-	RefreshOverlayObject(0);
+	RefreshOverlayObject();
 }
 
 void ABaseCharacter::DropItemAtSlot(int32 SlotIndex, int32 Quantity)
