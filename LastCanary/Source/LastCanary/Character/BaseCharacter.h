@@ -264,9 +264,6 @@ public:
 	TArray<FVector2D> RecoilPattern;
 
 	// 반동 상태 변수들
-
-	//void ApplyRecoilStep();
-	//void CameraShake(float Vertical, float Horizontal);
 	void ApplyRecoil(float Vertical, float Horizontal);
 	void RecoverFromRecoil();
 	void ApplySmoothRecoil(float Vertical, float Horizontal);
@@ -641,10 +638,13 @@ public:
 	void Server_UnequipCurrentItem_Implementation();
 
 	UFUNCTION(BlueprintCallable, Category = "Equipment")
-	bool UseEquippedItem(float ActionValue);
+	void UseEquippedItem(float ActionValue);
 	UFUNCTION(Server, Reliable)
 	void Server_UseEquippedItem(float ActionValue);
 	void Server_UseEquippedItem_Implementation(float ActionValue);
+
+	void UseItemByItem(AItemBase* Item);
+	void CancelUseItem(AItemBase* Item);
 
 public:
 	/** 인벤토리 UI를 토글합니다 */

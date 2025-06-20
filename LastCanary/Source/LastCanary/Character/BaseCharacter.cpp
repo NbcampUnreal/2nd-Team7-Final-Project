@@ -355,7 +355,6 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
 	if (!EquippedItem)
 	{
-		//LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 현재 장착된 아이템이 없습니다."));
 		return;
 	}
 	if (bIsSprinting || bIsReloading || bIsClose || bIsMantling)
@@ -591,7 +590,7 @@ void ABaseCharacter::ApplyRecoil(float Vertical, float Horizontal)
 	// 연사 리셋 타이머
 	GetWorld()->GetTimerManager().ClearTimer(ShotResetTimer);
 	GetWorld()->GetTimerManager().SetTimer(ShotResetTimer, this,
-		&ABaseCharacter::ResetShotCounter, 0.3f, false);
+		&ABaseCharacter::ResetShotCounter, 0.5f, false);
 }
 
 void ABaseCharacter::RecoverFromRecoil()
@@ -800,62 +799,6 @@ bool ABaseCharacter::HasActiveRecoil() const
 {
 	return !AccumulatedRecoil.IsNearlyZero(0.01f);
 }
-
-
-/*
-void ABaseCharacter::CameraShake(float Vertical, float Horizontal)
-{
-	// 새로운 반동량을 기존 값에 누적
-	RecoilStepPitch += Vertical / RecoilMaxSteps;
-	RecoilStepYaw += FMath::RandRange(-Horizontal, Horizontal) / RecoilMaxSteps;
-
-	// 타이머가 안 돌고 있을 때만 시작
-	if (!GetWorld()->GetTimerManager().IsTimerActive(RecoilTimerHandle))
-	{
-		RecoilStep = 0;
-		GetWorld()->GetTimerManager().SetTimer(RecoilTimerHandle, this, &ABaseCharacter::ApplyRecoilStep, 0.02f, true);
-	}
-}
-
-void ABaseCharacter::ApplyRecoilStep()
-{
-	if (!Controller) return;
-
-	FRotator ControlRotation = Controller->GetControlRotation();
-	float CurrentPitch = ControlRotation.Pitch;
-
-	// Unreal에서는 Pitch가 0~360도로 표현될 수 있으므로 정규화
-	if (CurrentPitch > 180.f)
-		CurrentPitch -= 360.f;
-
-	// Pitch 제한 확인
-	if (CurrentPitch + RecoilStepPitch < MaxPitchAngle)
-	{
-		AddControllerPitchInput(RecoilStepPitch);
-	}
-	else
-	{
-		// 최대 각도를 초과하지 않도록 필요한 만큼만 보정하여 추가
-		float RemainingPitch = MaxPitchAngle - CurrentPitch;
-		if (RemainingPitch > 0.0f)
-		{
-			AddControllerPitchInput(RemainingPitch);
-		}
-	}
-
-	// Yaw는 제한 없이 계속 적용
-	AddControllerYawInput(RecoilStepYaw);
-
-	RecoilStep++;
-
-	if (RecoilStep >= RecoilMaxSteps)
-	{
-		RecoilStepPitch = 0.0f;
-		RecoilStepYaw = 0.0f;
-		GetWorld()->GetTimerManager().ClearTimer(RecoilTimerHandle);
-	}
-}
-*/
 
 void ABaseCharacter::Handle_Look(const FInputActionValue& ActionValue)
 {
@@ -2742,10 +2685,8 @@ bool ABaseCharacter::TryPickupItem_Internal(AItemBase* ItemActor)
 	return false;
 }
 
-bool ABaseCharacter::UseEquippedItem(float ActionValue)
+void ABaseCharacter::UseEquippedItem(float ActionValue)
 {
-	LOG_Item_WARNING(TEXT("아이템 사용 : %f"), ActionValue);
-
 	if (ActionValue >= 0.5f)
 	{
 		bIsUsingItem = true;
@@ -2754,110 +2695,100 @@ bool ABaseCharacter::UseEquippedItem(float ActionValue)
 	{
 		bIsUsingItem = false;
 	}
-	if (bIsMantling || bIsReloading)
+	if (bIsMantling || bIsReloading || !IsEquipped() || !ToolbarInventoryComponent)
 	{
-		return true;
+		return;
 	}
-	if (!IsEquipped())
-	{
-		LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 장비 상태가 아닙니다."));
-		return false;
-	}
-
-	if (!ToolbarInventoryComponent)
-	{
-		LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 툴바 컴포넌트가 없습니다."));
-		return false;
-	}
-
 	if (GetLocalRole() < ROLE_Authority)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("서버가 아님"));
 		Server_UseEquippedItem(ActionValue);
-		return true;
+		return;
 	}
-
 	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
-	if (!EquippedItem)
+	if (!IsValid(EquippedItem))
 	{
-		LOG_Item_WARNING(TEXT("[ABaseCharacter::UseEquippedItem] 현재 장착된 아이템이 없습니다."));
-		return false;
+		return;
 	}
-
 	if (ActionValue >= 0.5f)
 	{
-
-		if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Consumable")))
-		{
-			UseItemAfterPlayMontage(EquippedItem);
-			return true;
-		}
-
-		if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))
-		{
-			EquippedItem->UseItem();
-			ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
-			if (PC)
-			{
-				PC->SpawnDrone();
-				//현재 들고 있는 인벤토리에서 제거하기
-
-				ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].ItemRowName = "Default";
-				ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].Quantity = 1;
-				ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].Durability = 100;
-				ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].bIsEquipped = false;
-				ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].bIsValid = true;
-				UnequipCurrentItem();
-				ToolbarInventoryComponent->EquippedItemComponent->DestroyChildActor();
-				bIsSpawnDrone = true;
-				RefreshOverlayObject(); 
-				Multicast_RefreshOverlayObject();
-				return true;
-			}
-		}
-
-		if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
-		{
-			if (bIsSprinting)
-			{
-				return true;
-			}
-			if (IsDesiredAiming() == false)
-			{
-				UE_LOG(LogTemp, Warning, TEXT("조준하세요"));
-				return true;
-			}
-		}
-		UE_LOG(LogTemp, Warning, TEXT("UseItem"));
-		EquippedItem->UseItem();
-		bIsUsingItem = true;
-		return true;
+		UseItemByItem(EquippedItem);
 	}
 	else
 	{
-		bIsUsingItem = false;
-		if (EquippedItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.WalkieTalkie")))
-		{
-			EquippedItem->UseItem();
-		}
-		AGunBase* Rifle = Cast<AGunBase>(EquippedItem);
-		if (!IsValid(Rifle))
-		{
-			return false;
-		}
-		if (Rifle->CurrentFireMode == EFireMode::FullAuto)
-		{
-			Rifle->StopAutoFire();
-		}
-		return true;
+		CancelUseItem(EquippedItem);
 	}
-	
 }
 
 void ABaseCharacter::Server_UseEquippedItem_Implementation(float ActionValue)
 {
-	UE_LOG(LogTemp, Warning, TEXT("서버 RPC"));
 	UseEquippedItem(ActionValue);
+}
+
+void ABaseCharacter::UseItemByItem(AItemBase* Item)
+{
+	FGameplayTag ItemGameplayTag = Item->ItemData.ItemType;
+	if (ItemGameplayTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Consumable")))
+	{
+		UseItemAfterPlayMontage(Item);
+		return;
+	}
+
+	if (ItemGameplayTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))
+	{
+		Item->UseItem();
+		ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+		if (PC)
+		{
+			PC->SpawnDrone();
+			//현재 들고 있는 인벤토리에서 제거하기
+
+			//*  이거 삭제하고 싶은데, 제거하는 함수가 있나? *//
+			ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].ItemRowName = "Default";
+			ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].Quantity = 1;
+			ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].Durability = 100;
+			ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].bIsEquipped = false;
+			ToolbarInventoryComponent->ItemSlots[ToolbarInventoryComponent->GetCurrentEquippedSlotIndex()].bIsValid = true;
+
+			//UnequipCurrentItem(); << 없어도 되는 거 같은데, 그래도 혹시 몰라서..
+			ToolbarInventoryComponent->EquippedItemComponent->DestroyChildActor();
+			bIsSpawnDrone = true;
+			RefreshOverlayObject();
+			Multicast_RefreshOverlayObject();
+			return;
+		}
+	}
+
+	if (ItemGameplayTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
+	{
+		if (bIsSprinting)
+		{
+			return;
+		}
+		if (IsDesiredAiming() == false)
+		{
+			return;
+		}
+	}
+	UE_LOG(LogTemp, Warning, TEXT("UseItem"));
+	Item->UseItem();
+}
+
+void ABaseCharacter::CancelUseItem(AItemBase* Item)
+{
+	FGameplayTag ItemGameplayTag = Item->ItemData.ItemType;
+	if (ItemGameplayTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.WalkieTalkie")))
+	{
+		Item->UseItem();
+	}
+	AGunBase* Rifle = Cast<AGunBase>(Item);
+	if (!IsValid(Rifle))
+	{
+		return;
+	}
+	if (Rifle->CurrentFireMode == EFireMode::FullAuto)
+	{
+		Rifle->StopAutoFire();
+	}
 }
 
 void ABaseCharacter::ToggleInventory()
