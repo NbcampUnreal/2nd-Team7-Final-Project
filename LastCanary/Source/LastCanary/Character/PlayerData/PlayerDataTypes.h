@@ -91,7 +91,7 @@ public:
     float WeightSlowdownMultiplier = 50.0f;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spirit")
-    float MaxSpirit = 100.0f
+    float MaxSpirit = 100.0f;
 };
 
 // ------------------------------
