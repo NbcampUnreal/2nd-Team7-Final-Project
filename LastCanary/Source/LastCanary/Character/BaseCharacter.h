@@ -25,6 +25,16 @@ class AResourceNode;
 class UWidgetComponent;
 class UPlayerNameWidget;
 
+
+UENUM(BlueprintType)
+enum class EAnimationType : uint8
+{
+	None UMETA(DisplayName = "None"),
+	UseItem UMETA(DisplayName = "아이템 사용"),
+	Interaction UMETA(DisplayName = "상호작용")
+	// 필요한 상태 더 추가
+};
+
 UCLASS()
 class LASTCANARY_API ABaseCharacter : public AAlsCharacter, public IGimmickDebuffInterface, public IGameplayTagAssetInterface
 {
@@ -413,12 +423,12 @@ public:
 	void OnInteractAnimationNotified();
 
 	UFUNCTION(Server, Unreliable)
-	void Server_PlayMontage(UAnimMontage* MontageToPlay);
-	void Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay);
+	void Server_PlayMontage(UAnimMontage* MontageToPlay, EAnimationType Animtype);
+	void Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay, EAnimationType Animtype);
 
 	UFUNCTION(NetMulticast, Unreliable)
-	void Multicast_PlayMontage(UAnimMontage* MontageToPlay);
-	void Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay);
+	void Multicast_PlayMontage(UAnimMontage* MontageToPlay, EAnimationType Animtype);
+	void Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay, EAnimationType Animtype);
 
 	UPROPERTY()
 	UAnimMontage* CurrentInteractMontage;
@@ -569,7 +579,11 @@ public:
 	void Client_SetMovementSetting_Implementation();
 
 	void SetMovementSetting();
-	TArray<float> CalculateMovementSpeedWithWeigth();
+
+	float SpeedMultiplier = 1.0f; // 0.0 ~ 1.0 범위
+	float CalculateMovementSpeedMultiplier();
+	float CalculateDebuffMultiplier();
+	float MaxWeight = 50.0f;
 	void ResetMovementSetting();
 
 	float FrontInput = 0.0f;
@@ -645,7 +659,7 @@ public:
 	void Server_UseEquippedItem(float ActionValue);
 	void Server_UseEquippedItem_Implementation(float ActionValue);
 
-	void UseItemByItem(AItemBase* Item);
+	void UseItem(AItemBase* Item);
 	void CancelUseItem(AItemBase* Item);
 
 public:
@@ -691,6 +705,10 @@ public:
 	/** 총 무게 가져오기 */
 	UFUNCTION(BlueprintPure, Category = "Character|Weight")
 	float GetTotalCarryingWeight() const;
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Client_OnInventoryWeightChanged(float NewWeight);
+	void Client_OnInventoryWeightChanged_Implementation(float NewWeight);
 
 protected:
 	/** 현재 총 무게 */
@@ -776,6 +794,9 @@ public:
 
 	virtual void OnRep_PlayerState() override;
 	void UpdateNameWidget(); // 위젯 업데이트용 함수
+	UFUNCTION(Server, Reliable)
+	void Server_UpdateNameWidget(); // 서버 위젯 업데이트용 함수
+	void Server_UpdateNameWidget_Implementation(); // 서버 위젯 업데이트용 함수
 
 	/** 머리 위에 표시할 3D 위젯 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")

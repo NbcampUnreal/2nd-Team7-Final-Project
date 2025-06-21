@@ -81,7 +81,7 @@ public:
 	float GetSprintSpeed();
 	void SetGaitSettings(float _WalkForwardSpeed, float _WalkBackwardSpeed, float _RunForwardSpeed, float _RunBackwardSpeed, float _SprintSpeed, float _CrouchSpeed);
 	void ResetGaitSettings();
-
+	void SetPlayerMovementSpeed(float CrouchSpeed, float WalkSpeed, float RunSpeed, float SprintSpeed);
 
 	float SprintSpeed{ 650.0f };
 

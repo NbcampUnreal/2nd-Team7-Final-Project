@@ -1613,11 +1613,6 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 		LOG_Char_WARNING(TEXT("태그는 Press"));
 		MontageToPlay = PressButtonMontage;
 	}
-	else if (InteractTargetActor->Tags.Contains("Crystal"))
-	{
-		LOG_Char_WARNING(TEXT("태그는 Crystal"));
-		MontageToPlay = PickAxeMontage;
-	}
 	else if (InteractTargetActor->Tags.Contains("GameplayTags"))
 	{
 		//게임플레이 태그가 있다면...
@@ -1626,7 +1621,7 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 	}
 	else
 	{
-		LOG_Char_WARNING(TEXT("태그가 없지만 원만한 진행을 위해 일단은 실행시킴."));
+		LOG_Char_WARNING(TEXT("태그가 없지만 원만한 테스트를 위해 일단은 실행시킴."));
 		MontageToPlay = InteractMontageOnUnderObject;
 		//당장 태그 없는 거 빠르게 테스트 하기 위해서 넣어놨습니다.
 		APlayerController* PC = Cast<APlayerController>(GetController());
@@ -1649,7 +1644,7 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 	}
 	CurrentInteractMontage = MontageToPlay;
 	bIsPlayingInteractionMontage = true;
-	Server_PlayMontage(MontageToPlay);
+	Server_PlayMontage(MontageToPlay, EAnimationType::Interaction);
 }
 
 void ABaseCharacter::CancelInteraction()
@@ -1705,12 +1700,12 @@ void ABaseCharacter::OnInteractAnimationNotified()
 	IInteractableInterface::Execute_Interact(InteractTargetActor, PC);
 }
 
-void ABaseCharacter::Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay)
+void ABaseCharacter::Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay, EAnimationType Animtype)
 {
-	Multicast_PlayMontage(MontageToPlay);
+	Multicast_PlayMontage(MontageToPlay, Animtype);
 }
 
-void ABaseCharacter::Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay)
+void ABaseCharacter::Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay, EAnimationType Animtype)
 {
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (!IsValid(AnimInstance))
@@ -1719,7 +1714,24 @@ void ABaseCharacter::Multicast_PlayMontage_Implementation(UAnimMontage* MontageT
 	}
 	AnimInstance->Montage_Play(MontageToPlay);
 	CurrentInteractMontage = MontageToPlay;
-	bIsPlayingInteractionMontage = true;
+	
+	switch (Animtype)
+	{
+	case EAnimationType::Interaction:
+	{
+		bIsPlayingInteractionMontage = true;
+		break;
+	}
+	case EAnimationType::UseItem:
+	{
+		bIsPlayingUseItemMontage = true;
+		break;
+	}
+	default:
+	{
+		break;
+	}
+	}
 }
 
 void ABaseCharacter::UseItemAfterPlayMontage(AItemBase* EquippedItem)
@@ -1735,9 +1747,15 @@ void ABaseCharacter::UseItemAfterPlayMontage(AItemBase* EquippedItem)
 	{
 		MontageToPlay = UsingBandageMontage;
 	}
+	else if (CurrentUsingItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Tool.Pickaxe")))
+	{
+		MontageToPlay = PickAxeMontage;
+	}
 	else
 	{
 		LOG_Char_WARNING(TEXT("태그가 없음"));
+		//태그가 없으면 바로 실행
+		EquippedItem->UseItem();
 		return;
 	}
 	if (!IsValid(MontageToPlay))
@@ -1745,10 +1763,10 @@ void ABaseCharacter::UseItemAfterPlayMontage(AItemBase* EquippedItem)
 		LOG_Char_WARNING(TEXT("Anim Montage does not exist."));
 		return;
 	}
-	CurrentUseItemMontage = MontageToPlay;
+	CurrentUseItemMontage = MontageToPlay;	
 	bIsPlayingUseItemMontage = true;
 	LOG_Char_WARNING(TEXT("플레이 애니메이션."));
-	Server_PlayMontage(MontageToPlay);
+	Server_PlayMontage(MontageToPlay, EAnimationType::UseItem);
 }
 
 void ABaseCharacter::UseItemAnimationNotified()
@@ -2411,24 +2429,23 @@ void ABaseCharacter::Client_SetMovementSetting_Implementation()
 		LOG_Char_WARNING(TEXT("SetMovementSetting 클라이언트에서 스테이트 없음"));
 		return;
 	}
-
-	TArray<float> CalculatedSpeedArray = CalculateMovementSpeedWithWeigth();
-	if (CalculatedSpeedArray.Num() < 5)
-	{
-		LOG_Char_WARNING(TEXT("SetMovementSetting 클라이언트에서 스피드 배열도 이상함"));
-		return;
-	}
-
+	SpeedMultiplier = CalculateMovementSpeedMultiplier();
 
 	//스테이트에 바뀐 값 저장
-	MyPlayerState->WalkSpeed = CalculatedSpeedArray[0];
-	MyPlayerState->RunSpeed = CalculatedSpeedArray[1];
-	MyPlayerState->SprintSpeed = CalculatedSpeedArray[2];
-	MyPlayerState->CrouchSpeed = CalculatedSpeedArray[3];
-	MyPlayerState->JumpZVelocity = CalculatedSpeedArray[4];
+	float CruochSpeed = MyPlayerState->DefaultCrouchSpeed * SpeedMultiplier;
+	float WalkSpeed = MyPlayerState->DefaultWalkSpeed * SpeedMultiplier;
+	float RunSpeed = MyPlayerState->DefaultRunSpeed * SpeedMultiplier;
+	float SprintSpeed = MyPlayerState->DefaultSprintSpeed * SpeedMultiplier;
+	float JumpZVelocity = MyPlayerState->DefaultJumpZVelocity * SpeedMultiplier;
 
-	AlsCharacterMovement->SetGaitSettings(CalculatedSpeedArray[0], CalculatedSpeedArray[0], CalculatedSpeedArray[1], CalculatedSpeedArray[1], CalculatedSpeedArray[2], CalculatedSpeedArray[3]);
-	AlsCharacterMovement->JumpZVelocity = CalculatedSpeedArray[4];
+	MyPlayerState->CrouchSpeed = CruochSpeed;
+	MyPlayerState->WalkSpeed = WalkSpeed;
+	MyPlayerState->RunSpeed = RunSpeed;
+	MyPlayerState->SprintSpeed = SprintSpeed;
+	MyPlayerState->JumpZVelocity = JumpZVelocity;
+
+	AlsCharacterMovement->SetPlayerMovementSpeed(CruochSpeed, WalkSpeed, RunSpeed, SprintSpeed);
+	AlsCharacterMovement->JumpZVelocity = JumpZVelocity;
 	LOG_Char_WARNING(TEXT("SetMovementSetting 클라이언트에서 설정 완료"));
 }
 
@@ -2437,8 +2454,9 @@ void ABaseCharacter::SetMovementSetting()
 	LOG_Char_WARNING(TEXT("SetMovementSetting()"));
 	if (HasAuthority())
 	{
+		LOG_Char_WARNING(TEXT("무브먼트 세팅 서버임()"));
 		Client_SetMovementSetting();
-		return;
+		//return;
 	}
 	LOG_Char_WARNING(TEXT("SetMovementSetting() On Server"));
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
@@ -2448,53 +2466,54 @@ void ABaseCharacter::SetMovementSetting()
 		return;
 	}
 
-	TArray<float> CalculatedSpeedArray = CalculateMovementSpeedWithWeigth();
-	if (CalculatedSpeedArray.Num() < 5)
-	{
-		LOG_Char_WARNING(TEXT("스피드 배열 크기가 이상홤"));
-		return;
-	}
+	SpeedMultiplier = CalculateMovementSpeedMultiplier();
 
 	//스테이트에 바뀐 값 저장
-	MyPlayerState->WalkSpeed = CalculatedSpeedArray[0];
-	MyPlayerState->RunSpeed = CalculatedSpeedArray[1];
-	MyPlayerState->SprintSpeed = CalculatedSpeedArray[2];
-	MyPlayerState->CrouchSpeed = CalculatedSpeedArray[3];
-	MyPlayerState->JumpZVelocity = CalculatedSpeedArray[4];
+	float CruochSpeed = MyPlayerState->DefaultCrouchSpeed * SpeedMultiplier;
+	float WalkSpeed = MyPlayerState->DefaultWalkSpeed * SpeedMultiplier;
+	float RunSpeed = MyPlayerState->DefaultRunSpeed * SpeedMultiplier;
+	float SprintSpeed = MyPlayerState->DefaultSprintSpeed * SpeedMultiplier;
+	float JumpZVelocity = MyPlayerState->DefaultJumpZVelocity * SpeedMultiplier;
 
-	AlsCharacterMovement->SetGaitSettings(CalculatedSpeedArray[0], CalculatedSpeedArray[0], CalculatedSpeedArray[1], CalculatedSpeedArray[1], CalculatedSpeedArray[2], CalculatedSpeedArray[3]);
-	AlsCharacterMovement->JumpZVelocity = CalculatedSpeedArray[4];
-	LOG_Char_WARNING(TEXT("SetMovementSetting 서버에서 설정 완료"));
+	MyPlayerState->CrouchSpeed = CruochSpeed;
+	MyPlayerState->WalkSpeed = WalkSpeed;
+	MyPlayerState->RunSpeed = RunSpeed;
+	MyPlayerState->SprintSpeed = SprintSpeed;
+	MyPlayerState->JumpZVelocity = JumpZVelocity;
+
+	AlsCharacterMovement->SetPlayerMovementSpeed(CruochSpeed, WalkSpeed, RunSpeed, SprintSpeed);
+	AlsCharacterMovement->JumpZVelocity = JumpZVelocity;
+	
+	LOG_Char_WARNING(TEXT("SetMovementSetting 완료"));
 }
 
-TArray<float> ABaseCharacter::CalculateMovementSpeedWithWeigth()
+float ABaseCharacter::CalculateMovementSpeedMultiplier()
 {
-	LOG_Char_WARNING(TEXT("스피드 배열 크기 보는 중"));
-	TArray<float> Calculated;
+	LOG_Char_WARNING(TEXT("스피드 연산 중..."));
+	float Calculated = 1.0f;
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
 	{
 		return Calculated;
 	}
 	float MyWeight = GetTotalCarryingWeight() * MyPlayerState->WeightSlowdownMultiplier;
-	float CalculatedWalkSpeed = MyPlayerState->DefaultWalkSpeed - MyWeight;
-	float CalculatedRunSpeed = MyPlayerState->DefaultRunSpeed - MyWeight;
-	float CalculatedSprintSpeed = MyPlayerState->DefaultSprintSpeed - MyWeight;
-	float CalculatedCrouchSpeed = MyPlayerState->DefaultCrouchSpeed - MyWeight / 2;
-	float CalculatedJumpZVelocity = MyPlayerState->DefaultJumpZVelocity - MyWeight / 5;
-
-	Calculated.Add(CalculatedWalkSpeed);
-	Calculated.Add(CalculatedRunSpeed);
-	Calculated.Add(CalculatedSprintSpeed);
-	Calculated.Add(CalculatedCrouchSpeed);
-	Calculated.Add(CalculatedJumpZVelocity);
-	LOG_Char_WARNING(TEXT("계산한 속도 값 리턴"));	
+	float WeightFactor = FMath::Clamp(1 - MyWeight / MaxWeight, 0.0f, 1.0f);
+	float MyDebuff = CalculateDebuffMultiplier();
+	float DebuffFactor = FMath::Clamp(MyDebuff, 0.0f, 1.0f);
+	Calculated = 1.0f * WeightFactor * DebuffFactor;
+	LOG_Char_WARNING(TEXT("계산한 속도 계수 리턴 : %f"), Calculated);
 	return Calculated;
 }
 
 void ABaseCharacter::ResetMovementSetting()
 {
 	AlsCharacterMovement->ResetGaitSettings();
+}
+
+float ABaseCharacter::CalculateDebuffMultiplier()
+{
+	//TODO: 디버프 계산식
+	return 1.0f;
 }
 
 void ABaseCharacter::Multicast_RefreshOverlayObject_Implementation()
@@ -2532,6 +2551,7 @@ void ABaseCharacter::RefreshOverlayObject()
 		AttachOverlayObject(RCController, NULL, NULL, "DroneController", true);
 		return;
 	}
+
 	if (!IsValid(CurrentItem))
 	{
 		//아이템이 없으면, 기본 애니메이션 지정 및 소켓에 달려있는 거 삭제
@@ -2539,9 +2559,7 @@ void ABaseCharacter::RefreshOverlayObject()
 		SetOverlayMode(AlsOverlayModeTags::Default);
 		RefreshOverlayLinkedAnimationLayer(3);
 		AttachOverlayObject(NULL, NULL, NULL, "Torch", true);
-
 		LOG_Char_WARNING(TEXT("Character Equipped None"));
-
 		return;
 	}
 	//아이템이 있을 때	
@@ -2634,11 +2652,6 @@ void ABaseCharacter::AttachOverlayObject(UStaticMesh* NewStaticMesh, USkeletalMe
 	OverlayStaticMesh->SetStaticMesh(NewStaticMesh);
 	OverlayStaticMesh->AttachToComponent(GetMesh(), AttachRules, ResultSocketName);
 	OverlaySkeletalMesh->SetSkinnedAssetAndUpdate(NewSkeletalMesh, true);
-	
-
-	//RemoteOnlyEquippedItemComponent->SetMesh()
-	//RemoteOnlyEquippedItemComponent->AttachToComponent(RemoteOnlySkeletalMesh, AttachRules, ResultSocketName);
-	//RemoteOnlyOverlayStaticMesh->SetAnimInstanceClass(NewAnimationClass);
 }
 
 void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(int index)
@@ -2791,7 +2804,7 @@ void ABaseCharacter::UseEquippedItem(float ActionValue)
 	}
 	if (ActionValue >= 0.5f)
 	{
-		UseItemByItem(EquippedItem);
+		UseItem(EquippedItem);
 	}
 	else
 	{
@@ -2804,14 +2817,9 @@ void ABaseCharacter::Server_UseEquippedItem_Implementation(float ActionValue)
 	UseEquippedItem(ActionValue);
 }
 
-void ABaseCharacter::UseItemByItem(AItemBase* Item)
+void ABaseCharacter::UseItem(AItemBase* Item)
 {
 	FGameplayTag ItemGameplayTag = Item->ItemData.ItemType;
-	if (ItemGameplayTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Consumable")))
-	{
-		UseItemAfterPlayMontage(Item);
-		return;
-	}
 
 	if (ItemGameplayTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))
 	{
@@ -2849,8 +2857,8 @@ void ABaseCharacter::UseItemByItem(AItemBase* Item)
 			return;
 		}
 	}
-	UE_LOG(LogTemp, Warning, TEXT("UseItem"));
-	Item->UseItem();
+
+	UseItemAfterPlayMontage(Item);
 }
 
 void ABaseCharacter::CancelUseItem(AItemBase* Item)
@@ -2986,9 +2994,9 @@ void ABaseCharacter::OnInventoryWeightChanged(float WeightDifference)
 
 	float OldWeight = CurrentTotalWeight;
 	CurrentTotalWeight = NewTotalWeight;
-
 	LOG_Item_WARNING(TEXT("[OnInventoryWeightChanged] 총 무게: %.2f -> %.2f"),
 		OldWeight, NewTotalWeight);
+	Client_OnInventoryWeightChanged(CurrentTotalWeight);
 
 	//// 블루프린트에서 UI 업데이트나 이동속도 조절 처리
 	//OnWeightChanged(OldWeight, NewTotalWeight);
@@ -2998,6 +3006,11 @@ void ABaseCharacter::OnInventoryWeightChanged(float WeightDifference)
 		SetMovementSetting();
 		UE_LOG(LogTemp, Warning, TEXT("플레이어 무브먼트 세팅 초기화 성공"));
 	}
+}
+
+void ABaseCharacter::Client_OnInventoryWeightChanged_Implementation(float NewWeight)
+{
+	CurrentTotalWeight = NewWeight;
 }
 
 float ABaseCharacter::GetTotalCarryingWeight() const
@@ -3232,7 +3245,7 @@ void ABaseCharacter::Client_SetWalkieTalkieChannelStatus_Implementation(bool bAc
 void ABaseCharacter::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
-	UE_LOG(LogTemp, Warning, TEXT("[OnRep_PlayerState] for %s"), *GetName());
+	LOG_Char_WARNING(TEXT("[OnRep_PlayerState] for %s"), *GetName());
 
 	UpdateNameWidget(); // PlayerState가 복제될 때 UI 갱신
 	
@@ -3244,18 +3257,18 @@ void ABaseCharacter::OnRep_PlayerState()
 
 void ABaseCharacter::UpdateNameWidget()
 {
-	UE_LOG(LogTemp, Warning, TEXT("[UpdateNameWidget] Called on %s"), *GetName());
+	LOG_Char_WARNING(TEXT("[UpdateNameWidget] Called on %s"), *GetName());
 
 	if (!NameWidgetComponent)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[UpdateNameWidget] NameWidgetComponent is NULL"));
+		LOG_Char_WARNING(TEXT("[UpdateNameWidget] NameWidgetComponent is NULL"));
 		return;
 	}
 
 	UUserWidget* Widget = NameWidgetComponent->GetWidget();
 	if (!Widget)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[UpdateNameWidget] Widget is NULL"));
+		LOG_Char_WARNING(TEXT("[UpdateNameWidget] Widget is NULL"));
 		return;
 	}
 
@@ -3264,12 +3277,47 @@ void ABaseCharacter::UpdateNameWidget()
 		APlayerState* PS = GetPlayerState();
 		if (!PS)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("[UpdateNameWidget] PlayerState is NULL"));
+			LOG_Char_WARNING(TEXT("[UpdateNameWidget] PlayerState is NULL"));
 			return;
 		}
 
 		const FString Name = PS->GetPlayerName();
-		UE_LOG(LogTemp, Warning, TEXT("[UpdateNameWidget] PlayerState name = %s"), *Name);
+		LOG_Char_WARNING(TEXT("[UpdateNameWidget] PlayerState name = %s"), *Name);
+
+		NameWidget->SetPlayerName(Name);
+	}
+	Server_UpdateNameWidget();
+
+}
+
+void ABaseCharacter::Server_UpdateNameWidget_Implementation()
+{
+	LOG_Char_WARNING(TEXT("[UpdateNameWidget] Called on Server:: %s"), *GetName());
+
+	if (!NameWidgetComponent)
+	{
+		LOG_Char_WARNING(TEXT("[UpdateNameWidget] NameWidgetComponent is NULL"));
+		return;
+	}
+
+	UUserWidget* Widget = NameWidgetComponent->GetWidget();
+	if (!Widget)
+	{
+		LOG_Char_WARNING(TEXT("[UpdateNameWidget] Widget is NULL"));
+		return;
+	}
+
+	if (UPlayerNameWidget* NameWidget = Cast<UPlayerNameWidget>(Widget))
+	{
+		APlayerState* PS = GetPlayerState();
+		if (!PS)
+		{
+			LOG_Char_WARNING(TEXT("[UpdateNameWidget] PlayerState is NULL"));
+			return;
+		}
+
+		const FString Name = PS->GetPlayerName();
+		LOG_Char_WARNING(TEXT("[UpdateNameWidget] PlayerState name = %s"), *Name);
 
 		NameWidget->SetPlayerName(Name);
 	}
