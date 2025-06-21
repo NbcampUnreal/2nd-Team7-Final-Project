@@ -29,18 +29,23 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	float MaxHP{ InitialStats.MaxHP };
 
+	// 기본값 = 175.0f
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	float DefaultWalkSpeed{ InitialStats.WalkSpeed };
 
+	// 기본값 = 375.0f
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	float DefaultRunSpeed{ InitialStats.RunSpeed };
 
+	// 기본값 = 650.0f
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	float DefaultSprintSpeed{ InitialStats.SptintSpeed };
 
+	// 기본값 = 150.f
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	float DefaultCrouchSpeed{ InitialStats.CrouchSpeed };
 
+	// 기본값 = 450.0f
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	float DefaultJumpZVelocity{ InitialStats.JumpPower };
 
@@ -242,4 +247,6 @@ public:
 	const TMap<FName, int32>& GetCollectedResourceMap() const;
 
 	void ClearCollectedResources();
+
+	float GetMaxWeight() const;
 };
