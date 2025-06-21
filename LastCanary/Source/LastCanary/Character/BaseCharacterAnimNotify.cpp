@@ -35,11 +35,10 @@ void UBaseCharacterAnimNotify::Notify(USkeletalMeshComponent* MeshComp, UAnimSeq
         }
         break;
     case ECharacterNotifyType::ItemUse:
-        if (!Player->IsLocallyControlled())
+        if (Player->HasAuthority())
         {
-            return;
+            Player->UseItemAnimationNotified();
         }
-        Player->UseItemAnimationNotified();
         break;
     case ECharacterNotifyType::Reload:
         Player->GunReloadAnimationNotified();

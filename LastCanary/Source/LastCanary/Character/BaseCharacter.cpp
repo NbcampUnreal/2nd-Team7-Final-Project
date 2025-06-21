@@ -1593,51 +1593,61 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 {
 	UAnimMontage* MontageToPlay = nullptr;
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	InteractTargetActor = TargetActor;
 	if (!IsValid(AnimInstance))
 	{
 		return;
 	}
-	InteractTargetActor = TargetActor;
-	if (InteractTargetActor->Tags.Contains("Roll"))
+	if (InteractTargetActor->IsA<AItemBase>())
 	{
-		LOG_Char_WARNING(TEXT("태그는 Roll"));
-		MontageToPlay = OpeningValveMontage;
-	}
-	else if (InteractTargetActor->Tags.Contains("Kick"))
-	{
-		LOG_Char_WARNING(TEXT("태그는 Kick"));
-		MontageToPlay = KickMontage;
-	}
-	else if (InteractTargetActor->Tags.Contains("Press"))
-	{
-		LOG_Char_WARNING(TEXT("태그는 Press"));
-		MontageToPlay = PressButtonMontage;
-	}
-	else if (InteractTargetActor->Tags.Contains("GameplayTags"))
-	{
-		//게임플레이 태그가 있다면...
-		//TODO: 게임플레이 태그 읽어오기.
-		//게임 플레이 태그는 직접 액터에서 구현하고 Get 함수를 만들어줘야 가능
+		AItemBase* Item = Cast<AItemBase>(InteractTargetActor);
+
+		if (!IsValid(Item))
+		{
+			return;
+		}
+		MontageToPlay = InteractMontageOnUnderObject;
 	}
 	else
 	{
-		LOG_Char_WARNING(TEXT("태그가 없지만 원만한 테스트를 위해 일단은 실행시킴."));
-		MontageToPlay = InteractMontageOnUnderObject;
-		//당장 태그 없는 거 빠르게 테스트 하기 위해서 넣어놨습니다.
-		APlayerController* PC = Cast<APlayerController>(GetController());
-		if (!IsValid(PC))
+		if (InteractTargetActor->Tags.Contains("Roll"))
+		{
+			LOG_Char_WARNING(TEXT("태그는 Roll"));
+			MontageToPlay = OpeningValveMontage;
+		}
+		else if (InteractTargetActor->Tags.Contains("Kick"))
+		{
+			LOG_Char_WARNING(TEXT("태그는 Kick"));
+			MontageToPlay = KickMontage;
+		}
+		else if (InteractTargetActor->Tags.Contains("Press"))
+		{
+			LOG_Char_WARNING(TEXT("태그는 Press"));
+			MontageToPlay = PressButtonMontage;
+		}
+		else if (InteractTargetActor->Tags.Contains("Test"))
+		{
+			MontageToPlay = InteractMontageOnUnderObject;
+			//당장 태그 없는 거 빠르게 테스트 하기 위해서 넣어놨습니다.
+			APlayerController* PC = Cast<APlayerController>(GetController());
+			if (!IsValid(PC))
+			{
+				return;
+			}
+			if (!IsValid(InteractTargetActor))
+			{
+				return;
+			}
+			LOG_Char_WARNING(TEXT("excute interact For Test"));
+			IInteractableInterface::Execute_Interact(InteractTargetActor, PC);
+			return;
+		}
+		else
 		{
 			return;
 		}
-		if (!IsValid(InteractTargetActor))
-		{
-			return;
-		}
-		LOG_Char_WARNING(TEXT("excute interact"));
-		IInteractableInterface::Execute_Interact(InteractTargetActor, PC);
-		return;
-		//
 	}
+	
 	if (!IsValid(MontageToPlay))
 	{
 		return;
@@ -1771,6 +1781,7 @@ void ABaseCharacter::UseItemAfterPlayMontage(AItemBase* EquippedItem)
 
 void ABaseCharacter::UseItemAnimationNotified()
 {
+	LOG_Char_WARNING(TEXT("애니메이션 재생 후 아이템 사용됨"));
 	//재생 후 notify로
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (!IsValid(PC))
@@ -1782,6 +1793,8 @@ void ABaseCharacter::UseItemAnimationNotified()
 		return;
 	}
 	bIsPlayingUseItemMontage = false;
+	LOG_Char_WARNING(TEXT("애니메이션 재생 후 아이템 사용됨"));
+
 	CurrentUsingItem->UseItem();
 }
 
