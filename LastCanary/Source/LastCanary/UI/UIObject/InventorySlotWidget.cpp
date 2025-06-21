@@ -2,6 +2,7 @@
 #include "UI/UIObject/InventoryWidgetBase.h"
 #include "UI/UIObject/BackpackSlotWidget.h"
 #include "Inventory/ToolbarInventoryComponent.h"
+#include "Inventory/InventoryUtility.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Components/TextBlock.h"
@@ -121,6 +122,17 @@ void UInventorySlotWidget::NativeOnDragDetected(const FGeometry& InGeometry, con
 {
 	// 만일 블루프린트에서 효과를 추가하려면
 	// OnSlotDragStarted();
+	if (UInventoryUtility::IsDefaultItem(ItemData.ItemRowName, InventoryComponent ? InventoryComponent->GetInventoryConfig() : nullptr))
+	{
+		OutOperation = nullptr;
+		return;
+	}
+
+	if (ItemData.Quantity <= 0)
+	{
+		OutOperation = nullptr;
+		return;
+	}
 
 	UDragDropOperation* DragOp = NewObject<UDragDropOperation>();
 
