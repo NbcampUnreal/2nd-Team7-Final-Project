@@ -1,6 +1,7 @@
 #include "UI/UIObject/BackpackSlotWidget.h"
 #include "UI/UIElement/InventoryMainWidget.h"
 #include "Inventory/ToolbarInventoryComponent.h"
+#include "Inventory/InventoryUtility.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Components/PanelWidget.h"
 #include "LastCanary.h"
@@ -67,6 +68,18 @@ bool UBackpackSlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FDragD
 
 void UBackpackSlotWidget::NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation)
 {
+    if (UInventoryUtility::IsDefaultItem(ItemData.ItemRowName, InventoryComponent ? InventoryComponent->GetInventoryConfig() : nullptr))
+    {
+        OutOperation = nullptr;
+        return;
+    }
+
+    if (ItemData.Quantity <= 0)
+    {
+        OutOperation = nullptr;
+        return;
+    }
+
     UDragDropOperation* DragOp = NewObject<UDragDropOperation>();
 
     // 가방 슬롯용 드래그 비주얼 생성
