@@ -453,7 +453,7 @@ bool UBackpackManager::ConvertBackpackSlotToItemData(int32 BackpackSlotIndex, in
     // 단순히 데이터 변환만
     OutItemData.ItemRowName = BackpackSlot.ItemRowName;
     OutItemData.Quantity = Quantity;
-    OutItemData.Durability = 100.0f;
+    OutItemData.Durability = 0.0f;
     OutItemData.bIsValid = true;
     OutItemData.bIsEquipped = false;
     OutItemData.bIsBackpack = false;
