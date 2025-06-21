@@ -17,7 +17,7 @@ struct FBaseItemSlotData
     int32 Quantity = 1;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    int32 Durability = 100;
+    float Durability = 0.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     bool bIsEquipped = false;

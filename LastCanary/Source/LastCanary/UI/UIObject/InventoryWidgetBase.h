@@ -70,6 +70,7 @@ protected:
 
     /** 툴팁 위치 업데이트 */
     void UpdateTooltipPosition();
+    FVector2D CalculateTooltipScreenPosition() const;
 
     /** 공유 툴팁 위젯 생성 */
     void CreateSharedTooltipWidget();
