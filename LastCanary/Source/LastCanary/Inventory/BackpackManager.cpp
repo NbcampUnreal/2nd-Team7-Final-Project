@@ -385,7 +385,7 @@ bool UBackpackManager::DropItemFromBackpack(int32 BackpackSlotIndex, int32 Quant
     }
 
     FBaseItemSlotData ItemData;
-    if (!ConvertBackpackSlotToItemData(BackpackSlotIndex, Quantity, ItemData))
+    if (!ConvertBackpackSlotToItemData(BackpackSlotIndex, 1, ItemData))
     {
         return false;
     }
@@ -398,10 +398,15 @@ bool UBackpackManager::DropItemFromBackpack(int32 BackpackSlotIndex, int32 Quant
 
     FVector DropLocation = UInventoryDropSystem::CalculateDropLocation(OwnerInventory->GetOwner(), OwnerInventory->GetInventoryConfig());
 
-    AItemBase* DroppedItem = ItemSpawner->CreateItemFromData(ItemData, DropLocation);
-    if (!DroppedItem)
+    for (int32 i = 0; i < Quantity; ++i)
     {
-        return false;
+        ItemData.Quantity = 1;
+
+        AItemBase* DroppedItem = ItemSpawner->CreateItemFromData(ItemData, DropLocation);
+        if (!DroppedItem)
+        {
+            LOG_Item_WARNING(TEXT("[DropItemFromBackpack] 아이템 생성 실패: %s (%d/%d)"), *ItemData.ItemRowName.ToString(), i + 1, Quantity);
+        }
     }
 
     FBaseItemSlotData& BackpackOwnerSlot = OwnerInventory->ItemSlots[CurrentBackpackSlotIndex];
@@ -417,6 +422,8 @@ bool UBackpackManager::DropItemFromBackpack(int32 BackpackSlotIndex, int32 Quant
     OwnerInventory->UpdateWeight();
     OwnerInventory->UpdateWalkieTalkieChannelStatus();
     OwnerInventory->OnInventoryUpdated.Broadcast();
+
+    LOG_Item_WARNING(TEXT("[DropItemFromBackpack] 백팩 드롭 완료: %s x%d"), *ItemData.ItemRowName.ToString(), Quantity);
 
     return true;
 }
