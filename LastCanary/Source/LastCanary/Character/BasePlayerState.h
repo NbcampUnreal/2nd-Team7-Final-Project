@@ -29,18 +29,23 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	float MaxHP{ InitialStats.MaxHP };
 
+	// 기본값 = 175.0f
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	float DefaultWalkSpeed{ InitialStats.WalkSpeed };
 
+	// 기본값 = 375.0f
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	float DefaultRunSpeed{ InitialStats.RunSpeed };
 
+	// 기본값 = 650.0f
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	float DefaultSprintSpeed{ InitialStats.SptintSpeed };
 
+	// 기본값 = 150.f
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	float DefaultCrouchSpeed{ InitialStats.CrouchSpeed };
 
+	// 기본값 = 450.0f
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	float DefaultJumpZVelocity{ InitialStats.JumpPower };
 
@@ -102,6 +107,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	float JumpStaminaCost{ InitialStats.JumpStaminaCost };
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float MaxSpirit{ InitialStats.MaxSpirit };
+
 	//InputMode
 	//인풋모드 변경(Toggle, Hold)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InputSettings")
@@ -125,6 +133,14 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SoundSettings")
 	float CrouchingFootSoundModifier = 0.2f;
+
+public:
+	UPROPERTY(Replicated, BlueprintReadWrite)
+	FString PlayerInGameName = "Default";
+
+	void SetPlayerInGameName(FString Name);
+	FString GetInGameName();
+
 
 public:
 	// State
@@ -159,6 +175,9 @@ public:
 	UPROPERTY(ReplicatedUsing = OnRep_CurrentStamina)
 	float CurrentStamina;
 
+	UPROPERTY(Replicated)
+	float CurrentSpirit;
+
 	UFUNCTION()
 	void OnRep_CurrentStamina();
 
@@ -167,9 +186,15 @@ public:
 
 	FORCEINLINE float GetStamina() const { return CurrentStamina; }
 	FORCEINLINE float GetHP() const { return CurrentHP; }
-
+	FORCEINLINE float GetSpirit() const { return CurrentSpirit; }
+	
 	void SetStamina(float NewStamina);
 	void SetHP(float NewHP);
+	void SetSpirit(float NewSpirit);
+	
+	UFUNCTION(Client, Reliable)
+	void Client_UpdateSpirit(float NewSpirit);
+	void Client_UpdateSpirit_Implementation(float NewSpirit);
 
 	UFUNCTION(Client, Reliable)
 	void Client_UpdateHP(float NewHP);
@@ -181,6 +206,7 @@ public:
 	void UpdateStaminaUI();
 	void UpdateDeathUI();
 	void UpdateExhaustedUI();
+	void UpdateSpiritUI();
 
 public:
 	// Gold & Exp
@@ -221,4 +247,6 @@ public:
 	const TMap<FName, int32>& GetCollectedResourceMap() const;
 
 	void ClearCollectedResources();
+
+	float GetMaxWeight() const;
 };

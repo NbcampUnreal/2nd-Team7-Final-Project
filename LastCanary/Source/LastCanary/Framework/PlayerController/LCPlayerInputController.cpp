@@ -18,6 +18,10 @@ void ALCPlayerInputController::BeginPlay()
 
 	}
 	//InitInputComponent();
+
+
+	DefaultMouseCursor = EMouseCursor::Default;
+	CurrentMouseCursor = EMouseCursor::Default;
 }
 
 void ALCPlayerInputController::InitInputComponent()
@@ -130,4 +134,18 @@ void ALCPlayerInputController::ApplyInputMappingContext(UInputMappingContext* IM
 			InputSubsystem->AddMappingContext(IMC, 0, Options);
 		}
 	}
+}
+
+void ALCPlayerInputController::OnUIClicked()
+{
+	UE_LOG(LogTemp, Warning, TEXT("컨트롤러에서 좌클릭 로직 실행됨"));
+	CurrentMouseCursor = EMouseCursor::Custom;
+	
+	// 여기서 게임 상태 변경, 사운드 재생 등 원하는 처리 가능
+}
+
+void ALCPlayerInputController::OnUIReleased()
+{
+	UE_LOG(LogTemp, Warning, TEXT("컨트롤러에서 좌클릭 떼는 로직 실행됨"));
+	CurrentMouseCursor = EMouseCursor::Default;
 }

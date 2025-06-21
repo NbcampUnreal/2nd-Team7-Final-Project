@@ -4,18 +4,22 @@
 #include "UI/UIObject/InventoryWidgetBase.h"
 #include "BackpackInventoryWidget.generated.h"
 
+class UTextBlock;
+class UProgressBar;
 class UGridPanel;
 class UBackpackSlotWidget;
-
 UCLASS()
 class LASTCANARY_API UBackpackInventoryWidget : public UInventoryWidgetBase
 {
 	GENERATED_BODY()
 
 public:
-
 	UPROPERTY(meta = (BindWidget))
 	UGridPanel* BackpackSlotPanel;
+    UPROPERTY(meta = (BindWidget))
+    UTextBlock* WeightText;
+    UPROPERTY(meta = (BindWidget))
+    UProgressBar* WeightProgressBar;
 
     /** 가방 슬롯 위젯 클래스 */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Widget Classes")

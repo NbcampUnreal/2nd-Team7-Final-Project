@@ -20,6 +20,10 @@ void USpectatorWidget::NativeConstruct()
 	{
 		NextKeyText->SetText(FText::FromString(GetDirectionalKeyName(IA_Move, +1.f))); // D 방향
 	}
+	if (PlayerName)
+	{
+		PlayerName->SetText(FText::FromString(FString::Printf(TEXT("%s"), TEXT("Default"))));
+	}
 }
 
 FString USpectatorWidget::GetDirectionalKeyName(UInputAction* InputAction, float DirectionThreshold) const
@@ -71,4 +75,12 @@ FString USpectatorWidget::GetDirectionalKeyName(UInputAction* InputAction, float
 	}
 
 	return TEXT("Unbound");
+}
+
+void USpectatorWidget::UpdatePlayerName(FString Name)
+{
+	if (PlayerName)
+	{
+		PlayerName->SetText(FText::FromString(Name));
+	}
 }
