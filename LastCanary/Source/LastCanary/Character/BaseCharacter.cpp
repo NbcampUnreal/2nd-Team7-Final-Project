@@ -1654,6 +1654,7 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 	}
 	CurrentInteractMontage = MontageToPlay;
 	bIsPlayingInteractionMontage = true;
+	bIsPlayingAnimation = true;
 	Server_PlayMontage(MontageToPlay, EAnimationType::Interaction);
 }
 
@@ -1669,6 +1670,7 @@ void ABaseCharacter::CancelInteraction()
 		return;
 	}
 	bIsPlayingInteractionMontage = false;
+	bIsPlayingAnimation = false;
 	AnimInstance->Montage_Stop(0.2f, CurrentInteractMontage); // 부드럽게 블렌드 아웃
 	Server_CancelInteraction();
 }
@@ -1690,6 +1692,7 @@ void ABaseCharacter::Multicast_CancelInteraction_Implementation()
 		return;
 	}
 	bIsPlayingInteractionMontage = false;
+	bIsPlayingAnimation = false;
 	AnimInstance->Montage_Stop(0.2f, CurrentInteractMontage); // 부드럽게 블렌드 아웃
 }
 
@@ -1707,6 +1710,7 @@ void ABaseCharacter::OnInteractAnimationNotified()
 		return;
 	}
 	bIsPlayingInteractionMontage = false;
+	bIsPlayingAnimation = false;
 	IInteractableInterface::Execute_Interact(InteractTargetActor, PC);
 }
 
@@ -1724,7 +1728,7 @@ void ABaseCharacter::Multicast_PlayMontage_Implementation(UAnimMontage* MontageT
 	}
 	AnimInstance->Montage_Play(MontageToPlay);
 	CurrentInteractMontage = MontageToPlay;
-	
+	bIsPlayingAnimation = true;
 	switch (Animtype)
 	{
 	case EAnimationType::Interaction:
@@ -1775,6 +1779,7 @@ void ABaseCharacter::UseItemAfterPlayMontage(AItemBase* EquippedItem)
 	}
 	CurrentUseItemMontage = MontageToPlay;	
 	bIsPlayingUseItemMontage = true;
+	bIsPlayingAnimation = true;
 	LOG_Char_WARNING(TEXT("플레이 애니메이션."));
 	Server_PlayMontage(MontageToPlay, EAnimationType::UseItem);
 }
@@ -1793,8 +1798,7 @@ void ABaseCharacter::UseItemAnimationNotified()
 		return;
 	}
 	bIsPlayingUseItemMontage = false;
-	LOG_Char_WARNING(TEXT("애니메이션 재생 후 아이템 사용됨"));
-
+	bIsPlayingAnimation = false;
 	CurrentUsingItem->UseItem();
 }
 
@@ -1811,6 +1815,7 @@ void ABaseCharacter::CancelUseItem()
 	}
 	AnimInstance->Montage_Stop(0.2f, CurrentUseItemMontage); // 부드럽게 블렌드 아웃
 	bIsPlayingUseItemMontage = false;
+	bIsPlayingAnimation = false;
 	Server_CancelUseItem();
 }
 
@@ -1831,6 +1836,7 @@ void ABaseCharacter::Multicast_CancelUseItem_Implementation()
 		return;
 	}
 	bIsPlayingUseItemMontage = false;
+	bIsPlayingAnimation = false;
 	AnimInstance->Montage_Stop(0.2f, CurrentUseItemMontage); // 부드럽게 블렌드 아웃
 }
 
@@ -2144,6 +2150,7 @@ void ABaseCharacter::StopCurrentPlayingMontage()
 	{
 		//만약 재생중인 몽타주가 있으면(예시: 장전모션) 강제로 해제
 		AnimInstance->Montage_Stop(0.25f); // 페이드 아웃 시간: 0.25초 //AnimInstance->Montage_Stop(0.25f, ReloadMontage);이런 것도 가능
+		bIsPlayingAnimation = false;
 	}
 }
 
@@ -2551,34 +2558,37 @@ void ABaseCharacter::NetMulticast_UnPossessDrone_Implementation()
 
 void ABaseCharacter::RefreshOverlayObject()
 {
-	LOG_Char_WARNING(TEXT("Refresh Overlay Objects"));
-	AItemBase* CurrentItem = GetToolbarInventoryComponent()->GetCurrentEquippedItem();
 	//static FGameplayTag CurrentItemTag = FGameplayTag::RequestGameplayTag(TEXT("Character.Player.Equipped"));  // 참고용
+	AItemBase* CurrentItem = GetToolbarInventoryComponent()->GetCurrentEquippedItem();
+	FGameplayTag ItemTag;
+	FGameplayTag Overlay = AlsOverlayModeTags::Default;
+	bool bIsDesireAiming = false;
+	FName Socketname = "Rifle";
+	bool bUseLeftGunBone = true;
+	UStaticMesh* AttachMesh = NULL;
+
+	if (IsValid(CurrentItem))
+	{
+		ItemTag = CurrentItem->ItemData.ItemType;
+	}
+	if (!ItemTag.IsValid())
+	{
+		SetDesiredGait(Overlay);
+		SetOverlayMode(Overlay);
+		RefreshOverlayLinkedAnimationLayer(ItemTag);
+		SetDesiredAiming(bIsDesireAiming);
+		AttachOverlayObject(AttachMesh, NULL, NULL, Socketname, bUseLeftGunBone);
+	}
+	
+
 	if (bIsSpawnDrone == true)
 	{
 		LOG_Char_WARNING(TEXT("Drone Controller"));
-		SetDesiredGait(AlsOverlayModeTags::Binoculars);
-		SetOverlayMode(AlsOverlayModeTags::Binoculars);
-		RefreshOverlayLinkedAnimationLayer(4);
-		SetDesiredAiming(false);
-		AttachOverlayObject(RCController, NULL, NULL, "DroneController", true);
-		return;
+		Overlay = AlsOverlayModeTags::Binoculars;
+		AttachMesh = RCController;
+		Socketname = "DroneController";
+		bUseLeftGunBone = true;
 	}
-
-	if (!IsValid(CurrentItem))
-	{
-		//아이템이 없으면, 기본 애니메이션 지정 및 소켓에 달려있는 거 삭제
-		SetDesiredGait(AlsOverlayModeTags::Default);
-		SetOverlayMode(AlsOverlayModeTags::Default);
-		RefreshOverlayLinkedAnimationLayer(3);
-		AttachOverlayObject(NULL, NULL, NULL, "Torch", true);
-		LOG_Char_WARNING(TEXT("Character Equipped None"));
-		return;
-	}
-	//아이템이 있을 때	
-	FGameplayTag ItemTag = CurrentItem->ItemData.ItemType;
-	LOG_Char_WARNING(TEXT("ItemTag: %s"), *ItemTag.ToString());
-
 	if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))  // 또는 HasTag 등 비교 방식에 따라
 	{
 		if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(CurrentItem))
@@ -2587,40 +2597,23 @@ void ABaseCharacter::RefreshOverlayObject()
 			USkeletalMeshComponent* RifleMesh = RifleItem->GetSkeletalMeshComponent();
 			CurrentRifleMesh = RifleMesh;
 		}
-		SetDesiredGait(AlsOverlayModeTags::Rifle);
-		SetOverlayMode(AlsOverlayModeTags::Rifle);
-		RefreshOverlayLinkedAnimationLayer(0);
-		SetDesiredAiming(true);
-		//AttachOverlayObject(NULL, SKM_Rifle, NULL, "Rifle", false);
-		return;
+		Overlay = AlsOverlayModeTags::Rifle;
+		bIsDesireAiming = true;
 	}
-
 	if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.FlashLight")))
 	{
-		UStaticMesh* FlashLightMesh = CurrentItem->ItemData.StaticMesh;
-		SetDesiredGait(AlsOverlayModeTags::Torch);
-		SetOverlayMode(AlsOverlayModeTags::Torch);
-		RefreshOverlayLinkedAnimationLayer(2);
-		//AttachOverlayObject(FlashLightMesh, NULL, NULL, "Torch", true);
-		return;
+		Overlay = AlsOverlayModeTags::Torch;
 	}
-
 	if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))
 	{
-		SetDesiredGait(AlsOverlayModeTags::PistolOneHanded);
-		SetOverlayMode(AlsOverlayModeTags::PistolOneHanded);
-		RefreshOverlayLinkedAnimationLayer(1);
-		//AttachOverlayObject(FlashLightMesh, NULL, NULL, "Torch", true);
-		return;
+		Overlay = AlsOverlayModeTags::PistolOneHanded;
 	}
-	//아이템은 있는데 매치가 아무것도 안되면
-	LOG_Char_WARNING(TEXT("Equipped Item is Valid but doesn`t match any tag"));
-	SetDesiredGait(AlsOverlayModeTags::Default);
-	SetOverlayMode(AlsOverlayModeTags::Default);
-	RefreshOverlayLinkedAnimationLayer(3);
-	AttachOverlayObject(NULL, NULL, NULL, "Torch", true);
-	LOG_Char_WARNING(TEXT("Character Equipped Unknown Item"));
-	return;
+
+	SetDesiredGait(Overlay);
+	SetOverlayMode(Overlay);
+	RefreshOverlayLinkedAnimationLayer(ItemTag);
+	SetDesiredAiming(bIsDesireAiming);
+	AttachOverlayObject(AttachMesh, NULL, NULL, Socketname, bUseLeftGunBone);
 
 	/*
 	예시 코드.. 참고할 것!
@@ -2667,29 +2660,42 @@ void ABaseCharacter::AttachOverlayObject(UStaticMesh* NewStaticMesh, USkeletalMe
 	OverlaySkeletalMesh->SetSkinnedAssetAndUpdate(NewSkeletalMesh, true);
 }
 
-void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(int index)
+void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(FGameplayTag ItemTag)
 {
 	TSubclassOf<UAnimInstance> OverlayAnimationInstanceClass;
-
-	if (index == 0)
+	if (bIsSpawnDrone)  // 태그에 컨트롤러 들 때 사용할 태그 추가해야됨...
+	{
+		OverlayAnimationInstanceClass = BinocularsAnimationClass;
+		if (IsValid(OverlayAnimationInstanceClass))
+		{
+			GetMesh()->LinkAnimClassLayers(OverlayAnimationInstanceClass);
+		}
+		else
+		{
+			GetMesh()->LinkAnimClassLayers(DefaultAnimationClass);
+		}
+		return;
+	}
+	if (!ItemTag.IsValid())
+	{
+		OverlayAnimationInstanceClass = DefaultAnimationClass;
+	}
+	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
 	{
 		OverlayAnimationInstanceClass = RifleAnimationClass;
 	}
-	else if (index == 1)
-	{
-		OverlayAnimationInstanceClass = PistolAnimationClass;
-	}
-	else if (index == 2)
+	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.FlashLight")))
 	{
 		OverlayAnimationInstanceClass = TorchAnimationClass;
 	}
-	else if (index == 3)
+	/*else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol")))
 	{
-		OverlayAnimationInstanceClass = DefaultAnimationClass;;
-	}
-	else if (index == 4)
+		OverlayAnimationInstanceClass = PistolAnimationClass;
+	}*/
+	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))
 	{
-		OverlayAnimationInstanceClass = BinocularsAnimationClass;
+		OverlayAnimationInstanceClass = PistolAnimationClass;
+		//OverlayAnimationInstanceClass = BinocularsAnimationClass;
 	}
 	else
 	{
@@ -2984,12 +2990,14 @@ void ABaseCharacter::SetBackpackMesh(UStaticMesh* BackpackMesh)
 
 	if (BackpackMesh)
 	{
+		GetMesh()->UnHideBoneByName("backpack1");
 		BackpackMeshComponent->SetStaticMesh(BackpackMesh);
 		BackpackMeshComponent->SetVisibility(true);
 		UE_LOG(LogTemp, Warning, TEXT("[SetBackpackMesh] 가방 메시 표시"));
 	}
 	else
 	{
+		GetMesh()->HideBoneByName("backpack1", PBO_None);
 		BackpackMeshComponent->SetStaticMesh(nullptr);
 		BackpackMeshComponent->SetVisibility(false);
 		UE_LOG(LogTemp, Warning, TEXT("[SetBackpackMesh] 가방 메시 숨김"));

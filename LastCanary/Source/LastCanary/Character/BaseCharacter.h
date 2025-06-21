@@ -345,7 +345,7 @@ public:
 	void AttachOverlayObject(UStaticMesh* NewStaticMesh, USkeletalMesh* NewSkeletalMesh, TSubclassOf<UAnimInstance> NewAnimationClass, FName SocketName, bool bUseLeftGunBone);
 
 	UFUNCTION(BlueprintCallable)
-	void RefreshOverlayLinkedAnimationLayer(int index);
+	void RefreshOverlayLinkedAnimationLayer(FGameplayTag ItemTag);
 
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_RefreshOverlayObject();
@@ -418,6 +418,8 @@ public:
 	void UpdateRotationToDrone();
 
 	class ABaseDrone* ControlledDrone;
+
+	bool bIsPlayingAnimation = false;
 
 	void InteractAfterPlayMontage(AActor* TargetActor);
 	void OnInteractAnimationNotified();
