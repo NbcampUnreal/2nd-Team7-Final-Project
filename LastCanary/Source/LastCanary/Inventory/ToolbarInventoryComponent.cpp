@@ -123,7 +123,7 @@ bool UToolbarInventoryComponent::TryAddItemSlot(FName ItemRowName, int32 Amount)
         FBaseItemSlotData NewSlot;
         NewSlot.ItemRowName = ItemRowName;
         NewSlot.Quantity = Addable;
-        NewSlot.Durability = 100.0f;
+        NewSlot.Durability = 0.0f;
         NewSlot.bIsValid = true;
         NewSlot.bIsEquipped = false;
 

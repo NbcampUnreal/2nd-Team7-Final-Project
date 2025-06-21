@@ -85,7 +85,7 @@ void ABasePlayerState::SetSpirit(float NewSpirit)
 		CurrentSpirit = NewSpirit;
 		Client_UpdateSpirit(NewSpirit);
 	}
-	
+
 }
 
 void ABasePlayerState::Client_UpdateHP_Implementation(float NewHP)
@@ -325,6 +325,19 @@ const TMap<FName, int32>& ABasePlayerState::GetCollectedResourceMap() const
 void ABasePlayerState::ClearCollectedResources()
 {
 	CollectedResourceMap.Empty();
+}
+
+float ABasePlayerState::GetMaxWeight() const
+{
+	const float Multiplier = WeightSlowdownMultiplier;
+
+	float MaxWeight = FMath::Min(DefaultWalkSpeed / Multiplier,
+		FMath::Min(DefaultRunSpeed / Multiplier,
+			FMath::Min(DefaultSprintSpeed / Multiplier,
+				FMath::Min((DefaultCrouchSpeed * 2.0f) / Multiplier,
+					(DefaultJumpZVelocity * 5.0f) / Multiplier))));
+
+	return MaxWeight;
 }
 
 void ABasePlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
