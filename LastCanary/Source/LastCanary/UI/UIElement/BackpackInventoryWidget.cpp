@@ -1,81 +1,131 @@
 #include "UI/UIElement/BackpackInventoryWidget.h"
 #include "UI/UIObject/BackpackSlotWidget.h"
 #include "Inventory/ToolbarInventoryComponent.h"
+
+#include "Components/TextBlock.h"
+#include "Components/ProgressBar.h"
 #include "Components/GridPanel.h"
+
+#include "GameFramework/Pawn.h"
+#include "Character/BaseCharacter.h"
+#include "Character/BasePlayerState.h"
+
 #include "LastCanary.h"
 
 void UBackpackInventoryWidget::RefreshInventoryUI()
 {
-    if (!InventoryComponent)
-    {
-        LOG_Item_WARNING(TEXT("[BackpackInventoryWidget::RefreshInventoryUI] InventoryComponent is null!"));
-        return;
-    }
+	if (!InventoryComponent)
+	{
+		LOG_Item_WARNING(TEXT("[BackpackInventoryWidget::RefreshInventoryUI] InventoryComponent is null!"));
+		return;
+	}
 
-    if (!BackpackSlotPanel)
-    {
-        LOG_Item_WARNING(TEXT("[BackpackInventoryWidget::RefreshInventoryUI] BackpackSlotPanel is null!"));
-        return;
-    }
+	if (!BackpackSlotPanel)
+	{
+		LOG_Item_WARNING(TEXT("[BackpackInventoryWidget::RefreshInventoryUI] BackpackSlotPanel is null!"));
+		return;
+	}
 
-    if (!BackpackSlotWidgetClass)
-    {
-        LOG_Item_ERROR(TEXT("[BackpackInventoryWidget::RefreshInventoryUI] BackpackSlotWidgetClass is null!"));
-        return;
-    }
+	if (!BackpackSlotWidgetClass)
+	{
+		LOG_Item_ERROR(TEXT("[BackpackInventoryWidget::RefreshInventoryUI] BackpackSlotWidgetClass is null!"));
+		return;
+	}
 
-    BackpackSlotPanel->ClearChildren();
+	BackpackSlotPanel->ClearChildren();
 
-    UToolbarInventoryComponent* ToolbarInventory = Cast<UToolbarInventoryComponent>(InventoryComponent);
-    if (!ToolbarInventory)
-    {
-        LOG_Item_WARNING(TEXT("[ToolbarInventoryWidget::RefreshInventoryUI] InventoryComponent 캐스팅 실패!"));
-        return;
-    }
+	UToolbarInventoryComponent* ToolbarInventory = Cast<UToolbarInventoryComponent>(InventoryComponent);
+	if (!ToolbarInventory)
+	{
+		LOG_Item_WARNING(TEXT("[ToolbarInventoryWidget::RefreshInventoryUI] InventoryComponent 캐스팅 실패!"));
+		return;
+	}
 
-    TArray<FBackpackSlotData> BackpackSlots = ToolbarInventory->GetCurrentBackpackSlots();
-    for (int32 i = 0; i < BackpackSlots.Num(); ++i)
-    {
-        FBaseItemSlotData BaseSlot = ConvertBackpackSlotToBaseSlot(BackpackSlots[i]);
-        UBackpackSlotWidget* SlotWidget = CreateBackpackSlotWidget(i, BackpackSlots[i]);
-        if (!SlotWidget)
-        {
-            continue;
-        }
+	TArray<FBackpackSlotData> BackpackSlots = ToolbarInventory->GetCurrentBackpackSlots();
+	for (int32 i = 0; i < BackpackSlots.Num(); ++i)
+	{
+		FBaseItemSlotData BaseSlot = ConvertBackpackSlotToBaseSlot(BackpackSlots[i]);
+		UBackpackSlotWidget* SlotWidget = CreateBackpackSlotWidget(i, BackpackSlots[i]);
+		if (!SlotWidget)
+		{
+			continue;
+		}
 
-        int32 Row = i / ColumnsPerRow;
-        int32 Col = i % ColumnsPerRow;
+		int32 Row = i / ColumnsPerRow;
+		int32 Col = i % ColumnsPerRow;
 
-        BackpackSlotPanel->AddChildToGrid(SlotWidget, Row, Col);
-    }
+		BackpackSlotPanel->AddChildToGrid(SlotWidget, Row, Col);
+	}
+
+	// --- 무게 표시 업데이트 ---
+	APawn* Pawn = GetOwningPlayerPawn();
+	if (IsValid(Pawn) == false)
+	{
+		return;
+	}
+
+	ABaseCharacter* Character = Cast<ABaseCharacter>(Pawn);
+	if (IsValid(Character) == false)
+	{
+		return;
+	}
+	float CurrentWeight = Character->GetTotalCarryingWeight();
+
+	ABasePlayerState* PS = Cast<ABasePlayerState>(Character->GetPlayerState());
+	if (IsValid(PS) == false)
+	{
+		return;
+	}
+	float MaxWeight = PS->GetMaxWeight();
+
+	if (WeightText)
+	{
+		UE_LOG(LogTemp, Error, TEXT(" %f"), MaxWeight);
+
+		FString WeightStr = FString::Printf(TEXT("%.1f / %.1f"), CurrentWeight, MaxWeight);
+		WeightText->SetText(FText::FromString(WeightStr));
+	}
+
+	if (WeightProgressBar)
+	{
+		float Ratio = MaxWeight > 0.0f ? (CurrentWeight / MaxWeight) : 0.0f;
+		WeightProgressBar->SetPercent(Ratio);
+
+		// 무게가 많을수록 빨강에 가까워지게 (초록 → 노랑 → 빨강)
+		float Hue = FMath::Lerp(0.0f, 120.0f, 1.0f - Ratio); // 0 = 빨강, 120 = 초록
+		FLinearColor HSVColor = FLinearColor::MakeFromHSV8((uint8)Hue, 255, 255);
+
+		WeightProgressBar->SetFillColorAndOpacity(HSVColor);
+	}
+
 }
 
 UBackpackSlotWidget* UBackpackInventoryWidget::CreateBackpackSlotWidget(int32 BackpackSlotIndex, const FBackpackSlotData& SlotData)
 {
-    if (!BackpackSlotWidgetClass)
-    {
-        UE_LOG(LogTemp, Error, TEXT("[BackpackInventoryWidget::CreateBackpackSlotWidget] BackpackSlotWidgetClass가 설정되지 않음"));
-        return nullptr;
-    }
+	if (!BackpackSlotWidgetClass)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[BackpackInventoryWidget::CreateBackpackSlotWidget] BackpackSlotWidgetClass가 설정되지 않음"));
+		return nullptr;
+	}
 
-    UBackpackSlotWidget* SlotWidget = CreateWidget<UBackpackSlotWidget>(this, BackpackSlotWidgetClass);
-    if (!SlotWidget)
-    {
-        UE_LOG(LogTemp, Error, TEXT("[BackpackInventoryWidget::CreateBackpackSlotWidget] 가방 슬롯 위젯 생성 실패: %d"), BackpackSlotIndex);
-        return nullptr;
-    }
+	UBackpackSlotWidget* SlotWidget = CreateWidget<UBackpackSlotWidget>(this, BackpackSlotWidgetClass);
+	if (!SlotWidget)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[BackpackInventoryWidget::CreateBackpackSlotWidget] 가방 슬롯 위젯 생성 실패: %d"), BackpackSlotIndex);
+		return nullptr;
+	}
 
-    // 가방 슬롯 데이터를 베이스 슬롯 데이터로 변환
-    FBaseItemSlotData BaseSlot = ConvertBackpackSlotToBaseSlot(SlotData);
+	// 가방 슬롯 데이터를 베이스 슬롯 데이터로 변환
+	FBaseItemSlotData BaseSlot = ConvertBackpackSlotToBaseSlot(SlotData);
 
-    // 슬롯 데이터 설정
-    SlotWidget->SetItemData(BaseSlot, ItemDataTable);
-    SlotWidget->SetInventoryComponent(InventoryComponent);
-    SlotWidget->SlotIndex = -1; // 툴바 인덱스는 사용하지 않음
-    SlotWidget->BackpackSlotIndex = BackpackSlotIndex; // 가방 인덱스 설정
+	// 슬롯 데이터 설정
+	SlotWidget->SetItemData(BaseSlot, ItemDataTable);
+	SlotWidget->SetInventoryComponent(InventoryComponent);
+	SlotWidget->SlotIndex = -1; // 툴바 인덱스는 사용하지 않음
+	SlotWidget->BackpackSlotIndex = BackpackSlotIndex; // 가방 인덱스 설정
 
-    // 부모 인벤토리 위젯 참조 설정
-    SlotWidget->SetParentInventoryWidget(this);
+	// 부모 인벤토리 위젯 참조 설정
+	SlotWidget->SetParentInventoryWidget(this);
 
-    return SlotWidget;
+	return SlotWidget;
 }

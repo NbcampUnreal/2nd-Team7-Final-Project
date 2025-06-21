@@ -87,8 +87,13 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stat")
     float FallDamageThreshold = 1000.0f;
 
+	// 기본값 = 50.0f -> 최대무게 10.0f
+	// 최대무게 40.0f -> 5.0f
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stat")
     float WeightSlowdownMultiplier = 50.0f;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spirit")
+    float MaxSpirit = 100.0f;
 };
 
 // ------------------------------

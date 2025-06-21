@@ -16,7 +16,7 @@ ABasePlayerState::ABasePlayerState()
 void ABasePlayerState::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
 	if (bAlreadyInitialized)
 	{
 		return;
@@ -38,6 +38,16 @@ void ABasePlayerState::BeginPlay()
 	SetInGameStatus(EPlayerInGameStatus::Alive);
 }
 
+void ABasePlayerState::SetPlayerInGameName(FString Name)
+{
+	PlayerInGameName = Name;
+}
+
+FString ABasePlayerState::GetInGameName()
+{
+	return PlayerInGameName;
+}
+
 void ABasePlayerState::SetInGameStatus(EPlayerInGameStatus Status)
 {
 	InGameState = Status;
@@ -51,26 +61,43 @@ void ABasePlayerState::InitializeStats()
 {
 	CurrentHP = InitialStats.MaxHP;
 	CurrentStamina = InitialStats.MaxStamina;
+	CurrentSpirit = InitialStats.MaxSpirit;
 
 }
 void ABasePlayerState::SetStamina(float NewStamina)
 {
-	CurrentStamina = NewStamina; 
-	UpdateStaminaUI(); 
+	CurrentStamina = NewStamina;
+	UpdateStaminaUI();
 }
-void ABasePlayerState::SetHP(float NewHP) 
+void ABasePlayerState::SetHP(float NewHP)
 {
 	if (HasAuthority())
 	{	//서버는 바로 바꾸기
-		CurrentHP = NewHP; 
+		CurrentHP = NewHP;
 		Client_UpdateHP(NewHP);
 	}
+}
+
+void ABasePlayerState::SetSpirit(float NewSpirit)
+{
+	if (HasAuthority())
+	{
+		CurrentSpirit = NewSpirit;
+		Client_UpdateSpirit(NewSpirit);
+	}
+
 }
 
 void ABasePlayerState::Client_UpdateHP_Implementation(float NewHP)
 {
 	CurrentHP = NewHP;
 	UpdateHPUI();
+}
+
+void ABasePlayerState::Client_UpdateSpirit_Implementation(float NewSpirit)
+{
+	CurrentSpirit = NewSpirit;
+	UpdateSpiritUI();
 }
 
 void ABasePlayerState::OnRep_CurrentStamina()
@@ -89,7 +116,8 @@ void ABasePlayerState::UpdateHPUI()
 			{
 				if (UInGameHUD* HUD = UIManager->GetInGameHUD())
 				{
-					HUD->UpdateLowHealthEffect(CurrentHP, InitialStats.MaxHP);
+					float Percent = FMath::Clamp(CurrentHP / InitialStats.MaxHP, 0.0f, 1.0f);
+					HUD->UpdateHPBar(Percent);
 				}
 			}
 		}
@@ -129,6 +157,23 @@ void ABasePlayerState::UpdateDeathUI()
 	}
 }
 
+void ABasePlayerState::UpdateSpiritUI()
+{
+	if (APlayerController* PC = Cast<APlayerController>(GetOwner()))
+	{
+		if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+		{
+			if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+			{
+				if (UInGameHUD* HUD = UIManager->GetInGameHUD())
+				{
+					//TODO: HUD->UpdateSpiritEffect(CurrentSpirit, InitialStats.MaxSpirit);
+				}
+			}
+		}
+	}
+}
+
 void ABasePlayerState::UpdateExhaustedUI()
 {
 	// TODO: implement HUD->OnPlayerExhausted(); if needed
@@ -139,6 +184,25 @@ void ABasePlayerState::ApplyDamage(float Damage)
 	////여기는 서버에서 처리
 	CurrentHP = FMath::Clamp(CurrentHP - Damage, 0.f, MaxHP);
 	Client_UpdateHP(CurrentHP);
+
+	if (Damage <= 0)
+	{
+		return;
+	}
+
+	if (APlayerController* PC = Cast<APlayerController>(GetOwner()))
+	{
+		if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+		{
+			if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+			{
+				if (UInGameHUD* HUD = UIManager->GetInGameHUD())
+				{
+					HUD->PlayTakeDamageAnim();
+				}
+			}
+		}
+	}
 }
 
 void ABasePlayerState::OnRep_bHasEscaped()
@@ -236,7 +300,7 @@ void ABasePlayerState::CopyProperties(APlayerState* PlayerState)
 		TargetState->TotalExp = TotalExp;
 
 		// 초기화할 데이터
-		TargetState->CurrentHP = TargetState->MaxHP; 
+		TargetState->CurrentHP = TargetState->MaxHP;
 		TargetState->CurrentStamina = TargetState->InitialStats.MaxStamina;
 	}
 }
@@ -263,14 +327,29 @@ void ABasePlayerState::ClearCollectedResources()
 	CollectedResourceMap.Empty();
 }
 
+float ABasePlayerState::GetMaxWeight() const
+{
+	const float Multiplier = WeightSlowdownMultiplier;
+
+	float MaxWeight = FMath::Min(DefaultWalkSpeed / Multiplier,
+		FMath::Min(DefaultRunSpeed / Multiplier,
+			FMath::Min(DefaultSprintSpeed / Multiplier,
+				FMath::Min((DefaultCrouchSpeed * 2.0f) / Multiplier,
+					(DefaultJumpZVelocity * 5.0f) / Multiplier))));
+
+	return MaxWeight;
+}
+
 void ABasePlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ABasePlayerState, CurrentHP);
 	DOREPLIFETIME(ABasePlayerState, CurrentStamina);
+	DOREPLIFETIME(ABasePlayerState, CurrentSpirit);
 	DOREPLIFETIME(ABasePlayerState, TotalGold);
 	DOREPLIFETIME(ABasePlayerState, TotalExp);
 	DOREPLIFETIME(ABasePlayerState, CurrentState);
 	DOREPLIFETIME(ABasePlayerState, AquiredItemIDs);
+	DOREPLIFETIME(ABasePlayerState, PlayerInGameName);
 }

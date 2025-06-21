@@ -22,9 +22,11 @@ struct FBackpackSlotData;
 class UItemSpawnerComponent;
 class UPostProcessComponent;
 class AResourceNode;
+class UWidgetComponent;
+class UPlayerNameWidget;
 
 UCLASS()
-class LASTCANARY_API ABaseCharacter : public AAlsCharacter , public IGimmickDebuffInterface , public IGameplayTagAssetInterface
+class LASTCANARY_API ABaseCharacter : public AAlsCharacter, public IGimmickDebuffInterface, public IGameplayTagAssetInterface
 {
 	GENERATED_BODY()
 
@@ -136,6 +138,8 @@ protected:
 
 	virtual void CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo) override;
 
+
+	void ResetCameraLocationToDefault();
 	void AttachCameraToRifle();
 	void AttachCameraToCharacter();
 
@@ -262,9 +266,6 @@ public:
 	TArray<FVector2D> RecoilPattern;
 
 	// 반동 상태 변수들
-
-	//void ApplyRecoilStep();
-	//void CameraShake(float Vertical, float Horizontal);
 	void ApplyRecoil(float Vertical, float Horizontal);
 	void RecoverFromRecoil();
 	void ApplySmoothRecoil(float Vertical, float Horizontal);
@@ -328,7 +329,7 @@ public:
 	bool UseGunBoneforOverlayObjects;
 
 	UFUNCTION(BlueprintCallable)
-	void RefreshOverlayObject(int index);
+	void RefreshOverlayObject();
 
 	UFUNCTION(BlueprintCallable)
 	void AttachOverlayObject(UStaticMesh* NewStaticMesh, USkeletalMesh* NewSkeletalMesh, TSubclassOf<UAnimInstance> NewAnimationClass, FName SocketName, bool bUseLeftGunBone);
@@ -337,8 +338,8 @@ public:
 	void RefreshOverlayLinkedAnimationLayer(int index);
 
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_RefreshOverlayObject(int index);
-	void Multicast_RefreshOverlayObject_Implementation(int index);
+	void Multicast_RefreshOverlayObject();
+	void Multicast_RefreshOverlayObject_Implementation();
 
 	bool bIsSpawnDrone = false;
 
@@ -524,8 +525,8 @@ public:
 
 	void StopReload();
 
-	
-	
+
+
 	UFUNCTION(Server, Reliable)
 	void Server_StopReload();
 	void Server_StopReload_Implementation();
@@ -536,18 +537,6 @@ public:
 
 
 public:
-
-	void PickupItem();
-
-	// 퀵슬롯 아이템들 (타입은 아이템 구조에 따라 UObject*, AItemBase*, UItemData* 등)
-	//TArray<UObject*> QuickSlots;
-
-	// 현재 장착된 아이템
-	UObject* HeldItem = nullptr;
-
-	//TODO: 아이템 클래스 들어오면 반환 값 바꾸기
-	void GetHeldItem();
-
 	void UnequipCurrentItem();
 
 	UFUNCTION(Server, Reliable)
@@ -555,17 +544,13 @@ public:
 	void Server_SetQuickSlotIndex_Implementation(int32 NewIndex);
 
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_EquipItemFromQuickSlot(int32 Index);
-	void Multicast_EquipItemFromQuickSlot_Implementation(int32 Index);
+	void Multicast_ResetAnimationAndCamera(int32 Index);
+	void Multicast_ResetAnimationAndCamera_Implementation(int32 Index);
 
 	int32 GetCurrentQuickSlotIndex();
 	void SetCurrentQuickSlotIndex(int32 NewIndex);
-	void EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex);
 
-	UFUNCTION(Server, Reliable)
-	void Server_EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex);
-	void Server_EquipItemFromCurrentQuickSlot_Implementation(int32 QuickSlotIndex);
-
+	void EquipItem(int32 Index);
 
 	void StopCurrentPlayingMontage();
 
@@ -655,10 +640,13 @@ public:
 	void Server_UnequipCurrentItem_Implementation();
 
 	UFUNCTION(BlueprintCallable, Category = "Equipment")
-	bool UseEquippedItem(float ActionValue);
+	void UseEquippedItem(float ActionValue);
 	UFUNCTION(Server, Reliable)
 	void Server_UseEquippedItem(float ActionValue);
 	void Server_UseEquippedItem_Implementation(float ActionValue);
+
+	void UseItemByItem(AItemBase* Item);
+	void CancelUseItem(AItemBase* Item);
 
 public:
 	/** 인벤토리 UI를 토글합니다 */
@@ -785,4 +773,11 @@ public:
 	UFUNCTION(Client, Reliable, Category = "WalkieTalkie")
 	void Client_SetWalkieTalkieChannelStatus(bool bActive);
 	void Client_SetWalkieTalkieChannelStatus_Implementation(bool bActive);
+
+	virtual void OnRep_PlayerState() override;
+	void UpdateNameWidget(); // 위젯 업데이트용 함수
+
+	/** 머리 위에 표시할 3D 위젯 컴포넌트 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
+	UWidgetComponent* NameWidgetComponent;
 };
