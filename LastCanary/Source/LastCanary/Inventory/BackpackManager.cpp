@@ -403,6 +403,78 @@ bool UBackpackManager::SwapBackpackSlots(int32 FromIndex, int32 ToIndex)
     return true;
 }
 
+int32 UBackpackManager::MoveAndStack(int32 FromSlotIndex, int32 ToSlotIndex, int32 Quantity)
+{
+    if (!HasBackpackEquipped())
+    {
+        return 0;
+    }
+
+    FBaseItemSlotData& BackpackOwnerSlot = OwnerInventory->ItemSlots[CurrentBackpackSlotIndex];
+
+    if (!BackpackOwnerSlot.BackpackSlots.IsValidIndex(FromSlotIndex) ||
+        !BackpackOwnerSlot.BackpackSlots.IsValidIndex(ToSlotIndex))
+    {
+        return 0;
+    }
+
+    FBackpackSlotData& FromSlot = BackpackOwnerSlot.BackpackSlots[FromSlotIndex];
+    FBackpackSlotData& ToSlot = BackpackOwnerSlot.BackpackSlots[ToSlotIndex];
+
+    // 소스 슬롯이 비어있거나 수량이 부족한 경우
+    if (UInventoryUtility::IsDefaultItem(FromSlot.ItemRowName) ||
+        FromSlot.Quantity <= 0 || FromSlot.Quantity < Quantity)
+    {
+        return 0;
+    }
+
+    // 아이템 데이터 가져오기
+    const FItemDataRow* ItemData = UInventoryUtility::GetItemDataByRowName(FromSlot.ItemRowName, OwnerInventory->ItemDataTable);
+    if (!ItemData)
+    {
+        return 0;
+    }
+
+    int32 MaxStack = ItemData->MaxStack;
+    int32 ActualMoved = 0;
+
+    // 대상 슬롯이 비어있는 경우
+    if (UInventoryUtility::IsDefaultItem(ToSlot.ItemRowName) || ToSlot.Quantity <= 0)
+    {
+        ActualMoved = FMath::Min(Quantity, FromSlot.Quantity);
+        ToSlot.ItemRowName = FromSlot.ItemRowName;
+        ToSlot.Quantity = ActualMoved;
+    }
+    // 동일한 아이템인 경우 스택 시도
+    else if (ToSlot.ItemRowName == FromSlot.ItemRowName)
+    {
+        int32 StackSpace = MaxStack - ToSlot.Quantity;
+        int32 MaxMovable = FMath::Min(Quantity, FromSlot.Quantity);
+        ActualMoved = FMath::Min(MaxMovable, StackSpace);
+        ToSlot.Quantity += ActualMoved;
+    }
+    else
+    {
+        // 다른 아이템이면 스택 불가
+        return 0;
+    }
+
+    // 소스 슬롯에서 수량 차감
+    FromSlot.Quantity -= ActualMoved;
+    if (FromSlot.Quantity <= 0)
+    {
+        FromSlot.ItemRowName = FName("Default");
+        FromSlot.Quantity = 0;
+    }
+
+    OwnerInventory->OnInventoryUpdated.Broadcast();
+
+    LOG_Item_WARNING(TEXT("[MoveAndStack] %d개 이동: 슬롯%d -> 슬롯%d"),
+        ActualMoved, FromSlotIndex, ToSlotIndex);
+
+    return ActualMoved;
+}
+
 bool UBackpackManager::DropItemFromBackpack(int32 BackpackSlotIndex, int32 Quantity)
 {
     if (!OwnerInventory || !HasBackpackEquipped())
