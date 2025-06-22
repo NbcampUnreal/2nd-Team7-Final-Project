@@ -52,6 +52,10 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Backpack Manager|Items")
     bool AddItemToBackpack(FName ItemRowName, int32 Quantity, int32 BackpackSlotIndex = -1);
 
+    /** 특정 슬롯에 아이템 추가 */
+    UFUNCTION(BlueprintCallable, Category = "Backpack")
+    bool AddToSlot(FBackpackSlotData& TargetSlot, FName ItemRowName, int32 Quantity, int32 MaxStack);
+
     /** 가방에서 아이템 제거 */
     UFUNCTION(BlueprintCallable, Category = "Backpack Manager|Items")
     bool RemoveItemFromBackpack(int32 BackpackSlotIndex, int32 Quantity);

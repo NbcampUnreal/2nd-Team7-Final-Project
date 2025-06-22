@@ -158,54 +158,42 @@ bool UBackpackManager::AddItemToBackpack(FName ItemRowName, int32 Quantity, int3
     // 특정 슬롯 지정된 경우
     if (BackpackSlotIndex >= 0 && BackpackSlot.BackpackSlots.IsValidIndex(BackpackSlotIndex))
     {
-        FBackpackSlotData& TargetSlot = BackpackSlot.BackpackSlots[BackpackSlotIndex];
+        return AddToSlot(BackpackSlot.BackpackSlots[BackpackSlotIndex], ItemRowName, Quantity, MaxStack);
+    }
 
-        if (OwnerInventory->IsDefaultItem(TargetSlot.ItemRowName) || TargetSlot.Quantity <= 0)
+    // 동일한 아이템들을 모두 찾아서 스택에 추가
+    for (int32 i = 0; i < BackpackSlot.BackpackSlots.Num(); ++i)
+    {
+        if (RemainingQuantity <= 0) break;
+
+        FBackpackSlotData& Slot = BackpackSlot.BackpackSlots[i];
+
+        // 동일한 아이템이고 최대 스택이 아닌 경우에만 처리
+        if (Slot.ItemRowName == ItemRowName && Slot.Quantity > 0 && Slot.Quantity < MaxStack)
         {
-            int32 Addable = FMath::Min(RemainingQuantity, MaxStack);
-            TargetSlot.ItemRowName = ItemRowName;
-            TargetSlot.Quantity = Addable;
-            RemainingQuantity -= Addable;
-        }
-        else if (TargetSlot.ItemRowName == ItemRowName)
-        {
-            int32 StackSpace = MaxStack - TargetSlot.Quantity;
+            int32 StackSpace = MaxStack - Slot.Quantity;
             int32 Addable = FMath::Min(RemainingQuantity, StackSpace);
-            TargetSlot.Quantity += Addable;
+            Slot.Quantity += Addable;
             RemainingQuantity -= Addable;
-        }
-        else
-        {
-            LOG_Item_WARNING(TEXT("[AddItemToBackpack] 슬롯이 다른 아이템으로 점유됨: %s"), *TargetSlot.ItemRowName.ToString());
         }
     }
-    else
+
+    // 남은 수량이 있다면 빈 슬롯을 찾아서 새로 추가
+    if (RemainingQuantity > 0)
     {
-        // 자동으로 빈 슬롯 찾기
         for (int32 i = 0; i < BackpackSlot.BackpackSlots.Num(); ++i)
         {
             if (RemainingQuantity <= 0) break;
 
             FBackpackSlotData& Slot = BackpackSlot.BackpackSlots[i];
 
+            // 빈 슬롯인 경우에만 새 아이템 추가
             if (OwnerInventory->IsDefaultItem(Slot.ItemRowName) || Slot.Quantity <= 0)
             {
-                // 빈 슬롯에 새 아이템 추가
                 int32 Addable = FMath::Min(RemainingQuantity, MaxStack);
                 Slot.ItemRowName = ItemRowName;
                 Slot.Quantity = Addable;
                 RemainingQuantity -= Addable;
-            }
-            else if (Slot.ItemRowName == ItemRowName)
-            {
-                // 같은 아이템 스택에 추가
-                int32 StackSpace = MaxStack - Slot.Quantity;
-                if (StackSpace > 0)
-                {
-                    int32 Addable = FMath::Min(RemainingQuantity, StackSpace);
-                    Slot.Quantity += Addable;
-                    RemainingQuantity -= Addable;
-                }
             }
         }
     }
@@ -224,6 +212,44 @@ bool UBackpackManager::AddItemToBackpack(FName ItemRowName, int32 Quantity, int3
     }
 
     return bSuccess;
+}
+
+bool UBackpackManager::AddToSlot(FBackpackSlotData& TargetSlot, FName ItemRowName, int32 Quantity, int32 MaxStack)
+{
+    // 빈 슬롯인 경우
+    if (OwnerInventory->IsDefaultItem(TargetSlot.ItemRowName) || TargetSlot.Quantity <= 0)
+    {
+        int32 Addable = FMath::Min(Quantity, MaxStack);
+        TargetSlot.ItemRowName = ItemRowName;
+        TargetSlot.Quantity = Addable;
+
+        OwnerInventory->OnInventoryUpdated.Broadcast();
+        LOG_Item_WARNING(TEXT("[AddToSlot] 빈 슬롯에 %d개 추가"), Addable);
+        return (Addable == Quantity);
+    }
+    // 동일한 아이템인 경우 스택
+    else if (TargetSlot.ItemRowName == ItemRowName)
+    {
+        if (TargetSlot.Quantity >= MaxStack)
+        {
+            LOG_Item_WARNING(TEXT("[AddToSlot] 이미 최대 스택 상태"));
+            return false;
+        }
+
+        int32 StackSpace = MaxStack - TargetSlot.Quantity;
+        int32 Addable = FMath::Min(Quantity, StackSpace);
+        TargetSlot.Quantity += Addable;
+
+        OwnerInventory->OnInventoryUpdated.Broadcast();
+        LOG_Item_WARNING(TEXT("[AddToSlot] 스택에 %d개 추가 (총 %d개)"), Addable, TargetSlot.Quantity);
+        return (Addable == Quantity);
+    }
+    // 다른 아이템인 경우
+    else
+    {
+        LOG_Item_WARNING(TEXT("[AddToSlot] 다른 아이템으로 점유됨: %s"), *TargetSlot.ItemRowName.ToString());
+        return false;
+    }
 }
 
 bool UBackpackManager::RemoveItemFromBackpack(int32 BackpackSlotIndex, int32 Quantity)
