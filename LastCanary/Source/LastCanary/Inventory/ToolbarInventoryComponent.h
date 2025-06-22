@@ -108,6 +108,14 @@ public:
     virtual bool TryDropItemAtSlot(int32 SlotIndex, int32 Quantity = 1) override;
     void RemoveResourceItems();
 
+    // 가방 드랍 함수
+    bool DropItemFromBackpack(int32 BackpackSlotIndex, int32 Quantity);
+
+    UFUNCTION(Server, Reliable, Category = "Toolbar|Drop")
+
+    void Server_DropBackpackItem(int32 BackpackSlotIndex, int32 Quantity);
+    void Server_DropBackpackItem_Implementation(int32 BackpackSlotIndex, int32 Quantity);
+
     //-----------------------------------------------------
     // 백팩 매니저 시스템
     //-----------------------------------------------------

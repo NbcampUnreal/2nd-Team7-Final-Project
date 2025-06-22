@@ -7,6 +7,8 @@
 
 class UToolbarInventoryWidget;
 class UBackpackInventoryWidget;
+class UItemDropQuantityWidget;
+class UInventorySlotWidget;
 class UTextBlock;
 struct FBaseItemSlotData;
 
@@ -28,6 +30,8 @@ protected:
 public:
 	virtual void NativeConstruct() override;
 
+	virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
+
 	UFUNCTION(BlueprintCallable)
 	void ShowToolbarOnly();
 
@@ -43,7 +47,20 @@ public:
 	UFUNCTION()
 	void HideToolbarSlotItemText();
 
+	UFUNCTION(BlueprintCallable)
+	void ShowItemDropQuantityWidget(UInventorySlotWidget* SourceWidget);
+
+	UFUNCTION(BlueprintCallable)
+	void HandleDropOutsideSlots(UInventorySlotWidget* SourceWidget, int32 Quantity);
+
 	FTimerHandle SlotItemTextTimerHandle;
+
+protected:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Widget Classes")
+	TSubclassOf<UItemDropQuantityWidget> ItemDropQuantityWidgetClass;
+
+	UPROPERTY()
+	UItemDropQuantityWidget* CurrentDropQuantityWidget;
 
 private:
 	bool bBackpackInventoryOpen = false;
@@ -56,6 +73,15 @@ private:
 	UPROPERTY(EditAnywhere, Category = "WidgetClasses")
 	TSubclassOf<UBackpackInventoryWidget> BackpackWidgetClass;
 	
+	UFUNCTION()
+	void OnQuantityConfirmed(int32 Quantity);
+
+	UFUNCTION()
+	void OnQuantityCanceled();
+
+	UPROPERTY()
+	UInventorySlotWidget* PendingDropSourceWidget;
+
 public:
 	void RefreshInventory();
 };

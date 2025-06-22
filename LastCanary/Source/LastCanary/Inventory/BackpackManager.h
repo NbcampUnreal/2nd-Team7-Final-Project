@@ -76,10 +76,20 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Backpack Manager|DragDrop")
     bool SwapBackpackSlots(int32 FromIndex, int32 ToIndex);
 
+public:
+    /** 가방에서 아이템 드롭 (기존 드롭 시스템 활용) */
+    UFUNCTION(BlueprintCallable, Category = "Backpack Manager|Drop")
+    bool DropItemFromBackpack(int32 BackpackSlotIndex, int32 Quantity);
+
+private:
+    /** 백팩 슬롯 데이터를 ItemSlotData로 변환 */
+    bool ConvertBackpackSlotToItemData(int32 BackpackSlotIndex, int32 Quantity, FBaseItemSlotData& OutItemData);
+
     //-----------------------------------------------------
     // 이벤트
     //-----------------------------------------------------
 
+public:
     UPROPERTY(BlueprintAssignable, Category = "Backpack Manager|Events")
     FOnBackpackEquipped OnBackpackEquipped;
 
