@@ -68,10 +68,19 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Inventory UI")
     void HideBackpackUI();
 
+private:
+    /** PlayerController 가져오기 */
+    APlayerController* GetOwnerPlayerController() const;
+
+    /** 입력 모드 설정 */
+    void SetInputModeGameAndUI();
+    void SetInputModeGameOnly();
+
     //-----------------------------------------------------
     // 네트워크 UI 업데이트
     //-----------------------------------------------------
 
+public:
     /** 모든 클라이언트에 UI 업데이트 전송 */
     UFUNCTION(NetMulticast, Reliable, Category = "Inventory UI")
     void Multicast_UpdateItemText(const FText& ItemName);

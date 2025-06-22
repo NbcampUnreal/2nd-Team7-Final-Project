@@ -235,4 +235,14 @@ protected:
     void OnBackpackEquippedHandler(const TArray<FBackpackSlotData>& BackpackSlots);
     UFUNCTION()
     void OnBackpackUnequippedHandler();
+
+public:
+    /** 클라이언트별 가방 UI 업데이트 RPC */
+    UFUNCTION(Client, Reliable, Category = "Backpack UI")
+    void Client_ShowBackpackUI(const TArray<FBackpackSlotData>& BackpackSlots);
+    void Client_ShowBackpackUI_Implementation(const TArray<FBackpackSlotData>& BackpackSlots);
+
+    UFUNCTION(Client, Reliable, Category = "Backpack UI")
+    void Client_HideBackpackUI();
+    void Client_HideBackpackUI_Implementation();
 };
