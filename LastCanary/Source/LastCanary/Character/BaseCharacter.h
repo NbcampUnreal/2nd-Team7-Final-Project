@@ -275,13 +275,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
 	TArray<FVector2D> RecoilPattern;
 
-	// 반동 상태 변수들
-	void ApplyRecoil(float Vertical, float Horizontal);
-	void RecoverFromRecoil();
+	// 반동
 	void ApplySmoothRecoil(float Vertical, float Horizontal);
 	void ApplySmoothRecoilStep();
 	void ResetShotCounter();
-	void UpdateRecoil();
 	bool HasActiveRecoil() const;
 	void ReduceRecoil(float ReductionFactor = 0.5f);
 	void ResetRecoilYaw();

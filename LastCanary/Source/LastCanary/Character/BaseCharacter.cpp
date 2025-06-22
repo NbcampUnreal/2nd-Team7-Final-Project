@@ -646,65 +646,6 @@ void ABaseCharacter::UpdateRotationToDrone()
 	}
 }
 
-// 방법 1: 즉시 반동 + 점진적 복구 (일반적인 방식)
-void ABaseCharacter::ApplyRecoil(float Vertical, float Horizontal)
-{
-	if (!Controller) return;
-
-	// 연사 배수 계산
-	float ShotMultiplier = FMath::Min(1.0f + (CurrentShotCount * 0.15f), 2.5f);
-
-	// 목표 반동량 설정
-	TargetRecoil.X += Vertical * ShotMultiplier;
-	TargetRecoil.Y += FMath::RandRange(-Horizontal, Horizontal) * ShotMultiplier;
-
-	CurrentShotCount++;
-
-	// 반동 적용 타이머 시작
-	if (!GetWorld()->GetTimerManager().IsTimerActive(RecoilRecoveryTimer))
-	{
-		GetWorld()->GetTimerManager().SetTimer(RecoilRecoveryTimer, this,
-			&ABaseCharacter::UpdateRecoil, 0.016f, true);
-	}
-
-	// 연사 리셋 타이머
-	GetWorld()->GetTimerManager().ClearTimer(ShotResetTimer);
-	GetWorld()->GetTimerManager().SetTimer(ShotResetTimer, this,
-		&ABaseCharacter::ResetShotCounter, 0.5f, false);
-}
-
-void ABaseCharacter::RecoverFromRecoil()
-{
-	if (!Controller || AccumulatedRecoil.IsNearlyZero(0.01f))
-	{
-		GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
-		return;
-	}
-
-	float DeltaTime = GetWorld()->GetDeltaSeconds();
-	float RecoveryAmount = RecoilRecoverySpeed * DeltaTime;
-
-	// 점진적으로 원래 위치로 복구
-	FVector2D RecoveryVector = AccumulatedRecoil;
-	RecoveryVector.Normalize();
-	RecoveryVector *= RecoveryAmount;
-
-	if (RecoveryVector.Size() >= AccumulatedRecoil.Size())
-	{
-		// 완전 복구
-		AddControllerPitchInput(AccumulatedRecoil.X);
-		AddControllerYawInput(-AccumulatedRecoil.Y);
-		AccumulatedRecoil = FVector2D::ZeroVector;
-	}
-	else
-	{
-		// 부분 복구
-		AddControllerPitchInput(RecoveryVector.X);
-		AddControllerYawInput(-RecoveryVector.Y);
-		AccumulatedRecoil -= RecoveryVector;
-	}
-}
-
 // 스무스하게 반동주기
 void ABaseCharacter::ApplySmoothRecoil(float Vertical, float Horizontal)
 {
@@ -727,7 +668,7 @@ void ABaseCharacter::ApplySmoothRecoil(float Vertical, float Horizontal)
 	// 연사 리셋 타이머
 	GetWorld()->GetTimerManager().ClearTimer(ShotResetTimer);
 	GetWorld()->GetTimerManager().SetTimer(ShotResetTimer, this,
-		&ABaseCharacter::ResetShotCounter, 0.3f, false);
+		&ABaseCharacter::ResetShotCounter, 0.25f, false);
 }
 
 void ABaseCharacter::ApplySmoothRecoilStep()
@@ -767,60 +708,6 @@ void ABaseCharacter::ApplySmoothRecoilStep()
 		else
 		{
 			AddControllerPitchInput(-RecoveryDelta.X);
-			AddControllerYawInput(-RecoveryDelta.Y);
-			AccumulatedRecoil -= RecoveryDelta;
-			TargetRecoil -= RecoveryDelta;
-		}
-	}
-}
-
-void ABaseCharacter::UpdateRecoil()
-{
-	if (!Controller)
-	{
-		GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
-		return;
-	}
-
-	float DeltaTime = GetWorld()->GetDeltaSeconds();
-
-	// 1. 목표 반동량으로 이동 (반동 적용 단계)
-	FVector2D RecoilDelta = (TargetRecoil - AccumulatedRecoil) * (5.0f * DeltaTime);
-
-	if (!RecoilDelta.IsNearlyZero(0.01f))
-	{
-		AddControllerPitchInput(-RecoilDelta.X);
-		AddControllerYawInput(RecoilDelta.Y);
-		AccumulatedRecoil += RecoilDelta;
-	}
-
-	// 2. 사격이 멈춘 후 자동 복구
-	if (GetWorld()->GetTimerManager().GetTimerRemaining(ShotResetTimer) <= 0.0f)
-	{
-		if (AccumulatedRecoil.IsNearlyZero(0.01f))
-		{
-			// 완전히 복구됨 - 타이머 정리
-			AccumulatedRecoil = FVector2D::ZeroVector;
-			TargetRecoil = FVector2D::ZeroVector;
-			GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
-			return;
-		}
-
-		FVector2D RecoveryDelta = AccumulatedRecoil * (RecoilRecoverySpeed * DeltaTime);
-
-		if (RecoveryDelta.Size() >= AccumulatedRecoil.Size())
-		{
-			// 완전 복구
-			AddControllerPitchInput(AccumulatedRecoil.X);
-			AddControllerYawInput(-AccumulatedRecoil.Y);
-			AccumulatedRecoil = FVector2D::ZeroVector;
-			TargetRecoil = FVector2D::ZeroVector;
-			GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
-		}
-		else
-		{
-			// 점진적 복구
-			AddControllerPitchInput(RecoveryDelta.X);
 			AddControllerYawInput(-RecoveryDelta.Y);
 			AccumulatedRecoil -= RecoveryDelta;
 			TargetRecoil -= RecoveryDelta;
@@ -2894,7 +2781,8 @@ void ABaseCharacter::CancelUseItem(AItemBase* Item)
 	if (Rifle->CurrentFireMode == EFireMode::FullAuto)
 	{
 		Rifle->StopAutoFire();
-	}
+
+	}	// 연사 리셋 타이머
 }
 
 void ABaseCharacter::ToggleInventory()
