@@ -14,29 +14,29 @@ void UItemDropQuantityWidget::NativeConstruct()
     // 버튼 이벤트 바인딩
     if (ConfirmButton)
     {
-        ConfirmButton->OnClicked.AddDynamic(this, &UItemDropQuantityWidget::OnConfirmClicked);
+        ConfirmButton->OnClicked.AddUniqueDynamic(this, &UItemDropQuantityWidget::OnConfirmClicked);
     }
 
     if (CancelButton)
     {
-        CancelButton->OnClicked.AddDynamic(this, &UItemDropQuantityWidget::OnCancelClicked);
+        CancelButton->OnClicked.AddUniqueDynamic(this, &UItemDropQuantityWidget::OnCancelClicked);
     }
 
     if (MaxButton)
     {
-        MaxButton->OnClicked.AddDynamic(this, &UItemDropQuantityWidget::OnMaxClicked);
+        MaxButton->OnClicked.AddUniqueDynamic(this, &UItemDropQuantityWidget::OnMaxClicked);
     }
 
     // 슬라이더 이벤트 바인딩
     if (QuantitySlider)
     {
-        QuantitySlider->OnValueChanged.AddDynamic(this, &UItemDropQuantityWidget::OnSliderValueChanged);
+        QuantitySlider->OnValueChanged.AddUniqueDynamic(this, &UItemDropQuantityWidget::OnSliderValueChanged);
     }
 
     // 텍스트박스 이벤트 바인딩
     if (QuantityInputBox)
     {
-        QuantityInputBox->OnTextCommitted.AddDynamic(this, &UItemDropQuantityWidget::OnTextCommitted);
+        QuantityInputBox->OnTextCommitted.AddUniqueDynamic(this, &UItemDropQuantityWidget::OnTextCommitted);
     }
 }
 

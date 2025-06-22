@@ -1,16 +1,33 @@
 #include "UI/UIElement/BackpackInventoryWidget.h"
 #include "UI/UIObject/BackpackSlotWidget.h"
 #include "Inventory/ToolbarInventoryComponent.h"
+#include "Inventory/InventoryUIController.h"
 
 #include "Components/TextBlock.h"
 #include "Components/ProgressBar.h"
 #include "Components/GridPanel.h"
+#include "Components/Button.h"
 
 #include "GameFramework/Pawn.h"
 #include "Character/BaseCharacter.h"
 #include "Character/BasePlayerState.h"
 
 #include "LastCanary.h"
+
+
+void UBackpackInventoryWidget::NativeConstruct()
+{
+	Super::NativeConstruct();
+
+	if (CloseBackpackButton)
+	{
+		CloseBackpackButton->OnClicked.AddDynamic(this, &UBackpackInventoryWidget::OnCloseBackpackButtonClicked);
+	}
+	else
+	{
+		LOG_Item_WARNING(TEXT("[BackpackInventoryWidget] CloseBackpackButton을 찾을 수 없음"));
+	}
+}
 
 void UBackpackInventoryWidget::RefreshInventoryUI()
 {
@@ -128,4 +145,23 @@ UBackpackSlotWidget* UBackpackInventoryWidget::CreateBackpackSlotWidget(int32 Ba
 	SlotWidget->SetParentInventoryWidget(this);
 
 	return SlotWidget;
+}
+
+void UBackpackInventoryWidget::OnCloseBackpackButtonClicked()
+{
+	UToolbarInventoryComponent* ToolbarInventory = Cast<UToolbarInventoryComponent>(InventoryComponent);
+	if (!ToolbarInventory)
+	{
+		LOG_Item_WARNING(TEXT("[RequestCloseBackpackUI] ToolbarInventoryComponent를 찾을 수 없음"));
+		return;
+	}
+
+	if (ToolbarInventory->UIController)
+	{
+		ToolbarInventory->UIController->HideBackpackUI();
+	}
+	else
+	{
+		LOG_Item_WARNING(TEXT("[RequestCloseBackpackUI] UIController를 찾을 수 없음"));
+	}
 }

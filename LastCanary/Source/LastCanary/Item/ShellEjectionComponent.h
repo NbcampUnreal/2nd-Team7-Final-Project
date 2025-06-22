@@ -20,6 +20,10 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Shell Ejection")
     void SetShellParticleSystem(UNiagaraSystem* NewSystem);
 
+    /** 소켓 캐시 할당 (데이터 테이블 적용 후 호출) */
+    UFUNCTION(BlueprintCallable, Category = "Shell Ejection")
+    void RefreshSocketCache();
+
 protected:
     virtual void BeginPlay() override;
 
