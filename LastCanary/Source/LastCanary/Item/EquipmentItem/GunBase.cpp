@@ -620,10 +620,11 @@ void AGunBase::ApplyGunDataFromDataTable()
     FireSound = GunData.FireSound;
     EmptySound = GunData.EmptySound;
 
-    // 탄피 이펙트 설정
+    // 탄피 이펙트 설정 및 소켓 할당
     if (ShellEjectionComponent && GunData.ShellEjectEffect)
     {
         ShellEjectionComponent->SetShellParticleSystem(GunData.ShellEjectEffect);
+        ShellEjectionComponent->RefreshSocketCache();
     }
 
     ApplyAttachmentsFromDataTable();
