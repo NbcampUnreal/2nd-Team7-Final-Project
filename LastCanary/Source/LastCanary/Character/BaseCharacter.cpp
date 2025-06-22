@@ -51,7 +51,7 @@ ABaseCharacter::ABaseCharacter()
 
 	HeadMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("HeadMesh"));
 	HeadMesh->SetupAttachment(GetMesh());
-	HeadMesh->SetMasterPoseComponent(GetMesh()); // GetMesh()는 전체 메시
+	HeadMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
 
 	OverlayStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("OverlayStaticMesh"));
 	OverlayStaticMesh->SetupAttachment(GetMesh());
@@ -2695,7 +2695,6 @@ void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(FGameplayTag ItemTag)
 	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))
 	{
 		OverlayAnimationInstanceClass = PistolAnimationClass;
-		//OverlayAnimationInstanceClass = BinocularsAnimationClass;
 	}
 	else
 	{
