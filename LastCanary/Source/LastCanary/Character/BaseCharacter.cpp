@@ -42,6 +42,7 @@
 #include "Framework/GameState/LCGameState.h"
 #include "Components/WidgetComponent.h"
 #include "UI/UIObject/PlayerNameWidget.h"
+#include "Character/CustomizationMeshMap.h"
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -49,9 +50,33 @@ ABaseCharacter::ABaseCharacter()
 	bReplicates = true;
 	UseGunBoneforOverlayObjects = true;
 
-	HeadMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("HeadMesh"));
-	HeadMesh->SetupAttachment(GetMesh());
-	HeadMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
+
+
+	CustomHeadMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomHeadMesh"));
+	CustomHeadMesh->SetupAttachment(GetMesh());
+	CustomHeadMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
+
+	CustomGloveMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomGloveMesh"));
+	CustomGloveMesh->SetupAttachment(GetMesh());
+	CustomGloveMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
+
+	CustomJacketMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomJacketMesh"));
+	CustomJacketMesh->SetupAttachment(GetMesh());
+	CustomJacketMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
+
+	CustomPantsMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomPantsMesh"));
+	CustomPantsMesh->SetupAttachment(GetMesh());
+	CustomPantsMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
+
+	CustomBeltsMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomBeltsMesh"));
+	CustomBeltsMesh->SetupAttachment(GetMesh());
+	CustomBeltsMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
+
+	CustomHelmetMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomHelmetMesh"));
+	CustomHelmetMesh->SetupAttachment(GetMesh());
+	CustomHelmetMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
+	
+
 
 	OverlayStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("OverlayStaticMesh"));
 	OverlayStaticMesh->SetupAttachment(GetMesh());
@@ -213,7 +238,69 @@ void ABaseCharacter::BeginPlay()
 			NameWidgetComponent->SetVisibility(false, true);
 		}
 	}
+
+
+	LOG_Char_WARNING(TEXT("캐릭터 의상 적용"));
+	ApplyCustomization(CharacterMeshMap);
+
 }
+
+void ABaseCharacter::ApplyCustomization(const UCustomizationMeshMap* CharacterMeshData)
+{
+	if (!CharacterMeshData || !CharacterMeshData->IsValidLowLevel())
+	{
+		LOG_Char_WARNING(TEXT("캐릭터 메시 데이터 invalid"));
+		return;
+	}
+	int BodyId = 0;
+	int HeadId = 0;
+	int HelmetId = 0;
+	int GloveId = 0;
+	int JacketId = 1;
+	int PantsId = 1;
+	int BeltsId = 0;
+	// Body
+	USkeletalMesh* BodySkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->DefaultBodyMeshes, BodyId);
+	SetPartMesh(GetMesh(), BodySkeletalMesh);
+
+	USkeletalMesh* HeadSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->DefaultHeadMeshes, HeadId);
+	SetPartMesh(CustomHeadMesh, HeadSkeletalMesh);
+
+	USkeletalMesh* HelmetSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->HelmetMeshes, HelmetId);
+	SetPartMesh(CustomHelmetMesh, HelmetSkeletalMesh);
+
+	USkeletalMesh* GloveSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->GloveMeshes, GloveId);
+	SetPartMesh(CustomGloveMesh, GloveSkeletalMesh);
+
+	USkeletalMesh* JacketSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->JacketMeshes, JacketId);
+	SetPartMesh(CustomJacketMesh, JacketSkeletalMesh);
+	
+	USkeletalMesh* PantsSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->PantsMeshes, PantsId);
+	SetPartMesh(CustomPantsMesh, PantsSkeletalMesh);
+
+	USkeletalMesh* BeltsSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->BeltsMeshes, BeltsId);
+	SetPartMesh(CustomBeltsMesh, BeltsSkeletalMesh);
+
+}
+
+void ABaseCharacter::SetPartMesh(USkeletalMeshComponent* Component, USkeletalMesh* LoadedMesh)
+{
+	if (!Component) return;
+
+	if (LoadedMesh)
+	{
+		Component->SetVisibility(true);
+		Component->EmptyOverrideMaterials();
+		Component->SetSkeletalMesh(LoadedMesh);
+	}
+	else
+	{
+		Component->SetLeaderPoseComponent(nullptr); // 메시 해제할 땐 잠시 끊기
+		Component->SetVisibility(false);
+		Component->SetSkeletalMesh(nullptr);
+	}
+}
+
 
 float ABaseCharacter::GetBrightness()
 {

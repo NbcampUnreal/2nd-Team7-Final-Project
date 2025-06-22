@@ -75,7 +75,7 @@ struct FUserSettings
 	float MicrophoneVolume = DefaultSettings::DEFAULT_VOLUME;
 
 	UPROPERTY()
-	TArray<FSaveKeyMapping> SavedMappings;
+	TArray<FSaveKeyMapping> SavedMappings;	
 
 	void ResetToDefault()
 	{
@@ -90,6 +90,37 @@ struct FUserSettings
 	}
 };
 
+USTRUCT(BlueprintType)
+struct FCharacterCustomizationData
+{
+	GENERATED_BODY()
+	// SkeletalMesh는 직접 Replicate 안되므로 ID 방식이 필요함
+
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 DefaultBodyID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 GloveID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 JacketID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 PantsID = 0;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 BeltsID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 HelmetID = 0;
+
+	FCharacterCustomizationData() {}
+	FCharacterCustomizationData(int32 DefaultBody, int32 Glove, int32 Jacket, int32 Pants, int32 Belts, int32 Helmet)
+		: DefaultBodyID(DefaultBody), GloveID(Glove), JacketID(Jacket), PantsID(Pants), BeltsID(Belts), HelmetID(Helmet) {
+	}
+};
+
 
 UCLASS()
 class LASTCANARY_API ULCLocalPlayerSaveGame : public ULocalPlayerSaveGame
@@ -100,6 +131,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FUserSettings Settings;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FCharacterCustomizationData CustomizationData;
 
 public:
 
@@ -132,6 +165,9 @@ public:
 
 	static bool SaveKeyBindings(UWorld* World, const TArray<FSaveKeyMapping>& Mappings);
 	static TArray<FSaveKeyMapping> LoadKeyBindings(UWorld* World);
+
+	static bool SaveCustomizationData(UWorld* World, const TArray<int32>& CustomizationDateArray);
+	static FCharacterCustomizationData LoadCustomizationData(UWorld* World);
 
 	static ULCLocalPlayerSaveGame* GetSaveInstance(UWorld* World);
 };

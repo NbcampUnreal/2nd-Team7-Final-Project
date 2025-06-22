@@ -196,6 +196,34 @@ bool ULCLocalPlayerSaveGame::LoadMicrophoneMode(UWorld* World)
     return true;
 }
 
+bool ULCLocalPlayerSaveGame::SaveCustomizationData(UWorld * World, const TArray<int32>& CustomizationDateArray)
+{
+    ULCLocalPlayerSaveGame* SaveGame = GetSaveInstance(World);
+    if (!SaveGame) return false;
+    
+    if (CustomizationDateArray.IsValidIndex(5) == false)
+    {
+        return false;
+    }
+
+    SaveGame->CustomizationData.DefaultBodyID = CustomizationDateArray[0];
+    SaveGame->CustomizationData.GloveID = CustomizationDateArray[1];
+    SaveGame->CustomizationData.JacketID = CustomizationDateArray[2];
+    SaveGame->CustomizationData.PantsID = CustomizationDateArray[3];
+    SaveGame->CustomizationData.BeltsID = CustomizationDateArray[4];
+    SaveGame->CustomizationData.HelmetID = CustomizationDateArray[5];
+
+    return SaveGame->SaveGameToSlotForLocalPlayer();
+}
+
+FCharacterCustomizationData ULCLocalPlayerSaveGame::LoadCustomizationData(UWorld* World)
+{
+    ULCLocalPlayerSaveGame* SaveGame = GetSaveInstance(World);
+    if (!SaveGame) return FCharacterCustomizationData();
+
+    return SaveGame->CustomizationData;
+}
+
 ULCLocalPlayerSaveGame* ULCLocalPlayerSaveGame::GetSaveInstance(UWorld* World)
 {
     if (!World) return nullptr;

@@ -24,7 +24,7 @@ class UPostProcessComponent;
 class AResourceNode;
 class UWidgetComponent;
 class UPlayerNameWidget;
-
+class UCustomizationMeshMap;
 
 UENUM(BlueprintType)
 enum class EAnimationType : uint8
@@ -81,11 +81,39 @@ public:
 	UCameraComponent* SpectatorCamera;
 
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* HeadMesh;
 
 	UPROPERTY(VisibleAnywhere)
 	UPostProcessComponent* CustomPostProcessComponent;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Customization")
+	UCustomizationMeshMap* CharacterMeshMap;
+
+
+
+
+	// DefaultBody => GetMesh()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CustomHeadMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CustomGloveMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CustomJacketMesh;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CustomPantsMesh;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CustomBeltsMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CustomHelmetMesh;
+	
+	void ApplyCustomization(const UCustomizationMeshMap* Data);
+
+	void SetPartMesh(USkeletalMeshComponent* Component, USkeletalMesh* LoadedMesh);
 
 	float GetBrightness();
 	void SetBrightness(float Value);
