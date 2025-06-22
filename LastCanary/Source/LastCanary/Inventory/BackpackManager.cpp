@@ -371,13 +371,18 @@ bool UBackpackManager::MoveBackpackItemToToolbar(int32 BackpackIndex, int32 Tool
 
     // 이동 실행
     ToolbarSlot.ItemRowName = BackpackSlot.ItemRowName;
-    ToolbarSlot.Quantity = BackpackSlot.Quantity;
+    ToolbarSlot.Quantity = 1;
     ToolbarSlot.bIsValid = true;
     ToolbarSlot.bIsEquipped = false;
 
-    // 가방 슬롯 초기화
-    BackpackSlot.ItemRowName = FName("Default");
-    BackpackSlot.Quantity = 0;
+    BackpackSlot.Quantity -= 1;
+
+    // 가방 슬롯이 비었다면 Default로 설정
+    if (BackpackSlot.Quantity <= 0)
+    {
+        BackpackSlot.ItemRowName = FName("Default");
+        BackpackSlot.Quantity = 0;
+    }
 
     OwnerInventory->OnInventoryUpdated.Broadcast();
     return true;
