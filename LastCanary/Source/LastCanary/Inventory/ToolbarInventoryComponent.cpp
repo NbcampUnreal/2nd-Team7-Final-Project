@@ -962,13 +962,33 @@ bool UToolbarInventoryComponent::AddItemToBackpack(FName ItemRowName, int32 Quan
 
 void UToolbarInventoryComponent::OnBackpackEquippedHandler(const TArray<FBackpackSlotData>& BackpackSlots)
 {
-    if (UIController)
+    if (GetOwner() && GetOwner()->HasAuthority())
     {
-        UIController->ShowBackpackUI(BackpackSlots);
+        Client_ShowBackpackUI(BackpackSlots);
     }
 }
 
 void UToolbarInventoryComponent::OnBackpackUnequippedHandler()
+{
+    if (GetOwner() && GetOwner()->HasAuthority())
+    {
+        Client_HideBackpackUI();
+    }
+}
+
+void UToolbarInventoryComponent::Client_ShowBackpackUI_Implementation(const TArray<FBackpackSlotData>& BackpackSlots)
+{
+    if (UIController)
+    {
+        UIController->ShowBackpackUI(BackpackSlots);
+    }
+    else
+    {
+        LOG_Item_WARNING(TEXT("[Client_ShowBackpackUI] UIController가 null"));
+    }
+}
+
+void UToolbarInventoryComponent::Client_HideBackpackUI_Implementation()
 {
     if (UIController)
     {

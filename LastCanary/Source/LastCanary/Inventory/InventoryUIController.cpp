@@ -3,6 +3,7 @@
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "UI/UIElement/InventoryMainWidget.h"
 #include "UI/Manager/LCUIManager.h"
+#include "Character/BaseCharacter.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Engine/World.h"
 #include "Engine/GameInstance.h"
@@ -138,6 +139,8 @@ void UInventoryUIController::ShowBackpackUI(const TArray<FBackpackSlotData>& Bac
             }
         }
 
+        SetInputModeGameAndUI();
+
         LOG_Item_WARNING(TEXT("[InventoryUIController::ShowBackpackUI] 가방 UI 활성화 (슬롯 수: %d)"),
             BackpackSlots.Num());
     }
@@ -154,8 +157,78 @@ void UInventoryUIController::HideBackpackUI()
     if (InventoryWidget && InventoryWidget->IsBackpackInventoryOpen())
     {
         InventoryWidget->ToggleBackpackInventory();
+        SetInputModeGameOnly();
         LOG_Item_WARNING(TEXT("[InventoryUIController::HideBackpackUI] 가방 UI 비활성화"));
     }
+}
+
+APlayerController* UInventoryUIController::GetOwnerPlayerController() const
+{
+    if (!OwnerInventory)
+    {
+        LOG_Item_WARNING(TEXT("[GetOwnerPlayerController] OwnerInventory가 null"));
+        return nullptr;
+    }
+
+    // InventoryComponent의 소유자(Character) 가져오기
+    AActor* OwnerActor = OwnerInventory->GetOwner();
+    if (!OwnerActor)
+    {
+        LOG_Item_WARNING(TEXT("[GetOwnerPlayerController] OwnerActor가 null"));
+        return nullptr;
+    }
+
+    // Character가 Pawn인지 확인
+    APawn* OwnerPawn = Cast<APawn>(OwnerActor);
+    if (!OwnerPawn)
+    {
+        LOG_Item_WARNING(TEXT("[GetOwnerPlayerController] OwnerActor가 Pawn이 아님"));
+        return nullptr;
+    }
+
+    // Pawn의 Controller가 PlayerController인지 확인
+    APlayerController* PC = Cast<APlayerController>(OwnerPawn->GetController());
+    if (!PC)
+    {
+        LOG_Item_WARNING(TEXT("[GetOwnerPlayerController] PlayerController를 찾을 수 없음"));
+        return nullptr;
+    }
+
+    return PC;
+}
+
+void UInventoryUIController::SetInputModeGameAndUI()
+{
+    APlayerController* PC = GetOwnerPlayerController();
+    if (!PC)
+    {
+        LOG_Item_WARNING(TEXT("[SetInputModeGameAndUI] PlayerController를 찾을 수 없음"));
+        return;
+    }
+
+    FInputModeGameAndUI InputMode;
+    InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+    InputMode.SetHideCursorDuringCapture(false);
+    PC->SetInputMode(InputMode);
+    PC->SetShowMouseCursor(true);
+
+    LOG_Item_WARNING(TEXT("[SetInputModeGameAndUI] 가방 UI 열림 - 입력모드: GameAndUI"));
+}
+
+void UInventoryUIController::SetInputModeGameOnly()
+{
+    APlayerController* PC = GetOwnerPlayerController();
+    if (!PC)
+    {
+        LOG_Item_WARNING(TEXT("[SetInputModeGameOnly] PlayerController를 찾을 수 없음"));
+        return;
+    }
+
+    FInputModeGameOnly InputMode;
+    PC->SetInputMode(InputMode);
+    PC->SetShowMouseCursor(false);
+
+    LOG_Item_WARNING(TEXT("[SetInputModeGameOnly] 가방 UI 닫힘 - 입력모드: GameOnly"));
 }
 
 void UInventoryUIController::Multicast_UpdateItemText_Implementation(const FText& ItemName)
