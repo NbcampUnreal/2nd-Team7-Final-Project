@@ -18,8 +18,6 @@ AGunBase::AGunBase()
     FireRate = 0.2f;
     Spread = 2.0f;
     BulletsPerShot = 1;
-    MaxAmmo = 30.0f;
-    CurrentAmmo = MaxAmmo;
     LastFireTime = 0.0f;
     DecalSize = FVector(5.0f, 5.0f, 5.0f);
     DecalLifeSpan = 10.0f;
@@ -78,12 +76,11 @@ void AGunBase::BeginPlay()
         LOG_Item_WARNING(TEXT("[GunBase::BeginPlay] 게임인스턴스 서브시스템의 GunDataTable이 null입니다!"));
     }
 
-    if (Durability > MaxAmmo || Durability <= 0.0f)
+    if (Durability <= 0.0f)
     {
-        Durability = MaxAmmo;
+        Durability = MaxDurability;
     }
 
-    UpdateAmmoState();
     InitializeGameplayTags();
 
     if (USkeletalMeshComponent* ActiveMesh = GetSkeletalMeshComponent())
@@ -188,14 +185,12 @@ void AGunBase::HandleFire()
     float OldDurability = Durability;
     Durability = FMath::Max(0.0f, Durability - 1.0f);
 
-    if (Durability > MaxAmmo)
+    if (Durability > MaxDurability)
     {
         LOG_Item_WARNING(TEXT("[HandleFire] 경고: Durability(%.0f)가 MaxAmmo(%.0f)를 초과함. 수정합니다."),
-            Durability, MaxAmmo);
-        Durability = MaxAmmo;
+            Durability, MaxDurability);
+        Durability = MaxDurability;
     }
-
-    UpdateAmmoState();
 
     //수정
     FVector SoundLocation = GetActorLocation();
@@ -212,7 +207,7 @@ void AGunBase::HandleFire()
     );
 
     LOG_Item_WARNING(TEXT("[HandleFire] 총알 소모: %.0f → %.0f (남은 총알: %.0f/%.0f)"),
-        OldDurability, Durability, Durability, MaxAmmo);
+        OldDurability, Durability, Durability, MaxDurability);
 
     // 최근 히트 결과 초기화
     RecentHits.Empty();
@@ -613,15 +608,9 @@ void AGunBase::ApplyGunDataFromDataTable()
     FireRange = GunData.Range;
     Spread = GunData.Spread;
     BulletsPerShot = GunData.BulletsPerShot;
-    MaxAmmo = GunData.MaxAmmo;
     CurrentFireMode = GunData.DefaultFireMode;
     bCanToggleFireMode = GunData.bCanToggleFireMode;
     AvailableFireModes = GunData.AvailableFireModes;
-
-    if (Durability > MaxAmmo)
-    {
-        Durability = MaxAmmo;
-    }
 
     // 이펙트 및 사운드 설정
     MuzzleFlash = GunData.MuzzleFlash;
@@ -640,17 +629,6 @@ void AGunBase::ApplyGunDataFromDataTable()
     ApplyAttachmentsFromDataTable();
 }
 
-void AGunBase::UpdateAmmoState()
-{
-    CurrentAmmo = Durability;
-
-    if (Durability <= 0.0f)
-    {
-        // TODO : 탄약 부족 UI 표시
-        LOG_Item_WARNING(TEXT("[UpdateAmmoState] 탄약 완전 소진"));
-    }
-}
-
 bool AGunBase::Reload()
 {
     AActor* OwnerActor = GetOwner();
@@ -667,14 +645,13 @@ bool AGunBase::Reload()
         return false;
     }
 
-    if (FMath::IsNearlyEqual(Durability, MaxAmmo))
+    if (FMath::IsNearlyEqual(Durability, MaxDurability))
     {
         return false;
     }
     LOG_Item_WARNING(TEXT("리로드 완료!!."));
 
-    Durability = MaxAmmo;
-    UpdateAmmoState();
+    Durability = MaxDurability;
     OnItemStateChanged.Broadcast();
 
     return true;
@@ -682,7 +659,7 @@ bool AGunBase::Reload()
 
 void AGunBase::CheckReloadCondition()
 {
-    if (FMath::IsNearlyEqual(Durability, MaxAmmo)) //이미 꽉차있으면 중지
+    if (FMath::IsNearlyEqual(Durability, MaxDurability)) //이미 꽉차있으면 중지
     {
         LOG_Item_WARNING(TEXT("총이 꽉 차있음"));
         return;
@@ -701,13 +678,6 @@ void AGunBase::CheckReloadCondition()
         return;
     }
     OwnerCharacter->StartReload();
-}
-
-void AGunBase::OnRepDurability()
-{
-    Super::OnRepDurability();
-
-    UpdateAmmoState();
 }
 
 void AGunBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

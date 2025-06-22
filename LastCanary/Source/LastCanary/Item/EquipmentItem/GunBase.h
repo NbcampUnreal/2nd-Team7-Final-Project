@@ -74,14 +74,6 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Properties")
     int32 BulletsPerShot;
 
-    /** 최대 탄약 용량 */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Properties")
-    float MaxAmmo;
-
-    /** 현재 장전된 탄약 (Durability로 대신하게 될 예정) */
-    UPROPERTY(BlueprintReadOnly, Category = "Gun|Properties")
-    float CurrentAmmo;
-
 public:
     /** 현재 발사 모드 */
     UPROPERTY(BlueprintReadOnly, Replicated, Category = "Gun|FireMode")
@@ -287,17 +279,11 @@ public:
     /** 총기 데이터 테이블 */
     void ApplyGunDataFromDataTable();
 
-    /** 탄약 상태 업데이트 */
-    void UpdateAmmoState();
-
     UFUNCTION()
     void EnsureGunDataLoaded();
 
     UFUNCTION()
     bool IsGunDataLoaded() const;
-
-    /** Durability 변경 시 탄약 동기화 */
-    virtual void OnRepDurability() override;
 
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
