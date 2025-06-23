@@ -16,6 +16,7 @@
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAnimationComplete, UAnimMontage*, CompletedMontage);
 
 class UShellEjectionComponent;
+class ALCBaseGimmick;
 
 UCLASS()
 class LASTCANARY_API AGunBase : public AEquipmentItemBase
@@ -348,4 +349,11 @@ protected:
 
     /** 태그 초기화 */
     void InitializeGameplayTags();
+
+public:
+    //-----------------------------------------------------
+    // 기믹 파괴
+    //-----------------------------------------------------
+
+    void HandleGimmickDestruction(ALCBaseGimmick* Gimmick, const FHitResult& HitResult);
 };
