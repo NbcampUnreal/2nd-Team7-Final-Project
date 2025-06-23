@@ -1655,10 +1655,9 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 			LOG_Char_WARNING(TEXT("태그는 Press"));
 			MontageToPlay = PressButtonMontage;
 		}
-		else if (InteractTargetActor->Tags.Contains("Test"))
+		else
 		{
-			MontageToPlay = InteractMontageOnUnderObject;
-			//당장 태그 없는 거 빠르게 테스트 하기 위해서 넣어놨습니다.
+			//게이트 등 애니메이션 필요 없는 인터랙트 개체들을 위해...
 			APlayerController* PC = Cast<APlayerController>(GetController());
 			if (!IsValid(PC))
 			{
@@ -1668,12 +1667,8 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 			{
 				return;
 			}
-			LOG_Char_WARNING(TEXT("excute interact For Test"));
+			LOG_Char_WARNING(TEXT("excute interact For Interact Tag"));
 			IInteractableInterface::Execute_Interact(InteractTargetActor, PC);
-			return;
-		}
-		else
-		{
 			return;
 		}
 	}
