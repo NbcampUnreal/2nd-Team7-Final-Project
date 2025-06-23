@@ -1636,6 +1636,7 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 		{
 			return;
 		}
+		//만약 인벤토리가 꽉찼다면 줍기 불가능 return;
 		MontageToPlay = InteractMontageOnUnderObject;
 	}
 	else
@@ -2109,7 +2110,8 @@ void ABaseCharacter::SetCurrentQuickSlotIndex(int32 NewIndex)
 	{
 		return;
 	}
-
+	CancelUseItem();
+	CancelInteraction();
 	StopReload();
 	LOG_Char_WARNING(TEXT("Request Server to change QuickSlotindex"));
 	Server_SetQuickSlotIndex(NewIndex);
