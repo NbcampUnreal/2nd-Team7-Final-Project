@@ -4,6 +4,7 @@
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "Perception/AISenseConfig_Hearing.h"
 #include "Character/BaseCharacter.h"
+#include "Actor/Gimmick/LCBaseGimmick.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/DamageEvents.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
@@ -306,30 +307,42 @@ void AGunBase::ProcessHit(const FHitResult& HitResult, const FVector& StartLocat
 {
     AActor* HitActor = HitResult.GetActor();
 
-    if (HitActor && HitActor != this && HitActor != GetOwner())
+    if (!IsValid(HitActor) || HitActor == this || HitActor == GetOwner())
+        return;
+
+    // 기믹 파괴 로직
+    if (ALCBaseGimmick* Gimmick = Cast<ALCBaseGimmick>(HitActor))
     {
-        // GameplayTag로 적 캐릭터 판별
-        static const FGameplayTag EnemyTag = FGameplayTag::RequestGameplayTag(TEXT("Character.Enemy"));
-
-        IGameplayTagAssetInterface* TagInterface = Cast<IGameplayTagAssetInterface>(HitActor);
-        if (TagInterface && TagInterface->HasMatchingGameplayTag(EnemyTag))
+        if (Gimmick->bDestructibleByGun)
         {
-            float AppliedDamage = BaseDamage;
-            LOG_Item_WARNING(TEXT("ProcessHit: Applying %.1f damage to enemy %s"), AppliedDamage, *HitActor->GetName());
+            LOG_Item_WARNING(TEXT("🔫 기믹 피격됨 → 데미지 전달: %s"), *Gimmick->GetName());
 
-            FPointDamageEvent DamageEvent(AppliedDamage, HitResult, (HitResult.ImpactPoint - StartLocation).GetSafeNormal(), nullptr);
-
-            float ActualDamage = HitActor->TakeDamage(AppliedDamage, DamageEvent, GetInstigatorController(), this);
+            FPointDamageEvent DamageEvent(1.0f, HitResult, (HitResult.ImpactPoint - StartLocation).GetSafeNormal(), nullptr);
+            Gimmick->TakeDamage(1.0f, DamageEvent, GetInstigatorController(), this);
+            return; 
         }
-        else
-        {
-            LOG_Item_WARNING(TEXT("ProcessHit: Hit non-enemy actor %s. No damage applied"), *HitActor->GetName());
-        }
-
-        USoundBase* ImpactSoundToPlay = GetImpactSoundForTarget(HitActor);
-        Multicast_PlayImpactSoundAtLocation(ImpactSoundToPlay, HitResult.ImpactPoint);
     }
+
+    //  적 공격 로직
+    static const FGameplayTag EnemyTag = FGameplayTag::RequestGameplayTag(TEXT("Character.Enemy"));
+    IGameplayTagAssetInterface* TagInterface = Cast<IGameplayTagAssetInterface>(HitActor);
+    if (TagInterface && TagInterface->HasMatchingGameplayTag(EnemyTag))
+    {
+        float AppliedDamage = BaseDamage;
+        LOG_Item_WARNING(TEXT("ProcessHit: Applying %.1f damage to enemy %s"), AppliedDamage, *HitActor->GetName());
+
+        FPointDamageEvent DamageEvent(AppliedDamage, HitResult, (HitResult.ImpactPoint - StartLocation).GetSafeNormal(), nullptr);
+        HitActor->TakeDamage(AppliedDamage, DamageEvent, GetInstigatorController(), this);
+    }
+    else
+    {
+        LOG_Item_WARNING(TEXT("ProcessHit: Hit non-enemy actor %s. No damage applied"), *HitActor->GetName());
+    }
+
+    USoundBase* ImpactSoundToPlay = GetImpactSoundForTarget(HitActor);
+    Multicast_PlayImpactSoundAtLocation(ImpactSoundToPlay, HitResult.ImpactPoint);
 }
+
 
 void AGunBase::Multicast_SpawnImpactEffects_Implementation(const TArray<FHitResult>& Hits)
 {
@@ -1031,4 +1044,16 @@ void AGunBase::InitializeGameplayTags()
     WoodTag = FGameplayTag::RequestGameplayTag(TEXT("Material.Wood"));
     FleshTag = FGameplayTag::RequestGameplayTag(TEXT("Material.Flesh"));
     StoneTag = FGameplayTag::RequestGameplayTag(TEXT("Material.Stone"));
+}
+
+void AGunBase::HandleGimmickDestruction(ALCBaseGimmick* Gimmick, const FHitResult& HitResult)
+{
+    if (!IsValid(Gimmick)) return;
+
+    LOG_Item_WARNING(TEXT("🔫 파괴 가능 기믹 피격됨 → Destroy(): %s"), *Gimmick->GetName());
+
+    // TODO: 이후 파괴 이펙트, 사운드, 이펙트 스폰 등 확장 가능
+    // ex) UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), DestroyEffect, HitResult.ImpactPoint);
+
+    Gimmick->Destroy();
 }

@@ -11,4 +11,7 @@ class LASTCANARY_API ATempleEliteMonster : public ABaseMonsterCharacter
 	
 public:
 	ATempleEliteMonster();
+
+	UFUNCTION(BlueprintCallable, Category = "Tracking")
+	void ReceiveTrackingTarget(AActor* NewTarget);
 };
