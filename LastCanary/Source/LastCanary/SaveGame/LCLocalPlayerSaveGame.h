@@ -75,7 +75,7 @@ struct FUserSettings
 	float MicrophoneVolume = DefaultSettings::DEFAULT_VOLUME;
 
 	UPROPERTY()
-	TArray<FSaveKeyMapping> SavedMappings;
+	TArray<FSaveKeyMapping> SavedMappings;	
 
 	void ResetToDefault()
 	{
@@ -90,6 +90,79 @@ struct FUserSettings
 	}
 };
 
+USTRUCT(BlueprintType)
+struct FCharacterCustomizationData
+{
+	GENERATED_BODY()
+	// SkeletalMesh는 직접 Replicate 안되므로 ID 방식이 필요함
+
+	//메시 ID
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 DefaultBodyID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 GloveID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 JacketID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 PantsID = 0;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 BeltsID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 HelmetID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 ArmorID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 BootsID = 0;
+
+
+	//머티리얼 ID
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 DefaultBodyMaterialID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 GloveMaterialID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 JacketMaterialID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 PantsMaterialID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 BeltsMaterialID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 HelmetMaterialID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 ArmorMaterialID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 BootsMaterialID = 0;
+
+
+	FCharacterCustomizationData() {}
+	FCharacterCustomizationData(int32 DefaultBody, int32 Glove, int32 Jacket, int32 Pants, int32 Belts, int32 Helmet, int32 Armor, int32 Boots)
+		: DefaultBodyID(DefaultBody), GloveID(Glove), JacketID(Jacket), PantsID(Pants), BeltsID(Belts), HelmetID(Helmet), ArmorID(Armor), BootsID(Boots) {
+	}
+	FCharacterCustomizationData(
+		int32 DefaultBody, int32 Glove, int32 Jacket, int32 Pants, int32 Belts, int32 Helmet, int32 Armor, int32 Boots,
+		int32 DefaultBodyMat, int32 GloveMat, int32 JacketMat, int32 PantsMat, int32 BeltsMat, int32 HelmetMat, int32 ArmorMat, int32 BootsMat
+	)
+		: DefaultBodyID(DefaultBody), GloveID(Glove), JacketID(Jacket), PantsID(Pants), BeltsID(Belts), HelmetID(Helmet), ArmorID(Armor), BootsID(Boots),
+		DefaultBodyMaterialID(DefaultBodyMat), GloveMaterialID(GloveMat), JacketMaterialID(JacketMat), PantsMaterialID(PantsMat),
+		BeltsMaterialID(BeltsMat), HelmetMaterialID(HelmetMat), ArmorMaterialID(ArmorMat), BootsMaterialID(BootsMat)
+	{
+	}
+};
+
 
 UCLASS()
 class LASTCANARY_API ULCLocalPlayerSaveGame : public ULocalPlayerSaveGame
@@ -100,6 +173,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FUserSettings Settings;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FCharacterCustomizationData CustomizationData;
 
 public:
 
@@ -132,6 +207,9 @@ public:
 
 	static bool SaveKeyBindings(UWorld* World, const TArray<FSaveKeyMapping>& Mappings);
 	static TArray<FSaveKeyMapping> LoadKeyBindings(UWorld* World);
+
+	static bool SaveCustomizationData(UWorld* World, const FCharacterCustomizationData NewSetting);
+	static FCharacterCustomizationData LoadCustomizationData(UWorld* World);
 
 	static ULCLocalPlayerSaveGame* GetSaveInstance(UWorld* World);
 };
