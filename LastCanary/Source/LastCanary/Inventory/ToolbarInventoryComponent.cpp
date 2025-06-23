@@ -1055,6 +1055,7 @@ bool UToolbarInventoryComponent::RemoveItemFromBackpack(int32 BackpackSlotIndex,
             }
 
             SyncInventoryToPlayerState();
+            UpdateWeight();
             OnInventoryUpdated.Broadcast();
             return true;
         }
@@ -1393,6 +1394,7 @@ bool UToolbarInventoryComponent::TryMoveToolbarItemToBackpack(int32 ToolbarIndex
     // 툴바 슬롯을 Default로 설정
     SetSlotToDefault(ToolbarIndex);
 
+    UpdateWeight();
     OnInventoryUpdated.Broadcast();
 
     LOG_Item_WARNING(TEXT("[TryMoveToolbarItemToBackpack] 툴바->가방 이동 성공: %s"), *BackpackSlot.ItemRowName.ToString());
@@ -1454,6 +1456,7 @@ bool UToolbarInventoryComponent::TryMoveBackpackItemToToolbar(int32 BackpackInde
         BackpackSlot.Quantity = 0;
     }
 
+    UpdateWeight();
     OnInventoryUpdated.Broadcast();
 
     LOG_Item_WARNING(TEXT("[TryMoveBackpackItemToToolbar] 가방->툴바 이동 성공: %s (1개, 가방 잔여: %d개)"), *ToolbarSlot.ItemRowName.ToString(), BackpackSlot.Quantity);

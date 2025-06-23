@@ -202,6 +202,7 @@ bool UBackpackManager::AddItemToBackpack(FName ItemRowName, int32 Quantity, int3
 
     if (bSuccess)
     {
+        OwnerInventory->UpdateWeight();
         OwnerInventory->OnInventoryUpdated.Broadcast();
         LOG_Item_WARNING(TEXT("[AddItemToBackpack] 성공: %d/%d개 추가됨"),
             OriginalQuantity - RemainingQuantity, OriginalQuantity);
@@ -223,6 +224,7 @@ bool UBackpackManager::AddToSlot(FBackpackSlotData& TargetSlot, FName ItemRowNam
         TargetSlot.ItemRowName = ItemRowName;
         TargetSlot.Quantity = Addable;
 
+        OwnerInventory->UpdateWeight();
         OwnerInventory->OnInventoryUpdated.Broadcast();
         LOG_Item_WARNING(TEXT("[AddToSlot] 빈 슬롯에 %d개 추가"), Addable);
         return (Addable == Quantity);
@@ -240,6 +242,7 @@ bool UBackpackManager::AddToSlot(FBackpackSlotData& TargetSlot, FName ItemRowNam
         int32 Addable = FMath::Min(Quantity, StackSpace);
         TargetSlot.Quantity += Addable;
 
+        OwnerInventory->UpdateWeight();
         OwnerInventory->OnInventoryUpdated.Broadcast();
         LOG_Item_WARNING(TEXT("[AddToSlot] 스택에 %d개 추가 (총 %d개)"), Addable, TargetSlot.Quantity);
         return (Addable == Quantity);
@@ -278,6 +281,7 @@ bool UBackpackManager::RemoveItemFromBackpack(int32 BackpackSlotIndex, int32 Qua
         TargetSlot.Quantity = 0;
     }
 
+    OwnerInventory->UpdateWeight();
     OwnerInventory->OnInventoryUpdated.Broadcast();
     return true;
 }
