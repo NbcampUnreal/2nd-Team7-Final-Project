@@ -309,7 +309,7 @@ void ALCBaseGimmick::OnTriggerExit(UPrimitiveComponent* OverlappedComp, AActor* 
 	//	OverlappingActors.Num(),
 	//	bActivated ? TEXT("O") : TEXT("X"),
 	//	bToggleState ? TEXT("O") : TEXT("X")
-	);
+	//);
 
 	switch (ActivationType)
 	{
@@ -339,7 +339,6 @@ void ALCBaseGimmick::OnTriggerExit(UPrimitiveComponent* OverlappedComp, AActor* 
 		break;
 	}
 }
-
 
 bool ALCBaseGimmick::IsValidActivator(AActor* OtherActor) const
 {
