@@ -48,10 +48,6 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Scanner")
     UMaterialParameterCollection* ScanParameterCollection;
 
-    /** 스캔 중인지 여부 (로컬만) */
-    UPROPERTY(BlueprintReadOnly, Category = "Scanner")
-    bool bIsScanning;
-
     /** 스캔 지속 시간 (초) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Scanner")
     float ScanDuration;

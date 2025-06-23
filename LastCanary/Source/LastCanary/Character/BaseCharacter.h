@@ -531,6 +531,12 @@ public:
 	//Player Take Damage
 public:
 	/*Player Damage, Death*/
+	float TakeSpiritDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser);
+	float CalculateTakeSpiritDamage(float DamageAmount);
+	void EnterPanicState();
+
+
+
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	void HandlePlayerDeath();
 

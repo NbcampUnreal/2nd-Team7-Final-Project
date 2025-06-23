@@ -1655,10 +1655,9 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 			LOG_Char_WARNING(TEXT("태그는 Press"));
 			MontageToPlay = PressButtonMontage;
 		}
-		else if (InteractTargetActor->Tags.Contains("Test"))
+		else
 		{
-			MontageToPlay = InteractMontageOnUnderObject;
-			//당장 태그 없는 거 빠르게 테스트 하기 위해서 넣어놨습니다.
+			//게이트 등 애니메이션 필요 없는 인터랙트 개체들을 위해...
 			APlayerController* PC = Cast<APlayerController>(GetController());
 			if (!IsValid(PC))
 			{
@@ -1668,12 +1667,8 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 			{
 				return;
 			}
-			LOG_Char_WARNING(TEXT("excute interact For Test"));
+			LOG_Char_WARNING(TEXT("excute interact For Interact Tag"));
 			IInteractableInterface::Execute_Interact(InteractTargetActor, PC);
-			return;
-		}
-		else
-		{
 			return;
 		}
 	}
@@ -2235,6 +2230,48 @@ void ABaseCharacter::Server_UnequipCurrentItem_Implementation()
 	UnequipCurrentItem();
 }
 
+float ABaseCharacter::TakeSpiritDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	LOG_Char_WARNING(TEXT("캐릭터가 정신력에 타격을 받음"));
+	if (!HasAuthority())	
+	{
+		return 0;
+	}
+	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
+	if (!IsValid(MyPlayerState))
+	{
+		return 0;
+	}
+	if (MyPlayerState->bInfiniteHP == true)
+	{
+		return 0;
+	}
+	float FinalDamage = CalculateTakeSpiritDamage(DamageAmount);
+	float CurrentSpirit = MyPlayerState->GetSpirit();
+	float MaxSpirit = MyPlayerState->MaxSpirit;
+	float CalCulatedSpirit = FMath::Clamp(CurrentSpirit - FinalDamage, 0.0f, MaxSpirit);
+	MyPlayerState->SetSpirit(CalCulatedSpirit);
+	LOG_Char_WARNING(TEXT("Current Spirit : %f"), CalCulatedSpirit);
+	if (CalCulatedSpirit <= MyPlayerState->PanicTriggerThreshold)
+	{
+		//: 정신력 낮음 처리
+		EnterPanicState();
+	}
+	return DamageAmount;
+}
+
+float ABaseCharacter::CalculateTakeSpiritDamage(float DamageAmount)
+{
+	//TODO: 여기에다가 추가로 뭔가 장비나 방어력이 추가 되면 여기서 계산하고 넘겨도 됨.
+	return DamageAmount;
+}
+
+void ABaseCharacter::EnterPanicState()
+{
+	//환정 / 비명소리 등 / 목소리 변조 // 갑자기 지혼자 총쏨. // 온갖 트롤 요소를 다 넣어. //플레이어 숨소리 // 감도 강제로 올리기 낮추기 // 팀원 보이스 낮추기 // 
+	//TODO: 정신력 0 처리
+}
+
 
 float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
@@ -2482,19 +2519,19 @@ void ABaseCharacter::Client_SetMovementSetting_Implementation()
 	SpeedMultiplier = CalculateMovementSpeedMultiplier();
 
 	//스테이트에 바뀐 값 저장
-	float CruochSpeed = MyPlayerState->DefaultCrouchSpeed * SpeedMultiplier;
+	float CrouchSpeed = MyPlayerState->DefaultCrouchSpeed * SpeedMultiplier;
 	float WalkSpeed = MyPlayerState->DefaultWalkSpeed * SpeedMultiplier;
 	float RunSpeed = MyPlayerState->DefaultRunSpeed * SpeedMultiplier;
 	float SprintSpeed = MyPlayerState->DefaultSprintSpeed * SpeedMultiplier;
 	float JumpZVelocity = MyPlayerState->DefaultJumpZVelocity * SpeedMultiplier;
 
-	MyPlayerState->CrouchSpeed = CruochSpeed;
+	MyPlayerState->CrouchSpeed = CrouchSpeed;
 	MyPlayerState->WalkSpeed = WalkSpeed;
 	MyPlayerState->RunSpeed = RunSpeed;
 	MyPlayerState->SprintSpeed = SprintSpeed;
 	MyPlayerState->JumpZVelocity = JumpZVelocity;
 
-	AlsCharacterMovement->SetPlayerMovementSpeed(CruochSpeed, WalkSpeed, RunSpeed, SprintSpeed);
+	AlsCharacterMovement->SetPlayerMovementSpeed(CrouchSpeed, WalkSpeed, RunSpeed, SprintSpeed);
 	AlsCharacterMovement->JumpZVelocity = JumpZVelocity;
 	LOG_Char_WARNING(TEXT("SetMovementSetting 클라이언트에서 설정 완료"));
 }
@@ -2519,19 +2556,19 @@ void ABaseCharacter::SetMovementSetting()
 	SpeedMultiplier = CalculateMovementSpeedMultiplier();
 
 	//스테이트에 바뀐 값 저장
-	float CruochSpeed = MyPlayerState->DefaultCrouchSpeed * SpeedMultiplier;
+	float CrouchSpeed = MyPlayerState->DefaultCrouchSpeed * SpeedMultiplier;
 	float WalkSpeed = MyPlayerState->DefaultWalkSpeed * SpeedMultiplier;
 	float RunSpeed = MyPlayerState->DefaultRunSpeed * SpeedMultiplier;
 	float SprintSpeed = MyPlayerState->DefaultSprintSpeed * SpeedMultiplier;
 	float JumpZVelocity = MyPlayerState->DefaultJumpZVelocity * SpeedMultiplier;
 
-	MyPlayerState->CrouchSpeed = CruochSpeed;
+	MyPlayerState->CrouchSpeed = CrouchSpeed;
 	MyPlayerState->WalkSpeed = WalkSpeed;
 	MyPlayerState->RunSpeed = RunSpeed;
 	MyPlayerState->SprintSpeed = SprintSpeed;
 	MyPlayerState->JumpZVelocity = JumpZVelocity;
 
-	AlsCharacterMovement->SetPlayerMovementSpeed(CruochSpeed, WalkSpeed, RunSpeed, SprintSpeed);
+	AlsCharacterMovement->SetPlayerMovementSpeed(CrouchSpeed, WalkSpeed, RunSpeed, SprintSpeed);
 	AlsCharacterMovement->JumpZVelocity = JumpZVelocity;
 	
 	LOG_Char_WARNING(TEXT("SetMovementSetting 완료"));
@@ -2596,7 +2633,7 @@ void ABaseCharacter::RefreshOverlayObject()
 	FName Socketname = "Rifle";
 	bool bUseLeftGunBone = true;
 	UStaticMesh* AttachMesh = NULL;
-	USkeletalMesh* AttachSkletalMesh = NULL;
+	USkeletalMesh* AttachSkeletalMesh = NULL;
 	if (IsValid(CurrentItem))
 	{
 		ItemTag = CurrentItem->ItemData.ItemType;
@@ -2626,7 +2663,7 @@ void ABaseCharacter::RefreshOverlayObject()
 			AGunBase* RifleItem = Cast<AGunBase>(EquipmentItem);
 			USkeletalMeshComponent* RifleMesh = RifleItem->GetSkeletalMeshComponent();
 			CurrentRifleMesh = RifleMesh;
-			AttachSkletalMesh = EquipmentItem->ItemData.SkeletalMesh;
+			AttachSkeletalMesh = EquipmentItem->ItemData.SkeletalMesh;
 		}
 		
 		Overlay = AlsOverlayModeTags::Rifle;
@@ -2645,7 +2682,7 @@ void ABaseCharacter::RefreshOverlayObject()
 	SetOverlayMode(Overlay);
 	RefreshOverlayLinkedAnimationLayer(ItemTag);
 	SetDesiredAiming(bIsDesireAiming);
-	AttachOverlayObject(AttachMesh, AttachSkletalMesh, NULL, Socketname, bUseLeftGunBone);
+	AttachOverlayObject(AttachMesh, AttachSkeletalMesh, NULL, Socketname, bUseLeftGunBone);
 
 	/*
 	예시 코드.. 참고할 것!

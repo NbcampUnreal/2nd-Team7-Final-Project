@@ -1,6 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "UI/UIElement/CharacterCustomizationWidget.h"
 #include "UI/Manager/LCUIManager.h"
 
