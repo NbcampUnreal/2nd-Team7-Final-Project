@@ -1647,6 +1647,15 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 		{
 			return;
 		}
+		if (!ToolbarInventoryComponent->CanAddItem(Item))
+		{
+			LOG_Char_WARNING(TEXT("아이템을 주으려 했으나 인벤토리가 꽉참"));
+			return;
+		}
+		if (IsValid(BackpackMeshComponent) && BackpackMeshComponent)
+		{
+			//TODO: 백팩에 넣을 수 있는지 판단하는 로직이 필요함
+		}
 		//만약 인벤토리가 꽉찼다면 줍기 불가능 return;
 		MontageToPlay = InteractMontageOnUnderObject;
 	}
