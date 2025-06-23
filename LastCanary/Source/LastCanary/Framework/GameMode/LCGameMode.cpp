@@ -53,7 +53,7 @@ void ALCGameMode::HandleStartingNewPlayer_Implementation(APlayerController* NewP
 	Super::HandleStartingNewPlayer_Implementation(NewPlayer);
 
 	CachingNewPlayer(NewPlayer);
-
+	// TODO : PlayerState의 음성채팅 OnOff여부에 따라서 복구
 }
 
 void ALCGameMode::StartPlay()

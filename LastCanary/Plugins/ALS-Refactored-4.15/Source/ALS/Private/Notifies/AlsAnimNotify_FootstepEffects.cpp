@@ -81,7 +81,7 @@ void UAlsAnimNotify_FootstepEffects::Notify(USkeletalMeshComponent* Mesh, UAnimS
 	{
 		return;
 	}
-	if (Mesh->GetName().Contains(TEXT("HeadMesh")))
+	if (Mesh->GetName().Contains(TEXT("Custom")))
 	{
 		return;
 	}

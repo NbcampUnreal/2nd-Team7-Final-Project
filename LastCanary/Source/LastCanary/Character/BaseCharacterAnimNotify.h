@@ -24,6 +24,9 @@ class LASTCANARY_API UBaseCharacterAnimNotify : public UAnimNotify
 public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Notify")
     ECharacterNotifyType NotifyType = ECharacterNotifyType::None;
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sound")
+    USoundBase* SoundToPlay;
 public:
     // Editor에서 설정할 수 있도록 TargetActor 지정
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Notify")
