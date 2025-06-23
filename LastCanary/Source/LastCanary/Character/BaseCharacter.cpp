@@ -76,6 +76,13 @@ ABaseCharacter::ABaseCharacter()
 	CustomHelmetMesh->SetupAttachment(GetMesh());
 	CustomHelmetMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
 	
+	CustomArmorMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomArmorMesh"));
+	CustomArmorMesh->SetupAttachment(GetMesh());
+	CustomArmorMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
+
+	CustomBootsMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomBootsMesh"));
+	CustomBootsMesh->SetupAttachment(GetMesh());
+	CustomBootsMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
 
 
 	OverlayStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("OverlayStaticMesh"));
@@ -252,35 +259,71 @@ void ABaseCharacter::ApplyCustomization(const UCustomizationMeshMap* CharacterMe
 		LOG_Char_WARNING(TEXT("캐릭터 메시 데이터 invalid"));
 		return;
 	}
-	int BodyId = 0;
-	int HeadId = 0;
-	int HelmetId = 0;
-	int GloveId = 0;
-	int JacketId = 1;
-	int PantsId = 1;
-	int BeltsId = 0;
+	FCharacterCustomizationData CustomizationData = ULCLocalPlayerSaveGame::LoadCustomizationData(GetWorld());
+	int BodyId = CustomizationData.DefaultBodyID;
+	int HeadId = CustomizationData.DefaultBodyID;
+	int HelmetId = CustomizationData.HelmetID;
+	int GloveId = CustomizationData.GloveID;
+	int JacketId = CustomizationData.JacketID;
+	int PantsId = CustomizationData.PantsID;
+	int BeltsId = CustomizationData.BeltsID;
+	int ArmorId = CustomizationData.ArmorID;
+	int BootsId = CustomizationData.BootsID;
 	// Body
 	USkeletalMesh* BodySkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->DefaultBodyMeshes, BodyId);
-	SetPartMesh(GetMesh(), BodySkeletalMesh);
-
 	USkeletalMesh* HeadSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->DefaultHeadMeshes, HeadId);
-	SetPartMesh(CustomHeadMesh, HeadSkeletalMesh);
-
 	USkeletalMesh* HelmetSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->HelmetMeshes, HelmetId);
-	SetPartMesh(CustomHelmetMesh, HelmetSkeletalMesh);
-
 	USkeletalMesh* GloveSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->GloveMeshes, GloveId);
-	SetPartMesh(CustomGloveMesh, GloveSkeletalMesh);
-
 	USkeletalMesh* JacketSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->JacketMeshes, JacketId);
-	SetPartMesh(CustomJacketMesh, JacketSkeletalMesh);
-	
 	USkeletalMesh* PantsSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->PantsMeshes, PantsId);
-	SetPartMesh(CustomPantsMesh, PantsSkeletalMesh);
-
 	USkeletalMesh* BeltsSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->BeltsMeshes, BeltsId);
-	SetPartMesh(CustomBeltsMesh, BeltsSkeletalMesh);
+	USkeletalMesh* ArmorSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->ArmorMeshes, ArmorId);
+	USkeletalMesh* BootsSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->BootsMeshes, BootsId);
 
+	SetPartMesh(GetMesh(), BodySkeletalMesh);
+	SetPartMesh(CustomHeadMesh, HeadSkeletalMesh);
+	SetPartMesh(CustomHelmetMesh, HelmetSkeletalMesh);
+	SetPartMesh(CustomGloveMesh, GloveSkeletalMesh);
+	SetPartMesh(CustomJacketMesh, JacketSkeletalMesh);
+	SetPartMesh(CustomPantsMesh, PantsSkeletalMesh);
+	SetPartMesh(CustomBeltsMesh, BeltsSkeletalMesh);
+	SetPartMesh(CustomArmorMesh, ArmorSkeletalMesh);
+	SetPartMesh(CustomBootsMesh, BootsSkeletalMesh);
+
+
+
+	// 전제: CustomizationData 안에 머티리얼 ID도 들어있음
+	int BodyMatId = CustomizationData.DefaultBodyMaterialID;
+	int HeadMatId = CustomizationData.DefaultBodyMaterialID;
+	int HelmetMatId = CustomizationData.HelmetMaterialID;
+	int GloveMatId = CustomizationData.GloveMaterialID;
+	int JacketMatId = CustomizationData.JacketMaterialID;
+	int PantsMatId = CustomizationData.PantsMaterialID;
+	int BeltsMatId = CustomizationData.BeltsMaterialID;
+	int ArmorMatId = CustomizationData.ArmorMaterialID;
+	int BootsMatId = CustomizationData.BootsMaterialID;
+
+	// 머티리얼도 매핑용 에셋에서 가져옴 (이미 블루프린트에서 세팅되어 있다고 가정)
+	UMaterialInterface* BodyMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->DefaultBodyMaterials, BodyMatId);
+	UMaterialInterface* HeadMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->DefaultBodyMaterials, HeadMatId);
+	UMaterialInterface* HelmetMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->HelmetMaterials, HelmetMatId);
+	UMaterialInterface* GloveMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->GloveMaterials, GloveMatId);
+	UMaterialInterface* JacketMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->JacketMaterials, JacketMatId);
+	UMaterialInterface* PantsMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->PantsMaterials, PantsMatId);
+	UMaterialInterface* BeltsMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->BeltsMaterials, BeltsMatId);
+	UMaterialInterface* ArmorMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->ArmorMaterials, ArmorMatId);
+	UMaterialInterface* BootsMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->BootsMaterials, BootsMatId);
+
+	// 머티리얼 적용 함수 호출 (보통 0번 슬롯만 적용한다고 가정)
+	SetPartMaterial(GetMesh(), 0, BodyMat);
+	SetPartMaterial(CustomHeadMesh, 0, HeadMat);
+	SetPartMaterial(CustomHelmetMesh, 0, HelmetMat);
+	SetPartMaterial(CustomGloveMesh, 0, GloveMat);
+	SetPartMaterial(CustomJacketMesh, 0, JacketMat);
+	SetPartMaterial(CustomPantsMesh, 0, PantsMat);
+	SetPartMaterial(CustomBeltsMesh, 0, BeltsMat);
+	SetPartMaterial(CustomArmorMesh, 0, ArmorMat);
+	SetPartMaterial(CustomBootsMesh, 0, BootsMat);
 }
 
 void ABaseCharacter::SetPartMesh(USkeletalMeshComponent* Component, USkeletalMesh* LoadedMesh)
@@ -298,6 +341,17 @@ void ABaseCharacter::SetPartMesh(USkeletalMeshComponent* Component, USkeletalMes
 		Component->SetLeaderPoseComponent(nullptr); // 메시 해제할 땐 잠시 끊기
 		Component->SetVisibility(false);
 		Component->SetSkeletalMesh(nullptr);
+	}
+}
+
+void ABaseCharacter::SetPartMaterial(USkeletalMeshComponent* Component, int32 MaterialIndex, UMaterialInterface* Material)
+{
+	if (!Component || !Material) return;
+
+	// 메시가 존재하고, 표시 상태일 경우에만 적용
+	if (Component && Component->IsRegistered() && Component->IsVisible() && Component->SkeletalMesh)
+	{
+		Component->SetMaterial(MaterialIndex, Material);
 	}
 }
 
@@ -409,7 +463,8 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 		// 목표 위치 결정
 		if (bIsAiming && IsValid(CurrentRifleMesh) && !bIsReloading)
 		{
-			TargetLocation = CurrentRifleMesh->GetSocketLocation(FName("Scope"));
+			TargetLocation = OverlaySkeletalMesh->GetSocketLocation(FName("Scope"));
+			//TargetLocation = CurrentRifleMesh->GetSocketLocation(FName("Scope"));
 		}
 		else
 		{
@@ -460,7 +515,8 @@ void ABaseCharacter::AttachCameraToRifle()
 	{
 		if (IsLocallyControlled())
 		{
-			SpringArm->AttachToComponent(CurrentRifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
+			SpringArm->AttachToComponent(OverlaySkeletalMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
+			//SpringArm->AttachToComponent(CurrentRifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
 		}
 	}
 }
@@ -2540,7 +2596,7 @@ void ABaseCharacter::RefreshOverlayObject()
 	FName Socketname = "Rifle";
 	bool bUseLeftGunBone = true;
 	UStaticMesh* AttachMesh = NULL;
-
+	USkeletalMesh* AttachSkletalMesh = NULL;
 	if (IsValid(CurrentItem))
 	{
 		ItemTag = CurrentItem->ItemData.ItemType;
@@ -2570,7 +2626,9 @@ void ABaseCharacter::RefreshOverlayObject()
 			AGunBase* RifleItem = Cast<AGunBase>(EquipmentItem);
 			USkeletalMeshComponent* RifleMesh = RifleItem->GetSkeletalMeshComponent();
 			CurrentRifleMesh = RifleMesh;
+			AttachSkletalMesh = EquipmentItem->ItemData.SkeletalMesh;
 		}
+		
 		Overlay = AlsOverlayModeTags::Rifle;
 		bIsDesireAiming = true;
 	}
@@ -2587,7 +2645,7 @@ void ABaseCharacter::RefreshOverlayObject()
 	SetOverlayMode(Overlay);
 	RefreshOverlayLinkedAnimationLayer(ItemTag);
 	SetDesiredAiming(bIsDesireAiming);
-	AttachOverlayObject(AttachMesh, NULL, NULL, Socketname, bUseLeftGunBone);
+	AttachOverlayObject(AttachMesh, AttachSkletalMesh, NULL, Socketname, bUseLeftGunBone);
 
 	/*
 	예시 코드.. 참고할 것!
@@ -2629,9 +2687,23 @@ void ABaseCharacter::AttachOverlayObject(UStaticMesh* NewStaticMesh, USkeletalMe
 	);
 
 	//EquippedItemComponent->SetMesh()
+	
+
 	OverlayStaticMesh->SetStaticMesh(NewStaticMesh);
 	OverlayStaticMesh->AttachToComponent(GetMesh(), AttachRules, ResultSocketName);
+
+	if (NewSkeletalMesh)
+	{
+		LOG_Item_WARNING(TEXT("오버레이 스켈레탈 메시 등록"));
+		
+	}
+	else
+	{
+		LOG_Item_WARNING(TEXT("오버레이 스켈레탈 메시 등록실패"));
+	}
 	OverlaySkeletalMesh->SetSkinnedAssetAndUpdate(NewSkeletalMesh, true);
+	OverlaySkeletalMesh->SetAnimInstanceClass(NewAnimationClass);
+	OverlaySkeletalMesh->AttachToComponent(GetMesh(), AttachRules, ResultSocketName);
 }
 
 void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(FGameplayTag ItemTag)

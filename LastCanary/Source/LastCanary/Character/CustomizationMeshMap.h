@@ -18,11 +18,25 @@ struct FMeshPartEntry
     USkeletalMesh* Mesh;
 };
 
+USTRUCT(BlueprintType)
+struct FMaterialPartEntry
+{
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    int32 ID;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UMaterialInterface* Material;
+};
+
 UCLASS(BlueprintType, Blueprintable)
 class LASTCANARY_API UCustomizationMeshMap : public UDataAsset
 {
 	GENERATED_BODY()
 public:
+    ///* 스켈레탈 메시 *///
+
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     TArray<FMeshPartEntry> DefaultBodyMeshes;
 
@@ -43,7 +57,45 @@ public:
     
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     TArray<FMeshPartEntry> HelmetMeshes;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    TArray<FMeshPartEntry> ArmorMeshes;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    TArray<FMeshPartEntry> BootsMeshes;
     // ... 다른 부위들 추가 가능
+
+    
+    ///* 머티리얼 *///
+    
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    TArray<FMaterialPartEntry> DefaultBodyMaterials;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    TArray<FMaterialPartEntry> DefaultHeadMaterials;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    TArray<FMaterialPartEntry> GloveMaterials;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    TArray<FMaterialPartEntry> JacketMaterials;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    TArray<FMaterialPartEntry> PantsMaterials;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    TArray<FMaterialPartEntry> BeltsMaterials;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    TArray<FMaterialPartEntry> HelmetMaterials;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    TArray<FMaterialPartEntry> ArmorMaterials;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    TArray<FMaterialPartEntry> BootsMaterials;
+
+
 
     UFUNCTION(BlueprintCallable)
     USkeletalMesh* GetMeshByID(const TArray<FMeshPartEntry>& Entries, int32 ID) const
@@ -52,6 +104,17 @@ public:
         {
             if (Entry.ID == ID)
                 return Entry.Mesh;
+        }
+        return nullptr;
+    }
+
+    UFUNCTION(BlueprintCallable)
+    UMaterialInterface* GetMaterialByID(const TArray<FMaterialPartEntry>& Entries, int32 ID) const
+    {
+        for (const auto& Entry : Entries)
+        {
+            if (Entry.ID == ID)
+                return Entry.Material;
         }
         return nullptr;
     }

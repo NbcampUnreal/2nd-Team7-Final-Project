@@ -111,9 +111,17 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
 	USkeletalMeshComponent* CustomHelmetMesh;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CustomArmorMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CustomBootsMesh;
+
 	void ApplyCustomization(const UCustomizationMeshMap* Data);
 
 	void SetPartMesh(USkeletalMeshComponent* Component, USkeletalMesh* LoadedMesh);
+
+	void SetPartMaterial(USkeletalMeshComponent* Component, int32 MaterialIndex, UMaterialInterface* Material);
 
 	float GetBrightness();
 	void SetBrightness(float Value);
