@@ -40,6 +40,14 @@ ABaseDrone::ABaseDrone()
 	MovementComponent->UpdatedComponent = DroneMesh; // RootComponent 또는 DroneMesh로 설정
 
 	ItemSpawner = CreateDefaultSubobject<UItemSpawnerComponent>(TEXT("ItemSpawner"));
+
+	// 아이템 부착용 메시 컴포넌트 생성
+	CarriedItemMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("CarriedItemMesh"));
+	CarriedItemMesh->SetupAttachment(DroneMesh, TEXT("ItemSocket")); // ItemSocket 소켓에 부착
+	CarriedItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	CarriedItemMesh->SetVisibility(false);
+
+	CarriedItem = nullptr;
 }
 
 void ABaseDrone::BeginPlay()
@@ -56,7 +64,6 @@ void ABaseDrone::BeginPlay()
 	MoveDirection = FVector::ForwardVector;
 
 	TargetDroneRotation.Yaw = GetActorRotation().Yaw;
-
 	if (const UWorld* World = GetWorld())
 	{
 		if (ULCGameInstanceSubsystem* GIS = World->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
@@ -382,6 +389,12 @@ void ABaseDrone::Server_ReturnAsItem_Implementation()
 		return;
 	}
 
+	// 먼저 소지한 아이템이 있으면 드랍
+	if (CarriedItem)
+	{
+		Server_DropItem();
+	}
+
 	// ⭐ 드론 아이템 스폰
 	SpawnDroneItemAtCurrentLocation();
 	Destroy();
@@ -407,6 +420,7 @@ void ABaseDrone::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLife
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(ABaseDrone, CameraPitch);
+	DOREPLIFETIME(ABaseDrone, CarriedItem);
 }
 
 
@@ -532,3 +546,113 @@ void ABaseDrone::ApplyPostProcessMaterial(int32 NewIndex)
 		Camera->PostProcessSettings.WeightedBlendables.Array.Add(Blendable);
 	}
 }
+
+void ABaseDrone::Server_PickupItem_Implementation(AItemBase* Item)
+{
+	if (!Item || CarriedItem != nullptr)
+	{
+		return;
+	}
+
+	CarriedItem = Item;
+	Item->SetActorEnableCollision(false);
+
+	// 모든 클라이언트에 동기화
+	Multicast_AttachItem(Item);
+}
+
+void ABaseDrone::Server_DropItem_Implementation()
+{
+	if (!CarriedItem)
+	{
+		return;
+	}
+
+	CarriedItem->SetActorEnableCollision(true);
+
+	// 모든 클라이언트에 동기화
+	Multicast_DetachItem();
+
+	CarriedItem = nullptr;
+}
+
+void ABaseDrone::Multicast_AttachItem_Implementation(AItemBase* Item)
+{
+	if (!Item)
+	{
+		return;
+	}
+
+	AttachItemToSocket(Item);
+}
+
+void ABaseDrone::Multicast_DetachItem_Implementation()
+{
+	DetachItemFromSocket();
+}
+
+void ABaseDrone::AttachItemToSocket(AItemBase* Item)
+{
+	if (!Item || !DroneMesh)
+	{
+		return;
+	}
+
+	if (UPrimitiveComponent* ActiveMesh = Item->GetActiveMeshComponent())
+	{
+		ActiveMesh->SetSimulatePhysics(false);
+	}
+
+	// 스켈레탈 메시를 사용하는 경우 직접 부착
+	if (Item->bUsingSkeletalMesh && Item->SkeletalMeshComponent)
+	{
+		Item->SkeletalMeshComponent->AttachToComponent(DroneMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("ItemSocket")
+		);
+	}
+	else
+	{
+		// 스태틱 메시인 경우 바로 방식
+		Item->AttachToComponent(DroneMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("ItemSocket")
+		);
+	}
+}
+
+void ABaseDrone::DetachItemFromSocket()
+{
+	if (!CarriedItem)
+	{
+		return;
+	}
+
+	// 스켈레탈 메시를 사용하는 경우
+	if (CarriedItem->bUsingSkeletalMesh && CarriedItem->SkeletalMeshComponent)
+	{
+		// 스켈레탈 메시를 분리
+		CarriedItem->SkeletalMeshComponent->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+
+		// 아이템 액터 위치를 스켈레탈 메시 위치에 맞춤
+		FVector SkeletalMeshLocation = CarriedItem->SkeletalMeshComponent->GetComponentLocation();
+		FVector DropLocation = SkeletalMeshLocation + FVector(0, 0, -50);
+		CarriedItem->SetActorLocation(DropLocation);
+	}
+	else
+	{
+		// 스태틱 메시인 경우 바로 분리
+		if (DroneMesh && DroneMesh->DoesSocketExist(TEXT("ItemSocket")))
+		{
+			FTransform SocketTransform = DroneMesh->GetSocketTransform(TEXT("ItemSocket"));
+			CarriedItem->SetActorTransform(SocketTransform);
+		}
+
+		CarriedItem->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+
+		FVector DropLocation = CarriedItem->GetActorLocation() + FVector(0, 0, -50);
+		CarriedItem->SetActorLocation(DropLocation);
+	}
+
+	if (UPrimitiveComponent* ActiveMesh = CarriedItem->GetActiveMeshComponent())
+	{
+		ActiveMesh->SetSimulatePhysics(true);
+	}
+}
+

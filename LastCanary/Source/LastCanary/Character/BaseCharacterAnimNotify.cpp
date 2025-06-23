@@ -18,22 +18,27 @@ void UBaseCharacterAnimNotify::Notify(USkeletalMeshComponent* MeshComp, UAnimSeq
     {
         return;
     }
-    if (!Player->IsLocallyControlled())
-    {
-        return;
-    }
     switch (NotifyType)
     {
     case ECharacterNotifyType::Interact:
+
+        if (!Player->IsLocallyControlled())
+        {
+            return;
+        }
         if (Player->InteractTargetActor)
         {
             if (Player->IsLocallyControlled())
             {
-                Player->OnNotified();
+                Player->OnInteractAnimationNotified();
             }
         }
         break;
     case ECharacterNotifyType::ItemUse:
+        if (!Player->IsLocallyControlled())
+        {
+            return;
+        }
         Player->UseItemAnimationNotified();
         break;
     case ECharacterNotifyType::Reload:

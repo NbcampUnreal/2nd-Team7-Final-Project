@@ -32,14 +32,21 @@ void UToolbarInventoryWidget::RefreshInventoryUI()
         return;
     }
 
-    ToolbarSlotBox->ClearChildren();
-
     UToolbarInventoryComponent* ToolbarInventory = Cast<UToolbarInventoryComponent>(InventoryComponent);
     if (!ToolbarInventory)
     {
         LOG_Item_WARNING(TEXT("[ToolbarInventoryWidget::RefreshInventoryUI] InventoryComponent 캐스팅 실패!"));
         return;
     }
+
+    // ItemSlots가 아직 초기화되지 않았으면 중단
+    if (ToolbarInventory->ItemSlots.Num() == 0)
+    {
+        LOG_Item_WARNING(TEXT("[ToolbarInventoryWidget::RefreshInventoryUI] ItemSlots가 아직 초기화되지 않음"));
+        return;
+    }
+
+    ToolbarSlotBox->ClearChildren();
 
     for (int32 i = 0; i < ToolbarInventory->GetMaxSlots(); ++i)
     {

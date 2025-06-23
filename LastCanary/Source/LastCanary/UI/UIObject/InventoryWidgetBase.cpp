@@ -162,36 +162,78 @@ void UInventoryWidgetBase::UpdateTooltipPosition()
 		return;
 	}
 
-	FVector2D MousePosition;
+	FVector2D FinalPosition = CalculateTooltipScreenPosition();
+	SharedTooltipWidget->SetPositionInViewport(FinalPosition);
+
+	//FVector2D MousePosition;
+	//if (APlayerController* PC = GetOwningPlayer())
+	//{
+	//	PC->GetMousePosition(MousePosition.X, MousePosition.Y);
+
+	//	FVector2D TooltipPosition = MousePosition + FVector2D(15.0f, -50.0f);
+
+	//	// 화면 경계 처리
+	//	float MinY = 100.0f;
+	//	TooltipPosition.Y = FMath::Max(TooltipPosition.Y, MinY);
+
+	//	float MinX = 50.0f;
+	//	TooltipPosition.X = FMath::Max(TooltipPosition.X, MinX);
+
+	//	FVector2D ViewportSize;
+	//	if (GEngine && GEngine->GameViewport)
+	//	{
+	//		GEngine->GameViewport->GetViewportSize(ViewportSize);
+
+	//		FVector2D EstimatedTooltipSize(230.0f, 230.0f);
+
+	//		float MaxX = ViewportSize.X - EstimatedTooltipSize.X - 10.0f;
+	//		float MaxY = ViewportSize.Y - EstimatedTooltipSize.Y - 10.0f;
+
+	//		TooltipPosition.X = FMath::Clamp(TooltipPosition.X, MinX, MaxX);
+	//		TooltipPosition.Y = FMath::Clamp(TooltipPosition.Y, MinY, MaxY);
+	//	}
+
+	//	SharedTooltipWidget->SetPositionInViewport(TooltipPosition);
+	//}
+}
+
+FVector2D UInventoryWidgetBase::CalculateTooltipScreenPosition() const
+{
+	FVector2D MousePosition(0.f, 0.f);
 	if (APlayerController* PC = GetOwningPlayer())
 	{
 		PC->GetMousePosition(MousePosition.X, MousePosition.Y);
-
-		FVector2D TooltipPosition = MousePosition + FVector2D(15.0f, -50.0f);
-
-		// 화면 경계 처리
-		float MinY = 100.0f;
-		TooltipPosition.Y = FMath::Max(TooltipPosition.Y, MinY);
-
-		float MinX = 50.0f;
-		TooltipPosition.X = FMath::Max(TooltipPosition.X, MinX);
-
-		FVector2D ViewportSize;
-		if (GEngine && GEngine->GameViewport)
-		{
-			GEngine->GameViewport->GetViewportSize(ViewportSize);
-
-			FVector2D EstimatedTooltipSize(230.0f, 230.0f);
-
-			float MaxX = ViewportSize.X - EstimatedTooltipSize.X - 10.0f;
-			float MaxY = ViewportSize.Y - EstimatedTooltipSize.Y - 10.0f;
-
-			TooltipPosition.X = FMath::Clamp(TooltipPosition.X, MinX, MaxX);
-			TooltipPosition.Y = FMath::Clamp(TooltipPosition.Y, MinY, MaxY);
-		}
-
-		SharedTooltipWidget->SetPositionInViewport(TooltipPosition);
 	}
+
+	FVector2D ViewportSize(1920.f, 1080.f);
+	if (GEngine && GEngine->GameViewport)
+	{
+		GEngine->GameViewport->GetViewportSize(ViewportSize);
+	}
+
+	const FVector2D EstimatedTooltipSize(230.f, 230.f);
+	const float PaddingOffset = 10.f;
+
+	// 방향 결정
+	bool bShowLeft = (MousePosition.X + EstimatedTooltipSize.X + PaddingOffset > ViewportSize.X);
+	bool bShowAbove = (MousePosition.Y + EstimatedTooltipSize.Y + PaddingOffset > ViewportSize.Y);
+
+	FVector2D Offset;
+	Offset.X = bShowLeft ? -EstimatedTooltipSize.X - 15.f : 15.f;
+	Offset.Y = bShowAbove ? -EstimatedTooltipSize.Y - 15.f : 15.f;
+
+	FVector2D DesiredPosition = MousePosition + Offset;
+
+	// Clamp 처리
+	float MinX = PaddingOffset;
+	float MinY = PaddingOffset;
+	float MaxX = ViewportSize.X - EstimatedTooltipSize.X - PaddingOffset;
+	float MaxY = ViewportSize.Y - EstimatedTooltipSize.Y - PaddingOffset;
+
+	DesiredPosition.X = FMath::Clamp(DesiredPosition.X, MinX, MaxX);
+	DesiredPosition.Y = FMath::Clamp(DesiredPosition.Y, MinY, MaxY);
+
+	return DesiredPosition;
 }
 
 UInventorySlotWidget* UInventoryWidgetBase::CreateSlotWidget(int32 SlotIndex, const FBaseItemSlotData& SlotData)
@@ -225,7 +267,7 @@ FBaseItemSlotData UInventoryWidgetBase::ConvertBackpackSlotToBaseSlot(const FBac
 	FBaseItemSlotData Result;
 	Result.ItemRowName = BackpackSlot.ItemRowName;
 	Result.Quantity = BackpackSlot.Quantity;
-	Result.Durability = 100;
+	Result.Durability = 0.0f;
 	Result.bIsValid = BackpackSlot.IsValid();
 	Result.bIsEquipped = false;
 	// 기타 필드는 기본값 또는 무시

@@ -24,59 +24,58 @@ protected:
 private:
 	UPROPERTY(meta = (BindWidget)) 
 	UWidgetSwitcher* OptionSwitcher;
+
 	UPROPERTY(meta = (BindWidget)) 
 	UButton* GeneralTabButton;
+	UPROPERTY(meta = (BindWidget)) 
+	UButton* GraphicsOptionButton;
 	UPROPERTY(meta = (BindWidget)) 
 	UButton* KeySettingTabButton;
 	UPROPERTY(meta = (BindWidget)) 
 	UButton* VoiceOptionTabButton;
-	UPROPERTY(meta = (BindWidget)) 
-	UButton* GraphicsOptionButton;
+
 	UPROPERTY(meta = (BindWidget)) 
 	UButton* ApplyButton;
 	UPROPERTY(meta = (BindWidget)) 
 	UButton* CloseButton;
 	UPROPERTY(meta = (BindWidget)) 
 	UButton* ResetButton;
+
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* GeneralTabText;
 	UPROPERTY(meta = (BindWidget))
+	UTextBlock* GraphicsOptionTabText;
+	UPROPERTY(meta = (BindWidget))
 	UTextBlock* KeySettingTabText;
 	UPROPERTY(meta = (BindWidget))
-	UTextBlock* GraphicsOptionTabText;
-
+	UTextBlock* VoiceOptionTabText;
 
 	UPROPERTY(meta = (BindWidget))
 	UGeneralOptionWidget* GeneralOptionWidget;
 	UPROPERTY(meta = (BindWidget))
+	UGraphicsSettingPanel* GraphicsSettingPanel;
+	UPROPERTY(meta = (BindWidget))
 	UKeySettingWidget* KeySettingWidget;
 	UPROPERTY(meta = (BindWidget))
 	UVoiceOptionWidget* VoiceOptionWidget;
-	UPROPERTY(meta = (BindWidget))
-	UGraphicsSettingPanel* GraphicsSettingPanel;
-
 	
-	//FLinearColor SelectedColor = FLinearColor(0.87f, 0.87f, 0.87f);   
-	//FLinearColor UnselectedColor = FLinearColor(0.5f, 0.5f, 0.5f);    
-
 	UFUNCTION()
 	void OnApplyButtonClicked();
 	UFUNCTION()
 	void OnCloseButtonClicked();
 	UFUNCTION()
 	void OnResetButtonClicked();
+
 	UFUNCTION()
 	void OnGeneralTabButtonClicked();
 	UFUNCTION()
+	void OnGraphicsSettingButtonClicked();
+	UFUNCTION()
 	void OnKeySettingTabButtonClicked();
 	UFUNCTION()
-	void OnKeyVoiceOptionTabButtonClicked();
-	UFUNCTION()
-	void OnGraphicsSettingButtonClicked();
+	void OnVoiceOptionTabButtonClicked();
 
 public:
-	/* 위젯 게터 */
 	UKeySettingWidget* GetKeySettingWidget() const { return KeySettingWidget; }
-	//void SetTabButtonStyle(UButton* Button, bool bIsSelected);
 };
 

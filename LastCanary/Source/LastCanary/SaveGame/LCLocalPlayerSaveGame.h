@@ -68,6 +68,12 @@ struct FUserSettings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bIsFullScreenMode = DefaultSettings::DEFAULT_FULLSCREEN;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float VoiceChatVolume = DefaultSettings::DEFAULT_VOLUME;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float MicrophoneVolume = DefaultSettings::DEFAULT_VOLUME;
+
 	UPROPERTY()
 	TArray<FSaveKeyMapping> SavedMappings;
 
@@ -79,6 +85,8 @@ struct FUserSettings
 		EffectVolume = 1.0f;
 		Brightness = 1.0f;
 		bIsFullScreenMode = true;
+		VoiceChatVolume = 1.0f;
+		MicrophoneVolume = 1.0f;
 	}
 };
 
@@ -112,6 +120,15 @@ public:
 
 	static bool SaveFullScreenMode(UWorld* World, bool NewSetting);
 	static bool LoadFullScreenMode(UWorld* World);
+
+	static bool SaveMicrophoneVolume(UWorld* World, float NewVolume);
+	static float LoadMicrophoneVolume(UWorld* World);
+
+	static bool SaveVoiceChatVolume(UWorld* World, float NewVolume);
+	static float LoadVoiceChatVolume(UWorld* World);
+
+	static bool SaveMicrophoneMode(UWorld* World, bool NewSetting);
+	static bool LoadMicrophoneMode(UWorld* World);
 
 	static bool SaveKeyBindings(UWorld* World, const TArray<FSaveKeyMapping>& Mappings);
 	static TArray<FSaveKeyMapping> LoadKeyBindings(UWorld* World);

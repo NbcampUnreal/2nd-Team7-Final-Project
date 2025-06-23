@@ -14,6 +14,7 @@
 #define ENABLE_ART_LOGGING    1
 #define ENABLE_ITEM_LOGGING   1
 #define ENABLE_FRAME_LOGGING  1
+#define ENABLE_GAME_LOGGING   1
 
 #pragma region LogCategoryDeclaration
 
@@ -23,7 +24,7 @@ DECLARE_LOG_CATEGORY_EXTERN(Char_LOG, Log, All);
 DECLARE_LOG_CATEGORY_EXTERN(Art_LOG, Log, All);
 DECLARE_LOG_CATEGORY_EXTERN(Item_LOG, Log, All);
 DECLARE_LOG_CATEGORY_EXTERN(Frame_LOG, Log, All);
-
+DECLARE_LOG_CATEGORY_EXTERN(Game_LOG, Log, All);
 #pragma endregion
 
 
@@ -124,6 +125,22 @@ DECLARE_LOG_CATEGORY_EXTERN(Frame_LOG, Log, All);
 #define LOG_Frame_WARNING(...)
 #define LOG_Frame_ERROR(...)
 #define CHECK_Frame(Expr, RetVal)
+#endif
+
+#pragma endregion
+
+#pragma region Game
+
+#if ENABLE_GAME_LOGGING
+#define LOG_Game(Verbosity, Format, ...) UE_LOG(Game_LOG, Verbosity, TEXT("%s %s"), *LOG_CALLINFO, *FString::Printf(Format, ##__VA_ARGS__))
+#define LOG_Game_WARNING(Format, ...)    UE_LOG(Game_LOG, Warning,  TEXT("%s %s"), *LOG_CALLINFO, *FString::Printf(Format, ##__VA_ARGS__))
+#define LOG_Game_ERROR(Format, ...)      UE_LOG(Game_LOG, Error,    TEXT("%s %s"), *LOG_CALLINFO, *FString::Printf(Format, ##__VA_ARGS__))
+#define CHECK_Game(Expr, RetVal)         { if (!(Expr)) { LOG_Game_ERROR(TEXT("CHECK FAILED: %s"), TEXT(#Expr)); return RetVal; } }
+#else
+#define LOG_Game(...)
+#define LOG_Game_WARNING(...)
+#define LOG_Game_ERROR(...)
+#define CHECK_Game(Expr, RetVal)
 #endif
 
 #pragma endregion

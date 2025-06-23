@@ -41,10 +41,25 @@ void UPauseMenu::NativeDestruct()
 
 void UPauseMenu::OnResumeButtonClicked()
 {
-	LOG_Frame_WARNING(TEXT("Resume Button Clicked"));
-	RemoveFromParent();
-	ULCUIManager* UIManager = ResolveUIManager();
-	UIManager->SetInputModeGameOnly();
+	if (ULCUIManager* UIManager = ResolveUIManager())
+	{
+		ELCUIContext CurrentContext = UIManager->GetUIContext();
+		UIManager->HidePauseMenu();
+		switch (CurrentContext)
+		{
+		case ELCUIContext::Title:
+			UIManager->ShowTitleMenu();
+			break;
+		case ELCUIContext::Room:
+			// falls through
+		case ELCUIContext::InGame:
+			UIManager->ShowInGameHUD();
+			break;
+		default:
+			UIManager->ShowInGameHUD(); 
+			break;
+		}
+	}
 }
 
 void UPauseMenu::OnOptionButtonClicked()
@@ -53,14 +68,13 @@ void UPauseMenu::OnOptionButtonClicked()
 	ULCUIManager* LCUIManager = ResolveUIManager();
 	if (LCUIManager)
 	{
-		LCUIManager->ShowOptionPopup();
+		LCUIManager->ShowOptionWidget();
 	}
 }
 
 void UPauseMenu::OnExitButtonClicked()
 {
 	LOG_Frame_WARNING(TEXT("Exit Button Clicked"));
-	// UI 매니저 획득
 	ULCUIManager* LCUIManager = ResolveUIManager();
 	if (LCUIManager)
 	{
@@ -68,10 +82,9 @@ void UPauseMenu::OnExitButtonClicked()
 		LCUIManager->ShowConfirmPopup(
 			[this]()
 			{
-				//TODO : 타이틀 메뉴로 전환
 				DestroySessionAndGoTitleMenu();
 			},
-			FText::FromString(TEXT("정말로 종료(타이틀 메뉴로)\r\n 하시겠습니까?"))
+			FText::FromString(TEXT("Are you sure you want to quit\r\n and return to the title menu?"))
 		);
 	}
 }

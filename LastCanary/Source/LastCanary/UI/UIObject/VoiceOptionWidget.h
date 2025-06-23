@@ -56,4 +56,8 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void RefreshInputModeText();
+
+	void InitializeVoiceChatVolume();
+	void InitializeMicrophoneVolume();
+	void InitializeAllOptions();
 };

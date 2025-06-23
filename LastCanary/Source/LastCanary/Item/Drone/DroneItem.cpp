@@ -1,15 +1,20 @@
 #include "Item/Drone/DroneItem.h"
+#include "Item/Drone/BaseDrone.h"
 #include "Character/BasePlayerController.h"
 
 void ADroneItem::UseItem()
 {
-	Super::UseItem();
-	if (GetWorld() && GetWorld()->GetFirstPlayerController())
-	{
-		ABasePlayerController* PlayerController = Cast<ABasePlayerController>(GetWorld()->GetFirstPlayerController());
-		if (PlayerController)
-		{
-			PlayerController->DroneClass = DroneClass;
-		}
-	}
+    Super::UseItem();
+
+    APawn* OwnerPawn = Cast<APawn>(GetOwner());
+    if (!OwnerPawn)
+    {
+        return;
+    }
+
+    ABasePlayerController* PlayerController = Cast<ABasePlayerController>(OwnerPawn->GetController());
+    if (PlayerController)
+    {
+        PlayerController->DroneClass = DroneClass;
+    }
 }

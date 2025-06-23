@@ -6,8 +6,11 @@
 #include "Framework/GameState/LCGameState.h"
 #include "Framework/PlayerState/LCPlayerState.h"
 #include "Framework/PlayerController/LCPlayerController.h"
+#include "Framework/PlayerController/LCInGamePlayerController.h"
 
 #include "Framework/Manager/ChecklistManager.h"
+
+#include "DataTable/MapDataRow.h"
 
 #include "Kismet/GameplayStatics.h"
 
@@ -20,7 +23,7 @@ ALCInGameModeBase::ALCInGameModeBase()
 void ALCInGameModeBase::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
 {
 	Super::InitGame(MapName, Options, ErrorMessage);
-	UE_LOG(LogTemp, Log, TEXT("1. InitGame 호출됨"));
+	LOG_Server(Log, TEXT("1. InitGame 호출됨"));
 
 }
 
@@ -63,6 +66,8 @@ void ALCInGameModeBase::HandleStartingNewPlayer_Implementation(APlayerController
 {
 	Super::HandleStartingNewPlayer_Implementation(NewPlayer);
 
+	LOG_Server_WARNING(TEXT("Player : %s 시작함!!"), *NewPlayer->PlayerState->GetPlayerName());
+
 	// 연결된 클라이언트에게 ChecklistManager의 Owner 지정
 	if (ChecklistManager && NewPlayer)
 	{
@@ -95,9 +100,15 @@ void ALCInGameModeBase::StartGame()
 
 	LCGM->StartGame();
 
-	InitPlayerAliveCount(LCGM->GetPlayerCount());
+	InitGameState(LCGM->GetPlayerCount());
 
-	//ShowGameLevelInfo();
+	ShowGameLevelInfo();
+
+}
+
+void ALCInGameModeBase::GameEnd()
+{
+
 
 }
 
@@ -111,7 +122,7 @@ void ALCInGameModeBase::Logout(AController* Exiting)
 	}
 }
 
-void ALCInGameModeBase::InitPlayerAliveCount(int PlayerCount)
+void ALCInGameModeBase::InitGameState(int PlayerCount)
 {
 	// 생존자 수 초기화
 	if (ALCGameState* LCGameState = GetGameState<ALCGameState>())
@@ -151,21 +162,39 @@ void ALCInGameModeBase::ShowGameLevelInfo()
 	ULCGameManager* LCGM = GetGameInstance()->GetSubsystem<ULCGameManager>();
 	if (!LCGM)
 	{
+		LOG_Game_WARNING(TEXT("Fail Get LCGameManager!"));
+		return;
+	}
+	ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
+	if (!IsValid(Subsystem))
+	{
+		LOG_Game_WARNING(TEXT("Fail Get GameInstance Subsystem!"));
 		return;
 	}
 
 	if (LCGM->CurrentPlayerCount == CurrentPlayerNum)
 	{
-		LOG_Server(Log, TEXT("모든 플레이어가 연결되었습니다. 게임을 시작합니다."));
+		LOG_Game(Log, TEXT("모든 플레이어가 연결되었습니다. 게임을 시작합니다."));
 
 		FString MapName = UGameplayStatics::GetCurrentLevelName(this, true);
+		const FMapDataRow* MapData = Subsystem->GetMapDataByRowName(FName(MapName));
+		if (!MapData)
+		{
+			return;
+		}
 
 		// 0.3초 뒤에 SendMessageToAllPC 호출
 		FTimerHandle TimerHandle;
 		FTimerDelegate TimerDel;
-		TimerDel.BindLambda([this, MapName]()
+		TimerDel.BindLambda([this, MapData]()
 			{
-				SendMessageToAllPC(MapName);
+				for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
+				{
+					if (ALCInGamePlayerController* InGamePC = Cast<ALCInGamePlayerController>(Iterator->Get()))
+					{
+						InGamePC->Client_ShowLevelInfo(MapData->MapID);
+					}
+				}
 			});
 
 		GetWorldTimerManager().SetTimer(

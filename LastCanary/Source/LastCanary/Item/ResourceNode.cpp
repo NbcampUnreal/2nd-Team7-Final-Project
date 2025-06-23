@@ -71,10 +71,7 @@ void AResourceNode::HarvestResource(APlayerController* Interactor)
 
 	if (bRequireTool)
 	{
-		ABaseCharacter* Character = GetWorld()->GetFirstPlayerController()
-			? Cast<ABaseCharacter>(GetWorld()->GetFirstPlayerController()->GetPawn())
-			: nullptr;
-
+		ABaseCharacter* Character = Interactor ? Cast<ABaseCharacter>(Interactor->GetPawn()) : nullptr;
 		if (!Character)
 		{
 			LOG_Item_WARNING(TEXT("[ResourceNode] 플레이어를 찾을 수 없습니다."));
@@ -143,6 +140,7 @@ void AResourceNode::HarvestResource(APlayerController* Interactor)
 
 	FVector SpawnLocation = CalculateResourceSpawnLocation(Interactor);
 	ResourceItemSpawnManager->SpawnItemAtLocation(SelectedItemRow, SpawnLocation);
+	OnResourceOpened();
 
 	if (!bInfiniteHarvest)
 	{
@@ -214,14 +212,28 @@ FString AResourceNode::GetInteractMessage_Implementation() const
 {
 	FString KeyName = GetCurrentKeyNameForInteract();
 
-	// 플레이어로부터 현재 장착 아이템 태그를 받아와서 비교해야 함
-	ABaseCharacter* Character = GetWorld()->GetFirstPlayerController()
-		? Cast<ABaseCharacter>(GetWorld()->GetFirstPlayerController()->GetPawn())
-		: nullptr;
+	APlayerController* LocalPC = nullptr;
 
-	if (Character == nullptr)
+	// 로컬 플레이어 컨트롤러 찾기
+	for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
 	{
-		return TEXT("No interaction (no players)");
+		APlayerController* PC = Iterator->Get();
+		if (PC && PC->IsLocalController())
+		{
+			LocalPC = PC;
+			break;
+		}
+	}
+
+	if (!LocalPC)
+	{
+		return TEXT("No interaction (no local player)");
+	}
+
+	ABaseCharacter* Character = Cast<ABaseCharacter>(LocalPC->GetPawn());
+	if (!Character)
+	{
+		return TEXT("No interaction (no character)");
 	}
 
 	// Core 타입은 도구 없이도 가능
@@ -339,4 +351,9 @@ void AResourceNode::DestroyResourceNode()
 
 	LOG_Item_WARNING(TEXT("[ResourceNode] 자원 노드 파괴됨"));
 	Destroy();
+}
+
+void AResourceNode::OnResourceOpened_Implementation()
+{
+	// 기본 연출 없음. 필요시 블루프린트에서 오버라이드.
 }

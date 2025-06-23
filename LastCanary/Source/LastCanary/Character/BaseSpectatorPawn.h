@@ -22,6 +22,8 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	virtual void CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo) override;
+
 public:
 	void Handle_LookMouse(const FInputActionValue& ActionValue, float Sensivity);
 	void AdjustCameraZoom(float ZoomDelta); // 선택사항
@@ -54,8 +56,8 @@ protected:
 	float MaxZoom = 400.f;
 
 	UPROPERTY(EditAnywhere, Category = "Camera")
-	float MinPitchAngle = 10.f;
+	float MinPitchAngle = -80.f;
 
 	UPROPERTY(EditAnywhere, Category = "Camera")
-	float MaxPitchAngle = 80.0f;
+	float MaxPitchAngle = 30.0f;
 };

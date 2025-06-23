@@ -22,6 +22,9 @@ class LASTCANARY_API ABasePlayerController : public ALCPlayerController
 	GENERATED_BODY()
 
 public:
+
+	void RequestShowInGameHUD();
+	
 	void LoadMouseSensitivity();
 
 	void SetMouseSensitivity(float Sensitivity);
@@ -249,6 +252,7 @@ public:
 	void HandleExitGate();
 
 	void NotifyAtGameState();
+	void SubmitMyResources();
 
 	UFUNCTION()
 	void PlayerExitActivePlayOnDeath();

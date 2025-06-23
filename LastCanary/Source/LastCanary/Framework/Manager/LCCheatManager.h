@@ -85,6 +85,9 @@ public:
 	/** 현재 무적 여부 확인 */
 	bool IsGodModeEnabled() const { return bGodMode; }
 
+	UFUNCTION(exec)
+	void KillAllOthers();
+
 private:
 	/** 무적 모드 상태 */
 	bool bGodMode = false;

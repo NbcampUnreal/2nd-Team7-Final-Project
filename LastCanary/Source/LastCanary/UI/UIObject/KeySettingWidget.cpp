@@ -2,6 +2,8 @@
 
 #include "Components/InputKeySelector.h"
 #include "Components/TextBlock.h"
+#include "UI/UIElement/InGameHUD.h"
+
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
 #include "InputModifiers.h"
@@ -459,6 +461,7 @@ void UKeySettingWidget::UpdateMappings(FName MappingName, FKey Key)
 	UserSettings->MapPlayerKey(Args, FailureReason);
 
 	FTimerHandle TimerHandle;
+	
 	GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this, Subsystem]()
 		{
 			const TArray<FEnhancedActionKeyMapping> Mappings = Subsystem->GetAllPlayerMappableActionKeyMappings();
@@ -476,10 +479,16 @@ void UKeySettingWidget::UpdateMappings(FName MappingName, FKey Key)
 			}
 
 			ULCLocalPlayerSaveGame::SaveKeyBindings(GetWorld(), SaveArray);
-
 			RefreshMappings(Mappings);
 
 		}, 0.1f, false);
+	UserSettings->SaveSettings();  // UserSettings 저장
+	UserSettings->ApplySettings(); // 설정 적용
+
+	if (ULCUIManager* UIManager = ResolveUIManager())
+	{
+		UIManager->GetInGameHUD()->SetVoiceKeyGuideText();
+	}
 }
 
 

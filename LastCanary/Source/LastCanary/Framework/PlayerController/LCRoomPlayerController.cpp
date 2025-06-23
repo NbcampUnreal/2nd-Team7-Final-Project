@@ -25,25 +25,13 @@
 
 ALCRoomPlayerController::ALCRoomPlayerController()
 {
-	//CheatClass = ULCCheatManager::StaticClass();
+
 }
 
 void ALCRoomPlayerController::PostSeamlessTravel()
 {
 	Super::PostSeamlessTravel();
 
-	LOG_Frame_WARNING(TEXT("PostSeamlessTravel: Ensuring CheatManager is ready"));
-
-	// 치트매니저 재초기화
-	if (CheatManager == nullptr)
-	{
-		CheatManager = NewObject<ULCCheatManager>(this, CheatClass);
-		CheatManager->InitCheatManager();
-	}
-
-	LOG_Frame_WARNING(TEXT("PostSeamlessTravel: %s 호출 - IsLocalController: %d"), *GetName(), IsLocalController());
-
-	GetWorldTimerManager().SetTimerForNextTick(this, &ALCRoomPlayerController::DelayedPostTravelSetup);
 }
 
 void ALCRoomPlayerController::BeginPlay()
@@ -57,43 +45,8 @@ void ALCRoomPlayerController::BeginPlay()
 			UIManager->SetUIContext(ELCUIContext::Room);
 		}
 	}
-
-	//// 복구 타이머
-	//FTimerHandle InventoryRestoreHandle;
-	//GetWorld()->GetTimerManager().SetTimer(InventoryRestoreHandle, this, &ALCRoomPlayerController::TryRestoreInventory, 0.3f, false);
 }
 
-void ALCRoomPlayerController::DelayedPostTravelSetup()
-{
-	LOG_Frame_WARNING(TEXT("PostSeamlessTravel(Delayed): %s - 여전히 IsLocalController: %d"), *GetName(), IsLocalController());
-
-	if (IsLocalController())
-	{
-		if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
-		{
-			if (ULCUIManager* UIManager = Subsystem->GetUIManager())
-			{
-				UIManager->SetPlayerController(this);
-				LOG_Frame_WARNING(TEXT("DelayedPostTravelSetup: UIManager에 컨트롤러 연결 완료"));
-			}
-		}
-	}
-}
-
-//void ALCRoomPlayerController::TryRestoreInventory()
-//{
-//	//if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
-//	//{
-//	//	if (ABaseCharacter* Char = Cast<ABaseCharacter>(GetPawn()))
-//	//	{
-//	//		if (UToolbarInventoryComponent* Toolbar = Char->GetToolbarInventoryComponent())
-//	//		{
-//	//			Toolbar->SetInventoryFromItemIDs(PS->AquiredItemIDs);
-//	//			LOG_Frame_WARNING(TEXT("[TryRestoreInventory] 복원 시도 완료. 아이템 수: %d"), PS->AquiredItemIDs.Num());
-//	//		}
-//	//	}
-//	//}
-//}
 
 void ALCRoomPlayerController::Server_ShowShopWidget_Implementation()
 {
@@ -108,12 +61,6 @@ void ALCRoomPlayerController::Client_ShowShopWidget_Implementation(int Gold)
 {
 	LCUIManager->ShowShopPopup(Gold);
 }
-
-//void ALCRoomPlayerController::Client_NotifyGameStart_Implementation(const FText& LevelName)
-//{
-//	LOG_Frame_WARNING(TEXT("Client_NotifyGameStart called with LevelName: %s"), *LevelName.ToString());
-//	LCUIManager->ShowPopupNotice(FText::Format(NSLOCTEXT("LastCanary", "GameStartNotice", "게임이 시작됩니다: {0}"), LevelName));
-//}
 
 void ALCRoomPlayerController::Server_RequestPurchase_Implementation(const TArray<FItemDropData>& DropList)
 {
@@ -174,6 +121,7 @@ void ALCRoomPlayerController::Server_RequestPurchase_Implementation(const TArray
 	// 가격 계산
 	const FString ContextStr(TEXT("Purchase Validation"));
 	int32 TotalPrice = 0;
+	TArray<TPair<FString, int32>> ItemArray;
 
 	for (const FItemDropData& DropData : DropList)
 	{
@@ -190,6 +138,8 @@ void ALCRoomPlayerController::Server_RequestPurchase_Implementation(const TArray
 				if (Row->ItemID == DropData.ItemID)
 				{
 					TotalPrice += Row->ItemPrice * DropData.Count;
+					FString Reson = FString::Printf(TEXT("아이템 %s %d개 구매!"), *Row->ItemName.ToString(), DropData.Count);
+					ItemArray.Add(TPair<FString, int32>(Reson, Row->ItemPrice * DropData.Count));
 					break;
 				}
 			}
@@ -203,7 +153,11 @@ void ALCRoomPlayerController::Server_RequestPurchase_Implementation(const TArray
 		return;
 	}
 
-	LCGM->AddGold(-TotalPrice);
+	for (const TPair<FString, int32>& Item : ItemArray)
+	{
+		LOG_Frame_WARNING(TEXT("구매 아이템: %s"), *Item.Key);
+		LCGM->UpdateGold(Item.Key, -Item.Value);
+	}
 
 	// 골드 차감
 	PS->Server_SpendGold(TotalPrice);

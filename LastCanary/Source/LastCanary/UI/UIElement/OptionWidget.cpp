@@ -13,7 +13,6 @@
 #include "UI/UIObject/KeySettingWidget.h"
 #include "UI/UIObject/GraphicsSettingPanel.h"
 
-
 void UOptionWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
@@ -29,9 +28,14 @@ void UOptionWidget::NativeConstruct()
 	{
 		ResetButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnResetButtonClicked);
 	}
+
 	if (GeneralTabButton)
 	{
 		GeneralTabButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnGeneralTabButtonClicked);
+	}
+	if (GraphicsOptionButton)
+	{
+		GraphicsOptionButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnGraphicsSettingButtonClicked);
 	}
 	if (KeySettingTabButton)
 	{
@@ -39,12 +43,9 @@ void UOptionWidget::NativeConstruct()
 	}
 	if (VoiceOptionTabButton)
 	{
-		VoiceOptionTabButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnKeyVoiceOptionTabButtonClicked);
+		VoiceOptionTabButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnVoiceOptionTabButtonClicked);
 	}
-	if (GraphicsOptionButton)
-	{
-		GraphicsOptionButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnGraphicsSettingButtonClicked);
-	}
+
 	if (OptionSwitcher)
 	{
 		OnGeneralTabButtonClicked();
@@ -66,9 +67,14 @@ void UOptionWidget::NativeDestruct()
 	{
 		ResetButton->OnClicked.RemoveDynamic(this, &UOptionWidget::OnResetButtonClicked);
 	}
+
 	if (GeneralTabButton)
 	{
 		GeneralTabButton->OnClicked.RemoveDynamic(this, &UOptionWidget::OnGeneralTabButtonClicked);
+	}
+	if (GraphicsOptionButton)
+	{
+		GraphicsOptionButton->OnClicked.RemoveDynamic(this, &UOptionWidget::OnGraphicsSettingButtonClicked);
 	}
 	if (KeySettingTabButton)
 	{
@@ -76,11 +82,7 @@ void UOptionWidget::NativeDestruct()
 	}
 	if (VoiceOptionTabButton)
 	{
-		VoiceOptionTabButton->OnClicked.RemoveDynamic(this, &UOptionWidget::OnKeyVoiceOptionTabButtonClicked);
-	}
-	if (GraphicsOptionButton)
-	{
-		GraphicsOptionButton->OnClicked.RemoveDynamic(this, &UOptionWidget::OnGraphicsSettingButtonClicked);
+		VoiceOptionTabButton->OnClicked.RemoveDynamic(this, &UOptionWidget::OnVoiceOptionTabButtonClicked);
 	}
 }
 
@@ -94,7 +96,10 @@ void UOptionWidget::OnApplyButtonClicked()
 
 void UOptionWidget::OnCloseButtonClicked()
 {
-	RemoveFromParent();
+	if (ULCUIManager* UIManager = ResolveUIManager())
+	{
+		UIManager->HideOptionWidget();
+	}
 }
 
 void UOptionWidget::OnResetButtonClicked()
@@ -112,11 +117,9 @@ void UOptionWidget::OnGeneralTabButtonClicked()
 	{
 		LOG_Frame_ERROR(TEXT("General Option Widget is nullptr"));
 	}
-	//SetTabButtonStyle(GeneralTabButton, true);
-	//SetTabButtonStyle(KeySettingTabButton, false);
 }
 
-void UOptionWidget::OnKeySettingTabButtonClicked()
+void UOptionWidget::OnGraphicsSettingButtonClicked()
 {
 	if (OptionSwitcher)
 	{
@@ -124,18 +127,11 @@ void UOptionWidget::OnKeySettingTabButtonClicked()
 	}
 	else
 	{
-		LOG_Frame_ERROR(TEXT("Key Setting Widget is nullptr"));
+		LOG_Frame_ERROR(TEXT("Graphics Widget is nullptr"));
 	}
-
-
-	KeySettingWidget->InitialMappings();
-
-	//SetTabButtonStyle(GeneralTabButton, false);
-	//SetTabButtonStyle(KeySettingTabButton, true);
-
 }
 
-void UOptionWidget::OnKeyVoiceOptionTabButtonClicked()
+void UOptionWidget::OnKeySettingTabButtonClicked()
 {
 	if (OptionSwitcher)
 	{
@@ -143,13 +139,13 @@ void UOptionWidget::OnKeyVoiceOptionTabButtonClicked()
 	}
 	else
 	{
-		LOG_Frame_ERROR(TEXT("Voice Option Widget is nullptr"));
+		LOG_Frame_ERROR(TEXT("Key Setting Widget is nullptr"));
 	}
-	//SetTabButtonStyle(GeneralTabButton, false);
-	//SetTabButtonStyle(KeySettingTabButton, false);
+
+	KeySettingWidget->InitialMappings();
 }
 
-void UOptionWidget::OnGraphicsSettingButtonClicked()
+void UOptionWidget::OnVoiceOptionTabButtonClicked()
 {
 	if (OptionSwitcher)
 	{
@@ -157,48 +153,6 @@ void UOptionWidget::OnGraphicsSettingButtonClicked()
 	}
 	else
 	{
-		LOG_Frame_ERROR(TEXT("Graphics Widget is nullptr"));
+		LOG_Frame_ERROR(TEXT("Voice Option Widget is nullptr"));
 	}
 }
-
-//void UOptionWidget::SetTabButtonStyle(UButton* Button, bool bIsSelected)
-//{
-//	if (!Button)
-//	{
-//		return;
-//	}
-//
-//	FButtonStyle NewStyle = Button->WidgetStyle;
-//
-//	if (bIsSelected)
-//	{
-//		NewStyle.Normal.TintColor = FSlateColor(SelectedColor);
-//		NewStyle.Hovered.TintColor = FSlateColor(SelectedColor * 0.95f);
-//		NewStyle.Pressed.TintColor = FSlateColor(SelectedColor * 0.85f);
-//	}
-//	else
-//	{
-//		NewStyle.Normal.TintColor = FSlateColor(UnselectedColor);
-//		NewStyle.Hovered.TintColor = FSlateColor(UnselectedColor * 1.1f);
-//		NewStyle.Pressed.TintColor = FSlateColor(UnselectedColor * 0.9f);
-//	}
-//
-//	Button->SetStyle(NewStyle);
-//
-//	if (Button == GeneralTabButton && GeneralTabText)
-//	{
-//		GeneralTabText->SetColorAndOpacity(
-//			bIsSelected
-//			? FSlateColor(FLinearColor(0.1f, 0.1f, 0.1f)) 
-//			: FSlateColor(FLinearColor(0.9f, 0.9f, 0.9f)) 
-//		);
-//	}
-//	else if (Button == KeySettingTabButton && KeySettingTabText)
-//	{
-//		KeySettingTabText->SetColorAndOpacity(
-//			bIsSelected
-//			? FSlateColor(FLinearColor(0.1f, 0.1f, 0.1f))
-//			: FSlateColor(FLinearColor(0.9f, 0.9f, 0.9f))
-//		);
-//	}
-//}

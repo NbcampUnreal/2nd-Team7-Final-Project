@@ -312,17 +312,26 @@ void ALCTransformGimmick::StartMovementToTarget(const FVector& NewTarget)
 
 void ALCTransformGimmick::StartServerMovement(const FVector& From, const FVector& To, float Duration)
 {
+	if (IsValid(this) == false)
+	{
+		return;
+	}
+
 	InitialLocation = From;
 	TargetLocation = To;
 
 	SetActorLocation(From); // 서버 보정
 	Multicast_StartMovement(From, To, Duration);
 
-	GetWorldTimerManager().SetTimer(ServerMoveTimer, [this]()
+	TWeakObjectPtr<ALCTransformGimmick> WeakThis(this);
+
+	GetWorldTimerManager().SetTimer(ServerMoveTimer, [WeakThis]()
 		{
-			SetActorLocation(TargetLocation);
-			bIsMovingServer = false;
-			bIsReturningServer = false;
+			if (!WeakThis.IsValid()) return;
+
+			WeakThis->SetActorLocation(WeakThis->TargetLocation);
+			WeakThis->bIsMovingServer = false;
+			WeakThis->bIsReturningServer = false;
 		}, Duration, false);
 
 	bIsMovingServer = true;
@@ -637,6 +646,11 @@ void ALCTransformGimmick::CompleteRotationReturn()
 
 void ALCTransformGimmick::StartServerRotation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration)
 {
+	if (IsValid(this) == false)
+	{
+		return;
+	}
+
 	ServerStartRotation = FromQuat;
 	ServerTargetRotation = ToQuat;
 	ServerRotationDuration = Duration;

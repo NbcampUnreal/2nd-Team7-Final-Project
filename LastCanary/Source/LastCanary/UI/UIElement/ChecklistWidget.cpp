@@ -42,7 +42,6 @@ void UChecklistWidget::InitWithQuestions(const TArray<FChecklistQuestion>& InQue
 		return;
 	}
 	
-
 	QuestionScrollBox->ClearChildren();
 	CurrentRevealIndex = 0;
 
@@ -126,6 +125,8 @@ void UChecklistWidget::SubmitChecklist()
 	}
 
 	PlayRevealAnimation(); // 제출 후 연출
+
+	SubmitButton->SetVisibility(ESlateVisibility::HitTestInvisible);
 }
 
 void UChecklistWidget::PlayRevealAnimation()

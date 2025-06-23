@@ -14,9 +14,6 @@ UShellEjectionComponent::UShellEjectionComponent()
 void UShellEjectionComponent::BeginPlay()
 {
     Super::BeginPlay();
-
-    // 스켈레탈 메시와 소켓 캐싱
-    CacheSkeletalMeshAndSocket();
 }
 
 void UShellEjectionComponent::CacheSkeletalMeshAndSocket()
@@ -233,4 +230,9 @@ void UShellEjectionComponent::PlayShellEjectionSound(const FVector& Location)
 void UShellEjectionComponent::SetShellParticleSystem(UNiagaraSystem* NewSystem)
 {
     ShellParticleSystem = NewSystem;
+}
+
+void UShellEjectionComponent::RefreshSocketCache()
+{
+    CacheSkeletalMeshAndSocket();
 }

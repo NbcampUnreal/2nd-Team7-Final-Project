@@ -10,7 +10,6 @@
 #include "Character/BaseCharacter.h"
 #include "Character/BasePlayerState.h"
 #include "Inventory/ToolbarInventoryComponent.h"
-#include "Inventory/BackpackInventoryComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedActionKeyMapping.h"
@@ -120,17 +119,17 @@ void ALCGateActor::ReturnToBaseCamp(APlayerController* Controller)
 		return;
 	}
 
-	for (int32 ItemID : PlayerState->AquiredItemIDs)
-	{
-		FName RowName = *FString::Printf(TEXT("Item_%d"), ItemID);
-		const FItemDataRow* Row = ItemTable->FindRow<FItemDataRow>(RowName, TEXT("Gate Resource Parse"));
+	//for (int32 ItemID : PlayerState->AquiredItemIDs)
+	//{
+	//	FName RowName = *FString::Printf(TEXT("Item_%d"), ItemID);
+	//	const FItemDataRow* Row = ItemTable->FindRow<FItemDataRow>(RowName, TEXT("Gate Resource Parse"));
 
-		if (Row && Row->bIsResourceItem)
-		{
-			PlayerState->AddCollectedResource(RowName);
-			LOG_Frame_WARNING(TEXT("자원 기록: %s → %d개 누적"), *RowName.ToString(), PlayerState->CollectedResourceMap[RowName]);
-		}
-	}
+	//	if (Row && Row->bIsResourceItem)
+	//	{
+	//		PlayerState->AddCollectedResource(RowName);
+	//		LOG_Frame_WARNING(TEXT("자원 기록: %s → %d개 누적"), *RowName.ToString(), PlayerState->CollectedResourceMap[RowName]);
+	//	}
+	//}
 
 	InGamePC->OnExitGate();
 

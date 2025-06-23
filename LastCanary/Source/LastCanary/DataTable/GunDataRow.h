@@ -77,10 +77,6 @@ struct FGunDataRow : public FTableRowBase
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Performance")
     float ReloadTime;
 
-    // 탄약 관련
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Ammo")
-    int32 MaxAmmo;
-
     // 시각 효과
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Effects")
     UParticleSystem* MuzzleFlash;

@@ -1,6 +1,8 @@
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "UI/Manager/LCUIManagerSettings.h"
 #include "Engine/Engine.h"
+#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+
 #include "LastCanary.h"
 
 
@@ -133,4 +135,27 @@ void ULCGameInstance::Shutdown()
 {
 	Super::Shutdown();
 
+}
+
+void ULCGameInstance::OnStart()
+{
+	Super::OnStart();
+	ULocalPlayer* LocalPlayer = GetFirstGamePlayer();
+	ULCGameInstanceSubsystem* Subsystem = GetSubsystem<ULCGameInstanceSubsystem>();
+
+	LOG_Server_WARNING(TEXT("On Start"));
+	if (!IsValid(LocalPlayer))
+	{
+		LOG_Server_WARNING(TEXT("로컬 플레이어 없음"));
+		return;
+	}
+	LOG_Server_WARNING(TEXT("로컬 플레이어 있음"));
+	if (!IsValid(Subsystem))
+	{
+		LOG_Server_WARNING(TEXT("Subsystem not exist"));
+		return;
+	}
+	LOG_Server_WARNING(TEXT("Subsystem exist."));
+
+	Subsystem->LoadUserSettings();
 }
