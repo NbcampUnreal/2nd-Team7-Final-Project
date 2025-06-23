@@ -362,6 +362,14 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
 
     if (IsBackpackItem(ItemData))
     {
+        FName TargetSocket = ItemData->AttachSocketName.IsNone() ? TEXT("Backpack") : ItemData->AttachSocketName;
+        if (!CachedOwnerCharacter->GetMesh()->DoesSocketExist(TargetSocket))
+        {
+            TargetSocket = TEXT("Backpack");
+        }
+        SetupEquippedItem(EquippedItemComponent, CachedOwnerCharacter->GetMesh(), TargetSocket, ItemData, SlotData);
+
+        // 가방 전용 처리
         HandleBackpackEquip(SlotIndex);
     }
     else
@@ -631,6 +639,24 @@ void UToolbarInventoryComponent::SetupEquippedItem(UChildActorComponent* ItemCom
 
     EquippedItem->ApplyItemDataFromTable();
 
+    // 가방 아이템 비가시 처리
+    if (ABackpackItem* BackpackItem = Cast<ABackpackItem>(EquippedItem))
+    {
+        // 메시 컴포넌트 직접 비가시 처리
+        if (UMeshComponent* MeshComp = BackpackItem->GetMeshComponent())
+        {
+            MeshComp->SetVisibility(false);
+        }
+        if (USkeletalMeshComponent* SkeletalMeshComp = BackpackItem->GetSkeletalMeshComponent())
+        {
+            SkeletalMeshComp->SetVisibility(false);
+        }
+
+        // 복제 변수도 설정 (네트워크 동기화용)
+        BackpackItem->bMeshVisible = false;
+
+        LOG_Item_WARNING(TEXT("[SetupEquippedItem] 가방 메시 비가시 처리 완료"));
+    }
 
     if (AGunBase* Gun = Cast<AGunBase>(EquippedItem))
     {
@@ -896,6 +922,13 @@ void UToolbarInventoryComponent::HandleBackpackEquip(int32 SlotIndex)
     if (BackpackManager)
     {
         BackpackManager->EquipBackpack(SlotIndex);
+
+        AItemBase* EquippedItem = GetCurrentEquippedItem();
+        if (ABackpackItem* BackpackItem = Cast<ABackpackItem>(EquippedItem))
+        {
+            LOG_Item_WARNING(TEXT("[HandleBackpackEquip] 가방 자동 UseItem 호출"));
+            BackpackItem->UseItem();
+        }
     }
 }
 
@@ -1003,10 +1036,7 @@ bool UToolbarInventoryComponent::AddItemToBackpack(FName ItemRowName, int32 Quan
 
 void UToolbarInventoryComponent::OnBackpackEquippedHandler(const TArray<FBackpackSlotData>& BackpackSlots)
 {
-    if (GetOwner() && GetOwner()->HasAuthority())
-    {
-        Client_ShowBackpackUI(BackpackSlots);
-    }
+    OnBackpackEquipped.Broadcast(BackpackSlots);
 }
 
 void UToolbarInventoryComponent::OnBackpackUnequippedHandler()
