@@ -253,7 +253,6 @@ void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor*
 		break;
 
 	case EGimmickActivationType::ActivateWhileStepping:
-		// 쿨타임 무시, 진입 시마다 다시 작동 가능
 		if (OverlappingActors.Num() >= RequiredCount)
 		{
 			if (bCallReturnToInitialStateInsteadOfActivate)
@@ -305,11 +304,11 @@ void ALCBaseGimmick::OnTriggerExit(UPrimitiveComponent* OverlappedComp, AActor* 
 
 	OverlappingActors.Remove(OtherActor);
 
-	LOG_Art(Log, TEXT("🚪 Exit ▶ %s | 남은 오버랩 수: %d | bActivated: %s | bToggleState: %s"),
-		*OtherActor->GetName(),
-		OverlappingActors.Num(),
-		bActivated ? TEXT("✔️") : TEXT("❌"),
-		bToggleState ? TEXT("✔️") : TEXT("❌")
+	//LOG_Art(Log, TEXT(" Exit : %s | 남은 오버랩 수: %d | bActivated: %s | bToggleState: %s"),
+	//	*OtherActor->GetName(),
+	//	OverlappingActors.Num(),
+	//	bActivated ? TEXT("O") : TEXT("X"),
+	//	bToggleState ? TEXT("O") : TEXT("X")
 	);
 
 	switch (ActivationType)
@@ -332,7 +331,7 @@ void ALCBaseGimmick::OnTriggerExit(UPrimitiveComponent* OverlappedComp, AActor* 
 		if (!bToggleState)
 		{
 			bActivated = false;
-			LOG_Art(Log, TEXT("🧹 Exit ▶ 상태 초기화 - bActivated = false"));
+			//LOG_Art(Log, TEXT("Exit -> 상태 초기화 - bActivated = false"));
 		}
 		break;
 
@@ -549,11 +548,11 @@ float ALCBaseGimmick::TakeDamage(float DamageAmount, FDamageEvent const& DamageE
 
 	CurrentHealth -= DamageAmount;
 
-	LOG_Art(Log, TEXT("💥 Gimmick 피격: %.1f 데미지 → 남은 체력: %.1f"), DamageAmount, CurrentHealth);
+	//LOG_Art(Log, TEXT(" Gimmick 피격: %.1f 데미지 → 남은 체력: %.1f"), DamageAmount, CurrentHealth);
 
 	if (CurrentHealth <= 0.f)
 	{
-		OnDestroyedByBullet(); // BP 확장 가능
+		OnDestroyedByBullet(); 
 		Destroy();
 	}
 
@@ -562,7 +561,7 @@ float ALCBaseGimmick::TakeDamage(float DamageAmount, FDamageEvent const& DamageE
 
 void ALCBaseGimmick::OnDestroyedByBullet_Implementation()
 {
-	LOG_Art(Log, TEXT("💀 OnDestroyedByBullet() 기본 구현 호출됨"));
+	//LOG_Art(Log, TEXT(" OnDestroyedByBullet() 기본 구현 호출됨"));
 	// TODO: Niagara, Sound, Spawn 등 확장
 }
 
