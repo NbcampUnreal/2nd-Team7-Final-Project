@@ -200,6 +200,11 @@ public:
     void MulticastUpdateItemText(const FText& ItemName);
     void MulticastUpdateItemText_Implementation(const FText& ItemName);
 
+protected:
+    /** 장착된 아이템 상태 변경 시 호출되는 핸들러 */
+    UFUNCTION()
+    void OnEquippedItemStateChanged();
+
     //-----------------------------------------------------
     // 내부 구현 및 헬퍼
     //-----------------------------------------------------
@@ -229,6 +234,10 @@ protected:
     UFUNCTION(NetMulticast, Reliable)
     void Multicast_SetBackpackVisibility(bool bVisible);
     void Multicast_SetBackpackVisibility_Implementation(bool bVisible);
+
+    /** 장비 변경 가능한지 확인 (아이템 사용 중 체크) */
+    UFUNCTION(BlueprintCallable, Category = "Toolbar|Usage")
+    bool CanChangeEquipment() const;
 
     /** 델리게이트 핸들러 */
     UFUNCTION()
