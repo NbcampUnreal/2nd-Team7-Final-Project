@@ -4,9 +4,8 @@
 #include "UI/UIObject/InventorySlotWidget.h"
 #include "BackpackSlotWidget.generated.h"
 
-/**
- * 
- */
+class UToolbarInventoryComponent;
+
 UCLASS()
 class LASTCANARY_API UBackpackSlotWidget : public UInventorySlotWidget
 {
@@ -27,6 +26,12 @@ protected:
 private:
     /** InventoryMainWidget에 접근하기 위한 헬퍼 함수 */
     class UInventoryMainWidget* GetInventoryMainWidget() const;
+
+    /** 드래그 드롭 처리 (스택 우선 → 스왑/이동) */
+    bool TryStackOrSwap(UInventorySlotWidget* SourceWidget, UToolbarInventoryComponent* ToolbarInventory);
+
+    /** 두 아이템이 스택 가능한지 확인 */
+    bool CanStack(const FBaseItemSlotData& SourceItem, const FBaseItemSlotData& TargetItem) const;
 
     /** 외부 드롭 처리 (아이템 버리기) */
     bool HandleExternalDrop(UInventorySlotWidget* SourceWidget);

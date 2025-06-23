@@ -76,7 +76,7 @@ void ALCTransformGimmick::BeginPlay()
 
 		if (GetAlternateRotationQuat().Equals(OriginalRotationQuat, 0.01f))
 		{
-			LOG_Art_WARNING(TEXT("⚠️ AlternateRotation이 OriginalRotation과 동일함"));
+			//LOG_Art_WARNING(TEXT("AlternateRotation이 OriginalRotation과 동일함"));
 		}
 	}
 }
@@ -142,7 +142,7 @@ bool ALCTransformGimmick::CanActivate_Implementation()
 {
 	if (bIsMovingServer || bIsReturningServer || bIsRotatingServer || bIsReturningRotationServer)
 	{
-		LOG_Art_WARNING(TEXT("트랜스폼 기믹 ▶ 이동 또는 회전 중이라 CanActivate 거부됨"));
+		//LOG_Art_WARNING(TEXT("트랜스폼 기믹 ▶ 이동 또는 회전 중이라 CanActivate 거부됨"));
 		return false;
 	}
 	return Super::CanActivate_Implementation();
@@ -154,7 +154,7 @@ void ALCTransformGimmick::ReturnToInitialState_Implementation()
 
 	if (bIsReturningServer && bIsReturningRotationServer)
 	{
-		LOG_Art(Log, TEXT("▶ 이미 복귀 중 - ReturnToInitialState 무시"));
+		//LOG_Art(Log, TEXT(" 이미 복귀 중 - ReturnToInitialState 무시"));
 		return;
 	}
 
@@ -173,7 +173,7 @@ void ALCTransformGimmick::ReturnToInitialState_Implementation()
 
 	if (!bIsReturningRotationServer && TotalRotationIndex != 0)
 	{
-		LOG_Art(Log, TEXT("▶ 회전 복귀 조건 만족 → StartReturnRotation 진입"));
+		//LOG_Art(Log, TEXT(" 회전 복귀 조건 만족 → StartReturnRotation 진입"));
 
 		CurrentRotationQuat = VisualMesh->GetComponentQuat();
 
