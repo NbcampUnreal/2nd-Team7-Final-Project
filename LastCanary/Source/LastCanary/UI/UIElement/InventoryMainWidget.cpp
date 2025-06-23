@@ -108,9 +108,10 @@ void UInventoryMainWidget::ToggleBackpackInventory()
 
 	if (bBackpackInventoryOpen)
 	{
+		HideItemDropQuantityWidget();
 		BackpackWidget->SetVisibility(ESlateVisibility::Collapsed);
 		bBackpackInventoryOpen = false;
-		LOG_Item_WARNING(TEXT("[ToggleBackpackInventory] 가방 인벤토리 닫기"));
+		LOG_Item_WARNING(TEXT("[ToggleBackpackInventory] 가방 인벤토리 닫기 (드롭 위젯 포함)"));
 	}
 	else
 	{
@@ -199,6 +200,23 @@ void UInventoryMainWidget::ShowItemDropQuantityWidget(UInventorySlotWidget* Sour
 	UE_LOG(LogTemp, Log, TEXT("[ShowItemDropQuantityWidget] 개수 선택 UI 표시"));
 }
 
+void UInventoryMainWidget::HideItemDropQuantityWidget()
+{
+	if (CurrentDropQuantityWidget)
+	{
+		// 델리게이트 해제
+		CurrentDropQuantityWidget->OnQuantityConfirmed.RemoveAll(this);
+		CurrentDropQuantityWidget->OnQuantityCanceled.RemoveAll(this);
+
+		// 위젯 제거
+		CurrentDropQuantityWidget->RemoveFromParent();
+		CurrentDropQuantityWidget = nullptr;
+	}
+
+	// 대기 중인 소스 위젯도 정리
+	PendingDropSourceWidget = nullptr;
+}
+
 void UInventoryMainWidget::HandleDropOutsideSlots(UInventorySlotWidget* SourceWidget, int32 Quantity)
 {
 	if (!SourceWidget || !SourceWidget->InventoryComponent)
@@ -233,29 +251,16 @@ void UInventoryMainWidget::OnQuantityConfirmed(int32 Quantity)
 	if (PendingDropSourceWidget)
 	{
 		HandleDropOutsideSlots(PendingDropSourceWidget, Quantity);
-		PendingDropSourceWidget = nullptr;
 	}
 
-	if (CurrentDropQuantityWidget)
-	{
-		CurrentDropQuantityWidget->OnQuantityConfirmed.RemoveAll(this);
-		CurrentDropQuantityWidget->OnQuantityCanceled.RemoveAll(this);
-		CurrentDropQuantityWidget = nullptr;
-	}
+	HideItemDropQuantityWidget();
 
 	UE_LOG(LogTemp, Log, TEXT("[OnQuantityConfirmed] 드롭 확인: %d개"), Quantity);
 }
 
 void UInventoryMainWidget::OnQuantityCanceled()
 {
-	PendingDropSourceWidget = nullptr;
-
-	if (CurrentDropQuantityWidget)
-	{
-		CurrentDropQuantityWidget->OnQuantityConfirmed.RemoveAll(this);
-		CurrentDropQuantityWidget->OnQuantityCanceled.RemoveAll(this);
-		CurrentDropQuantityWidget = nullptr;
-	}
+	HideItemDropQuantityWidget();
 
 	UE_LOG(LogTemp, Log, TEXT("[OnQuantityCanceled] 드롭 취소됨"));
 }

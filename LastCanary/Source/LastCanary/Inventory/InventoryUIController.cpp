@@ -156,6 +156,7 @@ void UInventoryUIController::HideBackpackUI()
     UInventoryMainWidget* InventoryWidget = GetInventoryWidget();
     if (InventoryWidget && InventoryWidget->IsBackpackInventoryOpen())
     {
+        InventoryWidget->HideItemDropQuantityWidget();
         InventoryWidget->ToggleBackpackInventory();
         SetInputModeGameOnly();
         LOG_Item_WARNING(TEXT("[InventoryUIController::HideBackpackUI] 가방 UI 비활성화"));

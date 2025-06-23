@@ -21,11 +21,20 @@ void UBackpackInventoryWidget::NativeConstruct()
 
 	if (CloseBackpackButton)
 	{
-		CloseBackpackButton->OnClicked.AddDynamic(this, &UBackpackInventoryWidget::OnCloseBackpackButtonClicked);
+		CloseBackpackButton->OnClicked.AddUniqueDynamic(this, &UBackpackInventoryWidget::OnCloseBackpackButtonClicked);
 	}
 	else
 	{
 		LOG_Item_WARNING(TEXT("[BackpackInventoryWidget] CloseBackpackButton을 찾을 수 없음"));
+	}
+}
+
+void UBackpackInventoryWidget::NativeDestruct()
+{
+	Super::NativeDestruct();
+	if (CloseBackpackButton)
+	{
+		CloseBackpackButton->OnClicked.RemoveDynamic(this, &UBackpackInventoryWidget::OnCloseBackpackButtonClicked);
 	}
 }
 
