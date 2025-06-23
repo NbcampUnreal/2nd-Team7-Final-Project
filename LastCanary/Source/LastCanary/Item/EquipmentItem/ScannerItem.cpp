@@ -10,7 +10,7 @@ AScannerItem::AScannerItem()
     PrimaryActorTick.bCanEverTick = false;
 
     // 기본값 설정
-    bIsScanning = false;
+    bIsUsing = false;
     ScanDuration = 3.0f;
     BatteryConsumptionPerUse = 20.0f;
     TargetScanAlpha = 1.0f;
@@ -67,6 +67,12 @@ void AScannerItem::UseItem()
         return;
     }
 
+    if (bIsUsing)
+    {
+        LOG_Item_WARNING(TEXT("[ScannerItem::UseItem] 스캐너 이미 사용 중 - 입력 무시"));
+        return;
+    }
+
     APlayerController* UserPC = nullptr;
 
     // 현재 입력을 보낸 플레이어 찾기
@@ -110,6 +116,12 @@ void AScannerItem::Server_UseScannerItem_Implementation(APlayerController* UserP
         return;
     }
 
+    if (bIsUsing)
+    {
+        LOG_Item_WARNING(TEXT("[Server_UseScannerItem] 스캐너 사용 중 - 추가 입력 무시"));
+        return;
+    }
+
     // 배터리 체크
     if (Durability < BatteryConsumptionPerUse)
     {
@@ -129,12 +141,12 @@ void AScannerItem::Server_UseScannerItem_Implementation(APlayerController* UserP
     CurrentUserPlayer = UserPlayerController;
 
     // 스캔 상태 토글
-    if (bIsScanning && CurrentScanningPlayer == UserPlayerController)
+    if (bIsUsing && CurrentScanningPlayer == UserPlayerController)
     {
         // 같은 플레이어가 스캔 중단
         LOG_Item_WARNING(TEXT("[Server_UseScannerItem] 스캔 중단"));
 
-        bIsScanning = false;
+        SetUsing(false);
         CurrentScanningPlayer = nullptr;
 
         // 타이머 정리
@@ -156,7 +168,7 @@ void AScannerItem::Server_UseScannerItem_Implementation(APlayerController* UserP
         // 새로운 스캔 시작
         LOG_Item_WARNING(TEXT("[Server_UseScannerItem] 스캔 시작"));
 
-        bIsScanning = true;
+        SetUsing(true);
         CurrentScanningPlayer = UserPlayerController;
 
         // 스캔 지속 시간 타이머
@@ -167,7 +179,7 @@ void AScannerItem::Server_UseScannerItem_Implementation(APlayerController* UserP
                     if (CurrentScanningPlayer)
                     {
                         LOG_Item_WARNING(TEXT("[Server_UseScannerItem] 자동 스캔 종료"));
-                        bIsScanning = false;
+                        SetUsing(false);
 
                         // 클라이언트에 종료 알림
                         if (CurrentScanningPlayer->IsValidLowLevel())
@@ -229,7 +241,7 @@ void AScannerItem::Client_ApplyScanEffect_Implementation(bool bStartScan)
 
 void AScannerItem::StartScan()
 {
-    if (bIsScanning)
+    if (bIsUsing)
     {
         return;
     }
@@ -253,7 +265,7 @@ void AScannerItem::StartScan()
         OnItemStateChanged.Broadcast();
     }
 
-    bIsScanning = true;
+    SetUsing(true);
 
     if (!CachedCollectionInstance)
     {
@@ -281,14 +293,14 @@ void AScannerItem::StartScan()
 
 void AScannerItem::StopScan()
 {
-    if (!bIsScanning)
+    if (!bIsUsing)
     {
         return;
     }
 
     LOG_Item_WARNING(TEXT("[ScannerItem::StopScan] 스캔 종료"));
 
-    bIsScanning = false;
+    SetUsing(false);
 
     if (CachedCollectionInstance)
     {
@@ -339,7 +351,7 @@ void AScannerItem::SetEquipped(bool bNewEquipped)
 
     if (!bNewEquipped)
     {
-        if (bIsScanning)
+        if (bIsUsing)
         {
             StopScan();
         }
@@ -358,7 +370,7 @@ void AScannerItem::ResetScanEffect()
 
     LOG_Item_WARNING(TEXT("[ResetScanEffect] 로컬 스캔 효과 즉시 리셋"));
 
-    bIsScanning = false;
+    SetUsing(false);
     SetScanAlpha(0.0f);
     CurrentAlpha = 0.0f;
     TargetAlpha = 0.0f;
