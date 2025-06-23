@@ -108,6 +108,14 @@ public:
     virtual bool TryDropItemAtSlot(int32 SlotIndex, int32 Quantity = 1) override;
     void RemoveResourceItems();
 
+    // 가방 드랍 함수
+    bool DropItemFromBackpack(int32 BackpackSlotIndex, int32 Quantity);
+
+    UFUNCTION(Server, Reliable, Category = "Toolbar|Drop")
+
+    void Server_DropBackpackItem(int32 BackpackSlotIndex, int32 Quantity);
+    void Server_DropBackpackItem_Implementation(int32 BackpackSlotIndex, int32 Quantity);
+
     //-----------------------------------------------------
     // 백팩 매니저 시스템
     //-----------------------------------------------------
@@ -227,4 +235,14 @@ protected:
     void OnBackpackEquippedHandler(const TArray<FBackpackSlotData>& BackpackSlots);
     UFUNCTION()
     void OnBackpackUnequippedHandler();
+
+public:
+    /** 클라이언트별 가방 UI 업데이트 RPC */
+    UFUNCTION(Client, Reliable, Category = "Backpack UI")
+    void Client_ShowBackpackUI(const TArray<FBackpackSlotData>& BackpackSlots);
+    void Client_ShowBackpackUI_Implementation(const TArray<FBackpackSlotData>& BackpackSlots);
+
+    UFUNCTION(Client, Reliable, Category = "Backpack UI")
+    void Client_HideBackpackUI();
+    void Client_HideBackpackUI_Implementation();
 };
