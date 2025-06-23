@@ -185,17 +185,26 @@ float ULCLocalPlayerSaveGame::LoadVoiceChatVolume(UWorld* World)
     return DefaultSettings::DEFAULT_VOLUME; // 기본값
 }
 
-bool ULCLocalPlayerSaveGame::SaveMicrophoneMode(UWorld* World, bool NewSetting)
+bool ULCLocalPlayerSaveGame::SaveVoiceInputMode(UWorld* World, EVoiceInputMode NewSetting)
 {
-    //TODO: 보이스 기능 홀드 토글 들어오면 나중에 추가하기
-    return true;
+    if (ULCLocalPlayerSaveGame* SaveGame = GetSaveInstance(World))
+    {
+        SaveGame->Settings.VoiceInputMode = NewSetting;
+        return SaveGame->SaveGameToSlotForLocalPlayer();
+    }
+    return false;
 }
 
-bool ULCLocalPlayerSaveGame::LoadMicrophoneMode(UWorld* World)
+EVoiceInputMode ULCLocalPlayerSaveGame::LoadVoiceInputMode(UWorld* World)
 {
-    //TODO: 보이스 기능 홀드 토글 들어오면 나중에 추가하기
-    return true;
+    if (ULCLocalPlayerSaveGame* SaveGame = GetSaveInstance(World))
+    {
+        return SaveGame->Settings.VoiceInputMode;
+    }
+
+    return DefaultSettings::DEFAULT_VOICEMODE; // 기본값
 }
+
 
 bool ULCLocalPlayerSaveGame::SaveCustomizationData(UWorld * World, const FCharacterCustomizationData NewSetting)
 {

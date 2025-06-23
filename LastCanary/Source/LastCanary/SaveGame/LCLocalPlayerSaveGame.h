@@ -3,8 +3,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/SaveGame.h"
 #include "UserSettings/EnhancedInputUserSettings.h"
+#include "UI/UIObject/VoiceOptionWidget.h"
 #include "LCLocalPlayerSaveGame.generated.h"
-
 
 struct FEnhancedActionKeyMapping;
 
@@ -14,6 +14,7 @@ namespace DefaultSettings
 	constexpr float DEFAULT_VOLUME = 1.0f;
 	constexpr float DEFAULT_BRIGHTNESS = 1.0f;
 	constexpr bool DEFAULT_FULLSCREEN = true;
+	constexpr EVoiceInputMode DEFAULT_VOICEMODE = EVoiceInputMode::Always;
 }
 
 class UMySaveGameUtils
@@ -74,19 +75,23 @@ struct FUserSettings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float MicrophoneVolume = DefaultSettings::DEFAULT_VOLUME;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	EVoiceInputMode VoiceInputMode = DefaultSettings::DEFAULT_VOICEMODE;
+
 	UPROPERTY()
 	TArray<FSaveKeyMapping> SavedMappings;	
 
 	void ResetToDefault()
 	{
-		MouseSensitivity = 1.0f;
-		MasterVolume = 1.0f;
-		BGMVolume = 1.0f;
-		EffectVolume = 1.0f;
-		Brightness = 1.0f;
-		bIsFullScreenMode = true;
-		VoiceChatVolume = 1.0f;
-		MicrophoneVolume = 1.0f;
+		MouseSensitivity = DefaultSettings::DEFAULT_SENSITIVITY;
+		MasterVolume = DefaultSettings::DEFAULT_VOLUME;
+		BGMVolume = DefaultSettings::DEFAULT_VOLUME;
+		EffectVolume = DefaultSettings::DEFAULT_VOLUME;
+		Brightness = DefaultSettings::DEFAULT_BRIGHTNESS;
+		bIsFullScreenMode = DefaultSettings::DEFAULT_FULLSCREEN;
+		VoiceChatVolume = DefaultSettings::DEFAULT_VOLUME;
+		MicrophoneVolume = DefaultSettings::DEFAULT_VOLUME;
+		VoiceInputMode = DefaultSettings::DEFAULT_VOICEMODE;
 	}
 };
 
@@ -202,8 +207,8 @@ public:
 	static bool SaveVoiceChatVolume(UWorld* World, float NewVolume);
 	static float LoadVoiceChatVolume(UWorld* World);
 
-	static bool SaveMicrophoneMode(UWorld* World, bool NewSetting);
-	static bool LoadMicrophoneMode(UWorld* World);
+	static bool SaveVoiceInputMode(UWorld* World, EVoiceInputMode NewSetting);
+	static EVoiceInputMode LoadVoiceInputMode(UWorld* World);
 
 	static bool SaveKeyBindings(UWorld* World, const TArray<FSaveKeyMapping>& Mappings);
 	static TArray<FSaveKeyMapping> LoadKeyBindings(UWorld* World);
