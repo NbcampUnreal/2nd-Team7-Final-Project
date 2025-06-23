@@ -479,6 +479,8 @@ void ULCUIManager::ShowRoomWidget()
 	if (CachedRoomWidget)
 	{
 		SwitchToWidget(CachedRoomWidget);
+		HideInventoryMainWidget();
+		SetInputModeGameAndUI();
 	}
 }
 
@@ -489,6 +491,9 @@ void ULCUIManager::HideRoomWidget()
 		if (CachedRoomWidget->IsInViewport())
 		{
 			CachedRoomWidget->RemoveFromParent();
+			SwitchToWidget(CachedInGameHUD);
+			ShowInventoryMainWidget();
+			SetInputModeGameOnly();
 		}
 	}
 	else

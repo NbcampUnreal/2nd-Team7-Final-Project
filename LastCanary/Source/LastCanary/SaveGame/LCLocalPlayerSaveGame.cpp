@@ -1,6 +1,7 @@
 #include "SaveGame/LCLocalPlayerSaveGame.h"
 #include "Engine/LocalPlayer.h" // ULocalPlayer 관련
 #include "Kismet/GameplayStatics.h"    // 경우에 따라 사용 가능
+#include "LastCanary.h"
 
 
 const TCHAR UMySaveGameUtils::PlayerSaveSlotPrefix[] = TEXT("PlayerSaveSlot_");
@@ -194,6 +195,52 @@ bool ULCLocalPlayerSaveGame::LoadMicrophoneMode(UWorld* World)
 {
     //TODO: 보이스 기능 홀드 토글 들어오면 나중에 추가하기
     return true;
+}
+
+bool ULCLocalPlayerSaveGame::SaveCustomizationData(UWorld * World, const FCharacterCustomizationData NewSetting)
+{
+    if (ULCLocalPlayerSaveGame* SaveGame = GetSaveInstance(World))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Customization Info - BodyId: %d, HelmetId: %d, GloveId: %d, JacketId: %d, PantsId: %d, BeltsId: %d, ArmorId: %d, BootsId: %d"),
+            NewSetting.DefaultBodyID, NewSetting.HelmetID, NewSetting.GloveID, NewSetting.JacketID,
+            NewSetting.PantsID, NewSetting.BeltsID, NewSetting.ArmorID, NewSetting.BootsID);
+
+        // 메시 ID 저장
+        SaveGame->CustomizationData.DefaultBodyID = NewSetting.DefaultBodyID;
+        SaveGame->CustomizationData.GloveID = NewSetting.GloveID;
+        SaveGame->CustomizationData.JacketID = NewSetting.JacketID;
+        SaveGame->CustomizationData.PantsID = NewSetting.PantsID;
+        SaveGame->CustomizationData.BeltsID = NewSetting.BeltsID;
+        SaveGame->CustomizationData.HelmetID = NewSetting.HelmetID;
+        SaveGame->CustomizationData.ArmorID = NewSetting.ArmorID;
+        SaveGame->CustomizationData.BootsID = NewSetting.BootsID;
+
+        // 머티리얼 ID 저장
+        SaveGame->CustomizationData.DefaultBodyMaterialID = NewSetting.DefaultBodyMaterialID;
+        SaveGame->CustomizationData.GloveMaterialID = NewSetting.GloveMaterialID;
+        SaveGame->CustomizationData.JacketMaterialID = NewSetting.JacketMaterialID;
+        SaveGame->CustomizationData.PantsMaterialID = NewSetting.PantsMaterialID;
+        SaveGame->CustomizationData.BeltsMaterialID = NewSetting.BeltsMaterialID;
+        SaveGame->CustomizationData.HelmetMaterialID = NewSetting.HelmetMaterialID;
+        SaveGame->CustomizationData.ArmorMaterialID = NewSetting.ArmorMaterialID;
+        SaveGame->CustomizationData.BootsMaterialID = NewSetting.BootsMaterialID;
+
+        UE_LOG(LogTemp, Warning, TEXT("커스터마이징 데이터 저장 완료"));
+        return SaveGame->SaveGameToSlotForLocalPlayer();
+    }
+    return false;
+}
+
+FCharacterCustomizationData ULCLocalPlayerSaveGame::LoadCustomizationData(UWorld* World)
+{
+    if (ULCLocalPlayerSaveGame* SaveGame = GetSaveInstance(World))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("커스터마이징 데이터 성공적으로 로드"));
+
+        return SaveGame->CustomizationData;
+    }
+    UE_LOG(LogTemp, Warning, TEXT("커스터마이징 데이터 못찾음. 디폴트 값 출력"));
+    return FCharacterCustomizationData(); // 기본값
 }
 
 ULCLocalPlayerSaveGame* ULCLocalPlayerSaveGame::GetSaveInstance(UWorld* World)
