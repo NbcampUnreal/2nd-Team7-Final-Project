@@ -97,8 +97,12 @@ struct FItemDataRow : public FTableRowBase
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "8. Sound Settings")
     EItemSoundType SoundType = EItemSoundType::Click;
 
-
 public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Note")
+    bool bIsNoteItem = false;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Note")
+    int32 BaseExplorePoint = 1;
 	// 쪽지 타입
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Note")
 	ENoteType NoteType = ENoteType::Truth;
