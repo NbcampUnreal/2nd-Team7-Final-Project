@@ -1072,7 +1072,7 @@ void UAlsCharacterMovementComponent::SetGaitSettings(float _WalkForwardSpeed, fl
 
 	RunForwardSpeed = _RunForwardSpeed;
 
-	GaitSettings.RunBackwardSpeed = _RunBackwardSpeed;
+	RunBackwardSpeed = _RunBackwardSpeed;
 
 	SprintSpeed = _SprintSpeed;
 	
@@ -1096,4 +1096,19 @@ void UAlsCharacterMovementComponent::ResetGaitSettings()
 	CrouchSpeed = GaitSettings.RunForwardSpeed / 2;
 }
 
+void UAlsCharacterMovementComponent::SetPlayerMovementSpeed(float _CrouchSpeed, float _WalkSpeed, float _RunSpeed, float _SprintSpeed)
+{
+	UE_LOG(LogTemp, Warning, TEXT("Player MoveSpeed Changed, Crouch: %f, Walk: %f, Run: %f, Sprint: %f"), _CrouchSpeed, _WalkSpeed, _RunSpeed, _SprintSpeed);
 
+	WalkForwardSpeed = _WalkSpeed;
+
+	WalkBackwardSpeed = _WalkSpeed;
+
+	RunForwardSpeed = _RunSpeed;
+
+	RunBackwardSpeed = _RunSpeed;
+
+	SprintSpeed = _SprintSpeed;
+
+	CrouchSpeed = _CrouchSpeed;
+}
