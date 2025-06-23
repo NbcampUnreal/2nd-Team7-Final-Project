@@ -21,7 +21,7 @@ void UBackpackInventoryWidget::NativeConstruct()
 
 	if (CloseBackpackButton)
 	{
-		CloseBackpackButton->OnClicked.AddDynamic(this, &UBackpackInventoryWidget::OnCloseBackpackButtonClicked);
+		CloseBackpackButton->OnClicked.AddUniqueDynamic(this, &UBackpackInventoryWidget::OnCloseBackpackButtonClicked);
 	}
 	else
 	{
