@@ -169,10 +169,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Interaction")
 	bool bCallReturnToInitialStateInsteadOfActivate;
 
-	/** 총기로 파괴 가능 여부 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Damage")
-	bool bDestructibleByGun;
-
 public:
 	/** ===== 인터페이스 구현 ===== */
 
@@ -196,6 +192,28 @@ public:
 
 	/** 즉시 복귀 활성화 */
 	virtual void ReturnToInitialState_Implementation() override;
+
+	// ===== 파괴 관련 =====
+
+	/** 총기에 의해 파괴될 수 있는지 여부 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Damage")
+	bool bDestructibleByGun;
+
+	/** 총기에 맞았을 때 파괴까지 필요한 체력 (1발 = 1 데미지) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Damage", meta = (EditCondition = "bDestructibleByGun"))
+	float DestructibleHealth;
+
+	/** 현재 남은 체력 (Replicated) */
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Gimmick|Damage")
+	float CurrentHealth;
+
+	/** 총기 피격 처리 (TakeDamage 오버라이드) */
+	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+
+	/** 총기에 의해 파괴되었을 때 호출 (이펙트 확장용) */
+	UFUNCTION(BlueprintNativeEvent, Category = "Gimmick|Damage")
+	void OnDestroyedByBullet();
+	virtual void OnDestroyedByBullet_Implementation();
 
 	/** ===== 네트워크 함수 ===== */
 

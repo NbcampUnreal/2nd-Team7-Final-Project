@@ -12,6 +12,8 @@ ALCBaseGimmick::ALCBaseGimmick()
 	, bToggleState(true)
 	, ReturnDelay(3.f)
 	, bDestructibleByGun(false)
+	, DestructibleHealth(3.f)
+	, CurrentHealth(3.f)
 	, InteractMessage(TEXT("???"))
 	, InteractSound(nullptr)
 	, RequiredCount(1.f)
@@ -51,6 +53,11 @@ ALCBaseGimmick::ALCBaseGimmick()
 void ALCBaseGimmick::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (bDestructibleByGun)
+	{
+		CurrentHealth = DestructibleHealth;
+	}
 
 	if (bEnableActorDetection && IsValid(DetectionArea))
 	{
@@ -534,3 +541,34 @@ void ALCBaseGimmick::EndPlay(const EEndPlayReason::Type EndPlayReason)
 }
 
 #pragma endregion
+
+float ALCBaseGimmick::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	if (!HasAuthority() || !bDestructibleByGun)
+		return 0.f;
+
+	CurrentHealth -= DamageAmount;
+
+	LOG_Art(Log, TEXT("💥 Gimmick 피격: %.1f 데미지 → 남은 체력: %.1f"), DamageAmount, CurrentHealth);
+
+	if (CurrentHealth <= 0.f)
+	{
+		OnDestroyedByBullet(); // BP 확장 가능
+		Destroy();
+	}
+
+	return DamageAmount;
+}
+
+void ALCBaseGimmick::OnDestroyedByBullet_Implementation()
+{
+	LOG_Art(Log, TEXT("💀 OnDestroyedByBullet() 기본 구현 호출됨"));
+	// TODO: Niagara, Sound, Spawn 등 확장
+}
+
+void ALCBaseGimmick::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ALCBaseGimmick, CurrentHealth);
+}
