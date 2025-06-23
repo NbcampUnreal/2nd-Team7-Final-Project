@@ -123,6 +123,13 @@ public:
 
 	void SetPartMaterial(USkeletalMeshComponent* Component, int32 MaterialIndex, UMaterialInterface* Material);
 
+
+	UPROPERTY(EditAnywhere, Category = "Brightness")
+	float MinBrightness = 6.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Brightness")
+	float MaxBrightness = 10.0f;
+
 	float GetBrightness();
 	void SetBrightness(float Value);
 
