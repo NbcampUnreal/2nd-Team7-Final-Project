@@ -125,7 +125,7 @@ public:
 
 
 	UPROPERTY(EditAnywhere, Category = "Brightness")
-	float MinBrightness = 6.0f;
+	float MinBrightness = 8.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Brightness")
 	float MaxBrightness = 10.0f;
