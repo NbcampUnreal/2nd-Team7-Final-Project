@@ -1,6 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "Character/CustomizationCharacter.h"
 #include "Character/CustomizationMeshMap.h"
 #include "LastCanary.h"

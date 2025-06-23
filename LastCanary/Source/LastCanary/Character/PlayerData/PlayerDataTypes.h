@@ -94,6 +94,9 @@ public:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spirit")
     float MaxSpirit = 100.0f;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spirit")
+    float PanicTriggerThreshold = 50.0f;
 };
 
 // ------------------------------
