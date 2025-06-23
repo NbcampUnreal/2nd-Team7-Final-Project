@@ -364,15 +364,19 @@ void AResourceNode::Multicast_PlayDestroyEffect_Implementation()
 		GeometryCollectionComponent->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 		GeometryCollectionComponent->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block); // 바닥에만 충돌
 
-		GeometryCollectionComponent->ApplyExternalStrain(5000.0f, GetActorLocation());
+		//GeometryCollectionComponent->ApplyExternalStrain(5000.0f, GetActorLocation());
 
-		GeometryCollectionComponent->AddRadialImpulse(
-			GetActorLocation(),  // 위치
-			300.0f,              // 반경
-			6000.0f,             // 세기
-			ERadialImpulseFalloff::RIF_Linear,
-			false                 // velocity 변경 허용
-		);
+		GeometryCollectionComponent->AddForceAtLocation(FVector::UpVector * -3000.0f, GetActorLocation());
+
+		//GeometryCollectionComponent->AddRadialImpulse(
+		//	GetActorLocation(),  // 위치
+		//	300.0f,              // 반경
+		//	6000.0f,             // 세기
+		//	ERadialImpulseFalloff::RIF_Linear,
+		//	false                 // velocity 변경 허용
+		//);
+
+		//GeometryCollectionComponent->ApplyLinearVelocity(0, GetActorForwardVector());
 
 		LOG_Frame_WARNING(TEXT("[ResourceNode] Geometry Collection 활성화 및 물리 적용"));
 	}
