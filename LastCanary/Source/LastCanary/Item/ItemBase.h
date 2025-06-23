@@ -88,6 +88,10 @@ public:
     UPROPERTY(Replicated, BlueprintReadWrite, Category = "Item|State")
     bool bIsEquipped;
 
+    /** 현재 아이템이 사용 중인지 여부 */
+    UPROPERTY(Replicated, BlueprintReadWrite, Category = "Item|State")
+    bool bIsUsing = false;
+
     /** 아이템의 현재 수량 (스택 가능 아이템용) */
     UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Item|State")
     int32 Quantity;
@@ -103,6 +107,18 @@ public:
     /** Durability가 복제될 때 호출되는 함수 */
     UFUNCTION()
     virtual void OnRepDurability();
+
+    /** 아이템 사용 상태 설정 */
+    UFUNCTION(BlueprintCallable, Category = "Item|Usage")
+    virtual void SetUsing(bool bNewUsing);
+
+    /** 아이템 사용 중인지 확인 */
+    UFUNCTION(BlueprintPure, Category = "Item|Usage")
+    bool IsUsing() const { return bIsUsing; }
+
+    /** 사용 상태 토글 */
+    UFUNCTION(BlueprintCallable, Category = "Item|Usage")
+    void ToggleUsing() { SetUsing(!bIsUsing); }
 
     //-----------------------------------------------------
     // 이벤트 및 델리게이트

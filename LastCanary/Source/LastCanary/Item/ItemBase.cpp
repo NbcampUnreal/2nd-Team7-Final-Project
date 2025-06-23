@@ -99,6 +99,11 @@ void AItemBase::OnRepDurability()
 	OnItemStateChanged.Broadcast();
 }
 
+void AItemBase::SetUsing(bool bNewUsing)
+{
+	bIsUsing = bNewUsing;
+}
+
 void AItemBase::ApplyItemDataFromTable()
 {
 	if (ItemRowName.IsNone())
@@ -345,6 +350,7 @@ void AItemBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetim
 	DOREPLIFETIME_CONDITION_NOTIFY(AItemBase, Durability, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME(AItemBase, bIgnoreCharacterCollision);
 	DOREPLIFETIME(AItemBase, bIsSoundActive);
+	DOREPLIFETIME(AItemBase, bIsUsing);
 }
 
 void AItemBase::OnRepItemRowName()
