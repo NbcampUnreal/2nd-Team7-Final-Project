@@ -1,7 +1,86 @@
 #include "AI/EliteMonster/TempleEliteMonster.h"
+#include "Item/EquipmentItem/GunBase.h"
+#include "AI/BaseAIController.h"
+#include "Character/BaseCharacter.h"
+#include "BehaviorTree/BlackboardComponent.h"
+#include "AI/BaseAIController.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 ATempleEliteMonster::ATempleEliteMonster()
 {
     GetCharacterMovement()->MaxWalkSpeed = 200.0f;
+}
+
+void ATempleEliteMonster::HandlePerceptionUpdate(AActor* Actor, FAIStimulus Stimulus)
+{
+    if (!Actor) return;
+
+    if (ABaseAIController* AIController = Cast<ABaseAIController>(GetController()))
+    {
+        if (UBlackboardComponent* BlackboardComp = AIController->GetBlackboardComponent())
+        {
+            if (Stimulus.WasSuccessfullySensed() && Stimulus.Tag.IsEqual(FName("CaveMonster")))
+            {
+                if (ABaseCharacter* BaseCharacter = Cast<ABaseCharacter>(Actor))
+                {
+                    BlackboardComp->SetValueAsObject(FName("TargetActor"), BaseCharacter);
+                }
+                else if (AGunBase* GunBase = Cast<AGunBase>(Actor))
+                {
+                    if (AActor* GunOwner = GunBase->GetOwner())
+                    {
+                        if (ABaseCharacter* GunOwnerCharacter = Cast<ABaseCharacter>(GunOwner))
+                        {
+                            BlackboardComp->SetValueAsObject(FName("TargetActor"), GunOwnerCharacter);
+                        }
+                    }
+                }
+                if (UWorld* World = GetWorld())
+                {
+                    World->GetTimerManager().ClearTimer(ForgetTargetTimerHandle);
+                }
+            }
+            /*else if (Stimulus.Tag.IsEqual(FName("Box")))
+            {
+                if (ABoxItem* BoxItem = Cast<ABoxItem>(Actor))
+                {
+                    BlackboardComp->SetValueAsVector(FName("InvestigateLocation"), Stimulus.StimulusLocation);
+                    
+                    AIController->SetSearching();
+                }
+            }*/
+            else
+            {
+                if (UWorld* World = GetWorld())
+                {
+                    if (!ForgetTargetTimerHandle.IsValid())
+                    {
+                        World->GetTimerManager().SetTimer(
+                            ForgetTargetTimerHandle,
+                            this,
+                            &ATempleEliteMonster::ForgetTarget,
+                            HearingMaxAge,
+                            false
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+
+void ATempleEliteMonster::ForgetTarget()
+{
+    if (ABaseAIController* AIController = Cast<ABaseAIController>(GetController()))
+    {
+        if (UBlackboardComponent* BlackboardComp = AIController->GetBlackboardComponent())
+        {
+            BlackboardComp->ClearValue(FName("TargetActor"));
+        }
+    }
+
+    if (UWorld* World = GetWorld())
+    {
+        World->GetTimerManager().ClearTimer(ForgetTargetTimerHandle);
+    }
 }

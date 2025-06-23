@@ -11,4 +11,15 @@ class LASTCANARY_API ATempleEliteMonster : public ABaseMonsterCharacter
 	
 public:
 	ATempleEliteMonster();
+
+	FTimerHandle ForgetTargetTimerHandle;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MaxAge")
+	float HearingMaxAge = 6.5f;
+
+protected:
+	virtual void HandlePerceptionUpdate(AActor* Actor, FAIStimulus Stimulus) override;
+
+	UFUNCTION()
+	void ForgetTarget();
 };
