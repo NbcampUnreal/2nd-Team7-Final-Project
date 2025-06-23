@@ -33,6 +33,14 @@ void ALCPlayerController::PostSeamlessTravel()
         CheatManager->InitCheatManager();
     }
 
+    if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+    {
+        if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+        {
+            UIManager->RestoreLoadingScreenIfNeeded(); 
+        }
+    }
+
     LOG_Frame_WARNING(TEXT("PostSeamlessTravel: %s 호출 - IsLocalController: %d"), *GetName(), IsLocalController());
     GetWorldTimerManager().SetTimerForNextTick(this, &ALCPlayerController::DelayedPostTravelSetup);
 }
