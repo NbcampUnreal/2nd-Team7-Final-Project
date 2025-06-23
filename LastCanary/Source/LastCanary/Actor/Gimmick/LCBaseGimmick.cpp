@@ -11,6 +11,7 @@ ALCBaseGimmick::ALCBaseGimmick()
 	, CooldownTime(2.f)
 	, bToggleState(true)
 	, ReturnDelay(3.f)
+	, bDestructibleByGun(false)
 	, InteractMessage(TEXT("???"))
 	, InteractSound(nullptr)
 	, RequiredCount(1.f)
@@ -342,12 +343,12 @@ bool ALCBaseGimmick::IsValidActivator(AActor* OtherActor) const
 	{
 		if (OtherActor->ActorHasTag(Tag))
 		{
-			LOG_Art(Log, TEXT("[감지] 감지 성공 - 태그: %s"), *Tag.ToString());
+			//LOG_Art(Log, TEXT("[감지] 감지 성공 - 태그: %s"), *Tag.ToString());
 			return true;
 		}
 	}
 
-	LOG_Art(Log, TEXT("[감지] 감지 실패 - 태그 없음"));
+	//LOG_Art(Log, TEXT("[감지] 감지 실패 - 태그 없음"));
 	return false;
 }
 
@@ -359,7 +360,7 @@ void ALCBaseGimmick::Interact_Implementation(APlayerController* Interactor)
 {
 	if (ActivationType != EGimmickActivationType::ActivateOnPress)
 	{
-		LOG_Art_WARNING(TEXT("❌ 이 기믹은 상호작용 타입이 아님"));
+		//LOG_Art_WARNING(TEXT("이 기믹은 상호작용 타입이 아님"));
 		return;
 	}
 

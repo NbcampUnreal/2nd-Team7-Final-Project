@@ -169,6 +169,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Interaction")
 	bool bCallReturnToInitialStateInsteadOfActivate;
 
+	/** 총기로 파괴 가능 여부 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Damage")
+	bool bDestructibleByGun;
+
 public:
 	/** ===== 인터페이스 구현 ===== */
 
