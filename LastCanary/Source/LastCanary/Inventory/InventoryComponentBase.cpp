@@ -254,7 +254,7 @@ bool UInventoryComponentBase::HasWalkieTalkieInToolbar() const
 {
 	for (const FBaseItemSlotData& Slot : ItemSlots)
 	{
-		if (Slot.bIsValid && UInventoryUtility::IsDefaultItem(Slot.ItemRowName, GetInventoryConfig()) && Slot.Quantity > 0)
+		if (Slot.bIsValid && !UInventoryUtility::IsDefaultItem(Slot.ItemRowName, GetInventoryConfig()) && Slot.Quantity > 0)
 		{
 			if (IsWalkieTalkieItem(Slot.ItemRowName))
 			{
@@ -262,6 +262,7 @@ bool UInventoryComponentBase::HasWalkieTalkieInToolbar() const
 			}
 		}
 	}
+
 	return false;
 }
 
