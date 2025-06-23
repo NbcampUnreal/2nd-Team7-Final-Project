@@ -164,8 +164,12 @@ private:
     void Multicast_SpawnWall(const FVector& Location, const FRotator& Rotation, const FIntPoint& Cell, const FString& Direction);
     void Multicast_SpawnWall_Implementation(const FVector& Location, const FRotator& Rotation, const FIntPoint& Cell, const FString& Direction);
 
+    void SpawnNotesAfterMaze();
+
     UFUNCTION(NetMulticast, Reliable)
     void Multicast_HideWall(const FIntPoint& Cell, const FString& Direction);
     void Multicast_HideWall_Implementation(const FIntPoint& Cell, const FString& Direction);
 
+    UPROPERTY(EditAnywhere, Category = "Notes")
+    int32 MaxNotesToSpawn = 3;
 };
