@@ -29,6 +29,15 @@ void UBackpackInventoryWidget::NativeConstruct()
 	}
 }
 
+void UBackpackInventoryWidget::NativeDestruct()
+{
+	Super::NativeDestruct();
+	if (CloseBackpackButton)
+	{
+		CloseBackpackButton->OnClicked.RemoveDynamic(this, &UBackpackInventoryWidget::OnCloseBackpackButtonClicked);
+	}
+}
+
 void UBackpackInventoryWidget::RefreshInventoryUI()
 {
 	if (!InventoryComponent)
