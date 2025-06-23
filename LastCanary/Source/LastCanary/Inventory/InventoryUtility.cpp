@@ -105,7 +105,7 @@ float UInventoryUtility::GetItemWeight(FName ItemRowName, const UDataTable* Item
 {
     if (ItemRowName.IsNone() || !ItemDataTable)
     {
-        return 1.0f; // 기본 무게
+        return 1.0f;
     }
 
     const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("GetItemWeight"));

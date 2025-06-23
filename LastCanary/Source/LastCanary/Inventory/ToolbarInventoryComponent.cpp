@@ -841,6 +841,32 @@ void UToolbarInventoryComponent::RemoveResourceItems()
 
 }
 
+bool UToolbarInventoryComponent::DropItemFromBackpack(int32 BackpackSlotIndex, int32 Quantity)
+{
+    if (!BackpackManager)
+    {
+        return false;
+    }
+
+    if (GetOwner() && GetOwner()->HasAuthority())
+    {
+        return BackpackManager->DropItemFromBackpack(BackpackSlotIndex, Quantity);
+    }
+    else
+    {
+        Server_DropBackpackItem(BackpackSlotIndex, Quantity);
+        return true;
+    }
+}
+
+void UToolbarInventoryComponent::Server_DropBackpackItem_Implementation(int32 BackpackSlotIndex, int32 Quantity)
+{
+    if (BackpackManager)
+    {
+        BackpackManager->DropItemFromBackpack(BackpackSlotIndex, Quantity);
+    }
+}
+
 void UToolbarInventoryComponent::HandleBackpackEquip(int32 SlotIndex)
 {
     if (BackpackManager)
@@ -936,13 +962,33 @@ bool UToolbarInventoryComponent::AddItemToBackpack(FName ItemRowName, int32 Quan
 
 void UToolbarInventoryComponent::OnBackpackEquippedHandler(const TArray<FBackpackSlotData>& BackpackSlots)
 {
-    if (UIController)
+    if (GetOwner() && GetOwner()->HasAuthority())
     {
-        UIController->ShowBackpackUI(BackpackSlots);
+        Client_ShowBackpackUI(BackpackSlots);
     }
 }
 
 void UToolbarInventoryComponent::OnBackpackUnequippedHandler()
+{
+    if (GetOwner() && GetOwner()->HasAuthority())
+    {
+        Client_HideBackpackUI();
+    }
+}
+
+void UToolbarInventoryComponent::Client_ShowBackpackUI_Implementation(const TArray<FBackpackSlotData>& BackpackSlots)
+{
+    if (UIController)
+    {
+        UIController->ShowBackpackUI(BackpackSlots);
+    }
+    else
+    {
+        LOG_Item_WARNING(TEXT("[Client_ShowBackpackUI] UIController가 null"));
+    }
+}
+
+void UToolbarInventoryComponent::Client_HideBackpackUI_Implementation()
 {
     if (UIController)
     {
@@ -1349,17 +1395,22 @@ bool UToolbarInventoryComponent::TryMoveBackpackItemToToolbar(int32 BackpackInde
 
     // 아이템 이동
     ToolbarSlot.ItemRowName = BackpackSlot.ItemRowName;
-    ToolbarSlot.Quantity = BackpackSlot.Quantity;
+    ToolbarSlot.Quantity = 1;
     ToolbarSlot.bIsValid = true;
     ToolbarSlot.bIsEquipped = false;
 
-    // 가방 슬롯을 Default로 설정
-    BackpackSlot.ItemRowName = FName("Default");
-    BackpackSlot.Quantity = 0;
+    BackpackSlot.Quantity -= 1;
+
+    // 가방 슬롯이 비었다면 Default로 설정
+    if (BackpackSlot.Quantity <= 0)
+    {
+        BackpackSlot.ItemRowName = FName("Default");
+        BackpackSlot.Quantity = 0;
+    }
 
     OnInventoryUpdated.Broadcast();
 
-    LOG_Item_WARNING(TEXT("[TryMoveBackpackItemToToolbar] 가방->툴바 이동 성공: %s"), *ToolbarSlot.ItemRowName.ToString());
+    LOG_Item_WARNING(TEXT("[TryMoveBackpackItemToToolbar] 가방->툴바 이동 성공: %s (1개, 가방 잔여: %d개)"), *ToolbarSlot.ItemRowName.ToString(), BackpackSlot.Quantity);
 
     return true;
 }
