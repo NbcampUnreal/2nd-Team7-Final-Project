@@ -8,7 +8,7 @@ enum class EPlayerState : uint8
 {
     None UMETA(DisplayName = "None"),
     Idle UMETA(DisplayName = "Idle"),
-    SplitMind UMETA(DisplayName = "정신분열중"),
+    Panic UMETA(DisplayName = "정신분열중"),
     Dead UMETA(DisplayName = "사망"),
     Escape UMETA(DisplayName = "탈출")
     // 필요한 상태 더 추가

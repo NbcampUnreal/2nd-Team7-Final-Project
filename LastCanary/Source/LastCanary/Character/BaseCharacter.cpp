@@ -2268,6 +2268,7 @@ float ABaseCharacter::CalculateTakeSpiritDamage(float DamageAmount)
 
 void ABaseCharacter::EnterPanicState()
 {
+	//환정 / 비명소리 등 / 목소리 변조 // 갑자기 지혼자 총쏨. // 온갖 트롤 요소를 다 넣어. //플레이어 숨소리 // 감도 강제로 올리기 낮추기 // 팀원 보이스 낮추기 // 
 	//TODO: 정신력 0 처리
 }
 
