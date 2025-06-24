@@ -39,6 +39,7 @@ void AResourceItemSpawnManager::BeginPlay()
 		if (bSpawnOnBeginPlay)
 		{
 			SpawnResourceItemsForTheme();
+			SpawnNoteItemsForTheme();
 		}
 
 		SpawnResourceNodes(SpawnCount);
@@ -285,6 +286,26 @@ void AResourceItemSpawnManager::SpawnNoteItems(int32 Count)
 	}
 }
 
+void AResourceItemSpawnManager::SpawnNoteItemsForTheme()
+{
+	TArray<AActor*> FoundPoints;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AResourceItemSpawnPoint::StaticClass(), FoundPoints);
+
+	TArray<FName> Notes = GetSpawnableNotesByTags();
+	if (Notes.IsEmpty()) return;
+
+	for (AActor* Actor : FoundPoints)
+	{
+		if (AResourceItemSpawnPoint* Point = Cast<AResourceItemSpawnPoint>(Actor))
+		{
+			if (Point->SpawnItemType == ESpawnItemType::Note || Point->SpawnItemType == ESpawnItemType::Both)
+			{
+				Point->TrySpawnItemFromManager(Notes, ItemSpawnerComponent);
+			}
+		}
+	}
+}
+
 void AResourceItemSpawnManager::SpawnNoteItemsAtLocation(int32 Count, const FVector& Location)
 {
 	const TArray<FName> Notes = GetSpawnableNotesByTags();
@@ -390,29 +411,31 @@ void AResourceItemSpawnManager::OnDayNightChanged(EDayPhase NewPhase)
 	{
 		if (AResourceItemSpawnPoint* Point = Cast<AResourceItemSpawnPoint>(Actor))
 		{
-			const auto Condition = Point->SpawnTimeCondition;
-			if (Condition == ESpawnTimeCondition::Always)
-			{
-				if (!Point->bHasSpawnedAlwaysItem)
-				{
-					Point->TrySpawnItemFromManager(AvailableItems, ItemSpawnerComponent);
-				}
+			const ESpawnItemType Type = Point->SpawnItemType;
 
-				continue;
+			// 스폰할 수 있는 아이템 목록
+			TArray<FName> Spawnables;
+
+			if (Type == ESpawnItemType::Note)
+			{
+				Spawnables = GetSpawnableNotesByTags();
+			}
+			else if (Type == ESpawnItemType::Resource)
+			{
+				Spawnables = GetSpawnableResourceItemsByTags();
+			}
+			else if (Type == ESpawnItemType::Both)
+			{
+				// NOTE: 필요에 따라 둘 중 하나를 랜덤 선택하거나, 리팩토링 가능
+				if (FMath::RandBool())
+					Spawnables = GetSpawnableNotesByTags();
+				else
+					Spawnables = GetSpawnableResourceItemsByTags();
 			}
 
-			// 해당 시간에만 스폰하는 포인트 처리
-			if ((NewPhase == EDayPhase::Night && Condition == ESpawnTimeCondition::NightOnly) ||
-				(NewPhase == EDayPhase::Day && Condition == ESpawnTimeCondition::DayOnly))
+			if (!Spawnables.IsEmpty())
 			{
-				Point->TrySpawnItemFromManager(AvailableItems, ItemSpawnerComponent);
-			}
-
-			// 반대 시간대면 디스폰
-			if ((NewPhase == EDayPhase::Night && Condition == ESpawnTimeCondition::DayOnly) ||
-				(NewPhase == EDayPhase::Day && Condition == ESpawnTimeCondition::NightOnly))
-			{
-				Point->ClearSpawnedItem();
+				Point->TrySpawnItemFromManager(Spawnables, ItemSpawnerComponent);
 			}
 		}
 	}

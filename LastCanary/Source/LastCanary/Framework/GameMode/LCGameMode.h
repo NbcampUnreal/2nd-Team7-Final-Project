@@ -52,6 +52,10 @@ public:
 
 	bool IsAllPlayersReady() const;
 
+	void ForceAllPlayersReady();
+
+	void ClearAllPlayersReady();
+
 protected:
 	TArray<APlayerController*> AllPlayerControllers;
 	TArray<FSessionPlayerInfo> SessionPlayerInfos;

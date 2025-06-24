@@ -46,4 +46,7 @@ public:
 
 	void MarkPlayerAsEscaped(APlayerState* EscapedPlayer);
 	void CheckGameEndCondition();
+
+	UPROPERTY(BlueprintReadWrite)
+	bool bIsCutscenePlaying = false;
 };
