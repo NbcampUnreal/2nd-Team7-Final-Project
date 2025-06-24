@@ -85,6 +85,11 @@ ABaseCharacter::ABaseCharacter()
 	CustomBootsMesh->SetupAttachment(GetMesh());
 	CustomBootsMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
 
+	////* 가방 메시 *////
+	BackpackMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("BackpackMesh"));
+	BackpackMesh->SetupAttachment(GetMesh());
+	BackpackMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
+
 
 	OverlayStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("OverlayStaticMesh"));
 	OverlayStaticMesh->SetupAttachment(GetMesh());
@@ -244,6 +249,9 @@ void ABaseCharacter::BeginPlay()
 	LOG_Char_WARNING(TEXT("캐릭터 의상 적용"));
 	ApplyCustomization(CharacterMeshMap);
 
+
+	//백팩은 커스터마이징과는 다르게 처리 // 기본은 투명
+	SetBackpackMesh(false);
 }
 
 void ABaseCharacter::ApplyCustomization(const UCustomizationMeshMap* CharacterMeshData)
@@ -3253,26 +3261,15 @@ void ABaseCharacter::DropAllItemsOnDeath()
 	}
 }
 
-void ABaseCharacter::SetBackpackMesh(UStaticMesh* BackpackMesh)
+void ABaseCharacter::SetBackpackMesh(bool bIsEquipBackpack)
 {
-	if (!BackpackMeshComponent)
+	if (bIsEquipBackpack)
 	{
-		return;
-	}
-
-	if (BackpackMesh)
-	{
-		GetMesh()->UnHideBoneByName("backpack1");
-		BackpackMeshComponent->SetStaticMesh(BackpackMesh);
-		BackpackMeshComponent->SetVisibility(true);
-		UE_LOG(LogTemp, Warning, TEXT("[SetBackpackMesh] 가방 메시 표시"));
+		SetPartMesh(BackpackMesh, BackpackSkeletalMesh);
 	}
 	else
 	{
-		GetMesh()->HideBoneByName("backpack1", PBO_None);
-		BackpackMeshComponent->SetStaticMesh(nullptr);
-		BackpackMeshComponent->SetVisibility(false);
-		UE_LOG(LogTemp, Warning, TEXT("[SetBackpackMesh] 가방 메시 숨김"));
+		SetPartMesh(BackpackMesh, NULL);
 	}
 }
 

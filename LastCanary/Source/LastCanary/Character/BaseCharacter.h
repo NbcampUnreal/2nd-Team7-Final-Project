@@ -117,12 +117,21 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
 	USkeletalMeshComponent* CustomBootsMesh;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* BackpackMesh;
+
 	void ApplyCustomization(const UCustomizationMeshMap* Data);
 
 	void SetPartMesh(USkeletalMeshComponent* Component, USkeletalMesh* LoadedMesh);
 
 	void SetPartMaterial(USkeletalMeshComponent* Component, int32 MaterialIndex, UMaterialInterface* Material);
 
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMesh* BackpackSkeletalMesh;
+	
+	/** 가방 메시 설정 */
+	void SetBackpackMesh(bool bIsEquipBackpack);
 
 	UPROPERTY(EditAnywhere, Category = "Brightness")
 	float MinBrightness = 8.0f;
@@ -806,8 +815,7 @@ public:
 	//-----------------------------------------------------
 
 private:
-	/** 가방 메시 설정 */
-	void SetBackpackMesh(UStaticMesh* BackpackMesh);
+
 
 public:
 	/** 인벤토리 무게 변경 시 호출 */
