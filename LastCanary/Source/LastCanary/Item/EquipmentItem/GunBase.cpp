@@ -740,6 +740,7 @@ bool AGunBase::CanFire()
         {
             UGameplayStatics::PlaySoundAtLocation(this, EmptySound, GetActorLocation());
         }
+        StopAutoFire();
         return false;
     }
 
