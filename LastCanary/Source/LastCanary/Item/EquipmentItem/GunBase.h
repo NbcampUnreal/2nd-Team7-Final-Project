@@ -37,6 +37,14 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gun|Components")
     UShellEjectionComponent* ShellEjectionComponent;
 
+    /** 탄창 메시 컴포넌트 */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gun|Magazine")
+    UStaticMeshComponent* MagazineComponent;
+
+    /** 현재 부착된 탄창 메시 */
+    UPROPERTY(BlueprintReadOnly, Category = "Gun|Magazine")
+    UStaticMesh* CurrentAttachedMagazine;
+
     //-----------------------------------------------------
     // 총기 데이터
     //-----------------------------------------------------
@@ -356,4 +364,46 @@ public:
     //-----------------------------------------------------
 
     void HandleGimmickDestruction(ALCBaseGimmick* Gimmick, const FHitResult& HitResult);
+
+
+    //-----------------------------------------------------
+    // 탄창 관련
+    //-----------------------------------------------------
+public:
+    /** 재장전 시 탄창 떨어뜨리기 */
+    UFUNCTION(BlueprintCallable, Category = "Gun|Magazine")
+    void DropMagazine();
+
+    /** 탄창 드롭 (멀티캐스트) */
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_DropMagazine();
+    void Multicast_DropMagazine_Implementation();
+
+protected:
+    /** 탄창 메시 생성 및 물리 적용 */
+    void SpawnAndDropMagazine(UStaticMesh* MagazineMesh, FVector SpawnLocation, FRotator SpawnRotation);
+
+    //-----------------------------------------------------
+    // 부착용 탄창 관리 함수들
+    //-----------------------------------------------------
+
+    /** 탄창 부착 */
+    UFUNCTION(BlueprintCallable, Category = "Gun|Magazine")
+    void AttachMagazine(UStaticMesh* MagazineMesh, FName SocketName = TEXT("Magazine_joint"));
+
+    /** 탄창 제거 */
+    UFUNCTION(BlueprintCallable, Category = "Gun|Magazine")
+    void DetachMagazine();
+
+    /** 이 총기가 탄창을 추가로 부착하는지 확인 */
+    UFUNCTION(BlueprintPure, Category = "Gun|Magazine")
+    bool UsesMagazine() const;
+
+    /** 탄창이 부착되어 있는지 확인 */
+    UFUNCTION(BlueprintPure, Category = "Gun|Magazine")
+    bool HasMagazineAttached() const;
+
+protected:
+    /** 데이터 테이블에서 탄창 적용 */
+    void ApplyMagazineFromDataTable();
 };
