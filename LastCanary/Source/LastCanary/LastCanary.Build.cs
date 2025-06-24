@@ -26,7 +26,8 @@ public class LastCanary : ModuleRules
             "AdvancedSteamSessions",
             "ALSCamera",
             "Niagara",
-            "GeometryCollectionEngine"
+            "GeometryCollectionEngine",
+            "MediaAssets"
         });
 
         PrivateDependencyModuleNames.AddRange(new string[] {  });
