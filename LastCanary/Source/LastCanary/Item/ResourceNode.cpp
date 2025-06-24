@@ -9,6 +9,7 @@
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
 #include "Net/UnrealNetwork.h"
+#include "GeometryCollection/GeometryCollectionComponent.h"
 
 #include "LastCanary.h"
 
@@ -20,6 +21,13 @@ AResourceNode::AResourceNode()
 	MaxHarvestCount = 5;
 	CurrentHarvestCount = 0;
 	bInfiniteHarvest = false;
+
+	// Geometry Collection 추가
+	GeometryCollectionComponent = CreateDefaultSubobject<UGeometryCollectionComponent>(TEXT("GeometryCollectionComponent"));
+	GeometryCollectionComponent->SetupAttachment(RootComponent);
+	GeometryCollectionComponent->SetVisibility(false);
+	GeometryCollectionComponent->SetSimulatePhysics(false); // 파괴 전엔 물리 적용 안 함
+	GeometryCollectionComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
 void AResourceNode::BeginPlay()
@@ -31,6 +39,27 @@ void AResourceNode::BeginPlay()
 	if (!ResourceItemSpawnManager)
 	{
 		LOG_Item_WARNING(TEXT("[AResourceNode::BeginPlay] ResourceItemSpawnManager not found in level!"));
+	}
+
+	// 현재 객체가 클래스 디폴트 객체(CDO)가 아니라면, 즉, 실제 게임에 배치된 인스턴스일 때만
+	if (HasAnyFlags(RF_ClassDefaultObject) == false) // CDO 검사
+	{
+		switch (InteractionType)
+		{
+		case EResourceInteractionType::Harvest:
+			// falls through
+		case EResourceInteractionType::Mine:
+			bDestroyOnDepletion = true;
+			break;
+		case EResourceInteractionType::Core:
+			// falls through
+		case EResourceInteractionType::Loot:
+			// falls through
+		case EResourceInteractionType::GetNote:
+		default:
+			bDestroyOnDepletion = false;
+			break;
+		}
 	}
 }
 
@@ -71,10 +100,7 @@ void AResourceNode::HarvestResource(APlayerController* Interactor)
 
 	if (bRequireTool)
 	{
-		ABaseCharacter* Character = GetWorld()->GetFirstPlayerController()
-			? Cast<ABaseCharacter>(GetWorld()->GetFirstPlayerController()->GetPawn())
-			: nullptr;
-
+		ABaseCharacter* Character = Interactor ? Cast<ABaseCharacter>(Interactor->GetPawn()) : nullptr;
 		if (!Character)
 		{
 			LOG_Item_WARNING(TEXT("[ResourceNode] 플레이어를 찾을 수 없습니다."));
@@ -143,6 +169,7 @@ void AResourceNode::HarvestResource(APlayerController* Interactor)
 
 	FVector SpawnLocation = CalculateResourceSpawnLocation(Interactor);
 	ResourceItemSpawnManager->SpawnItemAtLocation(SelectedItemRow, SpawnLocation);
+	OnResourceOpened();
 
 	if (!bInfiniteHarvest)
 	{
@@ -152,8 +179,16 @@ void AResourceNode::HarvestResource(APlayerController* Interactor)
 		// 최대 채취 수량에 도달했으면 파괴 예약
 		if (CurrentHarvestCount >= MaxHarvestCount)
 		{
-			LOG_Item_WARNING(TEXT("[ResourceNode] 자원 고갈! 파괴 예약"));
-			DestroyResourceNode();
+			if (bDestroyOnDepletion)
+			{
+				LOG_Item_WARNING(TEXT("[ResourceNode] 자원 고갈! 파괴 예약"));
+				DestroyResourceNode();
+			}
+			else
+			{
+				LOG_Item_WARNING(TEXT("[ResourceNode] 자원 고갈! 유지됨 (bDestroyOnDepletion = false)"));
+				Multicast_PlayDestroyEffect();
+			}
 		}
 	}
 	else
@@ -214,14 +249,28 @@ FString AResourceNode::GetInteractMessage_Implementation() const
 {
 	FString KeyName = GetCurrentKeyNameForInteract();
 
-	// 플레이어로부터 현재 장착 아이템 태그를 받아와서 비교해야 함
-	ABaseCharacter* Character = GetWorld()->GetFirstPlayerController()
-		? Cast<ABaseCharacter>(GetWorld()->GetFirstPlayerController()->GetPawn())
-		: nullptr;
+	APlayerController* LocalPC = nullptr;
 
-	if (Character == nullptr)
+	// 로컬 플레이어 컨트롤러 찾기
+	for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
 	{
-		return TEXT("No interaction (no players)");
+		APlayerController* PC = Iterator->Get();
+		if (PC && PC->IsLocalController())
+		{
+			LocalPC = PC;
+			break;
+		}
+	}
+
+	if (!LocalPC)
+	{
+		return TEXT("No interaction (no local player)");
+	}
+
+	ABaseCharacter* Character = Cast<ABaseCharacter>(LocalPC->GetPawn());
+	if (!Character)
+	{
+		return TEXT("No interaction (no character)");
 	}
 
 	// Core 타입은 도구 없이도 가능
@@ -303,7 +352,47 @@ float AResourceNode::GetHarvestProgress() const
 
 void AResourceNode::Multicast_PlayDestroyEffect_Implementation()
 {
-	// 나이아가라 이펙트 재생
+	// 1. Geometry Collection 활성화
+	if (InteractionType == EResourceInteractionType::Mine && GeometryCollectionComponent)
+	{
+		TArray<USceneComponent*> ChildComponents;
+		GetRootComponent()->GetChildrenComponents(true, ChildComponents);
+
+		for (USceneComponent* Child : ChildComponents)
+		{
+			if (UStaticMeshComponent* Mesh = Cast<UStaticMeshComponent>(Child))
+			{
+				Mesh->SetVisibility(false, true); // 전체 자식까지
+				Mesh->SetHiddenInGame(true, true);
+				Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			}
+		}
+
+		GeometryCollectionComponent->SetVisibility(true);
+		GeometryCollectionComponent->SetSimulatePhysics(true);
+		GeometryCollectionComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+
+		GeometryCollectionComponent->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		GeometryCollectionComponent->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block); // 바닥에만 충돌
+
+		//GeometryCollectionComponent->ApplyExternalStrain(5000.0f, GetActorLocation());
+
+		GeometryCollectionComponent->AddForceAtLocation(FVector::UpVector * -3000.0f, GetActorLocation());
+
+		//GeometryCollectionComponent->AddRadialImpulse(
+		//	GetActorLocation(),  // 위치
+		//	300.0f,              // 반경
+		//	6000.0f,             // 세기
+		//	ERadialImpulseFalloff::RIF_Linear,
+		//	false                 // velocity 변경 허용
+		//);
+
+		//GeometryCollectionComponent->ApplyLinearVelocity(0, GetActorForwardVector());
+
+		LOG_Frame_WARNING(TEXT("[ResourceNode] Geometry Collection 활성화 및 물리 적용"));
+	}
+
+	// 2. 나이아가라 이펙트
 	if (DestroyEffect)
 	{
 		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
@@ -315,28 +404,39 @@ void AResourceNode::Multicast_PlayDestroyEffect_Implementation()
 		);
 	}
 
-	// 사운드 재생
+	// 3. 사운드
 	if (DestroySound)
 	{
-		UGameplayStatics::PlaySoundAtLocation(
-			this,
-			DestroySound,
-			GetActorLocation()
-		);
+		UGameplayStatics::PlaySoundAtLocation(this, DestroySound, GetActorLocation());
 	}
 
-	LOG_Item_WARNING(TEXT("[ResourceNode] 파괴 연출 재생"));
+	LOG_Item_WARNING(TEXT("[ResourceNode] 파괴 연출 재생 (Mine 포함)"));
 }
 
 void AResourceNode::DestroyResourceNode()
 {
-	if (!HasAuthority())
+	if (HasAuthority() == false)
 	{
 		return;
 	}
 
 	Multicast_PlayDestroyEffect();
 
-	LOG_Item_WARNING(TEXT("[ResourceNode] 자원 노드 파괴됨"));
-	Destroy();
+	if (InteractionType == EResourceInteractionType::Mine)
+	{
+		// 시각적 파괴만 하고 실제 액터는 파괴 X
+		// SetActorEnableCollision(false);
+		// SetActorHiddenInGame(true);
+		SetLifeSpan(5.0f); // 몇 초 뒤 삭제
+	}
+	else
+	{
+		LOG_Item_WARNING(TEXT("[ResourceNode] 자원 노드 파괴됨"));
+		Destroy();
+	}
+}
+
+void AResourceNode::OnResourceOpened_Implementation()
+{
+	// 기본 연출 없음. 필요시 블루프린트에서 오버라이드.
 }

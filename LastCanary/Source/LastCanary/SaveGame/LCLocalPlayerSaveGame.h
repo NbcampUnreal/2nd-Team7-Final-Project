@@ -3,8 +3,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/SaveGame.h"
 #include "UserSettings/EnhancedInputUserSettings.h"
+#include "UI/UIObject/VoiceOptionWidget.h"
 #include "LCLocalPlayerSaveGame.generated.h"
-
 
 struct FEnhancedActionKeyMapping;
 
@@ -14,6 +14,7 @@ namespace DefaultSettings
 	constexpr float DEFAULT_VOLUME = 1.0f;
 	constexpr float DEFAULT_BRIGHTNESS = 1.0f;
 	constexpr bool DEFAULT_FULLSCREEN = true;
+	constexpr EVoiceInputMode DEFAULT_VOICEMODE = EVoiceInputMode::Always;
 }
 
 class UMySaveGameUtils
@@ -74,19 +75,98 @@ struct FUserSettings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float MicrophoneVolume = DefaultSettings::DEFAULT_VOLUME;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	EVoiceInputMode VoiceInputMode = DefaultSettings::DEFAULT_VOICEMODE;
+
 	UPROPERTY()
-	TArray<FSaveKeyMapping> SavedMappings;
+	TArray<FSaveKeyMapping> SavedMappings;	
 
 	void ResetToDefault()
 	{
-		MouseSensitivity = 1.0f;
-		MasterVolume = 1.0f;
-		BGMVolume = 1.0f;
-		EffectVolume = 1.0f;
-		Brightness = 1.0f;
-		bIsFullScreenMode = true;
-		VoiceChatVolume = 1.0f;
-		MicrophoneVolume = 1.0f;
+		MouseSensitivity = DefaultSettings::DEFAULT_SENSITIVITY;
+		MasterVolume = DefaultSettings::DEFAULT_VOLUME;
+		BGMVolume = DefaultSettings::DEFAULT_VOLUME;
+		EffectVolume = DefaultSettings::DEFAULT_VOLUME;
+		Brightness = DefaultSettings::DEFAULT_BRIGHTNESS;
+		bIsFullScreenMode = DefaultSettings::DEFAULT_FULLSCREEN;
+		VoiceChatVolume = DefaultSettings::DEFAULT_VOLUME;
+		MicrophoneVolume = DefaultSettings::DEFAULT_VOLUME;
+		VoiceInputMode = DefaultSettings::DEFAULT_VOICEMODE;
+	}
+};
+
+USTRUCT(BlueprintType)
+struct FCharacterCustomizationData
+{
+	GENERATED_BODY()
+	// SkeletalMesh는 직접 Replicate 안되므로 ID 방식이 필요함
+
+	//메시 ID
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 DefaultBodyID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 GloveID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 JacketID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 PantsID = 0;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 BeltsID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 HelmetID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 ArmorID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 BootsID = 0;
+
+
+	//머티리얼 ID
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 DefaultBodyMaterialID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 GloveMaterialID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 JacketMaterialID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 PantsMaterialID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 BeltsMaterialID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 HelmetMaterialID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 ArmorMaterialID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 BootsMaterialID = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 FlagMaterialID = 0;
+
+	FCharacterCustomizationData() {}
+	FCharacterCustomizationData(int32 DefaultBody, int32 Glove, int32 Jacket, int32 Pants, int32 Belts, int32 Helmet, int32 Armor, int32 Boots)
+		: DefaultBodyID(DefaultBody), GloveID(Glove), JacketID(Jacket), PantsID(Pants), BeltsID(Belts), HelmetID(Helmet), ArmorID(Armor), BootsID(Boots) {
+	}
+	FCharacterCustomizationData(
+		int32 DefaultBody, int32 Glove, int32 Jacket, int32 Pants, int32 Belts, int32 Helmet, int32 Armor, int32 Boots,
+		int32 DefaultBodyMat, int32 GloveMat, int32 JacketMat, int32 PantsMat, int32 BeltsMat, int32 HelmetMat, int32 ArmorMat, int32 BootsMat, int32 FlagMat
+	)
+		: DefaultBodyID(DefaultBody), GloveID(Glove), JacketID(Jacket), PantsID(Pants), BeltsID(Belts), HelmetID(Helmet), ArmorID(Armor), BootsID(Boots),
+		DefaultBodyMaterialID(DefaultBodyMat), GloveMaterialID(GloveMat), JacketMaterialID(JacketMat), PantsMaterialID(PantsMat),
+		BeltsMaterialID(BeltsMat), HelmetMaterialID(HelmetMat), ArmorMaterialID(ArmorMat), BootsMaterialID(BootsMat), FlagMaterialID(FlagMat)
+	{
 	}
 };
 
@@ -100,6 +180,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FUserSettings Settings;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FCharacterCustomizationData CustomizationData;
 
 public:
 
@@ -127,11 +209,14 @@ public:
 	static bool SaveVoiceChatVolume(UWorld* World, float NewVolume);
 	static float LoadVoiceChatVolume(UWorld* World);
 
-	static bool SaveMicrophoneMode(UWorld* World, bool NewSetting);
-	static bool LoadMicrophoneMode(UWorld* World);
+	static bool SaveVoiceInputMode(UWorld* World, EVoiceInputMode NewSetting);
+	static EVoiceInputMode LoadVoiceInputMode(UWorld* World);
 
 	static bool SaveKeyBindings(UWorld* World, const TArray<FSaveKeyMapping>& Mappings);
 	static TArray<FSaveKeyMapping> LoadKeyBindings(UWorld* World);
+
+	static bool SaveCustomizationData(UWorld* World, const FCharacterCustomizationData NewSetting);
+	static FCharacterCustomizationData LoadCustomizationData(UWorld* World);
 
 	static ULCLocalPlayerSaveGame* GetSaveInstance(UWorld* World);
 };

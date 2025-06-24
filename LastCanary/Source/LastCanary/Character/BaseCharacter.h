@@ -22,9 +22,21 @@ struct FBackpackSlotData;
 class UItemSpawnerComponent;
 class UPostProcessComponent;
 class AResourceNode;
+class UWidgetComponent;
+class UPlayerNameWidget;
+class UCustomizationMeshMap;
+
+UENUM(BlueprintType)
+enum class EAnimationType : uint8
+{
+	None UMETA(DisplayName = "None"),
+	UseItem UMETA(DisplayName = "아이템 사용"),
+	Interaction UMETA(DisplayName = "상호작용")
+	// 필요한 상태 더 추가
+};
 
 UCLASS()
-class LASTCANARY_API ABaseCharacter : public AAlsCharacter , public IGimmickDebuffInterface , public IGameplayTagAssetInterface
+class LASTCANARY_API ABaseCharacter : public AAlsCharacter, public IGimmickDebuffInterface, public IGameplayTagAssetInterface
 {
 	GENERATED_BODY()
 
@@ -69,11 +81,54 @@ public:
 	UCameraComponent* SpectatorCamera;
 
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* HeadMesh;
 
 	UPROPERTY(VisibleAnywhere)
 	UPostProcessComponent* CustomPostProcessComponent;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Customization")
+	UCustomizationMeshMap* CharacterMeshMap;
+
+
+
+
+	// DefaultBody => GetMesh()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CustomHeadMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CustomGloveMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CustomJacketMesh;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CustomPantsMesh;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CustomBeltsMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CustomHelmetMesh;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CustomArmorMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CustomBootsMesh;
+
+	void ApplyCustomization(const UCustomizationMeshMap* Data);
+
+	void SetPartMesh(USkeletalMeshComponent* Component, USkeletalMesh* LoadedMesh);
+
+	void SetPartMaterial(USkeletalMeshComponent* Component, int32 MaterialIndex, UMaterialInterface* Material);
+
+
+	UPROPERTY(EditAnywhere, Category = "Brightness")
+	float MinBrightness = 8.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Brightness")
+	float MaxBrightness = 10.0f;
 
 	float GetBrightness();
 	void SetBrightness(float Value);
@@ -136,6 +191,8 @@ protected:
 
 	virtual void CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo) override;
 
+
+	void ResetCameraLocationToDefault();
 	void AttachCameraToRifle();
 	void AttachCameraToCharacter();
 
@@ -261,16 +318,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
 	TArray<FVector2D> RecoilPattern;
 
-	// 반동 상태 변수들
-
-	//void ApplyRecoilStep();
-	//void CameraShake(float Vertical, float Horizontal);
-	void ApplyRecoil(float Vertical, float Horizontal);
-	void RecoverFromRecoil();
+	// 반동
 	void ApplySmoothRecoil(float Vertical, float Horizontal);
 	void ApplySmoothRecoilStep();
 	void ResetShotCounter();
-	void UpdateRecoil();
 	bool HasActiveRecoil() const;
 	void ReduceRecoil(float ReductionFactor = 0.5f);
 	void ResetRecoilYaw();
@@ -328,17 +379,17 @@ public:
 	bool UseGunBoneforOverlayObjects;
 
 	UFUNCTION(BlueprintCallable)
-	void RefreshOverlayObject(int index);
+	void RefreshOverlayObject();
 
 	UFUNCTION(BlueprintCallable)
 	void AttachOverlayObject(UStaticMesh* NewStaticMesh, USkeletalMesh* NewSkeletalMesh, TSubclassOf<UAnimInstance> NewAnimationClass, FName SocketName, bool bUseLeftGunBone);
 
 	UFUNCTION(BlueprintCallable)
-	void RefreshOverlayLinkedAnimationLayer(int index);
+	void RefreshOverlayLinkedAnimationLayer(FGameplayTag ItemTag);
 
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_RefreshOverlayObject(int index);
-	void Multicast_RefreshOverlayObject_Implementation(int index);
+	void Multicast_RefreshOverlayObject();
+	void Multicast_RefreshOverlayObject_Implementation();
 
 	bool bIsSpawnDrone = false;
 
@@ -408,16 +459,18 @@ public:
 
 	class ABaseDrone* ControlledDrone;
 
+	bool bIsPlayingAnimation = false;
+
 	void InteractAfterPlayMontage(AActor* TargetActor);
 	void OnInteractAnimationNotified();
 
 	UFUNCTION(Server, Unreliable)
-	void Server_PlayMontage(UAnimMontage* MontageToPlay);
-	void Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay);
+	void Server_PlayMontage(UAnimMontage* MontageToPlay, EAnimationType Animtype);
+	void Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay, EAnimationType Animtype);
 
 	UFUNCTION(NetMulticast, Unreliable)
-	void Multicast_PlayMontage(UAnimMontage* MontageToPlay);
-	void Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay);
+	void Multicast_PlayMontage(UAnimMontage* MontageToPlay, EAnimationType Animtype);
+	void Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay, EAnimationType Animtype);
 
 	UPROPERTY()
 	UAnimMontage* CurrentInteractMontage;
@@ -485,6 +538,12 @@ public:
 	//Player Take Damage
 public:
 	/*Player Damage, Death*/
+	float TakeSpiritDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser);
+	float CalculateTakeSpiritDamage(float DamageAmount);
+	void EnterPanicState();
+
+
+
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	void HandlePlayerDeath();
 
@@ -524,8 +583,8 @@ public:
 
 	void StopReload();
 
-	
-	
+
+
 	UFUNCTION(Server, Reliable)
 	void Server_StopReload();
 	void Server_StopReload_Implementation();
@@ -536,18 +595,6 @@ public:
 
 
 public:
-
-	void PickupItem();
-
-	// 퀵슬롯 아이템들 (타입은 아이템 구조에 따라 UObject*, AItemBase*, UItemData* 등)
-	//TArray<UObject*> QuickSlots;
-
-	// 현재 장착된 아이템
-	UObject* HeldItem = nullptr;
-
-	//TODO: 아이템 클래스 들어오면 반환 값 바꾸기
-	void GetHeldItem();
-
 	void UnequipCurrentItem();
 
 	UFUNCTION(Server, Reliable)
@@ -555,17 +602,13 @@ public:
 	void Server_SetQuickSlotIndex_Implementation(int32 NewIndex);
 
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_EquipItemFromQuickSlot(int32 Index);
-	void Multicast_EquipItemFromQuickSlot_Implementation(int32 Index);
+	void Multicast_ResetAnimationAndCamera(int32 Index);
+	void Multicast_ResetAnimationAndCamera_Implementation(int32 Index);
 
 	int32 GetCurrentQuickSlotIndex();
 	void SetCurrentQuickSlotIndex(int32 NewIndex);
-	void EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex);
 
-	UFUNCTION(Server, Reliable)
-	void Server_EquipItemFromCurrentQuickSlot(int32 QuickSlotIndex);
-	void Server_EquipItemFromCurrentQuickSlot_Implementation(int32 QuickSlotIndex);
-
+	void EquipItem(int32 Index);
 
 	void StopCurrentPlayingMontage();
 
@@ -584,7 +627,11 @@ public:
 	void Client_SetMovementSetting_Implementation();
 
 	void SetMovementSetting();
-	TArray<float> CalculateMovementSpeedWithWeigth();
+
+	float SpeedMultiplier = 1.0f; // 0.0 ~ 1.0 범위
+	float CalculateMovementSpeedMultiplier();
+	float CalculateDebuffMultiplier();
+	float MaxWeight = 50.0f;
 	void ResetMovementSetting();
 
 	float FrontInput = 0.0f;
@@ -655,10 +702,13 @@ public:
 	void Server_UnequipCurrentItem_Implementation();
 
 	UFUNCTION(BlueprintCallable, Category = "Equipment")
-	bool UseEquippedItem(float ActionValue);
+	void UseEquippedItem(float ActionValue);
 	UFUNCTION(Server, Reliable)
 	void Server_UseEquippedItem(float ActionValue);
 	void Server_UseEquippedItem_Implementation(float ActionValue);
+
+	void UseItem(AItemBase* Item);
+	void CancelUseItem(AItemBase* Item);
 
 public:
 	/** 인벤토리 UI를 토글합니다 */
@@ -703,6 +753,10 @@ public:
 	/** 총 무게 가져오기 */
 	UFUNCTION(BlueprintPure, Category = "Character|Weight")
 	float GetTotalCarryingWeight() const;
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Client_OnInventoryWeightChanged(float NewWeight);
+	void Client_OnInventoryWeightChanged_Implementation(float NewWeight);
 
 protected:
 	/** 현재 총 무게 */
@@ -785,4 +839,14 @@ public:
 	UFUNCTION(Client, Reliable, Category = "WalkieTalkie")
 	void Client_SetWalkieTalkieChannelStatus(bool bActive);
 	void Client_SetWalkieTalkieChannelStatus_Implementation(bool bActive);
+
+	virtual void OnRep_PlayerState() override;
+	void UpdateNameWidget(); // 위젯 업데이트용 함수
+	UFUNCTION(Server, Reliable)
+	void Server_UpdateNameWidget(); // 서버 위젯 업데이트용 함수
+	void Server_UpdateNameWidget_Implementation(); // 서버 위젯 업데이트용 함수
+
+	/** 머리 위에 표시할 3D 위젯 컴포넌트 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
+	UWidgetComponent* NameWidgetComponent;
 };

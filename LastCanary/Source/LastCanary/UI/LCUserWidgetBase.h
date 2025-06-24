@@ -17,4 +17,7 @@ class LASTCANARY_API ULCUserWidgetBase : public UUserWidget
 public:
 	UFUNCTION(BlueprintCallable)
 	ULCUIManager* ResolveUIManager() const;
+
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 };

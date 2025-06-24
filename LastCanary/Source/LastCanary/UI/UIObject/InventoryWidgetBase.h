@@ -36,6 +36,23 @@ public:
 
     virtual void RefreshInventoryUI() PURE_VIRTUAL(UInventoryWIdgetBase::RefreshInventoryUI, return;);
 
+protected:
+    /** 현재 툴팁을 표시하고 있는 소스 위젯 추적 */
+    UPROPERTY()
+    UWidget* CurrentTooltipSourceWidget;
+
+    /** 현재 툴팁에 표시 중인 아이템 데이터 */
+    FBaseItemSlotData CurrentTooltipItemData;
+
+public:
+    /** 툴팁 업데이트 (현재 표시 중인 툴팁이 있을 때만) */
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Tooltip")
+    void UpdateCurrentTooltip();
+
+    /** 툴팁 새로고침 (같은 슬롯의 업데이트된 데이터로) */
+    UFUNCTION(BlueprintCallable, Category = "Inventory|Tooltip")
+    void RefreshCurrentTooltip();
+
     UFUNCTION()
     virtual void NativeConstruct() override;
 
@@ -70,6 +87,7 @@ protected:
 
     /** 툴팁 위치 업데이트 */
     void UpdateTooltipPosition();
+    FVector2D CalculateTooltipScreenPosition() const;
 
     /** 공유 툴팁 위젯 생성 */
     void CreateSharedTooltipWidget();

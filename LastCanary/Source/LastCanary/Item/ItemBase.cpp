@@ -39,7 +39,7 @@ AItemBase::AItemBase()
 void AItemBase::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
 	if (HasAuthority())
 	{
 		UWorld* World = GetWorld();
@@ -97,6 +97,11 @@ void AItemBase::OnRepDurability()
 	}
 
 	OnItemStateChanged.Broadcast();
+}
+
+void AItemBase::SetUsing(bool bNewUsing)
+{
+	bIsUsing = bNewUsing;
 }
 
 void AItemBase::ApplyItemDataFromTable()
@@ -345,6 +350,7 @@ void AItemBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetim
 	DOREPLIFETIME_CONDITION_NOTIFY(AItemBase, Durability, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME(AItemBase, bIgnoreCharacterCollision);
 	DOREPLIFETIME(AItemBase, bIsSoundActive);
+	DOREPLIFETIME(AItemBase, bIsUsing);
 }
 
 void AItemBase::OnRepItemRowName()
@@ -490,7 +496,7 @@ void AItemBase::SyncPhysicsLocationToActor()
 			FVector ActorLocation = GetActorLocation();
 
 			float Distance = FVector::Dist(PhysicsLocation, ActorLocation);
-			if (Distance > 5.0f) 
+			if (Distance > 5.0f)
 			{
 				SetActorLocation(PhysicsLocation);
 				ForceNetUpdate();
@@ -581,19 +587,19 @@ void AItemBase::MulticastPlayItemUseSound_Implementation(bool bIsStart)
 FString AItemBase::GetCurrentKeyNameForAction(UInputAction* InputAction) const
 {
 	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
-	if (!IsValid(PC))
+	if (IsValid(PC) == false)
 	{
 		return TEXT("Invalid");
 	}
 
 	ULocalPlayer* LocalPlayer = PC->GetLocalPlayer();
-	if (!IsValid(LocalPlayer))
+	if (IsValid(LocalPlayer) == false)
 	{
 		return TEXT("Invalid");
 	}
 
 	UEnhancedInputLocalPlayerSubsystem* Subsystem = LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
-	if (!IsValid(Subsystem))
+	if (IsValid(Subsystem) == false)
 	{
 		return TEXT("Invalid");
 	}

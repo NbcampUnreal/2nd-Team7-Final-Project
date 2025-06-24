@@ -60,6 +60,7 @@ FReply UTitleMenu::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent&
 
 FReply UTitleMenu::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
+	Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
 	if (!bHasActivated)
 	{
 		PlayAnimation(EnterAnimation);
@@ -67,6 +68,13 @@ FReply UTitleMenu::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FP
 	}
 	return FReply::Handled();
 }
+
+FReply UTitleMenu::NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
+	return FReply::Unhandled();
+}
+
 
 void UTitleMenu::OnStartButtonClicked()
 {

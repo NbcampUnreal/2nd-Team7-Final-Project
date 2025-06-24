@@ -108,6 +108,14 @@ public:
     virtual bool TryDropItemAtSlot(int32 SlotIndex, int32 Quantity = 1) override;
     void RemoveResourceItems();
 
+    // 가방 드랍 함수
+    bool DropItemFromBackpack(int32 BackpackSlotIndex, int32 Quantity);
+
+    UFUNCTION(Server, Reliable, Category = "Toolbar|Drop")
+
+    void Server_DropBackpackItem(int32 BackpackSlotIndex, int32 Quantity);
+    void Server_DropBackpackItem_Implementation(int32 BackpackSlotIndex, int32 Quantity);
+
     //-----------------------------------------------------
     // 백팩 매니저 시스템
     //-----------------------------------------------------
@@ -192,6 +200,11 @@ public:
     void MulticastUpdateItemText(const FText& ItemName);
     void MulticastUpdateItemText_Implementation(const FText& ItemName);
 
+protected:
+    /** 장착된 아이템 상태 변경 시 호출되는 핸들러 */
+    UFUNCTION()
+    void OnEquippedItemStateChanged();
+
     //-----------------------------------------------------
     // 내부 구현 및 헬퍼
     //-----------------------------------------------------
@@ -222,9 +235,23 @@ protected:
     void Multicast_SetBackpackVisibility(bool bVisible);
     void Multicast_SetBackpackVisibility_Implementation(bool bVisible);
 
+    /** 장비 변경 가능한지 확인 (아이템 사용 중 체크) */
+    UFUNCTION(BlueprintCallable, Category = "Toolbar|Usage")
+    bool CanChangeEquipment() const;
+
     /** 델리게이트 핸들러 */
     UFUNCTION()
     void OnBackpackEquippedHandler(const TArray<FBackpackSlotData>& BackpackSlots);
     UFUNCTION()
     void OnBackpackUnequippedHandler();
+
+public:
+    /** 클라이언트별 가방 UI 업데이트 RPC */
+    UFUNCTION(Client, Reliable, Category = "Backpack UI")
+    void Client_ShowBackpackUI(const TArray<FBackpackSlotData>& BackpackSlots);
+    void Client_ShowBackpackUI_Implementation(const TArray<FBackpackSlotData>& BackpackSlots);
+
+    UFUNCTION(Client, Reliable, Category = "Backpack UI")
+    void Client_HideBackpackUI();
+    void Client_HideBackpackUI_Implementation();
 };

@@ -11,6 +11,9 @@ ALCBaseGimmick::ALCBaseGimmick()
 	, CooldownTime(2.f)
 	, bToggleState(true)
 	, ReturnDelay(3.f)
+	, bDestructibleByGun(false)
+	, DestructibleHealth(3.f)
+	, CurrentHealth(3.f)
 	, InteractMessage(TEXT("???"))
 	, InteractSound(nullptr)
 	, RequiredCount(1.f)
@@ -50,6 +53,11 @@ ALCBaseGimmick::ALCBaseGimmick()
 void ALCBaseGimmick::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (bDestructibleByGun)
+	{
+		CurrentHealth = DestructibleHealth;
+	}
 
 	if (bEnableActorDetection && IsValid(DetectionArea))
 	{
@@ -245,7 +253,6 @@ void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor*
 		break;
 
 	case EGimmickActivationType::ActivateWhileStepping:
-		// 쿨타임 무시, 진입 시마다 다시 작동 가능
 		if (OverlappingActors.Num() >= RequiredCount)
 		{
 			if (bCallReturnToInitialStateInsteadOfActivate)
@@ -297,12 +304,12 @@ void ALCBaseGimmick::OnTriggerExit(UPrimitiveComponent* OverlappedComp, AActor* 
 
 	OverlappingActors.Remove(OtherActor);
 
-	LOG_Art(Log, TEXT("🚪 Exit ▶ %s | 남은 오버랩 수: %d | bActivated: %s | bToggleState: %s"),
-		*OtherActor->GetName(),
-		OverlappingActors.Num(),
-		bActivated ? TEXT("✔️") : TEXT("❌"),
-		bToggleState ? TEXT("✔️") : TEXT("❌")
-	);
+	//LOG_Art(Log, TEXT(" Exit : %s | 남은 오버랩 수: %d | bActivated: %s | bToggleState: %s"),
+	//	*OtherActor->GetName(),
+	//	OverlappingActors.Num(),
+	//	bActivated ? TEXT("O") : TEXT("X"),
+	//	bToggleState ? TEXT("O") : TEXT("X")
+	//);
 
 	switch (ActivationType)
 	{
@@ -324,7 +331,7 @@ void ALCBaseGimmick::OnTriggerExit(UPrimitiveComponent* OverlappedComp, AActor* 
 		if (!bToggleState)
 		{
 			bActivated = false;
-			LOG_Art(Log, TEXT("🧹 Exit ▶ 상태 초기화 - bActivated = false"));
+			//LOG_Art(Log, TEXT("Exit -> 상태 초기화 - bActivated = false"));
 		}
 		break;
 
@@ -332,7 +339,6 @@ void ALCBaseGimmick::OnTriggerExit(UPrimitiveComponent* OverlappedComp, AActor* 
 		break;
 	}
 }
-
 
 bool ALCBaseGimmick::IsValidActivator(AActor* OtherActor) const
 {
@@ -342,12 +348,12 @@ bool ALCBaseGimmick::IsValidActivator(AActor* OtherActor) const
 	{
 		if (OtherActor->ActorHasTag(Tag))
 		{
-			LOG_Art(Log, TEXT("[감지] 감지 성공 - 태그: %s"), *Tag.ToString());
+			//LOG_Art(Log, TEXT("[감지] 감지 성공 - 태그: %s"), *Tag.ToString());
 			return true;
 		}
 	}
 
-	LOG_Art(Log, TEXT("[감지] 감지 실패 - 태그 없음"));
+	//LOG_Art(Log, TEXT("[감지] 감지 실패 - 태그 없음"));
 	return false;
 }
 
@@ -359,7 +365,7 @@ void ALCBaseGimmick::Interact_Implementation(APlayerController* Interactor)
 {
 	if (ActivationType != EGimmickActivationType::ActivateOnPress)
 	{
-		LOG_Art_WARNING(TEXT("❌ 이 기믹은 상호작용 타입이 아님"));
+		//LOG_Art_WARNING(TEXT("이 기믹은 상호작용 타입이 아님"));
 		return;
 	}
 
@@ -530,6 +536,38 @@ void ALCBaseGimmick::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	{
 		World->GetTimerManager().ClearAllTimersForObject(this);
 	}
+
 }
 
 #pragma endregion
+
+float ALCBaseGimmick::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	if (!HasAuthority() || !bDestructibleByGun)
+		return 0.f;
+
+	CurrentHealth -= DamageAmount;
+
+	//LOG_Art(Log, TEXT(" Gimmick 피격: %.1f 데미지 → 남은 체력: %.1f"), DamageAmount, CurrentHealth);
+
+	if (CurrentHealth <= 0.f)
+	{
+		OnDestroyedByBullet(); 
+		Destroy();
+	}
+
+	return DamageAmount;
+}
+
+void ALCBaseGimmick::OnDestroyedByBullet_Implementation()
+{
+	//LOG_Art(Log, TEXT(" OnDestroyedByBullet() 기본 구현 호출됨"));
+	// TODO: Niagara, Sound, Spawn 등 확장
+}
+
+void ALCBaseGimmick::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ALCBaseGimmick, CurrentHealth);
+}

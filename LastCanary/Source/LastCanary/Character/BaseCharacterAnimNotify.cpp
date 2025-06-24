@@ -4,6 +4,7 @@
 #include "Character/BaseCharacterAnimNotify.h"
 #include "GameFramework/Actor.h"
 #include "Character/BaseCharacter.h"
+#include "Kismet/GameplayStatics.h" // 꼭 포함 필요
 
 void UBaseCharacterAnimNotify::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation)
 {
@@ -35,16 +36,19 @@ void UBaseCharacterAnimNotify::Notify(USkeletalMeshComponent* MeshComp, UAnimSeq
         }
         break;
     case ECharacterNotifyType::ItemUse:
-        if (!Player->IsLocallyControlled())
+        if (Player->HasAuthority())
         {
-            return;
+            Player->UseItemAnimationNotified();
         }
-        Player->UseItemAnimationNotified();
         break;
     case ECharacterNotifyType::Reload:
         Player->GunReloadAnimationNotified();
         break;
     default:
         break;
+    }
+    if (SoundToPlay)
+    {
+        UGameplayStatics::PlaySoundAtLocation(Player, SoundToPlay, Player->GetActorLocation());
     }
 }
