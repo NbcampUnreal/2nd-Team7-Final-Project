@@ -1492,6 +1492,7 @@ void ABaseCharacter::Multicast_PlayReload_Implementation()
 	AnimInstance->Montage_Play(MontageToPlay);
 	Gun->Multicast_PlayReloadAnimation_Implementation();
 	Gun->Multicast_PlayReloadSound_Implementation();
+	Gun->DropMagazine();
 }
 
 void ABaseCharacter::GunReloadAnimationNotified()
