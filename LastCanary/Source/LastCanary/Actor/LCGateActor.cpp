@@ -76,7 +76,11 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 		{
 			if (ABaseCharacter* BaseChar = Cast<ABaseCharacter>(Actor))
 			{
-				PlayerCharacters.Add(BaseChar);
+				if (APlayerController* PC = Cast<APlayerController>(BaseChar->GetController()))
+				{
+					// Valid한 플레이어 컨트롤러가 소유한 캐릭터만 추가
+					PlayerCharacters.Add(BaseChar);
+				}
 			}
 		}
 

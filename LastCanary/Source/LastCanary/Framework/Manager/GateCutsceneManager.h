@@ -20,42 +20,43 @@ class LASTCANARY_API AGateCutsceneManager : public AActor
 public:
 	AGateCutsceneManager();
 
-	UFUNCTION(BlueprintCallable)
 	void PlayGateCutscene(const TArray<ABaseCharacter*>& InPlayerCharacters);
-
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_PlayCutscene(const TArray<ABaseCharacter*>& InPlayerCharacters);
-	void Multicast_PlayCutscene_Implementation(const TArray<ABaseCharacter*>& InPlayerCharacters);
-
-	UFUNCTION()
-	void OnCutsceneFinished();
-
-	UPROPERTY(EditInstanceOnly, Category = "Cutscene")
-	ALCGateActor* LinkedGateActor;
 
 protected:
 	virtual void BeginPlay() override;
 
-	void BindCharacterToTrack(AActor* DummyActor, const FName& TrackName);
+	//UFUNCTION(Client, Reliable)
+	//void Client_PlayGateCutscene(const FTransform& DummyTransform, int32 PlayerIndex);
+	//void Client_PlayGateCutscene_Implementation(const FTransform& DummyTransform, int32 PlayerIndex);
 
-	UPROPERTY(EditDefaultsOnly, Category = "Cutscene")
-	TSubclassOf<ABaseCharacter> DummyCharacterClass;
 
+	//UFUNCTION(Client, Reliable)
+	//void Client_HideHUD();
+	//void Client_HideHUD_Implementation();
+
+	//UFUNCTION()
+	//void OnCutsceneFinished();
+
+protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Cutscene")
 	ULevelSequence* GateSuckInSequence;
 
-	UPROPERTY()
-	ALevelSequenceActor* SequenceActor;
-
-	UPROPERTY()
-	ULevelSequencePlayer* SequencePlayer;
-
-	UPROPERTY()
-	TArray<AActor*> SpawnedDummies;
-
-	UPROPERTY()
-	TArray<ABaseCharacter*> PlayerCharacters;
-
-	UPROPERTY()
-	TArray<APlayerController*> CachedControllers;
+	UPROPERTY(EditDefaultsOnly, Category = "Cutscene")
+	TSubclassOf<AActor> DummyCharacterClass;
+//
+//	UPROPERTY()
+//	TArray<ABaseCharacter*> PlayerCharacters;
+//
+//	UPROPERTY()
+//	TArray<AActor*> SpawnedDummies;
+//
+//	UPROPERTY()
+//	ULevelSequencePlayer* SequencePlayer;
+//
+//	UPROPERTY()
+//	ALevelSequenceActor* SequenceActor;
+//
+public:
+	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category = "Cutscene")
+	TObjectPtr<ALCGateActor> LinkedGateActor;
 };

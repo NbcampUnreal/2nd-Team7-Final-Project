@@ -654,10 +654,10 @@ void ULCUIManager::ShowLoadingLevel()
 	{
 		CachedLoadingLevel->AddToViewport(10);
 
-		if (!CachedLoadingLevel->IsRooted())
-		{
-			CachedLoadingLevel->AddToRoot();// GC 방지
-		}
+		//if (!CachedLoadingLevel->IsRooted())
+		//{
+		//	CachedLoadingLevel->AddToRoot();// GC 방지
+		//}
 
 		FTimerHandle ForceHideHandle;
 		GetWorld()->GetTimerManager().SetTimer(ForceHideHandle, [this]()
@@ -685,10 +685,10 @@ void ULCUIManager::HideLoadingLevel()
 			CachedLoadingLevel->RemoveFromParent();
 		}
 
-		if (CachedLoadingLevel->IsRooted())
+		/*if (CachedLoadingLevel->IsRooted())
 		{
 			CachedLoadingLevel->RemoveFromRoot();
-		}
+		}*/
 
 		// nullptr 처리 누락되면 GC 시 에러 발생
 		CachedLoadingLevel = nullptr;

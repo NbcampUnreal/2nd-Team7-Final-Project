@@ -30,6 +30,7 @@ public class LastCanary : ModuleRules
             "LevelSequence",
             "MovieScene",
             "MovieSceneTracks",
+            "CinematicCamera"
         });
 
         PrivateDependencyModuleNames.AddRange(new string[] { });

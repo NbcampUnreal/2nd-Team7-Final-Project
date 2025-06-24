@@ -5,6 +5,7 @@
 #include "LevelSequencePlayer.h"
 #include "LevelSequenceActor.h"
 #include "Framework/GameMode/LCGameMode.h"
+#include "Framework/PlayerController/LCPlayerController.h"
 #include "Framework/GameState/LCGameState.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "UI/Manager/LCUIManager.h"
@@ -23,175 +24,106 @@ void AGateCutsceneManager::BeginPlay()
 
 void AGateCutsceneManager::PlayGateCutscene(const TArray<ABaseCharacter*>& InPlayerCharacters)
 {
-	if (HasAuthority())
+	if (HasAuthority() == false)
 	{
-		Multicast_PlayCutscene(InPlayerCharacters);
+		return;
+	}
+
+	for (int32 i = 0; i < InPlayerCharacters.Num(); ++i)
+	{
+		ABaseCharacter* Char = InPlayerCharacters[i];
+		if (IsValid(Char) == false)
+		{
+			continue;
+		}
+
+		if (ALCPlayerController* PC = Cast<ALCPlayerController>(Char->GetController()))
+		{
+			// Set linked gate for cutscene -> game transition
+			PC->SetLinkedGateActor(LinkedGateActor);
+
+			PC->Client_HideHUD();
+			PC->Client_PlayGateCutscene(GateSuckInSequence, DummyCharacterClass, Char->GetActorTransform(), i);
+		}
+
+		Char->SetActorHiddenInGame(true);
 	}
 }
 
-void AGateCutsceneManager::Multicast_PlayCutscene_Implementation(const TArray<ABaseCharacter*>& InPlayerCharacters)
-{
-	if (ALCGameState* GS = GetWorld()->GetGameState<ALCGameState>())
-	{
-		GS->bIsCutscenePlaying = true;
-	}
-
-	PlayerCharacters = InPlayerCharacters;
-
-	for (AActor* Dummy : SpawnedDummies)
-	{
-		if (IsValid(Dummy))
-		{
-			Dummy->Destroy();
-		}
-	}
-	SpawnedDummies.Empty();
-	CachedControllers.Empty();
-
-	if (GetNetMode() != NM_DedicatedServer)
-	{
-		for (int32 i = 0; i < PlayerCharacters.Num(); ++i)
-		{
-			ABaseCharacter* RealChar = PlayerCharacters[i];
-			if (!IsValid(RealChar))
-			{
-				continue;
-			}
-
-			RealChar->SetActorHiddenInGame(true);
-
-			if (HasAuthority())
-			{
-				if (ALCGameMode* GameMode = GetWorld()->GetAuthGameMode<ALCGameMode>())
-				{
-					GameMode->ForceAllPlayersReady();
-				}
-			}
-
-			if (APlayerController* PC = Cast<APlayerController>(RealChar->GetController()))
-			{
-				CachedControllers.Add(PC);
-
-				if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
-				{
-					if (ULCUIManager* UIManager = Subsystem->GetUIManager())
-					{
-						UIManager->HideInGameHUD();
-						UIManager->HideSpectatorWidget();
-					}
-				}
-			}
-
-			AActor* Dummy = GetWorld()->SpawnActor<AActor>(DummyCharacterClass, RealChar->GetActorLocation(), RealChar->GetActorRotation());
-			if (Dummy)
-			{
-				SpawnedDummies.Add(Dummy);
-				FName TrackTag = FName(FString::Printf(TEXT("Player_%d"), i + 1));
-				BindCharacterToTrack(Dummy, TrackTag);
-			}
-		}
-
-		if (GateSuckInSequence)
-		{
-			FMovieSceneSequencePlaybackSettings PlaybackSettings;
-			SequencePlayer = ULevelSequencePlayer::CreateLevelSequencePlayer(GetWorld(), GateSuckInSequence, PlaybackSettings, SequenceActor);
-			if (SequencePlayer && SequenceActor)
-			{
-				SequencePlayer->OnFinished.AddDynamic(this, &AGateCutsceneManager::OnCutsceneFinished);
-				SequencePlayer->Play();
-
-				AActor* SequenceCam = nullptr;
-
-				if (SequenceActor && SequenceActor->GetSequence())
-				{
-					UMovieScene* MovieScene = SequenceActor->GetSequence()->GetMovieScene();
-					if (MovieScene)
-					{
-						const TArray<FMovieSceneBinding>& Bindings = MovieScene->GetBindings();
-						for (const FMovieSceneBinding& Binding : Bindings)
-						{
-							if (Binding.GetName().Contains(TEXT("Camera")))
-							{
-								FMovieSceneSequenceID SequenceID;
-								TArrayView<TWeakObjectPtr<UObject>> BoundObjects = SequencePlayer->FindBoundObjects(Binding.GetObjectGuid(), SequenceID);
-								for (TWeakObjectPtr<UObject> WeakObj : BoundObjects)
-								{
-									if (AActor* Actor = Cast<AActor>(WeakObj.Get()))
-									{
-										SequenceCam = Actor;
-										break;
-									}
-								}
-								break;
-							}
-						}
-					}
-				}
-
-				/*if (SequenceCam)
-				{
-					for (APlayerController* PC : CachedControllers)
-					{
-						if (IsValid(PC))
-						{
-							PC->SetViewTargetWithBlend(SequenceCam, 1.0f);
-						}
-					}
-				}*/
-			}
-		}
-	}
-}
-
-void AGateCutsceneManager::BindCharacterToTrack(AActor* DummyActor, const FName& TrackName)
-{
-	if (SequenceActor && SequencePlayer)
-	{
-		SequenceActor->SetBindingByTag(TrackName, { DummyActor });
-	}
-}
-
-void AGateCutsceneManager::OnCutsceneFinished()
-{
-	// 다시 Ready 상태 초기화
-	if (HasAuthority())
-	{
-		if (ALCGameMode* GameMode = GetWorld()->GetAuthGameMode<ALCGameMode>())
-		{
-			GameMode->ClearAllPlayersReady();
-		}
-	}
-
-	for (AActor* Dummy : SpawnedDummies)
-	{
-		if (IsValid(Dummy))
-		{
-			Dummy->Destroy();
-		}
-	}
-	SpawnedDummies.Empty();
-
-	for (ABaseCharacter* Char : PlayerCharacters)
-	{
-		if (IsValid(Char))
-		{
-			Char->SetActorHiddenInGame(false);
-		}
-	}
-
-	if (ALCGameState* GS = GetWorld()->GetGameState<ALCGameState>())
-	{
-		GS->bIsCutscenePlaying = false;
-	}
-
-	if (IsValid(LinkedGateActor))
-	{
-		for (APlayerController* PC : CachedControllers)
-		{
-			if (IsValid(PC))
-			{
-				LinkedGateActor->IntoGameLevel(PC);
-			}
-		}
-	}
-}
+//void AGateCutsceneManager::Client_HideHUD_Implementation()
+//{
+//	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+//	{
+//		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+//		{
+//			UIManager->HideInGameHUD();
+//			UIManager->HideSpectatorWidget();
+//		}
+//	}
+//}
+//
+//void AGateCutsceneManager::Client_PlayGateCutscene_Implementation(const FTransform& DummyTransform, int32 PlayerIndex)
+//{
+//	if (!GateSuckInSequence || IsNetMode(NM_DedicatedServer)) return;
+//
+//	FMovieSceneSequencePlaybackSettings Settings;
+//	ALevelSequenceActor* OutSequenceActor = nullptr;
+//	ULevelSequencePlayer* LocalPlayer = ULevelSequencePlayer::CreateLevelSequencePlayer(GetWorld(), GateSuckInSequence, Settings, OutSequenceActor);
+//
+//	if (!LocalPlayer || !OutSequenceActor) return;
+//
+//	// 자신만 Dummy 생성
+//	AActor* Dummy = GetWorld()->SpawnActor<AActor>(DummyCharacterClass, DummyTransform);
+//	if (!IsValid(Dummy)) return;
+//
+//	FName TrackTag = FName(FString::Printf(TEXT("Slot%d"), PlayerIndex + 1));
+//	OutSequenceActor->SetBindingByTag(TrackTag, { Dummy });
+//
+//	SpawnedDummies = { Dummy };
+//	SequencePlayer = LocalPlayer;
+//	SequenceActor = OutSequenceActor;
+//
+//	SequencePlayer->OnFinished.AddDynamic(this, &AGateCutsceneManager::OnCutsceneFinished);
+//	SequencePlayer->Play();
+//}
+//
+//void AGateCutsceneManager::OnCutsceneFinished()
+//{
+//	for (AActor* Dummy : SpawnedDummies)
+//	{
+//		if (IsValid(Dummy))
+//		{
+//			Dummy->Destroy();
+//		}
+//	}
+//	SpawnedDummies.Empty();
+//
+//	for (ABaseCharacter* Char : PlayerCharacters)
+//	{
+//		if (IsValid(Char))
+//		{
+//			Char->SetActorHiddenInGame(false);
+//		}
+//	}
+//
+//	// 레벨 이동 처리
+//	if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+//	{
+//		if (ALCPlayerController* LCPC = Cast<ALCPlayerController>(PC))
+//		{
+//			if (ALCGateActor* Gate = LCPC->GetLinkedGateActor())
+//			{
+//				Gate->IntoGameLevel(LCPC);
+//			}
+//		}
+//	}
+//
+//	// HUD 복원
+//	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+//	{
+//		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+//		{
+//			UIManager->ShowInGameHUD();
+//		}
+//	}
+//}

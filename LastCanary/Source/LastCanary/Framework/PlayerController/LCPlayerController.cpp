@@ -15,6 +15,12 @@
 #include "Kismet/GameplayStatics.h"
 #include "Blueprint/UserWidget.h"
 
+#include "LevelSequenceActor.h"
+#include "LevelSequencePlayer.h"
+#include "LevelSequence.h"
+#include "Actor/LCGateActor.h"
+#include "CineCameraActor.h"
+#include "MovieSceneSequencePlayer.h"
 
 ALCPlayerController::ALCPlayerController()
 {
@@ -221,5 +227,100 @@ void ALCPlayerController::StartGame(FString SoftPath)
         {
             LCGM->TravelMapBySoftPath(SoftPath);
         }
+    }
+}
+
+void ALCPlayerController::Client_HideHUD_Implementation()
+{
+    if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+    {
+        if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+        {
+            UIManager->HideInGameHUD();
+            UIManager->HideSpectatorWidget();
+        }
+    }
+}
+
+void ALCPlayerController::Client_PlayGateCutscene_Implementation(ULevelSequence* Sequence, TSubclassOf<AActor> DummyClass, const FTransform& SpawnTransform, int32 PlayerIndex)
+{
+    if (!Sequence || !*DummyClass)
+    {
+        return;
+    }
+
+    FMovieSceneSequencePlaybackSettings PlaybackSettings;
+    ALevelSequenceActor* OutSequenceActor = nullptr;
+
+    ULevelSequencePlayer* LocalSequencePlayer = ULevelSequencePlayer::CreateLevelSequencePlayer(GetWorld(), Sequence, PlaybackSettings, OutSequenceActor);
+    if (!LocalSequencePlayer || !OutSequenceActor)
+    {
+        return;
+    }
+
+    AActor* Dummy = GetWorld()->SpawnActor<AActor>(DummyClass, SpawnTransform);
+    if (!Dummy)
+    {
+        return;
+    }
+
+    FName TrackTag = FName(FString::Printf(TEXT("Slot%d"), PlayerIndex + 1));
+    OutSequenceActor->SetBindingByTag(TrackTag, { Dummy });
+
+    if (!OutSequenceActor || !OutSequenceActor->GetSequence())
+    {
+        return;
+    }
+
+    FName CameraTag = TEXT("Camera");
+    TArray<FMovieSceneObjectBindingID> Bindings = OutSequenceActor->GetSequence()->FindBindingsByTag(CameraTag);
+
+    if (Bindings.Num() > 0 && OutSequenceActor->SequencePlayer)
+    {
+        FMovieSceneObjectBindingID BindingID = Bindings[0];
+
+        TArray<UObject*> BoundObjects = OutSequenceActor->SequencePlayer->GetBoundObjects(BindingID);
+
+        for (UObject* Obj : BoundObjects)
+        {
+            if (ACameraActor* CameraActor = Cast<ACameraActor>(Obj))
+            {
+                if (IsLocalController())
+                {
+                    SetViewTargetWithBlend(CameraActor, 0.0f);
+                }
+                break;
+            }
+        }
+    }
+
+    LocalSequencePlayer->Play();
+
+    LocalSequencePlayer->OnFinished.AddDynamic(this, &ALCPlayerController::OnCutsceneFinished);
+
+    // UI 숨기기
+    if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+    {
+        if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+        {
+            UIManager->HideInGameHUD();
+            UIManager->HideSpectatorWidget();
+        }
+    }
+}
+
+void ALCPlayerController::OnCutsceneFinished()
+{
+    // 필요한 후처리
+    Server_RequestIntoGameLevel();
+
+    // Cutscene 종료 알림이 필요한 경우 서버로 RPC 호출 가능
+}
+
+void ALCPlayerController::Server_RequestIntoGameLevel_Implementation()
+{
+    if (IsValid(LinkedGateActor))
+    {
+        LinkedGateActor->IntoGameLevel(this);
     }
 }
