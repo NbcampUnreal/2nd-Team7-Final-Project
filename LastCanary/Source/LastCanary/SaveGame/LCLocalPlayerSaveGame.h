@@ -152,6 +152,8 @@ struct FCharacterCustomizationData
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 BootsMaterialID = 0;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 FlagMaterialID = 0;
 
 	FCharacterCustomizationData() {}
 	FCharacterCustomizationData(int32 DefaultBody, int32 Glove, int32 Jacket, int32 Pants, int32 Belts, int32 Helmet, int32 Armor, int32 Boots)
@@ -159,11 +161,11 @@ struct FCharacterCustomizationData
 	}
 	FCharacterCustomizationData(
 		int32 DefaultBody, int32 Glove, int32 Jacket, int32 Pants, int32 Belts, int32 Helmet, int32 Armor, int32 Boots,
-		int32 DefaultBodyMat, int32 GloveMat, int32 JacketMat, int32 PantsMat, int32 BeltsMat, int32 HelmetMat, int32 ArmorMat, int32 BootsMat
+		int32 DefaultBodyMat, int32 GloveMat, int32 JacketMat, int32 PantsMat, int32 BeltsMat, int32 HelmetMat, int32 ArmorMat, int32 BootsMat, int32 FlagMat
 	)
 		: DefaultBodyID(DefaultBody), GloveID(Glove), JacketID(Jacket), PantsID(Pants), BeltsID(Belts), HelmetID(Helmet), ArmorID(Armor), BootsID(Boots),
 		DefaultBodyMaterialID(DefaultBodyMat), GloveMaterialID(GloveMat), JacketMaterialID(JacketMat), PantsMaterialID(PantsMat),
-		BeltsMaterialID(BeltsMat), HelmetMaterialID(HelmetMat), ArmorMaterialID(ArmorMat), BootsMaterialID(BootsMat)
+		BeltsMaterialID(BeltsMat), HelmetMaterialID(HelmetMat), ArmorMaterialID(ArmorMat), BootsMaterialID(BootsMat), FlagMaterialID(FlagMat)
 	{
 	}
 };

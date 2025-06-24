@@ -107,6 +107,7 @@ void ACustomizationCharacter::ApplyCustomization(const UCustomizationMeshMap* Ch
 	int BeltsMatId = CustomizationData.BeltsMaterialID;
 	int ArmorMatId = CustomizationData.ArmorMaterialID;
 	int BootsMatId = CustomizationData.BootsMaterialID;
+	int FlagMatId = CustomizationData.FlagMaterialID;
 
 	// 머티리얼도 매핑용 에셋에서 가져옴 (이미 블루프린트에서 세팅되어 있다고 가정)
 	UMaterialInterface* BodyMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->DefaultBodyMaterials, BodyMatId);
@@ -118,6 +119,7 @@ void ACustomizationCharacter::ApplyCustomization(const UCustomizationMeshMap* Ch
 	UMaterialInterface* BeltsMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->BeltsMaterials, BeltsMatId);
 	UMaterialInterface* ArmorMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->ArmorMaterials, ArmorMatId);
 	UMaterialInterface* BootsMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->BootsMaterials, BootsMatId);
+	UMaterialInterface* FlagMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->FlagMaterials, FlagMatId);
 
 	// 머티리얼 적용 함수 호출 (보통 0번 슬롯만 적용한다고 가정)
 	SetPartMaterial(GetMesh(), 0, BodyMat);
@@ -127,8 +129,12 @@ void ACustomizationCharacter::ApplyCustomization(const UCustomizationMeshMap* Ch
 	SetPartMaterial(CustomJacketMesh, 0, JacketMat);
 	SetPartMaterial(CustomPantsMesh, 0, PantsMat);
 	SetPartMaterial(CustomBeltsMesh, 0, BeltsMat);
-	SetPartMaterial(CustomArmorMesh, 0, ArmorMat);
+	SetPartMaterial(CustomArmorMesh, 1, ArmorMat);
 	SetPartMaterial(CustomBootsMesh, 0, BootsMat);
+	
+	//플래그
+	SetPartMaterial(CustomHelmetMesh, 1, FlagMat);
+	SetPartMaterial(CustomArmorMesh, 0, FlagMat);
 
 }
 

@@ -295,6 +295,7 @@ void ABaseCharacter::ApplyCustomization(const UCustomizationMeshMap* CharacterMe
 	int BeltsMatId = CustomizationData.BeltsMaterialID;
 	int ArmorMatId = CustomizationData.ArmorMaterialID;
 	int BootsMatId = CustomizationData.BootsMaterialID;
+	int FlagMatId = CustomizationData.FlagMaterialID;
 
 	// 머티리얼도 매핑용 에셋에서 가져옴 (이미 블루프린트에서 세팅되어 있다고 가정)
 	UMaterialInterface* BodyMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->DefaultBodyMaterials, BodyMatId);
@@ -306,6 +307,7 @@ void ABaseCharacter::ApplyCustomization(const UCustomizationMeshMap* CharacterMe
 	UMaterialInterface* BeltsMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->BeltsMaterials, BeltsMatId);
 	UMaterialInterface* ArmorMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->ArmorMaterials, ArmorMatId);
 	UMaterialInterface* BootsMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->BootsMaterials, BootsMatId);
+	UMaterialInterface* FlagMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->FlagMaterials, FlagMatId);
 
 	// 머티리얼 적용 함수 호출 (보통 0번 슬롯만 적용한다고 가정)
 	SetPartMaterial(GetMesh(), 0, BodyMat);
@@ -315,8 +317,12 @@ void ABaseCharacter::ApplyCustomization(const UCustomizationMeshMap* CharacterMe
 	SetPartMaterial(CustomJacketMesh, 0, JacketMat);
 	SetPartMaterial(CustomPantsMesh, 0, PantsMat);
 	SetPartMaterial(CustomBeltsMesh, 0, BeltsMat);
-	SetPartMaterial(CustomArmorMesh, 0, ArmorMat);
+	SetPartMaterial(CustomArmorMesh, 1, ArmorMat);
 	SetPartMaterial(CustomBootsMesh, 0, BootsMat);
+	
+	//플래그
+	SetPartMaterial(CustomHelmetMesh, 1, FlagMat);
+	SetPartMaterial(CustomArmorMesh, 0, FlagMat);
 }
 
 void ABaseCharacter::SetPartMesh(USkeletalMeshComponent* Component, USkeletalMesh* LoadedMesh)
@@ -2316,6 +2322,7 @@ float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageE
 	float MaxHP = MyPlayerState->MaxHP;
 	float CalCulatedHP = FMath::Clamp(CurrentHP - FinalDamage, 0.0f, MaxHP);
 	MyPlayerState->SetHP(CalCulatedHP);
+	// TODO: 클라이언트에서 해야할 것 같은 그런 느낌인데... MyPlayerState->ApplyDamage(CalCulatedHP);
 	LOG_Char_WARNING(TEXT("Current HP : %f"), CalCulatedHP);
 	if (CalCulatedHP <= 0.f)
 	{

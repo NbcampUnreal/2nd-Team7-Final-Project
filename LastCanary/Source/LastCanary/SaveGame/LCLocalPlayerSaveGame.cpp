@@ -233,6 +233,7 @@ bool ULCLocalPlayerSaveGame::SaveCustomizationData(UWorld * World, const FCharac
         SaveGame->CustomizationData.HelmetMaterialID = NewSetting.HelmetMaterialID;
         SaveGame->CustomizationData.ArmorMaterialID = NewSetting.ArmorMaterialID;
         SaveGame->CustomizationData.BootsMaterialID = NewSetting.BootsMaterialID;
+        SaveGame->CustomizationData.FlagMaterialID = NewSetting.FlagMaterialID;
 
         UE_LOG(LogTemp, Warning, TEXT("커스터마이징 데이터 저장 완료"));
         return SaveGame->SaveGameToSlotForLocalPlayer();
