@@ -41,6 +41,12 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 		OwningPlayer = PlayerController;
 	}
 
+	if (!PlayerController || !PlayerController->IsLocalPlayerController())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[InitUIManager] %s 는 로컬 컨트롤러가 아님"), *GetNameSafe(PlayerController));
+		return;
+	}
+
 	if (const ULCGameInstance* GI = Cast<ULCGameInstance>(PlayerController->GetGameInstance()))
 	{
 		if (const ULCUIManagerSettings* Settings = GI->GetUIManagerSettings())
@@ -635,9 +641,38 @@ void ULCUIManager::HidePopUpNotice()
 
 void ULCUIManager::ShowLoadingLevel()
 {
+	if (OwningPlayer == nullptr)
+	{
+		return;
+	}
+	if (OwningPlayer->IsLocalPlayerController() == false)
+	{
+		return;
+	}
+
 	if (CachedLoadingLevel)
 	{
 		CachedLoadingLevel->AddToViewport(10);
+
+		//if (!CachedLoadingLevel->IsRooted())
+		//{
+		//	CachedLoadingLevel->AddToRoot();// GC 방지
+		//}
+
+		FTimerHandle ForceHideHandle;
+		GetWorld()->GetTimerManager().SetTimer(ForceHideHandle, [this]()
+			{
+				LOG_Frame_WARNING(TEXT("Failsafe: 강제로 HideLoadingLevel 호출"));
+				this->HideLoadingLevel();
+			}, 10.0f, false);
+	}
+}
+
+void ULCUIManager::RestoreLoadingScreenIfNeeded()
+{
+	if (CachedLoadingLevel && !CachedLoadingLevel->IsInViewport())
+	{
+		CachedLoadingLevel->AddToViewport(100);
 	}
 }
 
@@ -645,7 +680,18 @@ void ULCUIManager::HideLoadingLevel()
 {
 	if (CachedLoadingLevel)
 	{
-		CachedLoadingLevel->RemoveFromParent();
+		if (CachedLoadingLevel->IsInViewport())
+		{
+			CachedLoadingLevel->RemoveFromParent();
+		}
+
+		/*if (CachedLoadingLevel->IsRooted())
+		{
+			CachedLoadingLevel->RemoveFromRoot();
+		}*/
+
+		// nullptr 처리 누락되면 GC 시 에러 발생
+		CachedLoadingLevel = nullptr;
 	}
 }
 

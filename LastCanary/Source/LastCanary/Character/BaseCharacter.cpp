@@ -43,6 +43,7 @@
 #include "Components/WidgetComponent.h"
 #include "UI/UIObject/PlayerNameWidget.h"
 #include "Character/CustomizationMeshMap.h"
+#include "Inventory/BackpackManager.h"
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -1654,16 +1655,31 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 		{
 			return;
 		}
+		/*
 		if (!ToolbarInventoryComponent->CanAddItem(Item))
 		{
 			LOG_Char_WARNING(TEXT("아이템을 주으려 했으나 인벤토리가 꽉참"));
-			return;
-		}
-		if (IsValid(BackpackMeshComponent) && BackpackMeshComponent)
-		{
+			if (!Item->IsCollectible())
+			{
+				LOG_Char_WARNING(TEXT("수집형 아이템도 아님"));//이거 작동을 안하는 중...
+				return;
+			}
 			//TODO: 백팩에 넣을 수 있는지 판단하는 로직이 필요함
+			
+			if (!IsValid(BackpackMeshComponent) || !BackpackMeshComponent)
+			{
+				return;	
+			}
+			if (!ToolbarInventoryComponent->HasBackpackEquipped())
+			{
+				LOG_Char_WARNING(TEXT("현재 가방이 없음"));//이거 작동을 안하는 중...
+				return;
+			}
+			
+			LOG_Char_WARNING(TEXT("현재 가방이 있음"));//이거 작동을 안하는 중...
+			
 		}
-		//만약 인벤토리가 꽉찼다면 줍기 불가능 return;
+		*/
 		MontageToPlay = InteractMontageOnUnderObject;
 	}
 	else
@@ -2299,6 +2315,7 @@ void ABaseCharacter::EnterPanicState()
 {
 	//환정 / 비명소리 등 / 목소리 변조 // 갑자기 지혼자 총쏨. // 온갖 트롤 요소를 다 넣어. //플레이어 숨소리 // 감도 강제로 올리기 낮추기 // 팀원 보이스 낮추기 // 
 	//TODO: 정신력 0 처리
+	EnterPanicVoice();
 }
 
 

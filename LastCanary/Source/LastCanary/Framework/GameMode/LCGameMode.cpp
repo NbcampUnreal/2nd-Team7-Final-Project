@@ -60,6 +60,7 @@ void ALCGameMode::StartPlay()
 {
 	Super::StartPlay();
 
+	HideLoading();
 }
 
 void ALCGameMode::BeginPlay()
@@ -218,11 +219,23 @@ void ALCGameMode::SetPlayerInfo(const FSessionPlayerInfo& RequestInfo)
 
 void ALCGameMode::ShowLoading()
 {
+	//for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
+	//{
+	//	if (ALCPlayerController* PlayerController = Cast<ALCPlayerController>(Iterator->Get()))
+	//	{
+	//		PlayerController->Client_ShowLoading();
+	//	}
+	//}
 	for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
 	{
-		if (ALCPlayerController* PlayerController = Cast<ALCPlayerController>(Iterator->Get()))
+		if (ALCPlayerController* PC = Cast<ALCPlayerController>(*Iterator))
 		{
-			PlayerController->Client_ShowLoading();
+			PC->Client_ShowLoading();
+
+			if (PC->IsLocalController()) // 호스트는 RPC 무시되므로 직접 처리
+			{
+				PC->Client_ShowLoading_Implementation();
+			}
 		}
 	}
 }
@@ -231,9 +244,16 @@ void ALCGameMode::HideLoading()
 {
 	for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
 	{
-		if (ALCPlayerController* PlayerController = Cast<ALCPlayerController>(Iterator->Get()))
+		if (ALCPlayerController* PlayerController = Cast<ALCPlayerController>(*Iterator))
 		{
-			PlayerController->Client_ShowLoading();
+			// 리모트 클라이언트는 RPC로
+			PlayerController->Client_HideLoading();
+
+			// 호스트(로컬 컨트롤러)는 RPC 무시되므로 직접 호출
+			if (PlayerController->IsLocalController())
+			{
+				PlayerController->Client_HideLoading_Implementation();
+			}
 		}
 	}
 }
@@ -286,4 +306,26 @@ bool ALCGameMode::IsAllPlayersReady() const
 		}
 	}
 	return true;
+}
+
+void ALCGameMode::ForceAllPlayersReady()
+{
+	// 컷신재생시 액터히든으로 해서 그런지 가끔 레벨이동이 안되는 이슈를 해결하고자
+	// 컷신중에는 무조건 Ready = true로 설정
+	// 이젠 2회차때(= false여야 할 때)도 true인 문제가 발생..ㅋㅋ
+	for (FSessionPlayerInfo& Info : SessionPlayerInfos)
+	{
+		Info.bIsPlayerReady = true;
+	}
+	LOG_Frame_WARNING(TEXT("모든 플레이어를 Ready 상태로 강제 설정"));
+}
+
+void ALCGameMode::ClearAllPlayersReady()
+{
+	for (FSessionPlayerInfo& Info : SessionPlayerInfos)
+	{
+		Info.bIsPlayerReady = false;
+	}
+
+	LOG_Frame_WARNING(TEXT("모든 플레이어의 Ready 상태를 초기화했습니다 (false로 설정됨)"));
 }
