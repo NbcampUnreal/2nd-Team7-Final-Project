@@ -35,8 +35,8 @@ void UVoiceOptionWidget::NativeConstruct()
 		VoiceVolumeSlider->OnValueChanged.AddUniqueDynamic(this, &UVoiceOptionWidget::OnVoiceVolumeChanged);
 	}
 
-	RefreshInputModeText();
 	InitializeAllOptions();
+	RefreshInputModeText();
 }
 
 void UVoiceOptionWidget::NativeDestruct()
@@ -151,8 +151,27 @@ void UVoiceOptionWidget::InitializeMicrophoneVolume()
 	}
 }
 
+void UVoiceOptionWidget::InitializeVoiceMode()
+{
+	if (UWorld* World = GetWorld())
+	{
+		EVoiceInputMode VoiceMode = ULCLocalPlayerSaveGame::LoadVoiceInputMode(World); 
+		CurrentInputMode = VoiceMode;
+	}
+}
+
+
 void UVoiceOptionWidget::InitializeAllOptions()
 {
 	InitializeVoiceChatVolume();
 	InitializeMicrophoneVolume();
+	InitializeVoiceMode();
+
+}
+
+void UVoiceOptionWidget::SaveVoiceMode(EVoiceInputMode NewSettings)
+{
+	CurrentInputMode = NewSettings;
+	ULCLocalPlayerSaveGame::SaveVoiceInputMode(GetWorld(), CurrentInputMode);
+
 }
