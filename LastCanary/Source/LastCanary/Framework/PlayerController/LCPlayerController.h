@@ -8,6 +8,9 @@
 #include "LCPlayerController.generated.h"
 
 class ULCUIManager;
+class ALCGateActor;
+class ACineCameraActor;
+class ULevelSequence;
 
 UCLASS()
 class LASTCANARY_API ALCPlayerController : public ALCPlayerInputController
@@ -62,6 +65,31 @@ public:
 
 public:
 	void StartGame(FString SoftPath);
+
+	UPROPERTY(EditAnywhere)
+	ACineCameraActor* SequenceCamera;
+	UPROPERTY(EditInstanceOnly, Category = "Cutscene")
+	ALCGateActor* LinkedGateActor;
+
+	UFUNCTION()
+	void SetLinkedGateActor(ALCGateActor* InGateActor) { LinkedGateActor = InGateActor; }
+	UFUNCTION(BlueprintCallable)
+	ALCGateActor* GetLinkedGateActor() const { return LinkedGateActor; }
+
+	UFUNCTION(Client, Reliable)
+	void Client_HideHUD();
+	void Client_HideHUD_Implementation();
+
+	UFUNCTION(Client, Unreliable)
+	void Client_PlayGateCutscene(ULevelSequence* Sequence, TSubclassOf<AActor> DummyClass, const FTransform& SpawnTransform, int32 PlayerIndex);
+	void Client_PlayGateCutscene_Implementation(ULevelSequence* Sequence, TSubclassOf<AActor> DummyClass, const FTransform& SpawnTransform, int32 PlayerIndex);
+
+	UFUNCTION()
+	void OnCutsceneFinished();
+
+	UFUNCTION(Server, Reliable)
+	void Server_RequestIntoGameLevel();
+	void Server_RequestIntoGameLevel_Implementation();
 
 	ULCUIManager* GetUIManager() { return LCUIManager; }
 protected:
