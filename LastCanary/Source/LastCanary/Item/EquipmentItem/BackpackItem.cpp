@@ -18,6 +18,7 @@ void ABackpackItem::BeginPlay()
 
 void ABackpackItem::UseItem()
 {
+    LOG_Item_ERROR(TEXT("아무튼 사용됨"));
     if (ABaseCharacter* OwnerCharacter = Cast<ABaseCharacter>(GetOwner()))
     {
         if (OwnerCharacter->HasAuthority())
