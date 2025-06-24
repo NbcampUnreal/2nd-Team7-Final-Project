@@ -2,6 +2,9 @@
 #include "Components/StaticMeshComponent.h"
 #include "NavigationSystem.h"
 #include "DrawDebugHelpers.h"
+#include "Kismet/GameplayStatics.h"
+#include "Camera/CameraComponent.h"
+#include "TimerManager.h"
 
 AIllusion::AIllusion()
 {
@@ -30,13 +33,21 @@ void AIllusion::BeginPlay()
 {
     Super::BeginPlay();
     Health = MaxHealth;
-    // BeginPlay 에서는 목표를 뽑지 않습니다!
+
+    // 주기적으로 랜덤 플레이어에게 Illusion 효과 걸기 시작
+    if (IllusionPostProcessMaterial && IllusionInterval > 0.f)
+    {
+        GetWorldTimerManager().SetTimer(
+            IllusionTimerHandle,
+            this, &AIllusion::ExecuteRandomPlayerIllusion,
+            IllusionInterval,
+            true);
+    }
 }
 
 void AIllusion::SetBossOwner(AActor* Boss)
 {
     BossOwner = Boss;
-    // 보스 설정 직후에야 비로소 유효한 목표를 뽑을 수 있습니다.
     PickNewMoveTarget();
 }
 
@@ -85,6 +96,79 @@ void AIllusion::PickNewMoveTarget()
 
         // 디버그 시각화 (2초)
         DrawDebugSphere(GetWorld(), MoveTarget, 25.f, 8, FColor::Green, false, 2.f);
+    }
+}
+
+void AIllusion::ExecuteRandomPlayerIllusion()
+{
+    // 1) 반경 내 Pawn Sweep (시작과 끝 위치 동일 → 단순 범위 검사)
+    TArray<FHitResult> Hits;
+    FVector Loc = GetActorLocation();
+    FCollisionShape Sphere = FCollisionShape::MakeSphere(IllusionRadius);
+
+    bool bHit = GetWorld()->SweepMultiByChannel(
+        Hits,
+        Loc, Loc,
+        FQuat::Identity,
+        ECC_Pawn,
+        Sphere
+    );
+    if (!bHit) return;
+
+    // 2) 유효한 로컬 플레이어 컨트롤러만 필터
+    TArray<APlayerController*> ValidPCs;
+    for (const FHitResult& Hit : Hits)
+    {
+        if (APawn* P = Cast<APawn>(Hit.GetActor()))
+        {
+            if (AController* C = P->GetController())
+            {
+                if (C->IsLocalController())
+                {
+                    ValidPCs.Add(Cast<APlayerController>(C));
+                }
+            }
+        }
+    }
+    if (ValidPCs.Num() == 0) return;
+
+    // 3) 랜덤으로 한 명 선택
+    int32 Idx = FMath::RandRange(0, ValidPCs.Num() - 1);
+    APlayerController* ChosenPC = ValidPCs[Idx];
+    APawn* ChosenPawn = ChosenPC->GetPawn();
+    if (!ChosenPawn) return;
+
+    // 4) 선택된 플레이어 카메라에 포스트프로세스 적용
+    if (UCameraComponent* Cam = ChosenPawn->FindComponentByClass<UCameraComponent>())
+    {
+        // 중복 적용 방지: 이미 같은 머티리얼이 있으면 스킵
+        auto& BlendArray = Cam->PostProcessSettings.WeightedBlendables.Array;
+        bool bAlready = BlendArray.ContainsByPredicate(
+            [this](const FWeightedBlendable& Elem)
+            {
+                return Elem.Object == IllusionPostProcessMaterial;
+            });
+
+        if (!bAlready)
+        {
+            // a) 추가
+            Cam->PostProcessSettings.AddBlendable(
+                IllusionPostProcessMaterial,
+                IllusionBlendWeight
+            );
+
+            // b) 제거 예약
+            FTimerHandle TmpHandle;
+            GetWorldTimerManager().SetTimer(
+                TmpHandle,
+                FTimerDelegate::CreateLambda([Cam, this]()
+                    {
+                        Cam->PostProcessSettings.RemoveBlendable(IllusionPostProcessMaterial);
+                    }),
+                IllusionDuration,
+                false
+            );
+        }
     }
 }
 
