@@ -766,8 +766,8 @@ void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue, floa
 		return;
 	}
 	ReduceRecoil(0.3f);
-	AddControllerYawInput(Value.X * Sensivity);
-	AddControllerPitchInput(Value.Y * Sensivity);
+	AddControllerYawInput(Value.X * Sensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
+	AddControllerPitchInput(Value.Y * Sensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
 }
 
 
@@ -2312,9 +2312,163 @@ float ABaseCharacter::CalculateTakeSpiritDamage(float DamageAmount)
 
 void ABaseCharacter::EnterPanicState()
 {
-	//환정 / 비명소리 등 / 목소리 변조 // 갑자기 지혼자 총쏨. // 온갖 트롤 요소를 다 넣어. //플레이어 숨소리 // 감도 강제로 올리기 낮추기 // 팀원 보이스 낮추기 // 
-	//TODO: 정신력 0 처리
-	EnterPanicVoice();
+	//TODO: 서버에서의 처리
+	LOG_Char_WARNING(TEXT("패닉 상태 진입"));
+
+	//클라이언트에서의 처리
+	Client_EnterPanicState();
+}
+
+void ABaseCharacter::Client_EnterPanicState_Implementation()
+{
+	StartPanicBehaviorLoop();
+}
+
+void ABaseCharacter::StartPanicBehaviorLoop()
+{
+	GetWorld()->GetTimerManager().SetTimer(
+		PanicActionTimerHandle,
+		this,
+		&ABaseCharacter::PerformRandomPanicAction,
+		RepeatRate,
+		true,           // 반복
+		InitialDelay    // 처음 실행까지의 지연 시간
+	);
+}
+
+void ABaseCharacter::StopPanicBehaviorLoop()
+{
+	GetWorld()->GetTimerManager().ClearTimer(PanicActionTimerHandle);
+}
+
+void ABaseCharacter::PerformRandomPanicAction()
+{
+	LOG_Char_WARNING(TEXT("패닉 행동 실행"));
+
+	TArray<TFunction<void()>> PanicActions;
+
+	PanicActions.Add([this]() { PlayScreamSound_Local(); });
+	PanicActions.Add([this]() { EnterPanicVoice(); });
+	PanicActions.Add([this]() { UseItemUnexpectedly(); });
+	PanicActions.Add([this]() { PlaySighSoundForAll(); });
+	PanicActions.Add([this]() { ForceSetMouseSensitivity(PanicSensitivity, PanicDuration); });
+	PanicActions.Add([this]() { ForceInvertMouseTemporary(true, PanicDuration); });
+
+	// 아직 구현 전이지만 placeholder 추가도 가능
+	PanicActions.Add([this]() {
+		// 팀원 보이스 낮추기 (예시)
+		LOG_Char_WARNING(TEXT("팀원 보이스 볼륨 감소!"));
+		});
+	PanicActions.Add([this]() {
+		// 정신력 0 처리 예시
+		LOG_Char_WARNING(TEXT("정신력이 0이 되었습니다!"));
+		});
+
+	// 랜덤 선택해서 실행
+	if (PanicActions.Num() > 0)
+	{
+		int32 RandomIndex = FMath::RandRange(0, PanicActions.Num() - 1);
+		PanicActions[RandomIndex]();
+	}
+	
+  //TODO: 정신력 0 처리
+
+}
+
+void ABaseCharacter::PlayScreamSound_Local()
+{
+	if (IsLocallyControlled())
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, ScreamSound, GetActorLocation());
+	}
+}
+
+void ABaseCharacter::UseItemUnexpectedly()
+{
+	LOG_Char_WARNING(TEXT("갑자기 아이템 사용"));
+
+	UseEquippedItem(1.0f);
+	UseEquippedItem(0.0f);
+}
+
+void ABaseCharacter::PlaySighSoundForAll()
+{
+	if (IsLocallyControlled())
+	{
+		Server_PlaySighSound();
+	}
+}
+
+void ABaseCharacter::Server_PlaySighSound_Implementation()
+{
+	if (HasAuthority()) // 서버에서만 멀티캐스트 호출
+	{
+		Multicast_PlaySighSound();
+	}
+}
+
+
+void ABaseCharacter::Multicast_PlaySighSound_Implementation()
+{
+	if (SighSound)
+	{
+		UGameplayStatics::SpawnSoundAttached(
+			SighSound,
+			GetRootComponent(),         // 또는 GetMesh() 등 캐릭터에 붙일 컴포넌트
+			NAME_None,
+			FVector::ZeroVector,
+			EAttachLocation::KeepRelativeOffset,
+			true                        // bStopWhenAttachedToDestroyed
+		);
+
+	}
+}
+
+void ABaseCharacter::ForceSetMouseSensitivity(float NewSensitivity, float Duration)
+{
+	LOG_Char_WARNING(TEXT("마우스 반전"));
+
+	MouseSensitivityMultiplier = 10.0f;
+	// 기존 타이머 제거 후 새 타이머 시작
+	GetWorld()->GetTimerManager().ClearTimer(MouseSensitivityRestoreHandle);
+	GetWorld()->GetTimerManager().SetTimer(
+		MouseSensitivityRestoreHandle,
+		this,
+		&ABaseCharacter::RestoreOriginalMouseSensitivity,
+		Duration,
+		false
+	);
+}
+
+void ABaseCharacter::RestoreOriginalMouseSensitivity()
+{
+	MouseSensitivityMultiplier = 1.0f; // 초기화
+}
+
+void ABaseCharacter::ForceInvertMouse(bool bInvert)
+{
+	MouseInvertMultiplier = bInvert ? -1.0f : 1.0f;
+}
+
+void ABaseCharacter::ForceInvertMouseTemporary(bool bInvert, float Duration)
+{
+	// 반전 적용
+	ForceInvertMouse(true);
+
+	// 기존 타이머 제거 후 새로 시작
+	GetWorld()->GetTimerManager().ClearTimer(MouseInvertResetTimerHandle);
+	GetWorld()->GetTimerManager().SetTimer(
+		MouseInvertResetTimerHandle,
+		this,
+		&ABaseCharacter::RestoreMouseInvert,
+		Duration,
+		false
+	);
+}
+
+void ABaseCharacter::RestoreMouseInvert()
+{
+	ForceInvertMouse(false);
 }
 
 
