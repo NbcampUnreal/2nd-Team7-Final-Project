@@ -20,6 +20,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Attack")
 	USphereComponent* Extra_AttackCollider;
 
+	UFUNCTION(BlueprintCallable, Category = "Tracking")
+	void ReceiveTrackingTarget(AActor* NewTarget);
+
 protected:
 	virtual void HandlePerceptionUpdate(AActor* Actor, FAIStimulus Stimulus) override;
 
@@ -29,6 +32,4 @@ protected:
 	UFUNCTION()
 	void ForgetTarget();
 
-	UFUNCTION(BlueprintCallable, Category = "Tracking")
-	void ReceiveTrackingTarget(AActor* NewTarget);
 };

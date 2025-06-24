@@ -8,6 +8,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "AI/BaseAIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
+#include "Item/ResourceNode.h"
 
 ATempleEliteMonster::ATempleEliteMonster()
 {
@@ -66,15 +67,14 @@ void ATempleEliteMonster::HandlePerceptionUpdate(AActor* Actor, FAIStimulus Stim
 					World->GetTimerManager().ClearTimer(ForgetTargetTimerHandle);
 				}
 			}
-			/*else if (Stimulus.Tag.IsEqual(FName("Box")))
+			else if (Stimulus.Tag.IsEqual(FName("Box")))
 			{
-				if (ABoxItem* BoxItem = Cast<ABoxItem>(Actor))
+				if (AResourceNode* ResourceNode = Cast<AResourceNode>(Actor))
 				{
 					BlackboardComp->SetValueAsVector(FName("BoxVector"), Stimulus.StimulusLocation);
-
 					AIController->SetSearching();
 				}
-			}*/
+			}
 			else
 			{
 				if (UWorld* World = GetWorld())
@@ -109,8 +109,6 @@ void ATempleEliteMonster::ForgetTarget()
 	{
 		World->GetTimerManager().ClearTimer(ForgetTargetTimerHandle);
 	}
-}
-    GetCharacterMovement()->MaxWalkSpeed = 200.0f;
 }
 
 void ATempleEliteMonster::ReceiveTrackingTarget(AActor* NewTarget)

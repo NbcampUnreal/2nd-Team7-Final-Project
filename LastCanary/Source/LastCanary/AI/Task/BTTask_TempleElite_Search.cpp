@@ -26,10 +26,12 @@ EBTNodeResult::Type UBTTask_TempleElite_Search::ExecuteTask(UBehaviorTreeCompone
         return EBTNodeResult::Failed;
     }
 
-    AIController->MoveToLocation(BoxVector, 100.0f);
+    //UE_LOG(LogTemp, Warning, TEXT("BoxVector: %s"), *BoxVector.ToString());
+
+    AIController->MoveToLocation(BoxVector - 100.f, 100.0f);
 
     CachedOwnerComp = &OwnerComp;
-
+    
     if (UWorld* World = AIController->GetWorld())
     {
         World->GetTimerManager().SetTimer(
@@ -67,6 +69,8 @@ void UBTTask_TempleElite_Search::CheckArrival()
         ABaseAIController* BaseAIController = Cast<ABaseAIController>(AIController);
         if (BaseAIController)
         {
+            StopTimer();
+
             AIController->StopMovement();
 
             BaseAIController->SetChasing(TargetActor);
@@ -87,7 +91,7 @@ void UBTTask_TempleElite_Search::CheckArrival()
     }
 
     float Distance = FVector::Distance(ControlledPawn->GetActorLocation(), BoxVector);
-    if (Distance <= 100.0f)
+    if (Distance <= 300.0f)
     {
         BlackboardComp->ClearValue("BoxVector");
 
