@@ -197,17 +197,10 @@ void ABaseCharacter::BeginPlay()
 		CustomPostProcessComponent->Settings.AutoExposureMethod = EAutoExposureMethod::AEM_Histogram;
 		CustomPostProcessComponent->Settings.bOverride_AutoExposureMinBrightness = true;
 		CustomPostProcessComponent->Settings.bOverride_AutoExposureMaxBrightness = true;
-
-		// 노출 범위는 0.5~2.0 사이 정도로 잡는 게 적당
-		float baseBrightness = FMath::Lerp(-10.0f, 10.0f, GetBrightness()); // 0~1 값을 0.5~2.0 범위로 매핑
-		CustomPostProcessComponent->Settings.AutoExposureMinBrightness = baseBrightness - 0.1f;
-		CustomPostProcessComponent->Settings.AutoExposureMaxBrightness = baseBrightness + 0.1f;
-
 		CustomPostProcessComponent->Settings.bOverride_AutoExposureBias = true;
-		CustomPostProcessComponent->Settings.AutoExposureBias = baseBrightness	; // 유저 설정값 반영
-
 		// 블렌드 웨이트 1.0으로 보정 적용 보장
 		CustomPostProcessComponent->BlendWeight = 1.0f;
+		CustomPostProcessComponent->Priority = 100.0f;
 	}
 	SetMovementSetting();
 	if (ABasePlayerController* PC = Cast<ABasePlayerController>(GetController()))
@@ -302,6 +295,7 @@ void ABaseCharacter::ApplyCustomization(const UCustomizationMeshMap* CharacterMe
 	int BeltsMatId = CustomizationData.BeltsMaterialID;
 	int ArmorMatId = CustomizationData.ArmorMaterialID;
 	int BootsMatId = CustomizationData.BootsMaterialID;
+	int FlagMatId = CustomizationData.FlagMaterialID;
 
 	// 머티리얼도 매핑용 에셋에서 가져옴 (이미 블루프린트에서 세팅되어 있다고 가정)
 	UMaterialInterface* BodyMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->DefaultBodyMaterials, BodyMatId);
@@ -313,6 +307,7 @@ void ABaseCharacter::ApplyCustomization(const UCustomizationMeshMap* CharacterMe
 	UMaterialInterface* BeltsMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->BeltsMaterials, BeltsMatId);
 	UMaterialInterface* ArmorMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->ArmorMaterials, ArmorMatId);
 	UMaterialInterface* BootsMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->BootsMaterials, BootsMatId);
+	UMaterialInterface* FlagMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->FlagMaterials, FlagMatId);
 
 	// 머티리얼 적용 함수 호출 (보통 0번 슬롯만 적용한다고 가정)
 	SetPartMaterial(GetMesh(), 0, BodyMat);
@@ -322,8 +317,12 @@ void ABaseCharacter::ApplyCustomization(const UCustomizationMeshMap* CharacterMe
 	SetPartMaterial(CustomJacketMesh, 0, JacketMat);
 	SetPartMaterial(CustomPantsMesh, 0, PantsMat);
 	SetPartMaterial(CustomBeltsMesh, 0, BeltsMat);
-	SetPartMaterial(CustomArmorMesh, 0, ArmorMat);
+	SetPartMaterial(CustomArmorMesh, 1, ArmorMat);
 	SetPartMaterial(CustomBootsMesh, 0, BootsMat);
+	
+	//플래그
+	SetPartMaterial(CustomHelmetMesh, 1, FlagMat);
+	SetPartMaterial(CustomArmorMesh, 0, FlagMat);
 }
 
 void ABaseCharacter::SetPartMesh(USkeletalMeshComponent* Component, USkeletalMesh* LoadedMesh)
@@ -367,15 +366,33 @@ float ABaseCharacter::GetBrightness()
 	{
 		return 1.0f;
 	}
+	LOG_Char_WARNING(TEXT("플레이어 밝기 설정 초기화 비긴플레이: %f"), PC->BrightnessSetting);
+
 	return PC->BrightnessSetting;
 }
 
 void ABaseCharacter::SetBrightness(float Value)
 {
+	/*
 	float baseBrightness = FMath::Lerp(-10.0f, 10.0f, Value); // 0~1 값을 0.5~2.0 범위로 매핑
 	CustomPostProcessComponent->Settings.AutoExposureMinBrightness = baseBrightness - 0.1f;
 	CustomPostProcessComponent->Settings.AutoExposureMaxBrightness = baseBrightness + 0.1f;
 	CustomPostProcessComponent->Settings.AutoExposureBias = baseBrightness; // 유저 설정값 반영
+	*/
+
+
+	LOG_Char_WARNING(TEXT("플레이어 밝기 설정 초기화 : %f"), Value);
+	// UI 슬라이더 값: 0 ~ 100 → 0.0 ~ 1.0
+	float Normalized = FMath::Clamp(Value, 0.0f, 1.0f);
+
+	// 로그 스케일 매핑 (예: log10 스케일)
+	float BrightnessValue = MinBrightness * FMath::Pow((MaxBrightness / MinBrightness), Normalized);
+
+	CustomPostProcessComponent->Settings.AutoExposureBias = BrightnessValue;
+
+	// 옵션: Min/MaxBrightness로 clamp
+	CustomPostProcessComponent->Settings.AutoExposureMinBrightness = BrightnessValue; -0.01f;
+	CustomPostProcessComponent->Settings.AutoExposureMaxBrightness = BrightnessValue; + 0.01f;
 }
 
 void ABaseCharacter::NotifyControllerChanged()
@@ -1637,6 +1654,16 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 		{
 			return;
 		}
+		if (!ToolbarInventoryComponent->CanAddItem(Item))
+		{
+			LOG_Char_WARNING(TEXT("아이템을 주으려 했으나 인벤토리가 꽉참"));
+			return;
+		}
+		if (IsValid(BackpackMeshComponent) && BackpackMeshComponent)
+		{
+			//TODO: 백팩에 넣을 수 있는지 판단하는 로직이 필요함
+		}
+		//만약 인벤토리가 꽉찼다면 줍기 불가능 return;
 		MontageToPlay = InteractMontageOnUnderObject;
 	}
 	else
@@ -2110,7 +2137,8 @@ void ABaseCharacter::SetCurrentQuickSlotIndex(int32 NewIndex)
 	{
 		return;
 	}
-
+	CancelUseItem();
+	CancelInteraction();
 	StopReload();
 	LOG_Char_WARNING(TEXT("Request Server to change QuickSlotindex"));
 	Server_SetQuickSlotIndex(NewIndex);
@@ -2295,6 +2323,7 @@ float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageE
 	float MaxHP = MyPlayerState->MaxHP;
 	float CalCulatedHP = FMath::Clamp(CurrentHP - FinalDamage, 0.0f, MaxHP);
 	MyPlayerState->SetHP(CalCulatedHP);
+	// TODO: 클라이언트에서 해야할 것 같은 그런 느낌인데... MyPlayerState->ApplyDamage(CalCulatedHP);
 	LOG_Char_WARNING(TEXT("Current HP : %f"), CalCulatedHP);
 	if (CalCulatedHP <= 0.f)
 	{
@@ -2510,11 +2539,9 @@ EPlayerInGameStatus ABaseCharacter::CheckPlayerCurrentState()
 
 void ABaseCharacter::Client_SetMovementSetting_Implementation()
 {
-	LOG_Char_WARNING(TEXT("SetMovementSetting 클라이언트에서"));
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
 	{
-		LOG_Char_WARNING(TEXT("SetMovementSetting 클라이언트에서 스테이트 없음"));
 		return;
 	}
 	SpeedMultiplier = CalculateMovementSpeedMultiplier();
@@ -2534,23 +2561,18 @@ void ABaseCharacter::Client_SetMovementSetting_Implementation()
 
 	AlsCharacterMovement->SetPlayerMovementSpeed(CrouchSpeed, WalkSpeed, RunSpeed, SprintSpeed);
 	AlsCharacterMovement->JumpZVelocity = JumpZVelocity;
-	LOG_Char_WARNING(TEXT("SetMovementSetting 클라이언트에서 설정 완료"));
 }
 
 void ABaseCharacter::SetMovementSetting()
 {
-	LOG_Char_WARNING(TEXT("SetMovementSetting()"));
 	if (HasAuthority())
 	{
-		LOG_Char_WARNING(TEXT("무브먼트 세팅 서버임()"));
 		Client_SetMovementSetting();
 		//return;
 	}
-	LOG_Char_WARNING(TEXT("SetMovementSetting() On Server"));
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
 	{
-		LOG_Char_WARNING(TEXT("서버에서 플레이어 스테이트 못찾음"));
 		return;
 	}
 
@@ -2572,12 +2594,10 @@ void ABaseCharacter::SetMovementSetting()
 	AlsCharacterMovement->SetPlayerMovementSpeed(CrouchSpeed, WalkSpeed, RunSpeed, SprintSpeed);
 	AlsCharacterMovement->JumpZVelocity = JumpZVelocity;
 	
-	LOG_Char_WARNING(TEXT("SetMovementSetting 완료"));
 }
 
 float ABaseCharacter::CalculateMovementSpeedMultiplier()
 {
-	LOG_Char_WARNING(TEXT("스피드 연산 중..."));
 	float Calculated = 1.0f;
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
@@ -2589,7 +2609,6 @@ float ABaseCharacter::CalculateMovementSpeedMultiplier()
 	float MyDebuff = CalculateDebuffMultiplier();
 	float DebuffFactor = FMath::Clamp(MyDebuff, 0.0f, 1.0f);
 	Calculated = 1.0f * WeightFactor * DebuffFactor;
-	LOG_Char_WARNING(TEXT("계산한 속도 계수 리턴 : %f"), Calculated);
 	return Calculated;
 }
 
@@ -2606,7 +2625,6 @@ float ABaseCharacter::CalculateDebuffMultiplier()
 
 void ABaseCharacter::Multicast_RefreshOverlayObject_Implementation()
 {
-	LOG_Char_WARNING(TEXT("멀티캐스트 Overlay Objects"));
 	bIsSpawnDrone = true;
 	RefreshOverlayObject();
 }

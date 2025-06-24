@@ -536,6 +536,7 @@ void ALCBaseGimmick::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	{
 		World->GetTimerManager().ClearAllTimersForObject(this);
 	}
+
 }
 
 #pragma endregion
