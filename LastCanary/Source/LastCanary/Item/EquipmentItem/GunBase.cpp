@@ -32,9 +32,10 @@ AGunBase::AGunBase()
     ScopeComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     ScopeComponent->SetVisibility(false);
 
-    bDrawDebugLine = true;
-    bDrawImpactDebug = true;
-    DebugDrawDuration = 10.0f;
+    MagazineComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MagazineComponent"));
+    MagazineComponent->SetupAttachment(GetSkeletalMeshComponent());
+    MagazineComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    MagazineComponent->SetVisibility(false);
 
     ShellEjectionComponent = CreateDefaultSubobject<UShellEjectionComponent>(TEXT("ShellEjectionComponent"));
 
@@ -276,29 +277,6 @@ bool AGunBase::PerformLineTrace(FHitResult& OutHit, FVector& StartLocation, FVec
     QueryParams.bTraceComplex = true;
 
     bool bHit = GetWorld()->LineTraceSingleByChannel(OutHit, StartLocation, EndLocation, ECC_Visibility, QueryParams);
-
-    // 디버그 라인 표시 (개발 모드나 디버그 설정이 활성화된 경우에만)
-    //if (bDrawDebugLine)
-    //{
-    //    if (bHit) // 명중한 경우
-    //    {
-    //        // 시작점에서 히트 지점까지 녹색 라인
-    //        DrawDebugLine(GetWorld(), StartLocation, OutHit.ImpactPoint, FColor::Green, false, DebugDrawDuration, 0, 2.0f);
-
-    //        // 히트 지점에 빨간색 구체 표시 (더 크게 만들어 가시성 향상)
-    //        DrawDebugSphere(GetWorld(), OutHit.ImpactPoint, 10.0f, 16, FColor::Red, false, DebugDrawDuration);
-
-    //        // 히트 지점에 법선 방향 표시
-    //        DrawDebugDirectionalArrow(GetWorld(), OutHit.ImpactPoint,
-    //            OutHit.ImpactPoint + OutHit.ImpactNormal * 50.0f,
-    //            20.0f, FColor::Blue, false, DebugDrawDuration);
-    //    }
-    //    else // 명중하지 않은 경우
-    //    {
-    //        // 전체 라인을 빨간색으로 표시
-    //        DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Red, false, DebugDrawDuration, 0, 2.0f);
-    //    }
-    //}
 
     return bHit;
 }
@@ -968,6 +946,32 @@ void AGunBase::ApplyAttachmentsFromDataTable()
         DetachScope();
         LOG_Item_WARNING(TEXT("[ApplyAttachmentsFromDataTable] 스코프 없음"));
     }
+
+    ApplyMagazineFromDataTable();
+}
+
+void AGunBase::ApplyMagazineFromDataTable()
+{
+    if (!GunData.bHasMagazine)
+    {
+        DetachMagazine();
+        LOG_Item_WARNING(TEXT("[ApplyMagazineFromDataTable] 이 총기는 탄창을 사용하지 않음: %s"),
+            *GunData.GunName.ToString());
+        return;
+    }
+
+    // 탄창 부착 처리
+    if (GunData.MagazineMesh)
+    {
+        AttachMagazine(GunData.MagazineMesh, GunData.AttachMagazineSocketName);
+        LOG_Item_WARNING(TEXT("[ApplyMagazineFromDataTable] 탄창 부착: %s"),
+            *GunData.MagazineMesh->GetName());
+    }
+    else
+    {
+        DetachMagazine();
+        LOG_Item_WARNING(TEXT("[ApplyMagazineFromDataTable] 탄창 없음"));
+    }
 }
 
 void AGunBase::AttachScope(UStaticMesh* ScopeMesh, FName SocketName)
@@ -1123,8 +1127,8 @@ void AGunBase::SpawnAndDropMagazine(UStaticMesh* MagazineMesh, FVector SpawnLoca
     }
 
     // 스태틱 메시 컴포넌트 추가
-    UStaticMeshComponent* MagazineComponent = NewObject<UStaticMeshComponent>(MagazineActor);
-    if (!MagazineComponent)
+    UStaticMeshComponent* Magazine = NewObject<UStaticMeshComponent>(MagazineActor);
+    if (!Magazine)
     {
         LOG_Item_WARNING(TEXT("[SpawnAndDropMagazine] MagazineComponent 생성 실패"));
         MagazineActor->Destroy();
@@ -1132,25 +1136,96 @@ void AGunBase::SpawnAndDropMagazine(UStaticMesh* MagazineMesh, FVector SpawnLoca
     }
 
     // 메시 설정
-    MagazineComponent->SetStaticMesh(MagazineMesh);
+    Magazine->SetStaticMesh(MagazineMesh);
 
     // 충돌 설정
-    MagazineComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-    MagazineComponent->SetCollisionObjectType(ECC_WorldDynamic);
-    MagazineComponent->SetCollisionResponseToAllChannels(ECR_Block);
-    MagazineComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore); // 플레이어와는 충돌 무시
+    Magazine->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+    Magazine->SetCollisionObjectType(ECC_WorldDynamic);
+    Magazine->SetCollisionResponseToAllChannels(ECR_Block);
+    Magazine->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore); // 플레이어와는 충돌 무시
 
     // 물리 시뮬레이션 활성화
-    MagazineComponent->SetSimulatePhysics(true);
-    MagazineComponent->SetMassOverrideInKg(NAME_None, 0.5f); // 탄창 무게 설정 (0.5kg)
+    Magazine->SetSimulatePhysics(true);
+    Magazine->SetMassOverrideInKg(NAME_None, 0.5f); // 탄창 무게 설정 (0.5kg)
 
     // 루트 컴포넌트로 설정
-    MagazineActor->SetRootComponent(MagazineComponent);
+    MagazineActor->SetRootComponent(Magazine);
     MagazineActor->SetActorLocationAndRotation(SpawnLocation, SpawnRotation);
 
     // 컴포넌트 등록 확인
-    MagazineComponent->RegisterComponent();
+    Magazine->RegisterComponent();
 
     // 일정 시간 후 자동 삭제
     MagazineActor->SetLifeSpan(GunData.MagazineLifespan);
+}
+
+void AGunBase::AttachMagazine(UStaticMesh* MagazineMesh, FName SocketName)
+{
+    if (!MagazineMesh || !MagazineComponent)
+    {
+        LOG_Item_WARNING(TEXT("[AttachMagazine] MagazineMesh 또는 MagazineComponent가 null"));
+        return;
+    }
+
+    USkeletalMeshComponent* GunMesh = GetSkeletalMeshComponent();
+    if (!GunMesh)
+    {
+        LOG_Item_WARNING(TEXT("[AttachMagazine] GunMesh가 null"));
+        return;
+    }
+
+    // 소켓/본 존재 확인
+    if (!GunMesh->DoesSocketExist(SocketName))
+    {
+        LOG_Item_WARNING(TEXT("[AttachMagazine] 소켓/본 '%s'이 존재하지 않음"), *SocketName.ToString());
+        return;
+    }
+
+    // 소켓에 부착 (SnapToTargetIncludingScale을 사용하여 본의 움직임을 따라감)
+    MagazineComponent->AttachToComponent(GunMesh,
+        FAttachmentTransformRules::SnapToTargetIncludingScale, SocketName);
+
+    // 탄창 메시 설정
+    MagazineComponent->SetStaticMesh(MagazineMesh);
+
+    // 탄창의 회전을 원하는 각도로 설정 (Pitch, Yaw, Roll 순서)
+    FRotator DesiredRotation = FRotator(0.0f, 0.0f, -90.0f);
+    MagazineComponent->SetRelativeRotation(DesiredRotation);
+
+    // 탄창 표시
+    MagazineComponent->SetVisibility(true);
+
+    // 현재 부착된 탄창 저장
+    CurrentAttachedMagazine = MagazineMesh;
+
+    LOG_Item_WARNING(TEXT("[AttachMagazine] 탄창 부착 완료: %s (소켓: %s)"),
+        *MagazineMesh->GetName(), *SocketName.ToString());
+}
+
+void AGunBase::DetachMagazine()
+{
+    if (!MagazineComponent)
+    {
+        return;
+    }
+
+    // 탄창 숨기기
+    MagazineComponent->SetVisibility(false);
+
+    // 메리얼 제거는 하지 않음 (재장전 후 다시 보여줄 예정)
+    // MagazineComponent->SetStaticMesh(nullptr);
+
+    LOG_Item_WARNING(TEXT("[DetachMagazine] 탄창 제거 완료"));
+}
+
+bool AGunBase::UsesMagazine() const
+{
+    return GunData.bHasMagazine;
+}
+
+bool AGunBase::HasMagazineAttached() const
+{
+    return CurrentAttachedMagazine != nullptr &&
+        MagazineComponent &&
+        MagazineComponent->IsVisible();
 }

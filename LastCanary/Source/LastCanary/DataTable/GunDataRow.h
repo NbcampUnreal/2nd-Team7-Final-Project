@@ -151,11 +151,17 @@ struct FGunDataRow : public FTableRowBase
 
     // 탄창 관련 추가
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Magazine")
+    bool bHasMagazine = true;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Magazine")
     UStaticMesh* MagazineMesh;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Magazine")
-    FName MagazineSocketName = TEXT("Magazine_joint");
+    FName MagazineSocketName = TEXT("Magazine");
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Magazine")
     float MagazineLifespan = 10.0f; 
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Magazine")
+    FName AttachMagazineSocketName = TEXT("Magazine_joint");
 };
