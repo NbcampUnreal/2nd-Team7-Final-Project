@@ -36,13 +36,24 @@ protected:
 
 	//UFUNCTION()
 	//void OnCutsceneFinished();
+	UPROPERTY(Replicated)
+	class ALevelSequenceActor* ReplicatedSequenceActor;
 
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
+
+
+	FTimerHandle CutsceneDelayTimer;
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Cutscene")
 	ULevelSequence* GateSuckInSequence;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Cutscene")
 	TSubclassOf<AActor> DummyCharacterClass;
+
+
+	void OnCutsceneFinished();
+
+	void RequestIntoGameLevel();
 //
 //	UPROPERTY()
 //	TArray<ABaseCharacter*> PlayerCharacters;

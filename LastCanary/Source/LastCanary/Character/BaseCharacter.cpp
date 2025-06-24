@@ -254,6 +254,38 @@ void ABaseCharacter::BeginPlay()
 	SetBackpackMesh(false);
 }
 
+FCharacterCustomizationData ABaseCharacter::GetCustomizationData()
+{
+	return CharacterCustomizationData;
+}
+
+
+void ABaseCharacter::SetCustomizationDataOnServer()
+{
+	FCharacterCustomizationData CustomizationData = ULCLocalPlayerSaveGame::LoadCustomizationData(GetWorld());
+	Server_SetCustomizationData(CustomizationData);
+}
+
+void ABaseCharacter::Server_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData)
+{
+	LOG_Char_WARNING(TEXT("캐릭터 커스터마이징 데이터 서버에 전달됨"));
+	CharacterCustomizationData = CustomizingData;
+	
+	int BodyId = CustomizingData.DefaultBodyID;
+	int HeadId = CustomizingData.DefaultBodyID;
+	int HelmetId = CustomizingData.HelmetID;
+	int GloveId = CustomizingData.GloveID;
+	int JacketId = CustomizingData.JacketID;
+	int PantsId = CustomizingData.PantsID;
+	int BeltsId = CustomizingData.BeltsID;
+	int ArmorId = CustomizingData.ArmorID;
+	int BootsId = CustomizingData.BootsID;
+
+	UE_LOG(LogTemp, Log, TEXT("[CustomizationData] Body: %d, Head: %d, Helmet: %d, Glove: %d, Jacket: %d, Pants: %d, Belts: %d, Armor: %d, Boots: %d"),
+		BodyId, HeadId, HelmetId, GloveId, JacketId, PantsId, BeltsId, ArmorId, BootsId);
+}
+
+
 void ABaseCharacter::ApplyCustomization(const UCustomizationMeshMap* CharacterMeshData)
 {
 	if (!CharacterMeshData || !CharacterMeshData->IsValidLowLevel())
@@ -332,6 +364,8 @@ void ABaseCharacter::ApplyCustomization(const UCustomizationMeshMap* CharacterMe
 	//플래그
 	SetPartMaterial(CustomHelmetMesh, 1, FlagMat);
 	SetPartMaterial(CustomArmorMesh, 0, FlagMat);
+
+	SetCustomizationDataOnServer();
 }
 
 void ABaseCharacter::SetPartMesh(USkeletalMeshComponent* Component, USkeletalMesh* LoadedMesh)
