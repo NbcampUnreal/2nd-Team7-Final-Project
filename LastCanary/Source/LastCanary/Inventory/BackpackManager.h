@@ -52,6 +52,10 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Backpack Manager|Items")
     bool AddItemToBackpack(FName ItemRowName, int32 Quantity, int32 BackpackSlotIndex = -1);
 
+    /** 특정 슬롯에 아이템 추가 */
+    UFUNCTION(BlueprintCallable, Category = "Backpack")
+    bool AddToSlot(FBackpackSlotData& TargetSlot, FName ItemRowName, int32 Quantity, int32 MaxStack);
+
     /** 가방에서 아이템 제거 */
     UFUNCTION(BlueprintCallable, Category = "Backpack Manager|Items")
     bool RemoveItemFromBackpack(int32 BackpackSlotIndex, int32 Quantity);
@@ -76,6 +80,10 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Backpack Manager|DragDrop")
     bool SwapBackpackSlots(int32 FromIndex, int32 ToIndex);
 
+    /** 슬롯 간 아이템 이동 및 스택 */
+    UFUNCTION(BlueprintCallable, Category = "Backpack")
+    int32 MoveAndStack(int32 FromSlotIndex, int32 ToSlotIndex, int32 Quantity);
+
 public:
     /** 가방에서 아이템 드롭 (기존 드롭 시스템 활용) */
     UFUNCTION(BlueprintCallable, Category = "Backpack Manager|Drop")
@@ -96,13 +104,13 @@ public:
     UPROPERTY(BlueprintAssignable, Category = "Backpack Manager|Events")
     FOnBackpackUnequipped OnBackpackUnequipped;
 
+    /** 현재 장착된 가방 슬롯 인덱스 */
+    int32 CurrentBackpackSlotIndex;
+
 private:
     /** 소유자 인벤토리 참조 */
     UPROPERTY()
     UToolbarInventoryComponent* OwnerInventory;
-
-    /** 현재 장착된 가방 슬롯 인덱스 */
-    int32 CurrentBackpackSlotIndex;
 
     /** 빈 가방 슬롯 찾기 */
     int32 FindEmptyBackpackSlot(const TArray<FBackpackSlotData>& BackpackSlots) const;

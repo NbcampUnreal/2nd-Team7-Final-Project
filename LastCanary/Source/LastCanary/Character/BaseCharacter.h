@@ -24,6 +24,16 @@ class UPostProcessComponent;
 class AResourceNode;
 class UWidgetComponent;
 class UPlayerNameWidget;
+class UCustomizationMeshMap;
+
+UENUM(BlueprintType)
+enum class EAnimationType : uint8
+{
+	None UMETA(DisplayName = "None"),
+	UseItem UMETA(DisplayName = "아이템 사용"),
+	Interaction UMETA(DisplayName = "상호작용")
+	// 필요한 상태 더 추가
+};
 
 UCLASS()
 class LASTCANARY_API ABaseCharacter : public AAlsCharacter, public IGimmickDebuffInterface, public IGameplayTagAssetInterface
@@ -71,11 +81,54 @@ public:
 	UCameraComponent* SpectatorCamera;
 
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* HeadMesh;
 
 	UPROPERTY(VisibleAnywhere)
 	UPostProcessComponent* CustomPostProcessComponent;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Customization")
+	UCustomizationMeshMap* CharacterMeshMap;
+
+
+
+
+	// DefaultBody => GetMesh()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CustomHeadMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CustomGloveMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CustomJacketMesh;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CustomPantsMesh;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CustomBeltsMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CustomHelmetMesh;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CustomArmorMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CustomBootsMesh;
+
+	void ApplyCustomization(const UCustomizationMeshMap* Data);
+
+	void SetPartMesh(USkeletalMeshComponent* Component, USkeletalMesh* LoadedMesh);
+
+	void SetPartMaterial(USkeletalMeshComponent* Component, int32 MaterialIndex, UMaterialInterface* Material);
+
+
+	UPROPERTY(EditAnywhere, Category = "Brightness")
+	float MinBrightness = 8.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Brightness")
+	float MaxBrightness = 10.0f;
 
 	float GetBrightness();
 	void SetBrightness(float Value);
@@ -265,13 +318,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
 	TArray<FVector2D> RecoilPattern;
 
-	// 반동 상태 변수들
-	void ApplyRecoil(float Vertical, float Horizontal);
-	void RecoverFromRecoil();
+	// 반동
 	void ApplySmoothRecoil(float Vertical, float Horizontal);
 	void ApplySmoothRecoilStep();
 	void ResetShotCounter();
-	void UpdateRecoil();
 	bool HasActiveRecoil() const;
 	void ReduceRecoil(float ReductionFactor = 0.5f);
 	void ResetRecoilYaw();
@@ -335,7 +385,7 @@ public:
 	void AttachOverlayObject(UStaticMesh* NewStaticMesh, USkeletalMesh* NewSkeletalMesh, TSubclassOf<UAnimInstance> NewAnimationClass, FName SocketName, bool bUseLeftGunBone);
 
 	UFUNCTION(BlueprintCallable)
-	void RefreshOverlayLinkedAnimationLayer(int index);
+	void RefreshOverlayLinkedAnimationLayer(FGameplayTag ItemTag);
 
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_RefreshOverlayObject();
@@ -409,16 +459,18 @@ public:
 
 	class ABaseDrone* ControlledDrone;
 
+	bool bIsPlayingAnimation = false;
+
 	void InteractAfterPlayMontage(AActor* TargetActor);
 	void OnInteractAnimationNotified();
 
 	UFUNCTION(Server, Unreliable)
-	void Server_PlayMontage(UAnimMontage* MontageToPlay);
-	void Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay);
+	void Server_PlayMontage(UAnimMontage* MontageToPlay, EAnimationType Animtype);
+	void Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay, EAnimationType Animtype);
 
 	UFUNCTION(NetMulticast, Unreliable)
-	void Multicast_PlayMontage(UAnimMontage* MontageToPlay);
-	void Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay);
+	void Multicast_PlayMontage(UAnimMontage* MontageToPlay, EAnimationType Animtype);
+	void Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay, EAnimationType Animtype);
 
 	UPROPERTY()
 	UAnimMontage* CurrentInteractMontage;
@@ -486,6 +538,13 @@ public:
 	//Player Take Damage
 public:
 	/*Player Damage, Death*/
+	float TakeSpiritDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser);
+	float CalculateTakeSpiritDamage(float DamageAmount);
+	void EnterPanicState();
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void EnterPanicVoice();
+
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	void HandlePlayerDeath();
 
@@ -569,7 +628,11 @@ public:
 	void Client_SetMovementSetting_Implementation();
 
 	void SetMovementSetting();
-	TArray<float> CalculateMovementSpeedWithWeigth();
+
+	float SpeedMultiplier = 1.0f; // 0.0 ~ 1.0 범위
+	float CalculateMovementSpeedMultiplier();
+	float CalculateDebuffMultiplier();
+	float MaxWeight = 40.0f;
 	void ResetMovementSetting();
 
 	float FrontInput = 0.0f;
@@ -645,7 +708,7 @@ public:
 	void Server_UseEquippedItem(float ActionValue);
 	void Server_UseEquippedItem_Implementation(float ActionValue);
 
-	void UseItemByItem(AItemBase* Item);
+	void UseItem(AItemBase* Item);
 	void CancelUseItem(AItemBase* Item);
 
 public:
@@ -691,6 +754,10 @@ public:
 	/** 총 무게 가져오기 */
 	UFUNCTION(BlueprintPure, Category = "Character|Weight")
 	float GetTotalCarryingWeight() const;
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Client_OnInventoryWeightChanged(float NewWeight);
+	void Client_OnInventoryWeightChanged_Implementation(float NewWeight);
 
 protected:
 	/** 현재 총 무게 */
@@ -776,6 +843,9 @@ public:
 
 	virtual void OnRep_PlayerState() override;
 	void UpdateNameWidget(); // 위젯 업데이트용 함수
+	UFUNCTION(Server, Reliable)
+	void Server_UpdateNameWidget(); // 서버 위젯 업데이트용 함수
+	void Server_UpdateNameWidget_Implementation(); // 서버 위젯 업데이트용 함수
 
 	/** 머리 위에 표시할 3D 위젯 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")

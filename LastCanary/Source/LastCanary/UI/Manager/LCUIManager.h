@@ -102,6 +102,7 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void HidePopUpNotice();
 	void ShowLoadingLevel();
+	void RestoreLoadingScreenIfNeeded();
 	void HideLoadingLevel();
 
 	//-----------------

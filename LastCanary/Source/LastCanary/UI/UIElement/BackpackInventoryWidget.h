@@ -32,7 +32,8 @@ public:
     void RefreshInventoryUI() override;
 
 protected:
-    virtual void NativeConstruct() override;
+    virtual void NativeConstruct() override;    
+    virtual void NativeDestruct() override;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Layout")
     int32 ColumnsPerRow = 5;

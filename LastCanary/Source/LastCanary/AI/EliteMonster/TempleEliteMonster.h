@@ -28,4 +28,7 @@ protected:
 
 	UFUNCTION()
 	void ForgetTarget();
+
+	UFUNCTION(BlueprintCallable, Category = "Tracking")
+	void ReceiveTrackingTarget(AActor* NewTarget);
 };

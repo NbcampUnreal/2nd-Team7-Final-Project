@@ -1,5 +1,6 @@
 #include "UI/UIObject/InventoryWidgetBase.h"
 #include "Inventory/InventoryComponentBase.h"
+#include "Inventory/ToolbarInventoryComponent.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "LastCanary.h"
 
@@ -54,14 +55,14 @@ void UInventoryWidgetBase::CreateSharedTooltipWidget()
 
 void UInventoryWidgetBase::OnInventoryChanged()
 {
-	HideTooltip();
+	UpdateCurrentTooltip();
 	RefreshInventoryUI();
 }
 
 
 void UInventoryWidgetBase::SetInventoryComponent(UInventoryComponentBase* NewInventoryComponent)
 {
-	if (InventoryComponent && InventoryComponent->OnInventoryUpdated.IsAlreadyBound(this, &UInventoryWidgetBase::OnInventoryChanged))
+	if (InventoryComponent)
 	{
 		InventoryComponent->OnInventoryUpdated.RemoveDynamic(this, &UInventoryWidgetBase::OnInventoryChanged);
 	}
@@ -70,9 +71,8 @@ void UInventoryWidgetBase::SetInventoryComponent(UInventoryComponentBase* NewInv
 
 	if (InventoryComponent)
 	{
-		InventoryComponent->OnInventoryUpdated.AddDynamic(this, &UInventoryWidgetBase::OnInventoryChanged);
+		InventoryComponent->OnInventoryUpdated.AddUniqueDynamic(this, &UInventoryWidgetBase::OnInventoryChanged);
 		RefreshInventoryUI();
-		LOG_Item_WARNING(TEXT("[InventoryWidgetBase::SetInventoryComponent] 인벤토리 컴포넌트 설정 완료"));
 	}
 	else
 	{
@@ -117,7 +117,11 @@ void UInventoryWidgetBase::ShowTooltipForSlot(const FBaseItemSlotData& ItemData,
 		return;
 	}
 
-	// ⭐ 툴팁 데이터 설정 및 표시
+	// 현재 툴팁 정보 저장
+	CurrentTooltipSourceWidget = SourceWidget;
+	CurrentTooltipItemData = ItemData;
+
+	// 툴팁 데이터 설정 및 표시
 	SharedTooltipWidget->SetTooltipData(*ItemRowData, ItemData);
 
 	if (!SharedTooltipWidget->IsInViewport())
@@ -141,6 +145,10 @@ void UInventoryWidgetBase::HideTooltip()
 	{
 		GetWorld()->GetTimerManager().ClearTimer(TooltipUpdateTimer);
 	}
+
+	// 현재 툴팁 정보 초기화
+	CurrentTooltipSourceWidget = nullptr;
+	CurrentTooltipItemData = FBaseItemSlotData();
 
 	// 툴팁 숨김
 	if (SharedTooltipWidget && SharedTooltipWidget->IsInViewport())
@@ -272,4 +280,137 @@ FBaseItemSlotData UInventoryWidgetBase::ConvertBackpackSlotToBaseSlot(const FBac
 	Result.bIsEquipped = false;
 	// 기타 필드는 기본값 또는 무시
 	return Result;
+}
+
+void UInventoryWidgetBase::UpdateCurrentTooltip()
+{
+	// 현재 툴팁이 표시되고 있지 않으면 리턴
+	if (!IsTooltipVisible() || !CurrentTooltipSourceWidget)
+	{
+		return;
+	}
+
+	// 소스 위젯이 InventorySlotWidget인지 확인
+	UInventorySlotWidget* SlotWidget = Cast<UInventorySlotWidget>(CurrentTooltipSourceWidget);
+	if (!SlotWidget)
+	{
+		// 다른 타입의 슬롯 위젯일 수도 있음 (예: BackpackSlotWidget)
+		UE_LOG(LogTemp, Log, TEXT("[UpdateCurrentTooltip] 소스 위젯이 InventorySlotWidget이 아님"));
+		return;
+	}
+
+	// 업데이트된 슬롯 데이터 가져오기
+	if (!InventoryComponent)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[UpdateCurrentTooltip] InventoryComponent가 없음"));
+		return;
+	}
+
+	// 슬롯 인덱스가 유효한지 확인
+	if (SlotWidget->SlotIndex < 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[UpdateCurrentTooltip] 유효하지 않은 슬롯 인덱스"));
+		return;
+	}
+
+	// 업데이트된 슬롯 데이터 가져오기
+	FBaseItemSlotData UpdatedSlotData;
+	if (UToolbarInventoryComponent* ToolbarComp = Cast<UToolbarInventoryComponent>(InventoryComponent))
+	{
+		FBaseItemSlotData* SlotDataPtr = ToolbarComp->GetItemDataAtSlot(SlotWidget->SlotIndex);
+		if (SlotDataPtr)
+		{
+			UpdatedSlotData = *SlotDataPtr;
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[UpdateCurrentTooltip] 슬롯 데이터를 가져올 수 없음"));
+			return;
+		}
+	}
+	else
+	{
+		// 기본 인벤토리 컴포넌트 처리
+		if (InventoryComponent->ItemSlots.IsValidIndex(SlotWidget->SlotIndex))
+		{
+			UpdatedSlotData = InventoryComponent->ItemSlots[SlotWidget->SlotIndex];
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[UpdateCurrentTooltip] 슬롯 인덱스가 범위를 벗어남"));
+			return;
+		}
+	}
+
+	// 아이템이 변경되었으면 툴팁 숨기기
+	if (UpdatedSlotData.ItemRowName != CurrentTooltipItemData.ItemRowName)
+	{
+		HideTooltip();
+		return;
+	}
+
+	// 같은 아이템이면 업데이트된 데이터로 툴팁 새로고침
+	RefreshCurrentTooltip();
+}
+
+void UInventoryWidgetBase::RefreshCurrentTooltip()
+{
+	if (!IsTooltipVisible() || !CurrentTooltipSourceWidget)
+	{
+		return;
+	}
+
+	UInventorySlotWidget* SlotWidget = Cast<UInventorySlotWidget>(CurrentTooltipSourceWidget);
+	if (!SlotWidget)
+	{
+		return;
+	}
+
+	// 업데이트된 슬롯 데이터 가져오기
+	FBaseItemSlotData UpdatedSlotData;
+	if (UToolbarInventoryComponent* ToolbarComp = Cast<UToolbarInventoryComponent>(InventoryComponent))
+	{
+		FBaseItemSlotData* SlotDataPtr = ToolbarComp->GetItemDataAtSlot(SlotWidget->SlotIndex);
+		if (SlotDataPtr)
+		{
+			UpdatedSlotData = *SlotDataPtr;
+		}
+		else
+		{
+			return;
+		}
+	}
+	else
+	{
+		if (InventoryComponent->ItemSlots.IsValidIndex(SlotWidget->SlotIndex))
+		{
+			UpdatedSlotData = InventoryComponent->ItemSlots[SlotWidget->SlotIndex];
+		}
+		else
+		{
+			return;
+		}
+	}
+
+	// 아이템 데이터 가져오기
+	if (!ItemDataTable)
+	{
+		return;
+	}
+
+	FItemDataRow* ItemRowData = ItemDataTable->FindRow<FItemDataRow>(UpdatedSlotData.ItemRowName, TEXT("RefreshCurrentTooltip"));
+	if (!ItemRowData)
+	{
+		return;
+	}
+
+	// 툴팁 데이터 업데이트
+	if (SharedTooltipWidget && SharedTooltipWidget->IsInViewport())
+	{
+		SharedTooltipWidget->SetTooltipData(*ItemRowData, UpdatedSlotData);
+		CurrentTooltipItemData = UpdatedSlotData;
+
+		UE_LOG(LogTemp, Log, TEXT("[RefreshCurrentTooltip] 툴팁 새로고침: %s (내구도: %.1f)"),
+			*UpdatedSlotData.ItemRowName.ToString(), UpdatedSlotData.Durability);
+	}
 }

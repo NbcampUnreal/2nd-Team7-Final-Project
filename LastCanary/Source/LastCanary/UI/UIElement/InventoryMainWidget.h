@@ -51,6 +51,9 @@ public:
 	void ShowItemDropQuantityWidget(UInventorySlotWidget* SourceWidget);
 
 	UFUNCTION(BlueprintCallable)
+	void HideItemDropQuantityWidget();
+
+	UFUNCTION(BlueprintCallable)
 	void HandleDropOutsideSlots(UInventorySlotWidget* SourceWidget, int32 Quantity);
 
 	FTimerHandle SlotItemTextTimerHandle;

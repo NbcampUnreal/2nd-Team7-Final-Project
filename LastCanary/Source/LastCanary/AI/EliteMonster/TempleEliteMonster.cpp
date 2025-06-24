@@ -6,6 +6,8 @@
 #include "AI/BaseAIController.h"
 #include "Components/SphereComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "AI/BaseAIController.h"
+#include "BehaviorTree/BlackboardComponent.h"
 
 ATempleEliteMonster::ATempleEliteMonster()
 {
@@ -106,5 +108,21 @@ void ATempleEliteMonster::ForgetTarget()
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().ClearTimer(ForgetTargetTimerHandle);
+	}
+}
+    GetCharacterMovement()->MaxWalkSpeed = 200.0f;
+}
+
+void ATempleEliteMonster::ReceiveTrackingTarget(AActor* NewTarget)
+{
+	if (!HasAuthority()) return;
+
+	if (ABaseAIController* AI = Cast<ABaseAIController>(GetController()))
+	{
+		if (UBlackboardComponent* BB = AI->GetBlackboardComponent())
+		{
+			BB->SetValueAsObject("TargetActor", NewTarget);
+			AI->SetChasing(NewTarget); // 상태 변경
+		}
 	}
 }

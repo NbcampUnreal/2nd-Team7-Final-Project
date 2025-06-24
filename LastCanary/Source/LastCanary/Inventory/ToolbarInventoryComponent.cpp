@@ -61,9 +61,8 @@ void UToolbarInventoryComponent::InitializeManagers()
     {
         BackpackManager->Initialize(this);
 
-        // 델리게이트 연결
-        BackpackManager->OnBackpackEquipped.AddDynamic(this, &UToolbarInventoryComponent::OnBackpackEquippedHandler);
-        BackpackManager->OnBackpackUnequipped.AddDynamic(this, &UToolbarInventoryComponent::OnBackpackUnequippedHandler);
+        BackpackManager->OnBackpackEquipped.AddUniqueDynamic(this, &UToolbarInventoryComponent::OnBackpackEquippedHandler);
+        BackpackManager->OnBackpackUnequipped.AddUniqueDynamic(this, &UToolbarInventoryComponent::OnBackpackUnequippedHandler);
     }
 
     // UI 컨트롤러 초기화
@@ -311,6 +310,11 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
         return;
     }
 
+    if (!CanChangeEquipment())
+    {
+        return;
+    }
+
     if (!ItemSlots.IsValidIndex(SlotIndex))
     {
         LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::EquipItemAtSlot] 유효하지 않은 슬롯 인덱스: %d"), SlotIndex);
@@ -400,6 +404,11 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
         return;
     }
 
+    if (!CanChangeEquipment())
+    {
+        return;
+    }
+
     if (CurrentEquippedSlotIndex < 0 || !ItemSlots.IsValidIndex(CurrentEquippedSlotIndex))
     {
         LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::UnequipCurrentItem] 장착된 아이템이 없습니다."));
@@ -408,6 +417,14 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
 
     SyncEquippedItemDurabilityToSlot();
     SyncGunStateToSlot();
+
+    if (AItemBase* CurrentItem = Cast<AItemBase>(EquippedItemComponent->GetChildActor()))
+    {
+        if (CurrentItem->OnItemStateChanged.IsAlreadyBound(this, &UToolbarInventoryComponent::OnEquippedItemStateChanged))
+        {
+            CurrentItem->OnItemStateChanged.RemoveDynamic(this, &UToolbarInventoryComponent::OnEquippedItemStateChanged);
+        }
+    }
 
     FBaseItemSlotData* SlotData = GetItemDataAtSlot(CurrentEquippedSlotIndex);
     if (!SlotData)
@@ -626,6 +643,8 @@ void UToolbarInventoryComponent::SetupEquippedItem(UChildActorComponent* ItemCom
         EquipmentItem->SetEquipped(true);
     }
 
+    EquippedItem->OnItemStateChanged.AddUniqueDynamic(this, &UToolbarInventoryComponent::OnEquippedItemStateChanged);
+
     if (ABackpackItem* BackpackItem = Cast<ABackpackItem>(EquippedItem))
     {
         BackpackItem->bMeshVisible = false; // 자동으로 복제됨
@@ -818,6 +837,11 @@ void UToolbarInventoryComponent::Server_DropItem_Implementation(int32 SlotIndex,
 
 bool UToolbarInventoryComponent::TryDropItemAtSlot(int32 SlotIndex, int32 Quantity)
 {
+    if (!CanChangeEquipment())
+    {
+        return false;
+    }
+
     if (!ItemSlots.IsValidIndex(SlotIndex))
     {
         LOG_Item_WARNING(TEXT("[TryDropItemAtSlot] 잘못된 슬롯 인덱스: %d"), SlotIndex);
@@ -920,6 +944,23 @@ void UToolbarInventoryComponent::Multicast_SetBackpackVisibility_Implementation(
             MeshComp->SetVisibility(bVisible);
         }
     }
+}
+
+bool UToolbarInventoryComponent::CanChangeEquipment() const
+{
+    AItemBase* CurrentItem = GetCurrentEquippedItem();
+    if (!CurrentItem)
+    {
+        return true;
+    }
+
+    if (CurrentItem->IsUsing())
+    {
+        LOG_Item_WARNING(TEXT("[CanChangeEquipment] 아이템 사용 중에는 장비를 변경할 수 없습니다."));
+        return false;
+    }
+
+    return true;
 }
 
 bool UToolbarInventoryComponent::IsCollectibleItem(const FItemDataRow* ItemData) const
@@ -1247,6 +1288,11 @@ void UToolbarInventoryComponent::MulticastUpdateItemText_Implementation(const FT
     }
 }
 
+void UToolbarInventoryComponent::OnEquippedItemStateChanged()
+{
+    SyncEquippedItemDurabilityToSlot();
+}
+
 bool UToolbarInventoryComponent::TrySwapBackpackSlots(int32 FromBackpackIndex, int32 ToBackpackIndex)
 {
     if (CurrentEquippedSlotIndex < 0 || !ItemSlots.IsValidIndex(CurrentEquippedSlotIndex))
@@ -1395,17 +1441,22 @@ bool UToolbarInventoryComponent::TryMoveBackpackItemToToolbar(int32 BackpackInde
 
     // 아이템 이동
     ToolbarSlot.ItemRowName = BackpackSlot.ItemRowName;
-    ToolbarSlot.Quantity = BackpackSlot.Quantity;
+    ToolbarSlot.Quantity = 1;
     ToolbarSlot.bIsValid = true;
     ToolbarSlot.bIsEquipped = false;
 
-    // 가방 슬롯을 Default로 설정
-    BackpackSlot.ItemRowName = FName("Default");
-    BackpackSlot.Quantity = 0;
+    BackpackSlot.Quantity -= 1;
+
+    // 가방 슬롯이 비었다면 Default로 설정
+    if (BackpackSlot.Quantity <= 0)
+    {
+        BackpackSlot.ItemRowName = FName("Default");
+        BackpackSlot.Quantity = 0;
+    }
 
     OnInventoryUpdated.Broadcast();
 
-    LOG_Item_WARNING(TEXT("[TryMoveBackpackItemToToolbar] 가방->툴바 이동 성공: %s"), *ToolbarSlot.ItemRowName.ToString());
+    LOG_Item_WARNING(TEXT("[TryMoveBackpackItemToToolbar] 가방->툴바 이동 성공: %s (1개, 가방 잔여: %d개)"), *ToolbarSlot.ItemRowName.ToString(), BackpackSlot.Quantity);
 
     return true;
 }

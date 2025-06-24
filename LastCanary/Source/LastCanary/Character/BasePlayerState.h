@@ -71,6 +71,9 @@ public:
 	bool bInfiniteHP{ false };
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	bool bInfiniteSpirit{ false };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	float FallDamageThreshold{ InitialStats.FallDamageThreshold };
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
@@ -109,6 +112,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	float MaxSpirit{ InitialStats.MaxSpirit };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float PanicTriggerThreshold{ InitialStats.PanicTriggerThreshold };
 
 	//InputMode
 	//인풋모드 변경(Toggle, Hold)
@@ -181,7 +187,7 @@ public:
 	UFUNCTION()
 	void OnRep_CurrentStamina();
 
-	UFUNCTION()
+	UFUNCTION(BlueprintCallable)
 	void ApplyDamage(float Damage);
 
 	FORCEINLINE float GetStamina() const { return CurrentStamina; }
