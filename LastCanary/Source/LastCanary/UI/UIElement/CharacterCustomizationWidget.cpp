@@ -16,7 +16,7 @@
 void UCharacterCustomizationWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
-
+	// 스켈레탈 메시 //
 	if (ViewNextFullBodyButton)
 	{
 		ViewNextFullBodyButton->OnClicked.AddUniqueDynamic(this, &UCharacterCustomizationWidget::OnSelectFullBody);
@@ -57,10 +57,48 @@ void UCharacterCustomizationWidget::NativeConstruct()
 		ViewNextBootsButton->OnClicked.AddUniqueDynamic(this, &UCharacterCustomizationWidget::OnSelectBoots);
 	}
 
+	// 머티리얼 // 
+	if (ViewNextGloveMaterialButton)
+	{
+		ViewNextGloveMaterialButton->OnClicked.AddUniqueDynamic(this, &UCharacterCustomizationWidget::OnSelectGloveMaterial);
+	}
+
+	if (ViewNextJacketMaterialButton)
+	{
+		ViewNextJacketMaterialButton->OnClicked.AddUniqueDynamic(this, &UCharacterCustomizationWidget::OnSelectJacketMaterial);
+	}
+
+	if (ViewNextPantsMaterialButton)
+	{
+		ViewNextPantsMaterialButton->OnClicked.AddUniqueDynamic(this, &UCharacterCustomizationWidget::OnSelectPantsMaterial);
+	}
+
+	if (ViewNextBeltsMaterialButton)
+	{
+		ViewNextBeltsMaterialButton->OnClicked.AddUniqueDynamic(this, &UCharacterCustomizationWidget::OnSelectBeltsMaterial);
+	}
+
+	if (ViewNextHelmetsMaterialButton)
+	{
+		ViewNextHelmetsMaterialButton->OnClicked.AddUniqueDynamic(this, &UCharacterCustomizationWidget::OnSelectHelmetsMaterial);
+	}
+
+	if (ViewNextBootsMaterialButton)
+	{
+		ViewNextBootsMaterialButton->OnClicked.AddUniqueDynamic(this, &UCharacterCustomizationWidget::OnSelectBootsMaterial);
+	}
+
 	if (ViewNextArmorMaterialButton)
 	{
 		ViewNextArmorMaterialButton->OnClicked.AddUniqueDynamic(this, &UCharacterCustomizationWidget::OnSelectArmorMaterial);
 	}
+
+	if (ViewNextFlagMaterialButton)
+	{
+		ViewNextFlagMaterialButton->OnClicked.AddUniqueDynamic(this, &UCharacterCustomizationWidget::OnSelectFlagMaterial);
+	}
+
+	// UI 관련 // 
 
 	if (CloseButton)
 	{
@@ -77,6 +115,7 @@ void UCharacterCustomizationWidget::NativeConstruct()
 void UCharacterCustomizationWidget::NativeDestruct()
 {
 	Super::NativeDestruct();
+	// 스켈레탈 메시 //
 	if (ViewNextFullBodyButton)
 	{
 		ViewNextFullBodyButton->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::OnSelectFullBody);
@@ -117,11 +156,49 @@ void UCharacterCustomizationWidget::NativeDestruct()
 		ViewNextBootsButton->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::OnSelectBoots);
 	}
 
+	// 머티리얼 //
+	if (ViewNextGloveMaterialButton)
+	{
+		ViewNextGloveMaterialButton->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::OnSelectGloveMaterial);
+	}
+
+	if (ViewNextJacketMaterialButton)
+	{
+		ViewNextJacketMaterialButton->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::OnSelectJacketMaterial);
+	}
+
+	if (ViewNextPantsMaterialButton)
+	{
+		ViewNextPantsMaterialButton->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::OnSelectPantsMaterial);
+	}
+
+	if (ViewNextBeltsMaterialButton)
+	{
+		ViewNextBeltsMaterialButton->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::OnSelectBeltsMaterial);
+	}
+
+	if (ViewNextHelmetsMaterialButton)
+	{
+		ViewNextHelmetsMaterialButton->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::OnSelectHelmetsMaterial);
+	}
+
+	if (ViewNextBootsMaterialButton)
+	{
+		ViewNextBootsMaterialButton->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::OnSelectBootsMaterial);
+	}
+
 	if (ViewNextArmorMaterialButton)
 	{
 		ViewNextArmorMaterialButton->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::OnSelectArmorMaterial);
 	}
 
+	if (ViewNextFlagMaterialButton)
+	{
+		ViewNextFlagMaterialButton->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::OnSelectFlagMaterial);
+	}
+
+
+	// UI 관련 //
 	if (CloseButton)
 	{
 		CloseButton->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::CloseCustomizationWidget);
@@ -301,6 +378,104 @@ void UCharacterCustomizationWidget::OnSelectBoots()
 	UpdateCustomization();
 }
 
+void UCharacterCustomizationWidget::OnSelectGloveMaterial()
+{
+	if (!IsValid(TargetCharacter)) return;
+	if (!CharacterMeshData) return;
+	int32 Maxindex = CharacterMeshData->GloveMaterials.Num() - 1;
+	CurrentGloveMaterialIndex++;
+	if (CurrentGloveMaterialIndex > Maxindex)
+	{
+		CurrentGloveMaterialIndex = 0;
+	}
+	CurrentSelection.GloveMaterialID = CurrentGloveMaterialIndex;
+
+	// 즉시 적용
+	UpdateCustomization();
+}
+
+void UCharacterCustomizationWidget::OnSelectJacketMaterial()
+{
+	if (!IsValid(TargetCharacter)) return;
+	if (!CharacterMeshData) return;
+	int32 Maxindex = CharacterMeshData->JacketMaterials.Num() - 1;
+	CurrentJacketMaterialIndex++;
+	if (CurrentJacketMaterialIndex > Maxindex)
+	{
+		CurrentJacketMaterialIndex = 0;
+	}
+	CurrentSelection.JacketMaterialID = CurrentJacketMaterialIndex;
+
+	// 즉시 적용
+	UpdateCustomization();
+}
+
+void UCharacterCustomizationWidget::OnSelectPantsMaterial()
+{
+	if (!IsValid(TargetCharacter)) return;
+	if (!CharacterMeshData) return;
+	int32 Maxindex = CharacterMeshData->PantsMaterials.Num() - 1;
+	CurrentPantsMaterialIndex++;
+	if (CurrentPantsMaterialIndex > Maxindex)
+	{
+		CurrentPantsMaterialIndex = 0;
+	}
+	CurrentSelection.PantsMaterialID = CurrentPantsMaterialIndex;
+
+	// 즉시 적용
+	UpdateCustomization();
+
+}
+
+void UCharacterCustomizationWidget::OnSelectBeltsMaterial()
+{
+	if (!IsValid(TargetCharacter)) return;
+	if (!CharacterMeshData) return;
+	int32 Maxindex = CharacterMeshData->BeltsMaterials.Num() - 1;
+	CurrentBeltsMaterialIndex++;
+	if (CurrentBeltsMaterialIndex > Maxindex)
+	{
+		CurrentBeltsMaterialIndex = 0;
+	}
+	CurrentSelection.BeltsMaterialID = CurrentBeltsMaterialIndex;
+
+	// 즉시 적용
+	UpdateCustomization();
+
+}
+
+void UCharacterCustomizationWidget::OnSelectHelmetsMaterial()
+{
+	if (!IsValid(TargetCharacter)) return;
+	if (!CharacterMeshData) return;
+	int32 Maxindex = CharacterMeshData->HelmetMaterials.Num() - 1;
+	CurrentHelmetMaterialIndex++;
+	if (CurrentHelmetMaterialIndex > Maxindex)
+	{
+		CurrentHelmetMaterialIndex = 0;
+	}
+	CurrentSelection.HelmetMaterialID = CurrentHelmetMaterialIndex;
+
+	// 즉시 적용
+	UpdateCustomization();
+}
+
+void UCharacterCustomizationWidget::OnSelectBootsMaterial()
+{
+	if (!IsValid(TargetCharacter)) return;
+	if (!CharacterMeshData) return;
+	int32 Maxindex = CharacterMeshData->BootsMaterials.Num() - 1;
+	CurrentBootsMaterialIndex++;
+	if (CurrentBootsMaterialIndex > Maxindex)
+	{
+		CurrentBootsMaterialIndex = 0;
+	}
+	CurrentSelection.BootsMaterialID = CurrentBootsMaterialIndex;
+
+	// 즉시 적용
+	UpdateCustomization();
+}
+
 void UCharacterCustomizationWidget::OnSelectArmorMaterial()
 {
 	if (!IsValid(TargetCharacter)) return;
@@ -312,6 +487,22 @@ void UCharacterCustomizationWidget::OnSelectArmorMaterial()
 		CurrentArmorMaterialIndex = 0;
 	}
 	CurrentSelection.ArmorMaterialID = CurrentArmorMaterialIndex;
+
+	// 즉시 적용
+	UpdateCustomization();
+}
+
+void UCharacterCustomizationWidget::OnSelectFlagMaterial()
+{
+	if (!IsValid(TargetCharacter)) return;
+	if (!CharacterMeshData) return;
+	int32 Maxindex = CharacterMeshData->FlagMaterials.Num() - 1;
+	CurrentFlagMaterialIndex++;
+	if (CurrentFlagMaterialIndex > Maxindex)
+	{
+		CurrentFlagMaterialIndex = 0;
+	}
+	CurrentSelection.FlagMaterialID = CurrentFlagMaterialIndex;
 
 	// 즉시 적용
 	UpdateCustomization();
@@ -397,12 +588,7 @@ void UCharacterCustomizationWidget::InitCustomizationIndex(FCharacterCustomizati
 	CurrentHelmetMaterialIndex = SavedCustomizationData.HelmetMaterialID;
 	CurrentArmorMaterialIndex = SavedCustomizationData.ArmorMaterialID;
 	CurrentBootsMaterialIndex = SavedCustomizationData.BootsMaterialID;
-
-	LOG_Char_WARNING(TEXT("Current Customization Indexes - FullBody: %d, Glove: %d, Jacket: %d, Pants: %d, Belts: %d, Helmet: %d, Armor: %d, Boots: %d | Material - Body: %d, Glove: %d, Jacket: %d, Pants: %d, Belts: %d, Helmet: %d, Armor: %d, Boots: %d"),
-		CurrentFullBodyIndex, CurrentGloveIndex, CurrentJacketIndex, CurrentPantsIndex, CurrentBeltsIndex,
-		CurrentHelmetsIndex, CurrentArmorIndex, CurrentBootsIndex,
-		CurrentFullBodyMaterialIndex, CurrentGloveMaterialIndex, CurrentJacketMaterialIndex, CurrentPantsMaterialIndex,
-		CurrentBeltsMaterialIndex, CurrentHelmetMaterialIndex, CurrentArmorMaterialIndex, CurrentBootsMaterialIndex);
+	CurrentFlagMaterialIndex = SavedCustomizationData.FlagMaterialID;
 
 	UpdateCustomization();
 }
@@ -427,6 +613,7 @@ void UCharacterCustomizationWidget::UpdateCustomization()
 	USkeletalMesh* HelmetSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->HelmetMeshes, CurrentHelmetsIndex);
 	SetPartMesh(TargetCharacter->CustomHelmetMesh, HelmetSkeletalMesh);
 	SetPartMaterial(TargetCharacter->CustomHelmetMesh, 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->HelmetMaterials, CurrentHelmetMaterialIndex));
+	SetPartMaterial(TargetCharacter->CustomHelmetMesh, 1, CharacterMeshData->GetMaterialByID(CharacterMeshData->FlagMaterials, CurrentFlagMaterialIndex));
 
 	USkeletalMesh* GloveSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->GloveMeshes, CurrentGloveIndex);
 	SetPartMesh(TargetCharacter->CustomGloveMesh, GloveSkeletalMesh);
@@ -446,7 +633,8 @@ void UCharacterCustomizationWidget::UpdateCustomization()
 
 	USkeletalMesh* ArmorSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->ArmorMeshes, CurrentArmorIndex);
 	SetPartMesh(TargetCharacter->CustomArmorMesh, ArmorSkeletalMesh);
-	SetPartMaterial(TargetCharacter->CustomArmorMesh, 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->ArmorMaterials, CurrentArmorMaterialIndex));
+	SetPartMaterial(TargetCharacter->CustomArmorMesh, 1, CharacterMeshData->GetMaterialByID(CharacterMeshData->ArmorMaterials, CurrentArmorMaterialIndex));
+	SetPartMaterial(TargetCharacter->CustomArmorMesh, 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->FlagMaterials, CurrentFlagMaterialIndex));
 
 	USkeletalMesh* BootsSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->BootsMeshes, CurrentBootsIndex);
 	SetPartMesh(TargetCharacter->CustomBootsMesh, BootsSkeletalMesh);
@@ -472,6 +660,7 @@ void UCharacterCustomizationWidget::ApplySetting()
 	CurrentSelection.HelmetMaterialID = CurrentHelmetMaterialIndex;
 	CurrentSelection.ArmorMaterialID = CurrentArmorMaterialIndex;
 	CurrentSelection.BootsMaterialID = CurrentBootsMaterialIndex;
+	CurrentSelection.FlagMaterialID = CurrentFlagMaterialIndex;
 
 	ULCLocalPlayerSaveGame::SaveCustomizationData(GetWorld(), CurrentSelection);
 }

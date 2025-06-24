@@ -57,7 +57,11 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void RefreshInputModeText();
 
+	UFUNCTION(BlueprintCallable)
+	void SaveVoiceMode(EVoiceInputMode NewSettings);
+
 	void InitializeVoiceChatVolume();
 	void InitializeMicrophoneVolume();
+	void InitializeVoiceMode();
 	void InitializeAllOptions();
 };
