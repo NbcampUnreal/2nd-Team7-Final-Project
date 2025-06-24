@@ -139,48 +139,46 @@ bool ALCPushGimmick::IsBlockedByWall(const FVector& Direction)
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(this);
 
-	// ✅ 1. 액터 태그 감지용 - 살짝 아래로 향하는 라인
 	{
 		FHitResult HitActor;
 		const FVector Start = GetActorLocation();
 		const FVector AdjustedDirection = (Direction + FVector(0.f, 0.f, -0.7f)).GetSafeNormal();
 		const FVector End = Start + AdjustedDirection * 500.f;
 
-		DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 1.5f, 0, 2.0f);
+		//DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 1.5f, 0, 2.0f);
 
 		bool bHit = GetWorld()->LineTraceSingleByChannel(HitActor, Start, End, ECC_Visibility, Params);
 
 		if (bHit && HitActor.GetActor() && HitActor.GetActor()->ActorHasTag(FName("GimmickBlocker")))
 		{
-			LOG_Art(Log, TEXT("✅ GimmickBlocker 액터 태그 감지됨! Actor: %s"), *HitActor.GetActor()->GetName());
+			LOG_Art(Log, TEXT("GimmickBlocker 액터 태그 감지됨! Actor: %s"), *HitActor.GetActor()->GetName());
 			return true;
 		}
 	}
 
-	// ✅ 2. 컴포넌트 태그 감지용 - 정면 직진 라인
 	{
 		FHitResult HitComponent;
-		const FVector Start = GetActorLocation() + FVector(0, 0, 50.f); // 살짝 위에서 시작
+		const FVector Start = GetActorLocation() + FVector(0, 0, 50.f); 
 		const FVector End = Start + Direction * 500.f;
 
-		DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 1.5f, 0, 2.0f);
+		//DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 1.5f, 0, 2.0f);
 
 		bool bHit = GetWorld()->LineTraceSingleByChannel(HitComponent, Start, End, ECC_Visibility, Params);
 
 		if (bHit && HitComponent.Component.IsValid())
 		{
-			LOG_Art(Log, TEXT("▶ 컴포넌트 감지! Actor: %s | Component: %s"),
+			LOG_Art(Log, TEXT("컴포넌트 감지! Actor: %s | Component: %s"),
 				*GetNameSafe(HitComponent.GetActor()),
 				*GetNameSafe(HitComponent.Component.Get()));
 
 			for (const FName& Tag : HitComponent.Component->ComponentTags)
 			{
-				LOG_Art(Log, TEXT("📦 Component Tag: %s"), *Tag.ToString());
+				LOG_Art(Log, TEXT("Component Tag: %s"), *Tag.ToString());
 			}
 
 			if (HitComponent.Component->ComponentHasTag(FName("BlockPush")))
 			{
-				LOG_Art(Log, TEXT("✅ BlockPush 컴포넌트 태그 감지됨!"));
+				LOG_Art(Log, TEXT("BlockPush 컴포넌트 태그 감지됨!"));
 				return true;
 			}
 		}

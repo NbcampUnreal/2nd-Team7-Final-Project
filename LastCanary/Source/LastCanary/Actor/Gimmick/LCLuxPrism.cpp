@@ -13,6 +13,8 @@ ALCLuxPrism::ALCLuxPrism()
 	, LightRange(1000.f)
 	, bUseDebugLine(true)
 	, EmitInterval(0.1f)
+	, CurrentLuxCount(0)
+	, RequiredLuxCount(2)
 {
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true;
@@ -55,20 +57,96 @@ void ALCLuxPrism::ActivateGimmick_Implementation()
 
 void ALCLuxPrism::TriggerEffect_Implementation()
 {
-	if (bIsLuxReceived) return;
+	AActor* Source = GetInstigator();
+	if (!IsValid(Source))
+	{
+		LOG_Art_WARNING(TEXT("LuxPrism ▶ TriggerEffect ▶ Source(Instigator) 없음"));
+		return;
+	}
 
-	bIsLuxReceived = true;
-	StartEmitLux();
-	Multicast_StartEmitLux();
+	if (ActiveLuxSources.Contains(Source))
+	{
+		return;
+	}
+
+	ActiveLuxSources.Add(Source);
+	++CurrentLuxCount;
+
+	LOG_Art(Log, TEXT("LuxPrism ▶ TriggerEffect ▶ 현재 LuxCount: %d | From: %s"),
+		CurrentLuxCount, *Source->GetName());
+
+	if (!bIsLuxReceived && CurrentLuxCount >= RequiredLuxCount)
+	{
+		bIsLuxReceived = true;
+		StartEmitLux();
+		Multicast_StartEmitLux();
+	}
 }
 
 void ALCLuxPrism::StopEffect_Implementation()
 {
-	if (!bIsLuxReceived) return;
+	AActor* Source = GetInstigator();
+	if (!IsValid(Source))
+	{
+		LOG_Art_WARNING(TEXT("LuxPrism ▶ StopEffect ▶ Source(Instigator) 없음"));
+		return;
+	}
 
-	bIsLuxReceived = false;
-	StopEmitLux();
-	Multicast_StopEmitLux();
+	if (ActiveLuxSources.Remove(Source) > 0)
+	{
+		CurrentLuxCount = FMath::Max(CurrentLuxCount - 1, 0);
+
+		LOG_Art(Log, TEXT("LuxPrism ▶ StopEffect ▶ 현재 LuxCount: %d | From: %s"),
+			CurrentLuxCount, *Source->GetName());
+	}
+
+	if (bIsLuxReceived && CurrentLuxCount < RequiredLuxCount)
+	{
+		bIsLuxReceived = false;
+		StopEmitLux();
+		Multicast_StopEmitLux();
+	}
+}
+
+void ALCLuxPrism::TriggerEffectFrom(AActor* Source)
+{
+	if (!IsValid(Source)) return;
+
+	if (ActiveLuxSources.Contains(Source))
+		return;
+
+	ActiveLuxSources.Add(Source);
+	++CurrentLuxCount;
+
+	LOG_Art(Log, TEXT("LuxPrism ▶ TriggerEffectFrom ▶ 현재 LuxCount: %d | From: %s"),
+		CurrentLuxCount, *Source->GetName());
+
+	if (!bIsLuxReceived && CurrentLuxCount >= RequiredLuxCount)
+	{
+		bIsLuxReceived = true;
+		StartEmitLux();
+		Multicast_StartEmitLux();
+	}
+}
+
+void ALCLuxPrism::StopEffectFrom(AActor* Source)
+{
+	if (!IsValid(Source)) return;
+
+	if (ActiveLuxSources.Remove(Source) > 0)
+	{
+		CurrentLuxCount = FMath::Max(CurrentLuxCount - 1, 0);
+
+		LOG_Art(Log, TEXT("LuxPrism ▶ StopEffectFrom ▶ 현재 LuxCount: %d | From: %s"),
+			CurrentLuxCount, *Source->GetName());
+	}
+
+	if (bIsLuxReceived && CurrentLuxCount < RequiredLuxCount)
+	{
+		bIsLuxReceived = false;
+		StopEmitLux();
+		Multicast_StopEmitLux();
+	}
 }
 
 void ALCLuxPrism::StartEmitLux()
@@ -112,8 +190,6 @@ void ALCLuxPrism::StopEmitLux()
 
 void ALCLuxPrism::EmitLux()
 {
-	//LOG_Art(Log, TEXT("▶ EmitLux 실행 중"));
-
 	if (!EmitOrigin) return;
 
 	const FVector Start = EmitOrigin->GetComponentLocation();
@@ -136,13 +212,34 @@ void ALCLuxPrism::EmitLux()
 
 	if (HasAuthority())
 	{
+		if (PreviouslyHitActor.IsValid() && PreviouslyHitActor != HitActor)
+		{
+			if (PreviouslyHitActor->GetClass()->ImplementsInterface(ULCGimmickInterface::StaticClass()))
+			{
+				if (ALCLuxPrism* Prism = Cast<ALCLuxPrism>(PreviouslyHitActor.Get()))
+				{
+					Prism->StopEffectFrom(this);
+				}
+				else
+				{
+					IGimmickEffectInterface::Execute_StopEffect(PreviouslyHitActor.Get());
+				}
+			}
+			PreviouslyHitActor = nullptr;
+		}
+
 		if (bHit && HitActor && HitActor->ActorHasTag("Lux"))
 		{
-			if (HitActor->GetClass()->ImplementsInterface(ULCGimmickInterface::StaticClass()))
+			if (ALCLuxPrism* Prism = Cast<ALCLuxPrism>(HitActor))
+			{
+				Prism->TriggerEffectFrom(this); 
+			}
+			else if (HitActor->GetClass()->ImplementsInterface(ULCGimmickInterface::StaticClass()))
 			{
 				IGimmickEffectInterface::Execute_TriggerEffect(HitActor);
-				//LOG_Art(Log, TEXT("[EmitLux][Server] ▶ TriggerEffect 호출: %s"), *HitActor->GetName());
 			}
+
+			PreviouslyHitActor = HitActor;
 		}
 	}
 
@@ -156,6 +253,7 @@ void ALCLuxPrism::EmitLux()
 		}
 	}
 }
+
 
 void ALCLuxPrism::Multicast_StartEmitLux_Implementation()
 {

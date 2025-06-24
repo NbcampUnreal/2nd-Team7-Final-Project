@@ -1,4 +1,5 @@
 #include "LCRotationLuxStatue.h"
+#include "Actor/Gimmick/LCLuxPrism.h"
 #include "Interface/LCGimmickInterface.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraComponent.h"
@@ -87,25 +88,32 @@ void ALCRotationLuxStatue::EmitLuxRay()
 
 	AActor* HitActor = bHit ? Hit.GetActor() : nullptr;
 
-	if (bHit)
+	if (bHit && HitActor && HitActor->ActorHasTag("Lux"))
 	{
-		//LOG_Art(Log, TEXT("[EmitLuxRay] ▶ 빛이 맞은 액터: %s"), *GetNameSafe(HitActor));
-
-		if (HitActor->ActorHasTag("Lux") &&
-			HitActor->GetClass()->ImplementsInterface(ULCGimmickInterface::StaticClass()))
+		if (HitActor->GetClass()->ImplementsInterface(ULCGimmickInterface::StaticClass()))
 		{
-			ILCGimmickInterface::Execute_ActivateGimmick(HitActor);
+			if (ALCLuxPrism* Prism = Cast<ALCLuxPrism>(HitActor))
+			{
+				Prism->TriggerEffectFrom(this); 
+			}
+			else
+			{
+				ILCGimmickInterface::Execute_ActivateGimmick(HitActor);
+			}
 		}
-	}
-	else
-	{
-		//LOG_Art(Log, TEXT("[EmitLuxRay] ▶ 빛이 닿은 액터 없음"));
 	}
 
 	if (LastLitTarget && LastLitTarget != HitActor &&
 		LastLitTarget->GetClass()->ImplementsInterface(ULCGimmickInterface::StaticClass()))
 	{
-		ILCGimmickInterface::Execute_DeactivateGimmick(LastLitTarget);
+		if (ALCLuxPrism* Prism = Cast<ALCLuxPrism>(LastLitTarget))
+		{
+			Prism->StopEffectFrom(this);
+		}
+		else
+		{
+			ILCGimmickInterface::Execute_DeactivateGimmick(LastLitTarget);
+		}
 	}
 
 	LastLitTarget = HitActor;
@@ -119,21 +127,22 @@ void ALCRotationLuxStatue::DeactivateLux()
 	if (!HasAuthority() || !bIsLuxActive) return;
 
 	bIsLuxActive = false;
-
-	//LOG_Art(Log, TEXT("Lux 비활성화"));
-
 	GetWorldTimerManager().ClearTimer(LuxEmitTimer);
 
 	if (LastLitTarget && LastLitTarget->GetClass()->ImplementsInterface(ULCGimmickInterface::StaticClass()))
 	{
-		ILCGimmickInterface::Execute_DeactivateGimmick(LastLitTarget);
+		if (ALCLuxPrism* Prism = Cast<ALCLuxPrism>(LastLitTarget))
+		{
+			Prism->StopEffectFrom(this); 
+		}
+		else
+		{
+			ILCGimmickInterface::Execute_DeactivateGimmick(LastLitTarget);
+		}
 		LastLitTarget = nullptr;
 	}
 
-	if (LightEffectComponentLeft)
-	{
-		LightEffectComponentLeft->Deactivate();
-	}
+	Multicast_StopLightEffect();
 }
 
 void ALCRotationLuxStatue::Multicast_EmitLightEffect_Implementation(const FVector& End)
@@ -157,6 +166,14 @@ void ALCRotationLuxStatue::Multicast_PlayLightSound_Implementation()
 	{
 		AudioComponent->SetSound(LightActivateSound);
 		AudioComponent->Play();
+	}
+}
+
+void ALCRotationLuxStatue::Multicast_StopLightEffect_Implementation()
+{
+	if (LightEffectComponentLeft)
+	{
+		LightEffectComponentLeft->Deactivate();
 	}
 }
 
