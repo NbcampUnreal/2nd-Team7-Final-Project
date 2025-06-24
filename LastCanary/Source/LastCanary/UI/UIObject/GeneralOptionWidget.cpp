@@ -55,7 +55,7 @@ void UGeneralOptionWidget::NativeConstruct()
 			MouseSensitivitySlider->SetValue(OptionManager->MouseSensitivity);
 			if (MouseSensitivityText)
 			{
-				MouseSensitivityText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), OptionManager->MouseSensitivity * 100.f)));
+				MouseSensitivityText->SetText(FText::FromString(FString::Printf(TEXT("%.2f"), OptionManager->MouseSensitivity)));
 			}
 			MouseSensitivitySlider->OnValueChanged.AddUniqueDynamic(this, &UGeneralOptionWidget::OnSensitivityChanged);
 		}
@@ -177,7 +177,7 @@ void UGeneralOptionWidget::OnSensitivityChanged(float Value)
 
 	if (MouseSensitivityText)
 	{
-		MouseSensitivityText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), AdjustedValue * 100.f)));
+		MouseSensitivityText->SetText(FText::FromString(FString::Printf(TEXT("%.2f"), AdjustedValue)));
 	}
 
 	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
@@ -330,7 +330,7 @@ void UGeneralOptionWidget::InitializeSensitivity()
 
 		if (MouseSensitivityText)
 		{
-			MouseSensitivityText->SetText(FText::FromString(FString::Printf(TEXT("%.0f %%"), SavedSensitivity * 100.f)));
+			MouseSensitivityText->SetText(FText::FromString(FString::Printf(TEXT("%.2f"), SavedSensitivity)));
 		}
 	}
 }

@@ -34,6 +34,8 @@ public:
 	UPROPERTY(BlueprintReadWrite, Category = "Customization")
 	FCharacterCustomizationData CurrentSelection;
 
+	// 스켈레탈 메시 //
+
 	UPROPERTY(meta = (BindWidget))
 	UButton* ViewNextFullBodyButton;
 
@@ -57,15 +59,43 @@ public:
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* ViewNextBootsButton;
+	
+	
+	// 머티리얼 //
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* ViewNextGloveMaterialButton;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* ViewNextJacketMaterialButton;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* ViewNextPantsMaterialButton;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* ViewNextBeltsMaterialButton;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* ViewNextHelmetsMaterialButton;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* ViewNextBootsMaterialButton;
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* ViewNextArmorMaterialButton;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* ViewNextFlagMaterialButton;
+
+
+	// UI 관련 //
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* CloseButton;
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* ApplyButton;
+
 
 	UFUNCTION(BlueprintCallable)
 	void CloseCustomizationWidget();
@@ -119,7 +149,12 @@ public:
 	UPROPERTY(BlueprintReadWrite, Category = "Customization")
 	int32 CurrentBootsMaterialIndex;
 
-	// 버튼 클릭 바인딩 함수
+	UPROPERTY(BlueprintReadWrite, Category = "Customization")
+	int32 CurrentFlagMaterialIndex;
+
+	//* 버튼 클릭 바인딩 함수 *//
+
+	// 스켈레탈 메시 // 
 	UFUNCTION(BlueprintCallable)
 	void OnSelectFullBody();
 
@@ -144,8 +179,30 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void OnSelectBoots();
 
+	// 머티리얼 //
+	UFUNCTION(BlueprintCallable)
+	void OnSelectGloveMaterial();
+
+	UFUNCTION(BlueprintCallable)
+	void OnSelectJacketMaterial();
+
+	UFUNCTION(BlueprintCallable)
+	void OnSelectPantsMaterial();
+
+	UFUNCTION(BlueprintCallable)
+	void OnSelectBeltsMaterial();
+
+	UFUNCTION(BlueprintCallable)
+	void OnSelectHelmetsMaterial();
+
+	UFUNCTION(BlueprintCallable)
+	void OnSelectBootsMaterial();
+
 	UFUNCTION(BlueprintCallable)
 	void OnSelectArmorMaterial();
+
+	UFUNCTION(BlueprintCallable)
+	void OnSelectFlagMaterial();
 
 	UFUNCTION(BlueprintCallable)
 	void OnLoadCustomization(); // SaveGame 에서 저장된 값 호출

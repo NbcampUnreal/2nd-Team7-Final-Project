@@ -123,6 +123,13 @@ public:
 
 	void SetPartMaterial(USkeletalMeshComponent* Component, int32 MaterialIndex, UMaterialInterface* Material);
 
+
+	UPROPERTY(EditAnywhere, Category = "Brightness")
+	float MinBrightness = 8.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Brightness")
+	float MaxBrightness = 10.0f;
+
 	float GetBrightness();
 	void SetBrightness(float Value);
 
@@ -535,7 +542,8 @@ public:
 	float CalculateTakeSpiritDamage(float DamageAmount);
 	void EnterPanicState();
 
-
+	UFUNCTION(BlueprintImplementableEvent)
+	void EnterPanicVoice();
 
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	void HandlePlayerDeath();
@@ -624,7 +632,7 @@ public:
 	float SpeedMultiplier = 1.0f; // 0.0 ~ 1.0 범위
 	float CalculateMovementSpeedMultiplier();
 	float CalculateDebuffMultiplier();
-	float MaxWeight = 50.0f;
+	float MaxWeight = 40.0f;
 	void ResetMovementSetting();
 
 	float FrontInput = 0.0f;

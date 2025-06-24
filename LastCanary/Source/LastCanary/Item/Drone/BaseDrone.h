@@ -78,7 +78,7 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 
 	UPROPERTY(EditAnywhere, Category = "Drone | Look")
-	float LookSensitivity = 100.f;
+	float LookSensitivity = 20.f;
 
 	UPROPERTY(EditAnywhere, Category = "Drone | Look")
 	float RotationInterpSpeed = 5.f;
