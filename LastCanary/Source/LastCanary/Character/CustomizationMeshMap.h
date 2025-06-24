@@ -95,7 +95,8 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     TArray<FMaterialPartEntry> BootsMaterials;
 
-
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    TArray<FMaterialPartEntry> FlagMaterials;
 
     UFUNCTION(BlueprintCallable)
     USkeletalMesh* GetMeshByID(const TArray<FMeshPartEntry>& Entries, int32 ID) const
