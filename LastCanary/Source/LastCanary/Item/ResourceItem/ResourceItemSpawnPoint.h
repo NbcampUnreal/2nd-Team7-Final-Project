@@ -12,6 +12,14 @@ enum class ESpawnTimeCondition : uint8
     NightOnly   UMETA(DisplayName = "Night Only")    // 밤에만 스폰됨
 };
 
+UENUM(BlueprintType)
+enum class ESpawnItemType : uint8
+{
+    Resource,
+    Note,
+    Both
+};
+
 class AItemBase;
 class UItemSpawnerComponent;
 UCLASS()
@@ -64,4 +72,7 @@ public:
 
     /** 시간 조건에 맞는 아이템 필터링 */
     TArray<FName> FilterItemsByTimeCondition(const TArray<FName>& AvailableItems) const;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spawn")
+    ESpawnItemType SpawnItemType = ESpawnItemType::Resource;
 };
