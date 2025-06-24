@@ -284,5 +284,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Sync")
 	UAttachedSyncComponent* AttachedSyncComponent;
 
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
 #pragma endregion
 };

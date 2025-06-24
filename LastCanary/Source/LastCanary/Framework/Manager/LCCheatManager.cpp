@@ -90,6 +90,13 @@ void ULCCheatManager::DamageSelf(int32 Amount)
 		{
 			PS->ApplyDamage(Amount);
 			const float CurrentHP = PS->CurrentHP;
+			if (CurrentHP <= 0)
+			{
+				if (ABaseCharacter* Char = Cast<ABaseCharacter>(PC->GetPawn()))
+				{
+					Char->HandlePlayerDeath();
+				}
+			}
 			UE_LOG(LogCheat, Warning, TEXT("[치트] 셀프 데미지 %d 가함! 남은 체력 : %f"), Amount, CurrentHP);
 		}
 		else
@@ -128,15 +135,6 @@ void ULCCheatManager::AddGold(int32 Amount)
 			}
 		}
 	}
-
-	//if (APlayerController* PC = GetOuterAPlayerController())
-	//{
-	//	if (ABasePlayerState* PS = Cast<ABasePlayerState>(PC->PlayerState))
-	//	{
-	//		PS->AddTotalGold(Amount);
-	//		UE_LOG(LogCheat, Warning, TEXT("[치트] 골드 지급: %d"), Amount);
-	//	}
-	//}
 }
 
 void ULCCheatManager::KillAllEnemies()

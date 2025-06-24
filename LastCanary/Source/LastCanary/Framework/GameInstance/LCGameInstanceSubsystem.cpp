@@ -91,6 +91,33 @@ void ULCGameInstanceSubsystem::ChangeLevelByMapID(int32 MapID)
 }
 
 
+FMapDataRow* ULCGameInstanceSubsystem::GetMapDataByRowName(FName MapRowName) const
+{
+	if (!MapDataTable)
+	{
+		LOG_Item_WARNING(TEXT("[ULCGameInstanceSubsystem::GetItemDataByRowName] ItemDataTable이 없습니다."));
+		return nullptr;
+	}
+
+	return MapDataTable->FindRow<FMapDataRow>(MapRowName, TEXT("GetMapDataByRowName"));
+}
+
+FMapDataRow* ULCGameInstanceSubsystem::GetMapDataByMapID(int32 MapID) const
+{
+	static const FString ContextString(TEXT("MapInfoByMapId"));
+	TArray<FMapDataRow*> AllMaps;
+	MapDataTable->GetAllRows<FMapDataRow>(ContextString, AllMaps);
+
+	for (FMapDataRow* MapRow : AllMaps)
+	{
+		if (MapRow && MapRow->MapID == MapID)
+		{
+			return MapRow;
+		}
+	}
+	return nullptr;
+}
+
 FItemDataRow* ULCGameInstanceSubsystem::GetItemDataByRowName(FName ItemRowName) const
 {
 	if (!ItemDataTable)

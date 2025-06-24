@@ -10,7 +10,6 @@
 #include "Character/BaseCharacter.h"
 #include "Character/BasePlayerState.h"
 #include "Inventory/ToolbarInventoryComponent.h"
-#include "Inventory/BackpackInventoryComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedActionKeyMapping.h"

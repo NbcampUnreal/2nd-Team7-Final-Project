@@ -43,6 +43,7 @@ enum class EResourceInteractionType : uint8
 class AResourceItemSpawnManager;
 class UInputAction;
 class UNiagaraSystem;
+class UGeometryCollectionComponent;
 UCLASS()
 class LASTCANARY_API AResourceNode : public AActor, public IInteractableInterface
 {
@@ -159,13 +160,22 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
     bool bRequireTool = true;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resource|Harvest")
+	bool bDestroyOnDepletion = true;
+
 	//-------------------------
 	// 이펙트 및 사운드
 	//-------------------------
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
+	UGeometryCollectionComponent* GeometryCollectionComponent;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Effects")
 	UNiagaraSystem* DestroyEffect;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Effects")
 	USoundBase* DestroySound;
+
+	UFUNCTION(BlueprintNativeEvent, Category = "Resource|Interaction")
+	void OnResourceOpened();
 };

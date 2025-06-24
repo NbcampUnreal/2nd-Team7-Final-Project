@@ -8,7 +8,7 @@ enum class EPlayerState : uint8
 {
     None UMETA(DisplayName = "None"),
     Idle UMETA(DisplayName = "Idle"),
-    SplitMind UMETA(DisplayName = "정신분열중"),
+    Panic UMETA(DisplayName = "정신분열중"),
     Dead UMETA(DisplayName = "사망"),
     Escape UMETA(DisplayName = "탈출")
     // 필요한 상태 더 추가
@@ -87,8 +87,16 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stat")
     float FallDamageThreshold = 1000.0f;
 
+	// 기본값 = 50.0f -> 최대무게 10.0f
+	// 최대무게 40.0f -> 5.0f
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stat")
     float WeightSlowdownMultiplier = 50.0f;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spirit")
+    float MaxSpirit = 100.0f;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spirit")
+    float PanicTriggerThreshold = 50.0f;
 };
 
 // ------------------------------

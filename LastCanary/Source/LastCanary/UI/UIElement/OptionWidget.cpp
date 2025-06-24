@@ -28,9 +28,14 @@ void UOptionWidget::NativeConstruct()
 	{
 		ResetButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnResetButtonClicked);
 	}
+
 	if (GeneralTabButton)
 	{
 		GeneralTabButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnGeneralTabButtonClicked);
+	}
+	if (GraphicsOptionButton)
+	{
+		GraphicsOptionButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnGraphicsSettingButtonClicked);
 	}
 	if (KeySettingTabButton)
 	{
@@ -38,12 +43,9 @@ void UOptionWidget::NativeConstruct()
 	}
 	if (VoiceOptionTabButton)
 	{
-		VoiceOptionTabButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnKeyVoiceOptionTabButtonClicked);
+		VoiceOptionTabButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnVoiceOptionTabButtonClicked);
 	}
-	if (GraphicsOptionButton)
-	{
-		GraphicsOptionButton->OnClicked.AddUniqueDynamic(this, &UOptionWidget::OnGraphicsSettingButtonClicked);
-	}
+
 	if (OptionSwitcher)
 	{
 		OnGeneralTabButtonClicked();
@@ -65,9 +67,14 @@ void UOptionWidget::NativeDestruct()
 	{
 		ResetButton->OnClicked.RemoveDynamic(this, &UOptionWidget::OnResetButtonClicked);
 	}
+
 	if (GeneralTabButton)
 	{
 		GeneralTabButton->OnClicked.RemoveDynamic(this, &UOptionWidget::OnGeneralTabButtonClicked);
+	}
+	if (GraphicsOptionButton)
+	{
+		GraphicsOptionButton->OnClicked.RemoveDynamic(this, &UOptionWidget::OnGraphicsSettingButtonClicked);
 	}
 	if (KeySettingTabButton)
 	{
@@ -75,11 +82,7 @@ void UOptionWidget::NativeDestruct()
 	}
 	if (VoiceOptionTabButton)
 	{
-		VoiceOptionTabButton->OnClicked.RemoveDynamic(this, &UOptionWidget::OnKeyVoiceOptionTabButtonClicked);
-	}
-	if (GraphicsOptionButton)
-	{
-		GraphicsOptionButton->OnClicked.RemoveDynamic(this, &UOptionWidget::OnGraphicsSettingButtonClicked);
+		VoiceOptionTabButton->OnClicked.RemoveDynamic(this, &UOptionWidget::OnVoiceOptionTabButtonClicked);
 	}
 }
 
@@ -116,11 +119,23 @@ void UOptionWidget::OnGeneralTabButtonClicked()
 	}
 }
 
-void UOptionWidget::OnKeySettingTabButtonClicked()
+void UOptionWidget::OnGraphicsSettingButtonClicked()
 {
 	if (OptionSwitcher)
 	{
 		OptionSwitcher->SetActiveWidgetIndex(1);
+	}
+	else
+	{
+		LOG_Frame_ERROR(TEXT("Graphics Widget is nullptr"));
+	}
+}
+
+void UOptionWidget::OnKeySettingTabButtonClicked()
+{
+	if (OptionSwitcher)
+	{
+		OptionSwitcher->SetActiveWidgetIndex(2);
 	}
 	else
 	{
@@ -130,19 +145,7 @@ void UOptionWidget::OnKeySettingTabButtonClicked()
 	KeySettingWidget->InitialMappings();
 }
 
-void UOptionWidget::OnKeyVoiceOptionTabButtonClicked()
-{
-	if (OptionSwitcher)
-	{
-		OptionSwitcher->SetActiveWidgetIndex(2);
-	}
-	else
-	{
-		LOG_Frame_ERROR(TEXT("Voice Option Widget is nullptr"));
-	}
-}
-
-void UOptionWidget::OnGraphicsSettingButtonClicked()
+void UOptionWidget::OnVoiceOptionTabButtonClicked()
 {
 	if (OptionSwitcher)
 	{
@@ -150,6 +153,6 @@ void UOptionWidget::OnGraphicsSettingButtonClicked()
 	}
 	else
 	{
-		LOG_Frame_ERROR(TEXT("Graphics Widget is nullptr"));
+		LOG_Frame_ERROR(TEXT("Voice Option Widget is nullptr"));
 	}
 }
