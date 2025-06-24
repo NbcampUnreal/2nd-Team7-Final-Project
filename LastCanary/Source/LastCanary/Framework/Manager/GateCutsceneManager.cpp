@@ -5,6 +5,9 @@
 #include "LevelSequencePlayer.h"
 #include "LevelSequenceActor.h"
 #include "Framework/GameMode/LCGameMode.h"
+#include "Framework/GameState/LCGameState.h"
+#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "UI/Manager/LCUIManager.h"
 #include "Kismet/GameplayStatics.h"
 
 AGateCutsceneManager::AGateCutsceneManager()
@@ -28,11 +31,19 @@ void AGateCutsceneManager::PlayGateCutscene(const TArray<ABaseCharacter*>& InPla
 
 void AGateCutsceneManager::Multicast_PlayCutscene_Implementation(const TArray<ABaseCharacter*>& InPlayerCharacters)
 {
+	if (ALCGameState* GS = GetWorld()->GetGameState<ALCGameState>())
+	{
+		GS->bIsCutscenePlaying = true;
+	}
+
 	PlayerCharacters = InPlayerCharacters;
 
 	for (AActor* Dummy : SpawnedDummies)
 	{
-		if (IsValid(Dummy)) Dummy->Destroy();
+		if (IsValid(Dummy))
+		{
+			Dummy->Destroy();
+		}
 	}
 	SpawnedDummies.Empty();
 	CachedControllers.Empty();
@@ -42,10 +53,12 @@ void AGateCutsceneManager::Multicast_PlayCutscene_Implementation(const TArray<AB
 		for (int32 i = 0; i < PlayerCharacters.Num(); ++i)
 		{
 			ABaseCharacter* RealChar = PlayerCharacters[i];
-			if (!IsValid(RealChar)) continue;
+			if (!IsValid(RealChar))
+			{
+				continue;
+			}
 
 			RealChar->SetActorHiddenInGame(true);
-			RealChar->SetActorEnableCollision(false);
 
 			if (HasAuthority())
 			{
@@ -58,6 +71,15 @@ void AGateCutsceneManager::Multicast_PlayCutscene_Implementation(const TArray<AB
 			if (APlayerController* PC = Cast<APlayerController>(RealChar->GetController()))
 			{
 				CachedControllers.Add(PC);
+
+				if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+				{
+					if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+					{
+						UIManager->HideInGameHUD();
+						UIManager->HideSpectatorWidget();
+					}
+				}
 			}
 
 			AActor* Dummy = GetWorld()->SpawnActor<AActor>(DummyCharacterClass, RealChar->GetActorLocation(), RealChar->GetActorRotation());
@@ -106,7 +128,7 @@ void AGateCutsceneManager::Multicast_PlayCutscene_Implementation(const TArray<AB
 					}
 				}
 
-				if (SequenceCam)
+				/*if (SequenceCam)
 				{
 					for (APlayerController* PC : CachedControllers)
 					{
@@ -115,7 +137,7 @@ void AGateCutsceneManager::Multicast_PlayCutscene_Implementation(const TArray<AB
 							PC->SetViewTargetWithBlend(SequenceCam, 1.0f);
 						}
 					}
-				}
+				}*/
 			}
 		}
 	}
@@ -142,7 +164,10 @@ void AGateCutsceneManager::OnCutsceneFinished()
 
 	for (AActor* Dummy : SpawnedDummies)
 	{
-		if (IsValid(Dummy)) Dummy->Destroy();
+		if (IsValid(Dummy))
+		{
+			Dummy->Destroy();
+		}
 	}
 	SpawnedDummies.Empty();
 
@@ -151,8 +176,12 @@ void AGateCutsceneManager::OnCutsceneFinished()
 		if (IsValid(Char))
 		{
 			Char->SetActorHiddenInGame(false);
-			Char->SetActorEnableCollision(true);
 		}
+	}
+
+	if (ALCGameState* GS = GetWorld()->GetGameState<ALCGameState>())
+	{
+		GS->bIsCutscenePlaying = false;
 	}
 
 	if (IsValid(LinkedGateActor))

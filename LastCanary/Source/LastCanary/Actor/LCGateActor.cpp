@@ -227,11 +227,11 @@ void ALCGateActor::IntoGameLevel(APlayerController* Controller)
 	{
 		if (LCGM)
 		{
-			if (LCGM->IsAllPlayersReady() == false)
-			{
-				LOG_Server_ERROR(TEXT("All Client is Not Ready!!"));
-				return;
-			}
+			//if (LCGM->IsAllPlayersReady() == false)
+			//{
+			//	LOG_Server_ERROR(TEXT("All Client is Not Ready!!"));
+			//	return;
+			//}
 		}
 		else
 		{
