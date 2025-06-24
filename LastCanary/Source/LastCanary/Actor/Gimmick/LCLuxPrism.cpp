@@ -1,4 +1,5 @@
 #include "Actor/Gimmick/LCLuxPrism.h"
+#include "Actor/Gimmick/Trigger/LCLuxChargeTrigger.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraComponent.h"
 #include "Components/SceneComponent.h"
@@ -41,7 +42,7 @@ void ALCLuxPrism::ActivateGimmick_Implementation()
 {
 	if (bIsLuxReceived) return;
 
-	LOG_Art(Log, TEXT("ALCLuxPrism::ActivateGimmick_Implementation 호출됨"));
+	//LOG_Art(Log, TEXT("ALCLuxPrism::ActivateGimmick_Implementation 호출됨"));
 
 	if (!HasAuthority())
 	{
@@ -72,9 +73,10 @@ void ALCLuxPrism::StopEffect_Implementation()
 
 void ALCLuxPrism::StartEmitLux()
 {
-	if (HasAuthority())
+	if (HasAuthority()) 
 	{
 		GetWorld()->GetTimerManager().SetTimer(EmitTimerHandle, this, &ALCLuxPrism::EmitLux, EmitInterval, true);
+		//LOG_Art(Log, TEXT("[서버] EmitLux 타이머 시작"));
 	}
 
 	if (EmitEffect && NiagaraComponent)
@@ -110,6 +112,8 @@ void ALCLuxPrism::StopEmitLux()
 
 void ALCLuxPrism::EmitLux()
 {
+	//LOG_Art(Log, TEXT("▶ EmitLux 실행 중"));
+
 	if (!EmitOrigin) return;
 
 	const FVector Start = EmitOrigin->GetComponentLocation();
@@ -119,8 +123,6 @@ void ALCLuxPrism::EmitLux()
 	FHitResult Hit;
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(this);
-
-	const float TraceRadius = 100.f;
 
 	bool bHit = GetWorld()->LineTraceSingleByChannel(
 		Hit,
@@ -132,27 +134,25 @@ void ALCLuxPrism::EmitLux()
 
 	AActor* HitActor = bHit ? Hit.GetActor() : nullptr;
 
-	if (bHit && HitActor && HitActor->ActorHasTag("Lux"))
+	if (HasAuthority())
 	{
-		if (HitActor->GetClass()->ImplementsInterface(ULCGimmickInterface::StaticClass()))
+		if (bHit && HitActor && HitActor->ActorHasTag("Lux"))
 		{
-			ILCGimmickInterface::Execute_ActivateGimmick(HitActor);
+			if (HitActor->GetClass()->ImplementsInterface(ULCGimmickInterface::StaticClass()))
+			{
+				IGimmickEffectInterface::Execute_TriggerEffect(HitActor);
+				//LOG_Art(Log, TEXT("[EmitLux][Server] ▶ TriggerEffect 호출: %s"), *HitActor->GetName());
+			}
 		}
 	}
 
 	if (bUseDebugLine)
 	{
 		DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, EmitInterval + 0.05f, 0, 2.f);
-		//LOG_Art(Log, TEXT("[EmitLux] 예상 방향 라인: %s → %s"), *Start.ToString(), *End.ToString());
 
 		if (bHit)
 		{
 			DrawDebugSphere(GetWorld(), Hit.ImpactPoint, 16.f, 12, FColor::Red, false, EmitInterval + 0.05f);
-			//LOG_Art(Log, TEXT("[EmitLux] 충돌 지점: %s | 맞은 액터: %s"), *Hit.ImpactPoint.ToString(), *GetNameSafe(HitActor));
-		}
-		else
-		{
-			//LOG_Art(Log, TEXT("[EmitLux] 충돌 없음"));
 		}
 	}
 }
@@ -161,6 +161,7 @@ void ALCLuxPrism::Multicast_StartEmitLux_Implementation()
 {
 	if (!HasAuthority())
 	{
+		//LOG_Art(Log, TEXT("[클라] Multicast_StartEmitLux_Implementation 호출됨"));
 		StartEmitLux();
 	}
 }

@@ -52,6 +52,13 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Lux")
 	float MaxLightIntensity;
 
+	/** 마지막으로 빛을 받은 시간 (서버 기준) */
+	float LastReceivedTime;
+
+	/** 빛 수신 유예 시간 (초) */
+	UPROPERTY(EditAnywhere, Category = "Lux|Charge")
+	float GracePeriod = 0.2f;
+
 	/** 타이머 핸들 */
 	FTimerHandle ChargeTimerHandle;
 
@@ -70,4 +77,8 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_TriggerEffect();
 	void Multicast_TriggerEffect_Implementation();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_StopEffect();
+	void Multicast_StopEffect_Implementation();
 };

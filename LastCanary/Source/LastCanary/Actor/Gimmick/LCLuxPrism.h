@@ -92,4 +92,7 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_StopEmitLux();
 	void Multicast_StopEmitLux_Implementation();
+
+	TWeakObjectPtr<AActor> PrevLuxTarget;
+
 };
