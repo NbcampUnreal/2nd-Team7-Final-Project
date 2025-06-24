@@ -38,19 +38,18 @@ void ACaveEliteMonster::FreezeAI()
 		{
 			// 청각 완전 비활성화
 			PerceptionComp->SetSenseEnabled(UAISense_Hearing::StaticClass(), false);
-
+			PerceptionComp->OnTargetPerceptionUpdated.RemoveAll(this);
 			PerceptionComp->SetActive(false);
 		}
 	}
 
-	/*if (ABaseAIController* BaseAIController = Cast<ABaseAIController>(GetController()))
+	if (ABaseAIController* BaseAIController = Cast<ABaseAIController>(GetController()))
 	{
 		if (UBlackboardComponent* BlackboardComp = BaseAIController->GetBlackboardComponent())
 		{
 			BlackboardComp->SetValueAsObject("TargetActor", nullptr);
 		}
-	}*/
-
+	}
 
 	if (AAIController* AIController = Cast<AAIController>(GetController()))
 	{
@@ -88,7 +87,9 @@ void ACaveEliteMonster::UnfreezeAI()
 		if (UAIPerceptionComponent* PerceptionComp = BaseAIController->GetPerceptionComponent())
 		{
 			PerceptionComp->SetSenseEnabled(UAISense_Hearing::StaticClass(), true);
-
+			PerceptionComp->OnTargetPerceptionUpdated.AddDynamic(
+                this, &ACaveEliteMonster::OnTargetPerceptionUpdated
+            );
 			PerceptionComp->SetActive(true);
 		}
 	}
@@ -135,6 +136,8 @@ void ACaveEliteMonster::CooldownEnd()
 
 void ACaveEliteMonster::HandlePerceptionUpdate(AActor* Actor, FAIStimulus Stimulus)
 {
+	if (bIsFrozen) return;
+
 	if (!Actor) return;
 
 	if (ABaseAIController* AIController = Cast<ABaseAIController>(GetController()))

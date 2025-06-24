@@ -17,8 +17,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MaxAge")
 	float HearingMaxAge = 6.5f;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Attack")
+	USphereComponent* Extra_AttackCollider;
+
 protected:
 	virtual void HandlePerceptionUpdate(AActor* Actor, FAIStimulus Stimulus) override;
+
+	virtual void EnableAttackCollider() override;
+	virtual void DisableAttackCollider() override;
 
 	UFUNCTION()
 	void ForgetTarget();
