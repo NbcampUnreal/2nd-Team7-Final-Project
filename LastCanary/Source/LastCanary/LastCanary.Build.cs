@@ -4,19 +4,21 @@ using UnrealBuildTool;
 
 public class LastCanary : ModuleRules
 {
-	public LastCanary(ReadOnlyTargetRules Target) : base(Target)
-	{
-		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", 
-            "CoreUObject", 
+    public LastCanary(ReadOnlyTargetRules Target) : base(Target)
+    {
+        PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+
+        PublicDependencyModuleNames.AddRange(new string[]
+        {
+            "Core",
+            "CoreUObject",
             "Engine",
             "InputCore",
             "EnhancedInput",
             "UMG",
-            "AIModule", 
+            "AIModule",
             "NavigationSystem",
-            "GameplayTags", 
+            "GameplayTags",
             "Slate",
             "SlateCore",
             "OnlineSubsystem",
@@ -27,10 +29,14 @@ public class LastCanary : ModuleRules
             "ALSCamera",
             "Niagara",
             "GeometryCollectionEngine",
-            "MediaAssets"
+            "MediaAssets",
+            "LevelSequence",
+            "MovieScene",
+            "MovieSceneTracks",
+            "CinematicCamera"
         });
 
-        PrivateDependencyModuleNames.AddRange(new string[] {  });
+        PrivateDependencyModuleNames.AddRange(new string[] { });
 
         PublicIncludePaths.AddRange(new string[] { "LastCanary" });
 

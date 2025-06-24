@@ -99,6 +99,7 @@ public:
 	//-------------------------------------------------------------------------
 public:
 	void SpawnNoteItems(int32 Count);
+	void SpawnNoteItemsForTheme();
 	void SpawnNoteItemsAtLocation(int32 Count, const FVector& Location);
 	TArray<FName> GetSpawnableNotesByTags() const;
 
