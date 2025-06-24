@@ -63,17 +63,30 @@ void UAttachedSyncComponent::BroadcastStartRotation(const FQuat& From, const FQu
 
 	for (AActor* Actor : AttachedActors)
 	{
-		if (IsValid(Actor))
+		if (!IsValid(Actor)) continue;
+
+		const FQuat ActorQuat = Actor->GetActorQuat(); // 현재 액터 회전
+		const FQuat DeltaQuat = To * From.Inverse();   // 부모 기준 회전 변화량
+		const FQuat TargetQuat = DeltaQuat * ActorQuat; // 액터 기준 목표 회전
+
+		// 디버깅 로그
+		LOG_Art(Log, TEXT("[AttachedSync] ▶ 대상: %s"), *Actor->GetName());
+		LOG_Art(Log, TEXT(" └ 현재 회전:        %s"), *ActorQuat.Rotator().ToCompactString());
+		LOG_Art(Log, TEXT(" └ 부모 기준 From:    %s"), *From.Rotator().ToCompactString());
+		LOG_Art(Log, TEXT(" └ 부모 기준 To:      %s"), *To.Rotator().ToCompactString());
+		LOG_Art(Log, TEXT(" └ 계산된 TargetQuat: %s"), *TargetQuat.Rotator().ToCompactString());
+
+		// ✅ SetActorRotation 제거됨
+		// ❌ 절대 FromRot으로 강제 초기화하지 말 것!
+
+		if (Actor->Implements<UGimmickAttachedSyncInterface>())
 		{
-			if (Actor->Implements<UGimmickAttachedSyncInterface>())
-			{
-				LOG_Art(Log, TEXT("[AttachedSync] ▶ 회전 동기화 실행 대상: %s"), *Actor->GetName());
-				IGimmickAttachedSyncInterface::Execute_StartClientSyncRotation(Actor, From, To, Duration);
-			}
-			else
-			{
-				LOG_Art_WARNING(TEXT("[AttachedSync] ❌ 인터페이스 미구현 대상: %s"), *Actor->GetName());
-			}
+			LOG_Art(Log, TEXT(" ▶ 인터페이스 실행 → StartClientSyncRotation"));
+			IGimmickAttachedSyncInterface::Execute_StartClientSyncRotation(Actor, ActorQuat, TargetQuat, Duration);
+		}
+		else
+		{
+			LOG_Art_WARNING(TEXT(" ▶ ❌ 인터페이스 미구현: %s"), *Actor->GetName());
 		}
 	}
 }

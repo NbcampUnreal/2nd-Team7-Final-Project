@@ -757,7 +757,6 @@ void ALCTransformGimmick::StepClientRotation()
 	}
 }
 
-
 void ALCTransformGimmick::StartServerAttachedRotation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration)
 {
 	for (AActor* AttachedActor : AttachedActors)
@@ -765,19 +764,26 @@ void ALCTransformGimmick::StartServerAttachedRotation(const FQuat& FromQuat, con
 		if (!IsValid(AttachedActor))
 			continue;
 
+		if (AttachedRotationTimers.Contains(AttachedActor))
+		{
+			GetWorldTimerManager().ClearTimer(AttachedRotationTimers[AttachedActor]);
+			AttachedRotationTimers.Remove(AttachedActor);
+		}
+
 		FTimerHandle& Handle = AttachedRotationTimers.FindOrAdd(AttachedActor);
-		TSharedPtr<float> ElapsedTime = MakeShared<float>(0.f);
+
+		TWeakObjectPtr<AActor> WeakActor = AttachedActor;
+		float ElapsedTime = 0.f;
 
 		FTimerDelegate Delegate;
-		Delegate.BindLambda([Actor = AttachedActor, FromQuat, ToQuat, Duration, ElapsedTime]()
+		Delegate.BindLambda([WeakActor, FromQuat, ToQuat, Duration, ElapsedTime]() mutable
 			{
-				if (!IsValid(Actor))
-					return;
+				if (!WeakActor.IsValid()) return;
 
-				*ElapsedTime += 0.02f;
-				const float Alpha = FMath::Clamp(*ElapsedTime / Duration, 0.f, 1.f);
+				ElapsedTime += 0.02f;
+				const float Alpha = FMath::Clamp(ElapsedTime / Duration, 0.f, 1.f);
 				const FQuat NewQuat = FQuat::SlerpFullPath(FromQuat, ToQuat, Alpha);
-				Actor->SetActorRotation(NewQuat);
+				WeakActor->SetActorRotation(NewQuat);
 			});
 
 		GetWorldTimerManager().SetTimer(Handle, Delegate, 0.02f, true);
@@ -791,19 +797,26 @@ void ALCTransformGimmick::StartClientAttachedRotation(const FQuat& FromQuat, con
 		if (!IsValid(AttachedActor))
 			continue;
 
+		if (AttachedRotationTimers.Contains(AttachedActor))
+		{
+			GetWorldTimerManager().ClearTimer(AttachedRotationTimers[AttachedActor]);
+			AttachedRotationTimers.Remove(AttachedActor);
+		}
+
 		FTimerHandle& Handle = AttachedRotationTimers.FindOrAdd(AttachedActor);
-		TSharedPtr<float> ElapsedTime = MakeShared<float>(0.f);
+
+		TWeakObjectPtr<AActor> WeakActor = AttachedActor;
+		float ElapsedTime = 0.f;
 
 		FTimerDelegate Delegate;
-		Delegate.BindLambda([Actor = AttachedActor, FromQuat, ToQuat, Duration, ElapsedTime]()
+		Delegate.BindLambda([WeakActor, FromQuat, ToQuat, Duration, ElapsedTime]() mutable
 			{
-				if (!IsValid(Actor))
-					return;
+				if (!WeakActor.IsValid()) return;
 
-				*ElapsedTime += 0.02f;
-				const float Alpha = FMath::Clamp(*ElapsedTime / Duration, 0.f, 1.f);
+				ElapsedTime += 0.02f;
+				const float Alpha = FMath::Clamp(ElapsedTime / Duration, 0.f, 1.f);
 				const FQuat NewQuat = FQuat::SlerpFullPath(FromQuat, ToQuat, Alpha);
-				Actor->SetActorRotation(NewQuat);
+				WeakActor->SetActorRotation(NewQuat);
 			});
 
 		GetWorldTimerManager().SetTimer(Handle, Delegate, 0.02f, true);
@@ -830,3 +843,20 @@ FQuat ALCTransformGimmick::GetAlternateRotationQuat() const
 }
 
 #pragma endregion
+
+void ALCTransformGimmick::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	Super::EndPlay(EndPlayReason);
+
+	for (auto& Pair : AttachedRotationTimers)
+	{
+		GetWorldTimerManager().ClearTimer(Pair.Value);
+	}
+	AttachedRotationTimers.Empty();
+
+	for (auto& Pair : AttachedMovementTimers)
+	{
+		GetWorldTimerManager().ClearTimer(Pair.Value);
+	}
+	AttachedMovementTimers.Empty();
+}
