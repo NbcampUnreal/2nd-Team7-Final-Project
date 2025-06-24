@@ -12,7 +12,7 @@
 #include "Camera/PlayerCameraManager.h"
 #include "AI/LCBaseBossAIController.h"
 #include "Camera/CameraComponent.h"
-
+#include "Character/BaseCharacter.h"
 
 ALCBossSlenderman::ALCBossSlenderman()
 {
@@ -153,7 +153,6 @@ void ALCBossSlenderman::OnRep_IsBerserk()
 {
     Super::OnRep_IsBerserk();
 
-    // **절대 StartBerserk() 호출 금지!**
     if (bIsBerserk)
     {
         UE_LOG(LogTemp, Warning, TEXT("[Slenderman] OnRep → Berserk 이펙트 클라에서 재생"));
@@ -378,7 +377,7 @@ void ALCBossSlenderman::ExecuteReachSlash()
     FCollisionShape Sphere = FCollisionShape::MakeSphere(ReachSlashRadius);
     if (GetWorld()->SweepMultiByChannel(Hits, O, O, FQuat::Identity, ECC_Pawn, Sphere))
         for (auto& H : Hits)
-            if (ACharacter* C = Cast<ACharacter>(H.GetActor()))
+            if (auto* C = Cast<ABaseCharacter>(H.GetActor()))
                 UGameplayStatics::ApplyDamage(C, ReachSlashDamage, GetController(), this, nullptr);
 }
 
@@ -389,7 +388,7 @@ void ALCBossSlenderman::ExecuteShadowGrasp()
     {
         if (auto* BB = AC->GetBlackboardComponent())
         {
-            if (auto* T = Cast<ACharacter>(BB->GetValueAsObject(TEXT("TargetActor"))))
+            if (auto* T = Cast<ABaseCharacter>(BB->GetValueAsObject(TEXT("TargetActor"))))
             {
                 FVector Dir = (T->GetActorLocation() - GetActorLocation()).GetSafeNormal();
                 T->LaunchCharacter(-Dir * 1000.f, true, true);

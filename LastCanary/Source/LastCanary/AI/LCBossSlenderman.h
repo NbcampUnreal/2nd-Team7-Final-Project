@@ -108,7 +108,7 @@ protected:
 
     // ── Abyssal Whisper (심연의 속삭임) ──
     UPROPERTY(EditAnywhere, Category = "Slenderman|Whisper")
-    float WhisperInterval = 20.f;
+    float WhisperInterval = 60.f;
 
     FTimerHandle WhisperTimerHandle;
     void ExecuteAbyssalWhisper();
