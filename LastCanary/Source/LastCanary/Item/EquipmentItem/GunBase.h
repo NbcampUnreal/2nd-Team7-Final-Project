@@ -356,4 +356,22 @@ public:
     //-----------------------------------------------------
 
     void HandleGimmickDestruction(ALCBaseGimmick* Gimmick, const FHitResult& HitResult);
+
+
+    //-----------------------------------------------------
+    // 탄창 관련
+    //-----------------------------------------------------
+public:
+    /** 재장전 시 탄창 떨어뜨리기 */
+    UFUNCTION(BlueprintCallable, Category = "Gun|Magazine")
+    void DropMagazine();
+
+    /** 탄창 드롭 (멀티캐스트) */
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_DropMagazine();
+    void Multicast_DropMagazine_Implementation();
+
+protected:
+    /** 탄창 메시 생성 및 물리 적용 */
+    void SpawnAndDropMagazine(UStaticMesh* MagazineMesh, FVector SpawnLocation, FRotator SpawnRotation);
 };

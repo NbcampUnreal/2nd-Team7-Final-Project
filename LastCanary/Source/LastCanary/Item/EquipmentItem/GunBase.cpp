@@ -1057,3 +1057,99 @@ void AGunBase::HandleGimmickDestruction(ALCBaseGimmick* Gimmick, const FHitResul
 
     Gimmick->Destroy();
 }
+
+void AGunBase::DropMagazine()
+{
+    if (!HasAuthority())
+    {
+        return;
+    }
+
+    Multicast_DropMagazine();
+}
+
+void AGunBase::Multicast_DropMagazine_Implementation()
+{
+    EnsureGunDataLoaded();
+
+    if (!GunData.MagazineMesh)
+    {
+        LOG_Item_WARNING(TEXT("[DropMagazine] MagazineMesh가 설정되지 않음"));
+        return;
+    }
+
+    USkeletalMeshComponent* GunMesh = GetSkeletalMeshComponent();
+    if (!GunMesh)
+    {
+        LOG_Item_WARNING(TEXT("[DropMagazine] GunMesh가 null"));
+        return;
+    }
+
+    FVector SpawnLocation;
+    FRotator SpawnRotation;
+
+    // 소켓이 있으면 소켓 위치에서, 없으면 기본 위치에서 생성
+    if (GunMesh->DoesSocketExist(GunData.MagazineSocketName))
+    {
+        SpawnLocation = GunMesh->GetSocketLocation(GunData.MagazineSocketName);
+        SpawnRotation = GunMesh->GetSocketRotation(GunData.MagazineSocketName);
+    }
+    else
+    {
+        SpawnLocation = GetActorLocation() + GetActorForwardVector() * 20.0f + GetActorRightVector() * -15.0f;
+        SpawnRotation = GetActorRotation();
+        LOG_Item_WARNING(TEXT("[DropMagazine] 소켓 없음 - 기본 위치에서 생성: %s (소켓명: %s)"),
+            *SpawnLocation.ToString(), *GunData.MagazineSocketName.ToString());
+    }
+
+    SpawnAndDropMagazine(GunData.MagazineMesh, SpawnLocation, SpawnRotation);
+}
+
+void AGunBase::SpawnAndDropMagazine(UStaticMesh* MagazineMesh, FVector SpawnLocation, FRotator SpawnRotation)
+{
+    if (!MagazineMesh || !GetWorld())
+    {
+        LOG_Item_WARNING(TEXT("[SpawnAndDropMagazine] MagazineMesh(%s) 또는 World가 null"), MagazineMesh ? TEXT("Valid") : TEXT("NULL"));
+        return;
+    }
+
+    // 동적으로 액터 생성
+    AActor* MagazineActor = GetWorld()->SpawnActor<AActor>(AActor::StaticClass(), SpawnLocation, SpawnRotation);
+    if (!MagazineActor)
+    {
+        LOG_Item_WARNING(TEXT("[SpawnAndDropMagazine] 탄창 액터 생성 실패"));
+        return;
+    }
+
+    // 스태틱 메시 컴포넌트 추가
+    UStaticMeshComponent* MagazineComponent = NewObject<UStaticMeshComponent>(MagazineActor);
+    if (!MagazineComponent)
+    {
+        LOG_Item_WARNING(TEXT("[SpawnAndDropMagazine] MagazineComponent 생성 실패"));
+        MagazineActor->Destroy();
+        return;
+    }
+
+    // 메시 설정
+    MagazineComponent->SetStaticMesh(MagazineMesh);
+
+    // 충돌 설정
+    MagazineComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+    MagazineComponent->SetCollisionObjectType(ECC_WorldDynamic);
+    MagazineComponent->SetCollisionResponseToAllChannels(ECR_Block);
+    MagazineComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore); // 플레이어와는 충돌 무시
+
+    // 물리 시뮬레이션 활성화
+    MagazineComponent->SetSimulatePhysics(true);
+    MagazineComponent->SetMassOverrideInKg(NAME_None, 0.5f); // 탄창 무게 설정 (0.5kg)
+
+    // 루트 컴포넌트로 설정
+    MagazineActor->SetRootComponent(MagazineComponent);
+    MagazineActor->SetActorLocationAndRotation(SpawnLocation, SpawnRotation);
+
+    // 컴포넌트 등록 확인
+    MagazineComponent->RegisterComponent();
+
+    // 일정 시간 후 자동 삭제
+    MagazineActor->SetLifeSpan(GunData.MagazineLifespan);
+}
