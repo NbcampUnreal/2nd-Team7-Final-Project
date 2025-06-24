@@ -208,6 +208,18 @@ void UInventoryComponentBase::UpdateWeight()
 		{
 			float ItemWeight = UInventoryUtility::GetItemWeight(Slot.ItemRowName, ItemDataTable);
 			NewWeight += ItemWeight * Slot.Quantity;
+
+			if (Slot.bIsBackpack)
+			{
+				for (const FBackpackSlotData& BackpackSlot : Slot.BackpackSlots)
+				{
+					if (!UInventoryUtility::IsDefaultItem(BackpackSlot.ItemRowName, GetInventoryConfig()) && BackpackSlot.Quantity > 0)
+					{
+						float BackpackItemWeight = UInventoryUtility::GetItemWeight(BackpackSlot.ItemRowName, ItemDataTable);
+						NewWeight += BackpackItemWeight * BackpackSlot.Quantity;
+					}
+				}
+			}
 		}
 	}
 
