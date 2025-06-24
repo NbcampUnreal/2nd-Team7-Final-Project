@@ -69,7 +69,18 @@ void ALCTrackingGimmick::StartTracking()
 	if (!HasAuthority() || bIsTracking || !IsValid(TargetActor)) return;
 
 	bIsTracking = true;
-	GetWorldTimerManager().SetTimer(TrackingTimerHandle, this, &ALCTrackingGimmick::RotateToTarget, TrackingInterval, true);
+
+	// ▶ 타워 간 타이머 분산을 위한 딜레이
+	const float DelayOffset = FMath::FRandRange(0.f, TrackingInterval);
+
+	GetWorldTimerManager().SetTimer(
+		TrackingTimerHandle,
+		this,
+		&ALCTrackingGimmick::RotateToTarget,
+		TrackingInterval,
+		true,
+		DelayOffset
+	);
 }
 
 void ALCTrackingGimmick::StopTracking()
@@ -92,21 +103,39 @@ void ALCTrackingGimmick::RotateToTarget()
 		return;
 	}
 
-	const FRotator LookAtRotation = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), TargetActor->GetActorLocation());
-	const FRotator NewRotation(0.f, LookAtRotation.Yaw + YawOffset, 0.f);
-	SetActorRotation(NewRotation);
+	const FVector From = GetActorLocation();
+	const FVector To = TargetActor->GetActorLocation();
+	const float DesiredYaw = UKismetMathLibrary::FindLookAtRotation(From, To).Yaw + YawOffset;
+
+	if (!FMath::IsNearlyEqual(GetActorRotation().Yaw, DesiredYaw, 1.f))
+	{
+		SetActorRotation(FRotator(0.f, DesiredYaw, 0.f));
+	}
+
+	const FVector TargetLoc = TargetActor->GetActorLocation();
 
 	if (TrackingLightLeft)
 	{
-		const FVector From = TrackingLightLeft->GetComponentLocation();
-		const FRotator LookRot = UKismetMathLibrary::FindLookAtRotation(From, TargetActor->GetActorLocation());
-		TrackingLightLeft->SetRelativeRotation(FRotator(LookRot.Pitch, EffectYawOffset, 0.f));
+		const FVector LightLoc = TrackingLightLeft->GetComponentLocation();
+		const float NewPitch = UKismetMathLibrary::FindLookAtRotation(LightLoc, TargetLoc).Pitch;
+		const float OldPitch = TrackingLightLeft->GetRelativeRotation().Pitch;
+
+		if (!FMath::IsNearlyEqual(NewPitch, OldPitch, 1.f))
+		{
+			TrackingLightLeft->SetRelativeRotation(FRotator(NewPitch, EffectYawOffset, 0.f));
+		}
 	}
+
 	if (TrackingLightRight)
 	{
-		const FVector From = TrackingLightRight->GetComponentLocation();
-		const FRotator LookRot = UKismetMathLibrary::FindLookAtRotation(From, TargetActor->GetActorLocation());
-		TrackingLightRight->SetRelativeRotation(FRotator(LookRot.Pitch, EffectYawOffset, 0.f));
+		const FVector LightLoc = TrackingLightRight->GetComponentLocation();
+		const float NewPitch = UKismetMathLibrary::FindLookAtRotation(LightLoc, TargetLoc).Pitch;
+		const float OldPitch = TrackingLightRight->GetRelativeRotation().Pitch;
+
+		if (!FMath::IsNearlyEqual(NewPitch, OldPitch, 1.f))
+		{
+			TrackingLightRight->SetRelativeRotation(FRotator(NewPitch, EffectYawOffset, 0.f));
+		}
 	}
 }
 
