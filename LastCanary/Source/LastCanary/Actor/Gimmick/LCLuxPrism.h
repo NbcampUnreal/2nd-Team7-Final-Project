@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Actor/Gimmick/LCPushGimmick.h"
+#include "Actor/Gimmick/LCTransformGimmick.h"
 #include "Interface/GimmickEffectInterface.h"
 #include "LCLuxPrism.generated.h"
 
@@ -14,7 +14,7 @@ class USceneComponent;
  * 
  */
 UCLASS()
-class LASTCANARY_API ALCLuxPrism : public ALCPushGimmick, public IGimmickEffectInterface
+class LASTCANARY_API ALCLuxPrism : public ALCTransformGimmick, public IGimmickEffectInterface
 {
 	GENERATED_BODY()
 	
@@ -29,7 +29,7 @@ protected:
 	bool bIsLuxReceived;
 
 	/** 광선 발사 위치 컴포넌트 */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lux")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lux")
 	USceneComponent* EmitOrigin;
 
 	/** 발사 거리 */

@@ -19,6 +19,9 @@ ALCLuxPrism::ALCLuxPrism()
 
 	EmitOrigin = CreateDefaultSubobject<USceneComponent>(TEXT("EmitOrigin"));
 	EmitOrigin->SetupAttachment(RootComponent);
+	EmitOrigin->SetUsingAbsoluteRotation(true);
+	EmitOrigin->SetRelativeLocation(FVector::ZeroVector);
+	EmitOrigin->SetWorldRotation(FRotator(0.f, 90.f, 0.f)); 
 
 	NiagaraComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("NiagaraComponent"));
 	NiagaraComponent->SetupAttachment(EmitOrigin);
@@ -36,7 +39,9 @@ void ALCLuxPrism::BeginPlay()
 
 void ALCLuxPrism::ActivateGimmick_Implementation()
 {
-	LOG_Art(Log, TEXT("▶ ALCLuxPrism::ActivateGimmick_Implementation 호출됨"));
+	if (bIsLuxReceived) return;
+
+	LOG_Art(Log, TEXT("ALCLuxPrism::ActivateGimmick_Implementation 호출됨"));
 
 	if (!HasAuthority())
 	{
@@ -44,19 +49,7 @@ void ALCLuxPrism::ActivateGimmick_Implementation()
 		return;
 	}
 
-	APlayerController* PC = Cast<APlayerController>(GetOwner());
-
-	if (IsValid(PC))
-	{
-		Super::ActivateGimmick_Implementation();
-	}
-	else
-	{
-		if (!bIsLuxReceived)
-		{
-			IGimmickEffectInterface::Execute_TriggerEffect(this);
-		}
-	}
+	IGimmickEffectInterface::Execute_TriggerEffect(this);
 }
 
 void ALCLuxPrism::TriggerEffect_Implementation()
@@ -72,12 +65,9 @@ void ALCLuxPrism::StopEffect_Implementation()
 {
 	if (!bIsLuxReceived) return;
 
-	LOG_Art(Log, TEXT("▶ StopEffect_Implementation 호출됨"));
-
 	bIsLuxReceived = false;
-
-	Multicast_StopEmitLux();
 	StopEmitLux();
+	Multicast_StopEmitLux();
 }
 
 void ALCLuxPrism::StartEmitLux()
@@ -91,34 +81,13 @@ void ALCLuxPrism::StartEmitLux()
 	{
 		NiagaraComponent->SetAsset(EmitEffect);
 		NiagaraComponent->Activate(true);
-		LOG_Art(Log, TEXT("▶ StartEmitLux - NiagaraComponent 활성화됨"));
 	}
 
 	if (EmitSound && AudioComponent)
 	{
 		AudioComponent->SetSound(EmitSound);
 		AudioComponent->Play();
-		LOG_Art(Log, TEXT("▶ StartEmitLux - AudioComponent 재생됨"));
 	}
-
-	if (NiagaraComponent)
-	{
-		const FVector Location = NiagaraComponent->GetComponentLocation();
-		const FRotator Rotation = NiagaraComponent->GetComponentRotation();
-
-		LOG_Art(Log, TEXT("[StartEmitLux] ▶ NiagaraComponent 위치: %s / 회전: %s"),
-			*Location.ToString(), *Rotation.ToString());
-
-		if (!NiagaraComponent->IsActive())
-		{
-			LOG_Art_WARNING(TEXT("[StartEmitLux] ▶ NiagaraComponent가 비활성 상태임"));
-		}
-	}
-	else
-	{
-		LOG_Art_ERROR(TEXT("[StartEmitLux] ▶ NiagaraComponent 없음!"));
-	}
-
 }
 
 void ALCLuxPrism::StopEmitLux()
@@ -131,13 +100,11 @@ void ALCLuxPrism::StopEmitLux()
 	if (NiagaraComponent)
 	{
 		NiagaraComponent->Deactivate();
-		LOG_Art(Log, TEXT("▶ StopEmitLux - NiagaraComponent 비활성화됨"));
 	}
 
 	if (AudioComponent)
 	{
 		AudioComponent->Stop();
-		LOG_Art(Log, TEXT("▶ StopEmitLux - AudioComponent 중지됨"));
 	}
 }
 
@@ -146,50 +113,47 @@ void ALCLuxPrism::EmitLux()
 	if (!EmitOrigin) return;
 
 	const FVector Start = EmitOrigin->GetComponentLocation();
-	const FVector End = Start + EmitOrigin->GetForwardVector() * LightRange;
+	const FVector Direction = EmitOrigin->GetForwardVector().GetSafeNormal();
+	const FVector End = Start + Direction * LightRange;
 
-	// Sweep 트레이스 (원기둥 형태, 통과 없음)
 	FHitResult Hit;
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(this);
 
 	const float TraceRadius = 100.f;
 
-	bool bHit = GetWorld()->SweepSingleByChannel(
+	bool bHit = GetWorld()->LineTraceSingleByChannel(
 		Hit,
 		Start,
 		End,
-		FQuat::Identity,
 		ECC_Visibility,
-		FCollisionShape::MakeSphere(TraceRadius),
 		Params
 	);
 
 	AActor* HitActor = bHit ? Hit.GetActor() : nullptr;
 
-	if (bHit)
+	if (bHit && HitActor && HitActor->ActorHasTag("Lux"))
 	{
-		LOG_Art(Log, TEXT("[EmitLux] ▶ 빛이 맞은 액터: %s"), *GetNameSafe(HitActor));
-
-		if (HitActor->ActorHasTag("Lux"))
+		if (HitActor->GetClass()->ImplementsInterface(ULCGimmickInterface::StaticClass()))
 		{
-			if (HitActor->GetClass()->ImplementsInterface(ULCGimmickInterface::StaticClass()))
-			{
-				ILCGimmickInterface::Execute_ActivateGimmick(HitActor);
-			}
+			ILCGimmickInterface::Execute_ActivateGimmick(HitActor);
 		}
 	}
-	else
-	{
-		LOG_Art(Log, TEXT("[EmitLux] ▶ 빛이 닿은 액터 없음"));
-	}
 
-	// 디버그 라인은 맞은 곳까지만
-	const FVector VisualEnd = bHit ? Hit.ImpactPoint : End;
 	if (bUseDebugLine)
 	{
-		DrawDebugLine(GetWorld(), Start, VisualEnd, FColor::Cyan, false, EmitInterval + 0.05f, 0, 2.f);
-		LOG_Art(Log, TEXT("[EmitLux] ▶ 디버그 라인: %s → %s"), *Start.ToString(), *VisualEnd.ToString());
+		DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, EmitInterval + 0.05f, 0, 2.f);
+		//LOG_Art(Log, TEXT("[EmitLux] 예상 방향 라인: %s → %s"), *Start.ToString(), *End.ToString());
+
+		if (bHit)
+		{
+			DrawDebugSphere(GetWorld(), Hit.ImpactPoint, 16.f, 12, FColor::Red, false, EmitInterval + 0.05f);
+			//LOG_Art(Log, TEXT("[EmitLux] 충돌 지점: %s | 맞은 액터: %s"), *Hit.ImpactPoint.ToString(), *GetNameSafe(HitActor));
+		}
+		else
+		{
+			//LOG_Art(Log, TEXT("[EmitLux] 충돌 없음"));
+		}
 	}
 }
 
@@ -203,8 +167,6 @@ void ALCLuxPrism::Multicast_StartEmitLux_Implementation()
 
 void ALCLuxPrism::Multicast_StopEmitLux_Implementation()
 {
-	LOG_Art(Log, TEXT("▶ Multicast_StopEmitLux_Implementation 호출됨"));
-
 	if (!HasAuthority())
 	{
 		StopEmitLux();
@@ -213,7 +175,5 @@ void ALCLuxPrism::Multicast_StopEmitLux_Implementation()
 
 void ALCLuxPrism::DeactivateGimmick_Implementation()
 {
-	LOG_Art(Log, TEXT("▶ DeactivateGimmick_Implementation 호출됨"));
-
 	IGimmickEffectInterface::Execute_StopEffect(this);
 }

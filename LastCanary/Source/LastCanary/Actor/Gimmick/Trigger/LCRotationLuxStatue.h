@@ -32,12 +32,9 @@ public:
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Lux")
 	bool bIsLuxActive;
 
-	/** 라인트레이스 및 이펙트 기준점 (왼쪽/오른쪽) */
+	/** 라인트레이스 및 이펙트 기준점 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lux")
 	USceneComponent* LightOriginLeft;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lux")
-	USceneComponent* LightOriginRight;
 
 	/** 빛 발사 거리 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Lux")
@@ -51,12 +48,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Lux")
 	UNiagaraSystem* LightEffectTemplate;
 
-	/** 나이아가라 컴포넌트 (왼쪽/오른쪽) */
+	/** 나이아가라 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lux")
 	UNiagaraComponent* LightEffectComponentLeft;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lux")
-	UNiagaraComponent* LightEffectComponentRight;
 
 	/** 사운드 재생용 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lux")
@@ -83,10 +77,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Lux")
 	bool IsLuxActive() const;
 
+	/** 이펙트 전파 */
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_EmitLightEffect(const FVector& End);
 	void Multicast_EmitLightEffect_Implementation(const FVector& End);
 
+	/** 사운드 전파 */
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_PlayLightSound();
 	void Multicast_PlayLightSound_Implementation();
