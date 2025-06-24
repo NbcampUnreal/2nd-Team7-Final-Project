@@ -118,6 +118,15 @@ void APlayerChecker::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* O
         return;
     }
 
+    if (ALCGameState* GS = GetWorld()->GetGameState<ALCGameState>())
+    {
+        if (GS->bIsCutscenePlaying)
+        {
+            // 컷신 중이면 오버랩 해제 무시
+            return;
+        }
+    }
+
     APawn* OverlappingPawn = Cast<APawn>(OtherActor);
     if (OverlappingPawn)
     {
