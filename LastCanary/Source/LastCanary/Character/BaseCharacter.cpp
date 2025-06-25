@@ -2234,10 +2234,6 @@ void ABaseCharacter::Server_SetQuickSlotIndex_Implementation(int32 NewIndex)
 
 void ABaseCharacter::EquipItem(int32 Index)
 {
-	if (Index == ToolbarInventoryComponent->GetCurrentEquippedSlotIndex())
-	{
-		return;
-	}
 	ToolbarInventoryComponent->EquipItemAtSlot(Index);
 	// 동기화된 장착 요청
 	Multicast_ResetAnimationAndCamera(Index);

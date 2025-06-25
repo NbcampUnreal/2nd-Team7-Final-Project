@@ -328,6 +328,33 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
         return;
     }
 
+    // 현재 장착 중인 슬롯과 동일 할 때 검사
+    if (CurrentEquippedSlotIndex == SlotIndex)
+    {
+        AItemBase* CurrentItem = GetCurrentEquippedItem();
+
+        // Default 아이템을 장착중이었는데 슬롯에 실제 아이템이 들어온 경우
+        if (CurrentItem == nullptr || (CurrentItem && IsDefaultItem(CurrentItem->ItemRowName)))
+        {
+            if (!IsDefaultItem(SlotData->ItemRowName))
+            {
+                CurrentEquippedSlotIndex = -1;
+            }
+            else
+            {
+                return;
+            }
+        }
+        else
+        {
+            // 같은 실제 아이템이 이미 장착되어 있는 경우
+            if (CurrentItem->ItemRowName == SlotData->ItemRowName)
+            {
+                return;
+            }
+        }
+    }
+
     // 기존의 장착된 아이템 해제
     UnequipCurrentItem();
 
