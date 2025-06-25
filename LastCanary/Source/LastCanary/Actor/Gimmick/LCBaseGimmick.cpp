@@ -513,7 +513,7 @@ void ALCBaseGimmick::Server_ActivateGimmick_Implementation()
 	APlayerController* Interactor = Cast<APlayerController>(GetOwner());
 	if (!IsValid(Interactor))
 	{
-		LOG_Art_WARNING(TEXT("Server_ActivateGimmick -> Interactor (Owner) 유효하지 않음"));
+		//LOG_Art_WARNING(TEXT("Server_ActivateGimmick -> Interactor (Owner) 유효하지 않음"));
 		return;
 	}
 
@@ -553,7 +553,6 @@ float ALCBaseGimmick::TakeDamage(float DamageAmount, FDamageEvent const& DamageE
 	if (CurrentHealth <= 0.f)
 	{
 		OnDestroyedByBullet(); 
-		Destroy();
 	}
 
 	return DamageAmount;
@@ -561,8 +560,8 @@ float ALCBaseGimmick::TakeDamage(float DamageAmount, FDamageEvent const& DamageE
 
 void ALCBaseGimmick::OnDestroyedByBullet_Implementation()
 {
-	//LOG_Art(Log, TEXT(" OnDestroyedByBullet() 기본 구현 호출됨"));
-	// TODO: Niagara, Sound, Spawn 등 확장
+	Multicast_PlayDestroySound();
+	Destroy();
 }
 
 void ALCBaseGimmick::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -570,4 +569,12 @@ void ALCBaseGimmick::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ALCBaseGimmick, CurrentHealth);
+}
+
+void ALCBaseGimmick::Multicast_PlayDestroySound_Implementation()
+{
+	if (DestroySound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, DestroySound, GetActorLocation());
+	}
 }
