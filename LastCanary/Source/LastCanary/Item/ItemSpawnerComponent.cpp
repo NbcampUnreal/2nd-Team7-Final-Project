@@ -361,20 +361,20 @@ void UItemSpawnerComponent::EnablePhysicsSimulation(AItemBase* Item)
         Item->ForceNetUpdate();
     }
 
-    // 디버그 시각화
-    if (AActor* Owner = GetOwner())
-    {
-        FVector StartLocation = Item->GetActorLocation();
-        FVector EndLocation = StartLocation + ThrowDirection * 500.0f;
+    //// 디버그 시각화
+    //if (AActor* Owner = GetOwner())
+    //{
+    //    FVector StartLocation = Item->GetActorLocation();
+    //    FVector EndLocation = StartLocation + ThrowDirection * 500.0f;
 
-        FColor DebugColor = bIgnoreCharacterCollision ? FColor::Blue : FColor::Yellow;
-        DrawDebugLine(GetWorld(), StartLocation, EndLocation, DebugColor, false, 3.0f, 0, 2.0f);
-        DrawDebugSphere(GetWorld(), StartLocation, 15.0f, 12, FColor::Green, false, 3.0f);
-        DrawDebugDirectionalArrow(GetWorld(), StartLocation, EndLocation, 30.0f, FColor::Red, false, 3.0f, 0, 2.0f);
+    //    FColor DebugColor = bIgnoreCharacterCollision ? FColor::Blue : FColor::Yellow;
+    //    DrawDebugLine(GetWorld(), StartLocation, EndLocation, DebugColor, false, 3.0f, 0, 2.0f);
+    //    DrawDebugSphere(GetWorld(), StartLocation, 15.0f, 12, FColor::Green, false, 3.0f);
+    //    DrawDebugDirectionalArrow(GetWorld(), StartLocation, EndLocation, 30.0f, FColor::Red, false, 3.0f, 0, 2.0f);
 
-        FString CollisionText = bIgnoreCharacterCollision ? TEXT("NO_COLLISION") : TEXT("COLLISION");
-        DrawDebugString(GetWorld(), StartLocation + FVector(0, 0, 50), CollisionText, nullptr, DebugColor, 3.0f);
-    }
+    //    FString CollisionText = bIgnoreCharacterCollision ? TEXT("NO_COLLISION") : TEXT("COLLISION");
+    //    DrawDebugString(GetWorld(), StartLocation + FVector(0, 0, 50), CollisionText, nullptr, DebugColor, 3.0f);
+    //}
 }
 
 void UItemSpawnerComponent::SetupMeshPhysics(UPrimitiveComponent* MeshComponent, const FVector& ThrowDirection, float ThrowVelocity, const FVector& ThrowImpulse)

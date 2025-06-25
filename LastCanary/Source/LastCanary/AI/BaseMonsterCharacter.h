@@ -51,10 +51,10 @@ public:
     UAnimMontage* AIDeath;
 
     UFUNCTION(BlueprintCallable, Category = "Attack")
-    void EnableAttackCollider();
+    virtual void EnableAttackCollider();
 
     UFUNCTION(BlueprintCallable, Category = "Attack")
-    void DisableAttackCollider();
+    virtual void DisableAttackCollider();
 
     UFUNCTION(NetMulticast, Reliable)
     void MulticastStartAttack();
