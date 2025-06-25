@@ -125,7 +125,15 @@ float ABaseMonsterCharacter::TakeDamage(float DamageAmount, struct FDamageEvent 
     CurrentHP -= DamageAmount;
 
 
-    if (CurrentHP <= 0)
+    if (CurrentHP > 0)
+    {
+        if (ABaseAIController* AIController = Cast<ABaseAIController>(GetController()))
+        {
+            AIController->SetStun(0.1f);//경직 시간
+            //피격 사운드 넣기
+        }
+    }
+    else
     {
         CurrentHP = 0;
         bIsDead = true;
@@ -149,14 +157,6 @@ float ABaseMonsterCharacter::TakeDamage(float DamageAmount, struct FDamageEvent 
         }
     }
 
-    else//if 랑 순서 바꾸기 (이건 더 많이 체크해야하니까)
-    {
-        if (ABaseAIController* AIController = Cast<ABaseAIController>(GetController()))
-        {
-            AIController->SetStun(0.1f);//경직 시간
-            //피격 사운드 넣기
-        }
-    }
 
     return DamageApplied;
 }

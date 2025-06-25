@@ -30,7 +30,6 @@ void ACaveNormalMonster::HandlePerceptionUpdate(AActor* Actor, FAIStimulus Stimu
                         if (ABaseCharacter* GunOwnerCharacter = Cast<ABaseCharacter>(GunOwner))
                         {
                             BlackboardComp->SetValueAsObject(FName("TargetActor"), GunOwnerCharacter);
-                            BlackboardComp->SetValueAsVector(FName("LastHeardLocation"), Stimulus.StimulusLocation);
                         }
                     }
                 }
@@ -67,7 +66,6 @@ void ACaveNormalMonster::ForgetTarget()
         if (UBlackboardComponent* BlackboardComp = AIController->GetBlackboardComponent())
         {
             BlackboardComp->ClearValue(FName("TargetActor"));
-            BlackboardComp->ClearValue(FName("LastHeardLocation"));
         }
     }
 
@@ -113,7 +111,6 @@ void ACaveNormalMonster::ForgetTarget()
 //						if (ABaseCharacter* GunOwnerCharacter = Cast<ABaseCharacter>(GunOwner))
 //						{
 //							BlackboardComp->SetValueAsObject(FName("TargetActor"), GunOwnerCharacter);
-//							BlackboardComp->SetValueAsVector(FName("LastHeardLocation"), Stimulus.StimulusLocation);
 //						}
 //					}
 //				}
@@ -126,7 +123,6 @@ void ACaveNormalMonster::ForgetTarget()
 //					if (CurrentTarget == Actor)
 //					{
 //						BlackboardComp->ClearValue(FName("TargetActor"));
-//						BlackboardComp->ClearValue(FName("LastHeardLocation"));
 //					}
 //				}
 //			}

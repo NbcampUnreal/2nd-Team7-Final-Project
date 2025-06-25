@@ -25,8 +25,9 @@ public:
     UFUNCTION(BlueprintCallable, Category = "AI")
     void SetAttacking();
     UFUNCTION(BlueprintCallable, Category = "AI")
+    void SetSearching();
+    UFUNCTION(BlueprintCallable, Category = "AI")
     void SetStop();
-
     UFUNCTION(BlueprintCallable, Category = "AI")
     void SetStun(float StunDuration = 0.1f);//경직 시간
 
