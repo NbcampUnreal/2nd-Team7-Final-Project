@@ -10,6 +10,8 @@
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnItemStateChanged);
 
 class UInputAction;
+class USphereComponent;
+
 UCLASS()
 class LASTCANARY_API AItemBase : public AActor, public IInteractableInterface
 {
@@ -20,6 +22,7 @@ public:
 
 protected:
     virtual void BeginPlay() override;
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason);
 
 public:
     //-----------------------------------------------------
@@ -33,6 +36,10 @@ public:
     /** 아이템의 스켈레탈 메시 컴포넌트 */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
     USkeletalMeshComponent* SkeletalMeshComponent;
+
+    /** 하이라이트 상호작용을 위한 구체 콜리전 */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+    USphereComponent* InteractionSphere;
 
     //-----------------------------------------------------
     // 메시 관리
@@ -216,16 +223,12 @@ protected:
     UFUNCTION()
     void SyncPhysicsLocationToActor();
 
-protected:
-    /** 타이머 제거를 위해 사용 */ 
-    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-
 public:
     UPROPERTY(EditDefaultsOnly, Category = "Input")
     UInputAction* IA_Interact;
 
     UFUNCTION(BlueprintCallable, Category = "Input")
-    FString GetCurrentKeyNameForAction(UInputAction * InputAction) const;
+    FString GetCurrentKeyNameForAction(UInputAction* InputAction) const;
 
     //-----------------------------------------------------
     // 사운드 관리
@@ -248,4 +251,56 @@ protected:
     void HandleClickSound();
     void HandleToggleSound();
     void HandleHoldSoundStart();
+
+    //-----------------------------------------------------
+    // 하이라이트 시스템
+    //-----------------------------------------------------
+
+    /** 하이라이트 머티리얼 인스턴스(개별 적용 용도) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Highlight")
+    UMaterialInterface* HighlightMaterial;
+
+    /** 하이라이트 상호작용 범위 */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Highlight")
+    float HighlightRadius = 200.0f;
+
+    /** 현재 하이라이트 상태 */
+    UPROPERTY(BlueprintReadOnly, Category = "Highlight")
+    bool bIsHighlighted = false;
+
+    /** 하이라이트 기능 활성화 여부 */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Highlight")
+    bool bEnableHighlight = true;
+
+    //-----------------------------------------------------
+    // 하이라이트 함수들
+    //-----------------------------------------------------
+protected:
+    /** 오버랩 이벤트 함수들 */
+    UFUNCTION()
+    void OnHighlightSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent,
+        AActor* OtherActor,
+        UPrimitiveComponent* OtherComp,
+        int32 OtherBodyIndex,
+        bool bFromSweep,
+        const FHitResult& SweepResult);
+
+    UFUNCTION()
+    void OnHighlightSphereEndOverlap(UPrimitiveComponent* OverlappedComponent,
+        AActor* OtherActor,
+        UPrimitiveComponent* OtherComp,
+        int32 OtherBodyIndex);
+
+    /** 하이라이트 효과 적용/해제 함수 */
+    void ApplyHighlight();
+    void RemoveHighlight();
+
+    /** 하이라이트 시스템 초기화 */
+    void SetupHighlightSystem();
+
+    /** 하이라이트 시스템 정리 */
+    void CleanupHighlightSystem();
+
+    /** 전역 하이라이트 머티리얼 가져오기 */
+    UMaterialInterface* GetDefaultHighlightMaterial() const;
 };
