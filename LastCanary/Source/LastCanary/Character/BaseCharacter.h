@@ -537,13 +537,76 @@ public:
 	AActor* InteractTargetActor;
 	//Player Take Damage
 public:
+	FTimerHandle PanicActionTimerHandle;
+	void StartPanicBehaviorLoop();
+	void StopPanicBehaviorLoop();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PanicState")
+	float InitialDelay = 5.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PanicState")
+	float RepeatRate = 10.0f; // 2초마다 실행 (조절 가능)
+
 	/*Player Damage, Death*/
+	UFUNCTION(BlueprintCallable)
 	float TakeSpiritDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser);
 	float CalculateTakeSpiritDamage(float DamageAmount);
 	void EnterPanicState();
 
+	UFUNCTION(Client, Reliable)
+	void Client_EnterPanicState();
+	void Client_EnterPanicState_Implementation();
+	
+	void PerformRandomPanicAction();
+
 	UFUNCTION(BlueprintImplementableEvent)
 	void EnterPanicVoice();
+
+	UPROPERTY(EditAnywhere,BlueprintReadWrite, Category = "PanicState")
+	USoundBase* ScreamSound;
+	
+	void PlayScreamSound_Local();
+
+	void UseItemUnexpectedly();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PanicState")
+	USoundBase* SighSound;
+
+	UFUNCTION(BlueprintCallable)
+	void PlaySighSoundForAll(); // 호출 진입점
+
+	UFUNCTION(Server, Reliable)
+	void Server_PlaySighSound();
+	void Server_PlaySighSound_Implementation();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlaySighSound();
+	void Multicast_PlaySighSound_Implementation();
+
+
+	// 감도 저장용
+	float MouseSensitivityMultiplier = 1.0f;
+
+	FTimerHandle MouseSensitivityRestoreHandle;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PanicState")
+	float PanicSensitivity = 10.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PanicState")
+	float PanicDuration = 5.0f;
+	
+	void ForceSetMouseSensitivity(float NewSensitivity, float Duration);
+	void RestoreOriginalMouseSensitivity();
+
+
+	FTimerHandle MouseInvertResetTimerHandle;
+
+	float MouseInvertMultiplier = 1.0f;
+	void ForceInvertMouse(bool bEnable);
+	
+	void ForceInvertMouseTemporary(bool bInvert, float Duration);
+	void RestoreMouseInvert();
+
 
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	void HandlePlayerDeath();
