@@ -203,7 +203,7 @@ void ABaseBossMonsterCharacter::DealDamageInRange(float DamageAmount)
     float Radius = AttackRange;
 
     // (옵션) 디버깅용 범위 시각화
-    DrawDebugSphere(GetWorld(), Origin, Radius, 12, FColor::Red, false, 1.0f);
+    //DrawDebugSphere(GetWorld(), Origin, Radius, 12, FColor::Red, false, 1.0f);
 
     // 반경 내 모든 Pawn 검사
     TArray<FHitResult> HitResults;
