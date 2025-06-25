@@ -3310,6 +3310,13 @@ void ABaseCharacter::DropAllItemsOnDeath()
 
 void ABaseCharacter::SetBackpackMesh(bool bIsEquipBackpack)
 {
+	if (bBackpackMeshActive == bIsEquipBackpack)
+	{
+		return;
+	}
+
+	bBackpackMeshActive = bIsEquipBackpack;
+
 	if (bIsEquipBackpack)
 	{
 		SetPartMesh(BackpackMesh, BackpackSkeletalMesh);

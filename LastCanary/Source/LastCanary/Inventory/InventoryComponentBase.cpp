@@ -330,6 +330,48 @@ bool UInventoryComponentBase::IsWalkieTalkieItem(FName ItemRowName) const
 	return UInventoryUtility::IsWalkieTalkieItem(ItemRowName, ItemDataTable);
 }
 
+void UInventoryComponentBase::UpdateBackpackMeshStatus()
+{
+	if (!IsOwnerCharacterValid())
+	{
+		return;
+	}
+
+	// 서버에서만 실행
+	if (!GetOwner() || !GetOwner()->HasAuthority())
+	{
+		return;
+	}
+
+	bool bHasBackpack = HasBackpackInToolbar();
+
+	LOG_Item_WARNING(TEXT("[UpdateBackpackMeshStatus] 가방 메시 상태 업데이트: %s"),
+		bHasBackpack ? TEXT("활성화") : TEXT("비활성화"));
+
+	// 직접 메시 설정 - 자동으로 클라이언트에 복제됨
+	CachedOwnerCharacter->SetBackpackMesh(bHasBackpack);
+}
+
+bool UInventoryComponentBase::HasBackpackInToolbar() const
+{
+	for (const FBaseItemSlotData& Slot : ItemSlots)
+	{
+		if (Slot.bIsValid && !UInventoryUtility::IsDefaultItem(Slot.ItemRowName, GetInventoryConfig()) && Slot.Quantity > 0)
+		{
+			if (IsBackpackItem(Slot.ItemRowName))
+			{
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+bool UInventoryComponentBase::IsBackpackItem(FName ItemRowName) const
+{
+	return UInventoryUtility::IsBackpackItem(ItemRowName, ItemDataTable);
+}
+
 const UInventoryConfig* UInventoryComponentBase::GetInventoryConfig() const
 {
 	if (InventoryConfig)

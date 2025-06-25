@@ -109,6 +109,7 @@ bool UToolbarInventoryComponent::TryAddItemSlot(FName ItemRowName, int32 Amount)
             {
                 UpdateWeight();
                 UpdateWalkieTalkieChannelStatus();
+                UpdateBackpackMeshStatus();
                 OnInventoryUpdated.Broadcast();
                 return true;
             }
@@ -134,6 +135,7 @@ bool UToolbarInventoryComponent::TryAddItemSlot(FName ItemRowName, int32 Amount)
     {
         UpdateWeight();
         UpdateWalkieTalkieChannelStatus();
+        UpdateBackpackMeshStatus();
         OnInventoryUpdated.Broadcast();
         return true;
     }
@@ -238,6 +240,7 @@ bool UToolbarInventoryComponent::TryRemoveItemAtSlot(int32 SlotIndex)
 
     SyncInventoryToPlayerState();
     UpdateWalkieTalkieChannelStatus();
+    UpdateBackpackMeshStatus();
     OnInventoryUpdated.Broadcast();
 
     return true;
@@ -387,7 +390,7 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
         return;
     }
 
-    if (IsBackpackItem(ItemData))
+    if (IsBackpackItem(SlotData->ItemRowName))
     {
         FName TargetSocket = ItemData->AttachSocketName.IsNone() ? TEXT("Backpack") : ItemData->AttachSocketName;
         if (!CachedOwnerCharacter->GetMesh()->DoesSocketExist(TargetSocket))
@@ -805,7 +808,7 @@ bool UToolbarInventoryComponent::TryStoreItem(AItemBase* ItemActor)
     NewSlot.bIsEquipped = false;
 
     // 가방 전용 처리
-    if (IsBackpackItem(ItemData))
+    if (IsBackpackItem(ItemActor->ItemRowName))
     {
         NewSlot.bIsBackpack = true;
         NewSlot.BackpackSlots.Empty();
@@ -846,6 +849,7 @@ bool UToolbarInventoryComponent::TryStoreItem(AItemBase* ItemActor)
     }
     UpdateWeight();
     UpdateWalkieTalkieChannelStatus();
+    UpdateBackpackMeshStatus();
 
     LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::TryStoreItem] 저장 성공: %s (슬롯: %d)"), *ItemActor->ItemRowName.ToString(), EmptySlotIndex);
     return true;
@@ -965,22 +969,6 @@ void UToolbarInventoryComponent::HandleBackpackUnequip(int32 SlotIndex)
     {
         BackpackManager->UnequipBackpack(SlotIndex);
     }
-}
-
-bool UToolbarInventoryComponent::IsBackpackItem(const FItemDataRow* ItemData) const
-{
-    return UInventoryUtility::IsBackpackItem(ItemData);
-}
-
-bool UToolbarInventoryComponent::IsBackpackItem(FName ItemRowName) const
-{
-    if (ItemRowName.IsNone())
-    {
-        return false;
-    }
-
-    FItemDataRow* ItemData = UInventoryUtility::GetItemDataByRowName(ItemRowName, ItemDataTable);
-    return UInventoryUtility::IsBackpackItem(ItemData);
 }
 
 bool UToolbarInventoryComponent::HasOtherEquippedItems() const
@@ -1287,7 +1275,7 @@ void UToolbarInventoryComponent::SetInventoryFromItemIDs(const TArray<int32>& It
             }
 
             const FItemDataRow* ItemData = UInventoryUtility::GetItemDataByRowName(ItemRowName, ItemDataTable);
-            if (UInventoryUtility::IsBackpackItem(ItemData))
+            if (IsBackpackItem(ItemRowName))
             {
                 SlotData.bIsBackpack = true;
                 SlotData.BackpackSlots.Empty();
@@ -1331,6 +1319,7 @@ void UToolbarInventoryComponent::SetInventoryFromItemIDs(const TArray<int32>& It
     // 무게 갱신 및 UI 새로고침
     UpdateWeight();
     UpdateWalkieTalkieChannelStatus();
+    UpdateBackpackMeshStatus();
 
     OnInventoryUpdated.Broadcast();
 

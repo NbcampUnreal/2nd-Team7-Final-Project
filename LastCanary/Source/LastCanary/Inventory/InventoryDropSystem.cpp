@@ -192,6 +192,7 @@ bool UInventoryDropSystem::ExecuteDropLogic(UInventoryComponentBase* Inventory, 
 
     Inventory->UpdateWeight();
     Inventory->UpdateWalkieTalkieChannelStatus();
+    Inventory->UpdateBackpackMeshStatus();
     Inventory->OnInventoryUpdated.Broadcast();
 
     return true;
