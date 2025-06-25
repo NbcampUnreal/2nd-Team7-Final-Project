@@ -43,6 +43,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Auto")
 	EGimmickLoopType LoopType;
 
+	/** 앞으로 갈 때 사운드 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Sound")
+	USoundBase* ForwardSound;
+
+	/** 뒤로 갈 때 사운드 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Sound")
+	USoundBase* BackwardSound;
+
 	/** 정지된 후 루프를 몇 초 후에 재시작할지 (0이면 완전 멈춤) */	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Auto")
 	float LoopRestartDelay;
