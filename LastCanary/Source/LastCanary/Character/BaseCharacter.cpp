@@ -2526,6 +2526,15 @@ void ABaseCharacter::RestoreMouseInvert()
 }
 
 
+void ABaseCharacter::PlayHitSound_Local()
+{
+	if (IsLocallyControlled())
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, OnHitSound, GetActorLocation());
+	}
+}
+
+
 float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
 	LOG_Char_WARNING(TEXT("Character Take Damage"));
@@ -2549,6 +2558,7 @@ float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageE
 	MyPlayerState->SetHP(CalCulatedHP);
 	// TODO: 클라이언트에서 해야할 것 같은 그런 느낌인데... 
 	//MyPlayerState->ApplyDamage(CalCulatedHP);
+	PlayHitSound_Local();
 	LOG_Char_WARNING(TEXT("Current HP : %f"), CalCulatedHP);
 	if (CalCulatedHP <= 0.f)
 	{
@@ -3019,13 +3029,13 @@ void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(FGameplayTag ItemTag)
 	{
 		OverlayAnimationInstanceClass = TorchAnimationClass;
 	}
-	/*else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol")))
+	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol")))
 	{
-		OverlayAnimationInstanceClass = PistolAnimationClass;
-	}*/
+		OverlayAnimationInstanceClass = PistolTwoHandedAnimationClass;
+	}
 	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))
 	{
-		OverlayAnimationInstanceClass = PistolAnimationClass;
+		OverlayAnimationInstanceClass = PistolOneHandedAnimationClass;
 	}
 	else
 	{

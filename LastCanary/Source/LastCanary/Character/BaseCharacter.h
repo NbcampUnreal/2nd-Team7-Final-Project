@@ -431,7 +431,10 @@ public:
 	TSubclassOf<UAnimInstance> RifleAnimationClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
-	TSubclassOf<UAnimInstance> PistolAnimationClass;
+	TSubclassOf<UAnimInstance> PistolOneHandedAnimationClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	TSubclassOf<UAnimInstance> PistolTwoHandedAnimationClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	TSubclassOf<UAnimInstance> TorchAnimationClass;
@@ -630,6 +633,11 @@ public:
 	void ForceInvertMouseTemporary(bool bInvert, float Duration);
 	void RestoreMouseInvert();
 
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Damage")
+	USoundBase* OnHitSound;
+
+	void PlayHitSound_Local();
 
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	void HandlePlayerDeath();
