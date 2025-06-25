@@ -1278,7 +1278,7 @@ AActor* ABasePlayerController::TraceInteractable(float TraceDistance)
 
 	// 디버그용
 #if WITH_EDITOR
-	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 1.0f);
+	//DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 1.0f);
 #endif
 	return bHit ? Hit.GetActor() : nullptr;
 }

@@ -85,6 +85,11 @@ ABaseCharacter::ABaseCharacter()
 	CustomBootsMesh->SetupAttachment(GetMesh());
 	CustomBootsMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
 
+	////* 가방 메시 *////
+	BackpackMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("BackpackMesh"));
+	BackpackMesh->SetupAttachment(GetMesh());
+	BackpackMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
+
 
 	OverlayStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("OverlayStaticMesh"));
 	OverlayStaticMesh->SetupAttachment(GetMesh());
@@ -244,7 +249,42 @@ void ABaseCharacter::BeginPlay()
 	LOG_Char_WARNING(TEXT("캐릭터 의상 적용"));
 	ApplyCustomization(CharacterMeshMap);
 
+
+	//백팩은 커스터마이징과는 다르게 처리 // 기본은 투명
+	SetBackpackMesh(false);
 }
+
+FCharacterCustomizationData ABaseCharacter::GetCustomizationData()
+{
+	return CharacterCustomizationData;
+}
+
+
+void ABaseCharacter::SetCustomizationDataOnServer()
+{
+	FCharacterCustomizationData CustomizationData = ULCLocalPlayerSaveGame::LoadCustomizationData(GetWorld());
+	Server_SetCustomizationData(CustomizationData);
+}
+
+void ABaseCharacter::Server_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData)
+{
+	LOG_Char_WARNING(TEXT("캐릭터 커스터마이징 데이터 서버에 전달됨"));
+	CharacterCustomizationData = CustomizingData;
+	
+	int BodyId = CustomizingData.DefaultBodyID;
+	int HeadId = CustomizingData.DefaultBodyID;
+	int HelmetId = CustomizingData.HelmetID;
+	int GloveId = CustomizingData.GloveID;
+	int JacketId = CustomizingData.JacketID;
+	int PantsId = CustomizingData.PantsID;
+	int BeltsId = CustomizingData.BeltsID;
+	int ArmorId = CustomizingData.ArmorID;
+	int BootsId = CustomizingData.BootsID;
+
+	UE_LOG(LogTemp, Log, TEXT("[CustomizationData] Body: %d, Head: %d, Helmet: %d, Glove: %d, Jacket: %d, Pants: %d, Belts: %d, Armor: %d, Boots: %d"),
+		BodyId, HeadId, HelmetId, GloveId, JacketId, PantsId, BeltsId, ArmorId, BootsId);
+}
+
 
 void ABaseCharacter::ApplyCustomization(const UCustomizationMeshMap* CharacterMeshData)
 {
@@ -324,6 +364,8 @@ void ABaseCharacter::ApplyCustomization(const UCustomizationMeshMap* CharacterMe
 	//플래그
 	SetPartMaterial(CustomHelmetMesh, 1, FlagMat);
 	SetPartMaterial(CustomArmorMesh, 0, FlagMat);
+
+	SetCustomizationDataOnServer();
 }
 
 void ABaseCharacter::SetPartMesh(USkeletalMeshComponent* Component, USkeletalMesh* LoadedMesh)
@@ -533,6 +575,17 @@ void ABaseCharacter::AttachCameraToRifle()
 	{
 		if (IsLocallyControlled())
 		{
+			AGunBase* Gun = Cast<AGunBase>(GetToolbarInventoryComponent()->GetCurrentEquippedItem());
+			if (IsValid(Gun))
+			{
+				if (Gun->HasScopeAttached())
+				{
+					LOG_Char_WARNING(TEXT("스코프 장착됨."));
+
+					SpringArm->AttachToComponent(OverlaySkeletalMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("RifleScope"));
+					return;
+				}
+			}
 			SpringArm->AttachToComponent(OverlaySkeletalMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
 			//SpringArm->AttachToComponent(CurrentRifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
 		}
@@ -1979,7 +2032,7 @@ void ABaseCharacter::TraceInteractableActor()
 	}
 
 #if WITH_EDITOR
-	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 0.1f);
+	//DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 0.1f);
 #endif
 	//여기가 로그가 안찍힘 수정해야됨
 
@@ -2098,7 +2151,7 @@ void ABaseCharacter::UpdateGunWallClipOffset(float DeltaTime)
 
 	// 디버그 라인도 수정된 시작점 기준으로
 #if WITH_EDITOR
-	DrawDebugLine(GetWorld(), TraceStart, TraceEnd, FColor::Red, false, 0.1f);
+	//DrawDebugLine(GetWorld(), TraceStart, TraceEnd, FColor::Red, false, 0.1f);
 #endif
 	// 3. 벽과의 거리 비율 계산
 	//float WallRatio = 0.0f;
@@ -3254,26 +3307,15 @@ void ABaseCharacter::DropAllItemsOnDeath()
 	}
 }
 
-void ABaseCharacter::SetBackpackMesh(UStaticMesh* BackpackMesh)
+void ABaseCharacter::SetBackpackMesh(bool bIsEquipBackpack)
 {
-	if (!BackpackMeshComponent)
+	if (bIsEquipBackpack)
 	{
-		return;
-	}
-
-	if (BackpackMesh)
-	{
-		GetMesh()->UnHideBoneByName("backpack1");
-		BackpackMeshComponent->SetStaticMesh(BackpackMesh);
-		BackpackMeshComponent->SetVisibility(true);
-		UE_LOG(LogTemp, Warning, TEXT("[SetBackpackMesh] 가방 메시 표시"));
+		SetPartMesh(BackpackMesh, BackpackSkeletalMesh);
 	}
 	else
 	{
-		GetMesh()->HideBoneByName("backpack1", PBO_None);
-		BackpackMeshComponent->SetStaticMesh(nullptr);
-		BackpackMeshComponent->SetVisibility(false);
-		UE_LOG(LogTemp, Warning, TEXT("[SetBackpackMesh] 가방 메시 숨김"));
+		SetPartMesh(BackpackMesh, NULL);
 	}
 }
 
