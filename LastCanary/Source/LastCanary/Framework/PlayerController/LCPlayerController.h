@@ -5,12 +5,17 @@
 #include "DataType/SessionPlayerInfo.h"
 #include "LastCanary.h"
 #include "Framework/PlayerController/LCPlayerInputController.h"
+#include "Character/CinematicDummyCharacter.h"
+#include "LevelSequenceActor.h"
+
 #include "LCPlayerController.generated.h"
 
 class ULCUIManager;
 class ALCGateActor;
 class ACineCameraActor;
 class ULevelSequence;
+class ABaseCharacter;
+struct FCharacterCustomizationData;
 
 UCLASS()
 class LASTCANARY_API ALCPlayerController : public ALCPlayerInputController
@@ -81,8 +86,13 @@ public:
 	void Client_HideHUD_Implementation();
 
 	UFUNCTION(Client, Unreliable)
-	void Client_PlayGateCutscene(ULevelSequence* Sequence, TSubclassOf<AActor> DummyClass, const FTransform& SpawnTransform, int32 PlayerIndex);
-	void Client_PlayGateCutscene_Implementation(ULevelSequence* Sequence, TSubclassOf<AActor> DummyClass, const FTransform& SpawnTransform, int32 PlayerIndex);
+	void Client_PlayGateCutscene(ULevelSequence* Sequence, ACinematicDummyCharacter* CinematicDummyCharacter, const FTransform& SpawnTransform, int32 PlayerIndex);
+	void Client_PlayGateCutscene_Implementation(ULevelSequence* Sequence, ACinematicDummyCharacter* CinematicDummyCharacter, const FTransform& SpawnTransform, int32 PlayerIndex);
+
+	// LevelSequenceActor를 클라이언트에 알려주기 위한 변수
+	UPROPERTY(Replicated)
+	ALevelSequenceActor* LinkedSequenceActor;
+
 
 	UFUNCTION()
 	void OnCutsceneFinished();

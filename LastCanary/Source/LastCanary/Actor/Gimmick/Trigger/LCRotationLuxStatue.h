@@ -82,6 +82,10 @@ public:
 	void Multicast_EmitLightEffect(const FVector& End);
 	void Multicast_EmitLightEffect_Implementation(const FVector& End);
 
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_StopLightEffect();
+	void Multicast_StopLightEffect_Implementation();
+
 	/** 사운드 전파 */
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_PlayLightSound();
