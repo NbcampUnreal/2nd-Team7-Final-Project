@@ -626,7 +626,9 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 	}
 	if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem))
 	{
-		if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")) || EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol")))
+		if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")) 
+			|| EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol")) 
+			|| EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Shotgun")))
 		{
 			AGunBase* RifleItem = Cast<AGunBase>(EquippedItem);
 			if (RifleItem)
@@ -2941,6 +2943,19 @@ void ABaseCharacter::RefreshOverlayObject()
 		Overlay = AlsOverlayModeTags::PistolTwoHanded;
 		bIsDesireAiming = true;
 	}
+	if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Shotgun")))  // 또는 HasTag 등 비교 방식에 따라
+	{
+		if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(CurrentItem))
+		{
+			AGunBase* RifleItem = Cast<AGunBase>(EquipmentItem);
+			USkeletalMeshComponent* RifleMesh = RifleItem->GetSkeletalMeshComponent();
+			CurrentRifleMesh = RifleMesh;
+			Socketname = "Shotgun";
+			AttachSkeletalMesh = EquipmentItem->ItemData.SkeletalMesh;
+		}
+		Overlay = AlsOverlayModeTags::Rifle;
+		bIsDesireAiming = true;
+	}
 	if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.FlashLight")))
 	{
 		Overlay = AlsOverlayModeTags::Torch;
@@ -3046,6 +3061,10 @@ void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(FGameplayTag ItemTag)
 	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol")))
 	{
 		OverlayAnimationInstanceClass = PistolTwoHandedAnimationClass;
+	}
+	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Shotgun")))
+	{
+		OverlayAnimationInstanceClass = RifleAnimationClass;
 	}
 	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))
 	{
