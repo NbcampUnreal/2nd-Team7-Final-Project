@@ -10,6 +10,7 @@
 #include "NiagaraSystem.h"
 #include "Net/UnrealNetwork.h"
 #include "GeometryCollection/GeometryCollectionComponent.h"
+#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 
 #include "LastCanary.h"
 
@@ -92,6 +93,12 @@ void AResourceNode::Server_RequestInteract_Implementation(APlayerController* Int
 
 void AResourceNode::HarvestResource(APlayerController* Interactor)
 {
+	if (InteractionType == EResourceInteractionType::Loot)
+	{
+		HandleLootSpawn(Interactor);
+		return;
+	}
+
 	if (!CanHarvest())
 	{
 		LOG_Item_WARNING(TEXT("[AResourceNode::HarvestResource] 채취 불가능 - 자원이 고갈됨"));
@@ -348,6 +355,76 @@ float AResourceNode::GetHarvestProgress() const
 	}
 
 	return static_cast<float>(CurrentHarvestCount) / static_cast<float>(MaxHarvestCount);
+}
+
+void AResourceNode::HandleLootSpawn(APlayerController* Interactor)
+{
+	if (CanHarvest() == false)
+	{
+		return;
+	}
+	if (ResourceItemSpawnManager == nullptr)
+	{
+		return;
+	}
+
+	UDataTable* ItemTable = nullptr;
+	if (UWorld* World = GetWorld())
+	{
+		if (UGameInstance* GI = World->GetGameInstance())
+		{
+			if (ULCGameInstanceSubsystem* Subsystem = GI->GetSubsystem<ULCGameInstanceSubsystem>())
+			{
+				ItemTable = Subsystem->GetItemDataTable();
+			}
+		}
+	}
+	if (ItemTable == nullptr)
+	{
+		LOG_Item_WARNING(TEXT("[ResourceNode::HandleLootSpawn] 아이템 데이터 테이블 없음"));
+		return;
+	}
+
+	TArray<FName> CandidateRows;
+	const FGameplayTag RuinsTag = FGameplayTag::RequestGameplayTag("ItemSpawn.Map.Ruins");
+
+	for (const auto& Pair : ItemTable->GetRowMap())
+	{
+		const FItemDataRow* Row = reinterpret_cast<const FItemDataRow*>(Pair.Value);
+		if (Row && Row->bIsResourceItem && Row->AllowedSpawnMaps.HasTagExact(RuinsTag))
+		{
+			CandidateRows.Add(Pair.Key);
+		}
+	}
+
+	if (CandidateRows.Num() == 0)
+	{
+		LOG_Item_WARNING(TEXT("[ResourceNode::HandleLootSpawn] 조건에 맞는 아이템이 없음"));
+		return;
+	}
+
+	const int32 NumToSpawn = FMath::Min(MaxLootItemTypes, CandidateRows.Num());
+	TArray<FName> SelectedRows;
+
+	while (SelectedRows.Num() < NumToSpawn)
+	{
+		const int32 RandIndex = FMath::RandRange(0, CandidateRows.Num() - 1);
+		const FName& Row = CandidateRows[RandIndex];
+
+		if (!SelectedRows.Contains(Row))
+		{
+			SelectedRows.Add(Row);
+		}
+	}
+
+	for (const FName& ItemRow : SelectedRows)
+	{
+		const FVector SpawnLocation = CalculateResourceSpawnLocation(Interactor);
+		ResourceItemSpawnManager->SpawnItemAtLocation(ItemRow, SpawnLocation);
+	}
+
+	OnResourceOpened();
+	CurrentHarvestCount = MaxHarvestCount; // 즉시 상호작용 금지 처리
 }
 
 void AResourceNode::Multicast_PlayDestroyEffect_Implementation()

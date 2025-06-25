@@ -55,7 +55,7 @@ public:
 	UFUNCTION(exec)
 	void SpawnItem(FName ItemRowName);
 
-	UFUNCTION(exec)
+	UFUNCTION(exec, BlueprintCallable)
 	void SpawnItemByRowHandle(FDataTableRowHandle ItemRowHandle);
 
 	/** 무적모드 전환 */
