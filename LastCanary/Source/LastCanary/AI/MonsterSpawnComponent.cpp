@@ -137,7 +137,7 @@ FVector UMonsterSpawnComponent::GetValidSpawnLocationInNavVolume(const FVector& 
 
         FHitResult HitResult;
         FVector TraceStart = ValidNavLocation;
-        TraceStart.Z += 500.0f;
+        TraceStart.Z += 300.0f;
 
         FVector TraceEnd = ValidNavLocation;
         TraceEnd.Z -= 100.0f;
@@ -156,12 +156,12 @@ FVector UMonsterSpawnComponent::GetValidSpawnLocationInNavVolume(const FVector& 
         if (bHit)
         {
             FVector FinalLocation = HitResult.Location;
-            FinalLocation.Z += 90.0f;
+            FinalLocation.Z += 50.0f;
             return FinalLocation;
         }
         else
         {
-            ValidNavLocation.Z += 90.0f;
+            ValidNavLocation.Z += 50.0f;
             return ValidNavLocation;
         }
     }

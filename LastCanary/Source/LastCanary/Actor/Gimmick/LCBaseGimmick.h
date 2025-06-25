@@ -227,6 +227,14 @@ public:
 	void Multicast_PlaySound();
 	void Multicast_PlaySound_Implementation();
 
+	/** 파괴 사운드 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Sound")
+	USoundBase* DestroySound;
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayDestroySound();
+	void Multicast_PlayDestroySound_Implementation();
+
 public:
 	FORCEINLINE const TArray<AActor*>& GetAttachedActors() const { return AttachedActors; }
 

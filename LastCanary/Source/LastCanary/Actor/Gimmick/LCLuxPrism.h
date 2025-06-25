@@ -73,6 +73,15 @@ protected:
 	/** 발사 중지 */
 	void StopEmitLux();
 
+protected:
+	/** 현재 수신 중인 빛 개수 */
+	UPROPERTY(VisibleAnywhere, Category = "Lux")
+	int32 CurrentLuxCount;
+
+	/** 요구되는 최소 빛 개수 */
+	UPROPERTY(EditAnywhere, Category = "Lux", meta = (ClampMin = 1))
+	int32 RequiredLuxCount;
+
 public:
 	virtual void ActivateGimmick_Implementation() override;
 	virtual void DeactivateGimmick_Implementation() override;
@@ -92,4 +101,17 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_StopEmitLux();
 	void Multicast_StopEmitLux_Implementation();
+
+	UPROPERTY()
+	TWeakObjectPtr<AActor> PreviouslyHitActor;
+
+	UPROPERTY()
+	TSet<TWeakObjectPtr<AActor>> ActiveLuxSources;
+
+	UFUNCTION(BlueprintCallable, Category = "Lux")
+	void TriggerEffectFrom(AActor* Source);
+
+	UFUNCTION()
+	void StopEffectFrom(AActor* Source);
+
 };
