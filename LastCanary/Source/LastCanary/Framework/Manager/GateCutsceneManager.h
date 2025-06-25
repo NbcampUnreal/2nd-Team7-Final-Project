@@ -36,7 +36,13 @@ protected:
 
 	//UFUNCTION()
 	//void OnCutsceneFinished();
+	UPROPERTY(Replicated)
+	class ALevelSequenceActor* ReplicatedSequenceActor;
 
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
+
+
+	FTimerHandle CutsceneDelayTimer;
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Cutscene")
 	ULevelSequence* GateSuckInSequence;
