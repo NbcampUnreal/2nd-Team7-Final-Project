@@ -5,6 +5,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "TimerManager.h"
 #include "NiagaraFunctionLibrary.h"
+#include "Character/BaseCharacter.h"
 #include "Kismet/GameplayStatics.h"
 #include "NavigationSystem.h"
 #include "DrawDebugHelpers.h"
@@ -538,9 +539,9 @@ void ALCBossEoduksini::ExecuteShadowEchoDamage(FVector Location)
             {
                 if (P->IsPlayerControlled())
                 {
-                    UGameplayStatics::ApplyDamage(P, NormalAttackDamage * 0.5f, GetController(), this, nullptr);
-                    // apply slow: could interface with character movement
-                    if (auto* Ch = Cast<ACharacter>(P))
+                    UGameplayStatics::ApplyDamage(P, EchoDamage, GetController(), this, nullptr);
+                    // 슬로우 적용: could interface with character movement
+                    if (auto* Ch = Cast<ABaseCharacter>(P))
                     {
                         Ch->GetCharacterMovement()->MaxWalkSpeed *= 0.5f;
                     }
@@ -577,7 +578,7 @@ void ALCBossEoduksini::NightmareGrasp()
 
         if (APawn* P = Cast<APawn>(Hit.GetActor()))
         {
-            UGameplayStatics::ApplyDamage(P, StrongAttackDamage, GetController(), this, nullptr);
+            UGameplayStatics::ApplyDamage(P, GraspDamage, GetController(), this, nullptr);
             // stun: disable movement briefly
             if (auto* Ch = Cast<ACharacter>(P))
             {
@@ -593,58 +594,78 @@ void ALCBossEoduksini::NightTerror()
 {
     UE_LOG(LogTemp, Log, TEXT("[Eoduksini] NightTerror 실행"));
 
-    // (기존 FX/사운드 호출)
-    if (TerrorFX)
-        UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-            GetWorld(), TerrorFX, GetActorLocation(), FRotator::ZeroRotator);
+    if (!HasAuthority())
+        return;
 
-    if (TerrorSound)
-        UGameplayStatics::PlaySound2D(this, TerrorSound);
-
+    // 1) 서버에서 데미지 처리
     for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
     {
-        if (APlayerController* PC = It->Get(); PC->IsLocalController())
+        if (APlayerController* PC = It->Get())
         {
-            APawn* Target = PC->GetPawn();
-            if (!Target) continue;
-
-            // Character에 붙은 CameraComponent의 PostProcessSettings 사용
-            if (UCameraComponent* Cam = Target->FindComponentByClass<UCameraComponent>())
+            if (APawn* Pawn = PC->GetPawn())
             {
-                if (TerrorPostProcessMaterial)
-                {
-                    // 1) 포스트 프로세스 머티리얼 블렌드 추가
-                    Cam->PostProcessSettings.AddBlendable(
-                        TerrorPostProcessMaterial,
-                        TerrorPostProcessWeight);
-
-                    // 2) 일정 시간 후 제거
-                    FTimerHandle RemoveHandle;
-                    GetWorldTimerManager().SetTimer(
-                        RemoveHandle,
-                        FTimerDelegate::CreateLambda([Cam, this]()
-                            {
-                                if (Cam)
-                                {
-                                    Cam->PostProcessSettings.RemoveBlendable(TerrorPostProcessMaterial);
-                                }
-                            }),
-                        TerrorPostProcessDuration,
-                        false
-                    );
-                }
+                UGameplayStatics::ApplyDamage(
+                    Pawn,
+                    TerrorDamage,
+                    GetController(),
+                    this,
+                    nullptr
+                );
             }
         }
     }
 
-    // (기존 RadialDamage 등 로직)
-    UGameplayStatics::ApplyRadialDamage(
-        this,
-        StrongAttackDamage * 2.f,
-        GetActorLocation(),
-        600.f,
-        nullptr, {}, this, GetController(), true
-    );
+    // 2) 모든 클라이언트에 이펙트 재생을 명령
+    Multicast_NightTerrorEffects();
+}
+
+void ALCBossEoduksini::Multicast_NightTerrorEffects_Implementation()
+{
+    // 1) FX
+    if (TerrorFX)
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+            GetWorld(),
+            TerrorFX,
+            GetActorLocation(),
+            FRotator::ZeroRotator
+        );
+    }
+    // 2) SFX
+    if (TerrorSound)
+    {
+        UGameplayStatics::PlaySound2D(this, TerrorSound);
+    }
+    // 3) 각 로컬 플레이어의 포스트프로세스
+    for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+    {
+        if (APlayerController* PC = It->Get())
+        {
+            if (!PC->IsLocalController())
+                continue;
+            APawn* Target = PC->GetPawn();
+            if (!Target) continue;
+            if (UCameraComponent* Cam = Target->FindComponentByClass<UCameraComponent>())
+            {
+                Cam->PostProcessSettings.AddBlendable(
+                    TerrorPostProcessMaterial,
+                    TerrorPostProcessWeight
+                );
+                // 일정 시간 뒤 제거
+                FTimerHandle RemoveHandle;
+                GetWorldTimerManager().SetTimer(
+                    RemoveHandle,
+                    FTimerDelegate::CreateLambda([Cam, this]()
+                    {
+                        if (Cam)
+                            Cam->PostProcessSettings.RemoveBlendable(TerrorPostProcessMaterial);
+                    }),
+                    TerrorPostProcessDuration,
+                    false
+                );
+            }
+        }
+    }
 }
 
 // --- basic attacks ---
@@ -659,7 +680,7 @@ void ALCBossEoduksini::ShadowSwipe()
         UNiagaraFunctionLibrary::SpawnSystemAttached(
             SwipeFX,
             GetMesh(),                // 캐릭터 메쉬에 붙이거나
-            TEXT("Hand_R_Socket"),    // 원하는 소켓
+            TEXT("spine_01"),         // ← bone 이름
             FVector::ZeroVector,
             FRotator::ZeroRotator,
             EAttachLocation::SnapToTarget,
@@ -673,7 +694,7 @@ void ALCBossEoduksini::ShadowSwipe()
             GetActorLocation());
     }
 
-    DealDamageInRange(NormalAttackDamage);
+    DealDamageInRange(SwipeDamage);
 
 }
 
@@ -732,7 +753,7 @@ void ALCBossEoduksini::VoidGrasp()
                 // 대미지 적용
                 UGameplayStatics::ApplyDamage(
                     P,
-                    StrongAttackDamage,
+                    GraspDamage,
                     GetController(),
                     this,
                     nullptr

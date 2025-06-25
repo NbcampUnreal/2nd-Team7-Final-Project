@@ -126,13 +126,14 @@ protected:
     bool IsPlayerLooking(APlayerController* PC) const;
 
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Sight", meta = (ClampMin = "0", ClampMax = "180"))
-    float LookAngleDeg = 18.f;    /** ── Rage ── */
+    float LookAngleDeg = 9.f;
+
+    /** ── Rage ── */
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Rage")
+    float RageGainPerSec = 0.42f;
 
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Rage")
-    float RageGainPerSec = 8.f;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Boss|Rage")
-    float RageLossPerSec = 5.f;
+    float RageLossPerSec = 0.10f;
 
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Rage")
     float DarknessRageThreshold = 60.f;
@@ -165,6 +166,8 @@ protected:
     float LastShadowEchoTime = -FLT_MAX;
     void ShadowEcho();
     void ExecuteShadowEchoDamage(FVector Location);
+    UPROPERTY(EditAnywhere, Category = "Eoduksini|Damage")
+    float EchoDamage = 20.f;
 
     // Nightmare Grasp
     float NightmareGraspInterval = 12.f;
@@ -178,7 +181,10 @@ protected:
     float NightTerrorRageThreshold = 0.8f;
     bool bHasUsedNightTerror = false;
     void NightTerror();
-
+    UPROPERTY(EditAnywhere, Category = "Eoduksini|Damage")
+    float TerrorDamage = 40.f;
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_NightTerrorEffects();
 
     /** 공격확률 추가 */
     UPROPERTY(EditAnywhere, Category = "Boss|Ability")
@@ -213,11 +219,15 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Boss|Attack")
 	float ShadowSwipeRange = 200.f; // 근접 공격 범위
     void ShadowSwipe();
+    UPROPERTY(EditAnywhere, Category = "Eoduksini|Damage")
+    float SwipeDamage = 15.f;
 
 	// Void Grasp
 	UPROPERTY(EditDefaultsOnly, Category = "Boss|Attack")
 	float VoidGraspRange = 600.f; // 견인 범위
     void VoidGrasp();
+    UPROPERTY(EditAnywhere, Category = "Eoduksini|Damage")
+    float GraspDamage = 10.f;
     
     /** ── 공격 ── */
     virtual bool RequestAttack(float TargetDistance) override;
