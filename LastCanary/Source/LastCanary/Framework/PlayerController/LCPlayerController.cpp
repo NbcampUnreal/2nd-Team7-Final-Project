@@ -14,6 +14,16 @@
 
 #include "Kismet/GameplayStatics.h"
 #include "Blueprint/UserWidget.h"
+#include "Net/UnrealNetwork.h"
+
+#include "LevelSequenceActor.h"
+#include "LevelSequencePlayer.h"
+#include "LevelSequence.h"
+#include "Actor/LCGateActor.h"
+#include "CineCameraActor.h"
+#include "MovieSceneSequencePlayer.h"
+
+#include "SaveGame/LCLocalPlayerSaveGame.h"
 
 
 ALCPlayerController::ALCPlayerController()
@@ -31,6 +41,14 @@ void ALCPlayerController::PostSeamlessTravel()
     {
         CheatManager = NewObject<ULCCheatManager>(this, CheatClass);
         CheatManager->InitCheatManager();
+    }
+
+    if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+    {
+        if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+        {
+            UIManager->RestoreLoadingScreenIfNeeded(); 
+        }
     }
 
     LOG_Frame_WARNING(TEXT("PostSeamlessTravel: %s 호출 - IsLocalController: %d"), *GetName(), IsLocalController());
@@ -214,4 +232,95 @@ void ALCPlayerController::StartGame(FString SoftPath)
             LCGM->TravelMapBySoftPath(SoftPath);
         }
     }
+}
+
+void ALCPlayerController::Client_HideHUD_Implementation()
+{
+    if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+    {
+        if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+        {
+            UIManager->HideInGameHUD();
+            UIManager->HideSpectatorWidget();
+        }
+    }
+}
+
+void ALCPlayerController::Client_PlayGateCutscene_Implementation(ULevelSequence* Sequence, ACinematicDummyCharacter* CinematicDummyCharacter, const FTransform& SpawnTransform, int32 PlayerIndex)
+{
+    if (!Sequence || !CinematicDummyCharacter)
+    {
+        return;
+    }
+
+    // 1. 클라이언트가 직접 레벨 시퀀스 플레이어를 생성해서 재생하도록 변경 권장
+    FMovieSceneSequencePlaybackSettings PlaybackSettings;
+    ALevelSequenceActor* OutSequenceActor = nullptr;
+    ULevelSequencePlayer* LocalSequencePlayer = ULevelSequencePlayer::CreateLevelSequencePlayer(GetWorld(), Sequence, PlaybackSettings, OutSequenceActor);
+    if (!LocalSequencePlayer || !OutSequenceActor)
+    {
+        return;
+    }
+
+    FName TrackTag = FName(FString::Printf(TEXT("Slot%d"), PlayerIndex + 1));
+    OutSequenceActor->SetBindingByTag(TrackTag, { CinematicDummyCharacter });
+
+    LocalSequencePlayer->Play();
+
+    LocalSequencePlayer->OnFinished.AddDynamic(this, &ALCPlayerController::OnCutsceneFinished);
+
+    // 2. 카메라 전환 (기존에 하던 방식 유지)
+    FName CameraTag = TEXT("Camera");
+    TArray<FMovieSceneObjectBindingID> Bindings = OutSequenceActor->GetSequence()->FindBindingsByTag(CameraTag);
+
+    if (Bindings.Num() > 0)
+    {
+        FMovieSceneObjectBindingID BindingID = Bindings[0];
+        TArray<UObject*> BoundObjects = OutSequenceActor->SequencePlayer->GetBoundObjects(BindingID);
+        for (UObject* Obj : BoundObjects)
+        {
+            if (ACameraActor* CameraActor = Cast<ACameraActor>(Obj))
+            {
+                if (IsLocalController())
+                {
+                    SetViewTargetWithBlend(CameraActor, 0.0f);
+                }
+                break;
+            }
+        }
+    }
+
+    // 3. UI 숨기기
+    if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+    {
+        if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+        {
+            UIManager->HideInGameHUD();
+            UIManager->HideSpectatorWidget();
+        }
+    }
+}
+
+void ALCPlayerController::OnCutsceneFinished()
+{
+    // 필요한 후처리
+    Server_RequestIntoGameLevel();
+
+    // Cutscene 종료 알림이 필요한 경우 서버로 RPC 호출 가능
+}
+
+void ALCPlayerController::Server_RequestIntoGameLevel_Implementation()
+{
+    if (IsValid(LinkedGateActor))
+    {
+        LinkedGateActor->IntoGameLevel(this);
+    }
+}
+
+
+void ALCPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+    DOREPLIFETIME(ALCPlayerController, LinkedSequenceActor);
 }

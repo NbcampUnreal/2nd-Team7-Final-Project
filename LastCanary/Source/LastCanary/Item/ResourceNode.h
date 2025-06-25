@@ -19,7 +19,7 @@ struct FResourceItemData
 	FName ItemRowName = FName(TEXT("Default"));
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resource", meta = (ClampMin = 0.0, ClampMax = 100.0))
-	float Probability = 25.0;
+	float Probability = 100.0f;
 };
 
 UENUM(BlueprintType)
@@ -92,6 +92,13 @@ public:
 	int32 GetRemainingHarvestCount() const;
 	UFUNCTION(BlueprintCallable, Category = "Resource")
 	float GetHarvestProgress() const;
+
+	// Loot 타입 최대 종류 수
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resource|Loot", meta = (ClampMin = 1, ClampMax = 10))
+	int32 MaxLootItemTypes = 3;
+
+	// Loot 핸들링 함수
+	void HandleLootSpawn(APlayerController* Interactor);
 
 	//-------------------------
 	// 연출 관련 함수

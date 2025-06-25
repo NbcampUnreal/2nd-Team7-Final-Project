@@ -27,11 +27,6 @@ EBTNodeResult::Type UBTTask_Move::ExecuteTask(UBehaviorTreeComponent& OwnerComp,
         return EBTNodeResult::Failed;
     }
 
-    /*AActor* TargetActor = Cast<AActor>(BlackboardComp->GetValueAsObject("TargetActor"));
-    if (!TargetActor)
-    {
-        return EBTNodeResult::Failed;
-    }*/
     AActor* TargetActor = Cast<AActor>(BlackboardComp->GetValueAsObject("TargetActor"));
     if (!TargetActor)
     {

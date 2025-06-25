@@ -190,7 +190,7 @@ public:
 	UFUNCTION()
 	void OnRep_CurrentStamina();
 
-	UFUNCTION()
+	UFUNCTION(BlueprintCallable)
 	void ApplyDamage(float Damage);
 
 	FORCEINLINE float GetStamina() const { return CurrentStamina; }

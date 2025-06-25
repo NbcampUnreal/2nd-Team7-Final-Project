@@ -13,6 +13,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedActionKeyMapping.h"
+#include "Framework/Manager/GateCutsceneManager.h"
+#include "EngineUtils.h"
 
 #include "Net/UnrealNetwork.h"
 
@@ -50,7 +52,47 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 	case EGateTravelType::ToInGame:
 	{
 		LOG_Frame_WARNING(TEXT("Play Game Level"));
-		IntoGameLevel(Controller);
+		// IntoGameLevel(Controller);
+		// break;
+
+		// 컷신 전에 Ready 체크
+		if (HasAuthority())
+		{
+			if (ALCGameMode* GM = GetWorld()->GetAuthGameMode<ALCGameMode>())
+			{
+				if (GM->IsAllPlayersReady() == false)
+				{
+					LOG_Frame_WARNING(TEXT("모든 플레이어가 준비되지 않았습니다. 컷신 재생을 중단합니다."));
+					return;
+				}
+			}
+		}
+
+		TArray<AActor*> FoundCharacters;
+		UGameplayStatics::GetAllActorsOfClass(this, ABaseCharacter::StaticClass(), FoundCharacters);
+
+		TArray<ABaseCharacter*> PlayerCharacters;
+		for (AActor* Actor : FoundCharacters)
+		{
+			if (ABaseCharacter* BaseChar = Cast<ABaseCharacter>(Actor))
+			{
+				if (APlayerController* PC = Cast<APlayerController>(BaseChar->GetController()))
+				{
+					// Valid한 플레이어 컨트롤러가 소유한 캐릭터만 추가
+					PlayerCharacters.Add(BaseChar);
+				}
+			}
+		}
+
+		// GateCutsceneManager 찾고 컷신 시작
+		for (TActorIterator<AGateCutsceneManager> It(GetWorld()); It; ++It)
+		{
+			AGateCutsceneManager* GateCutsceneManager = *It;
+			GateCutsceneManager->LinkedGateActor = this;
+			//서버에서 실행, 서버의 모든 플레이어 캐릭터의 정보를 게이트 매니저로 전송
+			GateCutsceneManager->PlayGateCutscene(PlayerCharacters);
+			break;
+		}
 		break;
 	}
 	}
@@ -190,11 +232,11 @@ void ALCGateActor::IntoGameLevel(APlayerController* Controller)
 	{
 		if (LCGM)
 		{
-			if (LCGM->IsAllPlayersReady() == false)
-			{
-				LOG_Server_ERROR(TEXT("All Client is Not Ready!!"));
-				return;
-			}
+			//if (LCGM->IsAllPlayersReady() == false)
+			//{
+			//	LOG_Server_ERROR(TEXT("All Client is Not Ready!!"));
+			//	return;
+			//}
 		}
 		else
 		{
