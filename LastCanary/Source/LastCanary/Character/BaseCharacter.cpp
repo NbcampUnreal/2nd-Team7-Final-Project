@@ -626,7 +626,7 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 	}
 	if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem))
 	{
-		if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
+		if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")) || EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol")))
 		{
 			AGunBase* RifleItem = Cast<AGunBase>(EquippedItem);
 			if (RifleItem)
@@ -2925,6 +2925,20 @@ void ABaseCharacter::RefreshOverlayObject()
 		}
 		
 		Overlay = AlsOverlayModeTags::Rifle;
+		bIsDesireAiming = true;
+	}
+	if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol")))  // 또는 HasTag 등 비교 방식에 따라
+	{
+		if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(CurrentItem))
+		{
+			AGunBase* RifleItem = Cast<AGunBase>(EquipmentItem);
+			USkeletalMeshComponent* RifleMesh = RifleItem->GetSkeletalMeshComponent();
+			CurrentRifleMesh = RifleMesh;
+			Socketname = "Pistol";
+			AttachSkeletalMesh = EquipmentItem->ItemData.SkeletalMesh;
+		}
+
+		Overlay = AlsOverlayModeTags::PistolTwoHanded;
 		bIsDesireAiming = true;
 	}
 	if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.FlashLight")))
