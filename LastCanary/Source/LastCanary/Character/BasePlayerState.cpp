@@ -16,6 +16,7 @@ ABasePlayerState::ABasePlayerState()
 void ABasePlayerState::BeginPlay()
 {
 	Super::BeginPlay();
+	LOG_Char_WARNING(TEXT("Character BeginPlay"));
 
 	if (bAlreadyInitialized)
 	{
@@ -168,6 +169,23 @@ void ABasePlayerState::UpdateSpiritUI()
 				if (UInGameHUD* HUD = UIManager->GetInGameHUD())
 				{
 					//TODO: HUD->UpdateSpiritEffect(CurrentSpirit, InitialStats.MaxSpirit);
+				}
+			}
+		}
+	}
+}
+
+void ABasePlayerState::Client_PlayDamageUI_Implementation()
+{
+	if (APlayerController* PC = Cast<APlayerController>(GetOwner()))
+	{
+		if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+		{
+			if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+			{
+				if (UInGameHUD* HUD = UIManager->GetInGameHUD())
+				{
+					HUD->PlayTakeDamageAnim();
 				}
 			}
 		}
