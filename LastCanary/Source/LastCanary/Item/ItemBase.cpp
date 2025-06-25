@@ -25,6 +25,14 @@ AItemBase::AItemBase()
 	SkeletalMeshComponent->SetVisibility(false);
 	SkeletalMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
+	InteractionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("InteractionSphere"));
+	InteractionSphere->SetupAttachment(StaticMeshComponent);
+	InteractionSphere->SetSphereRadius(HighlightRadius);
+	InteractionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	InteractionSphere->SetCollisionObjectType(ECollisionChannel::ECC_WorldStatic);
+	InteractionSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+	InteractionSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
+
 	bReplicates = true;
 	bNetUseOwnerRelevancy = false;
 
@@ -34,6 +42,7 @@ AItemBase::AItemBase()
 	bUsingSkeletalMesh = false;
 	Quantity = 1;
 	Durability = MaxDurability;;
+	bIsHighlighted = false;
 }
 
 void AItemBase::BeginPlay()
@@ -82,7 +91,20 @@ void AItemBase::BeginPlay()
 			this, &AItemBase::SyncPhysicsLocationToActor, 0.1f, true);
 	}
 
+	SetupHighlightSystem();
 	EnableStencilForAllMeshes(3);
+}
+
+void AItemBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	CleanupHighlightSystem();
+
+	if (PhysicsLocationSyncTimer.IsValid())
+	{
+		GetWorld()->GetTimerManager().ClearTimer(PhysicsLocationSyncTimer);
+	}
+
+	Super::EndPlay(EndPlayReason);
 }
 
 void AItemBase::OnRepDurability()
@@ -219,6 +241,12 @@ bool AItemBase::TryRemoveFromInventory()
 
 void AItemBase::SetupMeshComponents()
 {
+	bool bWasHighlighted = bIsHighlighted;
+	if (bWasHighlighted)
+	{
+		RemoveHighlight();
+	}
+
 	if (ItemData.SkeletalMesh)
 	{
 		bUsingSkeletalMesh = true;
@@ -245,6 +273,11 @@ void AItemBase::SetupMeshComponents()
 	else
 	{
 		LOG_Item_WARNING(TEXT("[SetupMeshComponents] 메시가 설정되지 않음: %s"), *ItemRowName.ToString());
+	}
+
+	if (bWasHighlighted && HighlightMaterial)
+	{
+		ApplyHighlight();
 	}
 }
 
@@ -512,17 +545,6 @@ void AItemBase::SyncPhysicsLocationToActor()
 	}
 }
 
-// EndPlay에서 타이머 정리
-void AItemBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
-{
-	if (PhysicsLocationSyncTimer.IsValid())
-	{
-		GetWorld()->GetTimerManager().ClearTimer(PhysicsLocationSyncTimer);
-	}
-
-	Super::EndPlay(EndPlayReason);
-}
-
 void AItemBase::EnableStencilForAllMeshes(int32 StencilValue)
 {
 	TArray<UMeshComponent*> MeshComponents;
@@ -687,4 +709,162 @@ void AItemBase::StopHoldSound()
 
 		LOG_Item_WARNING(TEXT("[%s] Hold Sound Stop: %s"), *GetName(), *ItemRowName.ToString());
 	}
+}
+
+void AItemBase::SetupHighlightSystem()
+{
+	if (!bEnableHighlight || !InteractionSphere)
+	{
+		return;
+	}
+
+	// 하이라이트 범위 설정
+	InteractionSphere->SetSphereRadius(HighlightRadius);
+
+	// 오버랩 이벤트 바인딩
+	InteractionSphere->OnComponentBeginOverlap.AddUniqueDynamic(this, &AItemBase::OnHighlightSphereBeginOverlap);
+	InteractionSphere->OnComponentEndOverlap.AddUniqueDynamic(this, &AItemBase::OnHighlightSphereEndOverlap);
+}
+
+void AItemBase::CleanupHighlightSystem()
+{
+	if (!InteractionSphere)
+	{
+		return;
+	}
+
+	if (bIsHighlighted)
+	{
+		RemoveHighlight();
+	}
+
+	InteractionSphere->OnComponentBeginOverlap.RemoveDynamic(this, &AItemBase::OnHighlightSphereBeginOverlap);
+	InteractionSphere->OnComponentEndOverlap.RemoveDynamic(this, &AItemBase::OnHighlightSphereEndOverlap);
+}
+
+void AItemBase::OnHighlightSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (!bEnableHighlight || !OtherActor)
+	{
+		return;
+	}
+
+	// 캐릭터인지 확인
+	ACharacter* Character = Cast<ACharacter>(OtherActor);
+	if (!Character)
+	{
+		return;
+	}
+
+	// 로컬 플레이어인지 확인
+	APlayerController* PC = Cast<APlayerController>(Character->GetController());
+	if (!PC || !PC->IsLocalPlayerController())
+	{
+		return;
+	}
+
+	// 장착된 아이템은 하이라이트하지 않음
+	if (bIsEquipped)
+	{
+		return;
+	}
+
+	ApplyHighlight();
+}
+
+void AItemBase::OnHighlightSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	if (!bEnableHighlight || !OtherActor)
+	{
+		return;
+	}
+
+	// 캐릭터인지 확인
+	ACharacter* Character = Cast<ACharacter>(OtherActor);
+	if (!Character)
+	{
+		return;
+	}
+
+	// 로컬 플레이어인지 확인
+	APlayerController* PC = Cast<APlayerController>(Character->GetController());
+	if (!PC || !PC->IsLocalPlayerController())
+	{
+		return;
+	}
+
+	RemoveHighlight();
+}
+
+void AItemBase::ApplyHighlight()
+{
+	if (bIsHighlighted)
+	{
+		return;
+	}
+
+	UMaterialInterface* MaterialToUse = HighlightMaterial ? HighlightMaterial : GetDefaultHighlightMaterial();
+	if (!MaterialToUse)
+	{
+		return;
+	}
+
+	if (bUsingSkeletalMesh && SkeletalMeshComponent)
+	{
+		SkeletalMeshComponent->SetOverlayMaterial(MaterialToUse);
+		bIsHighlighted = true;
+	}
+	else if (StaticMeshComponent)
+	{
+		StaticMeshComponent->SetOverlayMaterial(MaterialToUse);
+		bIsHighlighted = true;
+	}
+
+	if (bIsHighlighted)
+	{
+		LOG_Item_WARNING(TEXT("[%s] Highlight applied to item: %s"), *GetName(), *ItemRowName.ToString());
+	}
+}
+
+void AItemBase::RemoveHighlight()
+{
+	if (!bIsHighlighted)
+	{
+		return;
+	}
+
+	if (bUsingSkeletalMesh && SkeletalMeshComponent)
+	{
+		SkeletalMeshComponent->SetOverlayMaterial(nullptr);
+	}
+	else if (StaticMeshComponent)
+	{
+		StaticMeshComponent->SetOverlayMaterial(nullptr);
+	}
+
+	bIsHighlighted = false;
+	LOG_Item_WARNING(TEXT("[%s] Highlight removed from item: %s"), *GetName(), *ItemRowName.ToString());
+}
+
+UMaterialInterface* AItemBase::GetDefaultHighlightMaterial() const
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return nullptr;
+	}
+
+	UGameInstance* GI = World->GetGameInstance();
+	if (!GI)
+	{
+		return nullptr;
+	}
+
+	ULCGameInstanceSubsystem* GISubsystem = GI->GetSubsystem<ULCGameInstanceSubsystem>();
+	if (!GISubsystem)
+	{
+		return nullptr;
+	}
+
+	return GISubsystem->DefaultHighlightMaterial;
 }

@@ -40,6 +40,9 @@ public:
 	UDataTable* GunDataTable;
 	void LoadGunData();
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI|Highlight")
+	UMaterialInterface* DefaultHighlightMaterial;
+
 public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Session")
 	void CreateSession(const FSessionInfo& SessionInfo);
