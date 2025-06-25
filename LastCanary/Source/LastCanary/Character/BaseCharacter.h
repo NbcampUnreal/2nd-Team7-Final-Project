@@ -194,7 +194,7 @@ public:
 	FRotator TargetCameraRotation;
 
 	UPROPERTY()
-	float CameraTransitionSpeed = 15.0f;
+	float CameraTransitionSpeed = 25.0f;
 
 	//Character Default Settings
 protected:
