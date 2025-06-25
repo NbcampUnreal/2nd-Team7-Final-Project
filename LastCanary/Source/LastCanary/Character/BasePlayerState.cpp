@@ -316,6 +316,7 @@ void ABasePlayerState::CopyProperties(APlayerState* PlayerState)
 		TargetState->AquiredItemIDs = AquiredItemIDs;
 		TargetState->TotalGold = TotalGold;
 		TargetState->TotalExp = TotalExp;
+		TargetState->bIsOpenMic = bIsOpenMic;
 
 		// 초기화할 데이터
 		TargetState->CurrentHP = TargetState->MaxHP;
