@@ -16,6 +16,7 @@ ABasePlayerState::ABasePlayerState()
 void ABasePlayerState::BeginPlay()
 {
 	Super::BeginPlay();
+	LOG_Char_WARNING(TEXT("Character BeginPlay"));
 
 	if (bAlreadyInitialized)
 	{
@@ -174,6 +175,23 @@ void ABasePlayerState::UpdateSpiritUI()
 	}
 }
 
+void ABasePlayerState::Client_PlayDamageUI_Implementation()
+{
+	if (APlayerController* PC = Cast<APlayerController>(GetOwner()))
+	{
+		if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+		{
+			if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+			{
+				if (UInGameHUD* HUD = UIManager->GetInGameHUD())
+				{
+					HUD->PlayTakeDamageAnim();
+				}
+			}
+		}
+	}
+}
+
 void ABasePlayerState::UpdateExhaustedUI()
 {
 	// TODO: implement HUD->OnPlayerExhausted(); if needed
@@ -298,6 +316,7 @@ void ABasePlayerState::CopyProperties(APlayerState* PlayerState)
 		TargetState->AquiredItemIDs = AquiredItemIDs;
 		TargetState->TotalGold = TotalGold;
 		TargetState->TotalExp = TotalExp;
+		TargetState->bIsOpenMic = bIsOpenMic;
 
 		// 초기화할 데이터
 		TargetState->CurrentHP = TargetState->MaxHP;
