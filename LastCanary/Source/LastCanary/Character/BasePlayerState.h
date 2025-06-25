@@ -213,6 +213,11 @@ public:
 	void UpdateDeathUI();
 	void UpdateExhaustedUI();
 	void UpdateSpiritUI();
+	
+	UFUNCTION(Client, Reliable)
+	void Client_PlayDamageUI();
+	void Client_PlayDamageUI_Implementation();
+	
 
 public:
 	// Gold & Exp
