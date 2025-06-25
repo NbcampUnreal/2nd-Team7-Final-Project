@@ -1,4 +1,5 @@
 #include "Actor/Gimmick/LCLuxPrism.h"
+#include "Actor/Gimmick/Trigger/LCLuxChargeTrigger.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraComponent.h"
 #include "Components/SceneComponent.h"
@@ -12,6 +13,8 @@ ALCLuxPrism::ALCLuxPrism()
 	, LightRange(1000.f)
 	, bUseDebugLine(true)
 	, EmitInterval(0.1f)
+	, CurrentLuxCount(0)
+	, RequiredLuxCount(2)
 {
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true;
@@ -41,7 +44,7 @@ void ALCLuxPrism::ActivateGimmick_Implementation()
 {
 	if (bIsLuxReceived) return;
 
-	LOG_Art(Log, TEXT("ALCLuxPrism::ActivateGimmick_Implementation 호출됨"));
+	//LOG_Art(Log, TEXT("ALCLuxPrism::ActivateGimmick_Implementation 호출됨"));
 
 	if (!HasAuthority())
 	{
@@ -54,27 +57,104 @@ void ALCLuxPrism::ActivateGimmick_Implementation()
 
 void ALCLuxPrism::TriggerEffect_Implementation()
 {
-	if (bIsLuxReceived) return;
+	AActor* Source = GetInstigator();
+	if (!IsValid(Source))
+	{
+		LOG_Art_WARNING(TEXT("LuxPrism ▶ TriggerEffect ▶ Source(Instigator) 없음"));
+		return;
+	}
 
-	bIsLuxReceived = true;
-	StartEmitLux();
-	Multicast_StartEmitLux();
+	if (ActiveLuxSources.Contains(Source))
+	{
+		return;
+	}
+
+	ActiveLuxSources.Add(Source);
+	++CurrentLuxCount;
+
+	LOG_Art(Log, TEXT("LuxPrism ▶ TriggerEffect ▶ 현재 LuxCount: %d | From: %s"),
+		CurrentLuxCount, *Source->GetName());
+
+	if (!bIsLuxReceived && CurrentLuxCount >= RequiredLuxCount)
+	{
+		bIsLuxReceived = true;
+		StartEmitLux();
+		Multicast_StartEmitLux();
+	}
 }
 
 void ALCLuxPrism::StopEffect_Implementation()
 {
-	if (!bIsLuxReceived) return;
+	AActor* Source = GetInstigator();
+	if (!IsValid(Source))
+	{
+		LOG_Art_WARNING(TEXT("LuxPrism ▶ StopEffect ▶ Source(Instigator) 없음"));
+		return;
+	}
 
-	bIsLuxReceived = false;
-	StopEmitLux();
-	Multicast_StopEmitLux();
+	if (ActiveLuxSources.Remove(Source) > 0)
+	{
+		CurrentLuxCount = FMath::Max(CurrentLuxCount - 1, 0);
+
+		LOG_Art(Log, TEXT("LuxPrism ▶ StopEffect ▶ 현재 LuxCount: %d | From: %s"),
+			CurrentLuxCount, *Source->GetName());
+	}
+
+	if (bIsLuxReceived && CurrentLuxCount < RequiredLuxCount)
+	{
+		bIsLuxReceived = false;
+		StopEmitLux();
+		Multicast_StopEmitLux();
+	}
+}
+
+void ALCLuxPrism::TriggerEffectFrom(AActor* Source)
+{
+	if (!IsValid(Source)) return;
+
+	if (ActiveLuxSources.Contains(Source))
+		return;
+
+	ActiveLuxSources.Add(Source);
+	++CurrentLuxCount;
+
+	LOG_Art(Log, TEXT("LuxPrism ▶ TriggerEffectFrom ▶ 현재 LuxCount: %d | From: %s"),
+		CurrentLuxCount, *Source->GetName());
+
+	if (!bIsLuxReceived && CurrentLuxCount >= RequiredLuxCount)
+	{
+		bIsLuxReceived = true;
+		StartEmitLux();
+		Multicast_StartEmitLux();
+	}
+}
+
+void ALCLuxPrism::StopEffectFrom(AActor* Source)
+{
+	if (!IsValid(Source)) return;
+
+	if (ActiveLuxSources.Remove(Source) > 0)
+	{
+		CurrentLuxCount = FMath::Max(CurrentLuxCount - 1, 0);
+
+		LOG_Art(Log, TEXT("LuxPrism ▶ StopEffectFrom ▶ 현재 LuxCount: %d | From: %s"),
+			CurrentLuxCount, *Source->GetName());
+	}
+
+	if (bIsLuxReceived && CurrentLuxCount < RequiredLuxCount)
+	{
+		bIsLuxReceived = false;
+		StopEmitLux();
+		Multicast_StopEmitLux();
+	}
 }
 
 void ALCLuxPrism::StartEmitLux()
 {
-	if (HasAuthority())
+	if (HasAuthority()) 
 	{
 		GetWorld()->GetTimerManager().SetTimer(EmitTimerHandle, this, &ALCLuxPrism::EmitLux, EmitInterval, true);
+		//LOG_Art(Log, TEXT("[서버] EmitLux 타이머 시작"));
 	}
 
 	if (EmitEffect && NiagaraComponent)
@@ -120,8 +200,6 @@ void ALCLuxPrism::EmitLux()
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(this);
 
-	const float TraceRadius = 100.f;
-
 	bool bHit = GetWorld()->LineTraceSingleByChannel(
 		Hit,
 		Start,
@@ -132,35 +210,56 @@ void ALCLuxPrism::EmitLux()
 
 	AActor* HitActor = bHit ? Hit.GetActor() : nullptr;
 
-	if (bHit && HitActor && HitActor->ActorHasTag("Lux"))
+	if (HasAuthority())
 	{
-		if (HitActor->GetClass()->ImplementsInterface(ULCGimmickInterface::StaticClass()))
+		if (PreviouslyHitActor.IsValid() && PreviouslyHitActor != HitActor)
 		{
-			ILCGimmickInterface::Execute_ActivateGimmick(HitActor);
+			if (PreviouslyHitActor->GetClass()->ImplementsInterface(ULCGimmickInterface::StaticClass()))
+			{
+				if (ALCLuxPrism* Prism = Cast<ALCLuxPrism>(PreviouslyHitActor.Get()))
+				{
+					Prism->StopEffectFrom(this);
+				}
+				else
+				{
+					IGimmickEffectInterface::Execute_StopEffect(PreviouslyHitActor.Get());
+				}
+			}
+			PreviouslyHitActor = nullptr;
+		}
+
+		if (bHit && HitActor && HitActor->ActorHasTag("Lux"))
+		{
+			if (ALCLuxPrism* Prism = Cast<ALCLuxPrism>(HitActor))
+			{
+				Prism->TriggerEffectFrom(this); 
+			}
+			else if (HitActor->GetClass()->ImplementsInterface(ULCGimmickInterface::StaticClass()))
+			{
+				IGimmickEffectInterface::Execute_TriggerEffect(HitActor);
+			}
+
+			PreviouslyHitActor = HitActor;
 		}
 	}
 
 	if (bUseDebugLine)
 	{
 		DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, EmitInterval + 0.05f, 0, 2.f);
-		//LOG_Art(Log, TEXT("[EmitLux] 예상 방향 라인: %s → %s"), *Start.ToString(), *End.ToString());
 
 		if (bHit)
 		{
 			DrawDebugSphere(GetWorld(), Hit.ImpactPoint, 16.f, 12, FColor::Red, false, EmitInterval + 0.05f);
-			//LOG_Art(Log, TEXT("[EmitLux] 충돌 지점: %s | 맞은 액터: %s"), *Hit.ImpactPoint.ToString(), *GetNameSafe(HitActor));
-		}
-		else
-		{
-			//LOG_Art(Log, TEXT("[EmitLux] 충돌 없음"));
 		}
 	}
 }
+
 
 void ALCLuxPrism::Multicast_StartEmitLux_Implementation()
 {
 	if (!HasAuthority())
 	{
+		//LOG_Art(Log, TEXT("[클라] Multicast_StartEmitLux_Implementation 호출됨"));
 		StartEmitLux();
 	}
 }

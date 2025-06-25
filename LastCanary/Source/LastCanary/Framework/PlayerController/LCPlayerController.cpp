@@ -14,6 +14,7 @@
 
 #include "Kismet/GameplayStatics.h"
 #include "Blueprint/UserWidget.h"
+#include "Net/UnrealNetwork.h"
 
 #include "LevelSequenceActor.h"
 #include "LevelSequencePlayer.h"
@@ -21,6 +22,9 @@
 #include "Actor/LCGateActor.h"
 #include "CineCameraActor.h"
 #include "MovieSceneSequencePlayer.h"
+
+#include "SaveGame/LCLocalPlayerSaveGame.h"
+
 
 ALCPlayerController::ALCPlayerController()
 {
@@ -242,45 +246,37 @@ void ALCPlayerController::Client_HideHUD_Implementation()
     }
 }
 
-void ALCPlayerController::Client_PlayGateCutscene_Implementation(ULevelSequence* Sequence, TSubclassOf<AActor> DummyClass, const FTransform& SpawnTransform, int32 PlayerIndex)
+void ALCPlayerController::Client_PlayGateCutscene_Implementation(ULevelSequence* Sequence, ACinematicDummyCharacter* CinematicDummyCharacter, const FTransform& SpawnTransform, int32 PlayerIndex)
 {
-    if (!Sequence || !*DummyClass)
+    if (!Sequence || !CinematicDummyCharacter)
     {
         return;
     }
 
+    // 1. 클라이언트가 직접 레벨 시퀀스 플레이어를 생성해서 재생하도록 변경 권장
     FMovieSceneSequencePlaybackSettings PlaybackSettings;
     ALevelSequenceActor* OutSequenceActor = nullptr;
-
     ULevelSequencePlayer* LocalSequencePlayer = ULevelSequencePlayer::CreateLevelSequencePlayer(GetWorld(), Sequence, PlaybackSettings, OutSequenceActor);
     if (!LocalSequencePlayer || !OutSequenceActor)
     {
         return;
     }
 
-    AActor* Dummy = GetWorld()->SpawnActor<AActor>(DummyClass, SpawnTransform);
-    if (!Dummy)
-    {
-        return;
-    }
-
     FName TrackTag = FName(FString::Printf(TEXT("Slot%d"), PlayerIndex + 1));
-    OutSequenceActor->SetBindingByTag(TrackTag, { Dummy });
+    OutSequenceActor->SetBindingByTag(TrackTag, { CinematicDummyCharacter });
 
-    if (!OutSequenceActor || !OutSequenceActor->GetSequence())
-    {
-        return;
-    }
+    LocalSequencePlayer->Play();
 
+    LocalSequencePlayer->OnFinished.AddDynamic(this, &ALCPlayerController::OnCutsceneFinished);
+
+    // 2. 카메라 전환 (기존에 하던 방식 유지)
     FName CameraTag = TEXT("Camera");
     TArray<FMovieSceneObjectBindingID> Bindings = OutSequenceActor->GetSequence()->FindBindingsByTag(CameraTag);
 
-    if (Bindings.Num() > 0 && OutSequenceActor->SequencePlayer)
+    if (Bindings.Num() > 0)
     {
         FMovieSceneObjectBindingID BindingID = Bindings[0];
-
         TArray<UObject*> BoundObjects = OutSequenceActor->SequencePlayer->GetBoundObjects(BindingID);
-
         for (UObject* Obj : BoundObjects)
         {
             if (ACameraActor* CameraActor = Cast<ACameraActor>(Obj))
@@ -294,11 +290,7 @@ void ALCPlayerController::Client_PlayGateCutscene_Implementation(ULevelSequence*
         }
     }
 
-    LocalSequencePlayer->Play();
-
-    LocalSequencePlayer->OnFinished.AddDynamic(this, &ALCPlayerController::OnCutsceneFinished);
-
-    // UI 숨기기
+    // 3. UI 숨기기
     if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
     {
         if (ULCUIManager* UIManager = Subsystem->GetUIManager())
@@ -323,4 +315,12 @@ void ALCPlayerController::Server_RequestIntoGameLevel_Implementation()
     {
         LinkedGateActor->IntoGameLevel(this);
     }
+}
+
+
+void ALCPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+    DOREPLIFETIME(ALCPlayerController, LinkedSequenceActor);
 }

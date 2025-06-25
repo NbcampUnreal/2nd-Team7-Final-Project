@@ -103,6 +103,17 @@ void ABaseAIController::SetAttacking()
 	}
 }
 
+//신전 엘리트 박스 서칭
+void ABaseAIController::SetSearching()
+{
+	if (BlackboardComponent && MonsterCharacter)
+	{
+		BlackboardComponent->SetValueAsInt(StateKeyName, 10);
+
+		//MonsterCharacter->SetSearching();
+	}
+}
+
 void ABaseAIController::SetStop()
 {
 	BlackboardComponent->SetValueAsInt(StateKeyName, 4);
@@ -141,6 +152,7 @@ void ABaseAIController::SetStun(float StunDuration)
 		false
 	);
 }
+
 
 void ABaseAIController::RecoverFromStun()
 {

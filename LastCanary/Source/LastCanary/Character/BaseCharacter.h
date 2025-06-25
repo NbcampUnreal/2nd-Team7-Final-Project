@@ -4,6 +4,7 @@
 #include "../Plugins/ALS-Refactored-4.15/Source/ALS/Public/AlsCharacter.h"
 #include "Character/PlayerData/PlayerDataTypes.h"
 #include "Interface/GimmickDebuffInterface.h"
+#include "SaveGame/LCLocalPlayerSaveGame.h"
 #include "GameplayTagAssetInterface.h"
 #include "BaseCharacter.generated.h"
 
@@ -25,6 +26,7 @@ class AResourceNode;
 class UWidgetComponent;
 class UPlayerNameWidget;
 class UCustomizationMeshMap;
+struct FCharacterCustomizationData;
 
 UENUM(BlueprintType)
 enum class EAnimationType : uint8
@@ -117,12 +119,33 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
 	USkeletalMeshComponent* CustomBootsMesh;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* BackpackMesh;
+
 	void ApplyCustomization(const UCustomizationMeshMap* Data);
 
 	void SetPartMesh(USkeletalMeshComponent* Component, USkeletalMesh* LoadedMesh);
 
 	void SetPartMaterial(USkeletalMeshComponent* Component, int32 MaterialIndex, UMaterialInterface* Material);
 
+	
+	
+	FCharacterCustomizationData GetCustomizationData();
+	
+	void SetCustomizationDataOnServer();
+
+	UFUNCTION(Server, Reliable)
+	void Server_SetCustomizationData(const FCharacterCustomizationData& CustomizingData);
+
+	void Server_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData);
+
+	FCharacterCustomizationData CharacterCustomizationData = FCharacterCustomizationData();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMesh* BackpackSkeletalMesh;
+	
+	/** 가방 메시 설정 */
+	void SetBackpackMesh(bool bIsEquipBackpack);
 
 	UPROPERTY(EditAnywhere, Category = "Brightness")
 	float MinBrightness = 8.0f;
@@ -806,8 +829,7 @@ public:
 	//-----------------------------------------------------
 
 private:
-	/** 가방 메시 설정 */
-	void SetBackpackMesh(UStaticMesh* BackpackMesh);
+
 
 public:
 	/** 인벤토리 무게 변경 시 호출 */

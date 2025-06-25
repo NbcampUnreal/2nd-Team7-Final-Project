@@ -89,6 +89,7 @@ void ALCGateActor::Interact_Implementation(APlayerController* Controller)
 		{
 			AGateCutsceneManager* GateCutsceneManager = *It;
 			GateCutsceneManager->LinkedGateActor = this;
+			//서버에서 실행, 서버의 모든 플레이어 캐릭터의 정보를 게이트 매니저로 전송
 			GateCutsceneManager->PlayGateCutscene(PlayerCharacters);
 			break;
 		}

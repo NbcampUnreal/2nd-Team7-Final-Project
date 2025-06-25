@@ -150,7 +150,7 @@ bool ALCTransformGimmick::CanActivate_Implementation()
 
 void ALCTransformGimmick::ReturnToInitialState_Implementation()
 {
-	LOG_Art(Log, TEXT("▶ ReturnToInitialState 진입"));
+	//LOG_Art(Log, TEXT("▶ ReturnToInitialState 진입"));
 
 	if (bIsReturningServer && bIsReturningRotationServer)
 	{
@@ -184,8 +184,8 @@ void ALCTransformGimmick::ReturnToInitialState_Implementation()
 	}
 	else
 	{
-		LOG_Art(Log, TEXT("❌ 회전 복귀 조건 불충족 - bIsReturningRotationServer: %d | TotalRotationIndex: %d"),
-			bIsReturningRotationServer, TotalRotationIndex);
+		////LOG_Art(Log, TEXT("❌ 회전 복귀 조건 불충족 - bIsReturningRotationServer: %d | TotalRotationIndex: %d"),
+		//	bIsReturningRotationServer, TotalRotationIndex);
 	}
 }
 
@@ -247,11 +247,11 @@ void ALCTransformGimmick::CompleteMovement()
 
 	if (!bToggleState && !bUseAlternateToggle)
 	{
-		LOG_Art(Log, TEXT("▶ 상태 복귀 예약됨 - ReturnToInitialState %.1f초 후"), ReturnDelay);
+		//LOG_Art(Log, TEXT("▶ 상태 복귀 예약됨 - ReturnToInitialState %.1f초 후"), ReturnDelay);
 
 		GetWorldTimerManager().SetTimer(ReturnMoveTimerHandle, [this]()
 			{
-				LOG_Art(Log, TEXT("▶ [이동] ReturnToInitialState 람다 호출됨"));
+				//LOG_Art(Log, TEXT("▶ [이동] ReturnToInitialState 람다 호출됨"));
 				this->ReturnToInitialState_Implementation();
 			}, ReturnDelay, false);
 	}
@@ -284,7 +284,7 @@ void ALCTransformGimmick::StartMovementToTarget(const FVector& NewTarget)
 {
 	if (bIsMovingServer || bIsReturningServer)
 	{
-		LOG_Art_WARNING(TEXT("▶ StartMovementToTarget - 이동 중으로 무시됨"));
+		//LOG_Art_WARNING(TEXT("▶ StartMovementToTarget - 이동 중으로 무시됨"));
 		return;
 	}
 
@@ -494,12 +494,12 @@ void ALCTransformGimmick::StartRotation()
 	CurrentRotationQuat = TargetRotation;
 	TotalRotationIndex += RotationCount;
 
-	LOG_Art(Log, TEXT(" StartRotation - Axis: %s | Angle: %.1f | From: %s | To: %s"),
-		*Axis.ToString(),
-		RotationAngle * RotationCount,
-		*InitialRotation.Rotator().ToCompactString(),
-		*TargetRotation.Rotator().ToCompactString()
-	);
+	////LOG_Art(Log, TEXT(" StartRotation - Axis: %s | Angle: %.1f | From: %s | To: %s"),
+	//	*Axis.ToString(),
+	//	RotationAngle * RotationCount,
+	//	*InitialRotation.Rotator().ToCompactString(),
+	//	*TargetRotation.Rotator().ToCompactString()
+	//);
 
 	Multicast_StartRotation(InitialRotation, TargetRotation, RotationDuration, false); 
 
@@ -514,7 +514,7 @@ void ALCTransformGimmick::StartRotation()
 	}
 	else
 	{
-		LOG_Art_WARNING(TEXT("회전 시작 시 Sync 컴포넌트 찾기 실패 (FindComponentByClass)"));
+		//LOG_Art_WARNING(TEXT("회전 시작 시 Sync 컴포넌트 찾기 실패 (FindComponentByClass)"));
 	}
 }
 
@@ -530,11 +530,11 @@ void ALCTransformGimmick::CompleteRotation()
 
 	if (!bToggleState && !bUseAlternateToggle)
 	{
-		LOG_Art(Log, TEXT("▶ 회전 복귀 예약됨 - ReturnToInitialState %.1f초 후"), ReturnDelay);
+		//LOG_Art(Log, TEXT("▶ 회전 복귀 예약됨 - ReturnToInitialState %.1f초 후"), ReturnDelay);
 
 		GetWorldTimerManager().SetTimer(ReturnRotationTimerHandle, [this]()
 			{
-				LOG_Art(Log, TEXT("▶ [회전] ReturnToInitialState 람다 호출됨"));
+				//LOG_Art(Log, TEXT("▶ [회전] ReturnToInitialState 람다 호출됨"));
 				this->ReturnToInitialState_Implementation();
 			}, ReturnDelay, false);
 	}
@@ -554,9 +554,9 @@ void ALCTransformGimmick::StartReturnRotation()
 
 	CurrentRotationQuat = TargetRotation;
 
-	LOG_Art(Log, TEXT("▶ 복귀 회전 From: %s | To: %s | [정확한 원상복귀]"),
-		*InitialRotation.Rotator().ToCompactString(),
-		*TargetRotation.Rotator().ToCompactString());
+	////LOG_Art(Log, TEXT("▶ 복귀 회전 From: %s | To: %s | [정확한 원상복귀]"),
+	//	*InitialRotation.Rotator().ToCompactString(),
+	//	*TargetRotation.Rotator().ToCompactString());
 
 	Multicast_StartRotation(InitialRotation, TargetRotation, ReturnRotationDuration, true);
 }
@@ -716,11 +716,11 @@ void ALCTransformGimmick::StartClientRotation(const FQuat& FromQuat, const FQuat
 
 	// VisualMesh->SetWorldRotation(ClientStartRotation);
 
-	LOG_Art(Log, TEXT("[클라] StartClientRotation 시작 - 복귀 상태: %s | From: %s | To: %s"),
-		bIsReturningRotationClient ? TEXT("✔️ 복귀") : TEXT("❌ 일반"),
-		*ClientStartRotation.Rotator().ToCompactString(),
-		*ClientTargetRotation.Rotator().ToCompactString()
-	);
+	////LOG_Art(Log, TEXT("[클라] StartClientRotation 시작 - 복귀 상태: %s | From: %s | To: %s"),
+	//	bIsReturningRotationClient ? TEXT("✔️ 복귀") : TEXT("❌ 일반"),
+	//	*ClientStartRotation.Rotator().ToCompactString(),
+	//	*ClientTargetRotation.Rotator().ToCompactString()
+	//);
 
 	GetWorldTimerManager().SetTimer(
 		ClientRotationTimer,
@@ -831,7 +831,7 @@ void ALCTransformGimmick::CacheOriginalRotation()
 		OriginalRotation = VisualMesh->GetComponentRotation();
 		bOriginalRotationCached = true;
 
-		LOG_Art(Log, TEXT(" 최초 회전 상태 저장됨: %s"), *OriginalRotationQuat.Rotator().ToCompactString());
+		//LOG_Art(Log, TEXT(" 최초 회전 상태 저장됨: %s"), *OriginalRotationQuat.Rotator().ToCompactString());
 	}
 }
 
