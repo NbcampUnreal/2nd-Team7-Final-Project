@@ -1,4 +1,5 @@
 #include "Actor/Gimmick/LCAutoGimmick.h"
+#include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
 #include "LastCanary.h"
 
@@ -124,7 +125,18 @@ void ALCAutoGimmick::ActivateGimmick_Implementation()
 	if (!HasAuthority()) return;
 	if (!ILCGimmickInterface::Execute_CanActivate(this)) return;
 
+	const bool bIsForward = (RotationIndex % 2 == 0);
+
 	//LOG_Art(Log, TEXT("▶ [ActivateGimmick] 실행"));
+
+	if (bIsForward && ForwardSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, ForwardSound, GetActorLocation());
+	}
+	else if (!bIsForward && BackwardSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, BackwardSound, GetActorLocation());
+	}
 
 	if (LoopType == EGimmickLoopType::PingPong)
 	{
@@ -132,8 +144,6 @@ void ALCAutoGimmick::ActivateGimmick_Implementation()
 		{
 			CacheOriginalRotation();
 		}
-
-		const bool bIsForward = (RotationIndex % 2 == 0);
 
 		//LOG_Art(Log, TEXT("[ActivateGimmick] PingPong - 방향: %s"), bIsForward ? TEXT("Forward") : TEXT("Backward"));
 
