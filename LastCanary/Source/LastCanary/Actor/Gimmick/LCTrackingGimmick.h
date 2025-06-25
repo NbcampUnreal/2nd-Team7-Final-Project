@@ -5,7 +5,7 @@
 #include "LCTrackingGimmick.generated.h"
 
 class ALCTrackingManager;
-class UNiagaraComponent;
+class USpotLightComponent;
 
 /**
  *
@@ -63,13 +63,13 @@ protected:
 	/** 주기적으로 타겟을 바라보도록 회전 처리 */
 	void RotateToTarget();
 
-	/** 추적 발사 이펙트 - 왼쪽 */
+	/** 추적용 조명 - 왼쪽 */
 	UPROPERTY(VisibleAnywhere, Category = "Tracking|Effect")
-	UNiagaraComponent* TrackingEffectLeft;
+	USpotLightComponent* TrackingLightLeft;
 
-	/** 추적 발사 이펙트 - 오른쪽 */
+	/** 추적용 조명 - 오른쪽 */
 	UPROPERTY(VisibleAnywhere, Category = "Tracking|Effect")
-	UNiagaraComponent* TrackingEffectRight;
+	USpotLightComponent* TrackingLightRight;
 
 	/** 이펙트 Yaw 회전 보정값 (좌우 공용) */
 	UPROPERTY(EditAnywhere, Category = "Tracking|Effect")

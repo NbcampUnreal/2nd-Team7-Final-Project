@@ -1,5 +1,5 @@
 #include "Actor/Gimmick/LCTrackingGimmick.h"
-#include "NiagaraComponent.h"
+#include "Components/SpotLightComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "TimerManager.h"
@@ -13,15 +13,23 @@ ALCTrackingGimmick::ALCTrackingGimmick()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
-	TrackingEffectLeft = CreateDefaultSubobject<UNiagaraComponent>(TEXT("TrackingEffectLeft"));
-	TrackingEffectLeft->SetupAttachment(VisualMesh);
-	TrackingEffectLeft->bAutoActivate = false;
-	TrackingEffectLeft->SetIsReplicated(true);
+	TrackingLightLeft = CreateDefaultSubobject<USpotLightComponent>(TEXT("TrackingLightLeft"));
+	TrackingLightLeft->SetupAttachment(VisualMesh);
+	TrackingLightLeft->SetVisibility(false);
+	TrackingLightLeft->SetIntensity(200000.f); // 30,000 거리 기준 고출력
+	TrackingLightLeft->SetAttenuationRadius(35000.f);
+	TrackingLightLeft->SetOuterConeAngle(20.f);
+	TrackingLightLeft->SetInnerConeAngle(5.f);
+	TrackingLightLeft->SetIsReplicated(true);
 
-	TrackingEffectRight = CreateDefaultSubobject<UNiagaraComponent>(TEXT("TrackingEffectRight"));
-	TrackingEffectRight->SetupAttachment(VisualMesh);
-	TrackingEffectRight->bAutoActivate = false;
-	TrackingEffectRight->SetIsReplicated(true);
+	TrackingLightRight = CreateDefaultSubobject<USpotLightComponent>(TEXT("TrackingLightRight"));
+	TrackingLightRight->SetupAttachment(VisualMesh);
+	TrackingLightRight->SetVisibility(false);
+	TrackingLightRight->SetIntensity(200000.f);
+	TrackingLightRight->SetAttenuationRadius(35000.f);
+	TrackingLightRight->SetOuterConeAngle(20.f);
+	TrackingLightRight->SetInnerConeAngle(5.f);
+	TrackingLightRight->SetIsReplicated(true);
 
 	bReplicates = true;
 }
@@ -30,18 +38,11 @@ void ALCTrackingGimmick::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (TrackingEffectLeft)
-	{
-		TrackingEffectLeft->Deactivate();
-	}
-	if (TrackingEffectRight)
-	{
-		TrackingEffectRight->Deactivate();
-	}
-
-	//LOG_Art(Log, TEXT(" BeginPlay - 감시탑 초기화 완료"));
-
+	if (TrackingLightLeft) TrackingLightLeft->SetVisibility(false);
+	if (TrackingLightRight) TrackingLightRight->SetVisibility(false);
 }
+
+
 void ALCTrackingGimmick::SetTargetActor(AActor* NewTarget)
 {
 	if (!HasAuthority()) return;
@@ -50,12 +51,10 @@ void ALCTrackingGimmick::SetTargetActor(AActor* NewTarget)
 
 	if (IsValid(TargetActor))
 	{
-		//LOG_Art(Log, TEXT(" 타겟 설정됨: %s"), *TargetActor->GetName());
 		StartTracking();
 	}
 	else
 	{
-		//LOG_Art(Log, TEXT(" 타겟 해제됨 → 추적 중단"));
 		StopTracking();
 	}
 }
@@ -70,9 +69,18 @@ void ALCTrackingGimmick::StartTracking()
 	if (!HasAuthority() || bIsTracking || !IsValid(TargetActor)) return;
 
 	bIsTracking = true;
-	GetWorldTimerManager().SetTimer(TrackingTimerHandle, this, &ALCTrackingGimmick::RotateToTarget, TrackingInterval, true);
 
-	//LOG_Art(Log, TEXT(" 타겟 추적 시작"));
+	// ▶ 타워 간 타이머 분산을 위한 딜레이
+	const float DelayOffset = FMath::FRandRange(0.f, TrackingInterval);
+
+	GetWorldTimerManager().SetTimer(
+		TrackingTimerHandle,
+		this,
+		&ALCTrackingGimmick::RotateToTarget,
+		TrackingInterval,
+		true,
+		DelayOffset
+	);
 }
 
 void ALCTrackingGimmick::StopTracking()
@@ -83,16 +91,8 @@ void ALCTrackingGimmick::StopTracking()
 	GetWorldTimerManager().ClearTimer(TrackingTimerHandle);
 	GetWorldTimerManager().ClearTimer(FireTimerHandle);
 
-	if (TrackingEffectLeft)
-	{
-		TrackingEffectLeft->Deactivate();
-	}
-	if (TrackingEffectRight)
-	{
-		TrackingEffectRight->Deactivate();
-	}
-
-	//LOG_Art(Log, TEXT("⏹ 추적 정지 및 이펙트 비활성화"));
+	if (TrackingLightLeft)  TrackingLightLeft->SetVisibility(false);
+	if (TrackingLightRight) TrackingLightRight->SetVisibility(false);
 }
 
 void ALCTrackingGimmick::RotateToTarget()
@@ -103,60 +103,60 @@ void ALCTrackingGimmick::RotateToTarget()
 		return;
 	}
 
-	FRotator LookAtRotation = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), TargetActor->GetActorLocation());
+	const FVector From = GetActorLocation();
+	const FVector To = TargetActor->GetActorLocation();
+	const float DesiredYaw = UKismetMathLibrary::FindLookAtRotation(From, To).Yaw + YawOffset;
 
-	FRotator NewRotation(0.f, LookAtRotation.Yaw + YawOffset, 0.f);
-	SetActorRotation(NewRotation);
-
-	if (TrackingEffectLeft)
+	if (!FMath::IsNearlyEqual(GetActorRotation().Yaw, DesiredYaw, 1.f))
 	{
-		FVector LeftLoc = TrackingEffectLeft->GetComponentLocation();
-		FRotator LookRot = UKismetMathLibrary::FindLookAtRotation(LeftLoc, TargetActor->GetActorLocation());
-
-		TrackingEffectLeft->SetRelativeRotation(FRotator(LookRot.Pitch, EffectYawOffset, 0.f));
+		SetActorRotation(FRotator(0.f, DesiredYaw, 0.f));
 	}
 
-	if (TrackingEffectRight)
-	{
-		FVector RightLoc = TrackingEffectRight->GetComponentLocation();
-		FRotator LookRot = UKismetMathLibrary::FindLookAtRotation(RightLoc, TargetActor->GetActorLocation());
+	const FVector TargetLoc = TargetActor->GetActorLocation();
 
-		TrackingEffectRight->SetRelativeRotation(FRotator(LookRot.Pitch, EffectYawOffset, 0.f));
+	if (TrackingLightLeft)
+	{
+		const FVector LightLoc = TrackingLightLeft->GetComponentLocation();
+		const float NewPitch = UKismetMathLibrary::FindLookAtRotation(LightLoc, TargetLoc).Pitch;
+		const float OldPitch = TrackingLightLeft->GetRelativeRotation().Pitch;
+
+		if (!FMath::IsNearlyEqual(NewPitch, OldPitch, 1.f))
+		{
+			TrackingLightLeft->SetRelativeRotation(FRotator(NewPitch, EffectYawOffset, 0.f));
+		}
 	}
 
+	if (TrackingLightRight)
+	{
+		const FVector LightLoc = TrackingLightRight->GetComponentLocation();
+		const float NewPitch = UKismetMathLibrary::FindLookAtRotation(LightLoc, TargetLoc).Pitch;
+		const float OldPitch = TrackingLightRight->GetRelativeRotation().Pitch;
 
-	//LOG_Art(Log, TEXT(" 타겟 방향 회전 + 이펙트 Pitch 조정: %s | Offset: %.1f"), *TargetActor->GetName(), YawOffset);
+		if (!FMath::IsNearlyEqual(NewPitch, OldPitch, 1.f))
+		{
+			TrackingLightRight->SetRelativeRotation(FRotator(NewPitch, EffectYawOffset, 0.f));
+		}
+	}
 }
 
 void ALCTrackingGimmick::Fire()
 {
-	if (!HasAuthority()) return;
-	if (!IsValid(TargetActor)) return;
-
-	//LOG_Art(Log, TEXT(" 이펙트 발사 시작 (%s)"), *GetName());
+	if (!HasAuthority() || !IsValid(TargetActor)) return;
 
 	Multicast_FireEffect();
 
-	if (TrackingEffectLeft)  TrackingEffectLeft->Activate(true);
-	if (TrackingEffectRight) TrackingEffectRight->Activate(true);
+	if (TrackingLightLeft)  TrackingLightLeft->SetVisibility(true);
+	if (TrackingLightRight) TrackingLightRight->SetVisibility(true);
 }
-
 
 void ALCTrackingGimmick::Multicast_FireEffect_Implementation()
 {
-	if (TrackingEffectLeft)
-	{
-		TrackingEffectLeft->Activate(true);
-	}
-	if (TrackingEffectRight)
-	{
-		TrackingEffectRight->Activate(true);
-	}
+	if (TrackingLightLeft)  TrackingLightLeft->SetVisibility(true);
+	if (TrackingLightRight) TrackingLightRight->SetVisibility(true);
 }
 
 void ALCTrackingGimmick::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
 	DOREPLIFETIME(ALCTrackingGimmick, TargetActor);
 }
