@@ -575,6 +575,17 @@ void ABaseCharacter::AttachCameraToRifle()
 	{
 		if (IsLocallyControlled())
 		{
+			AGunBase* Gun = Cast<AGunBase>(GetToolbarInventoryComponent()->GetCurrentEquippedItem());
+			if (IsValid(Gun))
+			{
+				if (Gun->HasScopeAttached())
+				{
+					LOG_Char_WARNING(TEXT("스코프 장착됨."));
+
+					SpringArm->AttachToComponent(OverlaySkeletalMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("RifleScope"));
+					return;
+				}
+			}
 			SpringArm->AttachToComponent(OverlaySkeletalMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
 			//SpringArm->AttachToComponent(CurrentRifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
 		}
@@ -2021,7 +2032,7 @@ void ABaseCharacter::TraceInteractableActor()
 	}
 
 #if WITH_EDITOR
-	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 0.1f);
+	//DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 0.1f);
 #endif
 	//여기가 로그가 안찍힘 수정해야됨
 
@@ -2140,7 +2151,7 @@ void ABaseCharacter::UpdateGunWallClipOffset(float DeltaTime)
 
 	// 디버그 라인도 수정된 시작점 기준으로
 #if WITH_EDITOR
-	DrawDebugLine(GetWorld(), TraceStart, TraceEnd, FColor::Red, false, 0.1f);
+	//DrawDebugLine(GetWorld(), TraceStart, TraceEnd, FColor::Red, false, 0.1f);
 #endif
 	// 3. 벽과의 거리 비율 계산
 	//float WallRatio = 0.0f;

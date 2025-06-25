@@ -49,11 +49,6 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Cutscene")
 	TSubclassOf<AActor> DummyCharacterClass;
-
-
-	void OnCutsceneFinished();
-
-	void RequestIntoGameLevel();
 //
 //	UPROPERTY()
 //	TArray<ABaseCharacter*> PlayerCharacters;
