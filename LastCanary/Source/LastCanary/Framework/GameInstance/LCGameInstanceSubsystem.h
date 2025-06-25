@@ -28,6 +28,8 @@ public:
 	TObjectPtr<UDataTable> ItemDataTable;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Data")
 	TObjectPtr<UDataTable> GunDataTable;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI|Highlight")
+	UMaterialInterface* DefaultHighlightMaterial;
 
 	UFUNCTION(BlueprintCallable)
 	ULCUIManager* GetUIManager() const;

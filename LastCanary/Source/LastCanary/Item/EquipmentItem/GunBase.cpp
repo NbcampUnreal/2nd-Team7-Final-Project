@@ -9,6 +9,8 @@
 #include "Engine/DamageEvents.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Net/UnrealNetwork.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
 #include "GameplayTagAssetInterface.h"
 #include "LastCanary.h"
 
@@ -349,6 +351,20 @@ void AGunBase::Multicast_SpawnImpactEffects_Implementation(const TArray<FHitResu
         else
         {
             LOG_Item_WARNING(TEXT("[Client] ImpactDecalMaterial이 null입니다"));
+        }
+
+        if (GunData.ImpactNiagaraEffect)
+        {
+            FRotator NiagaraRot = Hit.ImpactNormal.Rotation();
+
+            /*NiagaraRot.Pitch += 90.0f;*/
+
+            UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+                GetWorld(),
+                GunData.ImpactNiagaraEffect,
+                Hit.ImpactPoint,
+                NiagaraRot
+            );
         }
     }
 }
