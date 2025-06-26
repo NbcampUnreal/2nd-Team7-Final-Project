@@ -5,7 +5,7 @@
 #include "Illusion.generated.h"
 
 class UStaticMeshComponent;
-
+class UMaterialInterface;
 
 UCLASS()
 class LASTCANARY_API AIllusion : public AActor
@@ -14,33 +14,57 @@ class LASTCANARY_API AIllusion : public AActor
 	
 public:
     AIllusion();
+    virtual void Tick(float DeltaTime) override;
+
+    /** 보스 참조를 세팅할 때 호출됨 */
+    void SetBossOwner(AActor* Boss);
 
 protected:
     virtual void BeginPlay() override;
 
-    /** 환영이 살아있는 시간 (초) */
-    UPROPERTY(EditDefaultsOnly, Category = "Illusion")
-    float LifeTime = 8.f;
+    // ── 주기적 랜덤 플레이어 Illusion 효과 ────────────────
+    /** 체크 반경 */
+    UPROPERTY(EditDefaultsOnly, Category = "Illusion|Fear")
+    float IllusionRadius = 800.f;
 
-    /** 최대 체력 */
+    /** 실행 간격 */
+    UPROPERTY(EditDefaultsOnly, Category = "Illusion|Fear")
+    float IllusionInterval = 5.f;
+
+    /** 적용할 포스트프로세스 머티리얼 */
+    UPROPERTY(EditDefaultsOnly, Category = "Illusion|Fear")
+    UMaterialInterface* IllusionPostProcessMaterial;
+
+    /** 블렌드 가중치 */
+    UPROPERTY(EditDefaultsOnly, Category = "Illusion|Fear", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+    float IllusionBlendWeight = 0.7f;
+
+    /** 지속 시간 (초) */
+    UPROPERTY(EditDefaultsOnly, Category = "Illusion|Fear")
+    float IllusionDuration = 1.5f;
+
+    FTimerHandle IllusionTimerHandle;
+    void ExecuteRandomPlayerIllusion();
+
     UPROPERTY(EditDefaultsOnly, Category = "Illusion|Stats")
     float MaxHealth = 20.f;
-
-    /** 현재 체력 */
     UPROPERTY(VisibleAnywhere, Category = "Illusion|Stats")
     float Health;
 
-    /** 환영 파괴 시 호출될 함수 */
-    void DestroyIllusion();
+    /** 이동 속도 보간 계수 */
+    UPROPERTY(EditDefaultsOnly, Category = "Illusion|Movement")
+    float MoveInterpSpeed = 2.f;
 
-    /** 시각용 메쉬 컴포넌트 */
+    /** 보스 주변 이 반경 안에서만 랜덤 목표 뽑기 */
+    UPROPERTY(EditDefaultsOnly, Category = "Illusion|Movement")
+    float MoveRadius = 600.f;
+
+    AActor* BossOwner = nullptr;
+    FVector MoveTarget;
+
     UPROPERTY(VisibleAnywhere, Category = "Illusion|Components")
     UStaticMeshComponent* MeshComp;
 
-    /** 생존 타이머 핸들 */
-    FTimerHandle LifeTimerHandle;
-
-    /** 대미지 이벤트 핸들 */
     UFUNCTION()
     void OnTakeAnyDamage_Handler(
         AActor* DamagedActor,
@@ -48,5 +72,8 @@ protected:
         const UDamageType* DamageType,
         AController* InstigatedBy,
         AActor* DamageCauser);
+
+    void DestroyIllusion();
+    void PickNewMoveTarget();
 
 };

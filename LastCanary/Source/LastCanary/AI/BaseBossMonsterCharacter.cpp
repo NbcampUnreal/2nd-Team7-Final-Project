@@ -14,13 +14,16 @@ void ABaseBossMonsterCharacter::BeginPlay()
 {
     Super::BeginPlay();   // ← 추가!
 
-    // 1) ClueClasses 내용을 RemainingClueClasses로 복사
-    RemainingClueClasses = ClueClasses;
+    // ── 데칼 풀 초기화 ────────────────────────────────────────────
+    RemainingCommonDecals = CommonDecalClasses;
+    RemainingUniqueDecals = UniqueDecalClasses;
 
-    // 2) 남은 단서가 있을 때만 타이머 시작
-    if (HasAuthority() && RemainingClueClasses.Num() > 0)
+    // (1) 서버 권한이 있고, 최소 하나씩 남아 있으면 타이머 예약
+    if (HasAuthority() &&
+        RemainingCommonDecals.Num() > 0 &&
+        RemainingUniqueDecals.Num() > 0)
     {
-        const float InitialDelay = FMath::RandRange(ClueSpawnIntervalMin, ClueSpawnIntervalMax);
+        float InitialDelay = FMath::RandRange(ClueSpawnIntervalMin, ClueSpawnIntervalMax);
         GetWorldTimerManager().SetTimer(
             ClueTimerHandle,
             this,
@@ -122,78 +125,73 @@ void ABaseBossMonsterCharacter::Multicast_EndBerserk_Implementation()
 
 void ABaseBossMonsterCharacter::SpawnRandomClue()
 {
-    // (A) 남은 단서가 없으면 종료
-    if (RemainingClueClasses.Num() == 0)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("[SpawnRandomClue] 남은 단서 없음 → 스폰 종료"));
-        return;
-    }
-
-    // (B) 랜덤 클래스 선택
-    int32 Index = FMath::RandRange(0, RemainingClueClasses.Num() - 1);
-    TSubclassOf<AActor> ClueClass = RemainingClueClasses[Index];
-    if (!ClueClass)
-    {
-        RemainingClueClasses.RemoveAt(Index);
-        return;
-    }
-
-    // (C) 보스 기준 X/Y 랜덤 오프셋
-    const float OffsetF = FMath::RandRange(-200.f, 200.f);
-    const float OffsetR = FMath::RandRange(-200.f, 200.f);
-    FVector BossLoc = GetActorLocation();
-    FVector SpawnXY = BossLoc
-        + GetActorForwardVector() * OffsetF
-        + GetActorRightVector() * OffsetR;
-
-    UWorld* World = GetWorld();
-    if (!World) return;
-
-    // (D) 바닥 레이캐스트 ↓
-    FHitResult Hit;
-    FVector TraceStart = SpawnXY + FVector(0.f, 0.f, 500.f);
-    FVector TraceEnd = SpawnXY + FVector(0.f, 0.f, -1000.f);
-    FCollisionQueryParams Params(NAME_None, false, this);
-
-    float SpawnZ = BossLoc.Z; // fallback
-    if (World->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Visibility, Params))
-    {
-        SpawnZ = Hit.Location.Z;
-    }
-    else
-    {
-        UE_LOG(LogTemp, Warning, TEXT("[SpawnRandomClue] 바닥 레이캐스트 실패 → 기본 Z 사용: %f"), SpawnZ);
-    }
-
-    FVector SpawnLoc = FVector(SpawnXY.X, SpawnXY.Y, SpawnZ);
-    FRotator SpawnRot = GetActorRotation();
-
-    // (E) 스폰 파라미터
+    // ─── 공통 스폰 파라미터 ──────────────────────────────────────────
     FActorSpawnParameters SpawnParams;
     SpawnParams.Owner = this;
     SpawnParams.Instigator = GetInstigator();
     SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-    // (F) 액터 스폰
-    AActor* NewClue = World->SpawnActor<AActor>(ClueClass, SpawnLoc, SpawnRot, SpawnParams);
-    if (NewClue)
+    // ─── (1) 공통+고유 풀 합치기 ─────────────────────────────────
+    TArray<TSubclassOf<AActor>> Pool = RemainingCommonDecals;
+    Pool.Append(RemainingUniqueDecals);
+
+    if (Pool.Num() == 0)
     {
-        UE_LOG(LogTemp, Log, TEXT("[SpawnRandomClue] Spawn 성공: %s at %s"),
-            *NewClue->GetName(), *SpawnLoc.ToCompactString());
-    }
-    else
-    {
-        UE_LOG(LogTemp, Error, TEXT("[SpawnRandomClue] Spawn 실패: %s"), *GetNameSafe(ClueClass));
+        UE_LOG(LogTemp, Warning, TEXT("[SpawnRandomClue] 더 이상 스폰할 데칼이 없습니다"));
+        return;
     }
 
-    // (G) 목록에서 제거하고 다음 예약
-    RemainingClueClasses.RemoveAt(Index);
-    if (RemainingClueClasses.Num() > 0)
+    // ─── (2) 풀에서 하나 랜덤 선택 ────────────────────────────────
+    int32 Idx = FMath::RandRange(0, Pool.Num() - 1);
+    TSubclassOf<AActor> DecalClass = Pool[Idx];
+    if (DecalClass)
+    {
+        // (2-1) 랜덤 위치 계산
+        FVector BossLoc = GetActorLocation();
+        float OffX = FMath::RandRange(-200.f, 200.f);
+        float OffY = FMath::RandRange(-200.f, 200.f);
+        FVector Loc = BossLoc + FVector(OffX, OffY, 0.f);
+
+        // (2-2) 바닥 높이 보정
+        FHitResult Hit;
+        FCollisionQueryParams Params(NAME_None, false, this);
+        FVector Start = Loc + FVector(0, 0, 500.f), End = Loc + FVector(0, 0, -1000.f);
+        if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params))
+        {
+            Loc.Z = Hit.Location.Z + 5.f;
+        }
+
+        // (2-3) 액터 스폰
+        AActor* NewDecal = GetWorld()->SpawnActor<AActor>(
+            DecalClass,
+            Loc,
+            FRotator(-90, 0, 0),
+            SpawnParams
+        );
+        if (NewDecal)
+        {
+            UE_LOG(LogTemp, Log, TEXT("[SpawnRandomClue] Decal Spawned: %s at %s"),
+                *NewDecal->GetName(), *Loc.ToCompactString());
+        }
+    }
+
+    // ─── (3) 풀에서 제거 ─────────────────────────────────────────
+    if (RemainingCommonDecals.Remove(DecalClass) == 0)
+    {
+        RemainingUniqueDecals.Remove(DecalClass);
+    }
+
+    // ─── (4) 다음 스폰 예약 ───────────────────────────────────────
+    if (RemainingCommonDecals.Num() + RemainingUniqueDecals.Num() > 0)
     {
         float Delay = FMath::RandRange(ClueSpawnIntervalMin, ClueSpawnIntervalMax);
-        GetWorldTimerManager().SetTimer(ClueTimerHandle, this,
+        GetWorldTimerManager().SetTimer(
+            ClueTimerHandle,
+            this,
             &ABaseBossMonsterCharacter::SpawnRandomClue,
-            Delay, false);
+            Delay,
+            false
+        );
     }
 }
 
