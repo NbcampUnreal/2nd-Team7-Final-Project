@@ -29,11 +29,11 @@ void ARuinsMazeManager::BeginPlay()
 
 void ARuinsMazeManager::GenerateMaze()
 {
-	LOG_Art(Log, TEXT("=== 미로 생성 시작 ==="));
+	//LOG_Art(Log, TEXT("=== 미로 생성 시작 ==="));
 
 	if (!WallClass)
 	{
-		LOG_Art_ERROR(TEXT("WallClass가 지정되지 않았습니다."));
+		//LOG_Art_ERROR(TEXT("WallClass가 지정되지 않았습니다."));
 		return;
 	}
 
@@ -53,10 +53,10 @@ void ARuinsMazeManager::GenerateMaze()
 		MazeOrigin.Z -= BoundsExtent.Z;
 
 		// 로그 출력: 피벗 기준 Z 위치 확인
-		LOG_Art(Log, TEXT("[MazeManager] GetActorLocation().Z          = %.1f"), GetActorLocation().Z);
+		/*LOG_Art(Log, TEXT("[MazeManager] GetActorLocation().Z          = %.1f"), GetActorLocation().Z);
 		LOG_Art(Log, TEXT("[MazeManager] MazeBounds Center Z           = %.1f"), BoundsCenter.Z);
 		LOG_Art(Log, TEXT("[MazeManager] MazeBounds Extent Z           = %.1f"), BoundsExtent.Z);
-		LOG_Art(Log, TEXT("[MazeManager] MazeOrigin (지면 기준) Z      = %.1f"), MazeOrigin.Z);
+		LOG_Art(Log, TEXT("[MazeManager] MazeOrigin (지면 기준) Z      = %.1f"), MazeOrigin.Z);*/
 
 
 		MazeCells.SetNum(MazeSizeX);
@@ -73,7 +73,7 @@ void ARuinsMazeManager::GenerateMaze()
 
 		// --- 경로 수 검사 ---
 		PathCount = CountAllPathsToExit(EntranceCell, ExitCell);
-		LOG_Art(Log, TEXT("재시도 #%d: 유효 경로 수 = %d"), RetryCount + 1, PathCount);
+		//LOG_Art(Log, TEXT("재시도 #%d: 유효 경로 수 = %d"), RetryCount + 1, PathCount);
 
 		RetryCount++;
 
@@ -81,11 +81,11 @@ void ARuinsMazeManager::GenerateMaze()
 
 	if (PathCount < MinValidPaths)
 	{
-		LOG_Art_WARNING(TEXT("유효 경로 %d개 확보 실패 (최소 필요: %d) → 최종 생성 사용"), PathCount, MinValidPaths);
+		//LOG_Art_WARNING(TEXT("유효 경로 %d개 확보 실패 (최소 필요: %d) → 최종 생성 사용"), PathCount, MinValidPaths);
 	}
 	else
 	{
-		LOG_Art(Log, TEXT("미로 생성 성공: 유효 경로 수 %d (시도 %d회)"), PathCount, RetryCount);
+		//LOG_Art(Log, TEXT("미로 생성 성공: 유효 경로 수 %d (시도 %d회)"), PathCount, RetryCount);
 	}
 
 	// --- 입출구 벽 제거 ---
@@ -112,7 +112,7 @@ void ARuinsMazeManager::GenerateMaze()
 	TryPlaceGimmicks();
 	SpawnMonsterInMidPath();
 
-	LOG_Art(Log, TEXT("=== 미로 생성 완료 ==="));
+	//LOG_Art(Log, TEXT("=== 미로 생성 완료 ==="));
 	SpawnNotesAfterMaze();
 }
 
@@ -120,7 +120,7 @@ void ARuinsMazeManager::FindRandomEntranceAndExit()
 {
 	EntranceCell = FIntPoint(0, FMath::RandRange(0, MazeSizeY - 1));
 	ExitCell = FIntPoint(MazeSizeX - 1, FMath::RandRange(0, MazeSizeY - 1));
-	LOG_Art(Log, TEXT("입구: (%d, %d), 출구: (%d, %d)"), EntranceCell.X, EntranceCell.Y, ExitCell.X, ExitCell.Y);
+	//LOG_Art(Log, TEXT("입구: (%d, %d), 출구: (%d, %d)"), EntranceCell.X, EntranceCell.Y, ExitCell.X, ExitCell.Y);
 }
 
 void ARuinsMazeManager::GenerateMainPath(const FIntPoint& Start)
@@ -358,7 +358,7 @@ FGimmickSpawnInfo* ARuinsMazeManager::GetRandomGimmick()
 
 	if (TotalWeight <= 0.f)
 	{
-		LOG_Art_WARNING(TEXT("[GetRandomGimmick] 전체 Weight가 0 이하 → 기믹 없음"));
+		//LOG_Art_WARNING(TEXT("[GetRandomGimmick] 전체 Weight가 0 이하 → 기믹 없음"));
 		return nullptr;
 	}
 
@@ -372,7 +372,7 @@ FGimmickSpawnInfo* ARuinsMazeManager::GetRandomGimmick()
 		{
 			if (!Info.GimmickClass)
 			{
-				LOG_Art_WARNING(TEXT("[GetRandomGimmick] 선택된 기믹 클래스가 유효하지 않음"));
+				//LOG_Art_WARNING(TEXT("[GetRandomGimmick] 선택된 기믹 클래스가 유효하지 않음"));
 				return nullptr;
 			}
 
@@ -380,7 +380,7 @@ FGimmickSpawnInfo* ARuinsMazeManager::GetRandomGimmick()
 		}
 	}
 
-	LOG_Art_WARNING(TEXT("[GetRandomGimmick] 선택 실패 (Rand=%.2f, Total=%.2f)"), Rand, TotalWeight);
+	//LOG_Art_WARNING(TEXT("[GetRandomGimmick] 선택 실패 (Rand=%.2f, Total=%.2f)"), Rand, TotalWeight);
 	return nullptr;
 }
 
@@ -578,7 +578,7 @@ void ARuinsMazeManager::HideWall(const FIntPoint& Cell, const FString& Direction
 	}
 	else
 	{
-		LOG_Art_WARNING(TEXT("❌ 게스트 HideWall 실패 - 위치: %s 방향: %s"), *Cell.ToString(), *Direction);
+		//LOG_Art_WARNING(TEXT("❌ 게스트 HideWall 실패 - 위치: %s 방향: %s"), *Cell.ToString(), *Direction);
 	}
 }
 
@@ -589,7 +589,7 @@ void ARuinsMazeManager::Multicast_HideWall_Implementation(const FIntPoint& Cell,
 
 void ARuinsMazeManager::Multicast_SpawnWall_Implementation(const FVector& Location, const FRotator& Rotation, const FIntPoint& Cell, const FString& Direction)
 {
-	LOG_Art(Log, TEXT("📦 Multicast_SpawnWall 실행 [%s:%s]"), *Cell.ToString(), *Direction); // 이게 안 찍히면 RPC 자체 실패
+	//LOG_Art(Log, TEXT("📦 Multicast_SpawnWall 실행 [%s:%s]"), *Cell.ToString(), *Direction); // 이게 안 찍히면 RPC 자체 실패
 
 	FActorSpawnParameters Params;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
@@ -597,18 +597,18 @@ void ARuinsMazeManager::Multicast_SpawnWall_Implementation(const FVector& Locati
 	ARuinsMazeWall* Wall = GetWorld()->SpawnActor<ARuinsMazeWall>(WallClass, Location, Rotation, Params);
 	if (IsValid(Wall))
 	{
-		LOG_Art(Log, TEXT("✅ Wall 생성됨: %s → %s"), *Cell.ToString(), *Direction);
+		//LOG_Art(Log, TEXT("✅ Wall 생성됨: %s → %s"), *Cell.ToString(), *Direction);
 		WallCache.Add(TPair<FIntPoint, FString>(Cell, Direction), Wall);
 	}
 	else
 	{
-		LOG_Art_WARNING(TEXT("❌ Wall 생성 실패: %s → %s"), *Cell.ToString(), *Direction);
+		//LOG_Art_WARNING(TEXT("❌ Wall 생성 실패: %s → %s"), *Cell.ToString(), *Direction);
 	}
 }
 
 void ARuinsMazeManager::SpawnNotesAfterMaze()
 {
-	LOG_Item_WARNING(TEXT("[Notes] 미로 생성 후 노트 스폰 시작"));
+	//LOG_Item_WARNING(TEXT("[Notes] 미로 생성 후 노트 스폰 시작"));
 
 	TArray<FIntPoint> CandidateCells;
 
@@ -623,7 +623,7 @@ void ARuinsMazeManager::SpawnNotesAfterMaze()
 
 	if (CandidateCells.Num() == 0)
 	{
-		LOG_Item_WARNING(TEXT("[Notes] 노트 스폰 후보 셀이 없음"));
+		//LOG_Item_WARNING(TEXT("[Notes] 노트 스폰 후보 셀이 없음"));
 		return;
 	}
 
