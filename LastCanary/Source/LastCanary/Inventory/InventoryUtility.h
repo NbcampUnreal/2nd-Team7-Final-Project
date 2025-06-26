@@ -22,7 +22,9 @@ public:
     UFUNCTION(BlueprintPure, Category = "Inventory Utility|Validation")
     static bool IsDefaultItem(FName ItemRowName, const UInventoryConfig* Config = nullptr);
 
-    static bool IsBackpackItem(const FItemDataRow* ItemData);
+    UFUNCTION(BlueprintPure, Category = "Inventory Utility|Validation")
+    static bool IsBackpackItem(FName ItemRowName, const UDataTable* ItemDataTable);
+
     static bool IsCollectibleItem(const FItemDataRow* ItemData);
 
     UFUNCTION(BlueprintPure, Category = "Inventory Utility|Validation")

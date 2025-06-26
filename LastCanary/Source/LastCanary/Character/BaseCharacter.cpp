@@ -626,7 +626,9 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 	}
 	if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem))
 	{
-		if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
+		if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")) 
+			|| EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol")) 
+			|| EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Shotgun")))
 		{
 			AGunBase* RifleItem = Cast<AGunBase>(EquippedItem);
 			if (RifleItem)
@@ -2234,10 +2236,6 @@ void ABaseCharacter::Server_SetQuickSlotIndex_Implementation(int32 NewIndex)
 
 void ABaseCharacter::EquipItem(int32 Index)
 {
-	if (Index == ToolbarInventoryComponent->GetCurrentEquippedSlotIndex())
-	{
-		return;
-	}
 	ToolbarInventoryComponent->EquipItemAtSlot(Index);
 	// 동기화된 장착 요청
 	Multicast_ResetAnimationAndCamera(Index);
@@ -2526,6 +2524,15 @@ void ABaseCharacter::RestoreMouseInvert()
 }
 
 
+void ABaseCharacter::Client_PlayHitSound_Implementation()
+{
+	if (IsLocallyControlled())
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, OnHitSound, GetActorLocation());
+	}
+}
+
+
 float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
 	LOG_Char_WARNING(TEXT("Character Take Damage"));
@@ -2547,8 +2554,11 @@ float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageE
 	float MaxHP = MyPlayerState->MaxHP;
 	float CalCulatedHP = FMath::Clamp(CurrentHP - FinalDamage, 0.0f, MaxHP);
 	MyPlayerState->SetHP(CalCulatedHP);
-	// TODO: 클라이언트에서 해야할 것 같은 그런 느낌인데... 
-	//MyPlayerState->ApplyDamage(CalCulatedHP);
+	if (FinalDamage > 0.0f)
+	{
+		Client_PlayHitSound();
+		MyPlayerState->Client_PlayDamageUI();
+	}
 	LOG_Char_WARNING(TEXT("Current HP : %f"), CalCulatedHP);
 	if (CalCulatedHP <= 0.f)
 	{
@@ -2580,8 +2590,10 @@ void ABaseCharacter::GetFallDamage(float Velocity)
 	float CalCulatedHP = FMath::Clamp(CurrentHP - FinalDamage, 0.0f, MaxHP);
 	LOG_Char_WARNING(TEXT("Current HP : %f"), CalCulatedHP);
 	MyPlayerState->SetHP(CalCulatedHP);
+	
 	if (FinalDamage > 0.0f)
 	{
+		Client_PlayHitSound();
 		MyPlayerState->Client_PlayDamageUI();
 	}	
 	if (CalCulatedHP <= 0.f)
@@ -2917,6 +2929,33 @@ void ABaseCharacter::RefreshOverlayObject()
 		Overlay = AlsOverlayModeTags::Rifle;
 		bIsDesireAiming = true;
 	}
+	if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol")))  // 또는 HasTag 등 비교 방식에 따라
+	{
+		if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(CurrentItem))
+		{
+			AGunBase* RifleItem = Cast<AGunBase>(EquipmentItem);
+			USkeletalMeshComponent* RifleMesh = RifleItem->GetSkeletalMeshComponent();
+			CurrentRifleMesh = RifleMesh;
+			Socketname = "Pistol";
+			AttachSkeletalMesh = EquipmentItem->ItemData.SkeletalMesh;
+		}
+
+		Overlay = AlsOverlayModeTags::PistolTwoHanded;
+		bIsDesireAiming = true;
+	}
+	if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Shotgun")))  // 또는 HasTag 등 비교 방식에 따라
+	{
+		if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(CurrentItem))
+		{
+			AGunBase* RifleItem = Cast<AGunBase>(EquipmentItem);
+			USkeletalMeshComponent* RifleMesh = RifleItem->GetSkeletalMeshComponent();
+			CurrentRifleMesh = RifleMesh;
+			Socketname = "Shotgun";
+			AttachSkeletalMesh = EquipmentItem->ItemData.SkeletalMesh;
+		}
+		Overlay = AlsOverlayModeTags::Rifle;
+		bIsDesireAiming = true;
+	}
 	if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.FlashLight")))
 	{
 		Overlay = AlsOverlayModeTags::Torch;
@@ -3019,13 +3058,17 @@ void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(FGameplayTag ItemTag)
 	{
 		OverlayAnimationInstanceClass = TorchAnimationClass;
 	}
-	/*else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol")))
+	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol")))
 	{
-		OverlayAnimationInstanceClass = PistolAnimationClass;
-	}*/
+		OverlayAnimationInstanceClass = PistolTwoHandedAnimationClass;
+	}
+	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Shotgun")))
+	{
+		OverlayAnimationInstanceClass = RifleAnimationClass;
+	}
 	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))
 	{
-		OverlayAnimationInstanceClass = PistolAnimationClass;
+		OverlayAnimationInstanceClass = PistolOneHandedAnimationClass;
 	}
 	else
 	{
@@ -3314,6 +3357,13 @@ void ABaseCharacter::DropAllItemsOnDeath()
 
 void ABaseCharacter::SetBackpackMesh(bool bIsEquipBackpack)
 {
+	if (bBackpackMeshActive == bIsEquipBackpack)
+	{
+		return;
+	}
+
+	bBackpackMeshActive = bIsEquipBackpack;
+
 	if (bIsEquipBackpack)
 	{
 		SetPartMesh(BackpackMesh, BackpackSkeletalMesh);
