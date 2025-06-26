@@ -2,6 +2,8 @@
 #include "BehaviorTree/BlackboardComponent.h"
 #include "AIController.h"
 #include "EnvironmentQuery/EnvQueryManager.h"
+#include "NavigationSystem.h"
+#include "NavMesh/NavMeshBoundsVolume.h"
 
 
 // 생성자: 노드 이름과 실행 간격 설정
@@ -23,25 +25,36 @@ void UBTService_RunEQS_FindCrowd::TickNode(UBehaviorTreeComponent& OwnerComp,
     AAIController* AICon = OwnerComp.GetAIOwner();
     if (!AICon) return;
 
-
-    // 블랙보드와 키명 로컬 복사
     UBlackboardComponent* BBComp = OwnerComp.GetBlackboardComponent();
     const FName KeyName = CrowdLocKey.SelectedKeyName;
 
-    // EQS 요청 생성
     FEnvQueryRequest Request(CrowdQuery, AICon);
-
-    // Execute: SingleResult 모드, 람다 콜백에서 BB에 기록
     Request.Execute(
         EEnvQueryRunMode::SingleResult,
         FQueryFinishedSignature::CreateLambda(
-            [BBComp, KeyName](TSharedPtr<FEnvQueryResult> Result)
+            [BBComp, KeyName, AICon](TSharedPtr<FEnvQueryResult> Result)
             {
-                if (Result.IsValid() && Result->Items.Num() > 0)
-                {
-                    const FVector BestLoc = Result->GetItemAsLocation(0);
-                    BBComp->SetValueAsVector(KeyName, BestLoc);
-                }
+                if (!Result.IsValid() || Result->Items.Num() == 0)
+                    return;
+
+                // (1) EQS가 뱉은 원시 위치
+                const FVector RawLoc = Result->GetItemAsLocation(0);
+
+                // (2) NavSys과 투영 준비
+                UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(AICon->GetWorld());
+                FNavLocation ProjectedLoc;
+                const FVector ProjectExtent(200.f, 200.f, 200.f);  // 환경에 맞게 조정
+
+                // (3) NavMesh 위 위치로 투영 (세 인자 버전)
+                bool bOnNav = NavSys
+                    ? NavSys->ProjectPointToNavigation(RawLoc, ProjectedLoc, ProjectExtent)
+                    : false;
+
+                // (4) 블랙보드에 기록
+                BBComp->SetValueAsVector(
+                    KeyName,
+                    bOnNav ? ProjectedLoc.Location : RawLoc
+                );
             }
         )
     );

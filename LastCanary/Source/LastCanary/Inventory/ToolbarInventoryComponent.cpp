@@ -48,7 +48,7 @@ void UToolbarInventoryComponent::BeginPlay()
     }
 
     FAttachmentTransformRules AttachRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::KeepWorld, false);
-    EquippedItemComponent->AttachToComponent(CachedOwnerCharacter->GetMesh(), AttachRules, TEXT("Rifle"));
+    EquippedItemComponent->AttachToComponent(CachedOwnerCharacter->GetMesh(), AttachRules, TEXT("Default"));
 
     InitializeManagers();
 }
@@ -405,10 +405,10 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
     else
     {
         // 일반 장비 처리
-        FName TargetSocket = ItemData->AttachSocketName.IsNone() ? TEXT("Rifle") : ItemData->AttachSocketName;
+        FName TargetSocket = ItemData->AttachSocketName.IsNone() ? TEXT("Default") : ItemData->AttachSocketName;
         if (!CachedOwnerCharacter->GetMesh()->DoesSocketExist(TargetSocket))
         {
-            TargetSocket = TEXT("Rifle");
+            TargetSocket = TEXT("Default");
         }
         SetupEquippedItem(EquippedItemComponent, CachedOwnerCharacter->GetMesh(), TargetSocket, ItemData, SlotData);
     }

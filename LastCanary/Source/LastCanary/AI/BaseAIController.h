@@ -29,7 +29,7 @@ public:
     UFUNCTION(BlueprintCallable, Category = "AI")
     void SetStop();
     UFUNCTION(BlueprintCallable, Category = "AI")
-    void SetStun(float StunDuration = 0.1f);//경직 시간
+    void SetStun(float StunDuration);//경직 시간
 
     UFUNCTION()
     void RecoverFromStun();
