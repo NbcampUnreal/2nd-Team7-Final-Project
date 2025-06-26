@@ -51,6 +51,14 @@ void ALCBossEoduksini::Tick(float DeltaSeconds)
         TryTriggerDarkness();
     }
 
+    // (1) 특수 액션: Night Terror
+    if (!bHasUsedNightTerror && Rage >= NightTerrorRageThreshold)
+    {
+        bHasUsedNightTerror = true;
+        UE_LOG(LogTemp, Log, TEXT("[Eoduksini] NightTerror 발동"));
+        NightTerror();
+    }
+
     // update blackboard
     if (auto* AICon = Cast<ALCBaseBossAIController>(GetController()))
     {
@@ -67,54 +75,39 @@ void ALCBossEoduksini::EnterBerserkState()
     Super::EnterBerserkState();
     UE_LOG(LogTemp, Warning, TEXT("[Eoduksini] Enter Berserk State"));
 
-    // 서버/공용 로직 이후, 진입 이펙트
-    if (BerserkEffectFX)
-    {
-        UNiagaraFunctionLibrary::SpawnSystemAttached(
-            BerserkEffectFX,
-            GetRootComponent(),
-            NAME_None,
-            FVector::ZeroVector,
-            FRotator::ZeroRotator,
-            EAttachLocation::KeepRelativeOffset,
-            true
-        );
-    }
-    if (BerserkSound)
-    {
-        UGameplayStatics::PlaySoundAtLocation(
-            this, BerserkSound, GetActorLocation());
-    }
 }
 
 void ALCBossEoduksini::StartBerserk()
 {
-    Super::StartBerserk(); // bIsBerserk=true & Multicast
+    // 1) 먼저 원본 값 저장
+    if (auto* MoveComp = GetCharacterMovement())
+    {
+        PrevMaxWalkSpeed = MoveComp->MaxWalkSpeed;
+        MoveComp->MaxWalkSpeed *= BerserkMovementMultiplier;
+    }
 
-    // 클라이언트에서도 동일하게 연출
-    if (BerserkEffectFX)
-    {
-        UNiagaraFunctionLibrary::SpawnSystemAttached(
-            BerserkEffectFX,
-            GetRootComponent(),
-            NAME_None,
-            FVector::ZeroVector,
-            FRotator::ZeroRotator,
-            EAttachLocation::KeepRelativeOffset,
-            true
-        );
-    }
-    if (BerserkSound)
-    {
-        UGameplayStatics::PlaySoundAtLocation(
-            this, BerserkSound, GetActorLocation());
-    }
+    PrevNormalAttackCooldown = NormalAttackCooldown;
+    PrevStrongAttackCooldown = StrongAttackCooldown;
+    NormalAttackCooldown *= BerserkCooldownMultiplier;
+    StrongAttackCooldown *= BerserkCooldownMultiplier;
+
+    Super::StartBerserk();
 }
 
 void ALCBossEoduksini::StartBerserk(float Duration)
 {
+    if (auto* MoveComp = GetCharacterMovement())
+    {
+        PrevMaxWalkSpeed = MoveComp->MaxWalkSpeed;
+        MoveComp->MaxWalkSpeed *= BerserkMovementMultiplier;
+    }
 
-    StartBerserk();
+    PrevNormalAttackCooldown = NormalAttackCooldown;
+    PrevStrongAttackCooldown = StrongAttackCooldown;
+    NormalAttackCooldown *= BerserkCooldownMultiplier;
+    StrongAttackCooldown *= BerserkCooldownMultiplier;
+
+    Super::StartBerserk(Duration);
 
 }
 
@@ -122,6 +115,15 @@ void ALCBossEoduksini::EndBerserk()
 {
     Super::EndBerserk();
     UE_LOG(LogTemp, Warning, TEXT("[Eoduksini] Exit Berserk State"));
+
+    // 3) 원래 값으로 복구
+    if (auto* MoveComp = GetCharacterMovement())
+    {
+        MoveComp->MaxWalkSpeed = PrevMaxWalkSpeed;
+    }
+
+    NormalAttackCooldown = PrevNormalAttackCooldown;
+    StrongAttackCooldown = PrevStrongAttackCooldown;
 
 }
 
@@ -773,16 +775,7 @@ bool ALCBossEoduksini::RequestAttack(float TargetDistance)
     struct FEntry { float Weight; TFunction<void()> Action; };
     TArray<FEntry> Entries;
 
-    // (1) 특수 액션: Night Terror
-    if (!bHasUsedNightTerror && Rage >= NightTerrorRageThreshold)
-    {
-        bHasUsedNightTerror = true;
-        UE_LOG(LogTemp, Log, TEXT("[Eoduksini] NightTerror 발동"));
-        NightTerror();
-        return true;
-    }
-
-    // 2) ShadowEcho
+    // 1) ShadowEcho
     if (TargetDistance <= ShadowEchoRange && Now - LastShadowEchoTime >= ShadowEchoInterval)
     {
         Entries.Add({ ShadowEchoWeight, [this, Now]()
@@ -793,7 +786,7 @@ bool ALCBossEoduksini::RequestAttack(float TargetDistance)
         } });
     }
 
-    // 3) NightmareGrasp
+    // 2) NightmareGrasp
     if (TargetDistance <= NightmareGraspRange && Now - LastNightmareGraspTime >= NightmareGraspInterval)
     {
         Entries.Add({ NightmareGraspWeight, [this, Now]()
@@ -804,7 +797,7 @@ bool ALCBossEoduksini::RequestAttack(float TargetDistance)
         } });
     }
 
-    // 4) 근접계열 (ShadowSwipe)
+    // 3) 근접계열 (ShadowSwipe)
     if (TargetDistance <= ShadowSwipeRange && Now - LastNormalTime >= NormalAttackCooldown)
     {
         Entries.Add({ ShadowSwipeWeight, [this, Now]()
@@ -815,7 +808,7 @@ bool ALCBossEoduksini::RequestAttack(float TargetDistance)
         } });
     }
 
-    // 5) 견인계열 (VoidGrasp)
+    // 4) 견인계열 (VoidGrasp)
     if (TargetDistance <= VoidGraspRange && Now - LastStrongTime >= StrongAttackCooldown)
     {
         Entries.Add({ VoidGraspWeight, [this, Now]()
