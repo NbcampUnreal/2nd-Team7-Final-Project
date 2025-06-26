@@ -111,13 +111,18 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Clue", meta = (ClampMin = "1.0", ClampMax = "300.0"))
     float ClueSpawnIntervalMax = 180.0f;
 
-    /** 단서로 스폰할 액터 클래스들을 배열로 선언 */
-    UPROPERTY(EditAnywhere, Category = "Clue", meta = (EditFixedOrder))
-    TArray<TSubclassOf<AActor>> ClueClasses;
+    /** ── Evidence Decals ── */
+    /** 공통으로 사용할 데칼 클래스들 (Boss 전용) */
+    UPROPERTY(EditAnywhere, Category = "Clue|Decal", meta = (EditFixedOrder))
+    TArray<TSubclassOf<AActor>> CommonDecalClasses;
 
-    /** SpawnRandomClue용: 남은 단서 클래스들만 담아두는 배열 */
-    UPROPERTY()
-    TArray<TSubclassOf<AActor>> RemainingClueClasses;
+    /** 보스별 고유 데칼 클래스들 */
+    UPROPERTY(EditAnywhere, Category = "Clue|Decal", meta = (EditFixedOrder))
+    TArray<TSubclassOf<AActor>> UniqueDecalClasses;
+
+    // 데칼 풀 복사용 임시 배열
+    TArray<TSubclassOf<AActor>> RemainingCommonDecals;
+    TArray<TSubclassOf<AActor>> RemainingUniqueDecals;
 
     /** 클루 스폰 타이머 핸들 */
     FTimerHandle ClueTimerHandle;
