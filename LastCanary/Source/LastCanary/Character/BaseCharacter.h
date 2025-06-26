@@ -146,6 +146,26 @@ public:
 	/** 가방 메시 설정 */
 	void SetBackpackMesh(bool bIsEquipBackpack);
 
+
+	UPROPERTY(VisibleAnywhere, Category = "Kick")
+	UBoxComponent* KickHitBox;
+	
+	UFUNCTION()
+	void OnKickHitBoxOverlap(UPrimitiveComponent* OverlappedComp,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex,
+		bool bFromSweep,
+		const FHitResult& SweepResult);
+
+	void StartKickHit();
+	void EndKickHit();
+	
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation|Attack")
+	UAnimMontage* KickOtherPlayer;
+
+
 	UPROPERTY(EditAnywhere, Category = "Brightness")
 	float MinBrightness = 8.0f;
 
@@ -445,6 +465,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	TSubclassOf<UAnimInstance> BinocularsAnimationClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	TSubclassOf<UAnimInstance> PickaxeAnimationClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	USkeletalMesh* SKM_Rifle;
@@ -757,7 +780,7 @@ public:
 	float SpeedMultiplier = 1.0f; // 0.0 ~ 1.0 범위
 	float CalculateMovementSpeedMultiplier();
 	float CalculateDebuffMultiplier();
-	float MaxWeight = 40.0f;
+	float MaxWeight = 200.0f;
 	void ResetMovementSetting();
 
 	float FrontInput = 0.0f;
