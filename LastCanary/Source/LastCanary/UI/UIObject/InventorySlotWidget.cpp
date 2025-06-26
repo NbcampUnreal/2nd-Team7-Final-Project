@@ -152,9 +152,14 @@ void UInventorySlotWidget::NativeOnDragDetected(const FGeometry& InGeometry, con
 bool UInventorySlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
 {
 	UInventorySlotWidget* SourceWidget = Cast<UInventorySlotWidget>(InOperation->Payload);
-	if (!SourceWidget || SourceWidget == this)
+	if (!SourceWidget)
 	{
 		return false;
+	}
+
+	if (SourceWidget == this)
+	{
+		return true;
 	}
 
 	if (!InventoryComponent)
