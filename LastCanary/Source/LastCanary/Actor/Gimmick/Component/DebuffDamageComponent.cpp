@@ -130,10 +130,15 @@ void UDebuffDamageComponent::RemoveEffectFromActor(AActor* OtherActor)
 
 void UDebuffDamageComponent::ApplyOverTimeDamage(AActor* Target)
 {
-	if (IsValid(Target))
+	if (!IsValid(Target))
 	{
-		UGameplayStatics::ApplyDamage(Target, DamageValue, nullptr, GetOwner(), nullptr);
+		LOG_Art_WARNING(TEXT(" ApplyOverTimeDamage : Target가 유효하지 않음 → 타이머 정지"));
+		StopDamageTimer(Target);
+		return;
 	}
+
+	UGameplayStatics::ApplyDamage(Target, DamageValue, nullptr, GetOwner(), nullptr);
+	LOG_Art(Log, TEXT("DOT : %s 에게 %.1f 데미지"), *Target->GetName(), DamageValue);
 }
 
 void UDebuffDamageComponent::StopDamageTimer(AActor* Target)
@@ -171,4 +176,17 @@ void UDebuffDamageComponent::OnOverlapEnd(UPrimitiveComponent* OverlappedCompone
 		return;
 
 	RemoveEffectFromActor(OtherActor);
+}
+
+void UDebuffDamageComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	Super::EndPlay(EndPlayReason);
+
+	for (auto& Pair : DamageTimers)
+	{
+		GetWorld()->GetTimerManager().ClearTimer(Pair.Value);
+	}
+	DamageTimers.Empty();
+
+	AffectedActors.Empty();
 }
