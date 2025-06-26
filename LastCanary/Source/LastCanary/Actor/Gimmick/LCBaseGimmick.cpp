@@ -15,7 +15,7 @@ ALCBaseGimmick::ALCBaseGimmick()
 	, bDestructibleByGun(false)
 	, DestructibleHealth(3.f)
 	, CurrentHealth(3.f)
-	, InteractMessage(TEXT("???"))
+	, InteractMessage(TEXT(""))
 	, InteractSound(nullptr)
 	, RequiredCount(1.f)
 	, ActivationDelay(1.5f)
@@ -229,6 +229,16 @@ void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor*
 	if (!HasAuthority() || !IsValid(OtherActor)) return;
 	if (!IsValidActivator(OtherActor)) return;
 
+	// ✅ Trigger용 쿨타임 검사 (WhileStepping 제외)
+	const float CurrentTime = GetWorld()->GetTimeSeconds();
+	const float Elapsed = CurrentTime - LastActivatedTime;
+
+	if (ActivationType != EGimmickActivationType::ActivateWhileStepping && Elapsed < CooldownTime)
+	{
+		//LOG_Art(Log, TEXT("[트리거] 쿨타임 진행 중 → 무시 (%.2f/%.2f)"), Elapsed, CooldownTime);
+		return;
+	}
+
 	if (!OverlappingActors.Contains(OtherActor))
 	{
 		OverlappingActors.Add(OtherActor);
@@ -237,6 +247,7 @@ void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor*
 	switch (ActivationType)
 	{
 	case EGimmickActivationType::ActivateOnStep:
+	{
 		if (bCallReturnToInitialStateInsteadOfActivate)
 		{
 			ILCGimmickInterface::Execute_ReturnToInitialState(this);
@@ -253,9 +264,12 @@ void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor*
 				ILCGimmickInterface::Execute_ActivateGimmick(Target);
 			}
 		}
-		break;
+		LastActivatedTime = CurrentTime;
+	}
+	break;
 
 	case EGimmickActivationType::ActivateWhileStepping:
+	{
 		if (OverlappingActors.Num() >= RequiredCount)
 		{
 			if (bCallReturnToInitialStateInsteadOfActivate)
@@ -267,32 +281,45 @@ void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor*
 				ILCGimmickInterface::Execute_ActivateGimmick(this);
 			}
 		}
-		break;
+	}
+	break;
 
 	case EGimmickActivationType::ActivateAfterDelay:
-		if (!bActivated && OverlappingActors.Num() >= RequiredCount)
+	{
+		if (OverlappingActors.Num() >= RequiredCount)
 		{
 			GetWorld()->GetTimerManager().SetTimer(
 				ActivationDelayHandle,
 				[this]()
 				{
-					if (!bActivated && OverlappingActors.Num() >= RequiredCount)
+					if (OverlappingActors.Num() >= RequiredCount)
 					{
-						if (bCallReturnToInitialStateInsteadOfActivate)
+						const float CurrentTime = GetWorld()->GetTimeSeconds();
+						const float Elapsed = CurrentTime - LastActivatedTime;
+
+						// ✅ Delay 후에도 쿨타임 검사
+						if (Elapsed >= CooldownTime)
 						{
-							ILCGimmickInterface::Execute_ReturnToInitialState(this);
+							if (bCallReturnToInitialStateInsteadOfActivate)
+							{
+								ILCGimmickInterface::Execute_ReturnToInitialState(this);
+							}
+							else
+							{
+								ILCGimmickInterface::Execute_ActivateGimmick(this);
+							}
+
+							LastActivatedTime = CurrentTime;
 						}
-						else
-						{
-							ILCGimmickInterface::Execute_ActivateGimmick(this);
-						}
+						// else { LOG_Art(Log, TEXT("[딜레이] 쿨타임 중 → 작동 안함")); }
 					}
 				},
 				ActivationDelay,
 				false
 			);
 		}
-		break;
+	}
+	break;
 
 	default:
 		break;
@@ -307,16 +334,10 @@ void ALCBaseGimmick::OnTriggerExit(UPrimitiveComponent* OverlappedComp, AActor* 
 
 	OverlappingActors.Remove(OtherActor);
 
-	//LOG_Art(Log, TEXT(" Exit : %s | 남은 오버랩 수: %d | bActivated: %s | bToggleState: %s"),
-	//	*OtherActor->GetName(),
-	//	OverlappingActors.Num(),
-	//	bActivated ? TEXT("O") : TEXT("X"),
-	//	bToggleState ? TEXT("O") : TEXT("X")
-	//);
-
 	switch (ActivationType)
 	{
 	case EGimmickActivationType::ActivateWhileStepping:
+	{
 		if (bActivated && OverlappingActors.Num() < RequiredCount)
 		{
 			ILCGimmickInterface::Execute_DeactivateGimmick(this);
@@ -326,17 +347,19 @@ void ALCBaseGimmick::OnTriggerExit(UPrimitiveComponent* OverlappedComp, AActor* 
 				ILCGimmickInterface::Execute_ReturnToInitialState(this);
 			}
 		}
-		break;
+	}
+	break;
 
 	case EGimmickActivationType::ActivateAfterDelay:
+	{
 		GetWorld()->GetTimerManager().ClearTimer(ActivationDelayHandle);
 
 		if (!bToggleState)
 		{
 			bActivated = false;
-			//LOG_Art(Log, TEXT("Exit -> 상태 초기화 - bActivated = false"));
 		}
-		break;
+	}
+	break;
 
 	default:
 		break;

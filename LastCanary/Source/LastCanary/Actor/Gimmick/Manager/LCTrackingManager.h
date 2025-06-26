@@ -79,4 +79,7 @@ protected:
 
 	/** 추적 루프 시작 */
 	void StartTrackingLoop();
+
+	FString GetPlayerNameFromActor(AActor* Actor) const;
+
 };
