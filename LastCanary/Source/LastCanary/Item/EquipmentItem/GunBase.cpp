@@ -377,6 +377,18 @@ void AGunBase::Multicast_SpawnImpactEffects_Implementation(const TArray<FHitResu
                 NiagaraRot
             );
         }
+
+        if (GunData.BloodNiagaraEffect)
+        {
+            FRotator NiagaraRot = Hit.ImpactNormal.Rotation();
+
+            UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+                GetWorld(),
+                GunData.BloodNiagaraEffect,
+                Hit.ImpactPoint,
+                NiagaraRot
+            );
+        }
     }
 }
 

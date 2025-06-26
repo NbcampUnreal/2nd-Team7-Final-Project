@@ -109,6 +109,9 @@ struct FGunDataRow : public FTableRowBase
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Effects")
     UNiagaraSystem* ImpactNiagaraEffect;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Effects")
+    UNiagaraSystem* BloodNiagaraEffect;
+
     // 사운드
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Sound")
     USoundBase* FireSound;
