@@ -243,7 +243,7 @@ void ABaseCharacter::BeginPlay()
 		if (IsLocallyControlled())
 		{
 			NameWidgetComponent->SetVisibility(false, true);
-		}
+		}	
 	}
 
 
@@ -254,6 +254,15 @@ void ABaseCharacter::BeginPlay()
 	//백팩은 커스터마이징과는 다르게 처리 // 기본은 투명
 	SetBackpackMesh(false);
 }
+
+void ABaseCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	Super::EndPlay(EndPlayReason);
+
+	LOG_Char_WARNING(TEXT("캐릭터 EndPlay"));
+	GetWorld()->GetTimerManager().ClearAllTimersForObject(this);
+}
+
 
 FCharacterCustomizationData ABaseCharacter::GetCustomizationData()
 {
@@ -821,7 +830,7 @@ void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue, floa
 	{ 
 		return;
 	}
-	ReduceRecoil(0.3f);
+	//ReduceRecoil(0.3f);
 	AddControllerYawInput(Value.X * Sensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
 	AddControllerPitchInput(Value.Y * Sensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
 }
@@ -916,18 +925,18 @@ void ABaseCharacter::ApplySmoothRecoilStep()
 		if (RecoveryDelta.Size() >= AccumulatedRecoil.Size())
 		{
 			// 완전 복구
-			AddControllerPitchInput(-AccumulatedRecoil.X);
-			AddControllerYawInput(-AccumulatedRecoil.Y);
+			AddControllerPitchInput(-AccumulatedRecoil.X * RecoilRecoveryAmount);
+			AddControllerYawInput(-AccumulatedRecoil.Y * RecoilRecoveryAmount);
 			AccumulatedRecoil = FVector2D::ZeroVector;
 			TargetRecoil = FVector2D::ZeroVector;
 			GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
 		}
 		else
 		{
-			AddControllerPitchInput(-RecoveryDelta.X);
-			AddControllerYawInput(-RecoveryDelta.Y);
-			AccumulatedRecoil -= RecoveryDelta;
-			TargetRecoil -= RecoveryDelta;
+			AddControllerPitchInput(-RecoveryDelta.X * RecoilRecoveryAmount);
+			AddControllerYawInput(-RecoveryDelta.Y * RecoilRecoveryAmount);
+			AccumulatedRecoil -= RecoveryDelta * (1 / RecoilRecoveryAmount);
+			TargetRecoil -= RecoveryDelta * (1 / RecoilRecoveryAmount);
 		}
 	}
 }
@@ -2102,95 +2111,99 @@ void ABaseCharacter::TraceInteractableActor()
 
 void ABaseCharacter::UpdateGunWallClipOffset(float DeltaTime)
 {
-	// 1. 총을 들고 있는 상태인지 확인 (OverlayState or 커스텀 상태)
-
+	// 1. 총을 들고 있는 상태인지 확인
 	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
 	if (!IsValid(EquippedItem))
 	{
-		WallClipAimOffsetPitch = 0.0f;
+		WallClipAimOffsetPitch = FMath::FInterpTo(WallClipAimOffsetPitch, 0.0f, DeltaTime, 5.0f);
 		return;
 	}
 
 	AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem);
 	if (!IsValid(EquipmentItem))
 	{
+		WallClipAimOffsetPitch = FMath::FInterpTo(WallClipAimOffsetPitch, 0.0f, DeltaTime, 5.0f);
 		return;
 	}
-	if (EquipmentItem->ItemData.ItemType != FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
+
+	if (EquipmentItem->ItemData.ItemType != FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle"))
+		&& EquipmentItem->ItemData.ItemType != FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Shotgun"))
+		&& EquipmentItem->ItemData.ItemType != FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol")))
 	{
+		WallClipAimOffsetPitch = FMath::FInterpTo(WallClipAimOffsetPitch, 0.0f, DeltaTime, 5.0f);
 		return;
 	}
+
 	AGunBase* RifleItem = Cast<AGunBase>(EquippedItem);
 	if (!IsValid(RifleItem))
 	{
+		WallClipAimOffsetPitch = FMath::FInterpTo(WallClipAimOffsetPitch, 0.0f, DeltaTime, 5.0f);
 		return;
 	}
 
 	USkeletalMeshComponent* RifleMesh = RifleItem->GetSkeletalMeshComponent();
 	if (!IsValid(RifleMesh))
 	{
+		WallClipAimOffsetPitch = FMath::FInterpTo(WallClipAimOffsetPitch, 0.0f, DeltaTime, 5.0f);
 		return;
 	}
 
 	FVector MuzzleLoc = RifleMesh->GetSocketLocation("Muzzle");
 	FTransform MuzzleTransform = RifleMesh->GetSocketTransform("Muzzle", RTS_World);
 
-	// 1. 머즐의 앞 방향과 Pitch 각도 얻기
-	FVector MuzzleForward = MuzzleTransform.GetUnitAxis(EAxis::Z); // 머즐의 "앞" 방향
+	// 머즐의 앞 방향과 Pitch 각도 얻기
+	FVector MuzzleForward = MuzzleTransform.GetUnitAxis(EAxis::Z);
 	FRotator MuzzleRot = MuzzleForward.Rotation();
-	float MuzzlePitch = MuzzleRot.Pitch;  // 상하 방향 판별용
+	float MuzzlePitch = MuzzleRot.Pitch;
 
 	FHitResult Hit;
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(this);
+	Params.AddIgnoredActor(RifleItem); // 총 자체도 무시
 
-	// 2. 라인 트레이스
-	static constexpr float GunWallTraceDistance = 70.0f; // 50에서 100으로 더 여유있게
-	static constexpr float TraceStartOffset = 50.0f; // 뒤로 10cm 정도
-	FVector TraceStart = MuzzleLoc - MuzzleForward * TraceStartOffset;
-	// 끝 지점은 그대로 앞쪽 방향으로 트레이스 거리만큼
-	FVector TraceEnd = TraceStart + MuzzleForward * GunWallTraceDistance;
+	// 더 안정적인 트레이스 설정
+	static constexpr float GunWallTraceDistance = 1.0f;
+	FVector TraceStart = MuzzleLoc - MuzzleForward * 150.0f;
+	FVector TraceEnd = MuzzleLoc + MuzzleForward * GunWallTraceDistance;
+
 	bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Visibility, Params);
 
-	// 디버그 라인도 수정된 시작점 기준으로
-#if WITH_EDITOR
-	//DrawDebugLine(GetWorld(), TraceStart, TraceEnd, FColor::Red, false, 0.1f);
-#endif
-	// 3. 벽과의 거리 비율 계산
-	//float WallRatio = 0.0f;
-	//if (bHit)
-	//{
-	//	float Dist = (Hit.Location - MuzzleLoc).Size();
-	//	WallRatio = 1.0f - (Dist / 30.0f); // 30cm 안으로 들어가면 1.0
-	//	WallRatio = FMath::Clamp(WallRatio, 0.0f, 1.0f);
-	//}
+	// 벽과의 거리 비율 계산 (데드존 추가)
+	static constexpr float WallClipTriggerDistance = 100.0f;
+	static constexpr float DeadZone = 10.0f; // 10cm 데드존
 
-	static constexpr float WallClipTriggerDistance = 60.0f;
 	float TargetWallRatio = 0.0f;
-
 	if (bHit)
 	{
 		float Dist = (Hit.Location - MuzzleLoc).Size();
 		if (Dist < WallClipTriggerDistance)
 		{
-			TargetWallRatio = 1.0f - (Dist / WallClipTriggerDistance);
+			// 데드존 적용
+			float AdjustedDist = FMath::Max(Dist - DeadZone, 0.0f);
+			float AdjustedMaxDist = WallClipTriggerDistance - DeadZone;
+			TargetWallRatio = 1.0f - (AdjustedDist / AdjustedMaxDist);
 			TargetWallRatio = FMath::Clamp(TargetWallRatio, 0.0f, 1.0f);
 		}
 	}
 
-	// WallRatio 보간 (떨림 방지 핵심)
-	static float SmoothedWallRatio = 0.0f; // 내부 상태 유지
-	SmoothedWallRatio = FMath::FInterpTo(SmoothedWallRatio, TargetWallRatio, DeltaTime, 10.0f);
+	// 인스턴스 변수로 변경 (헤더 파일에 추가 필요)
+	SmoothedWallRatio = FMath::FInterpTo(SmoothedWallRatio, TargetWallRatio, DeltaTime, 10.0f); // 보간 속도 감소
 
-
-	// 4. Pitch 보정값 계산 (상하 방향에 따라 부호 바꿈)
-	float DirectionSign = MuzzlePitch >= 0 ? 1.0f : -1.0f;  // 위를 보면 +, 아래를 보면 -
+	// Pitch 보정값 계산
+	float DirectionSign = MuzzlePitch >= 0 ? 1.0f : -1.0f;
 	float TargetOffset = FMath::Lerp(0.0f, MaxWallClipPitch, SmoothedWallRatio) * DirectionSign;
 
-	// 5. 부드러운 보간
-	WallClipAimOffsetPitch = FMath::FInterpTo(WallClipAimOffsetPitch, TargetOffset, DeltaTime, 10.0f);
-
-	// 6. 애님 인스턴스에 전달
+	// 더 부드러운 보간
+	WallClipAimOffsetPitch = FMath::FInterpTo(WallClipAimOffsetPitch, TargetOffset, DeltaTime, 4.0f);
+	if (abs(WallClipAimOffsetPitch) > 10.0f)
+	{
+		bIsCloseToWall = true;
+	}
+	else
+	{
+		bIsCloseToWall = false;
+	}
+	// 애님 인스턴스에 전달
 	if (UAlsAnimationInstance* AlsAnim = Cast<UAlsAnimationInstance>(GetMesh()->GetAnimInstance()))
 	{
 		AlsAnim->WallClipAimOffsetPitch = WallClipAimOffsetPitch;

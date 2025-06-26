@@ -161,6 +161,9 @@ public:
 	float MaxWallClipPitch = 90.0f;
 	float CapsuleWallRatio = 0.0f;
 	void UpdateGunWallClipOffset(float DeltaTime);
+	
+	UPROPERTY()
+	float SmoothedWallRatio = 0.0f;
 
 	int LerpCount = 0;
 	// Camera 이동 관련
@@ -202,7 +205,7 @@ protected:
 	void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const;
 	virtual void NotifyControllerChanged() override;
 	virtual void BeginPlay() override;
-
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	// Camera Settings
 protected:
@@ -326,8 +329,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
 	float RecoilRecoverySpeed = 2.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
-	int32 MaxConsecutiveShots = 10;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil", meta = (ClampMin = "0.01"))
+	float RecoilRecoveryAmount = 0.4f;
+
 
 	// 현재 연사 상태
 	int32 CurrentShotCount = 0;
