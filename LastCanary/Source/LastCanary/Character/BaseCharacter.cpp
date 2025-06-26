@@ -255,6 +255,15 @@ void ABaseCharacter::BeginPlay()
 	SetBackpackMesh(false);
 }
 
+void ABaseCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	Super::EndPlay(EndPlayReason);
+
+	LOG_Char_WARNING(TEXT("캐릭터 EndPlay"));
+	GetWorld()->GetTimerManager().ClearAllTimersForObject(this);
+}
+
+
 FCharacterCustomizationData ABaseCharacter::GetCustomizationData()
 {
 	return CharacterCustomizationData;

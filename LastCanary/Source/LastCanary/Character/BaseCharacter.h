@@ -202,7 +202,7 @@ protected:
 	void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const;
 	virtual void NotifyControllerChanged() override;
 	virtual void BeginPlay() override;
-
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	// Camera Settings
 protected:
