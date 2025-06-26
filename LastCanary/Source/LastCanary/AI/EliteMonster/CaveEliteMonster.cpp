@@ -20,6 +20,24 @@ ACaveEliteMonster::ACaveEliteMonster()
 	}
 }
 
+void ACaveEliteMonster::MulticastAIGimmick_Implementation()
+{
+	if (IsValid(AIGimmick))
+	{
+		PlayAnimMontage(AIGimmick);
+
+		PlayGimmickSound();
+	}
+}
+
+void ACaveEliteMonster::PlayGimmickSound()
+{
+	if (GimmickSound)
+	{
+		MulticastPlaySound(GimmickSound);
+	}
+}
+
 void ACaveEliteMonster::FreezeAI()
 {
 	if (bIsFrozen || CooldownTimerHandle.IsValid()) return;
@@ -45,20 +63,22 @@ void ACaveEliteMonster::FreezeAI()
 
 	if (ABaseAIController* BaseAIController = Cast<ABaseAIController>(GetController()))
 	{
+		BaseAIController->SetStun(MaxFreezeTime);
+	}
+
+	if (ABaseAIController* BaseAIController = Cast<ABaseAIController>(GetController()))
+	{
 		if (UBlackboardComponent* BlackboardComp = BaseAIController->GetBlackboardComponent())
 		{
 			BlackboardComp->SetValueAsObject("TargetActor", nullptr);
 		}
 	}
 
+	MulticastAIGimmick_Implementation();
+
 	if (AAIController* AIController = Cast<AAIController>(GetController()))
 	{
 		AIController->StopMovement();
-	}
-
-	if (ABaseAIController* BaseAIController = Cast<ABaseAIController>(GetController()))
-	{
-		BaseAIController->SetStop();
 	}
 
 	if (UWorld* World = GetWorld())
