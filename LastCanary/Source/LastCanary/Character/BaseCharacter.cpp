@@ -45,6 +45,7 @@
 #include "Character/CustomizationMeshMap.h"
 #include "Inventory/BackpackManager.h"
 #include "Engine/DamageEvents.h"
+#include "AI/BaseBossMonsterCharacter.h"
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -461,7 +462,11 @@ void ABaseCharacter::OnKickHitBoxOverlap(UPrimitiveComponent* OverlappedComp,
 	{
 		ACharacter* TargetCharacter = Cast<ACharacter>(Hit.GetActor());
 		if (!TargetCharacter || TargetCharacter == this) continue;
-
+		if (TargetCharacter->IsA<ABaseBossMonsterCharacter>())
+		{
+			continue;
+		}
+		
 		// 넉백 처리
 		FVector KnockbackDir = GetActorForwardVector();
 		KnockbackDir.Z = 0;
