@@ -2,6 +2,8 @@
 
 #include "CoreMinimal.h"
 #include "BehaviorTree/BTTaskNode.h"
+#include "AIController.h"
+#include "NavigationSystem.h"
 #include "BTTask_PatrolBoss.generated.h"
 
 
@@ -19,15 +21,21 @@ public:
     UBTTask_PatrolBoss();
 
     virtual EBTNodeResult::Type ExecuteTask(
-        UBehaviorTreeComponent& OwnerComp,
-        uint8* NodeMemory) override;
+        UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
 
 protected:
-    // 순찰 반경
+    /** 순찰 반경: 이 값 안에서 랜덤 거리 뽑음 */
     UPROPERTY(EditAnywhere, Category = "Patrol")
-    float PatrolRadius;
+    float MinPatrolRadius = 1000.f;
 
-    // 수용 반경
     UPROPERTY(EditAnywhere, Category = "Patrol")
-    float AcceptanceRadius;
+    float MaxPatrolRadius = 3000.f;
+
+    /** 도달로 간주할 거리 */
+    UPROPERTY(EditAnywhere, Category = "Patrol")
+    float AcceptanceRadius = 50.f;
+
+private:
+    // 이동 요청 ID 보관
+    FAIRequestID CurrentRequestID;
 };

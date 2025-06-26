@@ -60,6 +60,7 @@ void ABaseBossMonsterCharacter::EnterBerserkState()
 void ABaseBossMonsterCharacter::StartBerserk(float Duration)
 {
     bIsBerserk = true;
+    Rage = 50.f;
     Multicast_StartBerserk();
 
     if (HasAuthority() && Duration > 0.f)
@@ -77,6 +78,7 @@ void ABaseBossMonsterCharacter::StartBerserk(float Duration)
 void ABaseBossMonsterCharacter::StartBerserk()
 {
     bIsBerserk = true;
+    Rage = 50.f;
     Multicast_StartBerserk();
 }
 

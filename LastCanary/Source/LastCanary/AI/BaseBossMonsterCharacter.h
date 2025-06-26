@@ -76,7 +76,7 @@ protected:
 
     // 광폭화 지속 시간과 타이머 핸들
     UPROPERTY(EditAnywhere, Category = "Boss|Berserk")
-    float BerserkDuration = 12.f;
+    float BerserkDuration = 30.f;
 
     FTimerHandle BerserkDurationHandle;
 
