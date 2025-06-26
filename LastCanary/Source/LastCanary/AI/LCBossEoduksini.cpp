@@ -286,43 +286,39 @@ void ALCBossEoduksini::UpdateRageAndScale(float DeltaSeconds)
     int32 TotalPlayers = 0;
     int32 LookCount = 0;
 
-    // 모든 플레이어 컨트롤러를 순회하면서
+    // 모든 플레이어 컨트롤러 순회
     for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
     {
         APlayerController* PC = It->Get();
         if (!PC) continue;
-
         APawn* Pawn = PC->GetPawn();
-        if (!Pawn || !Pawn->IsPlayerControlled())
-            continue;
+        if (!Pawn || !Pawn->IsPlayerControlled()) continue;
 
         ++TotalPlayers;
-
-        // 플레이어가 보스 바라보고 있으면 카운트
         if (IsPlayerLooking(PC))
             ++LookCount;
     }
 
-    // 바라보는 플레이어 수에 비례해서 Rage 감소,
-    // 바라보지 않는 플레이어 수에 비례해서 Rage 증가
-    int32 NotLookCount = TotalPlayers - LookCount;
+    // 1) 증가량: 항상 동일
+    float DeltaRage = RageGainPerSec * DeltaSeconds;
 
-    float DeltaRage = 0.f;
-    DeltaRage += NotLookCount * RageGainPerSec * DeltaSeconds;
-    DeltaRage -= LookCount * RageLossPerSec * DeltaSeconds;
-
-    // Berserk 중엔 증가/감소율 배수 적용
+    // Berserk 중이라면 증가량에 배수 적용 (선택)
     if (bIsBerserk)
     {
         DeltaRage *= BerserkRageGainMultiplier;
     }
 
+    // 2) 감소량: 바라보는 플레이어 수에 비례
+    DeltaRage -= LookCount * RageLossPerSec * DeltaSeconds;
+
+    // 3) Rage 적용
     Rage = FMath::Clamp(Rage + DeltaRage, 0.f, MaxRage);
 
-	if (Rage >= MaxRage && !bIsBerserk)
-	{
-		StartBerserk(BerserkDuration);
-	}
+    // 4) Berserk 자동 진입
+    if (Rage >= MaxRage && !bIsBerserk)
+    {
+        StartBerserk(BerserkDuration);
+    }
 }
 
 // --- Darkness state ---
