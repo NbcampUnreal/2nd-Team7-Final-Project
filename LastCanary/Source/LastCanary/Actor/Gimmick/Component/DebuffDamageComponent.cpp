@@ -22,8 +22,8 @@ void UDebuffDamageComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	OnComponentBeginOverlap.AddDynamic(this, &UDebuffDamageComponent::OnOverlapBegin);
-	OnComponentEndOverlap.AddDynamic(this, &UDebuffDamageComponent::OnOverlapEnd);
+	OnComponentBeginOverlap.AddUniqueDynamic(this, &UDebuffDamageComponent::OnOverlapBegin);
+	OnComponentEndOverlap.AddUniqueDynamic(this, &UDebuffDamageComponent::OnOverlapEnd);
 }
 
 void UDebuffDamageComponent::ApplyEffectToActor(AActor* OtherActor)
@@ -91,6 +91,22 @@ void UDebuffDamageComponent::ApplyEffectToActor(AActor* OtherActor)
 	AffectedActors.Add(OtherActor);
 }
 
+void UDebuffDamageComponent::OnTargetDestroyed(AActor* DestroyedActor)
+{
+	if (!IsValid(DestroyedActor)) return;
+
+	if (!AffectedActors.Contains(DestroyedActor))
+	{
+		return;
+	}
+
+	LOG_Art(Log, TEXT("타겟 파괴 감지됨 : 효과 제거: %s"), *GetNameSafe(DestroyedActor));
+
+	StopDamageTimer(DestroyedActor);
+	RemoveDebuff(DestroyedActor);
+	AffectedActors.Remove(DestroyedActor);
+}
+
 void UDebuffDamageComponent::RemoveEffectFromActor(AActor* OtherActor)
 {
 	if (!IsValid(OtherActor)) return;
@@ -130,23 +146,37 @@ void UDebuffDamageComponent::RemoveEffectFromActor(AActor* OtherActor)
 
 void UDebuffDamageComponent::ApplyOverTimeDamage(AActor* Target)
 {
-	if (!IsValid(Target))
+	if (!IsValid(this) || !IsValid(GetWorld()) || !IsValid(GetOwner()))
 	{
-		LOG_Art_WARNING(TEXT(" ApplyOverTimeDamage : Target가 유효하지 않음 → 타이머 정지"));
+		LOG_Art_ERROR(TEXT(" ApplyOverTimeDamage : 컴포넌트 또는 월드 또는 오너 유효하지 않음 → 종료"));
+		return;
+	}
+
+	if (!IsValid(Target) || !AffectedActors.Contains(Target))
+	{
+		LOG_Art_WARNING(TEXT(" ApplyOverTimeDamage : Target 유효하지 않음 → 타이머 정지"));
 		StopDamageTimer(Target);
 		return;
 	}
 
 	UGameplayStatics::ApplyDamage(Target, DamageValue, nullptr, GetOwner(), nullptr);
-	LOG_Art(Log, TEXT("DOT : %s 에게 %.1f 데미지"), *Target->GetName(), DamageValue);
+	LOG_Art(Log, TEXT("DOT : %s 에게 %.1f 데미지"), *GetNameSafe(Target), DamageValue);
 }
 
 void UDebuffDamageComponent::StopDamageTimer(AActor* Target)
 {
-	if (FTimerHandle* Handle = DamageTimers.Find(Target))
+	if (!IsValid(this) || !IsValid(GetWorld()))
 	{
-		GetWorld()->GetTimerManager().ClearTimer(*Handle);
+		LOG_Art_ERROR(TEXT("StopDamageTimer : 컴포넌트 또는 월드 유효하지 않아 강제 종료"));
+		return;
+	}
+
+	if (DamageTimers.Contains(Target))
+	{
+		GetWorld()->GetTimerManager().ClearTimer(DamageTimers[Target]);
 		DamageTimers.Remove(Target);
+
+		LOG_Art(Log, TEXT("DOT 타이머 정지: %s"), *GetNameSafe(Target));
 	}
 }
 
@@ -166,6 +196,8 @@ void UDebuffDamageComponent::OnOverlapBegin(UPrimitiveComponent* OverlappedCompo
 
 	//LOG_Art(Log, TEXT("[DebuffComp] ▶ OnOverlapBegin → %s"), *OtherActor->GetName());
 
+	OtherActor->OnDestroyed.AddUniqueDynamic(this, &UDebuffDamageComponent::OnTargetDestroyed);
+
 	ApplyEffectToActor(OtherActor);
 }
 
@@ -174,6 +206,16 @@ void UDebuffDamageComponent::OnOverlapEnd(UPrimitiveComponent* OverlappedCompone
 {
 	if (!IsValid(OtherActor) || OtherActor == GetOwner())
 		return;
+
+	if (!AffectedActors.Contains(OtherActor))
+	{
+		return;
+	}
+
+	if (OtherActor->OnDestroyed.IsAlreadyBound(this, &UDebuffDamageComponent::OnTargetDestroyed))
+	{
+		OtherActor->OnDestroyed.RemoveDynamic(this, &UDebuffDamageComponent::OnTargetDestroyed);
+	}
 
 	RemoveEffectFromActor(OtherActor);
 }
