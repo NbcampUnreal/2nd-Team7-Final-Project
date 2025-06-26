@@ -33,6 +33,7 @@ ALCBaseGimmick::ALCBaseGimmick()
 
 	VisualMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("VisualMesh"));
 	VisualMesh->SetupAttachment(RootComponent);
+	VisualMesh->SetMobility(EComponentMobility::Movable);
 
 	DetectionArea = CreateDefaultSubobject<UBoxComponent>(TEXT("DetectionArea"));
 	DetectionArea->SetupAttachment(RootComponent);

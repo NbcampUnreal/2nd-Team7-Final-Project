@@ -33,7 +33,7 @@ void ALCLuxChargeTrigger::ActivateGimmick_Implementation()
 {
 	Super::ActivateGimmick_Implementation();
 
-	//LOG_Art(Log, TEXT("ALCLuxChargeTrigger::ActivateGimmick_Implementation ▶ ActivateGimmick 호출됨 (직접 발동형 용도)"));
+	LOG_Art(Log, TEXT("ALCLuxChargeTrigger::ActivateGimmick_Implementation ▶ ActivateGimmick 호출됨 (직접 발동형 용도)"));
 }
 
 void ALCLuxChargeTrigger::TriggerEffect_Implementation()
@@ -43,7 +43,7 @@ void ALCLuxChargeTrigger::TriggerEffect_Implementation()
 	if (!bIsReceivingLux)
 	{
 		bIsReceivingLux = true;
-		//LOG_Art(Log, TEXT("빛 수신 시작"));
+		LOG_Art(Log, TEXT("빛 수신 시작"));
 	}
 
 	if (HasAuthority())
@@ -73,7 +73,7 @@ void ALCLuxChargeTrigger::StopEffect_Implementation()
 	if (!bIsReceivingLux) return;
 
 	bIsReceivingLux = false;
-	//LOG_Art(Log, TEXT("ALCLuxChargeTrigger::StopEffect_Implementation 빛 수신 종료"));
+	LOG_Art(Log, TEXT("ALCLuxChargeTrigger::StopEffect_Implementation 빛 수신 종료"));
 
 	if (HasAuthority())
 	{
@@ -86,7 +86,7 @@ void ALCLuxChargeTrigger::Multicast_StopEffect_Implementation()
 	if (!HasAuthority())
 	{
 		bIsReceivingLux = false;
-		//LOG_Art(Log, TEXT("ALCLuxChargeTrigger::Multicast_StopEffect_Implementation : [클라] 빛 수신 종료"));
+		LOG_Art(Log, TEXT("ALCLuxChargeTrigger::Multicast_StopEffect_Implementation : [클라] 빛 수신 종료"));
 	}
 }
 
@@ -97,7 +97,7 @@ void ALCLuxChargeTrigger::UpdateCharge()
 	if (bIsReceivingLux && CurrentTime - LastReceivedTime > GracePeriod)
 	{
 		bIsReceivingLux = false;
-		//LOG_Art(Log, TEXT("LuxChargeTrigger : 빛 수신 중단 (유예 시간 초과)"));
+		LOG_Art(Log, TEXT("LuxChargeTrigger : 빛 수신 중단 (유예 시간 초과)"));
 
 		if (HasAuthority())
 		{
@@ -126,7 +126,7 @@ void ALCLuxChargeTrigger::UpdateCharge()
 	if (!bChargeCompleted && CurrentCharge >= 1.0f)
 	{
 		bChargeCompleted = true;
-		//LOG_Art(Log, TEXT("완전 충전 → 타겟 기믹 실행"));
+		LOG_Art(Log, TEXT("완전 충전 → 타겟 기믹 실행"));
 
 		for (AActor* Target : LinkedTargets)
 		{
@@ -139,6 +139,6 @@ void ALCLuxChargeTrigger::UpdateCharge()
 	else if (bChargeCompleted && CurrentCharge <= 0.f)
 	{
 		bChargeCompleted = false;
-		//LOG_Art(Log, TEXT("완전 방전 → 상태 초기화"));
+		LOG_Art(Log, TEXT("완전 방전 → 상태 초기화"));
 	}
 }
