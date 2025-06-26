@@ -2,6 +2,7 @@
 #include "ScannerItem.h"
 #include "Engine/Engine.h"
 #include "TimerManager.h"
+#include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMaterialLibrary.h"
 #include "LastCanary.h"
 
@@ -224,7 +225,12 @@ void AScannerItem::Client_ApplyScanEffect_Implementation(bool bStartScan)
 
         GetWorld()->GetTimerManager().SetTimer(AlphaInterpolationTimerHandle,
             this, &AScannerItem::InterpolateScanAlpha, 0.02f, true);
-        PlaySoundByType();
+
+        USoundBase* StartSound = ItemData.UseStartSound;
+        if (StartSound)
+        {
+            UGameplayStatics::PlaySoundAtLocation(this, StartSound, GetActorLocation());
+        }
     }
     else
     {
@@ -235,7 +241,12 @@ void AScannerItem::Client_ApplyScanEffect_Implementation(bool bStartScan)
 
         GetWorld()->GetTimerManager().SetTimer(AlphaInterpolationTimerHandle,
             this, &AScannerItem::InterpolateScanAlpha, 0.02f, true);
-        PlaySoundByType();
+
+        USoundBase* EndSound = ItemData.UseEndSound;
+        if (EndSound)
+        {
+            UGameplayStatics::PlaySoundAtLocation(this, EndSound, GetActorLocation());
+        }
     }
 }
 
