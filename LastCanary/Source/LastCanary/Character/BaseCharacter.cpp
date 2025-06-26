@@ -205,7 +205,7 @@ void ABaseCharacter::BeginPlay()
 	if (IsValid(ToolbarInventoryComponent))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Inventory Ready"));
-		ToolbarInventoryComponent->OnInventoryUpdated.AddDynamic(this, &ABaseCharacter::HandleInventoryUpdated);
+		ToolbarInventoryComponent->OnInventoryUpdated.AddUniqueDynamic(this, &ABaseCharacter::HandleInventoryUpdated);
 	}
 
 	EnableStencilForAllMeshes(2);
@@ -266,7 +266,7 @@ void ABaseCharacter::BeginPlay()
 	//백팩은 커스터마이징과는 다르게 처리 // 기본은 투명
 	SetBackpackMesh(false);
 
-	KickHitBox->OnComponentBeginOverlap.AddDynamic(this, &ABaseCharacter::OnKickHitBoxOverlap);
+	KickHitBox->OnComponentBeginOverlap.AddUniqueDynamic(this, &ABaseCharacter::OnKickHitBoxOverlap);
 
 }
 
