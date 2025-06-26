@@ -161,6 +161,9 @@ public:
 	float MaxWallClipPitch = 90.0f;
 	float CapsuleWallRatio = 0.0f;
 	void UpdateGunWallClipOffset(float DeltaTime);
+	
+	UPROPERTY()
+	float SmoothedWallRatio = 0.0f;
 
 	int LerpCount = 0;
 	// Camera 이동 관련
