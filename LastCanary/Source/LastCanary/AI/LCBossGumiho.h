@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "AI/BaseBossMonsterCharacter.h"
 #include "NiagaraSystem.h"
+#include "Sound/SoundBase.h"
 #include "LCBossGumiho.generated.h"
 
 UCLASS()
@@ -19,7 +20,6 @@ protected:
     virtual void UpdateRage(float DeltaSeconds) override;
 
     // ── RequestAttack override ─────────────────────────
-protected:
     virtual bool RequestAttack(float TargetDistance) override;
 
     // ── 광폭화 ────────────────────────────────
@@ -28,13 +28,44 @@ protected:
     virtual void StartBerserk(float Duration) override;
     virtual void EndBerserk() override;
 
-    /** 면역·버프 연출용 이펙트 */
+    virtual void OnRep_IsBerserk() override;
+
+    /** SFX,VFX */
     UPROPERTY(EditAnywhere, Category = "Gumiho|Berserk")
     UNiagaraSystem* BerserkEffectFX;
 
-    /** 현악기 선율 사운드 */
     UPROPERTY(EditAnywhere, Category = "Gumiho|Berserk")
     USoundBase* BerserkSound;
+
+    UPROPERTY(EditAnywhere, Category = "Gumiho|Abilities")
+    UNiagaraSystem* SpiritSpikeFX;
+
+    UPROPERTY(EditAnywhere, Category = "Gumiho|Abilities")
+    USoundBase* SpiritSpikeSound;
+
+    UPROPERTY(EditAnywhere, Category = "Gumiho|Foxfire")
+    UNiagaraSystem* FoxfireFX;
+
+    UPROPERTY(EditAnywhere, Category = "Gumiho|Foxfire")
+    USoundBase* FoxfireSound;
+
+    UPROPERTY(EditAnywhere, Category = "Gumiho|TailStrike")
+    UNiagaraSystem* TailStrikeFX;
+
+    UPROPERTY(EditAnywhere, Category = "Gumiho|TailStrike")
+    USoundBase* TailStrikeSound;
+
+    UPROPERTY(EditAnywhere, Category = "Gumiho|Charm")
+    UNiagaraSystem* CharmGazeFX;
+
+    UPROPERTY(EditAnywhere, Category = "Gumiho|Charm")
+    USoundBase* CharmGazeSound;
+
+    UPROPERTY(EditAnywhere, Category = "Gumiho|Illusion")
+    UNiagaraSystem* IllusionSpawnFX;
+
+    UPROPERTY(EditAnywhere, Category = "Gumiho|Illusion")
+    USoundBase* IllusionSpawnSound;
 
     /** 이동 속도 버프 배수 */
     UPROPERTY(EditAnywhere, Category = "Gumiho|Berserk")
@@ -74,14 +105,30 @@ protected:
     float TailStrikeDamage = 30.f;
 
     UPROPERTY(EditAnywhere, Category = "Gumiho|TailStrike")
-    float TailStrikeCooldown = 15.f;
+    float TailStrikeCooldown = 10.f;
 
     FTimerHandle TailStrikeTimerHandle;
     void ExecuteTailStrike();
 
+    // ── Spirit Spike 특수 공격 ─────────────────────────
+
+    UPROPERTY(EditAnywhere, Category = "Gumiho|Abilities", meta = (ClampMin = "0.0"))
+    float SpiritSpikeRadius = 500.f;
+
+    UPROPERTY(EditAnywhere, Category = "Gumiho|Abilities", meta = (ClampMin = "0.0"))
+    float SpiritSpikeDamage = 80.f;
+
+    UPROPERTY(EditAnywhere, Category = "Gumiho|Abilities", meta = (ClampMin = "0.0"))
+    float SpiritSpikeCooldown = 15.f;
+
+
+
+    // 실제 실행 함수
+    void ExecuteSpiritSpike(AActor* Target);
+
     // ── Foxfire Volley ──
     UPROPERTY(EditAnywhere, Category = "Gumiho|Foxfire")
-    TSubclassOf<AActor> FoxfireProjectileClass;
+    TSubclassOf<AActor> FoxfireClass;
 
     UPROPERTY(EditAnywhere, Category = "Gumiho|Foxfire", meta = (ClampMin = "1"))
     int32 FoxfireCount = 5;
@@ -96,12 +143,16 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Gumiho|Illusion")
     float IllusionSwapInterval = 25.f;
 
+    /** Swap할 플레이어를 찾을 반경 */
+    UPROPERTY(EditAnywhere, Category = "Illusion|Swap")
+    float IllusionSwapRadius = 800.f;
+
     FTimerHandle SwapTimerHandle;
     void PerformIllusionSwap();
 
     // ── Charm Gaze ──
     UPROPERTY(EditAnywhere, Category = "Gumiho|Charm")
-    float CharmRadius = 500.f;
+    float CharmRadius = 1000.f;
 
     UPROPERTY(EditAnywhere, Category = "Gumiho|Charm")
     float CharmInterval = 10.f;
@@ -119,7 +170,7 @@ protected:
     // ── Divine Grace ──
     UPROPERTY(ReplicatedUsing = OnRep_DivineGrace)
     bool bIsDivineGrace = false;
-
+    
     UFUNCTION()
     void OnRep_DivineGrace();
 
@@ -127,8 +178,6 @@ protected:
     void Multicast_StartDivineGrace();
 
     // ── Rage ──
-    UPROPERTY(EditAnywhere, Category = "Gumiho|Rage", meta = (ClampMin = "0"))
-    float MaxRage = 100.f;
 
     void AddRage(float Amount);
 
@@ -136,6 +185,7 @@ protected:
     float LastFoxfireTime = -FLT_MAX;
     float LastTailStrikeTime = -FLT_MAX;
     float LastIllusionSwapTime = -FLT_MAX;
+    float LastSpiritSpikeTime = -FLT_MAX;
 
     // ── Replication ──
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
