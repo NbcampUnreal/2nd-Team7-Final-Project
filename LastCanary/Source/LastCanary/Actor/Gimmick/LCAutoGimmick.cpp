@@ -32,10 +32,25 @@ void ALCAutoGimmick::StartLoop()
 {
 	if (!HasAuthority()) return;
 
-	//LOG_Art(Log, TEXT("▶ [StartLoop] 루프 시작"));
-
 	bLoopingEnabled = true;
-	HandleLoop();
+
+	const float StartDelay = FMath::FRandRange(0.f, LoopInterval);
+
+	if (LoopInterval > 0.f)
+	{
+		GetWorldTimerManager().SetTimer(
+			LoopTimerHandle,
+			this,
+			&ALCAutoGimmick::HandleLoop,
+			LoopInterval,
+			true, 
+			StartDelay 
+		);
+	}
+	else
+	{
+		HandleLoop();
+	}
 }
 
 void ALCAutoGimmick::StopLoop()
