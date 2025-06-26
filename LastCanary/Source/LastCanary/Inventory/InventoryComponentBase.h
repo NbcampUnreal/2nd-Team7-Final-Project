@@ -225,6 +225,23 @@ private:
     bool IsWalkieTalkieItem(FName ItemRowName) const;
 
     //-----------------------------------------------------
+    // 워키토키 관련 기능
+    //-----------------------------------------------------
+
+public:
+    /** 가방 메시 상태 업데이트 */
+    UFUNCTION(BlueprintCallable, Category = "Backpack")
+    void UpdateBackpackMeshStatus();
+
+    /** 툴바에 가방이 있는지 확인 */
+    UFUNCTION(BlueprintPure, Category = "Backpack")
+    bool HasBackpackInToolbar() const;
+
+    /** 아이템이 가방인지 확인 */
+    UFUNCTION(BlueprintPure, Category = "Backpack")
+    bool IsBackpackItem(FName ItemRowName) const;
+
+    //-----------------------------------------------------
     // 네트워크
     //-----------------------------------------------------
 
