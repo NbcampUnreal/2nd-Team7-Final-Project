@@ -151,6 +151,16 @@ void AGunBase::UseItem()
     }
 }
 
+void AGunBase::OnRepItemRowName()
+{
+    Super::OnRepItemRowName();
+
+    if (!ItemRowName.IsNone())
+    {
+        EnsureGunDataLoaded();
+    }
+}
+
 void AGunBase::Server_Fire_Implementation()
 {
     EnsureGunDataLoaded();
