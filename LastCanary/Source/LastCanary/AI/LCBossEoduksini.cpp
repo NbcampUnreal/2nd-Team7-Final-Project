@@ -488,18 +488,18 @@ void ALCBossEoduksini::ExecuteShadowEchoDamage(FVector Location)
 
     float Radius = 400.f;
 
-    // 1) Debug: 폭발 위치에 보라색 구 그리기 (2초간, 두께 5)
-    DrawDebugSphere(
-        GetWorld(),
-        Location,
-        Radius,
-        16,
-        FColor::Purple,
-        false,
-        2.0f,
-        0,
-        5.0f
-    );
+    //// 1) Debug: 폭발 위치에 보라색 구 그리기 (2초간, 두께 5)
+    //DrawDebugSphere(
+    //    GetWorld(),
+    //    Location,
+    //    Radius,
+    //    16,
+    //    FColor::Purple,
+    //    false,
+    //    2.0f,
+    //    0,
+    //    5.0f
+    //);
 
     // **FX**: 폭발 이펙트
     if (EchoExplosionFX)

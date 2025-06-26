@@ -17,7 +17,6 @@ class USpringArmComponent;
 class UCameraComponent;
 class AItemBase;
 class UToolbarInventoryComponent;
-class UBackpackInventoryComponent;
 struct FBaseItemSlotData;
 struct FBackpackSlotData;
 class UItemSpawnerComponent;
@@ -194,7 +193,7 @@ public:
 	FRotator TargetCameraRotation;
 
 	UPROPERTY()
-	float CameraTransitionSpeed = 15.0f;
+	float CameraTransitionSpeed = 25.0f;
 
 	//Character Default Settings
 protected:
@@ -431,7 +430,10 @@ public:
 	TSubclassOf<UAnimInstance> RifleAnimationClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
-	TSubclassOf<UAnimInstance> PistolAnimationClass;
+	TSubclassOf<UAnimInstance> PistolOneHandedAnimationClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	TSubclassOf<UAnimInstance> PistolTwoHandedAnimationClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	TSubclassOf<UAnimInstance> TorchAnimationClass;
@@ -574,16 +576,31 @@ public:
 	UFUNCTION(BlueprintCallable)
 	float TakeSpiritDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser);
 	float CalculateTakeSpiritDamage(float DamageAmount);
+	
+	UFUNCTION(BlueprintCallable)
+	float RestoreSpirit(float Amount);
+
 	void EnterPanicState();
+	void ExitPanicState();
+
 
 	UFUNCTION(Client, Reliable)
 	void Client_EnterPanicState();
 	void Client_EnterPanicState_Implementation();
 	
+	UFUNCTION(Client, Reliable)
+	void Client_ExitPanicState();
+	void Client_ExitPanicState_Implementation();
+
 	void PerformRandomPanicAction();
+	FTimerHandle PanicVoiceDurationHandle;
+	void TriggerPanicVoice(float Duration);
 
 	UFUNCTION(BlueprintImplementableEvent)
 	void EnterPanicVoice();
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void ExitPanicVoice();
 
 	UPROPERTY(EditAnywhere,BlueprintReadWrite, Category = "PanicState")
 	USoundBase* ScreamSound;
@@ -630,6 +647,13 @@ public:
 	void ForceInvertMouseTemporary(bool bInvert, float Duration);
 	void RestoreMouseInvert();
 
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Damage")
+	USoundBase* OnHitSound;
+
+	UFUNCTION(Client, Reliable)
+	void Client_PlayHitSound();
+	void Client_PlayHitSound_Implementation();
 
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	void HandlePlayerDeath();
@@ -829,7 +853,9 @@ public:
 	//-----------------------------------------------------
 
 private:
-
+	/** 현재 가방 메시 활성화 상태 추적 */
+	UPROPERTY()
+	bool bBackpackMeshActive = false;
 
 public:
 	/** 인벤토리 무게 변경 시 호출 */

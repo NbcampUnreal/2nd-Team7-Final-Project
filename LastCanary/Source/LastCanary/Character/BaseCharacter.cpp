@@ -626,7 +626,9 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 	}
 	if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem))
 	{
-		if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
+		if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")) 
+			|| EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol")) 
+			|| EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Shotgun")))
 		{
 			AGunBase* RifleItem = Cast<AGunBase>(EquippedItem);
 			if (RifleItem)
@@ -2234,10 +2236,6 @@ void ABaseCharacter::Server_SetQuickSlotIndex_Implementation(int32 NewIndex)
 
 void ABaseCharacter::EquipItem(int32 Index)
 {
-	if (Index == ToolbarInventoryComponent->GetCurrentEquippedSlotIndex())
-	{
-		return;
-	}
 	ToolbarInventoryComponent->EquipItemAtSlot(Index);
 	// 동기화된 장착 요청
 	Multicast_ResetAnimationAndCamera(Index);
@@ -2340,7 +2338,7 @@ float ABaseCharacter::TakeSpiritDamage(float DamageAmount, FDamageEvent const& D
 	{
 		return 0;
 	}
-	if (MyPlayerState->bInfiniteHP == true)
+	if (MyPlayerState->bInfiniteSpirit == true)
 	{
 		return 0;
 	}
@@ -2358,6 +2356,31 @@ float ABaseCharacter::TakeSpiritDamage(float DamageAmount, FDamageEvent const& D
 	return DamageAmount;
 }
 
+float ABaseCharacter::RestoreSpirit(float Amount)
+{
+	LOG_Char_WARNING(TEXT("캐릭터가 정신력을 회복함"));
+	if (!HasAuthority())
+	{
+		return 0;
+	}
+	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
+	if (!IsValid(MyPlayerState))
+	{
+		return 0;
+	}
+	float CurrentSpirit = MyPlayerState->GetSpirit();
+	float MaxSpirit = MyPlayerState->MaxSpirit;
+	float CalCulatedSpirit = FMath::Clamp(CurrentSpirit + Amount, 0.0f, MaxSpirit);
+	MyPlayerState->SetSpirit(CalCulatedSpirit);
+	LOG_Char_WARNING(TEXT("Current Spirit : %f"), CalCulatedSpirit);
+	if (CalCulatedSpirit > MyPlayerState->PanicTriggerThreshold)
+	{
+		//: 정신력 낮음 처리
+		ExitPanicState();
+	}
+	return Amount;
+}
+
 float ABaseCharacter::CalculateTakeSpiritDamage(float DamageAmount)
 {
 	//TODO: 여기에다가 추가로 뭔가 장비나 방어력이 추가 되면 여기서 계산하고 넘겨도 됨.
@@ -2373,9 +2396,21 @@ void ABaseCharacter::EnterPanicState()
 	Client_EnterPanicState();
 }
 
+void ABaseCharacter::ExitPanicState()
+{
+	Client_ExitPanicState();
+}
+
+
 void ABaseCharacter::Client_EnterPanicState_Implementation()
 {
 	StartPanicBehaviorLoop();
+}
+
+void ABaseCharacter::Client_ExitPanicState_Implementation()
+{
+	GetWorld()->GetTimerManager().ClearTimer(PanicActionTimerHandle);
+
 }
 
 void ABaseCharacter::StartPanicBehaviorLoop()
@@ -2402,21 +2437,11 @@ void ABaseCharacter::PerformRandomPanicAction()
 	TArray<TFunction<void()>> PanicActions;
 
 	PanicActions.Add([this]() { PlayScreamSound_Local(); });
-	PanicActions.Add([this]() { EnterPanicVoice(); });
+	PanicActions.Add([this]() { TriggerPanicVoice(PanicDuration); });
 	PanicActions.Add([this]() { UseItemUnexpectedly(); });
 	PanicActions.Add([this]() { PlaySighSoundForAll(); });
 	PanicActions.Add([this]() { ForceSetMouseSensitivity(PanicSensitivity, PanicDuration); });
 	PanicActions.Add([this]() { ForceInvertMouseTemporary(true, PanicDuration); });
-
-	// 아직 구현 전이지만 placeholder 추가도 가능
-	PanicActions.Add([this]() {
-		// 팀원 보이스 낮추기 (예시)
-		LOG_Char_WARNING(TEXT("팀원 보이스 볼륨 감소!"));
-		});
-	PanicActions.Add([this]() {
-		// 정신력 0 처리 예시
-		LOG_Char_WARNING(TEXT("정신력이 0이 되었습니다!"));
-		});
 
 	// 랜덤 선택해서 실행
 	if (PanicActions.Num() > 0)
@@ -2525,6 +2550,32 @@ void ABaseCharacter::RestoreMouseInvert()
 	ForceInvertMouse(false);
 }
 
+void ABaseCharacter::TriggerPanicVoice(float Duration)
+{
+	LOG_Char_WARNING(TEXT("보이스 변경"));
+
+	MouseSensitivityMultiplier = 10.0f;
+	// 기존 타이머 제거 후 새 타이머 시작
+	GetWorld()->GetTimerManager().ClearTimer(PanicVoiceDurationHandle);
+	GetWorld()->GetTimerManager().SetTimer(
+		PanicVoiceDurationHandle,
+		this,
+		&ABaseCharacter::ExitPanicVoice,
+		Duration,
+		false
+	);
+}
+
+
+
+void ABaseCharacter::Client_PlayHitSound_Implementation()
+{
+	if (IsLocallyControlled())
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, OnHitSound, GetActorLocation());
+	}
+}
+
 
 float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
@@ -2547,7 +2598,11 @@ float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageE
 	float MaxHP = MyPlayerState->MaxHP;
 	float CalCulatedHP = FMath::Clamp(CurrentHP - FinalDamage, 0.0f, MaxHP);
 	MyPlayerState->SetHP(CalCulatedHP);
-	// TODO: 클라이언트에서 해야할 것 같은 그런 느낌인데... MyPlayerState->ApplyDamage(CalCulatedHP);
+	if (FinalDamage > 0.0f)
+	{
+		Client_PlayHitSound();
+		MyPlayerState->Client_PlayDamageUI();
+	}
 	LOG_Char_WARNING(TEXT("Current HP : %f"), CalCulatedHP);
 	if (CalCulatedHP <= 0.f)
 	{
@@ -2579,6 +2634,12 @@ void ABaseCharacter::GetFallDamage(float Velocity)
 	float CalCulatedHP = FMath::Clamp(CurrentHP - FinalDamage, 0.0f, MaxHP);
 	LOG_Char_WARNING(TEXT("Current HP : %f"), CalCulatedHP);
 	MyPlayerState->SetHP(CalCulatedHP);
+	
+	if (FinalDamage > 0.0f)
+	{
+		Client_PlayHitSound();
+		MyPlayerState->Client_PlayDamageUI();
+	}	
 	if (CalCulatedHP <= 0.f)
 	{
 		HandlePlayerDeath(); // 사망 처리
@@ -2912,6 +2973,33 @@ void ABaseCharacter::RefreshOverlayObject()
 		Overlay = AlsOverlayModeTags::Rifle;
 		bIsDesireAiming = true;
 	}
+	if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol")))  // 또는 HasTag 등 비교 방식에 따라
+	{
+		if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(CurrentItem))
+		{
+			AGunBase* RifleItem = Cast<AGunBase>(EquipmentItem);
+			USkeletalMeshComponent* RifleMesh = RifleItem->GetSkeletalMeshComponent();
+			CurrentRifleMesh = RifleMesh;
+			Socketname = "Pistol";
+			AttachSkeletalMesh = EquipmentItem->ItemData.SkeletalMesh;
+		}
+
+		Overlay = AlsOverlayModeTags::PistolTwoHanded;
+		bIsDesireAiming = true;
+	}
+	if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Shotgun")))  // 또는 HasTag 등 비교 방식에 따라
+	{
+		if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(CurrentItem))
+		{
+			AGunBase* RifleItem = Cast<AGunBase>(EquipmentItem);
+			USkeletalMeshComponent* RifleMesh = RifleItem->GetSkeletalMeshComponent();
+			CurrentRifleMesh = RifleMesh;
+			Socketname = "Shotgun";
+			AttachSkeletalMesh = EquipmentItem->ItemData.SkeletalMesh;
+		}
+		Overlay = AlsOverlayModeTags::Rifle;
+		bIsDesireAiming = true;
+	}
 	if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.FlashLight")))
 	{
 		Overlay = AlsOverlayModeTags::Torch;
@@ -3014,13 +3102,17 @@ void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(FGameplayTag ItemTag)
 	{
 		OverlayAnimationInstanceClass = TorchAnimationClass;
 	}
-	/*else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol")))
+	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol")))
 	{
-		OverlayAnimationInstanceClass = PistolAnimationClass;
-	}*/
+		OverlayAnimationInstanceClass = PistolTwoHandedAnimationClass;
+	}
+	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Shotgun")))
+	{
+		OverlayAnimationInstanceClass = RifleAnimationClass;
+	}
 	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))
 	{
-		OverlayAnimationInstanceClass = PistolAnimationClass;
+		OverlayAnimationInstanceClass = PistolOneHandedAnimationClass;
 	}
 	else
 	{
@@ -3309,6 +3401,13 @@ void ABaseCharacter::DropAllItemsOnDeath()
 
 void ABaseCharacter::SetBackpackMesh(bool bIsEquipBackpack)
 {
+	if (bBackpackMeshActive == bIsEquipBackpack)
+	{
+		return;
+	}
+
+	bBackpackMeshActive = bIsEquipBackpack;
+
 	if (bIsEquipBackpack)
 	{
 		SetPartMesh(BackpackMesh, BackpackSkeletalMesh);

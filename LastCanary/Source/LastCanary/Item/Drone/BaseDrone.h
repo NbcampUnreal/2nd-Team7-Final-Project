@@ -78,7 +78,7 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 
 	UPROPERTY(EditAnywhere, Category = "Drone | Look")
-	float LookSensitivity = 20.f;
+	float LookSensitivity = 50.f;
 
 	UPROPERTY(EditAnywhere, Category = "Drone | Look")
 	float RotationInterpSpeed = 5.f;
@@ -123,7 +123,7 @@ public:
 	void Input_MoveUp(const FInputActionValue& Value);
 	void Input_MoveDown(const FInputActionValue& Value);
 	void Input_Look(const FInputActionValue& Value, float Sensivity);
-	void Look(const FInputActionValue& Value);
+	void Look(const FInputActionValue& Value, float Sensitivity);
 	void Move(const FInputActionValue& Value);
 	void MoveUp(const FInputActionValue& Value);
 	void MoveDown(const FInputActionValue& Value);
@@ -142,8 +142,8 @@ public:
 	void Server_MoveDown_Implementation(float Value);
 
 	UFUNCTION(Server, Reliable)
-	void Server_Look(FVector2D InputVector);
-	void Server_Look_Implementation(FVector2D InputVector);
+	void Server_Look(FVector2D InputVector, float Sensitivity);
+	void Server_Look_Implementation(FVector2D InputVector, float Sensitivity);
 
 	///////////////////////////////////////////////////////////////////////////////
 	//// Drone Return Logic

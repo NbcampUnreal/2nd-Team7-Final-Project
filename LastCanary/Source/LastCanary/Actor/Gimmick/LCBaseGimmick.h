@@ -39,6 +39,48 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Sound")
 	USoundBase* InteractSound;
 
+	/** 기믹 작동시 포커스 카메라 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cutscene")
+	class ACameraActor* CutsceneCamera;
+
+	UPROPERTY(EditAnywhere, Category = "Cutscene")
+	float CameraBlendTime = 0.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Cutscene")
+	float CutsceneDuration = 3.0f;
+
+	/** 컷신 활성화 여부 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cutscene")
+	bool bEnableCutscene = false;
+
+	/** 모든 플레이어에게 컷신 보여줄지 여부 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cutscene")
+	bool bCutsceneForAllPlayers = true; 
+
+	/** 모든 플레이어에게 컷신 시작 */
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_StartCutscene();
+
+	/** 특정 플레이어에게만 컷신 시작 */
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_StartCutsceneForSpecificPlayer(APlayerController* PC);
+
+	/** 컷신 중인지 확인 */
+	UFUNCTION(BlueprintCallable, Category = "Cutscene")
+	bool IsPlayingCutscene() const;
+
+	/** 컷신 강제 중단 */
+	UFUNCTION(BlueprintCallable, Category = "Cutscene")
+	void StopCutscene();
+
+	/** 블루프린트 이벤트 - 컷신 시작 시 */
+	UFUNCTION(BlueprintImplementableEvent, Category = "Cutscene")
+	void OnCutsceneStarted(APlayerController* PC);
+
+	/** 블루프린트 이벤트 - 컷신 종료 시 */
+	UFUNCTION(BlueprintImplementableEvent, Category = "Cutscene")
+	void OnCutsceneEnded(APlayerController* PC);
+
 	/** 상호작용 시 출력되는 메시지 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Interaction")
 	FString InteractMessage;
@@ -168,6 +210,26 @@ public:
 	/** 복귀 호출여부 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Interaction")
 	bool bCallReturnToInitialStateInsteadOfActivate;
+
+	/** ===== 컷신 관련 Private 멤버 변수들 ===== */
+private:
+	/** 컷신 재생 중인지 여부 */
+	bool bIsPlayingCutscene = false;
+
+	/** 플레이어 입력이 비활성화되었는지 여부 */
+	bool bPlayerInputDisabled = false;
+
+	/** 원래 뷰 타겟 (컷신 종료 시 복원용) */
+	AActor* OriginalViewTarget = nullptr;
+
+	/** 컷신 타이머 */
+	FTimerHandle CutsceneTimer;
+
+	/** 개별 플레이어용 컷신 시작 함수 */
+	void StartCutsceneForPlayer(APlayerController* PC);
+
+	/** 개별 플레이어용 컷신 종료 함수 */
+	void EndCutsceneForPlayer(APlayerController* PC);
 
 public:
 	/** ===== 인터페이스 구현 ===== */

@@ -4,6 +4,7 @@
 #include "Character/BasePlayerController.h"
 #include "Net/UnrealNetwork.h"
 #include "LastCanary.h"
+#include "Camera/CameraActor.h"
 
 ALCBaseGimmick::ALCBaseGimmick()
 	: bActivated(false)
@@ -14,12 +15,14 @@ ALCBaseGimmick::ALCBaseGimmick()
 	, bDestructibleByGun(false)
 	, DestructibleHealth(3.f)
 	, CurrentHealth(3.f)
-	, InteractMessage(TEXT("???"))
+	, InteractMessage(TEXT(""))
 	, InteractSound(nullptr)
 	, RequiredCount(1.f)
 	, ActivationDelay(1.5f)
 	, ActivationType(EGimmickActivationType::ActivateOnPress) 
+	, bEnableCutscene(false)
 	, bCallReturnToInitialStateInsteadOfActivate(false)
+	, bCutsceneForAllPlayers(true)
 {
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true;
@@ -226,6 +229,16 @@ void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor*
 	if (!HasAuthority() || !IsValid(OtherActor)) return;
 	if (!IsValidActivator(OtherActor)) return;
 
+	// ✅ Trigger용 쿨타임 검사 (WhileStepping 제외)
+	const float CurrentTime = GetWorld()->GetTimeSeconds();
+	const float Elapsed = CurrentTime - LastActivatedTime;
+
+	if (ActivationType != EGimmickActivationType::ActivateWhileStepping && Elapsed < CooldownTime)
+	{
+		//LOG_Art(Log, TEXT("[트리거] 쿨타임 진행 중 → 무시 (%.2f/%.2f)"), Elapsed, CooldownTime);
+		return;
+	}
+
 	if (!OverlappingActors.Contains(OtherActor))
 	{
 		OverlappingActors.Add(OtherActor);
@@ -234,6 +247,7 @@ void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor*
 	switch (ActivationType)
 	{
 	case EGimmickActivationType::ActivateOnStep:
+	{
 		if (bCallReturnToInitialStateInsteadOfActivate)
 		{
 			ILCGimmickInterface::Execute_ReturnToInitialState(this);
@@ -250,9 +264,12 @@ void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor*
 				ILCGimmickInterface::Execute_ActivateGimmick(Target);
 			}
 		}
-		break;
+		LastActivatedTime = CurrentTime;
+	}
+	break;
 
 	case EGimmickActivationType::ActivateWhileStepping:
+	{
 		if (OverlappingActors.Num() >= RequiredCount)
 		{
 			if (bCallReturnToInitialStateInsteadOfActivate)
@@ -264,32 +281,45 @@ void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor*
 				ILCGimmickInterface::Execute_ActivateGimmick(this);
 			}
 		}
-		break;
+	}
+	break;
 
 	case EGimmickActivationType::ActivateAfterDelay:
-		if (!bActivated && OverlappingActors.Num() >= RequiredCount)
+	{
+		if (OverlappingActors.Num() >= RequiredCount)
 		{
 			GetWorld()->GetTimerManager().SetTimer(
 				ActivationDelayHandle,
 				[this]()
 				{
-					if (!bActivated && OverlappingActors.Num() >= RequiredCount)
+					if (OverlappingActors.Num() >= RequiredCount)
 					{
-						if (bCallReturnToInitialStateInsteadOfActivate)
+						const float CurrentTime = GetWorld()->GetTimeSeconds();
+						const float Elapsed = CurrentTime - LastActivatedTime;
+
+						// ✅ Delay 후에도 쿨타임 검사
+						if (Elapsed >= CooldownTime)
 						{
-							ILCGimmickInterface::Execute_ReturnToInitialState(this);
+							if (bCallReturnToInitialStateInsteadOfActivate)
+							{
+								ILCGimmickInterface::Execute_ReturnToInitialState(this);
+							}
+							else
+							{
+								ILCGimmickInterface::Execute_ActivateGimmick(this);
+							}
+
+							LastActivatedTime = CurrentTime;
 						}
-						else
-						{
-							ILCGimmickInterface::Execute_ActivateGimmick(this);
-						}
+						// else { LOG_Art(Log, TEXT("[딜레이] 쿨타임 중 → 작동 안함")); }
 					}
 				},
 				ActivationDelay,
 				false
 			);
 		}
-		break;
+	}
+	break;
 
 	default:
 		break;
@@ -304,16 +334,10 @@ void ALCBaseGimmick::OnTriggerExit(UPrimitiveComponent* OverlappedComp, AActor* 
 
 	OverlappingActors.Remove(OtherActor);
 
-	//LOG_Art(Log, TEXT(" Exit : %s | 남은 오버랩 수: %d | bActivated: %s | bToggleState: %s"),
-	//	*OtherActor->GetName(),
-	//	OverlappingActors.Num(),
-	//	bActivated ? TEXT("O") : TEXT("X"),
-	//	bToggleState ? TEXT("O") : TEXT("X")
-	//);
-
 	switch (ActivationType)
 	{
 	case EGimmickActivationType::ActivateWhileStepping:
+	{
 		if (bActivated && OverlappingActors.Num() < RequiredCount)
 		{
 			ILCGimmickInterface::Execute_DeactivateGimmick(this);
@@ -323,17 +347,19 @@ void ALCBaseGimmick::OnTriggerExit(UPrimitiveComponent* OverlappedComp, AActor* 
 				ILCGimmickInterface::Execute_ReturnToInitialState(this);
 			}
 		}
-		break;
+	}
+	break;
 
 	case EGimmickActivationType::ActivateAfterDelay:
+	{
 		GetWorld()->GetTimerManager().ClearTimer(ActivationDelayHandle);
 
 		if (!bToggleState)
 		{
 			bActivated = false;
-			//LOG_Art(Log, TEXT("Exit -> 상태 초기화 - bActivated = false"));
 		}
-		break;
+	}
+	break;
 
 	default:
 		break;
@@ -477,6 +503,27 @@ void ALCBaseGimmick::ActivateGimmick_Implementation()
 
 	Multicast_PlaySound();
 
+	// 컷신 시작 (기믹 활성화와 동시에)
+	if (bEnableCutscene && CutsceneCamera)
+	{
+		if (bCutsceneForAllPlayers)
+		{
+			// 모든 플레이어에게 컷신 보여주기
+			Multicast_StartCutscene();
+		}
+		else
+		{
+			// 특정 플레이어에게만 컷신 보여주기 (상호작용한 플레이어)
+			if (APawn* InstigatingPawn = Cast<APawn>(GetOwner()))
+			{
+				if (APlayerController* PC = Cast<APlayerController>(InstigatingPawn->GetController()))
+				{
+					Multicast_StartCutsceneForSpecificPlayer(PC);
+				}
+			}
+		}
+	}
+
 	for (AActor* Target : LinkedTargets)
 	{
 		if (IsValid(Target) && Target->GetClass()->ImplementsInterface(UGimmickEffectInterface::StaticClass()))
@@ -484,6 +531,7 @@ void ALCBaseGimmick::ActivateGimmick_Implementation()
 			IGimmickEffectInterface::Execute_TriggerEffect(Target);
 		}
 	}
+
 }
 
 void ALCBaseGimmick::DeactivateGimmick_Implementation()
@@ -502,6 +550,142 @@ void ALCBaseGimmick::DeactivateGimmick_Implementation()
 void ALCBaseGimmick::ReturnToInitialState_Implementation()
 {
 
+}
+
+#pragma endregion
+
+#pragma region Cutscene
+
+void ALCBaseGimmick::Multicast_StartCutscene_Implementation()
+{
+	if (!CutsceneCamera) return;
+
+	// 모든 플레이어 컨트롤러에 대해 컷신 시작
+	if (UWorld* World = GetWorld())
+	{
+		for (FConstPlayerControllerIterator Iterator = World->GetPlayerControllerIterator(); Iterator; ++Iterator)
+		{
+			if (APlayerController* PC = Iterator->Get())
+			{
+				StartCutsceneForPlayer(PC);
+			}
+		}
+	}
+}
+
+void ALCBaseGimmick::Multicast_StartCutsceneForSpecificPlayer_Implementation(APlayerController* PC)
+{
+	if (!CutsceneCamera || !PC) return;
+
+	StartCutsceneForPlayer(PC);
+}
+
+void ALCBaseGimmick::StartCutsceneForPlayer(APlayerController* PC)
+{
+	if (!PC || !CutsceneCamera) return;
+
+	// 로컬 플레이어만 컷신 처리 (네트워크 환경에서 각자의 화면만 제어)
+	if (!PC->IsLocalController()) return;
+
+	// 이미 컷신 중이면 무시
+	if (IsPlayingCutscene()) return;
+
+	// 현재 카메라 저장 (복원용)
+	OriginalViewTarget = PC->GetViewTarget();
+
+	// 컷신 카메라로 전환
+	PC->SetViewTargetWithBlend(CutsceneCamera, CameraBlendTime, VTBlend_Linear);
+
+	// 플레이어 입력 비활성화 (옵션)
+	if (APawn* PlayerPawn = PC->GetPawn())
+	{
+		PlayerPawn->DisableInput(PC);
+		bPlayerInputDisabled = true;
+	}
+
+	// 컷신 플래그 설정
+	bIsPlayingCutscene = true;
+
+	// 컷신 종료 타이머 설정
+	GetWorld()->GetTimerManager().SetTimer(
+		CutsceneTimer,
+		[this, PC]()
+		{
+			EndCutsceneForPlayer(PC);
+		},
+		CutsceneDuration,
+		false
+	);
+
+	// 컷신 시작 이벤트 (블루프린트에서 확장 가능)
+	OnCutsceneStarted(PC);
+}
+
+void ALCBaseGimmick::EndCutsceneForPlayer(APlayerController* PC)
+{
+	if (!PC) return;
+
+	// 로컬 플레이어만 처리
+	if (!PC->IsLocalController()) return;
+
+	// 컷신 중이 아니면 무시
+	if (!IsPlayingCutscene()) return;
+
+	// 원래 카메라로 복원
+	if (OriginalViewTarget)
+	{
+		PC->SetViewTargetWithBlend(OriginalViewTarget, CameraBlendTime, VTBlend_Linear);
+	}
+	else
+	{
+		// 원래 뷰 타겟이 없으면 플레이어 폰으로 복원
+		if (APawn* PlayerPawn = PC->GetPawn())
+		{
+			PC->SetViewTargetWithBlend(PlayerPawn, CameraBlendTime, VTBlend_Linear);
+		}
+	}
+
+	// 플레이어 입력 복원
+	if (bPlayerInputDisabled)
+	{
+		if (APawn* PlayerPawn = PC->GetPawn())
+		{
+			PlayerPawn->EnableInput(PC);
+		}
+		bPlayerInputDisabled = false;
+	}
+
+	// 컷신 플래그 해제
+	bIsPlayingCutscene = false;
+	OriginalViewTarget = nullptr;
+
+	// 타이머 정리
+	GetWorld()->GetTimerManager().ClearTimer(CutsceneTimer);
+
+	// 컷신 종료 이벤트 (블루프린트에서 확장 가능)
+	OnCutsceneEnded(PC);
+}
+
+bool ALCBaseGimmick::IsPlayingCutscene() const
+{
+	return bIsPlayingCutscene;
+}
+
+void ALCBaseGimmick::StopCutscene()
+{
+	if (!IsPlayingCutscene()) return;
+
+	// 모든 플레이어에 대해 컷신 강제 종료
+	if (UWorld* World = GetWorld())
+	{
+		for (FConstPlayerControllerIterator Iterator = World->GetPlayerControllerIterator(); Iterator; ++Iterator)
+		{
+			if (APlayerController* PC = Iterator->Get())
+			{
+				EndCutsceneForPlayer(PC);
+			}
+		}
+	}
 }
 
 #pragma endregion
