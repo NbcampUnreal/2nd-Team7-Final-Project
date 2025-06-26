@@ -2236,10 +2236,6 @@ void ABaseCharacter::Server_SetQuickSlotIndex_Implementation(int32 NewIndex)
 
 void ABaseCharacter::EquipItem(int32 Index)
 {
-	if (Index == ToolbarInventoryComponent->GetCurrentEquippedSlotIndex())
-	{
-		return;
-	}
 	ToolbarInventoryComponent->EquipItemAtSlot(Index);
 	// 동기화된 장착 요청
 	Multicast_ResetAnimationAndCamera(Index);
@@ -3361,6 +3357,13 @@ void ABaseCharacter::DropAllItemsOnDeath()
 
 void ABaseCharacter::SetBackpackMesh(bool bIsEquipBackpack)
 {
+	if (bBackpackMeshActive == bIsEquipBackpack)
+	{
+		return;
+	}
+
+	bBackpackMeshActive = bIsEquipBackpack;
+
 	if (bIsEquipBackpack)
 	{
 		SetPartMesh(BackpackMesh, BackpackSkeletalMesh);

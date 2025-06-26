@@ -145,6 +145,8 @@ public:
     /** 아이템 사용 (발사) */
     virtual void UseItem() override;
 
+    virtual void OnRepItemRowName() override;
+
     /** 탄약 재장전 */
     UFUNCTION(BlueprintCallable, Category = "Gun|Actions")
     virtual bool Reload();
