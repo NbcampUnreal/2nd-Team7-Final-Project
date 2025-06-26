@@ -2,9 +2,8 @@
 
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
+#include "AI/BaseMonsterCharacter.h"
 #include "MonsterDataTable.generated.h"
-
-class ABaseMonsterCharacter;
 
 USTRUCT(BlueprintType)
 struct FMonsterDataTable : public FTableRowBase
@@ -19,4 +18,8 @@ struct FMonsterDataTable : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSoftObjectPtr<UWorld> Level;
+
+	/** 스폰 시 오프셋 (보물 상자 기준) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector SpawnOffset = FVector(0.f, 0.f, 100.f);
 };
