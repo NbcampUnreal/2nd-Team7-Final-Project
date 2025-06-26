@@ -575,6 +575,16 @@ public:
 	/*Player Damage, Death*/
 	UFUNCTION(BlueprintCallable)
 	float TakeSpiritDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser);
+	
+
+	FTimerHandle SpiritTickDamageHandle;
+
+	UFUNCTION(BlueprintCallable)
+	void TriggerSpiritTickDamage();
+	float SpiritTickDamage = 1.0f;
+	float SpiritDamageTickInterval = 1.0f;
+	void TakeSpiritTickDamage();
+
 	float CalculateTakeSpiritDamage(float DamageAmount);
 	
 	UFUNCTION(BlueprintCallable)

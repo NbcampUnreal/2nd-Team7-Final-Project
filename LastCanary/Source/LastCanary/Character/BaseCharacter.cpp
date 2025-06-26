@@ -44,6 +44,7 @@
 #include "UI/UIObject/PlayerNameWidget.h"
 #include "Character/CustomizationMeshMap.h"
 #include "Inventory/BackpackManager.h"
+#include "Engine/DamageEvents.h"
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -2211,7 +2212,6 @@ void ABaseCharacter::SetCurrentQuickSlotIndex(int32 NewIndex)
 	CancelUseItem();
 	CancelInteraction();
 	StopReload();
-	LOG_Char_WARNING(TEXT("Request Server to change QuickSlotindex"));
 	Server_SetQuickSlotIndex(NewIndex);
 }
 
@@ -2243,7 +2243,6 @@ void ABaseCharacter::EquipItem(int32 Index)
 
 void ABaseCharacter::Multicast_ResetAnimationAndCamera_Implementation(int32 Index)
 {
-	LOG_Char_WARNING(TEXT("Change Equip Item"));
 	//카메라 초기화(총 줌 쓰고 있다가 바뀔 가능성 대비)
 	ResetCameraLocationToDefault();
 	StopCurrentPlayingMontage();
@@ -2264,8 +2263,6 @@ int32 ABaseCharacter::GetCurrentQuickSlotIndex()
 
 void ABaseCharacter::StopCurrentPlayingMontage()
 {
-	LOG_Char_WARNING(TEXT("애님 몽타주 강종"));
-	//Mesh의 애니메이션 인스턴스 가져오기
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && AnimInstance->IsAnyMontagePlaying())
 	{
@@ -2283,8 +2280,6 @@ void ABaseCharacter::HandleInventoryUpdated()
 
 void ABaseCharacter::UnequipCurrentItem()
 {
-	LOG_Char_WARNING(TEXT("Unequipped current item"));
-
 	if (!IsEquipped() || !ToolbarInventoryComponent)
 	{
 		LOG_Item_WARNING(TEXT("현재 장비 상태가 아니거나 툴바가 없습니다."));
@@ -2297,28 +2292,13 @@ void ABaseCharacter::UnequipCurrentItem()
 		Server_UnequipCurrentItem();
 		return;
 	}
-#if WITH_EDITOR
-	LOG_Item_WARNING(TEXT("[ABaseCharacter::UnequipCurrentItem] 서버에서 장비 해제 처리")); // 서버에서 실제 처리
-#endif
+
 	// 현재 장착된 아이템 정보 가져오기 (로그용)
 	AItemBase* CurrentEquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
 	FString ItemName = CurrentEquippedItem ? CurrentEquippedItem->ItemRowName.ToString() : TEXT("Unknown");
 
 	// 툴바 컴포넌트에서 실제 해제 처리
 	ToolbarInventoryComponent->UnequipCurrentItem();
-
-#if WITH_EDITOR
-	// 장비 해제 후 상태 확인
-	if (!IsEquipped())
-	{
-		LOG_Item_WARNING(TEXT("[ABaseCharacter::UnequipCurrentItem] %s 아이템 해제 성공"), *ItemName);
-	}
-	else
-	{
-		LOG_Item_WARNING(TEXT("[ABaseCharacter::UnequipCurrentItem] 아이템 해제 실패 - 여전히 장비 상태임"));
-		return;
-	}
-#endif
 }
 
 void ABaseCharacter::Server_UnequipCurrentItem_Implementation()
@@ -2356,6 +2336,29 @@ float ABaseCharacter::TakeSpiritDamage(float DamageAmount, FDamageEvent const& D
 	return DamageAmount;
 }
 
+void ABaseCharacter::TriggerSpiritTickDamage()
+{
+	GetWorld()->GetTimerManager().SetTimer(
+		SpiritTickDamageHandle,
+		this,
+		&ABaseCharacter::TakeSpiritTickDamage,
+		SpiritDamageTickInterval,
+		true,           // 반복
+		0.01f    // 처음 실행까지의 지연 시간
+	);
+}
+
+void ABaseCharacter::TakeSpiritTickDamage()
+{
+	FDamageEvent DamageEvent;
+	float DamageAmount = SpiritTickDamage;
+	AController* InstigatorController = GetController(); // 또는 nullptr
+	AActor* DamageCauser = this; // 또는 원하는 액터
+
+	TakeSpiritDamage(DamageAmount, DamageEvent, GetController(), DamageCauser);
+}
+
+
 float ABaseCharacter::RestoreSpirit(float Amount)
 {
 	LOG_Char_WARNING(TEXT("캐릭터가 정신력을 회복함"));
@@ -2375,7 +2378,7 @@ float ABaseCharacter::RestoreSpirit(float Amount)
 	LOG_Char_WARNING(TEXT("Current Spirit : %f"), CalCulatedSpirit);
 	if (CalCulatedSpirit > MyPlayerState->PanicTriggerThreshold)
 	{
-		//: 정신력 낮음 처리
+		//: 정신력 높아짐 처리
 		ExitPanicState();
 	}
 	return Amount;
@@ -2554,8 +2557,7 @@ void ABaseCharacter::TriggerPanicVoice(float Duration)
 {
 	LOG_Char_WARNING(TEXT("보이스 변경"));
 
-	MouseSensitivityMultiplier = 10.0f;
-	// 기존 타이머 제거 후 새 타이머 시작
+	EnterPanicVoice();
 	GetWorld()->GetTimerManager().ClearTimer(PanicVoiceDurationHandle);
 	GetWorld()->GetTimerManager().SetTimer(
 		PanicVoiceDurationHandle,
