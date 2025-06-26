@@ -194,7 +194,7 @@ public:
 	FRotator TargetCameraRotation;
 
 	UPROPERTY()
-	float CameraTransitionSpeed = 15.0f;
+	float CameraTransitionSpeed = 25.0f;
 
 	//Character Default Settings
 protected:
@@ -431,7 +431,10 @@ public:
 	TSubclassOf<UAnimInstance> RifleAnimationClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
-	TSubclassOf<UAnimInstance> PistolAnimationClass;
+	TSubclassOf<UAnimInstance> PistolOneHandedAnimationClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	TSubclassOf<UAnimInstance> PistolTwoHandedAnimationClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	TSubclassOf<UAnimInstance> TorchAnimationClass;
@@ -630,6 +633,13 @@ public:
 	void ForceInvertMouseTemporary(bool bInvert, float Duration);
 	void RestoreMouseInvert();
 
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Damage")
+	USoundBase* OnHitSound;
+
+	UFUNCTION(Client, Reliable)
+	void Client_PlayHitSound();
+	void Client_PlayHitSound_Implementation();
 
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	void HandlePlayerDeath();
