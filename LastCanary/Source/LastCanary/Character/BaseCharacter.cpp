@@ -2528,7 +2528,7 @@ void ABaseCharacter::RestoreMouseInvert()
 }
 
 
-void ABaseCharacter::PlayHitSound_Local()
+void ABaseCharacter::Client_PlayHitSound_Implementation()
 {
 	if (IsLocallyControlled())
 	{
@@ -2558,9 +2558,11 @@ float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageE
 	float MaxHP = MyPlayerState->MaxHP;
 	float CalCulatedHP = FMath::Clamp(CurrentHP - FinalDamage, 0.0f, MaxHP);
 	MyPlayerState->SetHP(CalCulatedHP);
-	// TODO: 클라이언트에서 해야할 것 같은 그런 느낌인데... 
-	//MyPlayerState->ApplyDamage(CalCulatedHP);
-	PlayHitSound_Local();
+	if (FinalDamage > 0.0f)
+	{
+		Client_PlayHitSound();
+		MyPlayerState->Client_PlayDamageUI();
+	}
 	LOG_Char_WARNING(TEXT("Current HP : %f"), CalCulatedHP);
 	if (CalCulatedHP <= 0.f)
 	{
@@ -2592,8 +2594,10 @@ void ABaseCharacter::GetFallDamage(float Velocity)
 	float CalCulatedHP = FMath::Clamp(CurrentHP - FinalDamage, 0.0f, MaxHP);
 	LOG_Char_WARNING(TEXT("Current HP : %f"), CalCulatedHP);
 	MyPlayerState->SetHP(CalCulatedHP);
+	
 	if (FinalDamage > 0.0f)
 	{
+		Client_PlayHitSound();
 		MyPlayerState->Client_PlayDamageUI();
 	}	
 	if (CalCulatedHP <= 0.f)

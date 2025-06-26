@@ -637,7 +637,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Damage")
 	USoundBase* OnHitSound;
 
-	void PlayHitSound_Local();
+	UFUNCTION(Client, Reliable)
+	void Client_PlayHitSound();
+	void Client_PlayHitSound_Implementation();
 
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	void HandlePlayerDeath();
