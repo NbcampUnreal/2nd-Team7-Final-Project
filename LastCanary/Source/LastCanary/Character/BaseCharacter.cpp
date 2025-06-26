@@ -243,7 +243,7 @@ void ABaseCharacter::BeginPlay()
 		if (IsLocallyControlled())
 		{
 			NameWidgetComponent->SetVisibility(false, true);
-		}
+		}	
 	}
 
 
@@ -830,7 +830,7 @@ void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue, floa
 	{ 
 		return;
 	}
-	ReduceRecoil(0.3f);
+	//ReduceRecoil(0.3f);
 	AddControllerYawInput(Value.X * Sensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
 	AddControllerPitchInput(Value.Y * Sensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
 }
@@ -925,18 +925,18 @@ void ABaseCharacter::ApplySmoothRecoilStep()
 		if (RecoveryDelta.Size() >= AccumulatedRecoil.Size())
 		{
 			// 완전 복구
-			AddControllerPitchInput(-AccumulatedRecoil.X);
-			AddControllerYawInput(-AccumulatedRecoil.Y);
+			AddControllerPitchInput(-AccumulatedRecoil.X * RecoilRecoveryAmount);
+			AddControllerYawInput(-AccumulatedRecoil.Y * RecoilRecoveryAmount);
 			AccumulatedRecoil = FVector2D::ZeroVector;
 			TargetRecoil = FVector2D::ZeroVector;
 			GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
 		}
 		else
 		{
-			AddControllerPitchInput(-RecoveryDelta.X);
-			AddControllerYawInput(-RecoveryDelta.Y);
-			AccumulatedRecoil -= RecoveryDelta;
-			TargetRecoil -= RecoveryDelta;
+			AddControllerPitchInput(-RecoveryDelta.X * RecoilRecoveryAmount);
+			AddControllerYawInput(-RecoveryDelta.Y * RecoilRecoveryAmount);
+			AccumulatedRecoil -= RecoveryDelta * (1 / RecoilRecoveryAmount);
+			TargetRecoil -= RecoveryDelta * (1 / RecoilRecoveryAmount);
 		}
 	}
 }

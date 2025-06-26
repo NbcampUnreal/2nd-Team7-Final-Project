@@ -326,8 +326,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
 	float RecoilRecoverySpeed = 2.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
-	int32 MaxConsecutiveShots = 10;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil", meta = (ClampMin = "0.01"))
+	float RecoilRecoveryAmount = 0.4f;
+
 
 	// 현재 연사 상태
 	int32 CurrentShotCount = 0;
