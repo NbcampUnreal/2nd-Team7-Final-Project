@@ -12,7 +12,7 @@
 #include "Camera/PlayerCameraManager.h"
 #include "AI/LCBaseBossAIController.h"
 #include "Camera/CameraComponent.h"
-
+#include "Character/BaseCharacter.h"
 
 ALCBossSlenderman::ALCBossSlenderman()
 {
@@ -35,6 +35,15 @@ void ALCBossSlenderman::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
     UpdateRage(DeltaTime);
+
+    if (auto* AICon = Cast<ALCBaseBossAIController>(GetController()))
+    {
+        if (auto* BB = AICon->GetBlackboardComponent())
+        {
+            BB->SetValueAsFloat(TEXT("RagePercent"), Rage / MaxRage);
+            BB->SetValueAsBool(TEXT("IsBerserkMode"), bIsBerserk);
+        }
+    }
 }
 
 bool ALCBossSlenderman::IsPlayerLookingAtMe(APawn* PlayerPawn) const
@@ -48,16 +57,28 @@ void ALCBossSlenderman::UpdateRage(float DeltaSeconds)
 {
     Super::UpdateRage(DeltaSeconds);
 
-    TArray<AActor*> Players;
-    UGameplayStatics::GetAllActorsOfClass(GetWorld(), APawn::StaticClass(), Players);
-    for (AActor* A : Players)
+    // (1) 실제 플레이어만 찾아서
+    float TotalDelta = 0.f;
+    for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
     {
-        if (APawn* P = Cast<APawn>(A))
+        if (APlayerController* PC = Cast<APlayerController>(*It))
         {
-            float Delta = IsPlayerLookingAtMe(P) ? +10.f : -10.f;
-            AddRage(Delta * DeltaSeconds);
+            if (APawn* P = PC->GetPawn())
+            {
+                // (2) 시야 체크
+                FVector ToBoss = (GetActorLocation() - P->GetActorLocation()).GetSafeNormal();
+                FVector Forward = P->GetViewRotation().Vector();
+                bool bLooking = FVector::DotProduct(Forward, ToBoss) > LookDotThreshold;
+
+                // (3) 누적
+                float Rate = bLooking ? LookRagePerSecond : -LoseRagePerSecond;
+                TotalDelta += Rate * DeltaSeconds;
+            }
         }
     }
+
+    // (4) 한 번만 Rage 갱신
+    AddRage(TotalDelta);
 }
 
 void ALCBossSlenderman::AddRage(float Amount)
@@ -67,60 +88,19 @@ void ALCBossSlenderman::AddRage(float Amount)
         EnterBerserkState();
 }
 
-// 클라이언트에서도 RepNotify 처리
-void ALCBossSlenderman::OnRep_IsBerserk()
-{
-    Super::OnRep_IsBerserk();
-
-    if (bIsBerserk)
-        StartBerserk();  // 클라이언트 연출
-    else
-        EndBerserk();    // 클라이언트 연출 해제
-}
-
-// 실제 광폭화 진입 직전(서버) + 로그
 void ALCBossSlenderman::EnterBerserkState()
 {
     Super::EnterBerserkState();
-    UE_LOG(LogTemp, Warning, TEXT("[Slenderman] Enter Berserk State"));
-
-    // (1) 이동 속도 대폭 상승
+    UE_LOG(LogTemp, Warning, TEXT("[Slenderman] 영구 Berserk 진입"));
+    // (서버) Speed 증가 등, 기존 로직만 남겨둡니다
     GetCharacterMovement()->MaxWalkSpeed *= BerserkSpeedMultiplier;
-
-    // (2) 피해 면역 시간 처리: 예시로 물리 충돌 비활성화
-    // GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
 }
 
-// 광폭화 시작 시 연출(이펙트/사운드) + 분신 소환
 void ALCBossSlenderman::StartBerserk()
 {
-    Super::StartBerserk(); // bIsBerserk = true & 멀티캐스트
+    Super::StartBerserk();  // bIsBerserk = true 및 Multicast 호출
 
-    // (3) 이펙트
-    if (BerserkEffectFX)
-    {
-        UNiagaraFunctionLibrary::SpawnSystemAttached(
-            BerserkEffectFX,
-            GetRootComponent(),
-            NAME_None,
-            FVector::ZeroVector,
-            FRotator::ZeroRotator,
-            EAttachLocation::KeepRelativeOffset,
-            true
-        );
-    }
-
-    // (4) 사운드
-    if (BerserkSound)
-    {
-        UGameplayStatics::PlaySoundAtLocation(
-            this,
-            BerserkSound,
-            GetActorLocation()
-        );
-    }
-
-    // (5) 그림자 분신 소환
+    // (서버) 분신 소환 로직 등 원래 구현 유지
     if (ShadowCloneClass)
     {
         for (int32 i = 0; i < BerserkCloneCount; ++i)
@@ -140,13 +120,12 @@ void ALCBossSlenderman::StartBerserk()
     }
 }
 
-// Duration 초간 지속되는 버전
 void ALCBossSlenderman::StartBerserk(float Duration)
 {
-    // 연출 포함한 무한 버전 실행
+    // 서버: 먼저 무한 버전 실행
     StartBerserk();
 
-    // 일정 시간 뒤 EndBerserk 자동 호출
+    // 일정 시간 후 End 호출 예약
     GetWorldTimerManager().ClearTimer(BerserkTimerHandle);
     GetWorldTimerManager().SetTimer(
         BerserkTimerHandle,
@@ -155,39 +134,82 @@ void ALCBossSlenderman::StartBerserk(float Duration)
     );
 }
 
-// 광폭화 종료: 버프 해제, 면역 해제, 분신 정리
 void ALCBossSlenderman::EndBerserk()
 {
     Super::EndBerserk();
-    UE_LOG(LogTemp, Warning, TEXT("[Slenderman] End Berserk State"));
+    UE_LOG(LogTemp, Warning, TEXT("[Slenderman] Berserk 종료"));
 
-    // (1) 이동 속도 원복
+    // (서버) Speed 원복 및 분신 정리
     GetCharacterMovement()->MaxWalkSpeed /= BerserkSpeedMultiplier;
-
-    // (2) 분신 제거
     for (AActor* Clone : ShadowClones)
     {
         if (IsValid(Clone))
-        {
             Clone->Destroy();
-        }
     }
     ShadowClones.Empty();
+}
+
+void ALCBossSlenderman::OnRep_IsBerserk()
+{
+    Super::OnRep_IsBerserk();
+
+    if (bIsBerserk)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[Slenderman] OnRep → Berserk 이펙트 클라에서 재생"));
+
+        // 클라이언트 연출: 이펙트 / 사운드
+        if (BerserkEffectFX)
+        {
+            UNiagaraFunctionLibrary::SpawnSystemAttached(
+                BerserkEffectFX,
+                GetRootComponent(),
+                NAME_None,
+                FVector::ZeroVector,
+                FRotator::ZeroRotator,
+                EAttachLocation::KeepRelativeOffset,
+                true
+            );
+        }
+        if (BerserkSound)
+        {
+            UGameplayStatics::PlaySoundAtLocation(
+                this,
+                BerserkSound,
+                GetActorLocation()
+            );
+        }
+    }
 }
 
 void ALCBossSlenderman::ExecuteFearWave()
 {
     if (!HasAuthority() || !FearPostProcessMaterial) return;
 
+    // (0) VFX
+    if (FearWaveFX)
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+            GetWorld(),
+            FearWaveFX,
+            GetActorLocation(),
+            FRotator::ZeroRotator
+        );
+    }
+    // (1) SFX
+    if (FearWaveSound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(
+            this,
+            FearWaveSound,
+            GetActorLocation()
+        );
+    }
+
+    // (2) 기존 포스트프로세스 적용 로직…
     TArray<FHitResult> Hits;
     FCollisionShape Sphere = FCollisionShape::MakeSphere(FearRadius);
-    if (GetWorld()->SweepMultiByChannel(
-        Hits,
-        GetActorLocation(),
-        GetActorLocation(),
-        FQuat::Identity,
-        ECC_Pawn,
-        Sphere))
+    if (GetWorld()->SweepMultiByChannel(Hits, GetActorLocation(), GetActorLocation(),
+        FQuat::Identity, ECC_Pawn, Sphere))
     {
         for (auto& Hit : Hits)
         {
@@ -196,16 +218,13 @@ void ALCBossSlenderman::ExecuteFearWave()
                 const float Dist = FVector::Dist(P->GetActorLocation(), GetActorLocation());
                 if (!IsPlayerLookingAtMe(P) && Dist < FearRadius)
                 {
-                    // 폰에 붙은 카메라 컴포넌트를 찾는다
                     if (UCameraComponent* CamComp = P->FindComponentByClass<UCameraComponent>())
                     {
-                        // 포스트프로세스 머티리얼을 블렌더블로 추가
                         CamComp->PostProcessSettings.AddBlendable(FearPostProcessMaterial, FearPPBlendWeight);
-
-                        // 일정 시간 후 제거
                         FTimerHandle TmpHandle;
-                        GetWorldTimerManager().SetTimer(TmpHandle, [CamComp, this]() {
-                            CamComp->PostProcessSettings.RemoveBlendable(FearPostProcessMaterial);
+                        GetWorldTimerManager().SetTimer(TmpHandle, [CamComp, this]()
+                            {
+                                CamComp->PostProcessSettings.RemoveBlendable(FearPostProcessMaterial);
                             }, FearPPDuration, false);
                     }
                 }
@@ -217,12 +236,24 @@ void ALCBossSlenderman::ExecuteFearWave()
 void ALCBossSlenderman::ExecuteAbyssalWhisper()
 {
     if (!HasAuthority()) return;
+
     for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
     {
-        if (auto* PC = Cast<APlayerController>(*It))
+        if (APlayerController* PC = Cast<APlayerController>(*It))
         {
             FVector TrueLoc = PC->GetPawn()->GetActorLocation();
             FVector FakeLoc = TrueLoc + FMath::VRand() * 500.f;
+
+            // SFX
+            if (WhisperSound)
+            {
+                UGameplayStatics::PlaySoundAtLocation(
+                    this,
+                    WhisperSound,
+                    FakeLoc
+                );
+            }
+
             UE_LOG(LogTemp, Warning, TEXT("[Slenderman] Whisper distorted for %s: %s"),
                 *PC->GetName(), *FakeLoc.ToString());
         }
@@ -232,11 +263,34 @@ void ALCBossSlenderman::ExecuteAbyssalWhisper()
 void ALCBossSlenderman::TeleportToRandomLocation()
 {
     if (!HasAuthority()) return;
+
     if (auto* Nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld()))
     {
         FNavLocation Loc;
         if (Nav->GetRandomPointInNavigableRadius(GetActorLocation(), 1000.f, Loc))
+        {
             SetActorLocation(Loc.Location);
+
+            // (0) VFX
+            if (TeleportFX)
+            {
+                UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+                    GetWorld(),
+                    TeleportFX,
+                    Loc.Location,
+                    FRotator::ZeroRotator
+                );
+            }
+            // (1) SFX
+            if (TeleportSound)
+            {
+                UGameplayStatics::PlaySoundAtLocation(
+                    this,
+                    TeleportSound,
+                    Loc.Location
+                );
+            }
+        }
     }
 }
 
@@ -249,7 +303,28 @@ void ALCBossSlenderman::ExecuteDistortion()
 void ALCBossSlenderman::Multicast_DistortionEffect_Implementation()
 {
     UE_LOG(LogTemp, Warning, TEXT("[Slenderman] Distortion Effect Triggered"));
-    // BP 또는 머티리얼로 맵 왜곡 처리
+
+    // (0) VFX
+    if (DistortionFX)
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+            GetWorld(),
+            DistortionFX,
+            GetActorLocation(),
+            FRotator::ZeroRotator
+        );
+    }
+    // (1) SFX
+    if (DistortionSound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(
+            this,
+            DistortionSound,
+            GetActorLocation()
+        );
+    }
+
+    // (2) BP/머티리얼 맵 왜곡 처리…
 }
 
 void ALCBossSlenderman::EnterEndlessStalk()
@@ -267,6 +342,29 @@ void ALCBossSlenderman::OnRep_EndlessStalk()
 
 void ALCBossSlenderman::Multicast_StartEndlessStalk_Implementation()
 {
+    // (0) VFX
+    if (EndlessStalkFX)
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAttached(
+            EndlessStalkFX,
+            GetRootComponent(),
+            NAME_None,
+            FVector::ZeroVector,
+            FRotator::ZeroRotator,
+            EAttachLocation::KeepRelativeOffset,
+            true
+        );
+    }
+    // (1) SFX
+    if (EndlessStalkSound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(
+            this,
+            EndlessStalkSound,
+            GetActorLocation()
+        );
+    }
+
     OnRep_EndlessStalk();
     UE_LOG(LogTemp, Warning, TEXT("[Slenderman] Endless Stalk Activated"));
 }
@@ -279,7 +377,7 @@ void ALCBossSlenderman::ExecuteReachSlash()
     FCollisionShape Sphere = FCollisionShape::MakeSphere(ReachSlashRadius);
     if (GetWorld()->SweepMultiByChannel(Hits, O, O, FQuat::Identity, ECC_Pawn, Sphere))
         for (auto& H : Hits)
-            if (ACharacter* C = Cast<ACharacter>(H.GetActor()))
+            if (auto* C = Cast<ABaseCharacter>(H.GetActor()))
                 UGameplayStatics::ApplyDamage(C, ReachSlashDamage, GetController(), this, nullptr);
 }
 
@@ -290,7 +388,7 @@ void ALCBossSlenderman::ExecuteShadowGrasp()
     {
         if (auto* BB = AC->GetBlackboardComponent())
         {
-            if (auto* T = Cast<ACharacter>(BB->GetValueAsObject(TEXT("TargetActor"))))
+            if (auto* T = Cast<ABaseCharacter>(BB->GetValueAsObject(TEXT("TargetActor"))))
             {
                 FVector Dir = (T->GetActorLocation() - GetActorLocation()).GetSafeNormal();
                 T->LaunchCharacter(-Dir * 1000.f, true, true);

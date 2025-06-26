@@ -2,6 +2,7 @@
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Components/SphereComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "NiagaraFunctionLibrary.h"
 
 ABaseProjectile::ABaseProjectile()
 {
@@ -83,7 +84,14 @@ void ABaseProjectile::OnHit(
 void ABaseProjectile::PlayImpactEffects(const FVector& Location)
 {
     if (ImpactFX)
-        UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactFX, Location);
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+            GetWorld(),
+            ImpactFX,
+            Location,
+            FRotator::ZeroRotator
+        );
+    }
     if (ImpactSound)
         UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, Location);
 }
