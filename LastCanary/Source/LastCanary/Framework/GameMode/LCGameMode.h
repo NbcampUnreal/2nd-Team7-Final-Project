@@ -76,6 +76,5 @@ public:
 	void ShowLoading();
 	void HideLoading();
 
-protected:
 	void SendMessageToAllPC(const FString& Message);
 };
