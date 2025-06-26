@@ -22,8 +22,14 @@ bool UInventoryUtility::IsDefaultItem(FName ItemRowName, const UInventoryConfig*
     return ItemRowName == DefaultName;
 }
 
-bool UInventoryUtility::IsBackpackItem(const FItemDataRow* ItemData)
+bool UInventoryUtility::IsBackpackItem(FName ItemRowName, const UDataTable* ItemDataTable)
 {
+    if (ItemRowName.IsNone() || !ItemDataTable)
+    {
+        return false;
+    }
+
+    const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("IsBackpackItem"));
     if (!ItemData)
     {
         return false;

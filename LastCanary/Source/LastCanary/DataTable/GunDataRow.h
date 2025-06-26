@@ -77,6 +77,13 @@ struct FGunDataRow : public FTableRowBase
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Performance")
     float ReloadTime;
 
+    //반동량
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Performance")
+    float VerticalRecoilAmount;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Performance")
+    float HorizontalRecoilAmount;
+
     // 시각 효과
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Effects")
     UParticleSystem* MuzzleFlash;
@@ -101,6 +108,9 @@ struct FGunDataRow : public FTableRowBase
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Effects")
     UNiagaraSystem* ImpactNiagaraEffect;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Effects")
+    UNiagaraSystem* BloodNiagaraEffect;
 
     // 사운드
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Sound")
