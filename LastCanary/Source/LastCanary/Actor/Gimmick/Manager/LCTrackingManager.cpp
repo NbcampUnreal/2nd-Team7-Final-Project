@@ -1,6 +1,9 @@
 #include "Actor/Gimmick/Manager/LCTrackingManager.h"
 #include "Actor/Gimmick/LCTrackingGimmick.h"
 #include "AI/EliteMonster/TempleEliteMonster.h"
+#include "Framework/GameMode/LCGameMode.h"
+#include "Kismet/GameplayStatics.h"
+#include "GameFramework/PlayerState.h"
 #include "EngineUtils.h"
 #include "TimerManager.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -86,7 +89,17 @@ void ALCTrackingManager::ChooseRandomTarget()
 	int32 Index = UKismetMathLibrary::RandomInteger(ValidTargets.Num());
 	CurrentTarget = ValidTargets[Index];
 
-	//LOG_Art(Log, TEXT(" 타겟 선정: %s"), *CurrentTarget->GetName());
+	//LOG_Art(Log, TEXT("타겟 선정: %s"), *CurrentTarget->GetName());
+
+	if (ALCGameMode* GM = Cast<ALCGameMode>(GetWorld()->GetAuthGameMode()))
+	{
+		GM->SendMessageToAllPC(TEXT("그들이 당신을 주시합니다..."));
+
+		const FString TargetName = GetPlayerNameFromActor(CurrentTarget);
+		const FString Message = FString::Printf(TEXT("감시 대상: %s"), *TargetName);
+		GM->SendMessageToAllPC(Message);
+	}
+
 
 	UpdateAllTowers(CurrentTarget);
 
@@ -94,6 +107,7 @@ void ALCTrackingManager::ChooseRandomTarget()
 
 	GetWorldTimerManager().SetTimer(TrackingStopTimerHandle, this, &ALCTrackingManager::StopTrackingLoop, TrackingDuration, false);
 }
+
 
 void ALCTrackingManager::UpdateAllTowers(AActor* Target)
 {
@@ -164,4 +178,20 @@ void ALCTrackingManager::StopTrackingLoop()
 		GetWorldTimerManager().SetTimer(TrackingLoopHandle, this, &ALCTrackingManager::ChooseRandomTarget, CooldownDelay, false);
 		bIsTrackingActive = true;
 	}
+}
+
+FString ALCTrackingManager::GetPlayerNameFromActor(AActor* Actor) const
+{
+	if (!IsValid(Actor))
+		return FString("Unknown");
+
+	if (APawn* Pawn = Cast<APawn>(Actor))
+	{
+		if (APlayerState* PS = Pawn->GetPlayerState())
+		{
+			return PS->GetPlayerName();
+		}
+	}
+
+	return Actor->GetName();
 }

@@ -280,11 +280,11 @@ void AFlashlightItem::BeginPlay()
         SpotLightComponent->SetIsReplicated(true);
     }
 
-    if (LightDetectionSphere)
-    {
-        LightDetectionSphere->SetHiddenInGame(false);
-        LightDetectionSphere->SetVisibility(true);
-    }
+    //if (LightDetectionSphere)
+    //{
+    //    LightDetectionSphere->SetHiddenInGame(false);
+    //    LightDetectionSphere->SetVisibility(true);
+    //}
 }
 
 void AFlashlightItem::EndPlay(const EEndPlayReason::Type EndPlayReason)

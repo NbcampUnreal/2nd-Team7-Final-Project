@@ -83,6 +83,12 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Properties")
     int32 BulletsPerShot;
 
+    /** 반동량 정의 */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Properties")
+    float VerticalRecoilAmount;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Properties")
+    float HorizontalRecoilAmount;
 public:
     /** 현재 발사 모드 */
     UPROPERTY(BlueprintReadOnly, Replicated, Category = "Gun|FireMode")
@@ -138,6 +144,8 @@ public:
 public:
     /** 아이템 사용 (발사) */
     virtual void UseItem() override;
+
+    virtual void OnRepItemRowName() override;
 
     /** 탄약 재장전 */
     UFUNCTION(BlueprintCallable, Category = "Gun|Actions")

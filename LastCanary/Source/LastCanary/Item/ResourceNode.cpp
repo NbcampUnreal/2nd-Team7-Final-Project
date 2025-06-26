@@ -2,6 +2,7 @@
 #include "Item/ResourceItem/ResourceItemSpawnManager.h"
 #include "Item/ItemBase.h"
 #include "Inventory/ToolbarInventoryComponent.h"
+#include "DataTable/MonsterDataTable.h"
 #include "Character/BaseCharacter.h"
 #include "Kismet/GameplayStatics.h"
 #include "EnhancedInputSubsystems.h"
@@ -10,6 +11,7 @@
 #include "NiagaraSystem.h"
 #include "Net/UnrealNetwork.h"
 #include "GeometryCollection/GeometryCollectionComponent.h"
+#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 
 #include "LastCanary.h"
 
@@ -53,7 +55,7 @@ void AResourceNode::BeginPlay()
 			break;
 		case EResourceInteractionType::Core:
 			// falls through
-		case EResourceInteractionType::Loot:
+		case EResourceInteractionType::Chest:
 			// falls through
 		case EResourceInteractionType::GetNote:
 		default:
@@ -92,6 +94,12 @@ void AResourceNode::Server_RequestInteract_Implementation(APlayerController* Int
 
 void AResourceNode::HarvestResource(APlayerController* Interactor)
 {
+	if (InteractionType == EResourceInteractionType::Chest)
+	{
+		HandleLootSpawn(Interactor);
+		return;
+	}
+
 	if (!CanHarvest())
 	{
 		LOG_Item_WARNING(TEXT("[AResourceNode::HarvestResource] 채취 불가능 - 자원이 고갈됨"));
@@ -205,8 +213,8 @@ FText AResourceNode::GetDefaultMessageForType(EResourceInteractionType Type) con
 		return NSLOCTEXT("Interaction", "Harvest", "Press [{Key}] to Harvest");
 	case EResourceInteractionType::Mine:
 		return NSLOCTEXT("Interaction", "Mine", "Press [{Key}] to Mine");
-	case EResourceInteractionType::Loot:
-		return NSLOCTEXT("Interaction", "Loot", "Press [{Key}] to Loot");
+	case EResourceInteractionType::Chest:
+		return NSLOCTEXT("Interaction", "Loot", "Press [{Key}] to Open Chest");
 	case EResourceInteractionType::GetNote:
 		return NSLOCTEXT("Interaction", "GetNote", "Press [{Key}] to Get Note");
 	default:
@@ -290,6 +298,12 @@ FString AResourceNode::GetInteractMessage_Implementation() const
 		}
 	}
 
+	if (bRequireTool == false)
+	{
+		FText Template = GetDefaultMessageForType(InteractionType);
+		return FText::Format(Template, FFormatNamedArguments{ {"Key", FText::FromString(KeyName)} }).ToString();
+	}
+
 	return FString::Printf(TEXT("Cannot interact (requires correct tool)"));
 }
 
@@ -348,6 +362,135 @@ float AResourceNode::GetHarvestProgress() const
 	}
 
 	return static_cast<float>(CurrentHarvestCount) / static_cast<float>(MaxHarvestCount);
+}
+
+void AResourceNode::HandleLootSpawn(APlayerController* Interactor)
+{
+	if (HasAuthority() == false)
+	{
+		return;
+	}
+
+	if (CanHarvest() == false)
+	{
+		return;
+	}
+	if (ResourceItemSpawnManager == nullptr)
+	{
+		return;
+	}
+
+	UDataTable* ItemTable = nullptr;
+	if (UWorld* World = GetWorld())
+	{
+		if (UGameInstance* GI = World->GetGameInstance())
+		{
+			if (ULCGameInstanceSubsystem* Subsystem = GI->GetSubsystem<ULCGameInstanceSubsystem>())
+			{
+				ItemTable = Subsystem->GetItemDataTable();
+			}
+		}
+	}
+	if (ItemTable == nullptr)
+	{
+		LOG_Item_WARNING(TEXT("[ResourceNode::HandleLootSpawn] 아이템 데이터 테이블 없음"));
+		return;
+	}
+
+	TArray<FName> CandidateRows;
+	const FGameplayTag RuinsTag = FGameplayTag::RequestGameplayTag("ItemSpawn.Map.Ruins");
+
+	for (const auto& Pair : ItemTable->GetRowMap())
+	{
+		const FItemDataRow* Row = reinterpret_cast<const FItemDataRow*>(Pair.Value);
+		if (Row && Row->bIsResourceItem && Row->AllowedSpawnMaps.HasTagExact(RuinsTag))
+		{
+			CandidateRows.Add(Pair.Key);
+		}
+	}
+
+	if (CandidateRows.Num() == 0)
+	{
+		LOG_Item_WARNING(TEXT("[ResourceNode::HandleLootSpawn] 조건에 맞는 아이템이 없음"));
+		return;
+	}
+
+	const int32 NumToSpawn = FMath::Min(MaxLootItemTypes, CandidateRows.Num());
+	TArray<FName> SelectedRows;
+
+	while (SelectedRows.Num() < NumToSpawn)
+	{
+		const int32 RandIndex = FMath::RandRange(0, CandidateRows.Num() - 1);
+		const FName& Row = CandidateRows[RandIndex];
+
+		if (!SelectedRows.Contains(Row))
+		{
+			SelectedRows.Add(Row);
+		}
+	}
+
+	for (const FName& ItemRow : SelectedRows)
+	{
+		const FVector SpawnLocation = CalculateResourceSpawnLocation(Interactor);
+		ResourceItemSpawnManager->SpawnItemAtLocation(ItemRow, SpawnLocation);
+	}
+
+	OnResourceOpened();
+	CurrentHarvestCount = MaxHarvestCount; // 즉시 상호작용 금지 처리
+
+	// 몬스터 스폰: 조건 필터링
+	if (MonsterDataTable && FMath::FRand() <= MonsterSpawnProbability)
+	{
+		TArray<FName> MonsterRowNames = MonsterDataTable->GetRowNames();
+		TArray<const FMonsterDataTable*> Candidates;
+
+		for (const FName& RowName : MonsterRowNames)
+		{
+			const FMonsterDataTable* Row = MonsterDataTable->FindRow<FMonsterDataTable>(RowName, TEXT("ChestMonster"));
+			if (Row == nullptr || Row->MonsterActor == nullptr)
+			{
+				continue;
+			}
+
+			// 현재 맵 태그와 일치하는 경우만
+			if (Row->Level.IsValid())
+			{
+				// 참고: 경로 비교 또는 태그 방식으로 대체 가능
+				const FString LevelName = Row->Level.GetAssetName(); // 예: "RuinsMap"
+				if (LevelName.Contains("Ruins"))
+				{
+					Candidates.Add(Row);
+				}
+			}
+		}
+
+		if (Candidates.Num() > 0)
+		{
+			const FMonsterDataTable* Selected = Candidates[FMath::RandRange(0, Candidates.Num() - 1)];
+
+			// 캐릭터 뒤쪽에서 스폰
+			APawn* Pawn = Interactor ? Interactor->GetPawn() : nullptr;
+			if (Pawn == nullptr)
+			{
+				LOG_Item_WARNING(TEXT("[LootSpawn] 몬스터 스폰 실패 - 인터랙터 없음"));
+				return;
+			}
+
+			const FVector CharacterLocation = Pawn->GetActorLocation();
+			const FVector Backward = -Pawn->GetActorForwardVector();
+			const FVector SpawnLoc = CharacterLocation + Selected->SpawnOffset + (Backward * 150.f);
+
+			FActorSpawnParameters Params;
+			Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+			AActor* Spawned = GetWorld()->SpawnActor<AActor>(Selected->MonsterActor, SpawnLoc, FRotator::ZeroRotator, Params);
+			if (IsValid(Spawned))
+			{
+				Spawned->SetReplicates(true);
+				LOG_Item_WARNING(TEXT("[Loot] 몬스터 스폰 성공: %s (뒤쪽에서 등장)"), *Selected->MonsterName.ToString());
+			}
+		}
+	}
 }
 
 void AResourceNode::Multicast_PlayDestroyEffect_Implementation()

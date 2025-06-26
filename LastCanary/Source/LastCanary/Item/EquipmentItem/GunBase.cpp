@@ -9,6 +9,8 @@
 #include "Engine/DamageEvents.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Net/UnrealNetwork.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
 #include "GameplayTagAssetInterface.h"
 #include "LastCanary.h"
 
@@ -22,7 +24,8 @@ AGunBase::AGunBase()
     LastFireTime = 0.0f;
     DecalSize = FVector(5.0f, 5.0f, 5.0f);
     DecalLifeSpan = 10.0f;
-
+    VerticalRecoilAmount = 2.0f;
+    HorizontalRecoilAmount = 1.0f;
     MuzzleLocation = CreateDefaultSubobject<USceneComponent>(TEXT("MuzzleLocation"));
     MuzzleLocation->SetupAttachment(RootComponent);
     MuzzleLocation->SetRelativeLocation(FVector(0, 50, 10));
@@ -146,6 +149,16 @@ void AGunBase::UseItem()
             // 연발 중이 아니면 시작
             StartAutoFire();
         }
+    }
+}
+
+void AGunBase::OnRepItemRowName()
+{
+    Super::OnRepItemRowName();
+
+    if (!ItemRowName.IsNone())
+    {
+        EnsureGunDataLoaded();
     }
 }
 
@@ -350,6 +363,32 @@ void AGunBase::Multicast_SpawnImpactEffects_Implementation(const TArray<FHitResu
         {
             LOG_Item_WARNING(TEXT("[Client] ImpactDecalMaterial이 null입니다"));
         }
+
+        if (GunData.ImpactNiagaraEffect)
+        {
+            FRotator NiagaraRot = Hit.ImpactNormal.Rotation();
+
+            /*NiagaraRot.Pitch += 90.0f;*/
+
+            UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+                GetWorld(),
+                GunData.ImpactNiagaraEffect,
+                Hit.ImpactPoint,
+                NiagaraRot
+            );
+        }
+
+        if (GunData.BloodNiagaraEffect)
+        {
+            FRotator NiagaraRot = Hit.ImpactNormal.Rotation();
+
+            UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+                GetWorld(),
+                GunData.BloodNiagaraEffect,
+                Hit.ImpactPoint,
+                NiagaraRot
+            );
+        }
     }
 }
 
@@ -425,8 +464,7 @@ void AGunBase::Client_PlayCameraShake_Implementation()
     {
         LOG_Item_WARNING(TEXT("Client_PlayCameraShake called"));
         //OwnerCharacter->ApplyRecoil(2.0f, 1.0);
-        OwnerCharacter->ApplySmoothRecoil(2.0f, 1.0);
-
+        OwnerCharacter->ApplySmoothRecoil(VerticalRecoilAmount, HorizontalRecoilAmount);
     }
 }
 
@@ -602,6 +640,8 @@ void AGunBase::ApplyGunDataFromDataTable()
     CurrentFireMode = GunData.DefaultFireMode;
     bCanToggleFireMode = GunData.bCanToggleFireMode;
     AvailableFireModes = GunData.AvailableFireModes;
+    VerticalRecoilAmount = GunData.VerticalRecoilAmount;
+    HorizontalRecoilAmount = GunData.HorizontalRecoilAmount;
 
     // 이펙트 및 사운드 설정
     MuzzleFlash = GunData.MuzzleFlash;

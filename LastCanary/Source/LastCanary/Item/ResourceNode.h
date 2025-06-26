@@ -19,7 +19,7 @@ struct FResourceItemData
 	FName ItemRowName = FName(TEXT("Default"));
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resource", meta = (ClampMin = 0.0, ClampMax = 100.0))
-	float Probability = 25.0;
+	float Probability = 100.0f;
 };
 
 UENUM(BlueprintType)
@@ -36,7 +36,7 @@ enum class EResourceInteractionType : uint8
 	Harvest		UMETA(DisplayName = "Harvest"),
 	Core		UMETA(DisplayName = "Core"),
 	Mine		UMETA(DisplayName = "Mine"),
-	Loot		UMETA(DisplayName = "Loot"),
+	Chest		UMETA(DisplayName = "Chest"),
 	GetNote		UMETA(DisplayName = "Get Note"),
 };
 
@@ -92,6 +92,29 @@ public:
 	int32 GetRemainingHarvestCount() const;
 	UFUNCTION(BlueprintCallable, Category = "Resource")
 	float GetHarvestProgress() const;
+
+	/** 몬스터가 등장할 확률 (0.0 ~ 1.0) */
+	UPROPERTY(EditAnywhere, Category = "Chest|Monster")
+	float MonsterSpawnProbability = 0.3f; // 30% 확률
+
+	/** 몬스터 스폰 오프셋 */
+	UPROPERTY(EditAnywhere, Category = "Chest|Monster")
+	FVector MonsterSpawnOffset = FVector(0.f, 0.f, 50.f);
+
+	/** 몬스터 데이터 테이블 (Chest에서 몬스터 등장 시 사용) */
+	UPROPERTY(EditAnywhere, Category = "Loot|Monster")
+	UDataTable* MonsterDataTable;
+
+	/** 현재 맵에서 허용되는 태그 (데이터테이블의 Level 필터용) */
+	UPROPERTY(EditAnywhere, Category = "Loot|Monster")
+	FGameplayTag CurrentMapTag;
+
+	// Loot 타입 최대 종류 수
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resource|Loot", meta = (ClampMin = 1, ClampMax = 10))
+	int32 MaxLootItemTypes = 3;
+
+	// Loot 핸들링 함수
+	void HandleLootSpawn(APlayerController* Interactor);
 
 	//-------------------------
 	// 연출 관련 함수

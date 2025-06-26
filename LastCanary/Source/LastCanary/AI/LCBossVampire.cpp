@@ -3,22 +3,115 @@
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Character/BaseCharacter.h"
 #include "Engine/World.h"
+#include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
+#include "Components/AudioComponent.h"
+#include "Camera/CameraComponent.h"
+#include "AI/LCBaseBossAIController.h"
+#include "Components/SphereComponent.h"
+#include "DrawDebugHelpers.h"
+
 
 ALCBossVampire::ALCBossVampire()
 {
-    PrimaryActorTick.bCanEverTick = false;
+    PrimaryActorTick.bCanEverTick = true;
     bReplicates = true;
+
+    // MistSphere 생성·설정 (기본으론 비활성)
+    MistSphere = CreateDefaultSubobject<USphereComponent>(TEXT("MistSphere"));
+    MistSphere->SetupAttachment(RootComponent);
+    MistSphere->SetSphereRadius(MistRadius);
+    MistSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    MistSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
+    MistSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+
+    MistSphere->OnComponentBeginOverlap.AddDynamic(this, &ALCBossVampire::OnMistOverlapBegin);
+    MistSphere->OnComponentEndOverlap.AddDynamic(this, &ALCBossVampire::OnMistOverlapEnd);
+}
+
+void ALCBossVampire::Tick(float DeltaSeconds)
+{
+    Super::Tick(DeltaSeconds);
+    UpdateRage(DeltaSeconds);
+
+    if (auto* AICon = Cast<ALCBaseBossAIController>(GetController()))
+    {
+        if (auto* BB = AICon->GetBlackboardComponent())
+        {
+            BB->SetValueAsFloat(TEXT("RagePercent"), Rage / MaxRage);
+            BB->SetValueAsBool(TEXT("IsBerserkMode"), bIsBerserk);
+        }
+    }
 }
 
 void ALCBossVampire::BeginPlay()
 {
     Super::BeginPlay();
 
-    // 배트 스웜 & 악몽의 시선
-    GetWorldTimerManager().SetTimer(BatSwarmTimerHandle, this, &ALCBossVampire::ExecuteBatSwarm, BatSwarmInterval, true);
+    /*GetWorldTimerManager().SetTimer(BatSwarmTimerHandle, this, &ALCBossVampire::ExecuteBatSwarm, BatSwarmInterval, true);*/
     GetWorldTimerManager().SetTimer(GazeTimerHandle, this, &ALCBossVampire::ExecuteNightmareGaze, GazeInterval, true);
+    GetWorldTimerManager().SetTimer(CrimsonChainsTimerHandle, this, &ALCBossVampire::ExecuteCrimsonChains, CrimsonChainsCooldown, true);
+    GetWorldTimerManager().SetTimer(RainTimerHandle, this, &ALCBossVampire::ExecuteSanguineRain, SanguineBurstCooldown, true);
+
+    GetWorldTimerManager().SetTimer(
+        MistFormTimerHandle,
+        this,
+        &ALCBossVampire::EnterMistForm,
+        MistFormInterval,
+        true
+    );
+}
+
+void ALCBossVampire::UpdateRage(float DeltaSeconds)
+{
+    Super::UpdateRage(DeltaSeconds);
+
+    // MistSphere가 활성화 중일 때만
+    if (MistSphere->GetCollisionEnabled() == ECollisionEnabled::QueryOnly)
+    {
+        // 1) 기본 Rage 회복
+        AddRage(MistRagePerSecond * DeltaSeconds);
+
+        // 2) 범위 내 플레이어에게 추가 Rage
+        TArray<FHitResult> Hits;
+        FCollisionShape Sphere = FCollisionShape::MakeSphere(MistRadius);
+        bool bHit = GetWorld()->SweepMultiByChannel(
+            Hits,
+            GetActorLocation(), GetActorLocation(),
+            FQuat::Identity,
+            ECC_Pawn,
+            Sphere
+        );
+        if (bHit)
+        {
+            for (auto& H : Hits)
+            {
+                if (APawn* P = Cast<APawn>(H.GetActor()))
+                {
+                    if (P->IsPlayerControlled())
+                    {
+                        AddRage(MistPlayerBonusRagePerSecond * DeltaSeconds);
+                    }
+                }
+            }
+        }
+    }
+}
+
+void ALCBossVampire::AddRage(float Amount)
+{
+    if (!HasAuthority()) return;
+
+    // (1) Rage 값 갱신 및 클램프
+    Rage = FMath::Clamp(Rage + Amount, 0.f, MaxRage);
+
+    // (2) 최대치 도달 시 한 번만 Berserk 진입
+    if (Rage >= MaxRage && !bIsBerserk)
+    {
+        EnterBerserkState();
+    }
 }
 
 void ALCBossVampire::ExecuteBatSwarm()
@@ -36,14 +129,37 @@ void ALCBossVampire::ExecuteBatSwarm()
 void ALCBossVampire::ExecuteNightmareGaze()
 {
     if (!HasAuthority()) return;
+
+    if (GazeSound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(
+            this, GazeSound, GetActorLocation());
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("[Vampire] NightmareGaze"));
+
     TArray<FHitResult> Hits;
     FCollisionShape Sphere = FCollisionShape::MakeSphere(GazeRadius);
+
+    DrawDebugSphere(
+        GetWorld(),
+        GetActorLocation(),
+        GazeRadius,
+        16,
+        FColor::Purple,
+        false,
+        2.0f,
+        0,
+        5.0f
+    );
+
+
     if (GetWorld()->SweepMultiByChannel(Hits, GetActorLocation(), GetActorLocation(),
         FQuat::Identity, ECC_Pawn, Sphere))
     {
         for (auto& H : Hits)
         {
-            if (ACharacter* Ch = Cast<ACharacter>(H.GetActor()))
+            if (ACharacter* Ch = Cast<ABaseCharacter>(H.GetActor()))
             {
                 if (Ch->IsPlayerControlled())
                 {
@@ -59,9 +175,81 @@ void ALCBossVampire::ExecuteNightmareGaze()
     }
 }
 
+void ALCBossVampire::ExecuteCrimsonChains()
+{
+    if (!HasAuthority() || !CrimsonChainsEffectFX) return;
+
+    if (CrimsonChainsSound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(
+            this, CrimsonChainsSound, GetActorLocation());
+    }
+
+    DrawDebugSphere(
+        GetWorld(),
+        GetActorLocation(),
+        CrimsonChainsRadius,   // 원형 반경
+        32,           // 세그먼트 수
+        FColor::Red,
+        false,        // PersistentLines
+        CrimsonChainsDuration, // 지속 시간
+        0,            // DepthPriority
+        3.0f          // 두께
+    );
+
+    // (1) FX
+    UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+        GetWorld(),
+        CrimsonChainsEffectFX,
+        GetActorLocation(),
+        FRotator::ZeroRotator
+    );
+
+    // (2) 범위 내 Pawn 수집
+    TArray<FHitResult> Hits;
+    FCollisionShape Sphere = FCollisionShape::MakeSphere(CrimsonChainsRadius);
+    GetWorld()->SweepMultiByChannel(
+        Hits,
+        GetActorLocation(), GetActorLocation(),
+        FQuat::Identity,
+        ECC_Pawn,
+        Sphere
+    );
+
+    // (3) 끌어당기기
+    for (auto& H : Hits)
+    {
+        if (APawn* P = Cast<APawn>(H.GetActor()))
+        {
+            FVector Dir = (GetActorLocation() - P->GetActorLocation()).GetSafeNormal();
+            if (UCharacterMovementComponent* Move = P->FindComponentByClass<UCharacterMovementComponent>())
+            {
+                Move->AddImpulse(Dir * CrimsonChainsPullStrength, true);
+            }
+        }
+    }
+
+    // (4) 지속시간 후 연쇄 폭발 (간단히 두 번째 FX만)
+    FTimerHandle Tmp;
+    GetWorldTimerManager().SetTimer(Tmp, [this]()
+        {
+            // 연쇄 폭발 FX, 데미지 및 출혈 디버프 로직 추가 가능
+            // 예시: SanguineBurst를 호출해도 됩니다.
+            ExecuteSanguineBurst();
+        }, CrimsonChainsDuration, false);
+}
+
 void ALCBossVampire::ExecuteCrimsonSlash()
 {
     GetWorldTimerManager().SetTimer(CrimsonSlashHandle, CrimsonSlashCooldown, false);
+
+    if (CrimsonSlashSound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(
+            this, CrimsonSlashSound, GetActorLocation());
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("[Vampire] CrimsonSlash"));
 
     TArray<FHitResult> Hits;
     FCollisionShape S = FCollisionShape::MakeSphere(CrimsonSlashRadius);
@@ -71,13 +259,106 @@ void ALCBossVampire::ExecuteCrimsonSlash()
         float Heal = CrimsonSlashDamage * BloodDrainEfficiency;
         for (auto& H : Hits)
         {
-            if (ACharacter* C = Cast<ACharacter>(H.GetActor()))
+            if (ACharacter* C = Cast<ABaseCharacter>(H.GetActor()))
             {
                 UGameplayStatics::ApplyDamage(C, CrimsonSlashDamage, GetController(), this, nullptr);
             }
         }
-        // 피흡
-        UGameplayStatics::ApplyDamage(this, -Heal, GetController(), this, nullptr);
+    }
+}
+
+
+
+void ALCBossVampire::ExecuteSanguineRain()
+{
+    if (!HasAuthority() || !SanguineRainEffectFX) return;
+
+    if (SanguineRainSound)
+    {
+        UGameplayStatics::PlaySoundAtLocation( 
+            this, SanguineRainSound, GetActorLocation());
+    }
+
+    DrawDebugSphere(
+        GetWorld(),
+        GetActorLocation(),
+        RainRadius,   // 원형 반경
+        32,           // 세그먼트 수
+        FColor::Red,
+        false,        // PersistentLines
+        RainDuration, // 지속 시간
+        0,            // DepthPriority
+        3.0f          // 두께
+    );
+    UE_LOG(LogTemp, Warning,
+        TEXT("[Vampire] ExecuteSanguineRain 실행: Radius=%.1f, Duration=%.1f"),
+        RainRadius, RainDuration);
+
+    // (1) 비 FX
+    UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+        GetWorld(),
+        SanguineRainEffectFX,
+        GetActorLocation(),
+        FRotator::ZeroRotator
+    );
+
+    // (2) 주기적 데미지·감속 시작
+    GetWorldTimerManager().SetTimer(RainTickHandle, this, &ALCBossVampire::TickRainDamage, 1.f, true);
+
+    // (3) 지속시간 후 종료
+    GetWorldTimerManager().SetTimer(RainTimerHandle, this, &ALCBossVampire::EndSanguineRain, RainDuration, false);
+}
+
+void ALCBossVampire::TickRainDamage()
+{
+    // 영역 내 플레이어에게 출혈·감속
+    TArray<FHitResult> Hits;
+    FCollisionShape Sphere = FCollisionShape::MakeSphere(RainRadius);
+    GetWorld()->SweepMultiByChannel(
+        Hits,
+        GetActorLocation(), GetActorLocation(),
+        FQuat::Identity,
+        ECC_Pawn,
+        Sphere
+    );
+
+    for (auto& H : Hits)
+    {
+        if (ABaseCharacter* C = Cast<ABaseCharacter>(H.GetActor()))
+        {
+            if (C->IsPlayerControlled())
+            {
+                // 출혈 데미지
+                UGameplayStatics::ApplyDamage(C, RainDotDamage, GetController(), this, nullptr);
+
+                // 속도 감소
+                auto* Move = C->GetCharacterMovement();
+                float Orig = Move->MaxWalkSpeed;
+                Move->MaxWalkSpeed = Orig * (1.f - RainSlowPercent);
+
+                // 일정시간 후 속도 복구
+                FTimerHandle Tmp;
+                GetWorldTimerManager().SetTimer(Tmp, [Move, Orig]() {
+                    Move->MaxWalkSpeed = Orig;
+                    }, 1.f, false);
+            }
+        }
+    }
+}
+
+void ALCBossVampire::EndSanguineRain()
+{
+    // (1) 주기 타이머 해제
+    GetWorldTimerManager().ClearTimer(RainTickHandle);
+
+    // (2) 피 웅덩이 소환
+    if (BloodPuddleClass)
+    {
+        GetWorld()->SpawnActor<AActor>(
+            BloodPuddleClass,
+            GetActorLocation(),
+            FRotator::ZeroRotator
+        );
     }
 }
 
@@ -85,70 +366,141 @@ void ALCBossVampire::ExecuteSanguineBurst()
 {
     GetWorldTimerManager().SetTimer(BurstHandle, SanguineBurstCooldown, false);
 
+    UE_LOG(LogTemp, Warning, TEXT("[Vampire] SanguineBurst"));
+
+    if (SanguineBurstSound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(
+            this, SanguineBurstSound, GetActorLocation());
+    }
+
     TArray<FHitResult> Hits;
     FCollisionShape S = FCollisionShape::MakeSphere(SanguineBurstRadius);
     if (GetWorld()->SweepMultiByChannel(Hits, GetActorLocation(), GetActorLocation(),
         FQuat::Identity, ECC_Pawn, S))
     {
-        float Heal = SanguineBurstDamage * BloodDrainEfficiency;
         for (auto& H : Hits)
         {
-            if (ACharacter* C = Cast<ACharacter>(H.GetActor()))
+            if (ACharacter* C = Cast<ABaseCharacter>(H.GetActor()))
             {
                 UGameplayStatics::ApplyDamage(C, SanguineBurstDamage, GetController(), this, nullptr);
             }
         }
-        // 피흡
-        UGameplayStatics::ApplyDamage(this, -Heal, GetController(), this, nullptr);
+
     }
 }
 
 void ALCBossVampire::EnterMistForm()
 {
-    if (!HasAuthority() || !bCanUseMist) return;
-    bIsMistForm = true;
-    Multicast_StartMistForm();
+    if (!HasAuthority()) return;
 
-    SetCanBeDamaged(false);
-    bCanUseMist = false;
+    // ── 디버그: MistForm 범위 시각화 및 로그 ──
+    DrawDebugSphere(
+        GetWorld(),
+        GetActorLocation(),
+        MistRadius,   // 원형 반경
+        32,           // 세그먼트 수
+        FColor::Purple,
+        false,        // PersistentLines
+        MistDuration, // 지속 시간
+        0,            // DepthPriority
+        3.0f          // 두께
+    );
+    UE_LOG(LogTemp, Warning,
+        TEXT("[Vampire] EnterMistForm 실행: Radius=%.1f, Duration=%.1f"),
+        MistRadius, MistDuration);
 
-    GetWorldTimerManager().SetTimer(MistDurationHandle, this, &ALCBossVampire::EndMistForm, MistDuration, false);
+    // 콜리전 활성화
+    MistSphere->SetSphereRadius(MistRadius);
+    MistSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+
+    // 타이머로 일정 시간 후 자동 비활성화
+    GetWorldTimerManager().SetTimer(
+        MistDurationHandle,
+        this, &ALCBossVampire::EndMistForm,
+        MistDuration, false
+    );
+}
+
+void ALCBossVampire::OnMistOverlapBegin(
+    UPrimitiveComponent*,
+    AActor* OtherActor,
+    UPrimitiveComponent*,
+    int32,
+    bool,
+    const FHitResult& )
+{
+    // MistSphere가 켜져 있을 때만
+    if (MistSphere->GetCollisionEnabled() != ECollisionEnabled::QueryOnly)
+        return;
+
+    if (APawn* P = Cast<APawn>(OtherActor))
+    {
+        // 플레이어 캐릭터에 대해서만, 중복 재생 방지
+        if (P->IsPlayerControlled() && !MistAudioMap.Contains(P))
+        {
+            UAudioComponent* Ac = UGameplayStatics::SpawnSoundAttached(
+                MistEnterSound,
+                P->GetRootComponent(),      // 플레이어 루트에 붙임
+                NAME_None,
+                FVector::ZeroVector,
+                EAttachLocation::KeepRelativeOffset
+            );
+
+            MistAudioMap.Add(P, Ac);
+        }
+    }
+}
+
+void ALCBossVampire::OnMistOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+    if (MistSphere->GetCollisionEnabled() != ECollisionEnabled::QueryOnly)
+        return;
+
+    if (APawn* P = Cast<APawn>(OtherActor))
+    {
+        if (UAudioComponent** AcPtr = MistAudioMap.Find(P))
+        {
+            if (UAudioComponent* Ac = *AcPtr)
+            {
+                Ac->Stop();
+                Ac->DestroyComponent();
+            }
+            MistAudioMap.Remove(P);
+        }
+    }
 }
 
 void ALCBossVampire::EndMistForm()
 {
-    bIsMistForm = false;
-    OnRep_MistForm();
+    // 콜리전 비활성화
+    MistSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-    GetWorldTimerManager().SetTimer(MistResetHandle, [this]() { bCanUseMist = true; },
-        MistCooldown, false);
-}
-
-void ALCBossVampire::OnRep_MistForm()
-{
-    if (bIsMistForm)
+    // 남아 있는 루프 사운드 정리
+    for (auto& Pair : MistAudioMap)
     {
-        UE_LOG(LogTemp, Warning, TEXT("[Vampire] Enter Mist Form"));
-        Multicast_StartMistForm();
+        if (UAudioComponent* Ac = Pair.Value)
+        {
+            Ac->Stop();
+            Ac->DestroyComponent();
+        }
     }
-    else
-    {
-        UE_LOG(LogTemp, Warning, TEXT("[Vampire] Exit Mist Form"));
-        SetCanBeDamaged(true);
-    }
-}
+    MistAudioMap.Empty();
 
-void ALCBossVampire::Multicast_StartMistForm_Implementation()
-{
-    OnRep_MistForm();
+    // Exit FX만 재생 (사운드는 OverlapEnd에서 처리)
+    if (MistExitEffectFX)
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+            GetWorld(), MistExitEffectFX,
+            GetActorLocation(), GetActorRotation());
+    }
 }
 
 void ALCBossVampire::OnRep_Bloodlust()
 {
     if (bIsBloodlust)
     {
-        // Mist Form 즉시 사용 가능, 흡수 2배
-        bCanUseMist = true;
+        // Mist Form 즉시 사용 가능
         BloodDrainEfficiency = 2.0f;
 
         // 캐시
@@ -193,12 +545,52 @@ void ALCBossVampire::Multicast_StartBloodlust_Implementation()
 // --- RepNotify 에서 클라이언트에서도 연출/해제 ---
 void ALCBossVampire::OnRep_IsBerserk()
 {
-    Super::OnRep_IsBerserk();
-
     if (bIsBerserk)
-        StartBerserk();
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[Vampire] Berserk 시작 클라 연출"));
+
+        // 1) 붉은 안개 FX 스폰 & 저장
+        if (BloodlustEffectFX)
+        {
+            BerserkEffectComp = UNiagaraFunctionLibrary::SpawnSystemAttached(
+                BloodlustEffectFX,
+                GetRootComponent(),
+                NAME_None,
+                FVector::ZeroVector,
+                FRotator::ZeroRotator,
+                EAttachLocation::KeepRelativeOffset,
+                true
+            );
+        }
+
+        // 2) 심장 박동음 AudioComponent로 스폰 & 저장
+        if (BloodlustSound)
+        {
+            BerserkAudioComp = UGameplayStatics::SpawnSoundAttached(
+                BloodlustSound,
+                GetRootComponent()
+            );
+        }
+    }
     else
-        EndBerserk();
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[Vampire] Berserk 종료 클라 연출 해제"));
+
+        // 1) FX 컴포넌트 정리
+        if (BerserkEffectComp)
+        {
+            BerserkEffectComp->DestroyComponent();
+            BerserkEffectComp = nullptr;
+        }
+
+        // 2) Audio 컴포넌트 정리
+        if (BerserkAudioComp)
+        {
+            BerserkAudioComp->Stop();
+            BerserkAudioComp->DestroyComponent();
+            BerserkAudioComp = nullptr;
+        }
+    }
 }
 
 // --- 서버에서 Rage 가 Max 에 도달했을 때 최초 진입 (입장직후, Enter→Start 자동 실행) ---
@@ -208,7 +600,6 @@ void ALCBossVampire::EnterBerserkState()
     UE_LOG(LogTemp, Warning, TEXT("[Vampire] Enter Eternal Bloodlust"));
 
     // 이때 특수 상태 플래그 켜기 → 기존 Multicast_StartBloodlust 에서
-    // Mist Form 즉시 재사용, 효율 2배, 속도↑ 등의 로직이 실행됩니다.
     Multicast_StartBloodlust();
 }
 
@@ -216,6 +607,8 @@ void ALCBossVampire::EnterBerserkState()
 void ALCBossVampire::StartBerserk()
 {
     Super::StartBerserk();
+
+	MistRadius = BerserkMistRadius; // 광폭화 시 MistForm 거리 증가
 
     // (1) 붉은 안개 FX
     if (BloodlustEffectFX)
@@ -242,7 +635,6 @@ void ALCBossVampire::StartBerserk()
     }
 }
 
-// --- Duration 동안 유지하고 싶을 때 사용 (예: 20초) ---
 void ALCBossVampire::StartBerserk(float Duration)
 {
     // 기본 StartBerserk() 의 연출 재생
@@ -282,9 +674,6 @@ bool ALCBossVampire::RequestAttack(float TargetDistance)
     if (TargetDistance <= SanguineBurstRadius && !GetWorldTimerManager().IsTimerActive(BurstHandle))
         Entries.Add({ 2.f, [this]() { ExecuteSanguineBurst(); } });
 
-    // Mist Form (Fallback)
-    if (bCanUseMist)
-        Entries.Add({ 1.f, [this]() { EnterMistForm(); } });
 
     float Total = 0; for (auto& e : Entries) Total += e.W;
     float Pick = FMath::FRandRange(0.f, Total), Acc = 0;
@@ -296,9 +685,9 @@ bool ALCBossVampire::RequestAttack(float TargetDistance)
     return false;
 }
 
+
 void ALCBossVampire::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-    DOREPLIFETIME(ALCBossVampire, bIsMistForm);
     DOREPLIFETIME(ALCBossVampire, bIsBloodlust);
 }
