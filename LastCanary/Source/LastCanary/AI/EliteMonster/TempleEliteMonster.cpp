@@ -69,10 +69,13 @@ void ATempleEliteMonster::HandlePerceptionUpdate(AActor* Actor, FAIStimulus Stim
 			}
 			else if (Stimulus.Tag.IsEqual(FName("Box")))
 			{
-				if (AResourceNode* ResourceNode = Cast<AResourceNode>(Actor))
+				if (!OnReceiveTracking)
 				{
-					BlackboardComp->SetValueAsVector(FName("BoxVector"), Stimulus.StimulusLocation);
-					AIController->SetSearching();
+					if (AResourceNode* ResourceNode = Cast<AResourceNode>(Actor))
+					{
+						BlackboardComp->SetValueAsVector(FName("BoxVector"), Stimulus.StimulusLocation);
+						AIController->SetSearching();
+					}
 				}
 			}
 			else
@@ -123,4 +126,11 @@ void ATempleEliteMonster::ReceiveTrackingTarget(AActor* NewTarget)
 			AI->SetChasing(NewTarget); // 상태 변경
 		}
 	}
+}
+
+void ATempleEliteMonster::ToggleOnReceive()
+{
+	if (!HasAuthority()) return;
+
+	OnReceiveTracking = !OnReceiveTracking;
 }
