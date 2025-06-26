@@ -24,7 +24,8 @@ AGunBase::AGunBase()
     LastFireTime = 0.0f;
     DecalSize = FVector(5.0f, 5.0f, 5.0f);
     DecalLifeSpan = 10.0f;
-
+    VerticalRecoilAmount = 2.0f;
+    HorizontalRecoilAmount = 1.0f;
     MuzzleLocation = CreateDefaultSubobject<USceneComponent>(TEXT("MuzzleLocation"));
     MuzzleLocation->SetupAttachment(RootComponent);
     MuzzleLocation->SetRelativeLocation(FVector(0, 50, 10));
@@ -451,8 +452,7 @@ void AGunBase::Client_PlayCameraShake_Implementation()
     {
         LOG_Item_WARNING(TEXT("Client_PlayCameraShake called"));
         //OwnerCharacter->ApplyRecoil(2.0f, 1.0);
-        OwnerCharacter->ApplySmoothRecoil(2.0f, 1.0);
-
+        OwnerCharacter->ApplySmoothRecoil(VerticalRecoilAmount, HorizontalRecoilAmount);
     }
 }
 
@@ -628,6 +628,8 @@ void AGunBase::ApplyGunDataFromDataTable()
     CurrentFireMode = GunData.DefaultFireMode;
     bCanToggleFireMode = GunData.bCanToggleFireMode;
     AvailableFireModes = GunData.AvailableFireModes;
+    VerticalRecoilAmount = GunData.VerticalRecoilAmount;
+    HorizontalRecoilAmount = GunData.HorizontalRecoilAmount;
 
     // 이펙트 및 사운드 설정
     MuzzleFlash = GunData.MuzzleFlash;
