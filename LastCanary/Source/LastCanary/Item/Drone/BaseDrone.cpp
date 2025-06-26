@@ -231,24 +231,24 @@ void ABaseDrone::MoveDown(const FInputActionValue& Value)
 void ABaseDrone::Input_Look(const FInputActionValue& Value, float Sensivity)
 {
 	const FVector2D LookInput = Value.Get<FVector2D>();
-	Server_Look(LookInput * Sensivity);
+	Server_Look(LookInput, Sensivity);
 }
 
-void ABaseDrone::Server_Look_Implementation(FVector2D InputVector)
+void ABaseDrone::Server_Look_Implementation(FVector2D InputVector, float Sensitivity)
 {
 	FInputActionValue WrappedValue(InputVector);
-	Look(WrappedValue);
+	Look(WrappedValue, Sensitivity);
 }
 
-void ABaseDrone::Look(const FInputActionValue& Value)
+void ABaseDrone::Look(const FInputActionValue& Value, float Sensitivity)
 {
 	const FVector2D LookInput = Value.Get<FVector2D>();
 
 	// 드론 좌우 회전 (Yaw)
-	TargetDroneRotation.Yaw += LookInput.X * LookSensitivity * GetWorld()->GetDeltaSeconds();
+	TargetDroneRotation.Yaw += LookInput.X * Sensitivity * LookSensitivity * GetWorld()->GetDeltaSeconds();
 
 	// 카메라 위아래 회전 (Pitch) - Clamp로 제한
-	CameraPitch = FMath::Clamp(CameraPitch + LookInput.Y * LookSensitivity * GetWorld()->GetDeltaSeconds(), -60.f, 60.f);
+	CameraPitch = FMath::Clamp(CameraPitch + LookInput.Y * Sensitivity * LookSensitivity * GetWorld()->GetDeltaSeconds(), -60.f, 60.f);
 
 	// 드론 회전 적용
 	FRotator NewRotation = GetActorRotation();
