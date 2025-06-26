@@ -267,7 +267,7 @@ void ALCPlayerController::Client_PlayGateCutscene_Implementation(ULevelSequence*
 
     LocalSequencePlayer->Play();
 
-    LocalSequencePlayer->OnFinished.AddDynamic(this, &ALCPlayerController::OnCutsceneFinished);
+    LocalSequencePlayer->OnFinished.AddUniqueDynamic(this, &ALCPlayerController::OnCutsceneFinished);
 
     // 2. 카메라 전환 (기존에 하던 방식 유지)
     FName CameraTag = TEXT("Camera");
