@@ -401,6 +401,7 @@ public:
 
 	//About Character Animation Montage and Animation Class
 public:
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	bool UseGunBoneforOverlayObjects;
 

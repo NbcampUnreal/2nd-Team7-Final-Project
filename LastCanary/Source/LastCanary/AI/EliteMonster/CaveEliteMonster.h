@@ -21,6 +21,19 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MaxAge")
 	float HearingMaxAge = 6.5f;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Animation")
+	UAnimMontage* AIGimmick;
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastAIGimmick();
+	void MulticastAIGimmick_Implementation();
+
+	UFUNCTION(BlueprintCallable, Category = "Audio")
+	void PlayGimmickSound();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+	USoundBase* GimmickSound;
+
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick")
 	float MaxFreezeTime = 5.0f;

@@ -585,6 +585,7 @@ void ABaseCharacter::AttachCameraToRifle()
 	{
 		if (IsLocallyControlled())
 		{
+
 			AGunBase* Gun = Cast<AGunBase>(GetToolbarInventoryComponent()->GetCurrentEquippedItem());
 			if (IsValid(Gun))
 			{
@@ -2944,6 +2945,7 @@ void ABaseCharacter::NetMulticast_UnPossessDrone_Implementation()
 
 void ABaseCharacter::RefreshOverlayObject()
 {
+
 	//static FGameplayTag CurrentItemTag = FGameplayTag::RequestGameplayTag(TEXT("Character.Player.Equipped"));  // 참고용
 	AItemBase* CurrentItem = GetToolbarInventoryComponent()->GetCurrentEquippedItem();
 	FGameplayTag ItemTag;
@@ -2953,6 +2955,8 @@ void ABaseCharacter::RefreshOverlayObject()
 	bool bUseLeftGunBone = true;
 	UStaticMesh* AttachMesh = NULL;
 	USkeletalMesh* AttachSkeletalMesh = NULL;
+	OverlaySkeletalMesh->SetOwnerNoSee(false);
+	OverlaySkeletalMesh->SetOnlyOwnerSee(false);
 	if (IsValid(CurrentItem))
 	{
 		ItemTag = CurrentItem->ItemData.ItemType;
@@ -2984,7 +2988,8 @@ void ABaseCharacter::RefreshOverlayObject()
 			CurrentRifleMesh = RifleMesh;
 			AttachSkeletalMesh = EquipmentItem->ItemData.SkeletalMesh;
 		}
-		
+		OverlaySkeletalMesh->SetOwnerNoSee(true);
+		OverlaySkeletalMesh->SetOnlyOwnerSee(true);
 		Overlay = AlsOverlayModeTags::Rifle;
 		bIsDesireAiming = true;
 	}
@@ -2998,7 +3003,8 @@ void ABaseCharacter::RefreshOverlayObject()
 			Socketname = "Pistol";
 			AttachSkeletalMesh = EquipmentItem->ItemData.SkeletalMesh;
 		}
-
+		OverlaySkeletalMesh->SetOwnerNoSee(true);
+		OverlaySkeletalMesh->SetOnlyOwnerSee(true);
 		Overlay = AlsOverlayModeTags::PistolTwoHanded;
 		bIsDesireAiming = true;
 	}
@@ -3012,6 +3018,8 @@ void ABaseCharacter::RefreshOverlayObject()
 			Socketname = "Shotgun";
 			AttachSkeletalMesh = EquipmentItem->ItemData.SkeletalMesh;
 		}
+		OverlaySkeletalMesh->SetOwnerNoSee(true);
+		OverlaySkeletalMesh->SetOnlyOwnerSee(true);
 		Overlay = AlsOverlayModeTags::Rifle;
 		bIsDesireAiming = true;
 	}

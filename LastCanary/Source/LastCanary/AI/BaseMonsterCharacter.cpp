@@ -16,418 +16,466 @@
 
 ABaseMonsterCharacter::ABaseMonsterCharacter()
 {
-    PrimaryActorTick.bCanEverTick = false;
-    bReplicates = true;
+	PrimaryActorTick.bCanEverTick = false;
+	bReplicates = true;
 
-    MaxHP = 100.f;
-    CurrentHP = MaxHP;
-    bIsDead = false;
+	MaxHP = 100.f;
+	CurrentHP = MaxHP;
+	bIsDead = false;
 
-    AttackDamage = 10.0f;
+	AttackDamage = 10.0f;
 
-    AIPerceptionComponent = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("PerceptionComponent"));
+	GetCharacterMovement()->bOrientRotationToMovement = true;
 
-    AIControllerClass = ABaseAIController::StaticClass();
-    AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
+	AIPerceptionComponent = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("PerceptionComponent"));
 
-    AttackCollider = CreateDefaultSubobject<USphereComponent>(TEXT("AttackCollider"));
-    AttackCollider->SetupAttachment(RootComponent);//GetMesh(), FName("hand_r"));
-    //AttackCollider->SetRelativeLocation(FVector(100, 0, 0));
-    AttackCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	AIControllerClass = ABaseAIController::StaticClass();
+	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 
-    AttackCollider->OnComponentBeginOverlap.AddDynamic(this, &ABaseMonsterCharacter::OnAttackHit);
+	AttackCollider = CreateDefaultSubobject<USphereComponent>(TEXT("AttackCollider"));
+	AttackCollider->SetupAttachment(RootComponent);//GetMesh(), FName("hand_r"));
+	//AttackCollider->SetRelativeLocation(FVector(100, 0, 0));
+	AttackCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-    UCapsuleComponent* CapsuleComp = GetCapsuleComponent();
-    if (CapsuleComp)
-    {
-        CapsuleComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-        CapsuleComp->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
-    }
+	AttackCollider->OnComponentBeginOverlap.AddDynamic(this, &ABaseMonsterCharacter::OnAttackHit);
 
-    SetReplicateMovement(true);
+	UCapsuleComponent* CapsuleComp = GetCapsuleComponent();
+	if (CapsuleComp)
+	{
+		CapsuleComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		CapsuleComp->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
+	}
 
-    GetCharacterMovement()->bOrientRotationToMovement = true;
-    GetCharacterMovement()->MaxWalkSpeed = 200.f;
+	SetReplicateMovement(true);
 
-    NavGenerationradius = 200.0f;
-    NavRemovalradius = 300.0f;
+	GetCharacterMovement()->bOrientRotationToMovement = true;
+	GetCharacterMovement()->MaxWalkSpeed = 200.f;
 
-    NavInvoker = CreateDefaultSubobject<UNavigationInvokerComponent>(TEXT("NavInvoker"));
-    NavInvoker->SetGenerationRadii(NavGenerationradius, NavRemovalradius);
+	/*NavGenerationradius = 200.0f;
+	NavRemovalradius = 300.0f;
 
-    GameplayTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Character.Enemy")));
-    if (GetMesh())
-    {
-        GetMesh()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
-    }
+	NavInvoker = CreateDefaultSubobject<UNavigationInvokerComponent>(TEXT("NavInvoker"));
+	NavInvoker->SetGenerationRadii(NavGenerationradius, NavRemovalradius);*/
+
+	GameplayTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Character.Enemy")));
+	if (GetMesh())
+	{
+		GetMesh()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+	}
 }
 
 void ABaseMonsterCharacter::BeginPlay()
 {
-    Super::BeginPlay();
+	Super::BeginPlay();
+	InitializeBoneDamageMap();
+	EnableStencilForAllMeshes(1);
 
-    EnableStencilForAllMeshes(1);
+	if (AIPerceptionComponent)
+	{
+		AIPerceptionComponent->OnTargetPerceptionUpdated.AddDynamic(
+			this, &ABaseMonsterCharacter::OnTargetPerceptionUpdated
+		);
+	}
+}
 
-    if (AIPerceptionComponent)
-    {
-        AIPerceptionComponent->OnTargetPerceptionUpdated.AddDynamic(
-            this, &ABaseMonsterCharacter::OnTargetPerceptionUpdated
-        );
-    }
+void ABaseMonsterCharacter::InitializeBoneDamageMap()
+{
+	//cave
+	BoneDamageMultipliers.Add("Neck", 1.5f);
+	BoneDamageMultipliers.Add("head", 1.5f);
 }
 
 void ABaseMonsterCharacter::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
 {
-    HandlePerceptionUpdate(Actor, Stimulus);//퍼셉션 업데이트 오버라이드 불가능 대신 사용
+	HandlePerceptionUpdate(Actor, Stimulus);//퍼셉션 업데이트 오버라이드 불가능 대신 사용
 }
 
 void ABaseMonsterCharacter::HandlePerceptionUpdate(AActor* Actor, FAIStimulus Stimulus)
 {
-    if (!Actor) return;
+	if (!Actor) return;
 
-    if (ABaseAIController* AIController = Cast<ABaseAIController>(GetController()))
-    {
-        if (UBlackboardComponent* BlackboardComp = AIController->GetBlackboardComponent())
-        {
-            if (Stimulus.WasSuccessfullySensed())
-            {
-                if (ABaseCharacter* BaseCharacter = Cast<ABaseCharacter>(Actor))
-                {
-                    BlackboardComp->SetValueAsObject(FName("TargetActor"), BaseCharacter);
-                }
-            }
-            else
-            {
-                UObject* CurrentTarget = BlackboardComp->GetValueAsObject(FName("TargetActor"));
-                if (CurrentTarget == Actor)
-                {
-                    BlackboardComp->ClearValue(FName("TargetActor"));
-                }
-            }
-        }
-    }
+	if (ABaseAIController* AIController = Cast<ABaseAIController>(GetController()))
+	{
+		if (UBlackboardComponent* BlackboardComp = AIController->GetBlackboardComponent())
+		{
+			if (Stimulus.WasSuccessfullySensed())
+			{
+				GetWorldTimerManager().ClearTimer(ForgetTargetTimer);
+
+				if (ABaseCharacter* BaseCharacter = Cast<ABaseCharacter>(Actor))
+				{
+					BlackboardComp->SetValueAsObject(FName("TargetActor"), BaseCharacter);
+				}
+			}
+			else
+			{
+				UObject* CurrentTarget = BlackboardComp->GetValueAsObject(FName("TargetActor"));
+				if (CurrentTarget == Actor)
+				{
+					GetWorldTimerManager().SetTimer(ForgetTargetTimer,
+						[BlackboardComp]()
+					{
+						BlackboardComp->ClearValue(FName("TargetActor"));
+					},
+						3.0f, false);
+				}
+			}
+		}
+	}
+}
+
+float ABaseMonsterCharacter::GetDamageMultiplierForBone(FName BoneName)
+{
+	if (float* Multiplier = BoneDamageMultipliers.Find(BoneName))
+	{
+		return *Multiplier;
+	}
+	return 1.0f; // 기본값
 }
 
 float ABaseMonsterCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
-    class AController* EventInstigator, AActor* DamageCauser)
+	class AController* EventInstigator, AActor* DamageCauser)
 {
-    if (!HasAuthority()) return 0.0f;
-    if (!IsValid(DamageCauser)) return 0.0f;
-    if (bIsDead) return 0.0f;
+	if (!HasAuthority()) return 0.0f;
+	if (!IsValid(DamageCauser)) return 0.0f;
+	if (bIsDead) return 0.0f;
 
-    //무적(엘리트)
-    if (MaxHP <= 0)
-    {
-        return 0.0f;
-    }
+	//무적(엘리트)
+	if (MaxHP <= 0)
+	{
+		return 0.0f;
+	}
 
-    float DamageApplied = FMath::Clamp(DamageAmount, 0.0f, CurrentHP);
-    CurrentHP -= DamageAmount;
+	float FinalDamage = DamageAmount;
+	if (DamageEvent.IsOfType(FPointDamageEvent::ClassID))
+	{
+		const FPointDamageEvent* PointDamageEvent = static_cast<const FPointDamageEvent*>(&DamageEvent);
+		FName HitBoneName = PointDamageEvent->HitInfo.BoneName;
 
+		float DamageMultiplier = GetDamageMultiplierForBone(HitBoneName);
+		FinalDamage *= DamageMultiplier;
 
-    if (CurrentHP > 0)
-    {
-        if (ABaseAIController* AIController = Cast<ABaseAIController>(GetController()))
-        {
-            AIController->SetStun(0.1f);//경직 시간
-            //피격 사운드 넣기
-        }
-    }
-    else
-    {
-        CurrentHP = 0;
-        bIsDead = true;
+		UE_LOG(LogTemp, Error, TEXT("Hit Bone: %s, Damage: %f"),
+			*HitBoneName.ToString(), FinalDamage);
+	}
 
-        StopAllCurrentActions();//몽타주 올 스탑
-
-        GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-        GetCharacterMovement()->SetMovementMode(MOVE_None);
-
-        MulticastAIDeath();
-
-        if (OnMonsterDeath.IsBound())
-        {
-            OnMonsterDeath.Broadcast(this);
-        }
-
-        if (HasAuthority())
-        {
-            GetWorldTimerManager().SetTimer(DeathTimerHandle, this,
-                &ABaseMonsterCharacter::DestroyActor, 1.9f, false);
-        }
-    }
+	float DamageApplied = FMath::Clamp(DamageAmount, 0.0f, CurrentHP);
+	CurrentHP -= FinalDamage;//DamageAmount;
 
 
-    return DamageApplied;
+	if (CurrentHP > 0)
+	{
+		if (ABaseAIController* AIController = Cast<ABaseAIController>(GetController()))
+		{
+			AIController->SetStun(0.1f);//경직 시간
+			//피격 사운드 넣기
+		}
+	}
+	else
+	{
+		CurrentHP = 0;
+		bIsDead = true;
+
+		StopAllCurrentActions();//몽타주 올 스탑
+
+		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		GetCharacterMovement()->SetMovementMode(MOVE_None);
+
+		MulticastAIDeath();
+
+		if (OnMonsterDeath.IsBound())
+		{
+			OnMonsterDeath.Broadcast(this);
+		}
+
+		if (HasAuthority())
+		{
+			GetWorldTimerManager().SetTimer(DeathTimerHandle, this,
+				&ABaseMonsterCharacter::DestroyActor, 1.9f, false);
+		}
+	}
+
+
+	return DamageApplied;
 }
 
 //공격 함수
 void ABaseMonsterCharacter::OnAttackHit(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-    UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-    if (!HasAuthority()) return;
-    if (!OtherActor || OtherActor == this) return;
-    if (!bIsAttacking) return;
+	if (!HasAuthority()) return;
+	if (!OtherActor || OtherActor == this) return;
+	if (!bIsAttacking) return;
 
-    if (ABaseCharacter* HitCharacter = Cast<ABaseCharacter>(OtherActor))
-    {
-        FDamageEvent DamageEvent;
-        HitCharacter->TakeDamage(AttackDamage, DamageEvent, GetController(), this);
+	if (ABaseCharacter* HitCharacter = Cast<ABaseCharacter>(OtherActor))
+	{
+		FDamageEvent DamageEvent;
+		HitCharacter->TakeDamage(AttackDamage, DamageEvent, GetController(), this);
 
-        DisableAttackCollider();
-    }
+		DisableAttackCollider();
+	}
 }
 
 void ABaseMonsterCharacter::StopAllCurrentActions()
 {
-    if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
-    {
-        AnimInstance->StopAllMontages(0.2f);//0.2초에 걸쳐 부드럽게 정지
-    }
+	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	{
+		AnimInstance->StopAllMontages(0.2f);//0.2초에 걸쳐 부드럽게 정지
+	}
 
-    GetWorldTimerManager().ClearTimer(AttackTimerHandle);
-    GetWorldTimerManager().ClearTimer(AttackEnableTimerHandle);
+	GetWorldTimerManager().ClearTimer(AttackTimerHandle);
+	GetWorldTimerManager().ClearTimer(AttackEnableTimerHandle);
 
-    bIsAttacking = false;
-    DisableAttackCollider();
+	bIsAttacking = false;
+	DisableAttackCollider();
 
-    if (ABaseAIController* AIController = Cast<ABaseAIController>(GetController()))
-    {
-        AIController->StopMovement();//이동 중지
-        AIController->SetStop();
-    }
+	if (ABaseAIController* AIController = Cast<ABaseAIController>(GetController()))
+	{
+		AIController->StopMovement();//이동 중지
+		AIController->SetStop();
 
-    GetCharacterMovement()->StopMovementImmediately();//이동(관성) 즉시 중지, 물리적인거라 StopMovement랑 다르다고 함
-    GetCharacterMovement()->DisableMovement();//이동 비활성
+		if (UAIPerceptionComponent* PerceptionComp = AIController->GetPerceptionComponent())
+		{
+			PerceptionComp->OnTargetPerceptionUpdated.RemoveAll(this);
+			PerceptionComp->SetActive(false);
+		}
+		if (UBlackboardComponent* BlackboardComp = AIController->GetBlackboardComponent())
+		{
+			BlackboardComp->SetValueAsObject("TargetActor", nullptr);
+		}
+	}
+
+	GetCharacterMovement()->StopMovementImmediately();//이동(관성) 즉시 중지, 물리적인거라 StopMovement랑 다르다고 함
+	GetCharacterMovement()->DisableMovement();//이동 비활성
 }
 
 void ABaseMonsterCharacter::DestroyActor()
 {
-    if (HasAuthority())
-    {
-        Destroy();
-    }
+	if (HasAuthority())
+	{
+		Destroy();
+	}
 }
 
 void ABaseMonsterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
-    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-    DOREPLIFETIME(ABaseMonsterCharacter, CurrentHP);
-    DOREPLIFETIME(ABaseMonsterCharacter, bIsDead);
-    DOREPLIFETIME(ABaseMonsterCharacter, bIsAttacking);
+	DOREPLIFETIME(ABaseMonsterCharacter, CurrentHP);
+	DOREPLIFETIME(ABaseMonsterCharacter, bIsDead);
+	DOREPLIFETIME(ABaseMonsterCharacter, bIsAttacking);
 }
 
 
 void ABaseMonsterCharacter::PerformAttack()
 {
-    float CurrentTime = GetWorld()->GetTimeSeconds();
-    if (CurrentTime - LastAttackTime < AttackCooldown || bIsAttacking)
-        return;
+	float CurrentTime = GetWorld()->GetTimeSeconds();
+	if (CurrentTime - LastAttackTime < AttackCooldown || bIsAttacking)
+		return;
 
-    if (GetLocalRole() == ROLE_Authority)
-    {
-        ServerPerformAttack();
-    }
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		ServerPerformAttack();
+	}
 }
 
 void ABaseMonsterCharacter::ServerPerformAttack_Implementation()
 {
-    float CurrentTime = GetWorld()->GetTimeSeconds();
-    if (CurrentTime - LastAttackTime < AttackCooldown || bIsAttacking)
-        return;
+	float CurrentTime = GetWorld()->GetTimeSeconds();
+	if (CurrentTime - LastAttackTime < AttackCooldown || bIsAttacking)
+		return;
 
-    LastAttackTime = CurrentTime;
-    bIsAttacking = true;
+	LastAttackTime = CurrentTime;
+	bIsAttacking = true;
 
-    MulticastStartAttack();
-    GetWorldTimerManager().SetTimer(AttackTimerHandle, this, &ABaseMonsterCharacter::OnAttackFinished, AttackDuration, false);
+	MulticastStartAttack();
+	GetWorldTimerManager().SetTimer(AttackTimerHandle, this, &ABaseMonsterCharacter::OnAttackFinished, AttackDuration, false);
 }
 
 void ABaseMonsterCharacter::OnAttackFinished()
 {
-    bIsAttacking = false;
-    DisableAttackCollider();
+	bIsAttacking = false;
+	DisableAttackCollider();
 }
 
 void ABaseMonsterCharacter::MulticastStartAttack_Implementation()
 {
-    if (IsValid(StartAttack))
-    {
-        PlayAnimMontage(StartAttack);
+	if (IsValid(StartAttack))
+	{
+		PlayAnimMontage(StartAttack);
 
-        GetWorldTimerManager().SetTimer(AttackEnableTimerHandle, this,
-            &ABaseMonsterCharacter::EnableAttackCollider, 0.5f, false);
+		GetWorldTimerManager().SetTimer(AttackEnableTimerHandle, this,
+			&ABaseMonsterCharacter::EnableAttackCollider, 0.5f, false);
 
-        int32 RandomSound = FMath::RandRange(0, 2);
-        switch (RandomSound)
-        {
-        case 0:
-            PlayAttackSound1();
-            break;
-        case 1:
-            PlayAttackSound2();
-            break;
-        case 2:
-            PlayAttackSound3();
-            break;
-        }
-    }
+		int32 RandomSound = FMath::RandRange(0, 2);
+		switch (RandomSound)
+		{
+		case 0:
+			PlayAttackSound1();
+			break;
+		case 1:
+			PlayAttackSound2();
+			break;
+		case 2:
+			PlayAttackSound3();
+			break;
+		}
+	}
 }
 
 void ABaseMonsterCharacter::MulticastAIMove_Implementation()
 {
-    if (IsValid(AImove))
-    {
-        PlayAnimMontage(AImove);
-    }
+	if (IsValid(AImove))
+	{
+		PlayAnimMontage(AImove);
+	}
 }
 
 void ABaseMonsterCharacter::MulticastAIDeath_Implementation()
 {
-    if (IsValid(AIDeath))
-    {
-        PlayAnimMontage(AIDeath);
+	if (IsValid(AIDeath))
+	{
+		PlayAnimMontage(AIDeath);
 
-        (FMath::RandBool()) ? PlayDeathSound1() : PlayDeathSound2();
-    }
+		(FMath::RandBool()) ? PlayDeathSound1() : PlayDeathSound2();
+	}
 }
 
 void ABaseMonsterCharacter::EnableAttackCollider()
 {
-    if (!bIsDead)
-    {
-        AttackCollider->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-    }
+	if (!bIsDead)
+	{
+		AttackCollider->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	}
 }
 
 void ABaseMonsterCharacter::DisableAttackCollider()
 {
-    AttackCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	AttackCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
 void ABaseMonsterCharacter::GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) const
 {
-    TagContainer = GameplayTags;
+	TagContainer = GameplayTags;
 }
 
 void ABaseMonsterCharacter::MulticastPlaySound_Implementation(USoundBase* Sound)
 {
-    if (Sound)
-    {
-        UGameplayStatics::PlaySoundAtLocation(this,
-            Sound,
-            GetActorLocation(),
-            FRotator::ZeroRotator,
-            2.0f);
-    }
+	if (Sound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this,
+			Sound,
+			GetActorLocation(),
+			FRotator::ZeroRotator,
+			2.0f);
+	}
 }
 
 void ABaseMonsterCharacter::PlayAttackSound1()
 {
-    if (AttackSound1)
-    {
-        MulticastPlaySound(AttackSound1);
-    }
+	if (AttackSound1)
+	{
+		MulticastPlaySound(AttackSound1);
+	}
 }
 
 void ABaseMonsterCharacter::PlayAttackSound2()
 {
-    if (AttackSound2)
-    {
-        MulticastPlaySound(AttackSound2);
-    }
+	if (AttackSound2)
+	{
+		MulticastPlaySound(AttackSound2);
+	}
 }
 
 void ABaseMonsterCharacter::PlayAttackSound3()
 {
-    if (AttackSound3)
-    {
-        MulticastPlaySound(AttackSound3);
-    }
+	if (AttackSound3)
+	{
+		MulticastPlaySound(AttackSound3);
+	}
 }
 
 void ABaseMonsterCharacter::PlayDeathSound1()
 {
-    if (DeathSound1)
-    {
-        MulticastPlaySound(DeathSound1);
-    }
+	if (DeathSound1)
+	{
+		MulticastPlaySound(DeathSound1);
+	}
 }
 
 void ABaseMonsterCharacter::PlayDeathSound2()
 {
-    if (DeathSound2)
-    {
-        MulticastPlaySound(DeathSound2);
-    }
+	if (DeathSound2)
+	{
+		MulticastPlaySound(DeathSound2);
+	}
 }
 
 void ABaseMonsterCharacter::PlayIdleSound()
 {
-    if (IdleSound)
-    {
-        MulticastPlaySound(IdleSound);
-    }
+	if (IdleSound)
+	{
+		MulticastPlaySound(IdleSound);
+	}
 }
 
 void ABaseMonsterCharacter::PlayMoveSound()
 {
-    if (MoveSound)
-    {
-        MulticastPlaySound(MoveSound);
-    }
+	if (MoveSound)
+	{
+		MulticastPlaySound(MoveSound);
+	}
 }
 
 void ABaseMonsterCharacter::PlayChaseSound()
 {
-    int32 RandomSound = FMath::RandRange(0, 2);
-    switch (RandomSound)
-    {
-    case 0:
-        PlayChaseSound1();
-        break;
-    case 1:
-        PlayChaseSound2();
-        break;
-    case 2:
-        PlayChaseSound3();
-        break;
-    }
+	int32 RandomSound = FMath::RandRange(0, 2);
+	switch (RandomSound)
+	{
+	case 0:
+		PlayChaseSound1();
+		break;
+	case 1:
+		PlayChaseSound2();
+		break;
+	case 2:
+		PlayChaseSound3();
+		break;
+	}
 }
 
 void ABaseMonsterCharacter::PlayChaseSound1()
 {
-    if (ChaseSound1)
-    {
-        MulticastPlaySound(ChaseSound1);
-    }
+	if (ChaseSound1)
+	{
+		MulticastPlaySound(ChaseSound1);
+	}
 }
 
 void ABaseMonsterCharacter::PlayChaseSound2()
 {
-    if (ChaseSound2)
-    {
-        MulticastPlaySound(ChaseSound2);
-    }
+	if (ChaseSound2)
+	{
+		MulticastPlaySound(ChaseSound2);
+	}
 }
 
 void ABaseMonsterCharacter::PlayChaseSound3()
 {
-    if (ChaseSound3)
-    {
-        MulticastPlaySound(ChaseSound3);
-    }
+	if (ChaseSound3)
+	{
+		MulticastPlaySound(ChaseSound3);
+	}
 }
 
 void ABaseMonsterCharacter::EnableStencilForAllMeshes(int32 StencilValue)
 {
-    TArray<UMeshComponent*> MeshComponents;
-    GetComponents<UMeshComponent>(MeshComponents);
+	TArray<UMeshComponent*> MeshComponents;
+	GetComponents<UMeshComponent>(MeshComponents);
 
-    for (UMeshComponent* MeshComp : MeshComponents)
-    {
-        MeshComp->SetRenderCustomDepth(true);
-        MeshComp->SetCustomDepthStencilValue(StencilValue);
-    }
+	for (UMeshComponent* MeshComp : MeshComponents)
+	{
+		MeshComp->SetRenderCustomDepth(true);
+		MeshComp->SetCustomDepthStencilValue(StencilValue);
+	}
 }
