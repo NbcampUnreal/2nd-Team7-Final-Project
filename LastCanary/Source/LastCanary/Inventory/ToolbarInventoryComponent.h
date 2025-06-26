@@ -219,9 +219,6 @@ protected:
     /** 가방 전용 해제 전처리 */
     void HandleBackpackUnequip(int32 SlotIndex);
 
-    /** 가방인지 확인 */
-    bool IsBackpackItem(const FItemDataRow* ItemData) const;
-    bool IsBackpackItem(FName ItemRowName) const;
     bool HasOtherEquippedItems() const;
 
     /** 수집품인지 확인 */
