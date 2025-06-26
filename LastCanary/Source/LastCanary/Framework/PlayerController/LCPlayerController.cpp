@@ -199,7 +199,7 @@ void ALCPlayerController::Client_ReceiveMessageFromGM_Implementation(const FStri
     LOG_Server_WARNING(TEXT("%s"), *Message);
 	if (LCUIManager)
 	{
-		LCUIManager->ShowPopupNotice(FText::FromString(Message));
+        LCUIManager->AddServerMessage(Message);// ShowPopupNotice(FText::FromString(Message));
 	}
 
 }

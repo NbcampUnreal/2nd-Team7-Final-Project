@@ -29,6 +29,8 @@ class UNotePopupWidget;
 class UDroneHUD;
 class USpectatorWidget;
 class UGameOverWidget;
+class UGameEndWidget;
+class UServerMessageWidget;
 
 UCLASS(BlueprintType)
 class LASTCANARY_API ULCUIManagerSettings : public UDataAsset
@@ -76,4 +78,9 @@ public:
 	TSubclassOf<USpectatorWidget> FromBPSpectatorWidgetClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UGameOverWidget> FromBPGameOverWidgetClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UGameEndWidget> FromBPGameEndWidgetClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UServerMessageWidget> FromBPServerMessageWidgetClass;
 };
+

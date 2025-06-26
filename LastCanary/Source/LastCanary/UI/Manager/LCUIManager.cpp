@@ -19,6 +19,8 @@
 #include "UI/UIElement/DroneHUD.h"
 #include "UI/UIElement/SpectatorWidget.h"
 #include "UI/UIElement/GameOverWidget.h"
+#include "UI/UIElement/GameEndWidget.h"
+#include "UI/UIElement/ServerMessageWidget.h"
 
 #include "UI/UIObject/ConfirmPopup.h"
 
@@ -70,6 +72,8 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			DroneHUDClass = Settings->FromBPDroneHUDClass;
 			SpectatorWidgetClass = Settings->FromBPSpectatorWidgetClass;
 			GameOverWidgetClass = Settings->FromBPGameOverWidgetClass;
+			GameEndWidgetClass = Settings->FromBPGameEndWidgetClass;
+			ServerMessageWidgetClass = Settings->FromBPServerMessageWidgetClass;
 
 			if ((CachedTitleMenu == nullptr) && TitleMenuClass)
 			{
@@ -139,6 +143,15 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			if ((CachedGameOverWidget == nullptr) && GameOverWidgetClass)
 			{
 				CachedGameOverWidget = CreateWidget<UGameOverWidget>(PlayerController, GameOverWidgetClass);
+			}
+			if ((CachedGameEndWidget == nullptr) && GameEndWidgetClass)
+			{
+				CachedGameEndWidget = CreateWidget<UGameEndWidget>(PlayerController, GameEndWidgetClass);
+			}
+			if ((CachedServerMessageWidget == nullptr) && ServerMessageWidgetClass)
+			{
+				CachedServerMessageWidget = CreateWidget<UServerMessageWidget>(PlayerController, ServerMessageWidgetClass);
+				CachedServerMessageWidget->AddToViewport();
 			}
 		}
 	}
@@ -460,6 +473,28 @@ void ULCUIManager::ShowChecklistWidget()
 	SetInputModeUIOnly(CachedChecklistWidget);
 }
 
+void ULCUIManager::ShowNewChecklistWidget(UDataTable* CheckListTable)
+{
+	if (OwningPlayer == nullptr)
+	{
+		APlayerController* PC = GetWorld()->GetFirstPlayerController();
+		if (PC && PC->IsLocalController())
+		{
+			SetPlayerController(PC);
+			LOG_Frame_WARNING(TEXT("UIManager: OwningPlayer를 복구함 -> %s"), *PC->GetName());
+		}
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("ShowChecklistWidget: OwningPlayer = %s"), *OwningPlayer->GetName());
+
+	SwitchToWidget(CachedChecklistWidget);
+	HideInventoryMainWidget();
+	HideSpectatorWidget();
+	SetInputModeUIOnly(CachedChecklistWidget);
+
+	CachedChecklistWidget->InitWithCheckListTable(CheckListTable);
+}
+
 UResultMenu* ULCUIManager::ShowResultMenu()
 {
 	if (!CachedResultMenu && ResultMenuClass)
@@ -602,6 +637,42 @@ void ULCUIManager::HideGameOverWidget()
 	if (CachedGameOverWidget && CachedGameOverWidget->IsInViewport())
 	{
 		CachedGameOverWidget->RemoveFromParent();
+	}
+}
+
+void ULCUIManager::ShowGameEndWidget()
+{
+	if (CachedGameEndWidget)
+	{
+		if (!CachedGameEndWidget->IsInViewport())
+		{
+			CachedGameEndWidget->AddToViewport(999);
+		}
+	}
+	else
+	{
+		LOG_Frame_ERROR(TEXT("ShowSpectatorWidget: CachedSpectatorWidget is nullptr"));
+	}
+}
+
+void ULCUIManager::ShowHideEndWidget()
+{
+	if (CachedGameEndWidget && CachedGameEndWidget->IsInViewport())
+	{
+		CachedGameEndWidget->RemoveFromParent();
+	}
+}
+
+void ULCUIManager::AddServerMessage(const FString& Message)
+{
+	if (CachedServerMessageWidget)
+	{
+		if (!CachedServerMessageWidget->IsInViewport())
+		{
+			CachedServerMessageWidget->AddToViewport();
+			//CachedServerMessageWidget->AddMessage(Message);
+		}
+		CachedServerMessageWidget->AddMessage(Message);
 	}
 }
 

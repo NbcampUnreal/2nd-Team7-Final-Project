@@ -29,6 +29,8 @@ class UNotePopupWidget;
 class UDroneHUD;
 class USpectatorWidget;
 class UGameOverWidget;
+class UGameEndWidget;
+class UServerMessageWidget;
 
 //-----------------
 // Enum
@@ -79,6 +81,7 @@ public:
 	//void ShowCreateSession();
 	void ToggleInventory();
 	void ShowChecklistWidget();
+	void ShowNewChecklistWidget(UDataTable* CheckListTable);
 	UResultMenu* ShowResultMenu();
 	void ShowRoomWidget();
 	void HideRoomWidget();
@@ -88,6 +91,10 @@ public:
 	void HideSpectatorWidget();
 	void ShowGameOverWidget();
 	void HideGameOverWidget();
+	void ShowGameEndWidget();
+	void ShowHideEndWidget();
+	UFUNCTION(BlueprintCallable)
+	void AddServerMessage(const FString& Message);
 
 	//-----------------
 	// Special Popups
@@ -143,6 +150,7 @@ public:
 	FORCEINLINE UDroneHUD* GetDroneHUD() const { return CachedDroneHUD; }
 	FORCEINLINE USpectatorWidget* GetSpectatorWidget() const { return CachedSpectatorWidget; }
 	FORCEINLINE UGameOverWidget* GetGameOverWidget() const { return CachedGameOverWidget; }
+	FORCEINLINE UGameEndWidget* GetGameEndWidget() const { return CachedGameEndWidget; }
 
 	//-----------------
 	// External Interactor Tracking
@@ -215,6 +223,10 @@ private:
 	TSubclassOf<USpectatorWidget> SpectatorWidgetClass;
 	UPROPERTY()
 	TSubclassOf<UGameOverWidget> GameOverWidgetClass;
+	UPROPERTY()
+	TSubclassOf<UGameEndWidget> GameEndWidgetClass;
+	UPROPERTY()
+	TSubclassOf<UServerMessageWidget> ServerMessageWidgetClass;
 
 	//-----------------
 	// Widget Instances
@@ -255,6 +267,10 @@ private:
 	USpectatorWidget* CachedSpectatorWidget;
 	UPROPERTY()
 	UGameOverWidget* CachedGameOverWidget;
+	UPROPERTY()
+	UGameEndWidget* CachedGameEndWidget;
+	UPROPERTY()
+	UServerMessageWidget* CachedServerMessageWidget;
 
 	//-----------------
 	// Session Error Info
