@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Perception/AIPerceptionComponent.h"
-#include "NavigationInvokerComponent.h" 
+//#include "NavigationInvokerComponent.h" 
 #include "Net/UnrealNetwork.h"
 #include "GameplayTagAssetInterface.h"
 #include "BaseMonsterCharacter.generated.h"
@@ -18,11 +18,17 @@ class LASTCANARY_API ABaseMonsterCharacter : public ACharacter, public IGameplay
 {
     GENERATED_BODY()
 
-    UPROPERTY(BlueprintReadWrite, Category = Navigation, meta = (AllowPrivateAccess = "true"))
-    UNavigationInvokerComponent* NavInvoker;
+    /*UPROPERTY(BlueprintReadWrite, Category = Navigation, meta = (AllowPrivateAccess = "true"))
+    UNavigationInvokerComponent* NavInvoker;*/
 
 public:
     ABaseMonsterCharacter();
+
+    UPROPERTY()
+    TMap<FName, float> BoneDamageMultipliers;
+
+    void InitializeBoneDamageMap();
+    float GetDamageMultiplierForBone(FName BoneName);
 
     /** 몬스터 사망 델리게이트 */
     UPROPERTY(BlueprintAssignable, Category = "Events")
@@ -33,11 +39,11 @@ public:
 
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Nav")
+    /*UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Nav")
     float NavGenerationradius;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Nav")
-    float NavRemovalradius;
+    float NavRemovalradius;*/
 
     virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
 
@@ -179,6 +185,7 @@ protected:
     FTimerHandle AttackTimerHandle;
     FTimerHandle DeathTimerHandle;
     FTimerHandle AttackEnableTimerHandle;
+    FTimerHandle ForgetTargetTimer;
 
     UFUNCTION()
     void OnAttackFinished();
@@ -207,7 +214,7 @@ private:
     bool bIsDead;
 
 public:
-    FORCEINLINE class UNavigationInvokerComponent* GetNavInvoker() const { return NavInvoker; }
+    //FORCEINLINE class UNavigationInvokerComponent* GetNavInvoker() const { return NavInvoker; }
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tags")
     FGameplayTagContainer GameplayTags;

@@ -124,16 +124,15 @@ void ABaseAIController::SetStun(float StunDuration)
 	if (!BlackboardComponent) return;
 
 	int32 CurrentState = BlackboardComponent->GetValueAsInt(StateKeyName);
-	if (CurrentState != 1) //추격때만
-	{
-		return;
-	}
 
 	PreviousState = CurrentState;
 
 	BlackboardComponent->SetValueAsInt(StateKeyName, 4);
 
-	StopMovement();
+	if (BehaviorTreeComponent)
+	{
+		BehaviorTreeComponent->StopTree();
+	}
 
 	if (ACharacter* MyCharacter = Cast<ACharacter>(GetPawn()))
 	{
@@ -157,6 +156,11 @@ void ABaseAIController::SetStun(float StunDuration)
 void ABaseAIController::RecoverFromStun()
 {
 	if (!BlackboardComponent) return;
+
+	if (BehaviorTree && BehaviorTreeComponent)
+	{
+		RunBehaviorTree(BehaviorTree);
+	}
 
 	BlackboardComponent->SetValueAsInt(StateKeyName, PreviousState);
 
