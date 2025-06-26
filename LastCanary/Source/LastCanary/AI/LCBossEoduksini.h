@@ -73,7 +73,7 @@ protected:
     USoundBase* VoidGraspSound;
 
     // ── Berserk FX & Sound ──
-/** 광폭화 진입 시 재생할 Niagara 이펙트 */
+    /** 광폭화 진입 시 재생할 Niagara 이펙트 */
     UPROPERTY(EditAnywhere, Category = "Eoduksini|Berserk")
     UNiagaraSystem* BerserkEffectFX;
 
@@ -81,14 +81,14 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Eoduksini|Berserk")
     USoundBase* BerserkSound;
 
-        // SpawnSystemAttached()이 리턴하는 이펙트를 보관
+    // SpawnSystemAttached()이 리턴하는 이펙트를 보관
     UPROPERTY()
     UNiagaraComponent* ActiveBerserkEffect = nullptr;
 
     // SpawnSoundAttached()이 리턴하는 오디오 컴포넌트를 보관
     UPROPERTY()
     UAudioComponent* ActiveBerserkAudio = nullptr;
-
+    
     /** ── Darkness ── */
     UPROPERTY(VisibleAnywhere, Category = "Darkness")
     USphereComponent* DarknessSphere;
@@ -143,10 +143,7 @@ protected:
     float BerserkRageGainMultiplier = 2.0f;
 
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Berserk")
-    float StrongAttackChance_Berserk = 0.6f;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Boss|Berserk")
-    float NormalAttackCooldown_Berserk = 0.6f;
+    float BerserkCooldownMultiplier = 0.8f;
 
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Berserk")
     float StrongAttackCooldown_Berserk = 3.0f;
@@ -154,13 +151,21 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Berserk")
     float BerserkPlayRateMultiplier = 1.3f;
 
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Berserk")
+    float BerserkMovementMultiplier = 1.5f;
+
+    // 원복용 저장 변수
+    float PrevMaxWalkSpeed = 0.f;
+    float PrevNormalAttackCooldown = 0.f;
+    float PrevStrongAttackCooldown = 0.f;
+
     /** ── Abilities ── */
 
     // Shadow Echo
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Ability")
     float ShadowEchoInterval = 15.f;
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Ability")
-    float ShadowEchoDelay = 2.f;
+    float ShadowEchoDelay = 6.f;
 	UPROPERTY(EditDefaultsOnly, Category = "Boss|Ability")
 	float ShadowEchoRange = 400.f; // 범위 내 모든 플레이어에게 데미지 적용
     float LastShadowEchoTime = -FLT_MAX;
@@ -178,7 +183,7 @@ protected:
 
     // Night Terror
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Ability")
-    float NightTerrorRageThreshold = 0.8f;
+    float NightTerrorRageThreshold = 80.f;
     bool bHasUsedNightTerror = false;
     void NightTerror();
     UPROPERTY(EditAnywhere, Category = "Eoduksini|Damage")

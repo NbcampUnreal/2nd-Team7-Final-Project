@@ -132,6 +132,12 @@ void ALCTrackingManager::FireAllTowers()
 
 	//LOG_Art(Log, TEXT(" 모든 감시탑 이펙트 발사"));
 
+	ATempleEliteMonster* bElite = Cast<ATempleEliteMonster>(this);
+	if (IsValid(bElite))
+	{
+		bElite->ToggleOnReceive();
+	}
+
 	for (TActorIterator<ATempleEliteMonster> It(GetWorld()); It; ++It)
 	{
 		ATempleEliteMonster* Elite = *It;
@@ -157,6 +163,12 @@ void ALCTrackingManager::StopTrackingLoop()
 		{
 			Tower->SetTargetActor(nullptr);
 		}
+	}
+
+	ATempleEliteMonster* bElite = Cast<ATempleEliteMonster>(this);
+	if (IsValid(bElite))
+	{
+		bElite->ToggleOnReceive();
 	}
 
 	//LOG_Art(Log, TEXT(" 추적 종료"));

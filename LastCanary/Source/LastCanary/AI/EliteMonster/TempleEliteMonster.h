@@ -23,6 +23,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Tracking")
 	void ReceiveTrackingTarget(AActor* NewTarget);
 
+	void ToggleOnReceive();
+
 protected:
 	virtual void HandlePerceptionUpdate(AActor* Actor, FAIStimulus Stimulus) override;
 
@@ -31,5 +33,7 @@ protected:
 
 	UFUNCTION()
 	void ForgetTarget();
+
+	bool OnReceiveTracking = false;
 
 };
