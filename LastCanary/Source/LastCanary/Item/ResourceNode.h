@@ -36,7 +36,7 @@ enum class EResourceInteractionType : uint8
 	Harvest		UMETA(DisplayName = "Harvest"),
 	Core		UMETA(DisplayName = "Core"),
 	Mine		UMETA(DisplayName = "Mine"),
-	Loot		UMETA(DisplayName = "Loot"),
+	Chest		UMETA(DisplayName = "Chest"),
 	GetNote		UMETA(DisplayName = "Get Note"),
 };
 

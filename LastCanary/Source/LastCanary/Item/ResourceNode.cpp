@@ -54,7 +54,7 @@ void AResourceNode::BeginPlay()
 			break;
 		case EResourceInteractionType::Core:
 			// falls through
-		case EResourceInteractionType::Loot:
+		case EResourceInteractionType::Chest:
 			// falls through
 		case EResourceInteractionType::GetNote:
 		default:
@@ -93,7 +93,7 @@ void AResourceNode::Server_RequestInteract_Implementation(APlayerController* Int
 
 void AResourceNode::HarvestResource(APlayerController* Interactor)
 {
-	if (InteractionType == EResourceInteractionType::Loot)
+	if (InteractionType == EResourceInteractionType::Chest)
 	{
 		HandleLootSpawn(Interactor);
 		return;
@@ -212,8 +212,8 @@ FText AResourceNode::GetDefaultMessageForType(EResourceInteractionType Type) con
 		return NSLOCTEXT("Interaction", "Harvest", "Press [{Key}] to Harvest");
 	case EResourceInteractionType::Mine:
 		return NSLOCTEXT("Interaction", "Mine", "Press [{Key}] to Mine");
-	case EResourceInteractionType::Loot:
-		return NSLOCTEXT("Interaction", "Loot", "Press [{Key}] to Loot");
+	case EResourceInteractionType::Chest:
+		return NSLOCTEXT("Interaction", "Loot", "Press [{Key}] to Open Chest");
 	case EResourceInteractionType::GetNote:
 		return NSLOCTEXT("Interaction", "GetNote", "Press [{Key}] to Get Note");
 	default:
@@ -295,6 +295,12 @@ FString AResourceNode::GetInteractMessage_Implementation() const
 			FText Template = GetDefaultMessageForType(InteractionType);
 			return FText::Format(Template, FFormatNamedArguments{ {"Key", FText::FromString(KeyName)} }).ToString();
 		}
+	}
+
+	if (bRequireTool == false)
+	{
+		FText Template = GetDefaultMessageForType(InteractionType);
+		return FText::Format(Template, FFormatNamedArguments{ {"Key", FText::FromString(KeyName)} }).ToString();
 	}
 
 	return FString::Printf(TEXT("Cannot interact (requires correct tool)"));
