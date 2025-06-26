@@ -492,7 +492,7 @@ void ULCUIManager::ShowNewChecklistWidget(UDataTable* CheckListTable)
 	HideSpectatorWidget();
 	SetInputModeUIOnly(CachedChecklistWidget);
 
-	CachedChecklistWidget->InitWithCheckListTable(CheckListTable);
+	//CachedChecklistWidget->InitWithCheckListTable(CheckListTable);
 }
 
 UResultMenu* ULCUIManager::ShowResultMenu()
