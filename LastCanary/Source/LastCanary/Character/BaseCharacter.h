@@ -576,16 +576,31 @@ public:
 	UFUNCTION(BlueprintCallable)
 	float TakeSpiritDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser);
 	float CalculateTakeSpiritDamage(float DamageAmount);
+	
+	UFUNCTION(BlueprintCallable)
+	float RestoreSpirit(float Amount);
+
 	void EnterPanicState();
+	void ExitPanicState();
+
 
 	UFUNCTION(Client, Reliable)
 	void Client_EnterPanicState();
 	void Client_EnterPanicState_Implementation();
 	
+	UFUNCTION(Client, Reliable)
+	void Client_ExitPanicState();
+	void Client_ExitPanicState_Implementation();
+
 	void PerformRandomPanicAction();
+	FTimerHandle PanicVoiceDurationHandle;
+	void TriggerPanicVoice(float Duration);
 
 	UFUNCTION(BlueprintImplementableEvent)
 	void EnterPanicVoice();
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void ExitPanicVoice();
 
 	UPROPERTY(EditAnywhere,BlueprintReadWrite, Category = "PanicState")
 	USoundBase* ScreamSound;
