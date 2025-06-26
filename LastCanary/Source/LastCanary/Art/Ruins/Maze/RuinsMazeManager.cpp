@@ -676,15 +676,15 @@ void ARuinsMazeManager::SpawnMonsterInMidPath()
 		ValidCells.Add(Cell);
 	}
 
-	if (ValidCells.Num() < MaxMonstersToSpawn)
+	if (ValidCells.Num() < EliteSpawnCount)
 	{
-		LOG_Art_WARNING(TEXT("[Monster] 후보 셀 부족 → 요청: %d, 가능: %d"), MaxMonstersToSpawn, ValidCells.Num());
+		LOG_Art_WARNING(TEXT("[Monster] 후보 셀 부족 → 요청: %d, 가능: %d"), EliteSpawnCount, ValidCells.Num());
 		return;
 	}
 
 	ValidCells.Sort([](const FIntPoint&, const FIntPoint&) { return FMath::RandBool(); });
 
-	for (int32 i = 0; i < MaxMonstersToSpawn; ++i)
+	for (int32 i = 0; i < EliteSpawnCount; ++i)
 	{
 		const FVector SpawnLoc = GetCellWorldPosition(ValidCells[i]) + FVector(0, 0, 50.f);
 		FActorSpawnParameters Params;
@@ -693,7 +693,7 @@ void ARuinsMazeManager::SpawnMonsterInMidPath()
 		AActor* Spawned = GetWorld()->SpawnActor<AActor>(MonsterClass, SpawnLoc, FRotator::ZeroRotator, Params);
 		if (IsValid(Spawned))
 		{
-			LOG_Art(Log, TEXT("[Monster] 몬스터 스폰 성공 (%d/%d): (%d, %d)"), i + 1, MaxMonstersToSpawn, ValidCells[i].X, ValidCells[i].Y);
+			LOG_Art(Log, TEXT("[Monster] 몬스터 스폰 성공 (%d/%d): (%d, %d)"), i + 1, EliteSpawnCount, ValidCells[i].X, ValidCells[i].Y);
 		}
 	}
 }
@@ -719,9 +719,6 @@ void ARuinsMazeManager::HideWall(const FIntPoint& Cell, const FString& Direction
 		//LOG_Art_WARNING(TEXT("❌ 게스트 HideWall 실패 - 위치: %s 방향: %s"), *Cell.ToString(), *Direction);
 	}
 
-	// fallback 검색 (서버일 경우만)
-	//if (WallPtr == nullptr || IsValid(*WallPtr) == false)
-	//{
 	FVector WorldPos = GetCellWorldPosition(Cell);
 	// 방향에 따라 약간 오프셋 줘서 근처 벽 찾기
 	FVector Offset;
@@ -753,39 +750,8 @@ void ARuinsMazeManager::HideWall(const FIntPoint& Cell, const FString& Direction
 			WallCache.Add(Key, Wall);
 			LOG_Art(Log, TEXT("[Wall] 숨김 처리 fallback 성공 [%s:%s]"), *Cell.ToString(), *Direction);
 			return;
-void ARuinsMazeManager::Multicast_SpawnWall_Implementation(const FVector& Location, const FRotator& Rotation, const FIntPoint& Cell, const FString& Direction)
-{
-	//LOG_Art(Log, TEXT("📦 Multicast_SpawnWall 실행 [%s:%s]"), *Cell.ToString(), *Direction); // 이게 안 찍히면 RPC 자체 실패
-
-	FActorSpawnParameters Params;
-	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-			//WallCache.Add(Key, Wall);
-			//WallPtr = &Wall;
-			//break;
 		}
-	ARuinsMazeWall* Wall = GetWorld()->SpawnActor<ARuinsMazeWall>(WallClass, Location, Rotation, Params);
-	if (IsValid(Wall))
-	{
-		//LOG_Art(Log, TEXT("✅ Wall 생성됨: %s → %s"), *Cell.ToString(), *Direction);
-		WallCache.Add(TPair<FIntPoint, FString>(Cell, Direction), Wall);
 	}
-	else
-	{
-		//LOG_Art_WARNING(TEXT("❌ Wall 생성 실패: %s → %s"), *Cell.ToString(), *Direction);
-	}
-	//}
-	//
-	//if (WallPtr && IsValid(*WallPtr))
-	//{
-	//	(*WallPtr)->SetActorHiddenInGame(true);
-	//	(*WallPtr)->SetActorEnableCollision(false);
-	//	return;
-	//}
-	//else
-	//{
-	//	LOG_Art_WARNING(TEXT("❌ 게스트 HideWall 실패 - 위치: %s 방향: %s"), *Cell.ToString(), *Direction);
-	//}
 }
 
 //void ARuinsMazeManager::Multicast_HideWall_Implementation(const FIntPoint& Cell, const FString& Direction)
@@ -827,16 +793,16 @@ void ARuinsMazeManager::SpawnNotesAfterMaze()
 		}
 	}
 
-	if (CandidateCells.Num() < MaxNotesToSpawn)
+	if (CandidateCells.Num() < NoteSpawnCount)
 	{
-		LOG_Item_WARNING(TEXT("[Notes] 후보 셀 부족 → 요청: %d, 가능: %d"), MaxNotesToSpawn, CandidateCells.Num());
+		LOG_Item_WARNING(TEXT("[Notes] 후보 셀 부족 → 요청: %d, 가능: %d"), NoteSpawnCount, CandidateCells.Num());
 		return;
 	}
 
 	// 셀 섞기
 	CandidateCells.Sort([](const FIntPoint&, const FIntPoint&) { return FMath::RandBool(); });
 
-	for (int32 i = 0; i < MaxNotesToSpawn; ++i)
+	for (int32 i = 0; i < NoteSpawnCount; ++i)
 	{
 		const FVector WorldPos = GetCellWorldPosition(CandidateCells[i]);
 		if (IsValid(ResourceItemSpawnManagerRef))
@@ -880,7 +846,7 @@ void ARuinsMazeManager::SpawnNotesAfterMaze()
 	//	SpawnManager->SpawnNoteItemsAtLocation(1, WorldPos); // 내부에서 랜덤 Row 선택
 	//}
 
-	LOG_Item_WARNING(TEXT("[Notes] 노트 스폰 완료: %d개 생성됨"), MaxNotesToSpawn);
+	LOG_Item_WARNING(TEXT("[Notes] 노트 스폰 완료: %d개 생성됨"), NoteSpawnCount);
 }
 
 //void ARuinsMazeManager::SpawnTreasureBoxAfterMaze()
@@ -957,6 +923,7 @@ void ARuinsMazeManager::SpawnNotesAfterMaze()
 //
 //	LOG_Art(Log, TEXT("[Chest] 상자 스폰 완료"));
 //}
+
 void ARuinsMazeManager::SpawnTreasureBoxAfterMaze()
 {
 	if (HasAuthority() == false)
@@ -964,29 +931,42 @@ void ARuinsMazeManager::SpawnTreasureBoxAfterMaze()
 		return;
 	}
 
+	if (TreasureBoxSpawnCandidates.Num() == 0)
+	{
+		LOG_Art_WARNING(TEXT("[Chest] TreasureBoxSpawnCandidates가 비어 있습니다. 스폰 생략"));
+		return;
+	}
+
 	TArray<FIntPoint> CandidateCells;
 	for (int32 X = 0; X < MazeSizeX; ++X)
+	{
 		for (int32 Y = 0; Y < MazeSizeY; ++Y)
 		{
 			FIntPoint Cell(X, Y);
 			if (MazeCells[X][Y].bVisited && !PlacedGimmickCells.Contains(Cell))
+			{
 				CandidateCells.Add(Cell);
+			}
 		}
+	}
 
-	if (CandidateCells.Num() < NumTreasureBoxToSpawn)
+	if (CandidateCells.Num() < TreasureBoxSpawnCount)
 	{
-		LOG_Art_WARNING(TEXT("[Chest] 후보 셀 부족 → 요청: %d, 가능: %d"), NumTreasureBoxToSpawn, CandidateCells.Num());
+		LOG_Art_WARNING(TEXT("[Chest] 후보 셀 부족 → 요청: %d, 가능: %d"), TreasureBoxSpawnCount, CandidateCells.Num());
 		return;
 	}
 
 	CandidateCells.Sort([](const FIntPoint&, const FIntPoint&) { return FMath::RandBool(); });
 
-	for (int32 i = 0; i < NumTreasureBoxToSpawn; ++i)
+	for (int32 i = 0; i < TreasureBoxSpawnCount; ++i)
 	{
 		const FVector SpawnLocation = GetCellWorldPosition(CandidateCells[i]) + FVector(0, 0, 50.0f);
 		const int32 RandIndex = FMath::RandRange(0, TreasureBoxSpawnCandidates.Num() - 1);
 		TSubclassOf<AResourceNode> SelectedClass = TreasureBoxSpawnCandidates[RandIndex];
-		if (!SelectedClass) continue;
+		if (SelectedClass == nullptr)
+		{
+			continue;
+		}
 
 		FActorSpawnParameters Params;
 		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;

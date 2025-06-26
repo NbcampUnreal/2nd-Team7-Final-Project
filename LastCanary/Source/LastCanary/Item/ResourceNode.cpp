@@ -2,6 +2,7 @@
 #include "Item/ResourceItem/ResourceItemSpawnManager.h"
 #include "Item/ItemBase.h"
 #include "Inventory/ToolbarInventoryComponent.h"
+#include "DataTable/MonsterDataTable.h"
 #include "Character/BaseCharacter.h"
 #include "Kismet/GameplayStatics.h"
 #include "EnhancedInputSubsystems.h"
@@ -365,6 +366,11 @@ float AResourceNode::GetHarvestProgress() const
 
 void AResourceNode::HandleLootSpawn(APlayerController* Interactor)
 {
+	if (HasAuthority() == false)
+	{
+		return;
+	}
+
 	if (CanHarvest() == false)
 	{
 		return;
@@ -431,6 +437,60 @@ void AResourceNode::HandleLootSpawn(APlayerController* Interactor)
 
 	OnResourceOpened();
 	CurrentHarvestCount = MaxHarvestCount; // 즉시 상호작용 금지 처리
+
+	// 몬스터 스폰: 조건 필터링
+	if (MonsterDataTable && FMath::FRand() <= MonsterSpawnProbability)
+	{
+		TArray<FName> MonsterRowNames = MonsterDataTable->GetRowNames();
+		TArray<const FMonsterDataTable*> Candidates;
+
+		for (const FName& RowName : MonsterRowNames)
+		{
+			const FMonsterDataTable* Row = MonsterDataTable->FindRow<FMonsterDataTable>(RowName, TEXT("ChestMonster"));
+			if (Row == nullptr || Row->MonsterActor == nullptr)
+			{
+				continue;
+			}
+
+			// 현재 맵 태그와 일치하는 경우만
+			if (Row->Level.IsValid())
+			{
+				// 참고: 경로 비교 또는 태그 방식으로 대체 가능
+				const FString LevelName = Row->Level.GetAssetName(); // 예: "RuinsMap"
+				if (LevelName.Contains("Ruins"))
+				{
+					Candidates.Add(Row);
+				}
+			}
+		}
+
+		if (Candidates.Num() > 0)
+		{
+			const FMonsterDataTable* Selected = Candidates[FMath::RandRange(0, Candidates.Num() - 1)];
+
+			// 캐릭터 뒤쪽에서 스폰
+			APawn* Pawn = Interactor ? Interactor->GetPawn() : nullptr;
+			if (Pawn == nullptr)
+			{
+				LOG_Item_WARNING(TEXT("[LootSpawn] 몬스터 스폰 실패 - 인터랙터 없음"));
+				return;
+			}
+
+			const FVector CharacterLocation = Pawn->GetActorLocation();
+			const FVector Backward = -Pawn->GetActorForwardVector();
+			const FVector SpawnLoc = CharacterLocation + Selected->SpawnOffset + (Backward * 150.f);
+
+			FActorSpawnParameters Params;
+			Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+			AActor* Spawned = GetWorld()->SpawnActor<AActor>(Selected->MonsterActor, SpawnLoc, FRotator::ZeroRotator, Params);
+			if (IsValid(Spawned))
+			{
+				Spawned->SetReplicates(true);
+				LOG_Item_WARNING(TEXT("[Loot] 몬스터 스폰 성공: %s (뒤쪽에서 등장)"), *Selected->MonsterName.ToString());
+			}
+		}
+	}
 }
 
 void AResourceNode::Multicast_PlayDestroyEffect_Implementation()

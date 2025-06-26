@@ -157,7 +157,7 @@ private:
 
 	/** 생성할 몬스터 개수 */
 	UPROPERTY(EditAnywhere, Category = "Maze|Monster")
-	int32 MaxMonstersToSpawn = 1;
+	int32 EliteSpawnCount = 1;
 
 	/** 기믹이 실제로 배치된 셀 목록 몬스터 겹치기 방지용 */
 	UPROPERTY()
@@ -171,8 +171,8 @@ private:
 	//-------------------------
 	// 노트 생성
 	//-------------------------
-	UPROPERTY(EditAnywhere, Category = "Notes")
-	int32 MaxNotesToSpawn = 3;
+	UPROPERTY(EditAnywhere, Category = "Maze|Notes")
+	int32 NoteSpawnCount = 3;
 
 	void SpawnNotesAfterMaze();
 
@@ -185,7 +185,7 @@ private:
 
 	/** 생성할 액터 개수 */
 	UPROPERTY(EditAnywhere, Category = "Maze|Chest")
-	int32 NumTreasureBoxToSpawn = 2;
+	int32 TreasureBoxSpawnCount = 2;
 
 	void SpawnTreasureBoxAfterMaze();
 
