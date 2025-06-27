@@ -284,15 +284,25 @@ void ALCBossBanshee::ResetShriek()
 
 void ALCBossBanshee::AddRage(float Amount)
 {
+	// 0) MaxRage 유효성 검사
+	if (MaxRage <= 0.f)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Lich::AddRage] MaxRage 값이 유효하지 않습니다: %f"), MaxRage);
+		return;
+	}
+
 	// 1) Rage 갱신
 	float Mult = bIsBerserk ? RageGainMultiplier_Berserk : 1.f;
 	Rage = FMath::Clamp(Rage + Amount * Mult, 0.f, MaxRage);
 
-	// 2) Blackboard 갱신
-	UpdateBlackboardValues();
+	// 2) 서버 권한이 있을 때만 Blackboard 업데이트
+	if (HasAuthority())
+	{
+		UpdateBlackboardValues();
+	}
 
 	// 3) 광폭화
-	if (Rage >= MaxRage && !bIsBerserk)
+	if (HasAuthority() && Rage >= MaxRage && !bIsBerserk)
 	{
 		StartBerserk(BerserkDuration);
 		UpdateBlackboardValues();

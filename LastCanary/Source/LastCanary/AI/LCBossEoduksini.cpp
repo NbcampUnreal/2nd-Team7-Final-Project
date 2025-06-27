@@ -321,15 +321,23 @@ void ALCBossEoduksini::ApplyRageDelta(float DeltaRage)
 {
 	if (FMath::IsNearlyZero(DeltaRage)) return;
 
+	// MaxRage 유효성 검사
+	if (MaxRage <= 0.f)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Lich::AddRage] MaxRage 값이 유효하지 않습니다: %f"), MaxRage);
+		return;
+	}
+
 	float NewRage = FMath::Clamp(Rage + DeltaRage, 0.f, MaxRage);
 	// (필요하다면 여기서 OnRageChanged 이벤트나 UpdateBlackboardValues() 호출)
 
-	Rage = NewRage;
-
-	UpdateBlackboardValues();
+	if (HasAuthority())
+	{
+		UpdateBlackboardValues();
+	}
 
 	// 자동 Berserk 진입
-	if (Rage >= MaxRage && !bIsBerserk)
+	if (HasAuthority() && Rage >= MaxRage && !bIsBerserk)
 	{
 		StartBerserk(BerserkDuration);
 		UpdateBlackboardValues();

@@ -31,13 +31,32 @@ protected:
     virtual void StartBerserk(float Duration) override;
     virtual void EndBerserk() override;
 
+    virtual void UpdateBlackboardValues() override;
+
     UPROPERTY(EditAnywhere, Category = "Lich|Berserk")
     float BerserkCooldownFactor = 0.5f;
 
     UPROPERTY(EditAnywhere, Category = "Lich|Berserk")
     float BerserkDamageFactor = 1.3f;
 
+    // 원래 스탯 저장용
+    float PrevArcaneBoltCooldown;
+    float PrevSoulBindCooldown;
+    float PrevDeathNovaDamage;
+    float PrevSoulAbsorbDamage;
+
+    // ── 어테뉴에이션 ───────────────
+    UPROPERTY(EditAnywhere, Category = "Lich|Sound")
+    USoundAttenuation* AttackAttenuation;
+
+    UPROPERTY(EditAnywhere, Category = "Lich|Sound")
+    USoundAttenuation* DeathNovaAttenuation;
+
     // ── Sound/Effect FX ───────────────
+    /** Death Nova 사운드 */
+    UPROPERTY(EditAnywhere, Category = "Lich|Sound")
+    USoundBase* DeathNovaSound;
+
     UPROPERTY(EditAnywhere, Category = "Lich|Effects")
     UParticleSystem* ArcaneBoltFX;
 
@@ -94,7 +113,7 @@ protected:
     void OnUndeadDestroyed(AActor* DestroyedActor);
 
     // ── Phantom Vortex 특수기 ─────────────────────────
-/** 팬텀 소용돌이 FX(나이아가라) */
+    /** 팬텀 소용돌이 FX(나이아가라) */
     UPROPERTY(EditAnywhere, Category = "Lich|Abilities")
     UNiagaraSystem* PhantomVortexFX;
 
@@ -130,6 +149,10 @@ protected:
 
     // 스킬 실행 함수
     void PhantomVortex();
+
+    // Phantom Vortex FX/SFX
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_PlayPhantomVortexEffects();
 
     // Tick 마다 데미지 처리
     void TickPhantomVortexDamage();
@@ -169,17 +192,17 @@ protected:
     float SoulBindRange = 1200.f;
 
     UPROPERTY(EditAnywhere, Category = "Lich|Combat")
-    float DeathNovaThreshold = 0.5f;
+    float DeathNovaThreshold = 0.8f;
 
     UPROPERTY(EditAnywhere, Category = "Lich|Combat")
-    float DeathNovaDamage = 50.f;
+    float DeathNovaDamage = 30.f;
 
     /** Death Nova 스턴 지속 시간 */
     UPROPERTY(EditAnywhere, Category = "Lich|Combat")
     float DeathNovaStunDuration = 2.f;
 
     UPROPERTY(EditAnywhere, Category = "Lich|Combat")
-    float DeathNovaRadius = 800.f;
+    float DeathNovaRadius = 1000.f;
 
     UPROPERTY(EditAnywhere, Category = "Lich|Combat")
     float SoulAbsorbDamage = 20.f;
@@ -190,8 +213,23 @@ protected:
 
     /** 공격 함수 */
     void ExecuteArcaneBolt(AActor* Target);
+
     void ExecuteSoulBind(AActor* Target);
+
+    /** Soul Bind FX and SFX multicast */
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_PlaySoulBindEffects(ACharacter* Target);
+
     void ExecuteDeathNova();
+
+    /** 클라이언트에서 Death Nova FX/SFX 재생 */
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_PlayDeathNovaEffects();
+
     void ExecuteSoulAbsorb(AActor* Target);
+
+    /** 클라이언트에 FX/SFX 재생용 RPC */
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_PlaySoulAbsorbEffects();
 	
 };
