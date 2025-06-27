@@ -33,6 +33,7 @@ ALCBaseGimmick::ALCBaseGimmick()
 
 	VisualMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("VisualMesh"));
 	VisualMesh->SetupAttachment(RootComponent);
+	VisualMesh->SetMobility(EComponentMobility::Movable);
 
 	DetectionArea = CreateDefaultSubobject<UBoxComponent>(TEXT("DetectionArea"));
 	DetectionArea->SetupAttachment(RootComponent);
@@ -65,14 +66,14 @@ void ALCBaseGimmick::BeginPlay()
 	if (bEnableActorDetection && IsValid(DetectionArea))
 	{
 		DetectionArea->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-		DetectionArea->OnComponentBeginOverlap.AddDynamic(this, &ALCBaseGimmick::OnActorEnter);
-		DetectionArea->OnComponentEndOverlap.AddDynamic(this, &ALCBaseGimmick::OnActorExit);
+		DetectionArea->OnComponentBeginOverlap.AddUniqueDynamic(this, &ALCBaseGimmick::OnActorEnter);
+		DetectionArea->OnComponentEndOverlap.AddUniqueDynamic(this, &ALCBaseGimmick::OnActorExit);
 	}
 
 	if (IsValid(ActivationTrigger))
 	{
-		ActivationTrigger->OnComponentBeginOverlap.AddDynamic(this, &ALCBaseGimmick::OnTriggerEnter);
-		ActivationTrigger->OnComponentEndOverlap.AddDynamic(this, &ALCBaseGimmick::OnTriggerExit);
+		ActivationTrigger->OnComponentBeginOverlap.AddUniqueDynamic(this, &ALCBaseGimmick::OnTriggerEnter);
+		ActivationTrigger->OnComponentEndOverlap.AddUniqueDynamic(this, &ALCBaseGimmick::OnTriggerExit);
 	}
 
 	if (ActivationType == EGimmickActivationType::ActivateOnConditionMet)

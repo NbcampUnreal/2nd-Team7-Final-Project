@@ -45,12 +45,15 @@
 #include "Character/CustomizationMeshMap.h"
 #include "Inventory/BackpackManager.h"
 #include "Engine/DamageEvents.h"
+#include "AI/BaseBossMonsterCharacter.h"
 
 ABaseCharacter::ABaseCharacter()
 {
 	bIsPossessed = false;
 	bReplicates = true;
 	UseGunBoneforOverlayObjects = true;
+	bAlwaysRelevant = true;
+	NetCullDistanceSquared = FMath::Square(20000.f); // 최대 동기화 거리 증가
 
 
 
@@ -157,6 +160,16 @@ ABaseCharacter::ABaseCharacter()
 	NameWidgetComponent->SetRenderCustomDepth(true);
 	NameWidgetComponent->SetCustomDepthStencilValue(1); // 머티리얼에서 사용할 값
 
+
+	// .cpp - 생성자
+	KickHitBox = CreateDefaultSubobject<UBoxComponent>(TEXT("KickHitBox"));
+	KickHitBox->SetupAttachment(GetMesh(), TEXT("foot_l")); // or "foot_l"
+	KickHitBox->SetBoxExtent(FVector(20, 30, 30));
+	KickHitBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	KickHitBox->SetCollisionObjectType(ECC_WorldDynamic);
+	KickHitBox->SetCollisionResponseToAllChannels(ECR_Ignore);
+	KickHitBox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+
 }
 
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
@@ -193,7 +206,7 @@ void ABaseCharacter::BeginPlay()
 	if (IsValid(ToolbarInventoryComponent))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Inventory Ready"));
-		ToolbarInventoryComponent->OnInventoryUpdated.AddDynamic(this, &ABaseCharacter::HandleInventoryUpdated);
+		ToolbarInventoryComponent->OnInventoryUpdated.AddUniqueDynamic(this, &ABaseCharacter::HandleInventoryUpdated);
 	}
 
 	EnableStencilForAllMeshes(2);
@@ -253,6 +266,9 @@ void ABaseCharacter::BeginPlay()
 
 	//백팩은 커스터마이징과는 다르게 처리 // 기본은 투명
 	SetBackpackMesh(false);
+
+	KickHitBox->OnComponentBeginOverlap.AddUniqueDynamic(this, &ABaseCharacter::OnKickHitBoxOverlap);
+
 }
 
 void ABaseCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -407,6 +423,73 @@ void ABaseCharacter::SetPartMaterial(USkeletalMeshComponent* Component, int32 Ma
 	}
 }
 
+
+void ABaseCharacter::OnKickHitBoxOverlap(UPrimitiveComponent* OverlappedComp,
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex,
+	bool bFromSweep,
+	const FHitResult& SweepResult)
+{
+	// 서버에서만 처리
+	if (!HasAuthority())
+	{
+		return;
+	}
+	const FVector Start = GetActorLocation() + GetActorForwardVector() * 50.f + FVector(0, 0, 50.f);
+	const FVector End = Start; // 박스는 이동하지 않음
+
+	const FVector BoxExtent = FVector(100.f, 100.f, 100.f); // 크기 조절 가능
+	const FRotator Rotation = GetActorRotation();
+
+	TArray<FHitResult> HitResults;
+
+	UKismetSystemLibrary::BoxTraceMultiForObjects(
+		GetWorld(),
+		Start,
+		End,
+		BoxExtent,
+		Rotation,
+		{ UEngineTypes::ConvertToObjectType(ECC_Pawn) },
+		false,
+		{ this },
+		EDrawDebugTrace::None,
+		HitResults,
+		true // ignore self
+	);
+
+	for (const FHitResult& Hit : HitResults)
+	{
+		ACharacter* TargetCharacter = Cast<ACharacter>(Hit.GetActor());
+		if (!TargetCharacter || TargetCharacter == this) continue;
+		if (TargetCharacter->IsA<ABaseBossMonsterCharacter>())
+		{
+			continue;
+		}
+		
+		// 넉백 처리
+		FVector KnockbackDir = GetActorForwardVector();
+		KnockbackDir.Z = 0;
+		KnockbackDir.Normalize();
+
+		const float KnockbackStrength = 1000.f;
+		const float UpwardStrength = 200.f;
+
+		TargetCharacter->LaunchCharacter(KnockbackDir * KnockbackStrength + FVector(0, 0, UpwardStrength), true, true);
+	}
+}
+
+
+
+void ABaseCharacter::StartKickHit()
+{
+	KickHitBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+}
+
+void ABaseCharacter::EndKickHit()
+{
+	KickHitBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}
 
 float ABaseCharacter::GetBrightness()
 {
@@ -2906,7 +2989,7 @@ float ABaseCharacter::CalculateMovementSpeedMultiplier()
 		return Calculated;
 	}
 	float MyWeight = GetTotalCarryingWeight() * MyPlayerState->WeightSlowdownMultiplier;
-	float WeightFactor = FMath::Clamp(1 - MyWeight / MaxWeight, 0.0f, 1.0f);
+	float WeightFactor = FMath::Clamp(1 - MyWeight / MaxWeight, 0.5f, 1.0f);
 	float MyDebuff = CalculateDebuffMultiplier();
 	float DebuffFactor = FMath::Clamp(MyDebuff, 0.0f, 1.0f);
 	Calculated = 1.0f * WeightFactor * DebuffFactor;
@@ -3031,7 +3114,10 @@ void ABaseCharacter::RefreshOverlayObject()
 	{
 		Overlay = AlsOverlayModeTags::PistolOneHanded;
 	}
-
+	if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Tool.Pickaxe")))
+	{
+		Overlay = AlsOverlayModeTags::Barrel;
+	}
 	SetDesiredGait(Overlay);
 	SetOverlayMode(Overlay);
 	RefreshOverlayLinkedAnimationLayer(ItemTag);
@@ -3136,6 +3222,10 @@ void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(FGameplayTag ItemTag)
 	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))
 	{
 		OverlayAnimationInstanceClass = PistolOneHandedAnimationClass;
+	}
+	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Tool.Pickaxe")))
+	{
+		OverlayAnimationInstanceClass = PickaxeAnimationClass;
 	}
 	else
 	{

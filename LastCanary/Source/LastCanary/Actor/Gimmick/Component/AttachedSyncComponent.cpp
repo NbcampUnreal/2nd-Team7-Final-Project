@@ -11,8 +11,8 @@ void UAttachedSyncComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	OnComponentBeginOverlap.AddDynamic(this, &UAttachedSyncComponent::OnOverlapBegin);
-	OnComponentEndOverlap.AddDynamic(this, &UAttachedSyncComponent::OnOverlapEnd);
+	OnComponentBeginOverlap.AddUniqueDynamic(this, &UAttachedSyncComponent::OnOverlapBegin);
+	OnComponentEndOverlap.AddUniqueDynamic(this, &UAttachedSyncComponent::OnOverlapEnd);
 }
 
 void UAttachedSyncComponent::OnOverlapBegin(

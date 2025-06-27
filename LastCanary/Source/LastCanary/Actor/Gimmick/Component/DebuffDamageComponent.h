@@ -22,12 +22,12 @@ enum class EGimmickDebuffType : uint8
 	SlowMovement   UMETA(DisplayName = "Slow Movement")
 };
 
-UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
+UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class LASTCANARY_API UDebuffDamageComponent : public UBoxComponent
 {
 	GENERATED_BODY()
 
-public:	
+public:
 	UDebuffDamageComponent();
 
 protected:
@@ -40,6 +40,9 @@ protected:
 	/** 데미지 타이머 핸들 (DoT용) */
 	UPROPERTY()
 	TMap<AActor*, FTimerHandle> DamageTimers;
+
+	UFUNCTION()
+	void OnTargetDestroyed(AActor* DestroyedActor);
 
 	/** ===== Damage 관련 설정 ===== */
 
@@ -116,4 +119,6 @@ protected:
 	UFUNCTION()
 	void OnOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
 		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 };
