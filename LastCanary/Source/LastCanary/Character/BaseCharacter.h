@@ -530,6 +530,10 @@ public:
 	void Multicast_PlayMontage(UAnimMontage* MontageToPlay, EAnimationType Animtype);
 	void Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay, EAnimationType Animtype);
 
+	UFUNCTION(Client, Reliable)
+	void Client_SetMiningState(bool NewValue);
+	void Client_SetMiningState_Implementation(bool NewValue);
+
 	UPROPERTY()
 	UAnimMontage* CurrentInteractMontage;
 
