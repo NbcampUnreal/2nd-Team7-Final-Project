@@ -6,9 +6,13 @@
 #include "Framework/GameMode/LCRoomGameMode.h"
 #include "Framework/GameState/LCGameState.h"
 #include "Framework/Manager/LCCheatManager.h"
+#include "Framework/GameMode/LCInGameModeBase.h"
+#include "Character/BasePlayerState.h"
 
 #include "UI/UIElement/ResultMenu.h"
+#include "UI/UIElement/ResultWidget.h"
 #include "UI/Popup/PopupLevelInfo.h"
+#include "UI/UIElement/VideoPlayWidget.h"
 
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -44,6 +48,11 @@ void ALCInGamePlayerController::BeginPlay()
 		}
 	}
 
+	if (LCUIManager)
+	{
+		LCUIManager->ShowLoadingLevel();
+	}
+
 }
 
 void ALCInGamePlayerController::Client_ShowLevelInfo_Implementation(int32 MapId)
@@ -63,23 +72,68 @@ void ALCInGamePlayerController::Client_ShowLevelInfo_Implementation(int32 MapId)
 
 void ALCInGamePlayerController::Client_OnGameEnd_Implementation()
 {
-
+	LCUIManager->ShowGameEndWidget();
 }
 
-void ALCInGamePlayerController::Client_ShowGameEndUI_Implementation()
+void ALCInGamePlayerController::Client_ShowResult_Implementation()
 {
 
+	LCUIManager->ShowResultMenu();
 }
 
-void ALCInGamePlayerController::Server_MarkPlayerAsEscaped_Implementation()
+void ALCInGamePlayerController::Client_ShowLoseVideo_Implementation()
 {
-	LOG_Frame_WARNING(TEXT("== Server_MarkPlayerAsEscaped_Implementation Called =="));
-
-	if (GetWorld()->GetGameState<ALCGameState>())
+	if (LoseWidgetClass && !LoseWidgetInstance)
 	{
-		GetWorld()->GetGameState<ALCGameState>()->MarkPlayerAsEscaped(PlayerState);
+		LoseWidgetInstance = CreateWidget<UVideoPlayWidget>(this, LoseWidgetClass);
+		if (LoseWidgetInstance)
+		{
+			LoseWidgetInstance->AddToViewport(100);
+
+			LoseWidgetInstance->OnVideoEnded.BindLambda
+			(
+				[this]()
+				{
+					LOG_Frame_WARNING(TEXT("On Video Play Finished!!"));
+					LoseWidgetInstance = nullptr;
+
+					LCUIManager->ShowGameOverWidget();
+				}
+			);
+		}
 	}
 }
+
+void ALCInGamePlayerController::Client_ShowEscapeGateVideo_Implementation(UDataTable* CheckListTable)
+{
+	//this->StartCheckList(CheckListTable);
+	if (EscapeGateWidgetClass && !EscapeGateWidgetInstance)
+	{
+		EscapeGateWidgetInstance = CreateWidget<UVideoPlayWidget>(this, EscapeGateWidgetClass);
+		if (EscapeGateWidgetInstance)
+		{
+			EscapeGateWidgetInstance->AddToViewport(100);
+
+			EscapeGateWidgetInstance->OnVideoEnded.BindLambda
+			(
+				[this, CheckListTable]()
+				{
+					LOG_Frame_WARNING(TEXT("On Video Play Finished!!"));
+					EscapeGateWidgetInstance = nullptr;
+
+					this->StartCheckList(CheckListTable);
+				}
+			);
+		}
+	}
+}
+
+void ALCInGamePlayerController::StartCheckList(UDataTable* CheckListTable)
+{
+	LOG_Frame_WARNING(TEXT("Start New CheckList : %s"), *this->PlayerState->GetPlayerName());
+	LCUIManager->ShowNewChecklistWidget(CheckListTable);
+}
+
 
 void ALCInGamePlayerController::Client_StartChecklist_Implementation(AChecklistManager* ChecklistManager)
 {

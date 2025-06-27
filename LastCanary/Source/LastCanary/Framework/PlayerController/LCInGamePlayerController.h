@@ -2,12 +2,15 @@
 
 #include "CoreMinimal.h"
 #include "Framework/Manager/ChecklistManager.h"
+#include "Framework/GameInstance/LCGameManager.h"
 #include "Character/BasePlayerController.h"
 #include "LCInGamePlayerController.generated.h"
 
 class AChecklistManager;
 class UPopupLevelInfo;
 class UInputAction;
+class UVideoPlayWidget;
+class ULoseWidget;
 UCLASS()
 class LASTCANARY_API ALCInGamePlayerController : public ABasePlayerController
 {
@@ -30,16 +33,32 @@ public:
 	UPopupLevelInfo* PopupLevelInfoInstance;
 
 	UFUNCTION(Client, Reliable)
-	void Client_OnGameEnd();
-	void Client_OnGameEnd_Implementation();
+	void Client_ShowLoseVideo();
+	void Client_ShowLoseVideo_Implementation();
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UVideoPlayWidget> LoseWidgetClass;
+	UVideoPlayWidget* LoseWidgetInstance;
 	
 	UFUNCTION(Client, Reliable)
-	void Client_ShowGameEndUI();
-	void Client_ShowGameEndUI_Implementation();
+	void Client_ShowEscapeGateVideo(UDataTable* CheckListTable);
+	void Client_ShowEscapeGateVideo_Implementation(UDataTable* CheckListTable);
 
-	UFUNCTION(Server, Reliable)
-	void Server_MarkPlayerAsEscaped();
-	void Server_MarkPlayerAsEscaped_Implementation();
+private:
+	void StartCheckList(UDataTable* CheckListTable);
+
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UVideoPlayWidget> EscapeGateWidgetClass;
+	UVideoPlayWidget* EscapeGateWidgetInstance;
+
+	UFUNCTION(Client, Reliable)
+	void Client_OnGameEnd();
+	void Client_OnGameEnd_Implementation();
+
+	UFUNCTION(Client, Reliable)
+	void Client_ShowResult();
+	void Client_ShowResult_Implementation();
 
 	UFUNCTION(Client, Reliable)
 	void Client_StartChecklist(AChecklistManager* ChecklistManager);
