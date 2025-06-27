@@ -65,9 +65,13 @@ ABaseCharacter::ABaseCharacter()
 	CustomGloveMesh->SetupAttachment(GetMesh());
 	CustomGloveMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
 
-	CustomJacketMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomJacketMesh"));
-	CustomJacketMesh->SetupAttachment(GetMesh());
-	CustomJacketMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
+	CustomJacketMesh_OwnerNoSee = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomJacketMesh_OwnerNoSee"));
+	CustomJacketMesh_OwnerNoSee->SetupAttachment(GetMesh());
+	CustomJacketMesh_OwnerNoSee->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
+
+	CustomJacketMesh_OwnerSee = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomJacketMesh_OwnerSee"));
+	CustomJacketMesh_OwnerSee->SetupAttachment(GetMesh());
+	CustomJacketMesh_OwnerSee->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
 
 	CustomPantsMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomPantsMesh"));
 	CustomPantsMesh->SetupAttachment(GetMesh());
@@ -334,7 +338,8 @@ void ABaseCharacter::ApplyCustomization(const UCustomizationMeshMap* CharacterMe
 	USkeletalMesh* HeadSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->DefaultHeadMeshes, HeadId);
 	USkeletalMesh* HelmetSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->HelmetMeshes, HelmetId);
 	USkeletalMesh* GloveSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->GloveMeshes, GloveId);
-	USkeletalMesh* JacketSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->JacketMeshes, JacketId);
+	USkeletalMesh* JacketSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->JacketMeshes_OwnerSee, JacketId);
+	USkeletalMesh* JacketSkeletalMesh_OwnerNosee = CharacterMeshData->GetMeshByID(CharacterMeshData->JacketMeshes, JacketId);
 	USkeletalMesh* PantsSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->PantsMeshes, PantsId);
 	USkeletalMesh* BeltsSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->BeltsMeshes, BeltsId);
 	USkeletalMesh* ArmorSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->ArmorMeshes, ArmorId);
@@ -344,7 +349,8 @@ void ABaseCharacter::ApplyCustomization(const UCustomizationMeshMap* CharacterMe
 	SetPartMesh(CustomHeadMesh, HeadSkeletalMesh);
 	SetPartMesh(CustomHelmetMesh, HelmetSkeletalMesh);
 	SetPartMesh(CustomGloveMesh, GloveSkeletalMesh);
-	SetPartMesh(CustomJacketMesh, JacketSkeletalMesh);
+	SetPartMesh(CustomJacketMesh_OwnerNoSee, JacketSkeletalMesh_OwnerNosee);
+	SetPartMesh(CustomJacketMesh_OwnerSee, JacketSkeletalMesh);
 	SetPartMesh(CustomPantsMesh, PantsSkeletalMesh);
 	SetPartMesh(CustomBeltsMesh, BeltsSkeletalMesh);
 	SetPartMesh(CustomArmorMesh, ArmorSkeletalMesh);
@@ -381,7 +387,8 @@ void ABaseCharacter::ApplyCustomization(const UCustomizationMeshMap* CharacterMe
 	SetPartMaterial(CustomHeadMesh, 0, HeadMat);
 	SetPartMaterial(CustomHelmetMesh, 0, HelmetMat);
 	SetPartMaterial(CustomGloveMesh, 0, GloveMat);
-	SetPartMaterial(CustomJacketMesh, 0, JacketMat);
+	SetPartMaterial(CustomJacketMesh_OwnerNoSee, 0, JacketMat);
+	SetPartMaterial(CustomJacketMesh_OwnerSee, 0, JacketMat);
 	SetPartMaterial(CustomPantsMesh, 0, PantsMat);
 	SetPartMaterial(CustomBeltsMesh, 0, BeltsMat);
 	SetPartMaterial(CustomArmorMesh, 1, ArmorMat);
@@ -2697,10 +2704,12 @@ float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageE
 	float MaxHP = MyPlayerState->MaxHP;
 	float CalCulatedHP = FMath::Clamp(CurrentHP - FinalDamage, 0.0f, MaxHP);
 	MyPlayerState->SetHP(CalCulatedHP);
+	//실제 데미지가 들어왔다면
 	if (FinalDamage > 0.0f)
 	{
 		Client_PlayHitSound();
 		MyPlayerState->Client_PlayDamageUI();
+		ActivateDamageCooldown(); // 0.5초간 무적
 	}
 	LOG_Char_WARNING(TEXT("Current HP : %f"), CalCulatedHP);
 	if (CalCulatedHP <= 0.f)
@@ -2708,6 +2717,27 @@ float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageE
 		HandlePlayerDeath(); // 사망 처리
 	}
 	return DamageAmount;
+}
+
+void ABaseCharacter::ActivateDamageCooldown()
+{
+	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
+	if (!IsValid(MyPlayerState))
+	{
+		return;
+	}
+	MyPlayerState->bInfiniteHP = true;
+	GetWorld()->GetTimerManager().SetTimer(InvincibilityTimerHandle, this, &ABaseCharacter::ResetInvincibility, InvincibilityTime, false);
+}
+
+void ABaseCharacter::ResetInvincibility()
+{
+	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
+	if (!IsValid(MyPlayerState))
+	{
+		return;
+	}
+	MyPlayerState->bInfiniteHP = false;
 }
 
 void ABaseCharacter::GetFallDamage(float Velocity)

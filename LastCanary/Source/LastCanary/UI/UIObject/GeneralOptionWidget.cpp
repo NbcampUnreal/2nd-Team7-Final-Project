@@ -12,6 +12,7 @@
 
 #include "SaveGame/LCLocalPlayerSaveGame.h"
 #include "Character/BasePlayerController.h"
+#include "GameFramework/GameUserSettings.h"
 
 #include "LastCanary.h"
 
@@ -284,9 +285,29 @@ void UGeneralOptionWidget::PopulateResolutionOptions()
 	};
 
 	FIntPoint CurrentRes = { 1920, 1080 };
+
+	// 로그: 초기 해상도
+	UE_LOG(LogTemp, Log, TEXT("[해상도] 초기값: %d x %d"), CurrentRes.X, CurrentRes.Y);
+
 	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
 	{
-		CurrentRes = OptionManager->ScreenResolution;
+		UE_LOG(LogTemp, Log, TEXT("[해상도] OptionManager 존재함"));
+
+		if (UGameUserSettings* Settings = GEngine->GetGameUserSettings())
+		{
+			CurrentRes = Settings->GetLastConfirmedScreenResolution();
+			OptionManager->ScreenResolution = CurrentRes;
+			UE_LOG(LogTemp, Log, TEXT("[해상도] GameUserSettings에서 불러옴: %d x %d"), CurrentRes.X, CurrentRes.Y);
+		}
+		else
+		{
+			CurrentRes = OptionManager->ScreenResolution;
+			UE_LOG(LogTemp, Warning, TEXT("[해상도] GameUserSettings가 없음. OptionManager에서 사용: %d x %d"), CurrentRes.X, CurrentRes.Y);
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[해상도] OptionManager가 존재하지 않음"));
 	}
 
 	FString CurrentResStr = FString::Printf(TEXT("%d x %d"), CurrentRes.X, CurrentRes.Y);
