@@ -610,10 +610,15 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 		{
 			SpringArm->TargetArmLength = 200.0f;
 		}
-		
+		StopGunAutoFire();
 		return;
 	}
-
+	if (bIsMining)
+	{
+		FRotator ControlRot = GetControlRotation();
+		FRotator NewRot = FRotator(0.f, ControlRot.Yaw, 0.f);
+		SetActorRotation(NewRot);
+	}
 	// 전환 중일 때만 부드러운 이동 처리
 	if (bIsTransitioning)
 	{
@@ -1153,6 +1158,9 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 	{
 		return;
 	}
+
+	StopGunAutoFire();
+
 	if (MyPlayerState->SprintInputMode == EInputMode::Hold)
 	{
 		//입력이 떼지는 거면 어차피 뛰는 거 아님..
@@ -1213,6 +1221,8 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 		}
 	}
 }
+
+
 
 void ABaseCharacter::Handle_Walk(const FInputActionValue& ActionValue)
 {
@@ -1918,6 +1928,7 @@ void ABaseCharacter::Multicast_CancelInteraction_Implementation()
 	}
 	bIsPlayingInteractionMontage = false;
 	bIsPlayingAnimation = false;
+	bIsMining = false;
 	AnimInstance->Montage_Stop(0.2f, CurrentInteractMontage); // 부드럽게 블렌드 아웃
 }
 
@@ -1989,6 +2000,7 @@ void ABaseCharacter::UseItemAfterPlayMontage(AItemBase* EquippedItem)
 	else if (CurrentUsingItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Tool.Pickaxe")))
 	{
 		MontageToPlay = PickAxeMontage;
+		bIsMining = true;
 	}
 	else
 	{
@@ -2041,6 +2053,7 @@ void ABaseCharacter::CancelUseItem()
 	AnimInstance->Montage_Stop(0.2f, CurrentUseItemMontage); // 부드럽게 블렌드 아웃
 	bIsPlayingUseItemMontage = false;
 	bIsPlayingAnimation = false;
+	bIsMining = false;
 	Server_CancelUseItem();
 }
 
@@ -3447,6 +3460,10 @@ void ABaseCharacter::CancelUseItem(AItemBase* Item)
 	{
 		Item->UseItem();
 	}
+	if (ItemGameplayTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Tool.Pickaxe")))
+	{
+		CancelInteraction();
+	}
 	AGunBase* Rifle = Cast<AGunBase>(Item);
 	if (!IsValid(Rifle))
 	{
@@ -3457,6 +3474,18 @@ void ABaseCharacter::CancelUseItem(AItemBase* Item)
 		Rifle->StopAutoFire();
 
 	}	// 연사 리셋 타이머
+}
+
+void ABaseCharacter::StopGunAutoFire()
+{
+	AGunBase* Rifle = Cast<AGunBase>(ToolbarInventoryComponent->GetCurrentEquippedItem());
+	if (IsValid(Rifle))
+	{
+		if (Rifle->CurrentFireMode == EFireMode::FullAuto)
+		{
+			Rifle->StopAutoFire();
+		}
+	}
 }
 
 void ABaseCharacter::ToggleInventory()

@@ -507,6 +507,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
 	UAnimMontage* PickAxeMontage;
 
+	void StopGunAutoFire();
+
 
 	FTimerHandle DroneTrackingTimerHandle;
 	void StartTrackingDrone();
@@ -566,7 +568,7 @@ public:
 	void Multicast_CancelUseItem_Implementation();
 
 	bool bIsPlayingUseItemMontage = false;
-
+	bool bIsMining = false;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
 	UAnimMontage* UsingBandageMontage;
 
