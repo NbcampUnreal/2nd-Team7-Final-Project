@@ -56,6 +56,8 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Boss|Berserk")
     virtual void EnterBerserkState();
 
+    virtual void UpdateBlackboardValues();
+
 protected:
     float LastNormalTime = -FLT_MAX;
     float LastStrongTime = -FLT_MAX;
@@ -135,6 +137,17 @@ protected:
 
     /** 스캐너를 위한 스텐실 설정 */
     void EnableStencilForAllMeshes(int32 StencilValue);
+
+    // 애니메이션 초기화용 타이머 핸들
+    FTimerHandle ResetAnimTimerHandle;
+
+    // 애니메이션 초기화 함수
+    UFUNCTION()
+    void ResetAnimationState();
+
+    // 반복 호출 간격 (초)
+    UPROPERTY(EditAnywhere, Category = "Animation")
+    float ResetAnimInterval = 10.f;
 
     // Replication 설정
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;

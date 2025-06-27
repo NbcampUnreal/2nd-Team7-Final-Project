@@ -1,5 +1,7 @@
 ﻿#include "AI/BaseBossMonsterCharacter.h"
 #include "Animation/AnimInstance.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "PhysicsEngine/PhysicsAsset.h"
 #include "Net/UnrealNetwork.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
@@ -17,6 +19,18 @@ void ABaseBossMonsterCharacter::BeginPlay()
     // ── 데칼 풀 초기화 ────────────────────────────────────────────
     RemainingCommonDecals = CommonDecalClasses;
     RemainingUniqueDecals = UniqueDecalClasses;
+
+    // 1초마다 애니메이션 초기화 실행 (true: 반복)
+    if (UWorld* World = GetWorld())
+    {
+        World->GetTimerManager().SetTimer(
+            ResetAnimTimerHandle,
+            this,
+            &ABaseBossMonsterCharacter::ResetAnimationState,
+            ResetAnimInterval,
+            true
+        );
+    }
 
     // (1) 서버 권한이 있고, 최소 하나씩 남아 있으면 타이머 예약
     if (HasAuthority() &&
@@ -54,6 +68,45 @@ void ABaseBossMonsterCharacter::EnterBerserkState()
         return;
 
     StartBerserk();
+}
+
+void ABaseBossMonsterCharacter::UpdateBlackboardValues()
+{
+
+}
+
+void ABaseBossMonsterCharacter::ResetAnimationState()
+{
+    USkeletalMeshComponent* SkelMesh = GetMesh();
+    if (!SkelMesh)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[ResetAnimationState] SkeletalMeshComponent가 없습니다"));
+        return;
+    }
+
+    // 몽타주 정지
+    if (UAnimInstance* AnimInst = SkelMesh->GetAnimInstance())
+    {
+        AnimInst->StopAllMontages(0.f);
+    }
+
+    // 본 포즈 리셋
+    SkelMesh->RefreshBoneTransforms();
+    SkelMesh->TickAnimation(0.f, false);
+
+    // Cloth 시뮬레이션을 다음 업데이트에서 Teleport & Reset 모드로 강제
+    SkelMesh->ForceClothNextUpdateTeleportAndReset();
+
+    // Physics Asset 재생성
+    SkelMesh->DestroyPhysicsState();
+    SkelMesh->CreatePhysicsState();
+
+    // 렌더·바운드 갱신
+    SkelMesh->UpdateBounds();
+    SkelMesh->MarkRenderTransformDirty();
+    SkelMesh->MarkRenderDynamicDataDirty();
+
+    UE_LOG(LogTemp, Log, TEXT("[ResetAnimationState] 메시·Cloth·Physics 상태 초기화 완료"));
 }
 
 
@@ -127,6 +180,14 @@ void ABaseBossMonsterCharacter::Multicast_EndBerserk_Implementation()
 
 void ABaseBossMonsterCharacter::SpawnRandomClue()
 {
+    // 0) world 널 체크
+    UWorld* World = GetWorld();
+    if (!World)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[SpawnRandomClue] World is null"));
+        return;
+    }
+
     // ─── 공통 스폰 파라미터 ──────────────────────────────────────────
     FActorSpawnParameters SpawnParams;
     SpawnParams.Owner = this;
@@ -199,6 +260,14 @@ void ABaseBossMonsterCharacter::SpawnRandomClue()
 
 void ABaseBossMonsterCharacter::DealDamageInRange(float DamageAmount)
 {
+    // 0) World 유효성 검사
+    UWorld* World = GetWorld();
+    if (!World)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[DealDamageInRange] World is null"));
+        return;
+    }
+
     FVector Origin = GetActorLocation();
     float Radius = AttackRange;
 

@@ -14,828 +14,983 @@
 
 ALCBossEoduksini::ALCBossEoduksini()
 {
-    PrimaryActorTick.bCanEverTick = true;
-    bReplicates = true;
+	PrimaryActorTick.bCanEverTick = true;
+	bReplicates = true;
 
-    // Darkness sphere
-    DarknessSphere = CreateDefaultSubobject<USphereComponent>(TEXT("DarknessSphere"));
-    DarknessSphere->SetupAttachment(GetRootComponent());
-    DarknessSphere->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
-    DarknessSphere->SetSphereRadius(DarknessRadius);
-    DarknessSphere->SetGenerateOverlapEvents(false);
+	// Darkness sphere
+	DarknessSphere = CreateDefaultSubobject<USphereComponent>(TEXT("DarknessSphere"));
+	check(DarknessSphere);
+	DarknessSphere->SetupAttachment(GetRootComponent());
+	DarknessSphere->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
+	DarknessSphere->SetSphereRadius(DarknessRadius);
+	DarknessSphere->SetGenerateOverlapEvents(false);
 
-    DarknessSphere->OnComponentBeginOverlap.AddDynamic(this, &ALCBossEoduksini::OnDarknessSphereBeginOverlap);
-    DarknessSphere->OnComponentEndOverlap.AddDynamic(this, &ALCBossEoduksini::OnDarknessSphereEndOverlap);
+	DarknessSphere->OnComponentBeginOverlap.AddDynamic(this, &ALCBossEoduksini::OnDarknessSphereBeginOverlap);
+	DarknessSphere->OnComponentEndOverlap.AddDynamic(this, &ALCBossEoduksini::OnDarknessSphereEndOverlap);
 
 }
 
 void ALCBossEoduksini::BeginPlay()
 {
-    Super::BeginPlay();
+	Super::BeginPlay();
 
-    DarknessSphere->SetGenerateOverlapEvents(true);
+	if (DarknessSphere)
+	{
+		DarknessSphere->SetGenerateOverlapEvents(true);
+	}
 
 }
 
 void ALCBossEoduksini::Tick(float DeltaSeconds)
 {
-    Super::Tick(DeltaSeconds);
+	Super::Tick(DeltaSeconds);
 
-    if (!HasAuthority()) return;
+	// 1) 서버 권한 & 월드 체크
+	if (!HasAuthority() || !GetWorld())
+	{
+		return;
+	}
 
-    UpdateRageAndScale(DeltaSeconds);
+	// 2) MovementComponent 널 체크
+	UCharacterMovementComponent* MoveComp = GetCharacterMovement();
+	if (!MoveComp)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Eoduksini] Missing CharacterMovementComponent"));
+		return;
+	}
+
+	UpdateRageAndScale(DeltaSeconds);
 
 
-    if (bIsBerserk && Rage >= DarknessRageThreshold && !bDarknessActive)
-    {
-        TryTriggerDarkness();
-    }
+	if (bIsBerserk && Rage >= DarknessRageThreshold && !bDarknessActive)
+	{
+		TryTriggerDarkness();
+	}
 
-    // (1) 특수 액션: Night Terror
-    if (!bHasUsedNightTerror && Rage >= NightTerrorRageThreshold)
-    {
-        bHasUsedNightTerror = true;
-        UE_LOG(LogTemp, Log, TEXT("[Eoduksini] NightTerror 발동"));
-        NightTerror();
-    }
+	// (1) 특수 액션: Night Terror
+	if (!bHasUsedNightTerror && Rage >= NightTerrorRageThreshold)
+	{
+		bHasUsedNightTerror = true;
+		UE_LOG(LogTemp, Log, TEXT("[Eoduksini] NightTerror 발동"));
+		NightTerror();
+	}
 
-    // update blackboard
-    if (auto* AICon = Cast<ALCBaseBossAIController>(GetController()))
-    {
-        if (auto* BB = AICon->GetBlackboardComponent())
-        {
-            BB->SetValueAsFloat(TEXT("RagePercent"), Rage / MaxRage);
-            BB->SetValueAsBool(TEXT("IsBerserkMode"), bIsBerserk);
-        }
-    }
+	UpdateBlackboardValues();
+}
+
+void ALCBossEoduksini::UpdateBlackboardValues()
+{
+	// AI Controller 및 Blackboard 유효성 검증
+	AAIController* AICon = Cast<ALCBaseBossAIController>(GetController());
+	if (!AICon) return;
+
+	UBlackboardComponent* BB = AICon->GetBlackboardComponent();
+	if (!BB) return;
+
+	BB->SetValueAsFloat(TEXT("RagePercent"), Rage / (MaxRage > 0.f ? MaxRage : 1.f));
+	BB->SetValueAsBool(TEXT("IsBerserkMode"), bIsBerserk);
 }
 
 void ALCBossEoduksini::EnterBerserkState()
 {
-    Super::EnterBerserkState();
-    UE_LOG(LogTemp, Warning, TEXT("[Eoduksini] Enter Berserk State"));
+	Super::EnterBerserkState();
+	UE_LOG(LogTemp, Warning, TEXT("[Eoduksini] Enter Berserk State"));
 
 }
 
 void ALCBossEoduksini::StartBerserk()
 {
-    // 1) 먼저 원본 값 저장
-    if (auto* MoveComp = GetCharacterMovement())
-    {
-        PrevMaxWalkSpeed = MoveComp->MaxWalkSpeed;
-        MoveComp->MaxWalkSpeed *= BerserkMovementMultiplier;
-    }
+	// 1) 먼저 원본 값 저장
+	if (auto* MoveComp = GetCharacterMovement())
+	{
+		PrevMaxWalkSpeed = MoveComp->MaxWalkSpeed;
+		MoveComp->MaxWalkSpeed *= BerserkMovementMultiplier;
+	}
 
-    PrevNormalAttackCooldown = NormalAttackCooldown;
-    PrevStrongAttackCooldown = StrongAttackCooldown;
-    NormalAttackCooldown *= BerserkCooldownMultiplier;
-    StrongAttackCooldown *= BerserkCooldownMultiplier;
+	PrevNormalAttackCooldown = NormalAttackCooldown;
+	PrevStrongAttackCooldown = StrongAttackCooldown;
+	NormalAttackCooldown *= BerserkCooldownMultiplier;
+	StrongAttackCooldown *= BerserkCooldownMultiplier;
 
-    Super::StartBerserk();
+	Super::StartBerserk();
 }
 
 void ALCBossEoduksini::StartBerserk(float Duration)
 {
-    if (auto* MoveComp = GetCharacterMovement())
-    {
-        PrevMaxWalkSpeed = MoveComp->MaxWalkSpeed;
-        MoveComp->MaxWalkSpeed *= BerserkMovementMultiplier;
-    }
+	UWorld* World = GetWorld();
+	if (!World)
+		return;
 
-    PrevNormalAttackCooldown = NormalAttackCooldown;
-    PrevStrongAttackCooldown = StrongAttackCooldown;
-    NormalAttackCooldown *= BerserkCooldownMultiplier;
-    StrongAttackCooldown *= BerserkCooldownMultiplier;
+	// 1) 이동 속도 배율 조정
+	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+	{
+		PrevMaxWalkSpeed = MoveComp->MaxWalkSpeed;
+		MoveComp->MaxWalkSpeed *= BerserkMovementMultiplier;
+	}
 
-    Super::StartBerserk(Duration);
+	// 2) 쿨다운 배율 조정
+	PrevNormalAttackCooldown = NormalAttackCooldown;
+	PrevStrongAttackCooldown = StrongAttackCooldown;
+	NormalAttackCooldown *= BerserkCooldownMultiplier;
+	StrongAttackCooldown *= BerserkCooldownMultiplier;
+
+	// 3) 부모 클래스 호출 (Duration 기반 berserk 타이머 설정 등)
+	Super::StartBerserk(Duration);
 
 }
 
 void ALCBossEoduksini::EndBerserk()
 {
-    Super::EndBerserk();
-    UE_LOG(LogTemp, Warning, TEXT("[Eoduksini] Exit Berserk State"));
+	UWorld* World = GetWorld();
+	if (!World)
+		return;
 
-    // 3) 원래 값으로 복구
-    if (auto* MoveComp = GetCharacterMovement())
-    {
-        MoveComp->MaxWalkSpeed = PrevMaxWalkSpeed;
-    }
+	// 1) 부모 클래스 종료 처리
+	Super::EndBerserk();
+	UE_LOG(LogTemp, Warning, TEXT("[Eoduksini] Exit Berserk State"));
 
-    NormalAttackCooldown = PrevNormalAttackCooldown;
-    StrongAttackCooldown = PrevStrongAttackCooldown;
+	// 2) 이동 속도 복원
+	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+	{
+		MoveComp->MaxWalkSpeed = PrevMaxWalkSpeed;
+	}
+
+	// 3) 쿨다운 복원
+	NormalAttackCooldown = PrevNormalAttackCooldown;
+	StrongAttackCooldown = PrevStrongAttackCooldown;
 
 }
 
 void ALCBossEoduksini::OnRep_IsBerserk()
 {
-    Super::OnRep_IsBerserk();
+	Super::OnRep_IsBerserk();
 
-    if (bIsBerserk)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("[Eoduksini] OnRep → Berserk Start (Client)"));
+	USceneComponent* Root = GetRootComponent();
+	if (bIsBerserk)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Eoduksini] OnRep → Berserk Start (Client)"));
 
-        // FX 스폰하고 저장
-        if (BerserkEffectFX)
-        {
-            ActiveBerserkEffect = UNiagaraFunctionLibrary::SpawnSystemAttached(
-                BerserkEffectFX,
-                GetRootComponent(),
-                NAME_None,
-                FVector::ZeroVector,
-                FRotator::ZeroRotator,
-                EAttachLocation::KeepRelativeOffset,
-                true
-            );
-        }
-        // Sound 스폰하고 저장
-        if (BerserkSound)
-        {
-            ActiveBerserkAudio = UGameplayStatics::SpawnSoundAttached(
-                BerserkSound,
-                GetRootComponent()
-            );
-        }
-    }
-    else
-    {
-        UE_LOG(LogTemp, Warning, TEXT("[Eoduksini] OnRep → Berserk End (Client)"));
+		// 1) FX 스폰
+		if (BerserkEffectFX && Root)
+		{
+			ActiveBerserkEffect = UNiagaraFunctionLibrary::SpawnSystemAttached(
+				BerserkEffectFX,
+				Root,
+				NAME_None,
+				FVector::ZeroVector,
+				FRotator::ZeroRotator,
+				EAttachLocation::KeepRelativeOffset,
+				true
+			);
+		}
 
-        // 보유 중인 FX 제거
-        if (ActiveBerserkEffect)
-        {
-            ActiveBerserkEffect->DestroyComponent();
-            ActiveBerserkEffect = nullptr;
-        }
-        // 보유 중인 Audio 중지
-        if (ActiveBerserkAudio)
-        {
-            ActiveBerserkAudio->Stop();
-            ActiveBerserkAudio = nullptr;
-        }
-    }
+		// 2) Sound 스폰
+		if (BerserkSound && Root)
+		{
+			ActiveBerserkAudio = UGameplayStatics::SpawnSoundAttached(
+				BerserkSound,
+				Root,
+				NAME_None,
+				FVector::ZeroVector,
+				EAttachLocation::KeepRelativeOffset,
+				true
+			);
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Eoduksini] OnRep → Berserk End (Client)"));
+
+		// FX 정리
+		if (ActiveBerserkEffect)
+		{
+			ActiveBerserkEffect->DestroyComponent();
+			ActiveBerserkEffect = nullptr;
+		}
+
+		// Audio 정리
+		if (ActiveBerserkAudio)
+		{
+			ActiveBerserkAudio->Stop();
+			ActiveBerserkAudio = nullptr;
+		}
+	}
 }
 
 // --- Darkness overlap handlers ---
 
 void ALCBossEoduksini::OnDarknessSphereBeginOverlap(
-    UPrimitiveComponent* OverlappedComp,
-    AActor* OtherActor,
-    UPrimitiveComponent* OtherComp,
-    int32 OtherBodyIndex,
-    bool bFromSweep,
-    const FHitResult& SweepResult)
+	UPrimitiveComponent* OverlappedComp,
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex,
+	bool bFromSweep,
+	const FHitResult& SweepResult)
 {
-    if (bDarknessActive)
-    {
-        return;  // 어둠 상태가 활성화된 뒤에만 처리
-    }
+	if (bDarknessActive || !OtherActor)
+	{
+		return;  // 어둠 상태가 활성화된 뒤에만 처리
+	}
 
-    // ① OtherActor를 Pawn으로 캐스트
-    APawn* Pawn = Cast<APawn>(OtherActor);
-    if (!Pawn)
-    {
-        return;
-    }
+	// ① OtherActor를 Pawn으로 캐스트
+	APawn* Pawn = Cast<APawn>(OtherActor);
+	if (!Pawn)
+	{
+		return;
+	}
 
-    // ② Pawn에서 PlayerController를 얻음
-    APlayerController* PC = Cast<APlayerController>(Pawn->GetController());
-    if (!PC)
-    {
-        return;
-    }
-    if (!PC->IsLocalController())
-    {
-        return;
-    }
+	// ② Pawn에서 PlayerController를 얻음
+	APlayerController* PC = Cast<APlayerController>(Pawn->GetController());
+	if (!PC || !PC->IsLocalController())
+	{
+		return;
+	}
 
-    // ③ 이미 어둠 효과가 적용된 플레이어는 무시
-    if (DarkenedPlayers.Contains(PC))
-    {
-        UE_LOG(LogTemp, Warning, TEXT("[OverlapBegin] 이미 DarkenedPlayers에 있음 → 리턴"));
-        return;
-    }
+	// ③ 이미 어둠 효과가 적용된 플레이어는 무시
+	if (DarkenedPlayers.Contains(PC))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[OverlapBegin] 이미 DarkenedPlayers에 있음 → 리턴"));
+		return;
+	}
 
-    // Fade In 적용
-    PC->PlayerCameraManager->StartCameraFade(
-        0.f, DarknessFadeAlpha,
-        FadeDuration, FLinearColor::Black,
-        false, true
-    );
+	// Fade In 적용
+	if (PC->PlayerCameraManager)
+	{
+		PC->PlayerCameraManager->StartCameraFade(0.f, DarknessFadeAlpha, FadeDuration, FLinearColor::Black, false, true);
+	}
 
-    DarkenedPlayers.Add(PC);
-    UE_LOG(LogTemp, Log, TEXT("[OverlapBegin] DarkenedPlayers에 추가: %s"), *PC->GetName());
+	DarkenedPlayers.Add(PC);
 }
 
 void ALCBossEoduksini::OnDarknessSphereEndOverlap(
-    UPrimitiveComponent* OverlappedComp,
-    AActor* OtherActor,
-    UPrimitiveComponent* OtherComp,
-    int32 OtherBodyIndex)
+	UPrimitiveComponent* OverlappedComp,
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex)
 {
-    // 전역 어둠 중이라면 로컬 어둠 해제 무시
-    if (bDarknessActive)
-    {
-        return;
-    }
+	// 전역 어둠 중이라면 로컬 어둠 해제 무시
+	if (bDarknessActive || !OtherActor)
+	{
+		return;
+	}
 
-    APawn* Pawn = Cast<APawn>(OtherActor);
-    if (!Pawn) return;
+	APawn* Pawn = Cast<APawn>(OtherActor);
+	if (!Pawn) return;
 
-    APlayerController* PC = Cast<APlayerController>(Pawn->GetController());
-    if (!PC || !PC->IsLocalController()) return;
+	APlayerController* PC = Cast<APlayerController>(Pawn->GetController());
+	if (!PC || !PC->IsLocalController()) return;
 
-    if (!DarkenedPlayers.Contains(PC)) return;
+	if (!DarkenedPlayers.Contains(PC)) return;
 
-    // Fade Out 처리
-    UE_LOG(LogTemp, Log, TEXT("[OverlapEnd] 로컬 Fade Out: %s"), *PC->GetName());
-    PC->PlayerCameraManager->StartCameraFade(
-        DarknessFadeAlpha, 0.f,
-        FadeDuration, FLinearColor::Black,
-        false, false
-    );
+	if (PC->PlayerCameraManager)
+	{
+		PC->PlayerCameraManager->StartCameraFade(DarknessFadeAlpha, 0.f, FadeDuration, FLinearColor::Black, false, false);
+	}
 
-    DarkenedPlayers.Remove(PC);
+	DarkenedPlayers.Remove(PC);
 }
 
 // --- gaze checking ---
 
 bool ALCBossEoduksini::IsLookedAtByAnyPlayer() const
 {
-    for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
-    {
-        if (IsPlayerLooking(It->Get())) return true;
-    }
-    return false;
+	UWorld* World = GetWorld();
+	if (!World)
+		return false;
+
+	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (IsPlayerLooking(It->Get()))
+			return true;
+	}
+	return false;
 }
 
 bool ALCBossEoduksini::IsPlayerLooking(APlayerController* PC) const
 {
-    if (!PC) return false;
-    FVector ViewLoc; FRotator ViewRot;
-    PC->GetPlayerViewPoint(ViewLoc, ViewRot);
-    FVector ToBoss = (GetActorLocation() - ViewLoc).GetSafeNormal();
-    float Angle = FMath::RadiansToDegrees(acosf(FVector::DotProduct(ViewRot.Vector(), ToBoss)));
-    return Angle <= LookAngleDeg && PC->LineOfSightTo(this);
+	if (!PC)
+		return false;
+
+	FVector ViewLoc;
+	FRotator ViewRot;
+	PC->GetPlayerViewPoint(ViewLoc, ViewRot);
+
+	// 1) 각도 계산용 도트 연산 안전하게 클램프
+	const FVector ToBossDir = (GetActorLocation() - ViewLoc).GetSafeNormal();
+	float Dot = FVector::DotProduct(ViewRot.Vector(), ToBossDir);
+	Dot = FMath::Clamp(Dot, -1.f, 1.f);
+
+	const float Angle = FMath::RadiansToDegrees(acosf(Dot));
+
+	// 2) 시야 각도 및 시야선 검사
+	return Angle <= LookAngleDeg
+		&& PC->LineOfSightTo(this);
 }
 
 // --- Rage & scale update ---
 
 void ALCBossEoduksini::UpdateRageAndScale(float DeltaSeconds)
 {
-    int32 TotalPlayers = 0;
-    int32 LookCount = 0;
+	UWorld* World = GetWorld();
+	if (!World) return;
 
-    // 모든 플레이어 컨트롤러 순회
-    for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
-    {
-        APlayerController* PC = It->Get();
-        if (!PC) continue;
-        APawn* Pawn = PC->GetPawn();
-        if (!Pawn || !Pawn->IsPlayerControlled()) continue;
+	int32 TotalPlayers = 0;
+	int32 LookCount = 0;
 
-        ++TotalPlayers;
-        if (IsPlayerLooking(PC))
-            ++LookCount;
-    }
+	// 모든 플레이어 컨트롤러 순회
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		APlayerController* PC = It->Get();
+		if (!PC) continue;
+		APawn* Pawn = PC->GetPawn();
+		if (!Pawn || !Pawn->IsPlayerControlled()) continue;
 
-    // 1) 증가량: 항상 동일
-    float DeltaRage = RageGainPerSec * DeltaSeconds;
+		++TotalPlayers;
+		if (IsPlayerLooking(PC))
+			++LookCount;
+	}
 
-    // Berserk 중이라면 증가량에 배수 적용 (선택)
-    if (bIsBerserk)
-    {
-        DeltaRage *= BerserkRageGainMultiplier;
-    }
+	// 1) 증가량: 항상 동일
+	float DeltaRage = RageGainPerSec * DeltaSeconds;
 
-    // 2) 감소량: 바라보는 플레이어 수에 비례
-    DeltaRage -= LookCount * RageLossPerSec * DeltaSeconds;
+	// Berserk 중이라면 증가량에 배수 적용 (선택)
+	if (bIsBerserk)
+	{
+		DeltaRage *= BerserkRageGainMultiplier;
+	}
 
-    // 3) Rage 적용
-    Rage = FMath::Clamp(Rage + DeltaRage, 0.f, MaxRage);
+	// 2) 감소량: 바라보는 플레이어 수에 비례
+	DeltaRage -= LookCount * RageLossPerSec * DeltaSeconds;
 
-    // 4) Berserk 자동 진입
-    if (Rage >= MaxRage && !bIsBerserk)
-    {
-        StartBerserk(BerserkDuration);
-    }
+	// 3) Rage 적용
+	Rage = FMath::Clamp(Rage + DeltaRage, 0.f, MaxRage);
+
+	// 4) Berserk 자동 진입
+	if (Rage >= MaxRage && !bIsBerserk)
+	{
+		StartBerserk(BerserkDuration);
+	}
 }
 
 // --- Darkness state ---
 
 void ALCBossEoduksini::TryTriggerDarkness()
 {
-    bDarknessActive = true;
-    Multicast_StartDarkness();
+	if (!HasAuthority()) return;
 
-    // **FX**: 어둠 시작
-    if (DarknessEnterFX)
-    {
-        UNiagaraFunctionLibrary::SpawnSystemAttached(
-            DarknessEnterFX,
-            GetRootComponent(),
-            NAME_None,
-            FVector::ZeroVector,
-            FRotator::ZeroRotator,
-            EAttachLocation::KeepRelativeOffset,
-            true);
-    }
-    // **Sound**: 어둠 시작
-    if (DarknessEnterSound)
-    {
-        // 전역 음향 효과
-        UGameplayStatics::PlaySound2D(this, DarknessEnterSound);
-    }
+	bDarknessActive = true;
+	// 화면 페이드 → 모든 클라가 실행
+	Multicast_StartDarkness();
 
-    GetWorldTimerManager().SetTimer(
-        DarknessTimerHandle,
-        this, &ALCBossEoduksini::EndDarkness,
-        DarknessDuration, false);
+	// 타이머 예약
+	GetWorldTimerManager().SetTimer(
+		DarknessTimerHandle,
+		this, &ALCBossEoduksini::EndDarkness,
+		DarknessDuration, false);
 }
 
 void ALCBossEoduksini::EndDarkness()
 {
-    if (!bDarknessActive) return;
-    bDarknessActive = false;
-    Multicast_EndDarkness();
+	if (!HasAuthority() || !bDarknessActive) return;
 
-    // **FX**: 어둠 종료
-    if (DarknessExitFX)
-    {
-        UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-            GetWorld(),
-            DarknessExitFX,
-            GetActorLocation(),
-            FRotator::ZeroRotator);
-    }
-    // **Sound**: 어둠 종료
-    if (DarknessExitSound)
-    {
-        UGameplayStatics::PlaySound2D(this, DarknessExitSound);
-    }
+	bDarknessActive = false;
+	// 화면 페이드 아웃
+	Multicast_EndDarkness();
 
 }
 
 void ALCBossEoduksini::OnRep_DarknessActive()
 {
-    if (bDarknessActive) BP_StartDarknessEffect();
-    else                BP_EndDarknessEffect();
+	if (bDarknessActive) BP_StartDarknessEffect();
+	else                BP_EndDarknessEffect();
 }
 
 void ALCBossEoduksini::Multicast_StartDarkness_Implementation()
 {
-    BP_StartDarknessEffect();
+	BP_StartDarknessEffect();
 }
 
 void ALCBossEoduksini::Multicast_EndDarkness_Implementation()
 {
-    BP_EndDarknessEffect();
+	BP_EndDarknessEffect();
 }
 
 void ALCBossEoduksini::BP_StartDarknessEffect_Implementation()
 {
-    UE_LOG(LogTemp, Warning, TEXT("[Darkness] 클라이언트: 화면 어둡게 처리 시작"));
+	UE_LOG(LogTemp, Warning, TEXT("[Darkness] 클라이언트: 화면 어둡게 처리 시작"));
 
-    // 1) 이 클라이언트에서 로컬 컨트롤러를 찾아 페이드 처리
-    if (UWorld* World = GetWorld())
-    {
-        for (auto It = World->GetPlayerControllerIterator(); It; ++It)
-        {
-            APlayerController* PC = It->Get();
-            if (!PC || !PC->IsLocalController())
-                continue;
+	UWorld* World = GetWorld();
+	if (!World) return;
 
-            // 각 로컬 플레이어 화면에 Fade In 적용
-            PC->PlayerCameraManager->StartCameraFade(
-                0.f,                  // 시작 Alpha
-                DarknessFadeAlpha,    // 목표 Alpha
-                FadeDuration,         // 페이드 시간
-                FLinearColor::Black,  // Black으로 페이드
-                false,                // bHoldWhenFinished = false
-                true                  // bFadeAudio = true (필요 시 사운드도 페이드)
-            );
-        }
-    }
+	// 1) 이 클라이언트에서 로컬 컨트롤러를 찾아 페이드 처리
+
+	for (auto It = World->GetPlayerControllerIterator(); It; ++It)
+	{
+		APlayerController* PC = It->Get();
+		if (!PC || !PC->IsLocalController())
+			continue;
+
+		// 각 로컬 플레이어 화면에 Fade In 적용
+		PC->PlayerCameraManager->StartCameraFade(
+			0.f,                  // 시작 Alpha
+			DarknessFadeAlpha,    // 목표 Alpha
+			FadeDuration,         // 페이드 시간
+			FLinearColor::Black,  // Black으로 페이드
+			false,                // bHoldWhenFinished = false
+			true                  // bFadeAudio = true (필요 시 사운드도 페이드)
+		);
+	}
+
+	// 2) 어둠 입장 FX
+	if (DarknessEnterFX)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			World,
+			DarknessEnterFX,
+			GetActorLocation(),
+			FRotator::ZeroRotator
+		);
+	}
+
+	// 어둠 시작 사운드
+	if (DarknessEnterSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			this,
+			DarknessEnterSound,
+			GetActorLocation()
+		);
+	}
+
 }
 
 void ALCBossEoduksini::BP_EndDarknessEffect_Implementation()
 {
-    if (UWorld* World = GetWorld())
-    {
-        for (auto It = World->GetPlayerControllerIterator(); It; ++It)
-        {
-            APlayerController* PC = It->Get();
-            if (!PC || !PC->IsLocalController())
-                continue;
+	UWorld* World = GetWorld();
+	if (!World) return;
 
-            APawn* Pawn = PC->GetPawn();
-            if (!Pawn)
-                continue;
+	// 1) 화면 페이드 아웃
+	for (auto It = World->GetPlayerControllerIterator(); It; ++It)
+	{
+		APlayerController* PC = It->Get();
+		if (!PC || !PC->IsLocalController() || !PC->PlayerCameraManager)
+			continue;
 
-            // 보스와 플레이어 간의 거리 계산
-            float DistToBoss = FVector::Dist(
-                Pawn->GetActorLocation(),
-                GetActorLocation());
+		APawn* Pawn = PC->GetPawn();
+		if (!Pawn) continue;
 
-            // 보스의 DarknessRadius보다 작으면 페이드 아웃을 하지 않고 건너뜀
-            if (DistToBoss < DarknessRadius)
-            {
-                UE_LOG(LogTemp, Log, TEXT("[Darkness] 페이드 아웃 스킵 (거리 %.1f < Radius %.1f)"),
-                    DistToBoss, DarknessRadius);
-                continue;
-            }
+		float DistToBoss = FVector::Dist(Pawn->GetActorLocation(), GetActorLocation());
+		if (DistToBoss < DarknessRadius) continue;
 
-            // 해당 플레이어에 대해서만 Fade Out 적용
-            PC->PlayerCameraManager->StartCameraFade(
-                DarknessFadeAlpha, // 시작 Alpha
-                0.f,               // 목표 Alpha
-                FadeDuration,      // 페이드 시간
-                FLinearColor::Black,
-                false,
-                false
-            );
-        }
-    }
+		PC->PlayerCameraManager->StartCameraFade(
+			DarknessFadeAlpha, 0.f,
+			FadeDuration, FLinearColor::Black,
+			false, false
+		);
+	}
+
+	// 2) 어둠 종료 FX
+	if (DarknessExitFX)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			World,
+			DarknessExitFX,
+			GetActorLocation(),
+			FRotator::ZeroRotator
+		);
+	}
+
+	// 어둠 종료 사운드
+	if (DarknessExitSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			this,
+			DarknessExitSound,
+			GetActorLocation()
+		);
+	}
 }
 
 // --- Abilities ---
 
 void ALCBossEoduksini::ShadowEcho()
 {
-    UE_LOG(LogTemp, Log, TEXT("[Eoduksini] ShadowEcho 시작 (딜레이: %.1f초)"), ShadowEchoDelay);
+	UE_LOG(LogTemp, Log, TEXT("[Eoduksini] ShadowEcho 시작 (딜레이: %.1f초)"), ShadowEchoDelay);
 
-    FVector EchoLoc = GetActorLocation() + GetActorForwardVector() * 500.f;
-    // spawn VFX here if desired
+	UWorld* World = GetWorld();
+	if (!HasAuthority() || !World)
+		return;
 
-    FTimerDelegate Delegate = FTimerDelegate::CreateUObject(
-        this, &ALCBossEoduksini::ExecuteShadowEchoDamage, EchoLoc
-    );
-
-    GetWorldTimerManager().SetTimer(
-        ShadowEchoDamageHandle,  // ← lvalue 핸들
-        Delegate,
-        ShadowEchoDelay,
-        false
-    );
+	// 1) 데미지 예약
+	FVector EchoLoc = GetActorLocation() + GetActorForwardVector() * 500.f;
+	FTimerDelegate Delegate = FTimerDelegate::CreateUObject(
+		this, &ALCBossEoduksini::ExecuteShadowEchoDamage, EchoLoc
+	);
+	World->GetTimerManager().SetTimer(
+		ShadowEchoDamageHandle,
+		Delegate,
+		ShadowEchoDelay,
+		false
+	);
 }
+
 
 void ALCBossEoduksini::ExecuteShadowEchoDamage(FVector Location)
 {
-    UE_LOG(LogTemp, Log, TEXT("[Eoduksini] ShadowEcho 폭발 데미지 수행 (위치: %s)"),
-        *Location.ToCompactString());
+	UWorld* World = GetWorld();
+	AController* InstigatorCon = GetController();
+	if (!World || !InstigatorCon)
+		return;
 
-    float Radius = 400.f;
+	UE_LOG(LogTemp, Log, TEXT("[Eoduksini] ShadowEcho 폭발 데미지 수행 (위치: %s)"), *Location.ToCompactString());
 
-    //// 1) Debug: 폭발 위치에 보라색 구 그리기 (2초간, 두께 5)
-    //DrawDebugSphere(
-    //    GetWorld(),
-    //    Location,
-    //    Radius,
-    //    16,
-    //    FColor::Purple,
-    //    false,
-    //    2.0f,
-    //    0,
-    //    5.0f
-    //);
+	constexpr float Radius = 400.f;
 
-    // **FX**: 폭발 이펙트
-    if (EchoExplosionFX)
-    {
-        UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-            GetWorld(),
-            EchoExplosionFX,
-            Location,
-            FRotator::ZeroRotator);
-    }
-    // **Sound**: 폭발 사운드
-    if (EchoExplosionSound)
-    {
-        UGameplayStatics::PlaySoundAtLocation(
-            this, EchoExplosionSound,
-            Location);
-    }
+	// 1) 서버에서 데미지 처리
+	TArray<FHitResult> Hits;
+	FCollisionShape Sphere = FCollisionShape::MakeSphere(Radius);
+	bool bHit = World->SweepMultiByChannel(
+		Hits,
+		Location, Location,
+		FQuat::Identity,
+		ECC_Pawn,
+		Sphere
+	);
+	if (bHit)
+	{
+		for (auto& Hit : Hits)
+		{
+			if (APawn* P = Cast<APawn>(Hit.GetActor()))
+			{
+				if (P->IsPlayerControlled())
+				{
+					UGameplayStatics::ApplyDamage(P, EchoDamage, InstigatorCon, this, nullptr);
+					if (auto* Ch = Cast<ABaseCharacter>(P))
+					{
+						if (auto* MoveComp = Ch->GetCharacterMovement())
+						{
+							MoveComp->MaxWalkSpeed *= 0.5f;
+						}
+					}
+				}
+			}
+		}
+	}
 
-    // 2) 실제 SweepMultiByChannel
-    TArray<FHitResult> Hits;
-    FCollisionShape Sphere = FCollisionShape::MakeSphere(Radius);
-    bool bHit = GetWorld()->SweepMultiByChannel(
-        Hits,
-        Location,
-        Location,
-        FQuat::Identity,
-        ECC_Pawn,
-        Sphere
-    );
+	// 2) 모든 클라이언트에서 FX/Sound 재생
+	Multicast_OnShadowEcho(Location);
+}
 
-    // 3) 히트된 각 Pawn에 대해 디버그 라인과 대미지 적용
-    if (bHit)
-    {
-        for (auto& Hit : Hits)
-        {
-            if (APawn* P = Cast<APawn>(Hit.GetActor()))
-            {
-                if (P->IsPlayerControlled())
-                {
-                    UGameplayStatics::ApplyDamage(P, EchoDamage, GetController(), this, nullptr);
-                    // 슬로우 적용: could interface with character movement
-                    if (auto* Ch = Cast<ABaseCharacter>(P))
-                    {
-                        Ch->GetCharacterMovement()->MaxWalkSpeed *= 0.5f;
-                    }
-                }
-            }
-        }
-    }
+void ALCBossEoduksini::Multicast_OnShadowEcho_Implementation(const FVector& Location)
+{
+	// 서버에서는 재생하지 않고, 클라이언트에서만
+	if (GetNetMode() != NM_Client)
+		return;
+
+	UWorld* World = GetWorld();
+	if (!World)
+		return;
+
+	// FX
+	if (EchoExplosionFX)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			World,
+			EchoExplosionFX,
+			Location,
+			FRotator::ZeroRotator
+		);
+	}
+
+	// Sound (3D Attenuation)
+	if (EchoExplosionSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			this,
+			EchoExplosionSound,
+			Location,
+			1.f, 1.f, 0.f,
+			AttackSoundAttenuation
+		);
+	}
 }
 
 void ALCBossEoduksini::NightmareGrasp()
 {
-    UE_LOG(LogTemp, Log, TEXT("[Eoduksini] NightmareGrasp 실행"));
+	UE_LOG(LogTemp, Log, TEXT("[Eoduksini] NightmareGrasp 실행"));
 
-    FVector Start = GetActorLocation();
-    FVector End = Start + GetActorForwardVector() * 800.f;
-    FHitResult Hit;
-    FCollisionQueryParams Params(NAME_None, false, this);
-    if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Pawn, Params))
-    {
-        // **FX**: 그랩 이펙트 (Hit 위치)
-        if (GraspFX)
-        {
-            UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-                GetWorld(), GraspFX,
-                Hit.ImpactPoint, FRotator::ZeroRotator);
-        }
-        // **Sound**: 그랩 사운드
-        if (GraspSound)
-        {
-            UGameplayStatics::PlaySoundAtLocation(
-                this, GraspSound,
-                Hit.ImpactPoint);
-        }
+	UWorld* World = GetWorld();
+	if (!HasAuthority() || !World) return;
 
-        if (APawn* P = Cast<APawn>(Hit.GetActor()))
-        {
-            UGameplayStatics::ApplyDamage(P, GraspDamage, GetController(), this, nullptr);
-            // stun: disable movement briefly
-            if (auto* Ch = Cast<ACharacter>(P))
-            {
-                Ch->GetCharacterMovement()->DisableMovement();
-                FTimerHandle Unused;
-                GetWorldTimerManager().SetTimer(Unused, [Ch]() { Ch->GetCharacterMovement()->SetMovementMode(MOVE_Walking); }, 1.5f, false);
-            }
-        }
-    }
+	FVector Start = GetActorLocation();
+	FVector End = Start + GetActorForwardVector() * 800.f;
+	FHitResult Hit;
+	FCollisionQueryParams Params(NAME_None, false, this);
+	if (World->LineTraceSingleByChannel(Hit, Start, End, ECC_Pawn, Params))
+	{
+
+		if (APawn* P = Cast<APawn>(Hit.GetActor()))
+		{
+			UGameplayStatics::ApplyDamage(P, GraspDamage, GetController(), this, nullptr);
+			// stun: disable movement briefly
+			if (auto* Ch = Cast<ABaseCharacter>(P))
+			{
+				Ch->GetCharacterMovement()->DisableMovement();
+				FTimerHandle Unused;
+				GetWorldTimerManager().SetTimer(Unused, [Ch]() { Ch->GetCharacterMovement()->SetMovementMode(MOVE_Walking); }, 1.5f, false);
+			}
+		}
+	}
+
+	// 2) FX/Sound 는 Multicast 로 클라이언트 재생
+	Multicast_OnNightmareGrasp(Hit.ImpactPoint);
+}
+
+void ALCBossEoduksini::Multicast_OnNightmareGrasp_Implementation(const FVector& ImpactPoint)
+{
+	UWorld* World = GetWorld();
+	if (!World) return;
+
+	// FX
+	if (GraspFX)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			World,
+			GraspFX,
+			ImpactPoint,
+			FRotator::ZeroRotator
+		);
+	}
+
+	// Sound (3D 감쇠 적용)
+	if (GraspSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			this,
+			GraspSound,
+			GetActorLocation(),
+			1.f,                     // Volume
+			1.f,                     // Pitch
+			0.f,                     // StartTime
+			AttackSoundAttenuation   // AttenuationSettings
+		);
+	}
 }
 
 void ALCBossEoduksini::NightTerror()
 {
-    UE_LOG(LogTemp, Log, TEXT("[Eoduksini] NightTerror 실행"));
+	UE_LOG(LogTemp, Log, TEXT("[Eoduksini] NightTerror 실행"));
 
-    if (!HasAuthority())
-        return;
+	UWorld* World = GetWorld();
+	AController* InstigatorCon = GetController();
+	if (!HasAuthority() || !World || !InstigatorCon)
+	{
+		return;
+	}
 
-    // 1) 서버에서 데미지 처리
-    for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
-    {
-        if (APlayerController* PC = It->Get())
-        {
-            if (APawn* Pawn = PC->GetPawn())
-            {
-                UGameplayStatics::ApplyDamage(
-                    Pawn,
-                    TerrorDamage,
-                    GetController(),
-                    this,
-                    nullptr
-                );
-            }
-        }
-    }
+	// 1) 서버에서 데미지 처리
+	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+	{
+		APlayerController* PC = It->Get();
+		if (!PC) continue;
 
-    // 2) 모든 클라이언트에 이펙트 재생을 명령
-    Multicast_NightTerrorEffects();
+		APawn* Pawn = PC->GetPawn();
+		if (!Pawn) continue;
+
+		UGameplayStatics::ApplyDamage(
+			Pawn,
+			TerrorDamage,
+			InstigatorCon,
+			this,
+			nullptr
+		);
+	}
+
+	// 2) 이펙트 재생
+	Multicast_NightTerrorEffects();
 }
 
 void ALCBossEoduksini::Multicast_NightTerrorEffects_Implementation()
 {
-    // 1) FX
-    if (TerrorFX)
-    {
-        UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-            GetWorld(),
-            TerrorFX,
-            GetActorLocation(),
-            FRotator::ZeroRotator
-        );
-    }
-    // 2) SFX
-    if (TerrorSound)
-    {
-        UGameplayStatics::PlaySound2D(this, TerrorSound);
-    }
-    // 3) 각 로컬 플레이어의 포스트프로세스
-    for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
-    {
-        if (APlayerController* PC = It->Get())
-        {
-            if (!PC->IsLocalController())
-                continue;
-            APawn* Target = PC->GetPawn();
-            if (!Target) continue;
-            if (UCameraComponent* Cam = Target->FindComponentByClass<UCameraComponent>())
-            {
-                Cam->PostProcessSettings.AddBlendable(
-                    TerrorPostProcessMaterial,
-                    TerrorPostProcessWeight
-                );
-                // 일정 시간 뒤 제거
-                FTimerHandle RemoveHandle;
-                GetWorldTimerManager().SetTimer(
-                    RemoveHandle,
-                    FTimerDelegate::CreateLambda([Cam, this]()
-                    {
-                        if (Cam)
-                            Cam->PostProcessSettings.RemoveBlendable(TerrorPostProcessMaterial);
-                    }),
-                    TerrorPostProcessDuration,
-                    false
-                );
-            }
-        }
-    }
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	// FX
+	if (TerrorFX)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			World,
+			TerrorFX,
+			GetActorLocation(),
+			FRotator::ZeroRotator
+		);
+	}
+
+	// SFX
+	if (TerrorSound)
+	{
+		UGameplayStatics::PlaySound2D(this, TerrorSound);
+	}
+
+	// PostProcess
+	if (!TerrorPostProcessMaterial)
+	{
+		return;
+	}
+
+	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+	{
+		APlayerController* PC = It->Get();
+		if (!PC || !PC->IsLocalController()) continue;
+
+		APawn* Target = PC->GetPawn();
+		if (!Target) continue;
+
+		UCameraComponent* Cam = Target->FindComponentByClass<UCameraComponent>();
+		if (!Cam) continue;
+
+		// Blend in
+		Cam->PostProcessSettings.AddBlendable(
+			TerrorPostProcessMaterial,
+			TerrorPostProcessWeight
+		);
+
+		// 일정 시간 뒤 Blend 제거
+		FTimerHandle RemoveHandle;
+		World->GetTimerManager().SetTimer(
+			RemoveHandle,
+			FTimerDelegate::CreateWeakLambda(this, [Cam, this]()
+				{
+					if (Cam)
+					{
+						Cam->PostProcessSettings.RemoveBlendable(TerrorPostProcessMaterial);
+					}
+				}),
+			TerrorPostProcessDuration,
+			false
+		);
+	}
 }
 
 // --- basic attacks ---
 
 void ALCBossEoduksini::ShadowSwipe()
 {
-    UE_LOG(LogTemp, Log, TEXT("[Eoduksini] ShadowSwipe 실행: 대미지 %.1f"), NormalAttackDamage);
+	UE_LOG(LogTemp, Log, TEXT("[Eoduksini] ShadowSwipe 실행: 대미지 %.1f"), SwipeDamage);
 
-    // **FX**: 손 휘두르는 이펙트 (본 위치 등)
-    if (SwipeFX)
-    {
-        UNiagaraFunctionLibrary::SpawnSystemAttached(
-            SwipeFX,
-            GetMesh(),                // 캐릭터 메쉬에 붙이거나
-            TEXT("spine_01"),         // ← bone 이름
-            FVector::ZeroVector,
-            FRotator::ZeroRotator,
-            EAttachLocation::SnapToTarget,
-            true);
-    }
-    // **Sound**: 휘두름 사운드
-    if (SwipeSound)
-    {
-        UGameplayStatics::PlaySoundAtLocation(
-            this, SwipeSound,
-            GetActorLocation());
-    }
+	// 1) 데미지 처리
+	DealDamageInRange(SwipeDamage);
 
-    DealDamageInRange(SwipeDamage);
+	// 2) 모든 클라이언트에서 FX/Sound 재생
+	Multicast_OnShadowSwipe();
 
+}
+
+void ALCBossEoduksini::Multicast_OnShadowSwipe_Implementation()
+{
+	UWorld* World = GetWorld();
+	if (!World) return;
+
+	// 로컬 변수 이름을 MeshComp로 변경
+	USkeletalMeshComponent* MeshComp = GetMesh();
+
+	// FX (Niagara)
+	if (SwipeFX && MeshComp)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAttached(
+			SwipeFX,
+			MeshComp,             // 변경된 이름 사용
+			TEXT("spine_01"),
+			FVector::ZeroVector,
+			FRotator::ZeroRotator,
+			EAttachLocation::SnapToTarget,
+			true
+		);
+	}
+
+	// Sound (3D Attenuation)
+	if (SwipeSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			this,
+			SwipeSound,
+			GetActorLocation(),
+			1.f,                // Volume
+			1.f,                // Pitch
+			0.f,                // StartTime
+			AttackSoundAttenuation
+		);
+	}
 }
 
 void ALCBossEoduksini::VoidGrasp()
 {
-    UE_LOG(LogTemp, Log, TEXT("[Eoduksini] VoidGrasp 실행: 대미지 %.1f"), StrongAttackDamage);
+	UE_LOG(LogTemp, Log, TEXT("[Eoduksini] VoidGrasp 실행: 대미지 %.1f"), GraspDamage);
 
-    // **FX**: 블랙홀 같은 이펙트
-    if (VoidGraspFX)
-    {
-        UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-            GetWorld(),
-            VoidGraspFX,
-            GetActorLocation(),
-            FRotator::ZeroRotator);
-    }
-    // **Sound**: 그랩 사운드
-    if (VoidGraspSound)
-    {
-        UGameplayStatics::PlaySoundAtLocation(
-            this, VoidGraspSound,
-            GetActorLocation());
-    }
+	UWorld* World = GetWorld();
+	AController* InstigatorCon = GetController();
+	if (!World || !InstigatorCon) return;
 
-    FVector BossLoc = GetActorLocation();
-    TArray<FHitResult> Hits;
-    FCollisionShape Sphere = FCollisionShape::MakeSphere(VoidGraspRange);
+	FVector BossLoc = GetActorLocation();
+	TArray<FHitResult> Hits;
+	FCollisionShape Sphere = FCollisionShape::MakeSphere(VoidGraspRange);
 
-    // 반경 내 Pawn 검색
-    if (GetWorld()->SweepMultiByChannel(Hits, BossLoc, BossLoc, FQuat::Identity, ECC_Pawn, Sphere))
-    {
-        for (auto& Hit : Hits)
-        {
-            if (APawn* P = Cast<APawn>(Hit.GetActor()))
-            {
-                // 당기는 방향 계산
-                FVector PullDir = (BossLoc - P->GetActorLocation()).GetSafeNormal();
+	// 반경 내 Pawn 검색
+	if (World->SweepMultiByChannel(Hits, BossLoc, BossLoc, FQuat::Identity, ECC_Pawn, Sphere))
+	{
+		for (auto& Hit : Hits)
+		{
+			if (APawn* P = Cast<APawn>(Hit.GetActor()))
+			{
+				// 당기는 방향 계산
+				FVector PullDir = (BossLoc - P->GetActorLocation()).GetSafeNormal();
 
-                // 캐릭터라면 LaunchCharacter 로 물리 이동
-                if (ACharacter* Ch = Cast<ACharacter>(P))
-                {
-                    const float PullStrength = 1500.f; // 필요에 따라 조정
-                    // XY/Z 모두 덮어쓰도록 true,true
-                    Ch->LaunchCharacter(PullDir * PullStrength, true, true);
-                }
-                // 만약 물리 시뮬레이션 컴포넌트라면 AddImpulse 사용
-                else if (UPrimitiveComponent* Prim = Hit.GetComponent())
-                {
-                    if (Prim->IsSimulatingPhysics())
-                    {
-                        const float ImpulseStrength = 800.f;
-                        Prim->AddImpulse(PullDir * ImpulseStrength, NAME_None, true);
-                    }
-                }
+				// 캐릭터라면 LaunchCharacter 로 물리 이동
+				if (auto* Ch = Cast<ABaseCharacter>(P))
+				{
+					const float PullStrength = 1500.f; // 필요에 따라 조정
+					// XY/Z 모두 덮어쓰도록 true,true
+					Ch->LaunchCharacter(PullDir * PullStrength, true, true);
+				}
+				// 만약 물리 시뮬레이션 컴포넌트라면 AddImpulse 사용
+				else if (UPrimitiveComponent* Prim = Hit.GetComponent())
+				{
+					if (Prim->IsSimulatingPhysics())
+					{
+						const float ImpulseStrength = 800.f;
+						Prim->AddImpulse(PullDir * ImpulseStrength, NAME_None, true);
+					}
+				}
 
-                // 대미지 적용
-                UGameplayStatics::ApplyDamage(
-                    P,
-                    GraspDamage,
-                    GetController(),
-                    this,
-                    nullptr
-                );
-            }
-        }
-    }
+				// 대미지 적용
+				UGameplayStatics::ApplyDamage(
+					P,
+					GraspDamage,
+					GetController(),
+					this,
+					nullptr
+				);
+			}
+		}
+	}
+
+	// 2) 모든 클라이언트에서 FX/Sound 재생
+	Multicast_OnVoidGrasp();
+}
+
+void ALCBossEoduksini::Multicast_OnVoidGrasp_Implementation()
+{
+	UWorld* World = GetWorld();
+	if (!World) return;
+
+	// FX (Niagara)
+	if (VoidGraspFX)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			World,
+			VoidGraspFX,
+			GetActorLocation(),
+			FRotator::ZeroRotator
+		);
+	}
+
+	// Sound (3D Attenuation)
+	if (VoidGraspSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			this,
+			VoidGraspSound,
+			GetActorLocation(),
+			1.f,
+			1.f,
+			0.f,
+			AttackSoundAttenuation
+		);
+	}
 }
 
 // --- override base attack to include rage logic ---
 
 bool ALCBossEoduksini::RequestAttack(float TargetDistance)
 {
-    if (!HasAuthority()) return false;
+	if (!HasAuthority()) return false;
 
-    const float Now = GetWorld()->GetTimeSeconds();
-    struct FEntry { float Weight; TFunction<void()> Action; };
-    TArray<FEntry> Entries;
+	UWorld* World = GetWorld();
+	if (!World) return false;
 
-    // 1) ShadowEcho
-    if (TargetDistance <= ShadowEchoRange && Now - LastShadowEchoTime >= ShadowEchoInterval)
-    {
-        Entries.Add({ ShadowEchoWeight, [this, Now]()
-        {
-            LastShadowEchoTime = Now;
-            UE_LOG(LogTemp, Log, TEXT("[Eodu] ShadowEcho 실행"));
-            ShadowEcho();
-        } });
-    }
+	const float Now = GetWorld()->GetTimeSeconds();
+	struct FEntry { float Weight; TFunction<void()> Action; };
+	TArray<FEntry> Entries;
 
-    // 2) NightmareGrasp
-    if (TargetDistance <= NightmareGraspRange && Now - LastNightmareGraspTime >= NightmareGraspInterval)
-    {
-        Entries.Add({ NightmareGraspWeight, [this, Now]()
-        {
-            LastNightmareGraspTime = Now;
-            UE_LOG(LogTemp, Log, TEXT("[Eodu] NightmareGrasp 실행"));
-            NightmareGrasp();
-        } });
-    }
+	// 1) ShadowEcho
+	if (TargetDistance <= ShadowEchoRange
+		&& Now - LastShadowEchoTime >= ShadowEchoInterval
+		&& ShadowEchoWeight > 0.f)
+	{
+		Entries.Add({ ShadowEchoWeight, [this, Now]()
+		{
+			LastShadowEchoTime = Now;
+			ShadowEcho();
+		} });
+	}
 
-    // 3) 근접계열 (ShadowSwipe)
-    if (TargetDistance <= ShadowSwipeRange && Now - LastNormalTime >= NormalAttackCooldown)
-    {
-        Entries.Add({ ShadowSwipeWeight, [this, Now]()
-        {
-            LastNormalTime = Now;
-            UE_LOG(LogTemp, Log, TEXT("[Eodu] ShadowSwipe 실행"));
-            ShadowSwipe();
-        } });
-    }
+	// 2) NightmareGrasp
+	if (TargetDistance <= NightmareGraspRange && Now - LastNightmareGraspTime >= NightmareGraspInterval && NightmareGraspWeight > 0.f)
+	{
+		Entries.Add({ NightmareGraspWeight, [this, Now]()
+		{
+			LastNightmareGraspTime = Now;
+			UE_LOG(LogTemp, Log, TEXT("[Eodu] NightmareGrasp 실행"));
+			NightmareGrasp();
+		} });
+	}
 
-    // 4) 견인계열 (VoidGrasp)
-    if (TargetDistance <= VoidGraspRange && Now - LastStrongTime >= StrongAttackCooldown)
-    {
-        Entries.Add({ VoidGraspWeight, [this, Now]()
-        {
-            LastStrongTime = Now;
-            UE_LOG(LogTemp, Log, TEXT("[Eodu] VoidGrasp 실행"));
-            VoidGrasp();
-        } });
-    }
+	// 3) 근접계열 (ShadowSwipe)
+	if (TargetDistance <= ShadowSwipeRange && Now - LastNormalTime >= NormalAttackCooldown && ShadowSwipeWeight > 0.f)
+	{
+		Entries.Add({ ShadowSwipeWeight, [this, Now]()
+		{
+			LastNormalTime = Now;
+			UE_LOG(LogTemp, Log, TEXT("[Eodu] ShadowSwipe 실행"));
+			ShadowSwipe();
+		} });
+	}
 
-    // 가중치 랜덤 선택
-    float TotalW = 0.f;
-    for (auto& E : Entries) TotalW += E.Weight;
-    if (TotalW <= 0.f) return false;
+	// 4) 견인계열 (VoidGrasp)
+	if (TargetDistance <= VoidGraspRange && Now - LastStrongTime >= StrongAttackCooldown && VoidGraspWeight > 0.f)
+	{
+		Entries.Add({ VoidGraspWeight, [this, Now]()
+		{
+			LastStrongTime = Now;
+			UE_LOG(LogTemp, Log, TEXT("[Eodu] VoidGrasp 실행"));
+			VoidGrasp();
+		} });
+	}
 
-    float Pick = FMath::FRandRange(0.f, TotalW), Acc = 0.f;
-    for (auto& E : Entries)
-    {
-        Acc += E.Weight;
-        if (Pick <= Acc)
-        {
-            E.Action();
-            return true;
-        }
-    }
+	// 가중치 랜덤 선택
+	float TotalW = 0.f;
+	for (auto& E : Entries) TotalW += E.Weight;
+	if (TotalW <= 0.f) return false;
 
-    return false;
+	float Pick = FMath::FRandRange(0.f, TotalW), Acc = 0.f;
+	for (auto& E : Entries)
+	{
+		Acc += E.Weight;
+		if (Pick <= Acc)
+		{
+			E.Action();
+			return true;
+		}
+	}
+
+	return false;
 }
 
 void ALCBossEoduksini::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
-    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-    DOREPLIFETIME(ALCBossEoduksini, bDarknessActive);
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(ALCBossEoduksini, bDarknessActive);
 }

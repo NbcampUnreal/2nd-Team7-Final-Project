@@ -30,6 +30,10 @@ protected:
     virtual void StartBerserk(float Duration) override;
     virtual void EndBerserk() override;
     virtual void OnRep_IsBerserk() override;
+    virtual void UpdateBlackboardValues() override;
+
+    UPROPERTY(EditAnywhere, Category = "Audio")
+    USoundAttenuation* AttackSoundAttenuation;
 
     // --- Darkness FX & Sound ---
     UPROPERTY(EditAnywhere, Category = "Eoduksini|Darkness")
@@ -173,6 +177,9 @@ protected:
     void ExecuteShadowEchoDamage(FVector Location);
     UPROPERTY(EditAnywhere, Category = "Eoduksini|Damage")
     float EchoDamage = 20.f;
+    // ShadowEcho FX/Sound 재생용 RPC
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_OnShadowEcho(const FVector& Location);
 
     // Nightmare Grasp
     float NightmareGraspInterval = 12.f;
@@ -180,6 +187,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Boss|Ability")
 	float NightmareGraspRange = 800.f; // 범위 내 모든 플레이어에게 견인
     void NightmareGrasp();
+
+    // NightmreGrasp 클라이언트 재생용 RPC
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_OnNightmareGrasp(const FVector& ImpactPoint);
 
     // Night Terror
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Ability")
@@ -227,12 +238,20 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Eoduksini|Damage")
     float SwipeDamage = 15.f;
 
+    // ShadowSwipe 클라이언트 재생용 RPC
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_OnShadowSwipe();
+
 	// Void Grasp
 	UPROPERTY(EditDefaultsOnly, Category = "Boss|Attack")
 	float VoidGraspRange = 600.f; // 견인 범위
     void VoidGrasp();
     UPROPERTY(EditAnywhere, Category = "Eoduksini|Damage")
     float GraspDamage = 10.f;
+
+    // VoidGrasp 클라이언트 재생용 RPC
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_OnVoidGrasp();
     
     /** ── 공격 ── */
     virtual bool RequestAttack(float TargetDistance) override;

@@ -4,8 +4,8 @@
 #include "BehaviorTree/BTTaskNode.h"
 #include "NavigationSystem.h"
 #include "GameFramework/Character.h"
-#include "NavigationSystem.h"                      // UNavigationSystemV1
-#include "Navigation/PathFollowingComponent.h"     // UPathFollowingComponent, FPathFollowingResult
+#include "NavigationSystem.h"
+#include "Navigation/PathFollowingComponent.h"
 
 UBTTask_PatrolBoss::UBTTask_PatrolBoss()
 {
