@@ -152,24 +152,6 @@ void ALCBossBanshee::EndBerserk()
 void ALCBossBanshee::OnRep_IsBerserk()
 {
     Super::OnRep_IsBerserk();
-
-    if (bIsBerserk)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("[Banshee] OnRep → Berserk 이펙트 클라에서 재생"));
-
-        if (BerserkEffectFX)
-        {
-            UNiagaraFunctionLibrary::SpawnSystemAttached(
-                BerserkEffectFX,
-                GetRootComponent(),
-                NAME_None,
-                FVector::ZeroVector,
-                FRotator::ZeroRotator,
-                EAttachLocation::KeepRelativeOffset,
-                true
-            );
-        }
-    }
 }
 
 void ALCBossBanshee::HandleRehide(ACharacter* Char)

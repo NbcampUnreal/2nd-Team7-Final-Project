@@ -8,7 +8,7 @@
 class UInventoryComponentBase;
 class UInventoryMainWidget;
 class ULCUIManager;
-
+class AGunBase;
 /**
  * 인벤토리 UI 관련 로직을 담당하는 컨트롤러
  */
@@ -77,10 +77,17 @@ private:
     void SetInputModeGameOnly();
 
     //-----------------------------------------------------
+    // 탄환 수 UI
+    //-----------------------------------------------------
+public:
+    /** 총기 탄환 UI 표시/숨김 제어 */
+    UFUNCTION(BlueprintCallable, Category = "Inventory UI")
+    void SetGunAmmoUIVisibility(bool bVisible, AGunBase* Gun = nullptr);
+
+    //-----------------------------------------------------
     // 네트워크 UI 업데이트
     //-----------------------------------------------------
 
-public:
     /** 모든 클라이언트에 UI 업데이트 전송 */
     UFUNCTION(NetMulticast, Reliable, Category = "Inventory UI")
     void Multicast_UpdateItemText(const FText& ItemName);
