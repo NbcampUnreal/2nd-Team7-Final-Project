@@ -1,6 +1,6 @@
 #include "UI/UIObject/GunAmmoWidget.h"
 #include "Components/TextBlock.h"
-#include "Components/Image.h"
+#include "Components/ProgressBar.h"
 #include "Item/EquipmentItem/GunBase.h"
 #include "LastCanary.h"
 
@@ -10,41 +10,13 @@ void UGunAmmoWidget::SetGunReference(AGunBase* Gun)
     {
         CurrentGun->OnAmmoChanged.RemoveDynamic(this, &UGunAmmoWidget::UpdateAmmoDisplay);
     }
-
     CurrentGun = Gun;
 
     if (CurrentGun)
     {
         CurrentGun->OnAmmoChanged.AddUniqueDynamic(this, &UGunAmmoWidget::UpdateAmmoDisplay);
     }
-
     UpdateAmmoDisplay();
-    UpdateGunTypeImage();
-}
-
-void UGunAmmoWidget::UpdateGunTypeImage()
-{
-    if (!GunTypeImage || !CurrentGun)
-    {
-        return;
-    }
-
-    FGameplayTag GunItemType = CurrentGun->GetItemType();
-
-    for (const FGunTypeImageData& ImageData : GunTypeImages)
-    {
-        if (ImageData.GunTypeTag.MatchesTagExact(GunItemType))
-        {
-            if (UTexture2D* LoadedTexture = ImageData.GunTypeImage.LoadSynchronous())
-            {
-                GunTypeImage->SetBrushFromTexture(LoadedTexture);
-                GunTypeImage->SetVisibility(ESlateVisibility::Visible);
-                return;
-            }
-        }
-    }
-
-    GunTypeImage->SetVisibility(ESlateVisibility::Hidden);
 }
 
 void UGunAmmoWidget::UpdateAmmoDisplay()
@@ -57,11 +29,20 @@ void UGunAmmoWidget::UpdateAmmoDisplay()
         }
         return;
     }
+    
+	const int32 CurrentAmmo = CurrentGun->GetCurrentAmmo();
+	const int32 MaxAmmo = CurrentGun->GetMaxAmmo();
 
-    CurrentAmmoText->SetText(FText::AsNumber(CurrentGun->GetCurrentAmmo()));
-    MaxAmmoText->SetText(FText::AsNumber(CurrentGun->GetMaxAmmo()));
+    CurrentAmmoText->SetText(FText::AsNumber(CurrentAmmo));
+    MaxAmmoText->SetText(FText::AsNumber(MaxAmmo));
+    
+    if (AmmoProgressBar && MaxAmmo > 0)
+    {
+        const float AmmoRatio = static_cast<float>(CurrentAmmo) / static_cast<float>(MaxAmmo);
+        AmmoProgressBar->SetPercent(AmmoRatio);
+    }
 
-    LOG_Item_WARNING(TEXT("[UpdateAmmoDisplay] 탄약 UI 업데이트: %d/%d"), CurrentGun->GetCurrentAmmo(), CurrentGun->GetMaxAmmo());
+    LOG_Item_WARNING(TEXT("[UpdateAmmoDisplay] 탄약 UI 업데이트: %d/%d"), CurrentAmmo, MaxAmmo);
 }
 
 void UGunAmmoWidget::ShowAmmoUI(AGunBase* Gun)
