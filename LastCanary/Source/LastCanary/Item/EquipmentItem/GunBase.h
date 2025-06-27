@@ -14,7 +14,6 @@
  */
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAnimationComplete, UAnimMontage*, CompletedMontage);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAmmoChanged);
 
 class UShellEjectionComponent;
 class ALCBaseGimmick;
@@ -425,7 +424,4 @@ public:
 
     UFUNCTION(BlueprintPure, Category = "Gun|Ammo")
     int32 GetMaxAmmo() const { return static_cast<int32>(MaxDurability); }
-
-    UPROPERTY(BlueprintAssignable, Category = "Gun|Ammo")
-    FOnAmmoChanged OnAmmoChanged;
 };

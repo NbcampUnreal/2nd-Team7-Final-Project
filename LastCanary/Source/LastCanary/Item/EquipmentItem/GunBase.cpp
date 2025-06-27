@@ -199,7 +199,20 @@ void AGunBase::HandleFire()
 {
     float OldDurability = Durability;
     Durability = FMath::Max(0.0f, Durability - 1.0f);
-    OnAmmoChanged.Broadcast();
+
+    if (APawn* OwnerPawn = Cast<APawn>(GetOwner()))
+    {
+        if (UToolbarInventoryComponent* ToolbarComp = OwnerPawn->FindComponentByClass<UToolbarInventoryComponent>())
+        {
+            ToolbarComp->SyncGunStateToSlot();
+
+            if (HasAuthority())
+            {
+                int32 CurrentSlotIndex = ToolbarComp->GetCurrentEquippedSlotIndex();
+                ToolbarComp->MulticastSetGunAmmoUIVisibility(true, CurrentSlotIndex);
+            }
+        }
+    }
 
     FVector SoundLocation = GetActorLocation();
 
@@ -684,7 +697,20 @@ bool AGunBase::Reload()
         Durability = MaxDurability;
     }
 
-    OnAmmoChanged.Broadcast();
+    if (APawn* OwnerPawn = Cast<APawn>(GetOwner()))
+    {
+        if (UToolbarInventoryComponent* ToolbarComp = OwnerPawn->FindComponentByClass<UToolbarInventoryComponent>())
+        {
+            ToolbarComp->SyncGunStateToSlot();
+
+            if (HasAuthority())
+            {
+                int32 CurrentSlotIndex = ToolbarComp->GetCurrentEquippedSlotIndex();
+                ToolbarComp->MulticastSetGunAmmoUIVisibility(true, CurrentSlotIndex);
+            }
+        }
+    }
+
     OnItemStateChanged.Broadcast();
 
     return true;

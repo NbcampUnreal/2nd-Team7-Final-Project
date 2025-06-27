@@ -4,38 +4,16 @@
 #include "Item/EquipmentItem/GunBase.h"
 #include "LastCanary.h"
 
-void UGunAmmoWidget::SetGunReference(AGunBase* Gun)
+void UGunAmmoWidget::UpdateAmmoDisplay(int32 CurrentAmmo, int32 MaxAmmo)
 {
-    if (CurrentGun)
+    if (!CurrentAmmoText || !MaxAmmoText)
     {
-        CurrentGun->OnAmmoChanged.RemoveDynamic(this, &UGunAmmoWidget::UpdateAmmoDisplay);
-    }
-    CurrentGun = Gun;
-
-    if (CurrentGun)
-    {
-        CurrentGun->OnAmmoChanged.AddUniqueDynamic(this, &UGunAmmoWidget::UpdateAmmoDisplay);
-    }
-    UpdateAmmoDisplay();
-}
-
-void UGunAmmoWidget::UpdateAmmoDisplay()
-{
-    if (!CurrentGun || !CurrentAmmoText || !MaxAmmoText)
-    {
-        if (!CurrentGun)
-        {
-            SetVisibility(ESlateVisibility::Hidden);
-        }
         return;
     }
-    
-	const int32 CurrentAmmo = CurrentGun->GetCurrentAmmo();
-	const int32 MaxAmmo = CurrentGun->GetMaxAmmo();
 
     CurrentAmmoText->SetText(FText::AsNumber(CurrentAmmo));
     MaxAmmoText->SetText(FText::AsNumber(MaxAmmo));
-    
+
     if (AmmoProgressBar && MaxAmmo > 0)
     {
         const float AmmoRatio = static_cast<float>(CurrentAmmo) / static_cast<float>(MaxAmmo);
@@ -45,14 +23,13 @@ void UGunAmmoWidget::UpdateAmmoDisplay()
     LOG_Item_WARNING(TEXT("[UpdateAmmoDisplay] 탄약 UI 업데이트: %d/%d"), CurrentAmmo, MaxAmmo);
 }
 
-void UGunAmmoWidget::ShowAmmoUI(AGunBase* Gun)
+void UGunAmmoWidget::ShowAmmoUI(int32 CurrentAmmo, int32 MaxAmmo)
 {
-    SetGunReference(Gun);
+    UpdateAmmoDisplay(CurrentAmmo, MaxAmmo);
     SetVisibility(ESlateVisibility::Visible);
 }
 
 void UGunAmmoWidget::HideAmmoUI()
 {
-    SetGunReference(nullptr);
     SetVisibility(ESlateVisibility::Hidden);
 }
