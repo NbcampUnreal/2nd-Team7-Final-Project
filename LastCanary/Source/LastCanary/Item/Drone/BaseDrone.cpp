@@ -59,7 +59,7 @@ void ABaseDrone::BeginPlay()
 	DroneMesh->SetCollisionResponseToAllChannels(ECR_Block);
 
 	// 충돌 이벤트 바인딩 (OnComponentHit)
-	DroneMesh->OnComponentHit.AddDynamic(this, &ABaseDrone::OnDroneHit);
+	DroneMesh->OnComponentHit.AddUniqueDynamic(this, &ABaseDrone::OnDroneHit);
 
 	MoveDirection = FVector::ForwardVector;
 
