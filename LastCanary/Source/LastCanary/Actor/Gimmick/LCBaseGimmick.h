@@ -85,7 +85,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Interaction")
 	FString InteractMessage;
 
-	/** 연결된 효과 액터들 (IGimmickEffectInterface 구현체) */
+	/** 클래스 기반 연결 (블루프린트 클래스에서 연결) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Target")
+	TArray<TSubclassOf<AActor>> LinkedTargetClasses;
+
+	/** 인스턴스 기반 연결 (레벨 인스턴스에서 연결) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Target")
 	TArray<AActor*> LinkedTargets;
 
