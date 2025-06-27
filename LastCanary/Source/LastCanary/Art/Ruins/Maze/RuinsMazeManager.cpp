@@ -694,6 +694,7 @@ void ARuinsMazeManager::SpawnMonsterInMidPath()
 		if (IsValid(Spawned))
 		{
 			LOG_Art(Log, TEXT("[Monster] 몬스터 스폰 성공 (%d/%d): (%d, %d)"), i + 1, EliteSpawnCount, ValidCells[i].X, ValidCells[i].Y);
+			MonsterSpawnedCells.Add(ValidCells[i]);
 		}
 	}
 }
@@ -787,7 +788,9 @@ void ARuinsMazeManager::SpawnNotesAfterMaze()
 	// 조건: DeadEnd + 방문한 셀 + 기믹 없는 셀
 	for (const FIntPoint& Cell : GetDeadEndCells())
 	{
-		if (MazeCells[Cell.X][Cell.Y].bVisited && !PlacedGimmickCells.Contains(Cell))
+		if (MazeCells[Cell.X][Cell.Y].bVisited == true &&
+			PlacedGimmickCells.Contains(Cell) == false &&
+			MonsterSpawnedCells.Contains(Cell) == false)
 		{
 			CandidateCells.Add(Cell);
 		}
@@ -943,7 +946,10 @@ void ARuinsMazeManager::SpawnTreasureBoxAfterMaze()
 		for (int32 Y = 0; Y < MazeSizeY; ++Y)
 		{
 			FIntPoint Cell(X, Y);
-			if (MazeCells[X][Y].bVisited && !PlacedGimmickCells.Contains(Cell))
+			if (MazeCells[X][Y].bVisited == true &&
+				PlacedGimmickCells.Contains(Cell) == false &&
+				MonsterSpawnedCells.Contains(Cell) == false
+				)
 			{
 				CandidateCells.Add(Cell);
 			}

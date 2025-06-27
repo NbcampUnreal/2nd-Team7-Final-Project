@@ -20,6 +20,8 @@ void ULCGameInstanceSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		MapDataTable = GI->MapDataTable;
 		ItemDataTable = GI->ItemDataTable;
 		GunDataTable = GI->GunDataTable;
+		MonsterDataTable = GI->MonsterDataTable;
+		BossDataTable = GI->BossDataTable;
 		GI->LoadMapData();
 		GI->LoadItemData();
 		GI->LoadGunData();
@@ -197,4 +199,14 @@ void ULCGameInstanceSubsystem::LoadUserSettings()
 			OptionManager->ApplyAudio(); // 볼륨은 바로 적용
 		}
 	}
+}
+
+UDataTable* ULCGameInstanceSubsystem::GetBossDataTable() const
+{
+	return BossDataTable;
+}
+
+UDataTable* ULCGameInstanceSubsystem::GetMonsterDataTable() const
+{
+	return MonsterDataTable;
 }
