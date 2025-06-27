@@ -17,11 +17,6 @@ void UBackpackManager::Initialize(UToolbarInventoryComponent* InOwnerInventory)
 {
     OwnerInventory = InOwnerInventory;
     CurrentBackpackSlotIndex = -1;
-
-    if (OwnerInventory)
-    {
-        LOG_Item_WARNING(TEXT("[BackpackManager::Initialize] 백팩 매니저 초기화 완료"));
-    }
 }
 
 bool UBackpackManager::EquipBackpack(int32 ToolbarSlotIndex)

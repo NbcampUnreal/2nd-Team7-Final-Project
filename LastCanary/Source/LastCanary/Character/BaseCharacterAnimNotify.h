@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Animation/AnimNotifies/AnimNotify.h"
+#include "NiagaraSystem.h"
 #include "BaseCharacterAnimNotify.generated.h"
 
 UENUM(BlueprintType)
@@ -32,5 +33,10 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Notify")
     AActor* TargetActor;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Notify")
+    UNiagaraSystem* NiagaraEffect;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Notify")
+    FName SocketName = "Default";
     virtual void Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation) override;
 };

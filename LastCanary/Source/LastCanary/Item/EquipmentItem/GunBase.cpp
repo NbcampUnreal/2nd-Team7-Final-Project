@@ -199,15 +199,8 @@ void AGunBase::HandleFire()
 {
     float OldDurability = Durability;
     Durability = FMath::Max(0.0f, Durability - 1.0f);
+    OnAmmoChanged.Broadcast();
 
-    if (Durability > MaxDurability)
-    {
-        LOG_Item_WARNING(TEXT("[HandleFire] 경고: Durability(%.0f)가 MaxAmmo(%.0f)를 초과함. 수정합니다."),
-            Durability, MaxDurability);
-        Durability = MaxDurability;
-    }
-
-    //수정
     FVector SoundLocation = GetActorLocation();
 
     AActor* SoundCauser = this;
@@ -220,9 +213,6 @@ void AGunBase::HandleFire()
         2000.f,
         "CaveMonster"
     );
-
-    LOG_Item_WARNING(TEXT("[HandleFire] 총알 소모: %.0f → %.0f (남은 총알: %.0f/%.0f)"),
-        OldDurability, Durability, Durability, MaxDurability);
 
     // 최근 히트 결과 초기화
     RecentHits.Empty();
@@ -681,9 +671,20 @@ bool AGunBase::Reload()
     {
         return false;
     }
-    LOG_Item_WARNING(TEXT("리로드 완료!!."));
 
-    Durability = MaxDurability;
+    // 약실에 탄이 남아있는지 확인
+    bool bHasChambered = (Durability > 0.0f);
+
+    if (bHasChambered)
+    {
+        Durability = MaxDurability + 1.0f;
+    }
+    else
+    {
+        Durability = MaxDurability;
+    }
+
+    OnAmmoChanged.Broadcast();
     OnItemStateChanged.Broadcast();
 
     return true;

@@ -232,6 +232,40 @@ void UInventoryUIController::SetInputModeGameOnly()
     LOG_Item_WARNING(TEXT("[SetInputModeGameOnly] 가방 UI 닫힘 - 입력모드: GameOnly"));
 }
 
+void UInventoryUIController::SetGunAmmoUIVisibility(bool bVisible, AGunBase* Gun)
+{
+    if (!OwnerInventory || !OwnerInventory->GetOwner())
+    {
+        return;
+    }
+
+    UWorld* World = OwnerInventory->GetOwner()->GetWorld();
+    if (!World)
+    {
+        return;
+    }
+
+    UGameInstance* GI = World->GetGameInstance();
+    if (!GI)
+    {
+        return;
+    }
+
+    ULCGameInstanceSubsystem* GISubsystem = GI->GetSubsystem<ULCGameInstanceSubsystem>();
+    if (!GISubsystem)
+    {
+        return;
+    }
+
+    if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
+    {
+        if (UInventoryMainWidget* InventoryWidget = UIManager->GetInventoryMainWidget())
+        {
+            InventoryWidget->SetGunAmmoUIVisibility(bVisible, Gun);
+        }
+    }
+}
+
 void UInventoryUIController::Multicast_UpdateItemText_Implementation(const FText& ItemName)
 {
     UpdateEquippedItemText(ItemName);

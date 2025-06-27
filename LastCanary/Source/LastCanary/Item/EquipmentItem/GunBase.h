@@ -14,6 +14,7 @@
  */
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAnimationComplete, UAnimMontage*, CompletedMontage);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAmmoChanged);
 
 class UShellEjectionComponent;
 class ALCBaseGimmick;
@@ -414,4 +415,17 @@ protected:
 protected:
     /** 데이터 테이블에서 탄창 적용 */
     void ApplyMagazineFromDataTable();
+
+    //-----------------------------------------------------
+    // UI 탄피 표시를 위한 함수
+    //-----------------------------------------------------
+public:
+    UFUNCTION(BlueprintPure, Category = "Gun|Ammo")
+    int32 GetCurrentAmmo() const { return static_cast<int32>(Durability); }
+
+    UFUNCTION(BlueprintPure, Category = "Gun|Ammo")
+    int32 GetMaxAmmo() const { return static_cast<int32>(MaxDurability); }
+
+    UPROPERTY(BlueprintAssignable, Category = "Gun|Ammo")
+    FOnAmmoChanged OnAmmoChanged;
 };
