@@ -45,5 +45,9 @@ struct FGimmickSpawnInfo
     /** Z 오프셋 (지면 위로 띄우거나 바닥에 붙일 때 사용) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick")
     float ZOffset = -50.f;
+
+    /** 이 기믹이 스폰될 수 있는 최대 개수 */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick")
+    int32 MaxSpawnCount = 1;
 };
 

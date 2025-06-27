@@ -59,7 +59,7 @@ void ABaseDrone::BeginPlay()
 	DroneMesh->SetCollisionResponseToAllChannels(ECR_Block);
 
 	// 충돌 이벤트 바인딩 (OnComponentHit)
-	DroneMesh->OnComponentHit.AddDynamic(this, &ABaseDrone::OnDroneHit);
+	DroneMesh->OnComponentHit.AddUniqueDynamic(this, &ABaseDrone::OnDroneHit);
 
 	MoveDirection = FVector::ForwardVector;
 
@@ -321,10 +321,6 @@ void ABaseDrone::TraceInteractableActor()
 	bool bHit = GetWorld()->LineTraceSingleByChannel(
 		Hit, Start, End, ECC_Visibility, Params);
 
-#if WITH_EDITOR
-	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 0.1f);
-#endif
-
 	if (bHit && Hit.GetActor() && Hit.GetActor()->Implements<UInteractableInterface>())
 	{
 
@@ -444,10 +440,6 @@ void ABaseDrone::OnDroneHit(UPrimitiveComponent* HitComponent, AActor* OtherActo
 	FVector Normal = Hit.ImpactNormal;
 	FVector CurrVelocity = CurrentVelocity;
 	
-	// 로그 출력
-	UE_LOG(LogTemp, Warning, TEXT("Drone hit %s"), *OtherActor->GetName());
-	UE_LOG(LogTemp, Warning, TEXT("Impact Normal: X=%.3f Y=%.3f Z=%.3f"), Normal.X, Normal.Y, Normal.Z);
-	UE_LOG(LogTemp, Warning, TEXT("Current Velocity Before Reflection: X=%.3f Y=%.3f Z=%.3f"), CurrVelocity.X, CurrVelocity.Y, CurrVelocity.Z);
 	// 기존 벡터 크기 저장
 	float Speed = CurrVelocity.Size();
 
@@ -466,15 +458,6 @@ void ABaseDrone::OnDroneHit(UPrimitiveComponent* HitComponent, AActor* OtherActo
 	{
 		VerticalVelocity = VerticalVelocity * Normal.Z * 0.5f;
 	}
-	// 반사 후 속도 로그
-	UE_LOG(LogTemp, Warning, TEXT("Reflected Velocity: X=%.3f Y=%.3f Z=%.3f (Speed=%.3f)"), Reflected.X, Reflected.Y, Reflected.Z, Reflected.Size());
-
-
-	// 디버그 선으로 노말 벡터 시각화 (초록색, 1초간 표시)
-	const float DebugLineLength = 100.0f;
-	FVector Start = Hit.ImpactPoint;
-	FVector End = Start + Normal * DebugLineLength;
-	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 1.0f, 0, 2.0f);
 }
 
 void ABaseDrone::SpawnDroneItemAtCurrentLocation()

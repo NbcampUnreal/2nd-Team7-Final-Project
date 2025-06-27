@@ -26,8 +26,6 @@ void AShadowClone::BeginPlay()
         GetMesh()->SetMaterial(0, DynMaterial);
     }
 
-    // 일정 시간 뒤 페이드 아웃
-    GetWorldTimerManager().SetTimer(LifeTimerHandle, this, &AShadowClone::FadeOutAndDestroy, LifeTime, false);
 }
 
 void AShadowClone::Tick(float DeltaTime)
@@ -60,9 +58,7 @@ void AShadowClone::FadeOutAndDestroy()
     {
         // 알파를 0으로 천천히 변경
         DynMaterial->SetScalarParameterValue(TEXT("Opacity"), 0.f);
-    }
 
-    // 파괴 예약 (페이드아웃 시간 후)
-    GetWorldTimerManager().ClearTimer(LifeTimerHandle);
-    GetWorldTimerManager().SetTimer(LifeTimerHandle, this, &AShadowClone::K2_DestroyActor, FadeOutTime, false);
+    }
+    Destroy();
 }

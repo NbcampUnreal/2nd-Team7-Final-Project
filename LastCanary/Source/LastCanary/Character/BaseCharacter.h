@@ -146,6 +146,26 @@ public:
 	/** 가방 메시 설정 */
 	void SetBackpackMesh(bool bIsEquipBackpack);
 
+
+	UPROPERTY(VisibleAnywhere, Category = "Kick")
+	UBoxComponent* KickHitBox;
+	
+	UFUNCTION()
+	void OnKickHitBoxOverlap(UPrimitiveComponent* OverlappedComp,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex,
+		bool bFromSweep,
+		const FHitResult& SweepResult);
+
+	void StartKickHit();
+	void EndKickHit();
+	
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation|Attack")
+	UAnimMontage* KickOtherPlayer;
+
+
 	UPROPERTY(EditAnywhere, Category = "Brightness")
 	float MinBrightness = 8.0f;
 
@@ -161,6 +181,9 @@ public:
 	float MaxWallClipPitch = 90.0f;
 	float CapsuleWallRatio = 0.0f;
 	void UpdateGunWallClipOffset(float DeltaTime);
+	
+	UPROPERTY()
+	float SmoothedWallRatio = 0.0f;
 
 	int LerpCount = 0;
 	// Camera 이동 관련
@@ -202,7 +225,7 @@ protected:
 	void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const;
 	virtual void NotifyControllerChanged() override;
 	virtual void BeginPlay() override;
-
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	// Camera Settings
 protected:
@@ -326,8 +349,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
 	float RecoilRecoverySpeed = 2.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
-	int32 MaxConsecutiveShots = 10;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil", meta = (ClampMin = "0.01"))
+	float RecoilRecoveryAmount = 0.4f;
+
 
 	// 현재 연사 상태
 	int32 CurrentShotCount = 0;
@@ -397,6 +421,7 @@ public:
 
 	//About Character Animation Montage and Animation Class
 public:
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	bool UseGunBoneforOverlayObjects;
 
@@ -440,6 +465,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	TSubclassOf<UAnimInstance> BinocularsAnimationClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	TSubclassOf<UAnimInstance> PickaxeAnimationClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	USkeletalMesh* SKM_Rifle;
@@ -575,6 +603,16 @@ public:
 	/*Player Damage, Death*/
 	UFUNCTION(BlueprintCallable)
 	float TakeSpiritDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser);
+	
+
+	FTimerHandle SpiritTickDamageHandle;
+
+	UFUNCTION(BlueprintCallable)
+	void TriggerSpiritTickDamage();
+	float SpiritTickDamage = 1.0f;
+	float SpiritDamageTickInterval = 1.0f;
+	void TakeSpiritTickDamage();
+
 	float CalculateTakeSpiritDamage(float DamageAmount);
 	
 	UFUNCTION(BlueprintCallable)
@@ -742,7 +780,7 @@ public:
 	float SpeedMultiplier = 1.0f; // 0.0 ~ 1.0 범위
 	float CalculateMovementSpeedMultiplier();
 	float CalculateDebuffMultiplier();
-	float MaxWeight = 40.0f;
+	float MaxWeight = 200.0f;
 	void ResetMovementSetting();
 
 	float FrontInput = 0.0f;

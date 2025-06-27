@@ -44,12 +44,16 @@
 #include "UI/UIObject/PlayerNameWidget.h"
 #include "Character/CustomizationMeshMap.h"
 #include "Inventory/BackpackManager.h"
+#include "Engine/DamageEvents.h"
+#include "AI/BaseBossMonsterCharacter.h"
 
 ABaseCharacter::ABaseCharacter()
 {
 	bIsPossessed = false;
 	bReplicates = true;
 	UseGunBoneforOverlayObjects = true;
+	bAlwaysRelevant = true;
+	NetCullDistanceSquared = FMath::Square(20000.f); // 최대 동기화 거리 증가
 
 
 
@@ -156,6 +160,16 @@ ABaseCharacter::ABaseCharacter()
 	NameWidgetComponent->SetRenderCustomDepth(true);
 	NameWidgetComponent->SetCustomDepthStencilValue(1); // 머티리얼에서 사용할 값
 
+
+	// .cpp - 생성자
+	KickHitBox = CreateDefaultSubobject<UBoxComponent>(TEXT("KickHitBox"));
+	KickHitBox->SetupAttachment(GetMesh(), TEXT("foot_l")); // or "foot_l"
+	KickHitBox->SetBoxExtent(FVector(20, 30, 30));
+	KickHitBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	KickHitBox->SetCollisionObjectType(ECC_WorldDynamic);
+	KickHitBox->SetCollisionResponseToAllChannels(ECR_Ignore);
+	KickHitBox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+
 }
 
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
@@ -192,7 +206,7 @@ void ABaseCharacter::BeginPlay()
 	if (IsValid(ToolbarInventoryComponent))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Inventory Ready"));
-		ToolbarInventoryComponent->OnInventoryUpdated.AddDynamic(this, &ABaseCharacter::HandleInventoryUpdated);
+		ToolbarInventoryComponent->OnInventoryUpdated.AddUniqueDynamic(this, &ABaseCharacter::HandleInventoryUpdated);
 	}
 
 	EnableStencilForAllMeshes(2);
@@ -242,7 +256,7 @@ void ABaseCharacter::BeginPlay()
 		if (IsLocallyControlled())
 		{
 			NameWidgetComponent->SetVisibility(false, true);
-		}
+		}	
 	}
 
 
@@ -252,7 +266,19 @@ void ABaseCharacter::BeginPlay()
 
 	//백팩은 커스터마이징과는 다르게 처리 // 기본은 투명
 	SetBackpackMesh(false);
+
+	KickHitBox->OnComponentBeginOverlap.AddUniqueDynamic(this, &ABaseCharacter::OnKickHitBoxOverlap);
+
 }
+
+void ABaseCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	Super::EndPlay(EndPlayReason);
+
+	LOG_Char_WARNING(TEXT("캐릭터 EndPlay"));
+	GetWorld()->GetTimerManager().ClearAllTimersForObject(this);
+}
+
 
 FCharacterCustomizationData ABaseCharacter::GetCustomizationData()
 {
@@ -397,6 +423,73 @@ void ABaseCharacter::SetPartMaterial(USkeletalMeshComponent* Component, int32 Ma
 	}
 }
 
+
+void ABaseCharacter::OnKickHitBoxOverlap(UPrimitiveComponent* OverlappedComp,
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex,
+	bool bFromSweep,
+	const FHitResult& SweepResult)
+{
+	// 서버에서만 처리
+	if (!HasAuthority())
+	{
+		return;
+	}
+	const FVector Start = GetActorLocation() + GetActorForwardVector() * 50.f + FVector(0, 0, 50.f);
+	const FVector End = Start; // 박스는 이동하지 않음
+
+	const FVector BoxExtent = FVector(100.f, 100.f, 100.f); // 크기 조절 가능
+	const FRotator Rotation = GetActorRotation();
+
+	TArray<FHitResult> HitResults;
+
+	UKismetSystemLibrary::BoxTraceMultiForObjects(
+		GetWorld(),
+		Start,
+		End,
+		BoxExtent,
+		Rotation,
+		{ UEngineTypes::ConvertToObjectType(ECC_Pawn) },
+		false,
+		{ this },
+		EDrawDebugTrace::None,
+		HitResults,
+		true // ignore self
+	);
+
+	for (const FHitResult& Hit : HitResults)
+	{
+		ACharacter* TargetCharacter = Cast<ACharacter>(Hit.GetActor());
+		if (!TargetCharacter || TargetCharacter == this) continue;
+		if (TargetCharacter->IsA<ABaseBossMonsterCharacter>())
+		{
+			continue;
+		}
+		
+		// 넉백 처리
+		FVector KnockbackDir = GetActorForwardVector();
+		KnockbackDir.Z = 0;
+		KnockbackDir.Normalize();
+
+		const float KnockbackStrength = 1000.f;
+		const float UpwardStrength = 200.f;
+
+		TargetCharacter->LaunchCharacter(KnockbackDir * KnockbackStrength + FVector(0, 0, UpwardStrength), true, true);
+	}
+}
+
+
+
+void ABaseCharacter::StartKickHit()
+{
+	KickHitBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+}
+
+void ABaseCharacter::EndKickHit()
+{
+	KickHitBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}
 
 float ABaseCharacter::GetBrightness()
 {
@@ -575,6 +668,7 @@ void ABaseCharacter::AttachCameraToRifle()
 	{
 		if (IsLocallyControlled())
 		{
+
 			AGunBase* Gun = Cast<AGunBase>(GetToolbarInventoryComponent()->GetCurrentEquippedItem());
 			if (IsValid(Gun))
 			{
@@ -820,7 +914,7 @@ void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue, floa
 	{ 
 		return;
 	}
-	ReduceRecoil(0.3f);
+	//ReduceRecoil(0.3f);
 	AddControllerYawInput(Value.X * Sensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
 	AddControllerPitchInput(Value.Y * Sensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
 }
@@ -915,18 +1009,18 @@ void ABaseCharacter::ApplySmoothRecoilStep()
 		if (RecoveryDelta.Size() >= AccumulatedRecoil.Size())
 		{
 			// 완전 복구
-			AddControllerPitchInput(-AccumulatedRecoil.X);
-			AddControllerYawInput(-AccumulatedRecoil.Y);
+			AddControllerPitchInput(-AccumulatedRecoil.X * RecoilRecoveryAmount);
+			AddControllerYawInput(-AccumulatedRecoil.Y * RecoilRecoveryAmount);
 			AccumulatedRecoil = FVector2D::ZeroVector;
 			TargetRecoil = FVector2D::ZeroVector;
 			GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
 		}
 		else
 		{
-			AddControllerPitchInput(-RecoveryDelta.X);
-			AddControllerYawInput(-RecoveryDelta.Y);
-			AccumulatedRecoil -= RecoveryDelta;
-			TargetRecoil -= RecoveryDelta;
+			AddControllerPitchInput(-RecoveryDelta.X * RecoilRecoveryAmount);
+			AddControllerYawInput(-RecoveryDelta.Y * RecoilRecoveryAmount);
+			AccumulatedRecoil -= RecoveryDelta * (1 / RecoilRecoveryAmount);
+			TargetRecoil -= RecoveryDelta * (1 / RecoilRecoveryAmount);
 		}
 	}
 }
@@ -2101,95 +2195,99 @@ void ABaseCharacter::TraceInteractableActor()
 
 void ABaseCharacter::UpdateGunWallClipOffset(float DeltaTime)
 {
-	// 1. 총을 들고 있는 상태인지 확인 (OverlayState or 커스텀 상태)
-
+	// 1. 총을 들고 있는 상태인지 확인
 	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
 	if (!IsValid(EquippedItem))
 	{
-		WallClipAimOffsetPitch = 0.0f;
+		WallClipAimOffsetPitch = FMath::FInterpTo(WallClipAimOffsetPitch, 0.0f, DeltaTime, 5.0f);
 		return;
 	}
 
 	AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem);
 	if (!IsValid(EquipmentItem))
 	{
+		WallClipAimOffsetPitch = FMath::FInterpTo(WallClipAimOffsetPitch, 0.0f, DeltaTime, 5.0f);
 		return;
 	}
-	if (EquipmentItem->ItemData.ItemType != FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
+
+	if (EquipmentItem->ItemData.ItemType != FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle"))
+		&& EquipmentItem->ItemData.ItemType != FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Shotgun"))
+		&& EquipmentItem->ItemData.ItemType != FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol")))
 	{
+		WallClipAimOffsetPitch = FMath::FInterpTo(WallClipAimOffsetPitch, 0.0f, DeltaTime, 5.0f);
 		return;
 	}
+
 	AGunBase* RifleItem = Cast<AGunBase>(EquippedItem);
 	if (!IsValid(RifleItem))
 	{
+		WallClipAimOffsetPitch = FMath::FInterpTo(WallClipAimOffsetPitch, 0.0f, DeltaTime, 5.0f);
 		return;
 	}
 
 	USkeletalMeshComponent* RifleMesh = RifleItem->GetSkeletalMeshComponent();
 	if (!IsValid(RifleMesh))
 	{
+		WallClipAimOffsetPitch = FMath::FInterpTo(WallClipAimOffsetPitch, 0.0f, DeltaTime, 5.0f);
 		return;
 	}
 
 	FVector MuzzleLoc = RifleMesh->GetSocketLocation("Muzzle");
 	FTransform MuzzleTransform = RifleMesh->GetSocketTransform("Muzzle", RTS_World);
 
-	// 1. 머즐의 앞 방향과 Pitch 각도 얻기
-	FVector MuzzleForward = MuzzleTransform.GetUnitAxis(EAxis::Z); // 머즐의 "앞" 방향
+	// 머즐의 앞 방향과 Pitch 각도 얻기
+	FVector MuzzleForward = MuzzleTransform.GetUnitAxis(EAxis::Z);
 	FRotator MuzzleRot = MuzzleForward.Rotation();
-	float MuzzlePitch = MuzzleRot.Pitch;  // 상하 방향 판별용
+	float MuzzlePitch = MuzzleRot.Pitch;
 
 	FHitResult Hit;
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(this);
+	Params.AddIgnoredActor(RifleItem); // 총 자체도 무시
 
-	// 2. 라인 트레이스
-	static constexpr float GunWallTraceDistance = 70.0f; // 50에서 100으로 더 여유있게
-	static constexpr float TraceStartOffset = 50.0f; // 뒤로 10cm 정도
-	FVector TraceStart = MuzzleLoc - MuzzleForward * TraceStartOffset;
-	// 끝 지점은 그대로 앞쪽 방향으로 트레이스 거리만큼
-	FVector TraceEnd = TraceStart + MuzzleForward * GunWallTraceDistance;
+	// 더 안정적인 트레이스 설정
+	static constexpr float GunWallTraceDistance = 1.0f;
+	FVector TraceStart = MuzzleLoc - MuzzleForward * 150.0f;
+	FVector TraceEnd = MuzzleLoc + MuzzleForward * GunWallTraceDistance;
+
 	bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Visibility, Params);
 
-	// 디버그 라인도 수정된 시작점 기준으로
-#if WITH_EDITOR
-	//DrawDebugLine(GetWorld(), TraceStart, TraceEnd, FColor::Red, false, 0.1f);
-#endif
-	// 3. 벽과의 거리 비율 계산
-	//float WallRatio = 0.0f;
-	//if (bHit)
-	//{
-	//	float Dist = (Hit.Location - MuzzleLoc).Size();
-	//	WallRatio = 1.0f - (Dist / 30.0f); // 30cm 안으로 들어가면 1.0
-	//	WallRatio = FMath::Clamp(WallRatio, 0.0f, 1.0f);
-	//}
+	// 벽과의 거리 비율 계산 (데드존 추가)
+	static constexpr float WallClipTriggerDistance = 100.0f;
+	static constexpr float DeadZone = 10.0f; // 10cm 데드존
 
-	static constexpr float WallClipTriggerDistance = 60.0f;
 	float TargetWallRatio = 0.0f;
-
 	if (bHit)
 	{
 		float Dist = (Hit.Location - MuzzleLoc).Size();
 		if (Dist < WallClipTriggerDistance)
 		{
-			TargetWallRatio = 1.0f - (Dist / WallClipTriggerDistance);
+			// 데드존 적용
+			float AdjustedDist = FMath::Max(Dist - DeadZone, 0.0f);
+			float AdjustedMaxDist = WallClipTriggerDistance - DeadZone;
+			TargetWallRatio = 1.0f - (AdjustedDist / AdjustedMaxDist);
 			TargetWallRatio = FMath::Clamp(TargetWallRatio, 0.0f, 1.0f);
 		}
 	}
 
-	// WallRatio 보간 (떨림 방지 핵심)
-	static float SmoothedWallRatio = 0.0f; // 내부 상태 유지
-	SmoothedWallRatio = FMath::FInterpTo(SmoothedWallRatio, TargetWallRatio, DeltaTime, 10.0f);
+	// 인스턴스 변수로 변경 (헤더 파일에 추가 필요)
+	SmoothedWallRatio = FMath::FInterpTo(SmoothedWallRatio, TargetWallRatio, DeltaTime, 10.0f); // 보간 속도 감소
 
-
-	// 4. Pitch 보정값 계산 (상하 방향에 따라 부호 바꿈)
-	float DirectionSign = MuzzlePitch >= 0 ? 1.0f : -1.0f;  // 위를 보면 +, 아래를 보면 -
+	// Pitch 보정값 계산
+	float DirectionSign = MuzzlePitch >= 0 ? 1.0f : -1.0f;
 	float TargetOffset = FMath::Lerp(0.0f, MaxWallClipPitch, SmoothedWallRatio) * DirectionSign;
 
-	// 5. 부드러운 보간
-	WallClipAimOffsetPitch = FMath::FInterpTo(WallClipAimOffsetPitch, TargetOffset, DeltaTime, 10.0f);
-
-	// 6. 애님 인스턴스에 전달
+	// 더 부드러운 보간
+	WallClipAimOffsetPitch = FMath::FInterpTo(WallClipAimOffsetPitch, TargetOffset, DeltaTime, 4.0f);
+	if (abs(WallClipAimOffsetPitch) > 10.0f)
+	{
+		bIsCloseToWall = true;
+	}
+	else
+	{
+		bIsCloseToWall = false;
+	}
+	// 애님 인스턴스에 전달
 	if (UAlsAnimationInstance* AlsAnim = Cast<UAlsAnimationInstance>(GetMesh()->GetAnimInstance()))
 	{
 		AlsAnim->WallClipAimOffsetPitch = WallClipAimOffsetPitch;
@@ -2211,7 +2309,6 @@ void ABaseCharacter::SetCurrentQuickSlotIndex(int32 NewIndex)
 	CancelUseItem();
 	CancelInteraction();
 	StopReload();
-	LOG_Char_WARNING(TEXT("Request Server to change QuickSlotindex"));
 	Server_SetQuickSlotIndex(NewIndex);
 }
 
@@ -2243,7 +2340,6 @@ void ABaseCharacter::EquipItem(int32 Index)
 
 void ABaseCharacter::Multicast_ResetAnimationAndCamera_Implementation(int32 Index)
 {
-	LOG_Char_WARNING(TEXT("Change Equip Item"));
 	//카메라 초기화(총 줌 쓰고 있다가 바뀔 가능성 대비)
 	ResetCameraLocationToDefault();
 	StopCurrentPlayingMontage();
@@ -2264,8 +2360,6 @@ int32 ABaseCharacter::GetCurrentQuickSlotIndex()
 
 void ABaseCharacter::StopCurrentPlayingMontage()
 {
-	LOG_Char_WARNING(TEXT("애님 몽타주 강종"));
-	//Mesh의 애니메이션 인스턴스 가져오기
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && AnimInstance->IsAnyMontagePlaying())
 	{
@@ -2283,8 +2377,6 @@ void ABaseCharacter::HandleInventoryUpdated()
 
 void ABaseCharacter::UnequipCurrentItem()
 {
-	LOG_Char_WARNING(TEXT("Unequipped current item"));
-
 	if (!IsEquipped() || !ToolbarInventoryComponent)
 	{
 		LOG_Item_WARNING(TEXT("현재 장비 상태가 아니거나 툴바가 없습니다."));
@@ -2297,28 +2389,13 @@ void ABaseCharacter::UnequipCurrentItem()
 		Server_UnequipCurrentItem();
 		return;
 	}
-#if WITH_EDITOR
-	LOG_Item_WARNING(TEXT("[ABaseCharacter::UnequipCurrentItem] 서버에서 장비 해제 처리")); // 서버에서 실제 처리
-#endif
+
 	// 현재 장착된 아이템 정보 가져오기 (로그용)
 	AItemBase* CurrentEquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
 	FString ItemName = CurrentEquippedItem ? CurrentEquippedItem->ItemRowName.ToString() : TEXT("Unknown");
 
 	// 툴바 컴포넌트에서 실제 해제 처리
 	ToolbarInventoryComponent->UnequipCurrentItem();
-
-#if WITH_EDITOR
-	// 장비 해제 후 상태 확인
-	if (!IsEquipped())
-	{
-		LOG_Item_WARNING(TEXT("[ABaseCharacter::UnequipCurrentItem] %s 아이템 해제 성공"), *ItemName);
-	}
-	else
-	{
-		LOG_Item_WARNING(TEXT("[ABaseCharacter::UnequipCurrentItem] 아이템 해제 실패 - 여전히 장비 상태임"));
-		return;
-	}
-#endif
 }
 
 void ABaseCharacter::Server_UnequipCurrentItem_Implementation()
@@ -2356,6 +2433,29 @@ float ABaseCharacter::TakeSpiritDamage(float DamageAmount, FDamageEvent const& D
 	return DamageAmount;
 }
 
+void ABaseCharacter::TriggerSpiritTickDamage()
+{
+	GetWorld()->GetTimerManager().SetTimer(
+		SpiritTickDamageHandle,
+		this,
+		&ABaseCharacter::TakeSpiritTickDamage,
+		SpiritDamageTickInterval,
+		true,           // 반복
+		0.01f    // 처음 실행까지의 지연 시간
+	);
+}
+
+void ABaseCharacter::TakeSpiritTickDamage()
+{
+	FDamageEvent DamageEvent;
+	float DamageAmount = SpiritTickDamage;
+	AController* InstigatorController = GetController(); // 또는 nullptr
+	AActor* DamageCauser = this; // 또는 원하는 액터
+
+	TakeSpiritDamage(DamageAmount, DamageEvent, GetController(), DamageCauser);
+}
+
+
 float ABaseCharacter::RestoreSpirit(float Amount)
 {
 	LOG_Char_WARNING(TEXT("캐릭터가 정신력을 회복함"));
@@ -2375,7 +2475,7 @@ float ABaseCharacter::RestoreSpirit(float Amount)
 	LOG_Char_WARNING(TEXT("Current Spirit : %f"), CalCulatedSpirit);
 	if (CalCulatedSpirit > MyPlayerState->PanicTriggerThreshold)
 	{
-		//: 정신력 낮음 처리
+		//: 정신력 높아짐 처리
 		ExitPanicState();
 	}
 	return Amount;
@@ -2554,8 +2654,7 @@ void ABaseCharacter::TriggerPanicVoice(float Duration)
 {
 	LOG_Char_WARNING(TEXT("보이스 변경"));
 
-	MouseSensitivityMultiplier = 10.0f;
-	// 기존 타이머 제거 후 새 타이머 시작
+	EnterPanicVoice();
 	GetWorld()->GetTimerManager().ClearTimer(PanicVoiceDurationHandle);
 	GetWorld()->GetTimerManager().SetTimer(
 		PanicVoiceDurationHandle,
@@ -2890,7 +2989,7 @@ float ABaseCharacter::CalculateMovementSpeedMultiplier()
 		return Calculated;
 	}
 	float MyWeight = GetTotalCarryingWeight() * MyPlayerState->WeightSlowdownMultiplier;
-	float WeightFactor = FMath::Clamp(1 - MyWeight / MaxWeight, 0.0f, 1.0f);
+	float WeightFactor = FMath::Clamp(1 - MyWeight / MaxWeight, 0.5f, 1.0f);
 	float MyDebuff = CalculateDebuffMultiplier();
 	float DebuffFactor = FMath::Clamp(MyDebuff, 0.0f, 1.0f);
 	Calculated = 1.0f * WeightFactor * DebuffFactor;
@@ -2929,6 +3028,7 @@ void ABaseCharacter::NetMulticast_UnPossessDrone_Implementation()
 
 void ABaseCharacter::RefreshOverlayObject()
 {
+
 	//static FGameplayTag CurrentItemTag = FGameplayTag::RequestGameplayTag(TEXT("Character.Player.Equipped"));  // 참고용
 	AItemBase* CurrentItem = GetToolbarInventoryComponent()->GetCurrentEquippedItem();
 	FGameplayTag ItemTag;
@@ -2938,6 +3038,8 @@ void ABaseCharacter::RefreshOverlayObject()
 	bool bUseLeftGunBone = true;
 	UStaticMesh* AttachMesh = NULL;
 	USkeletalMesh* AttachSkeletalMesh = NULL;
+	OverlaySkeletalMesh->SetOwnerNoSee(false);
+	OverlaySkeletalMesh->SetOnlyOwnerSee(false);
 	if (IsValid(CurrentItem))
 	{
 		ItemTag = CurrentItem->ItemData.ItemType;
@@ -2969,7 +3071,8 @@ void ABaseCharacter::RefreshOverlayObject()
 			CurrentRifleMesh = RifleMesh;
 			AttachSkeletalMesh = EquipmentItem->ItemData.SkeletalMesh;
 		}
-		
+		OverlaySkeletalMesh->SetOwnerNoSee(true);
+		OverlaySkeletalMesh->SetOnlyOwnerSee(true);
 		Overlay = AlsOverlayModeTags::Rifle;
 		bIsDesireAiming = true;
 	}
@@ -2983,7 +3086,8 @@ void ABaseCharacter::RefreshOverlayObject()
 			Socketname = "Pistol";
 			AttachSkeletalMesh = EquipmentItem->ItemData.SkeletalMesh;
 		}
-
+		OverlaySkeletalMesh->SetOwnerNoSee(true);
+		OverlaySkeletalMesh->SetOnlyOwnerSee(true);
 		Overlay = AlsOverlayModeTags::PistolTwoHanded;
 		bIsDesireAiming = true;
 	}
@@ -2997,6 +3101,8 @@ void ABaseCharacter::RefreshOverlayObject()
 			Socketname = "Shotgun";
 			AttachSkeletalMesh = EquipmentItem->ItemData.SkeletalMesh;
 		}
+		OverlaySkeletalMesh->SetOwnerNoSee(true);
+		OverlaySkeletalMesh->SetOnlyOwnerSee(true);
 		Overlay = AlsOverlayModeTags::Rifle;
 		bIsDesireAiming = true;
 	}
@@ -3008,7 +3114,10 @@ void ABaseCharacter::RefreshOverlayObject()
 	{
 		Overlay = AlsOverlayModeTags::PistolOneHanded;
 	}
-
+	if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Tool.Pickaxe")))
+	{
+		Overlay = AlsOverlayModeTags::Barrel;
+	}
 	SetDesiredGait(Overlay);
 	SetOverlayMode(Overlay);
 	RefreshOverlayLinkedAnimationLayer(ItemTag);
@@ -3113,6 +3222,10 @@ void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(FGameplayTag ItemTag)
 	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))
 	{
 		OverlayAnimationInstanceClass = PistolOneHandedAnimationClass;
+	}
+	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Tool.Pickaxe")))
+	{
+		OverlayAnimationInstanceClass = PickaxeAnimationClass;
 	}
 	else
 	{

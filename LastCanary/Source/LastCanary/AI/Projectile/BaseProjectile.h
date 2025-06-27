@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "NiagaraSystem.h"
 #include "BaseProjectile.generated.h"
 
 class UProjectileMovementComponent;
@@ -35,8 +36,8 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category = "Projectile|FX")
     UParticleSystem* SpawnFX;
 
-    UPROPERTY(EditDefaultsOnly, Category = "Projectile|FX")
-    UParticleSystem* ImpactFX;
+    UPROPERTY(EditDefaultsOnly, Category = "Effects")
+    UNiagaraSystem* ImpactFX;
 
     /** 사운드 */
     UPROPERTY(EditDefaultsOnly, Category = "Projectile|Sound")
