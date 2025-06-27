@@ -197,21 +197,35 @@ void AGunBase::Server_Fire_Implementation()
 
 void AGunBase::HandleFire()
 {
+    LOG_Item_WARNING(TEXT("[HandleFire] 시작 - 현재 탄환: %.1f"), Durability);
+
     float OldDurability = Durability;
     Durability = FMath::Max(0.0f, Durability - 1.0f);
+
+    LOG_Item_WARNING(TEXT("[HandleFire] 탄환 감소: %.1f → %.1f"), OldDurability, Durability);
 
     if (APawn* OwnerPawn = Cast<APawn>(GetOwner()))
     {
         if (UToolbarInventoryComponent* ToolbarComp = OwnerPawn->FindComponentByClass<UToolbarInventoryComponent>())
         {
+            LOG_Item_WARNING(TEXT("[HandleFire] SyncGunStateToSlot 호출"));
             ToolbarComp->SyncGunStateToSlot();
 
             if (HasAuthority())
             {
-                int32 CurrentSlotIndex = ToolbarComp->GetCurrentEquippedSlotIndex();
-                ToolbarComp->MulticastSetGunAmmoUIVisibility(true, CurrentSlotIndex);
+                int32 CurrentAmmo = FMath::RoundToInt(Durability);
+                int32 MaxAmmo = FMath::RoundToInt(MaxDurability);
+                ToolbarComp->MulticastSetGunAmmoUIVisibility(true, CurrentAmmo, MaxAmmo);
             }
         }
+        else
+        {
+            LOG_Item_WARNING(TEXT("[HandleFire] ToolbarInventoryComponent를 찾을 수 없음"));
+        }
+    }
+    else
+    {
+        LOG_Item_WARNING(TEXT("[HandleFire] Owner Pawn을 찾을 수 없음"));
     }
 
     FVector SoundLocation = GetActorLocation();
@@ -706,7 +720,7 @@ bool AGunBase::Reload()
             if (HasAuthority())
             {
                 int32 CurrentSlotIndex = ToolbarComp->GetCurrentEquippedSlotIndex();
-                ToolbarComp->MulticastSetGunAmmoUIVisibility(true, CurrentSlotIndex);
+                ToolbarComp->MulticastSetGunAmmoUIVisibility(true, Durability, MaxDurability);
             }
         }
     }
@@ -720,6 +734,7 @@ void AGunBase::CheckReloadCondition()
 {
     if (Durability >= MaxDurability)
     {
+        LOG_Item_WARNING(TEXT("1"));
         return;
     }
 

@@ -424,7 +424,9 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
 
         if (UIController)
         {
-            MulticastSetGunAmmoUIVisibility(true, SlotIndex);
+            int32 CurrentAmmo = FMath::RoundToInt(Gun->Durability);
+            int32 MaxAmmo = FMath::RoundToInt(Gun->MaxDurability);
+            MulticastSetGunAmmoUIVisibility(true, CurrentAmmo, MaxAmmo);
         }
     }
 
@@ -472,7 +474,9 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
         {
             if (UIController)
             {
-                MulticastSetGunAmmoUIVisibility(false, CurrentEquippedSlotIndex);
+                int32 CurrentAmmo = FMath::RoundToInt(Gun->Durability);
+                int32 MaxAmmo = FMath::RoundToInt(Gun->MaxDurability);
+                MulticastSetGunAmmoUIVisibility(true, CurrentAmmo, MaxAmmo);
             }
         }
 
@@ -1341,11 +1345,11 @@ void UToolbarInventoryComponent::MulticastUpdateItemText_Implementation(const FT
     }
 }
 
-void UToolbarInventoryComponent::MulticastSetGunAmmoUIVisibility_Implementation(bool bVisible, int32 SlotIndex)
+void UToolbarInventoryComponent::MulticastSetGunAmmoUIVisibility_Implementation(bool bVisible, int32 CurrentAmmo, int32 MaxAmmo)
 {
     if (UIController)
     {
-        UIController->SetGunAmmoUIVisibility(bVisible, SlotIndex);
+        UIController->SetGunAmmoUIVisibility(bVisible, CurrentAmmo, MaxAmmo);
     }
     else
     {

@@ -232,7 +232,7 @@ void UInventoryUIController::SetInputModeGameOnly()
     LOG_Item_WARNING(TEXT("[SetInputModeGameOnly] 가방 UI 닫힘 - 입력모드: GameOnly"));
 }
 
-void UInventoryUIController::SetGunAmmoUIVisibility(bool bVisible, int32 SlotIndex)
+void UInventoryUIController::SetGunAmmoUIVisibility(bool bVisible, int32 CurrentAmmo, int32 MaxAmmo)
 {
     if (!IsLocalPlayer())
     {
@@ -281,59 +281,15 @@ void UInventoryUIController::SetGunAmmoUIVisibility(bool bVisible, int32 SlotInd
         return;
     }
 
-    if (bVisible)
+    if (bVisible && MaxAmmo > 0)
     {
-        UToolbarInventoryComponent* ToolbarComp = Cast<UToolbarInventoryComponent>(OwnerInventory);
-        if (!ToolbarComp)
-        {
-            LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] ToolbarInventoryComponent 캐스팅 실패"));
-            return;
-        }
-
-        if (SlotIndex < 0)
-        {
-            LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] 장착된 슬롯 없음 (인덱스: %d)"), SlotIndex);
-            return;
-        }
-
-        FBaseItemSlotData* SlotData = ToolbarComp->GetItemDataAtSlot(SlotIndex);
-        if (!SlotData)
-        {
-            LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] 슬롯 데이터가 null (슬롯: %d)"), SlotIndex);
-            return;
-        }
-
-        int32 CurrentAmmo = FMath::RoundToInt(SlotData->Durability);
-
-        UDataTable* ItemDataTable = GISubsystem->GetItemDataTable();
-        if (!ItemDataTable)
-        {
-            LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] ItemDataTable이 null"));
-            return;
-        }
-
-        FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(SlotData->ItemRowName, TEXT("GetMaxAmmo"));
-        if (!ItemData)
-        {
-            LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] ItemData를 찾을 수 없음 - ItemRowName: %s"),
-                *SlotData->ItemRowName.ToString());
-            return;
-        }
-
-        int32 MaxAmmo = FMath::RoundToInt(ItemData->MaxDurability);
-        if (MaxAmmo > 0)
-        {
-            InventoryWidget->SetGunAmmoUIVisibility(true, CurrentAmmo, MaxAmmo);
-        }
-        else
-        {
-            LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] MaxAmmo가 0 - 총기가 아님: %s (MaxDurability: %.1f)"),
-                *SlotData->ItemRowName.ToString(), ItemData->MaxDurability);
-        }
+        InventoryWidget->SetGunAmmoUIVisibility(true, CurrentAmmo, MaxAmmo);
+        LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] ✅ 탄환 UI 표시: %d/%d"), CurrentAmmo, MaxAmmo);
     }
     else
     {
         InventoryWidget->SetGunAmmoUIVisibility(false, 0, 0);
+        LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] 탄환 UI 숨김"));
     }
 }
 

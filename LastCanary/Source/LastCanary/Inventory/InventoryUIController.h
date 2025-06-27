@@ -82,7 +82,7 @@ private:
 public:
     /** 총기 탄환 UI 표시/숨김 제어 */
     UFUNCTION(BlueprintCallable, Category = "Inventory UI")
-    void SetGunAmmoUIVisibility(bool bVisible, int32 SlotIndex);
+    void SetGunAmmoUIVisibility(bool bVisible, int32 CurrentAmmo, int32 MaxAmmo);
 
     //-----------------------------------------------------
     // 네트워크 UI 업데이트
