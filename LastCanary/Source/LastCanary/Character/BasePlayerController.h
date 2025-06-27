@@ -23,7 +23,7 @@ class LASTCANARY_API ABasePlayerController : public ALCPlayerController
 
 public:
 
-	void RequestShowInGameHUD();
+	//void RequestShowInGameHUD();
 	
 	void LoadMouseSensitivity();
 

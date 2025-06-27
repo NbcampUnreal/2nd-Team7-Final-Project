@@ -4,6 +4,7 @@
 #include "UI/UIObject/InventorySlotWidget.h"
 #include "UI/UIObject/ItemDropQuantityWidget.h"
 #include "UI/UIObject/BackpackSlotWidget.h"
+#include "UI/UIObject/GunAmmoWidget.h"
 #include "Character/BaseCharacter.h"
 #include "DataType/BaseItemSlotData.h"
 #include "Inventory/ToolbarInventoryComponent.h"
@@ -20,6 +21,8 @@ void UInventoryMainWidget::NativeConstruct()
 	AutoInitializeWithPlayer();
 
 	ShowToolbarOnly();
+
+	InitializeGunAmmoUI();
 }
 
 bool UInventoryMainWidget::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
@@ -275,5 +278,33 @@ void UInventoryMainWidget::RefreshInventory()
 	if (BackpackWidget)
 	{
 		BackpackWidget->RefreshInventoryUI();
+	}
+}
+
+void UInventoryMainWidget::SetGunAmmoUIVisibility(bool bVisible, AGunBase* Gun)
+{
+	if (!GunAmmoWidget)
+	{
+		LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] GunAmmoWidget이 null"));
+		return;
+	}
+
+	if (bVisible && Gun)
+	{
+		GunAmmoWidget->ShowAmmoUI(Gun);
+		LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] 탄환 UI 표시: %s"), *Gun->GetName());
+	}
+	else
+	{
+		GunAmmoWidget->HideAmmoUI();
+		LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] 탄환 UI 숨김"));
+	}
+}
+
+void UInventoryMainWidget::InitializeGunAmmoUI()
+{
+	if (GunAmmoWidget)
+	{
+		GunAmmoWidget->SetVisibility(ESlateVisibility::Hidden);
 	}
 }

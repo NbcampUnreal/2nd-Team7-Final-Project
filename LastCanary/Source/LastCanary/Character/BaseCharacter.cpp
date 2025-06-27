@@ -227,13 +227,13 @@ void ABaseCharacter::BeginPlay()
 		CustomPostProcessComponent->Priority = 100.0f;
 	}
 	SetMovementSetting();
-	if (ABasePlayerController* PC = Cast<ABasePlayerController>(GetController()))
-	{
-		if (IsLocallyControlled())
-		{
-			PC->RequestShowInGameHUD();
-		}
-	}
+	//if (ABasePlayerController* PC = Cast<ABasePlayerController>(GetController()))
+	//{
+	//	if (IsLocallyControlled())
+	//	{
+	//		PC->RequestShowInGameHUD();
+	//	}
+	//}
 
 	UE_LOG(LogTemp, Warning, TEXT("IsLocal: %s / IsServer: %s"),
 		IsLocallyControlled() ? TEXT("YES") : TEXT("NO"),

@@ -1,7 +1,8 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Character.h" 
+#include "GameFramework/Character.h"
+#include "NiagaraComponent.h"
 #include "BaseBossMonsterCharacter.generated.h"
 
 UCLASS()
@@ -12,6 +13,16 @@ class LASTCANARY_API ABaseBossMonsterCharacter : public ACharacter
 public:
     ABaseBossMonsterCharacter();
 	virtual void BeginPlay() override;
+
+    /** Berserk FX 컴포넌트 (미리 생성해 두고 Activate/Deactivate) */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Effects|Berserk")
+    UNiagaraComponent* AuraFX;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Effects|Berserk")
+    UNiagaraComponent* BerserkFX1;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Effects|Berserk")
+    UNiagaraComponent* BerserkFX2;
 
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Attack", meta = (ClampMin = "0.0", ClampMax = "1.0"))
     float StrongAttackChance = 0.3f;
@@ -55,6 +66,8 @@ public:
     /** 외부(예: 게임 모드, 코어 Actor 등)에서 호출해 보스를 Berserk 상태로 전환 */
     UFUNCTION(BlueprintCallable, Category = "Boss|Berserk")
     virtual void EnterBerserkState();
+
+    virtual void UpdateBlackboardValues();
 
 protected:
     float LastNormalTime = -FLT_MAX;
@@ -135,6 +148,17 @@ protected:
 
     /** 스캐너를 위한 스텐실 설정 */
     void EnableStencilForAllMeshes(int32 StencilValue);
+
+    // 애니메이션 초기화용 타이머 핸들
+    FTimerHandle ResetAnimTimerHandle;
+
+    // 애니메이션 초기화 함수
+    UFUNCTION()
+    void ResetAnimationState();
+
+    // 반복 호출 간격 (초)
+    UPROPERTY(EditAnywhere, Category = "Animation")
+    float ResetAnimInterval = 10.f;
 
     // Replication 설정
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;

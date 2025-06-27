@@ -165,8 +165,13 @@ private:
 
 	/** 몬스터 생성 함수 */
 	void SpawnMonsterInMidPath();
+
 	/** 유효 경로 찾기 */
 	TArray<FIntPoint> MainPathCells;
+
+	/** 몬스터가 스폰된 셀 */
+	UPROPERTY()
+	TSet<FIntPoint> MonsterSpawnedCells;
 
 	//-------------------------
 	// 노트 생성

@@ -126,6 +126,11 @@ void AItemBase::SetUsing(bool bNewUsing)
 	bIsUsing = bNewUsing;
 }
 
+FGameplayTag AItemBase::GetItemType() const
+{
+	return ItemData.ItemType;
+}
+
 void AItemBase::ApplyItemDataFromTable()
 {
 	if (ItemRowName.IsNone())
