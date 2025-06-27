@@ -9,6 +9,10 @@
 #include "GameFramework/PlayerState.h"
 #include "Kismet/GameplayStatics.h"
 
+#include "Framework/PlayerController/LCInGamePlayerController.h"
+#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "Framework/Manager/ResultEvaluator.h"
+
 #include "LastCanary.h"
 
 void ULCGameManager::Initialize(FSubsystemCollectionBase& Collection)
@@ -19,11 +23,12 @@ void ULCGameManager::Initialize(FSubsystemCollectionBase& Collection)
 
 void ULCGameManager::InitGameManager()
 {
+	bIsGameStarted = false;
 	CurrentPlayerCount = 0;
 	CurrentGamePlayData = FGamePlayData();
 	CurrentRound = 0;
 	MaxRounds = 3;
-	CurrentGold = 5000; // 초기 골드 설정
+	CurrentGold = 10000; // 초기 골드 설정
 	GoldHistory.Empty();
 }
 
@@ -49,9 +54,6 @@ void ULCGameManager::InitCurrentRoundResult()
 			for (APlayerState* PS : GameState->PlayerArray)
 			{
 				const FString PlayerName = PS->GetPlayerName();
-
-				// 빈 자원 맵으로 초기화
-				CurrentGamePlayData.PlayerResult.Add(PlayerName, FResultInfo());
 			}
 		}
 	}
@@ -62,18 +64,23 @@ void ULCGameManager::InitCurrentRoundResult()
 
 void ULCGameManager::EndCurrentRound()
 {
-	if (UWorld* World = GetWorld())
-	{
-		if (ALCInGameModeBase* InGameMode = Cast<ALCInGameModeBase>(World->GetAuthGameMode()))
-		{
+	//if (UWorld* World = GetWorld())
+	//{
+	//	if (ALCInGameModeBase* InGameMode = Cast<ALCInGameModeBase>(World->GetAuthGameMode()))
+	//	{
 
-		}
-	}
+	//	}
+	//}
 }
 
 void ULCGameManager::EndGame()
 {
-	bIsGameStarted = false;
+	if (ALCInGameModeBase* LCGM = Cast<ALCInGameModeBase>(GetWorld()->GetAuthGameMode()))
+	{
+		LCGM->EndGame();
+	}
+
+	InitGameManager();
 }
 
 bool ULCGameManager::IsGameEnd()
@@ -83,13 +90,17 @@ bool ULCGameManager::IsGameEnd()
 
 void ULCGameManager::SubmitExplorationResults(FString PlayerName, bool bIsDead, TMap<FName, int32> Results)
 {
+
+
+}
+
+void ULCGameManager::SubmitChecklist(APlayerController* Submitter, const TArray<FChecklistQuestion>& PlayerAnswers)
+{
+	FString PlayerName = Submitter->PlayerState->GetPlayerName();
 	if (CurrentGamePlayData.PlayerResult.Contains(PlayerName))
 	{
-		FResultInfo Result;
-		Result.bIsDead = bIsDead;
-		Result.PlayerResources = Results;
-
-		CurrentGamePlayData.PlayerResult[PlayerName] = Result;
+		CurrentGamePlayData.PlayerResult[PlayerName].PlayerAnswers = PlayerAnswers;
+		SubmitPlayerCount++;
 	}
 }
 

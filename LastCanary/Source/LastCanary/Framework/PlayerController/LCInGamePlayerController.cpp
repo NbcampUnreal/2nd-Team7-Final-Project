@@ -6,9 +6,13 @@
 #include "Framework/GameMode/LCRoomGameMode.h"
 #include "Framework/GameState/LCGameState.h"
 #include "Framework/Manager/LCCheatManager.h"
+#include "Framework/GameMode/LCInGameModeBase.h"
+#include "Character/BasePlayerState.h"
 
 #include "UI/UIElement/ResultMenu.h"
+#include "UI/UIElement/ResultWidget.h"
 #include "UI/Popup/PopupLevelInfo.h"
+#include "UI/UIElement/VideoPlayWidget.h"
 
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -44,6 +48,11 @@ void ALCInGamePlayerController::BeginPlay()
 		}
 	}
 
+	if (LCUIManager)
+	{
+		LCUIManager->ShowLoadingLevel();
+	}
+
 }
 
 void ALCInGamePlayerController::Client_ShowLevelInfo_Implementation(int32 MapId)
@@ -63,23 +72,68 @@ void ALCInGamePlayerController::Client_ShowLevelInfo_Implementation(int32 MapId)
 
 void ALCInGamePlayerController::Client_OnGameEnd_Implementation()
 {
-
+	LCUIManager->ShowGameEndWidget();
 }
 
-void ALCInGamePlayerController::Client_ShowGameEndUI_Implementation()
+void ALCInGamePlayerController::Client_ShowResult_Implementation()
 {
 
+	LCUIManager->ShowResultMenu();
 }
 
-void ALCInGamePlayerController::Server_MarkPlayerAsEscaped_Implementation()
+void ALCInGamePlayerController::Client_ShowLoseVideo_Implementation()
 {
-	LOG_Frame_WARNING(TEXT("== Server_MarkPlayerAsEscaped_Implementation Called =="));
-
-	if (GetWorld()->GetGameState<ALCGameState>())
+	if (LoseWidgetClass && !LoseWidgetInstance)
 	{
-		GetWorld()->GetGameState<ALCGameState>()->MarkPlayerAsEscaped(PlayerState);
+		LoseWidgetInstance = CreateWidget<UVideoPlayWidget>(this, LoseWidgetClass);
+		if (LoseWidgetInstance)
+		{
+			LoseWidgetInstance->AddToViewport(100);
+
+			LoseWidgetInstance->OnVideoEnded.BindLambda
+			(
+				[this]()
+				{
+					LOG_Frame_WARNING(TEXT("On Video Play Finished!!"));
+					LoseWidgetInstance = nullptr;
+
+					LCUIManager->ShowGameOverWidget();
+				}
+			);
+		}
 	}
 }
+
+void ALCInGamePlayerController::Client_ShowEscapeGateVideo_Implementation(UDataTable* CheckListTable)
+{
+	//this->StartCheckList(CheckListTable);
+	if (EscapeGateWidgetClass && !EscapeGateWidgetInstance)
+	{
+		EscapeGateWidgetInstance = CreateWidget<UVideoPlayWidget>(this, EscapeGateWidgetClass);
+		if (EscapeGateWidgetInstance)
+		{
+			EscapeGateWidgetInstance->AddToViewport(100);
+
+			EscapeGateWidgetInstance->OnVideoEnded.BindLambda
+			(
+				[this, CheckListTable]()
+				{
+					LOG_Frame_WARNING(TEXT("On Video Play Finished!!"));
+					EscapeGateWidgetInstance = nullptr;
+
+					this->StartCheckList(CheckListTable);
+				}
+			);
+		}
+	}
+}
+
+void ALCInGamePlayerController::StartCheckList(UDataTable* CheckListTable)
+{
+	LOG_Frame_WARNING(TEXT("Start New CheckList : %s"), *this->PlayerState->GetPlayerName());
+	LCUIManager->ShowNewChecklistWidget(CheckListTable);
+}
+
 
 void ALCInGamePlayerController::Client_StartChecklist_Implementation(AChecklistManager* ChecklistManager)
 {
@@ -104,31 +158,121 @@ void ALCInGamePlayerController::Server_RequestSubmitChecklist_Implementation(con
 		if (AChecklistManager* Manager = *It)
 		{
 			LOG_Frame_WARNING(TEXT("ChecklistManager found → Submitting"));
-			Manager->Server_SubmitChecklist(this, PlayerAnswers);
-			return;
+			Manager->SubmitCheckList(this, PlayerAnswers);
+			//Manager->Server_SubmitChecklist(this, PlayerAnswers);
+			//return;
 		}
 	}
 
 	LOG_Frame_WARNING(TEXT("ChecklistManager not found on server"));
+
+	if (ULCGameManager* LCGM = GetGameInstance()->GetSubsystem<ULCGameManager>())
+	{
+		LCGM->SubmitChecklist(this, PlayerAnswers);
+	}
 }
 
-void ALCInGamePlayerController::Client_NotifyResultReady_Implementation(const FChecklistResultData& ResultData)
-{
-	LOG_Frame_WARNING(TEXT("[Client] 결과 수신 → 결과 UI 출력 시작"));
+//void ALCInGamePlayerController::Client_NotifyResultReady_Implementation(const FChecklistResultData& ResultData)
+//{
+//	LOG_Frame_WARNING(TEXT("[Client] 결과 수신 → 결과 UI 출력 시작"));
+//
+//	if (LCUIManager)
+//	{
+//		LCUIManager->ShowResultMenu();
+//
+//		if (UResultMenu* Menu = LCUIManager->GetResultMenuClass())
+//		{
+//			Menu->SetChecklistResult(ResultData);
+//			Server_ClearResourceItem();
+//		}
+//		else
+//		{
+//			LOG_Frame_WARNING(TEXT("[Client] GetCachedResultMenu가 null을 반환함"));
+//		}
+//	}
+//	else
+//	{
+//		LOG_Frame_WARNING(TEXT("[Client] LCUIManager가 없음"));
+//	}
+//}
 
-	if (ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+void ALCInGamePlayerController::ClearResourceItem()
+{
+	ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
+	if (!IsValid(Subsystem))
 	{
-		if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
+		return;
+	}
+
+	FItemDataRow* DefaultItem = Subsystem->GetItemDataByRowName("Default");
+	if (DefaultItem == nullptr)
+	{
+		LOG_Server_ERROR(TEXT("Can't Find DefaultItem By RowName"));
+	}
+
+	ABasePlayerState* PS = Cast<ABasePlayerState>(PlayerState);
+	if (PS)
+	{
+		//auto itemId = PS->AquiredItemIDs;
+		for (int i = 0; i < PS->AquiredItemIDs.Num(); i++)
 		{
-			UIManager->ShowResultMenu();
-			if (UResultMenu* Menu = UIManager->GetResultMenuClass())
+			FItemDataRow* ItemData = Subsystem->GetItemDataByItemID(PS->AquiredItemIDs[i]);
+			if (ItemData != nullptr)
 			{
-				Menu->SetChecklistResult(ResultData);
+				if (ItemData->bIsResourceItem)
+				{
+					PS->AquiredItemIDs[i] = DefaultItem->ItemID;
+				}
 			}
-			else
+		}
+	}
+}
+
+void ALCInGamePlayerController::Server_ClearResourceItem_Implementation()
+{
+	ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
+	if (!IsValid(Subsystem))
+	{
+		return;
+	}
+
+	FItemDataRow* DefaultItem = Subsystem->GetItemDataByRowName("Default");
+	if (DefaultItem == nullptr)
+	{
+		LOG_Server_ERROR(TEXT("Can't Find DefaultItem By RowName"));
+	}
+
+	ABasePlayerState* PS = Cast<ABasePlayerState>(PlayerState);
+	if (PS)
+	{
+		//auto itemId = PS->AquiredItemIDs;
+		for (int i = 0; i < PS->AquiredItemIDs.Num(); i++)
+		{
+			FItemDataRow* ItemData = Subsystem->GetItemDataByItemID(PS->AquiredItemIDs[i]);
+			if (ItemData != nullptr)
 			{
-				LOG_Frame_WARNING(TEXT("[Client] GetCachedResultMenu가 null을 반환함"));
+				if (ItemData->bIsResourceItem)
+				{
+					PS->AquiredItemIDs[i] = DefaultItem->ItemID;
+				}
 			}
+
+		}
+	}
+
+	// TO DO : 단서관련(노트) 아이템들도 초기화
+
+}
+
+void ALCInGamePlayerController::Client_ShowResultWidget_Implementation(const FTotalResultData& ResultData)
+{
+	if (LCUIManager)
+	{
+		UResultWidget* ResultWidget = LCUIManager->ShowResultWidget();
+		if (ResultWidget)
+		{
+			ResultWidget->SetTotalResultData(ResultData);
+			Server_ClearResourceItem();
 		}
 	}
 }
