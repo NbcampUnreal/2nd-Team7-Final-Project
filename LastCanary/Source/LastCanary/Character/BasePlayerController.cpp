@@ -62,12 +62,23 @@ void ABasePlayerController::BeginPlay()
 
 void ABasePlayerController::RequestShowInGameHUD()
 {
+	LOG_Frame_WARNING(TEXT("=== RequestShowInGameHUD 호출됨 ==="));
+
 	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 	{
 		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
 		{
+			LOG_Frame_WARNING(TEXT("UIManager 유효 → HUD 출력 시도"));
 			UIManager->ShowInGameHUD();
 		}
+		else
+		{
+			LOG_Frame_WARNING(TEXT("UIManager가 유효하지 않음"));
+		}
+	}
+	else
+	{
+		LOG_Frame_WARNING(TEXT("GameInstanceSubsystem이 유효하지 않음"));
 	}
 }
 
@@ -394,6 +405,21 @@ void ABasePlayerController::OnPossess(APawn* InPawn)
 
 	
 	//ApplyInputMappingContext(CurrentIMC);  << 필요가 없는 거 같기도???
+	if (IsLocalController())
+	{
+		LOG_Frame_WARNING(TEXT("✅ RequestShowInGameHUD() 호출됨: %s"), *GetName());	
+
+		FTimerHandle HUDTimer;
+		GetWorld()->GetTimerManager().SetTimer(
+			HUDTimer,
+			this,
+			&ABasePlayerController::RequestShowInGameHUD,
+			1.0f, 
+			false
+		);
+		bool bResult = GetWorld()->GetTimerManager().IsTimerActive(HUDTimer);
+		LOG_Frame_WARNING(TEXT("HUDTimerHandle 등록 직후 타이머 활성 여부: %s"), bResult ? TEXT("활성") : TEXT("비활성"));
+	}
 	
 }
 
@@ -435,6 +461,28 @@ void ABasePlayerController::OnUnPossess()
 void ABasePlayerController::ClientRestart(APawn* NewPawn)
 {
 	Super::ClientRestart(NewPawn);
+
+	LOG_Frame_WARNING(TEXT("✅ ClientRestart 호출됨: %s"), *GetName());
+
+	if (IsLocalController())
+	{
+		LOG_Frame_WARNING(TEXT("✅ IsLocalController TRUE — 타이머 설정 중"));
+
+		FTimerDelegate TimerDel;
+		FTimerHandle HUDTimerHandle;
+		TimerDel.BindUFunction(this, FName("RequestShowInGameHUD"));
+
+		GetWorld()->GetTimerManager().SetTimer(
+			HUDTimerHandle,
+			TimerDel,
+			1.0f,
+			false
+		);
+	}
+	else
+	{
+		LOG_Frame_WARNING(TEXT("❌ IsLocalController가 FALSE임"));
+	}
 }
 
 void ABasePlayerController::InitInputComponent()
