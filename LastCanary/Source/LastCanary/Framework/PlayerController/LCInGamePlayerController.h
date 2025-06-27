@@ -78,10 +78,6 @@ public:
 	void Server_ClearResourceItem();
 	void Server_ClearResourceItem_Implementation();
 
-	UFUNCTION(Client, Reliable)
-	void Client_ClearResourceItem();
-	void Client_ClearResourceItem_Implementation();
-
 	void ClearResourceItem();
 
 	UFUNCTION(Client, Reliable)
