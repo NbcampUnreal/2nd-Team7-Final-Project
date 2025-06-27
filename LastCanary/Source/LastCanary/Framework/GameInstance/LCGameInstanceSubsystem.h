@@ -45,6 +45,7 @@ public:
 	FMapDataRow* GetMapDataByRowName(FName MapRowName) const;
 	FMapDataRow* GetMapDataByMapID(int32 MapID) const;
 	FItemDataRow* GetItemDataByRowName(FName ItemRowName) const;
+	FItemDataRow* GetItemDataByItemID(int32 ItemID) const;
 
 	UFUNCTION(BlueprintPure, Category = "Data")
 	UDataTable* GetMapDataTable() const;

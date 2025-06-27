@@ -41,14 +41,16 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Checklist")
     TSubclassOf<UChecklistQuestionEntryWidget> QuestionEntryClass;
 
-    //UFUNCTION()
-    //void OnRevealAnimationFinished();
+    UFUNCTION()
+    void OnRevealAnimationFinished();
 
     void UpdateSubmitButtonVisibility();
     void AddNextEntry();
 
 public:
     void InitWithQuestions(const TArray<FChecklistQuestion>& InQuestions, AChecklistManager* InManager);
+    void InitWithCheckListTable(UDataTable* CheckListTable);
+
 
     UFUNCTION()
     void SubmitChecklist();
@@ -60,4 +62,5 @@ public:
     
 private:
     int32 CurrentRevealIndex = 0;
+    bool bIsHandleAnimEnd = false;
 };
