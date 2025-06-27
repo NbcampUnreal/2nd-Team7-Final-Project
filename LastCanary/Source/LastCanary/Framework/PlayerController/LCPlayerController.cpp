@@ -35,24 +35,6 @@ void ALCPlayerController::PostSeamlessTravel()
 {
     Super::PostSeamlessTravel();
 
-    LOG_Frame_WARNING(TEXT("PostSeamlessTravel: Ensuring CheatManager is ready"));
-
-    if (CheatManager == nullptr)
-    {
-        CheatManager = NewObject<ULCCheatManager>(this, CheatClass);
-        CheatManager->InitCheatManager();
-    }
-
-    if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
-    {
-        if (ULCUIManager* UIManager = Subsystem->GetUIManager())
-        {
-            UIManager->RestoreLoadingScreenIfNeeded(); 
-        }
-    }
-
-    LOG_Frame_WARNING(TEXT("PostSeamlessTravel: %s 호출 - IsLocalController: %d"), *GetName(), IsLocalController());
-    GetWorldTimerManager().SetTimerForNextTick(this, &ALCPlayerController::DelayedPostTravelSetup);
 }
 
 void ALCPlayerController::BeginPlay()
@@ -72,6 +54,17 @@ void ALCPlayerController::BeginPlay()
     // 복구 타이머
     FTimerHandle InventoryRestoreHandle;
     GetWorld()->GetTimerManager().SetTimer(InventoryRestoreHandle, this, &ALCPlayerController::TryRestoreInventory, 0.3f, false);
+
+    if (CheatManager == nullptr)
+    {
+        CheatManager = NewObject<ULCCheatManager>(this, CheatClass);
+        CheatManager->InitCheatManager();
+    }
+
+    LOG_Frame_WARNING(TEXT("PostSeamlessTravel: Ensuring CheatManager is ready"));
+
+    LOG_Frame_WARNING(TEXT("PostSeamlessTravel: %s 호출 - IsLocalController: %d"), *GetName(), IsLocalController());
+    GetWorldTimerManager().SetTimerForNextTick(this, &ALCPlayerController::DelayedPostTravelSetup);
 }
 
 void ALCPlayerController::TryRestoreInventory()
