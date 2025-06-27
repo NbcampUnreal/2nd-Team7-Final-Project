@@ -68,9 +68,23 @@ public:
 	void Server_RequestSubmitChecklist(const TArray<FChecklistQuestion>& PlayerAnswers);
 	void Server_RequestSubmitChecklist_Implementation(const TArray<FChecklistQuestion>& PlayerAnswers);
 
-	UFUNCTION(Client, Reliable)
-	void Client_NotifyResultReady(const FChecklistResultData& ResultData);
-	void Client_NotifyResultReady_Implementation(const FChecklistResultData& ResultData);
+	//UFUNCTION(Client, Reliable)
+	//void Client_NotifyResultReady(const FChecklistResultData& ResultData);
+	//void Client_NotifyResultReady_Implementation(const FChecklistResultData& ResultData);
 	
 	void SetSpectatingTarget(AActor* NewTarget);
+
+	UFUNCTION(Server, Reliable)
+	void Server_ClearResourceItem();
+	void Server_ClearResourceItem_Implementation();
+
+	UFUNCTION(Client, Reliable)
+	void Client_ClearResourceItem();
+	void Client_ClearResourceItem_Implementation();
+
+	void ClearResourceItem();
+
+	UFUNCTION(Client, Reliable)
+	void Client_ShowResultWidget(const FTotalResultData& ResultData);
+	void Client_ShowResultWidget_Implementation(const FTotalResultData& ResultData);
 };
