@@ -16,7 +16,7 @@ ATempleEliteMonster::ATempleEliteMonster()
 	Extra_AttackCollider->SetupAttachment(RootComponent);
 	Extra_AttackCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	Extra_AttackCollider->OnComponentBeginOverlap.AddDynamic(this, &ABaseMonsterCharacter::OnAttackHit);
+	Extra_AttackCollider->OnComponentBeginOverlap.AddUniqueDynamic(this, &ABaseMonsterCharacter::OnAttackHit);
 }
 
 void ATempleEliteMonster::EnableAttackCollider()

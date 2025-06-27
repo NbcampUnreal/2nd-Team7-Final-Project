@@ -14,6 +14,7 @@ public:
 
     virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
 
+    virtual void OnTaskFinished(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, EBTNodeResult::Type TaskResult) override;
 protected:
     UPROPERTY(EditAnywhere, Category = "Movement")
     float MyAcceptableRadius;
@@ -26,10 +27,12 @@ protected:
     UPROPERTY()
     UBehaviorTreeComponent* CurrentOwnerComp;
 
-    TMap<UBehaviorTreeComponent*, FTimerHandle> MoveTimerMap;
-    TMap<UBehaviorTreeComponent*, float> LastSoundTimeMap;
+    TMap<TWeakObjectPtr<UBehaviorTreeComponent>, FTimerHandle> MoveTimerMap;
+    TMap<TWeakObjectPtr<UBehaviorTreeComponent>, float> LastSoundTimeMap;
 
 private:
     UPROPERTY(EditAnywhere)
     float SoundTimer = 2.5f;
+
+    void CleanupTimer(UBehaviorTreeComponent* OwnerComp);
 };
