@@ -113,9 +113,6 @@ void AItemSpawner::SpawnItems()
         CurrentSpawnCount++;
         OnItemSpawned(SpawnedItem);
 
-        LOG_Item_WARNING(TEXT("[AItemSpawner::SpawnItems] 아이템 스폰 성공: %s"),
-            *SelectedItem->ItemRowName.ToString());
-
         // 스포너 숨기기 설정 확인
         if (bHideSpawnerAfterSpawn)
         {
@@ -174,9 +171,6 @@ AItemBase* AItemSpawner::SpawnSpecificItem(const FSpawnableItemInfo& ItemInfo)
 
         // 네트워크 업데이트
         SpawnedItem->ForceNetUpdate();
-
-        LOG_Item_WARNING(TEXT("[ItemSpawner::SpawnSpecificItem] 아이템 스폰 완료: %s (Q:%d, D:%.1f)"),
-            *ItemInfo.ItemRowName.ToString(), SpawnedItem->Quantity, SpawnedItem->Durability);
     }
 
     return SpawnedItem;
@@ -189,9 +183,6 @@ void AItemSpawner::ApplyDelayedItemProperties(AItemBase* Item, const FSpawnableI
         LOG_Item_WARNING(TEXT("[AItemSpawner::ApplyDelayedItemProperties] Item이 유효하지 않습니다."));
         return;
     }
-
-    LOG_Item_WARNING(TEXT("[AItemSpawner::ApplyDelayedItemProperties] 지연 속성 적용 시작 - RowName: %s"),
-        *ItemInfo.ItemRowName.ToString());
 
     // 1. 기본 속성 설정
     Item->ItemRowName = ItemInfo.ItemRowName;
@@ -209,9 +200,6 @@ void AItemSpawner::ApplyDelayedItemProperties(AItemBase* Item, const FSpawnableI
     {
         Item->ForceNetUpdate();
     }
-
-    LOG_Item_WARNING(TEXT("[AItemSpawner::ApplyDelayedItemProperties] 기본 속성 설정 완료 - RowName: %s, 수량: %d, 내구도: %.1f"),
-        *ItemInfo.ItemRowName.ToString(), Quantity, Durability);
 
     // 5. 데이터 테이블 적용 (추가 지연)
     FTimerHandle DataTableDelayHandle;
@@ -243,8 +231,6 @@ void AItemSpawner::ResetSpawner()
     {
         GetWorldTimerManager().SetTimer(SpawnTimerHandle, this, &AItemSpawner::HandlePeriodicSpawn, SpawnInterval, true);
     }
-
-    LOG_Item_WARNING(TEXT("[AItemSpawner::ResetSpawner] 스포너가 리셋되었습니다."));
 }
 
 void AItemSpawner::SetSpawnerEnabled(bool bEnabled)
@@ -339,7 +325,6 @@ void AItemSpawner::OnProximityBeginOverlap(UPrimitiveComponent* OverlappedComp, 
     if (Player && Player->OwnedTags.HasTagExact(FGameplayTag::RequestGameplayTag(FName("Character.Player"))))
     {
         bPlayerInProximity = true;
-        LOG_Item_WARNING(TEXT("[AItemSpawner::OnProximityBeginOverlap] 플레이어가 근접했습니다."));
     }
 }
 
@@ -350,7 +335,6 @@ void AItemSpawner::OnProximityEndOverlap(UPrimitiveComponent* OverlappedComp, AA
     if (Player && Player->OwnedTags.HasTagExact(FGameplayTag::RequestGameplayTag(FName("Character.Player"))))
     {
         bPlayerInProximity = false;
-        LOG_Item_WARNING(TEXT("[AItemSpawner::OnProximityEndOverlap] 플레이어가 멀어졌습니다."));
     }
 }
 

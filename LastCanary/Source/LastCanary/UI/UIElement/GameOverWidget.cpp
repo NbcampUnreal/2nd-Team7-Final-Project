@@ -1,6 +1,7 @@
 #include "UI/UIElement/GameOverWidget.h"
 
 #include "Components/TextBlock.h"
+#include "Components/Button.h"
 
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/PlayerController.h"
@@ -17,9 +18,28 @@ void UGameOverWidget::NativeConstruct()
 	{
 		GameOverText->SetText(FText::FromString(TEXT("Mission Failure\nNo Survivors Detected")));
 	}
+
+	if (GameOverButton)
+	{
+		GameOverButton->OnClicked.AddUniqueDynamic(this, &UGameOverWidget::OnGameOverButtonClicked);
+	}
 }
 
 void UGameOverWidget::NativeDestruct()
 {
 	Super::NativeDestruct();
+
+	if (GameOverButton)
+	{
+		GameOverButton->OnClicked.RemoveDynamic(this, &UGameOverWidget::OnGameOverButtonClicked);
+	}
 }
+
+void UGameOverWidget::OnGameOverButtonClicked()
+{
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		PC->ClientReturnToMainMenuWithTextReason_Implementation(FText::FromString(TEXT("GameOver")));
+	}
+}
+

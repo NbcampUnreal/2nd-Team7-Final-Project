@@ -9,7 +9,7 @@
 UItemSpawnerComponent::UItemSpawnerComponent()
 {
     PrimaryComponentTick.bCanEverTick = false;
-    SetIsReplicatedByDefault(false); // 컴포넌트 자체는 복제 안 함 (생성되는 아이템만 복제)
+    SetIsReplicatedByDefault(false);
 }
 
 ULCGameInstanceSubsystem* UItemSpawnerComponent::GetGameSubsystem()
@@ -249,7 +249,6 @@ void UItemSpawnerComponent::ApplyItemSettings(AItemBase* Item, FName ItemRowName
     if (AGunBase* Gun = Cast<AGunBase>(Item))
     {
         Gun->ApplyGunDataFromDataTable();
-        UE_LOG(LogTemp, Warning, TEXT("[ItemSpawnerComponent::ApplyItemSettings] 총기 데이터 적용: %s"), *ItemRowName.ToString());
     }
 
     // 네트워크 업데이트
@@ -324,9 +323,6 @@ void UItemSpawnerComponent::EnablePhysicsSimulation(AItemBase* Item)
                 {
                     ItemWeight = ItemData->Weight;
                     bIgnoreCharacterCollision = ItemData->bIgnoreCharacterCollision;
-
-                    LOG_Item_WARNING(TEXT("[UItemSpawnerComponent::EnablePhysicsSimulation] 아이템 데이터 로드: %s, 무게: %.2f, 캐릭터 충돌 무시: %s"),
-                        *Item->ItemRowName.ToString(), ItemWeight, bIgnoreCharacterCollision ? TEXT("true") : TEXT("false"));
                 }
             }
         }
@@ -360,21 +356,6 @@ void UItemSpawnerComponent::EnablePhysicsSimulation(AItemBase* Item)
         // 강제 네트워크 업데이트
         Item->ForceNetUpdate();
     }
-
-    //// 디버그 시각화
-    //if (AActor* Owner = GetOwner())
-    //{
-    //    FVector StartLocation = Item->GetActorLocation();
-    //    FVector EndLocation = StartLocation + ThrowDirection * 500.0f;
-
-    //    FColor DebugColor = bIgnoreCharacterCollision ? FColor::Blue : FColor::Yellow;
-    //    DrawDebugLine(GetWorld(), StartLocation, EndLocation, DebugColor, false, 3.0f, 0, 2.0f);
-    //    DrawDebugSphere(GetWorld(), StartLocation, 15.0f, 12, FColor::Green, false, 3.0f);
-    //    DrawDebugDirectionalArrow(GetWorld(), StartLocation, EndLocation, 30.0f, FColor::Red, false, 3.0f, 0, 2.0f);
-
-    //    FString CollisionText = bIgnoreCharacterCollision ? TEXT("NO_COLLISION") : TEXT("COLLISION");
-    //    DrawDebugString(GetWorld(), StartLocation + FVector(0, 0, 50), CollisionText, nullptr, DebugColor, 3.0f);
-    //}
 }
 
 void UItemSpawnerComponent::SetupMeshPhysics(UPrimitiveComponent* MeshComponent, const FVector& ThrowDirection, float ThrowVelocity, const FVector& ThrowImpulse)

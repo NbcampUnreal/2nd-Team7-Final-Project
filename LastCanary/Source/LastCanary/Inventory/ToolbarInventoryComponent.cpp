@@ -418,6 +418,14 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
     CurrentEquippedSlotIndex = SlotIndex;
     if (CachedOwnerCharacter) CachedOwnerCharacter->SetEquipped(true);
 
+    if (AGunBase* Gun = Cast<AGunBase>(EquippedItemComponent->GetChildActor()))
+    {
+        if (UIController)
+        {
+            UIController->SetGunAmmoUIVisibility(true, Gun);
+        }
+    }
+
     // UI 처리
     if (GetOwner()->HasAuthority())
     {
@@ -458,6 +466,14 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
 
     if (AItemBase* CurrentItem = Cast<AItemBase>(EquippedItemComponent->GetChildActor()))
     {
+        if (AGunBase* Gun = Cast<AGunBase>(CurrentItem))
+        {
+            if (UIController)
+            {
+                UIController->SetGunAmmoUIVisibility(false);
+            }
+        }
+
         if (CurrentItem->OnItemStateChanged.IsAlreadyBound(this, &UToolbarInventoryComponent::OnEquippedItemStateChanged))
         {
             CurrentItem->OnItemStateChanged.RemoveDynamic(this, &UToolbarInventoryComponent::OnEquippedItemStateChanged);
@@ -841,7 +857,7 @@ bool UToolbarInventoryComponent::TryStoreItem(AItemBase* ItemActor)
     ItemSlots[EmptySlotIndex] = NewSlot;
 
     // 정리
-    SyncInventoryToPlayerState();
+	//SyncInventoryToPlayerState(); - jhhan 가방에 추가될때는 동기화가 안되서 PostAddProcess에서 처리함
     OnInventoryUpdated.Broadcast();
     if (GetOwner()->HasAuthority() && ItemActor)
     {
@@ -858,6 +874,7 @@ bool UToolbarInventoryComponent::TryStoreItem(AItemBase* ItemActor)
 void UToolbarInventoryComponent::PostAddProcess()
 {
     OnInventoryUpdated.Broadcast();
+    SyncInventoryToPlayerState();
 }
 
 bool UToolbarInventoryComponent::DropCurrentEquippedItem()
@@ -908,7 +925,13 @@ bool UToolbarInventoryComponent::TryDropItemAtSlot(int32 SlotIndex, int32 Quanti
     if (GetOwner() && GetOwner()->HasAuthority())
     {
         bool bIsEquipped = (SlotIndex == CurrentEquippedSlotIndex);
-        return UInventoryDropSystem::ExecuteDropItem(this, SlotIndex, Quantity, bIsEquipped);
+        bool IsSucceessDrop = UInventoryDropSystem::ExecuteDropItem(this, SlotIndex, Quantity, bIsEquipped);
+        if (IsSucceessDrop)
+        {
+            SyncInventoryToPlayerState();
+        }
+
+        return IsSucceessDrop;
     }
     else
     {
@@ -1224,16 +1247,8 @@ TArray<int32> UToolbarInventoryComponent::GetInventoryItemIDs() const
 
 void UToolbarInventoryComponent::SetInventoryFromItemIDs(const TArray<int32>& ItemIDs)
 {
-    LOG_Item_WARNING(TEXT("[SetInventoryFromItemIDs] === 시작 === 받은 ItemID 수: %d"), ItemIDs.Num());
-
     // 기존 인벤토리 초기화
     ClearInventorySlots();
-
-    // 슬롯 수를 ItemID 배열 크기로 맞추기
-    if (ItemIDs.Num() > MaxSlots)
-    {
-        LOG_Item_WARNING(TEXT("[SetInventoryFromItemIDs] ItemID 수(%d)가 MaxSlots(%d)보다 큽니다. MaxSlots로 제한합니다."), ItemIDs.Num(), MaxSlots);
-    }
 
     int32 SlotsToRestore = FMath::Min(ItemIDs.Num(), MaxSlots);
     ItemSlots.SetNum(SlotsToRestore);
@@ -1246,11 +1261,8 @@ void UToolbarInventoryComponent::SetInventoryFromItemIDs(const TArray<int32>& It
         // ItemID를 ItemRowName으로 변환
         FName ItemRowName = UInventoryUtility::GetItemRowNameFromID(ItemID, ItemDataTable);
 
-        LOG_Item_WARNING(TEXT("ItemID: %d → ItemRowName: %s"), ItemID, *ItemRowName.ToString());
-
         if (ItemRowName.IsNone())
         {
-            LOG_Item_WARNING(TEXT("[SetInventoryFromItemIDs] 슬롯 %d: ItemID %d에 해당하는 아이템을 찾을 수 없음 -> Default로 설정"), i, ItemID);
             UInventoryUtility::SetSlotToDefault(ItemSlots[i], GetInventoryConfig());
         }
         else
@@ -1322,8 +1334,6 @@ void UToolbarInventoryComponent::SetInventoryFromItemIDs(const TArray<int32>& It
     UpdateBackpackMeshStatus();
 
     OnInventoryUpdated.Broadcast();
-
-    LOG_Item_WARNING(TEXT("[SetInventoryFromItemIDs] 인벤토리 복원 완료 - 총 %d개 슬롯"), ItemSlots.Num());
 }
 
 

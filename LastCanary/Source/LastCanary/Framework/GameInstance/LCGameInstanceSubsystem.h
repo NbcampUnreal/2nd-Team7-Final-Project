@@ -4,6 +4,7 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "DataTable/MapDataRow.h"
 #include "DataTable/ItemDataRow.h"
+#include "DataTable/MonsterDataTable.h"
 #include "LCGameInstanceSubsystem.generated.h"
 
 class ULCLocalPlayerSaveGame;
@@ -28,6 +29,11 @@ public:
 	TObjectPtr<UDataTable> ItemDataTable;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Data")
 	TObjectPtr<UDataTable> GunDataTable;
+	UPROPERTY(EditDefaultsOnly, Category = "Monster Data")
+	TObjectPtr<UDataTable> MonsterDataTable;
+	UPROPERTY(EditDefaultsOnly, Category = "Boss Data")
+	TObjectPtr<UDataTable> BossDataTable;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI|Highlight")
 	UMaterialInterface* DefaultHighlightMaterial;
 
@@ -39,6 +45,7 @@ public:
 	FMapDataRow* GetMapDataByRowName(FName MapRowName) const;
 	FMapDataRow* GetMapDataByMapID(int32 MapID) const;
 	FItemDataRow* GetItemDataByRowName(FName ItemRowName) const;
+	FItemDataRow* GetItemDataByItemID(int32 ItemID) const;
 
 	UFUNCTION(BlueprintPure, Category = "Data")
 	UDataTable* GetMapDataTable() const;
@@ -49,6 +56,11 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Data")
 	UDataTable* GetGunDataTable() const;
 
+	UFUNCTION(BlueprintPure, Category = "Data")
+	UDataTable* GetBossDataTable() const;
+
+	UFUNCTION(BlueprintPure, Category = "Data")
+	UDataTable* GetMonsterDataTable() const;
 
 
 	void LoadSaveData();

@@ -107,7 +107,7 @@ void ACaveEliteMonster::UnfreezeAI()
 		if (UAIPerceptionComponent* PerceptionComp = BaseAIController->GetPerceptionComponent())
 		{
 			PerceptionComp->SetSenseEnabled(UAISense_Hearing::StaticClass(), true);
-			PerceptionComp->OnTargetPerceptionUpdated.AddDynamic(
+			PerceptionComp->OnTargetPerceptionUpdated.AddUniqueDynamic(
                 this, &ACaveEliteMonster::OnTargetPerceptionUpdated
             );
 			PerceptionComp->SetActive(true);

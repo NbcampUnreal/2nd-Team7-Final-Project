@@ -127,6 +127,9 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Item|Usage")
     void ToggleUsing() { SetUsing(!bIsUsing); }
 
+    UFUNCTION(BlueprintPure, Category = "Item")
+    FGameplayTag GetItemType() const;
+
     //-----------------------------------------------------
     // 이벤트 및 델리게이트
     //-----------------------------------------------------

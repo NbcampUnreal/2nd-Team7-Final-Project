@@ -37,7 +37,7 @@ ABaseMonsterCharacter::ABaseMonsterCharacter()
 	//AttackCollider->SetRelativeLocation(FVector(100, 0, 0));
 	AttackCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	AttackCollider->OnComponentBeginOverlap.AddDynamic(this, &ABaseMonsterCharacter::OnAttackHit);
+	AttackCollider->OnComponentBeginOverlap.AddUniqueDynamic(this, &ABaseMonsterCharacter::OnAttackHit);
 
 	UCapsuleComponent* CapsuleComp = GetCapsuleComponent();
 	if (CapsuleComp)
@@ -72,10 +72,30 @@ void ABaseMonsterCharacter::BeginPlay()
 
 	if (AIPerceptionComponent)
 	{
-		AIPerceptionComponent->OnTargetPerceptionUpdated.AddDynamic(
+		AIPerceptionComponent->OnTargetPerceptionUpdated.AddUniqueDynamic(
 			this, &ABaseMonsterCharacter::OnTargetPerceptionUpdated
 		);
 	}
+}
+
+void ABaseMonsterCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	StopAllCurrentActions();
+
+	GetWorld()->GetTimerManager().ClearAllTimersForObject(this);
+
+	if (AIPerceptionComponent)
+	{
+		AIPerceptionComponent->OnTargetPerceptionUpdated.RemoveAll(this);
+		AIPerceptionComponent->SetActive(false);
+	}
+	if (ABaseAIController* AI = Cast<ABaseAIController>(GetController()))
+	{
+		AI->UnPossess();
+		AI->Destroy();
+	}
+
+	Super::EndPlay(EndPlayReason);
 }
 
 void ABaseMonsterCharacter::InitializeBoneDamageMap()
@@ -87,12 +107,12 @@ void ABaseMonsterCharacter::InitializeBoneDamageMap()
 
 void ABaseMonsterCharacter::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
 {
-	HandlePerceptionUpdate(Actor, Stimulus);//퍼셉션 업데이트 오버라이드 불가능 대신 사용
+	HandlePerceptionUpdate(Actor, Stimulus);
 }
 
 void ABaseMonsterCharacter::HandlePerceptionUpdate(AActor* Actor, FAIStimulus Stimulus)
 {
-	if (!Actor) return;
+	if (!Actor || !IsValid(this) || bIsDead) return;
 
 	if (ABaseAIController* AIController = Cast<ABaseAIController>(GetController()))
 	{
@@ -112,10 +132,14 @@ void ABaseMonsterCharacter::HandlePerceptionUpdate(AActor* Actor, FAIStimulus St
 				UObject* CurrentTarget = BlackboardComp->GetValueAsObject(FName("TargetActor"));
 				if (CurrentTarget == Actor)
 				{
+					TWeakObjectPtr<ABaseMonsterCharacter> WeakThis = this;
 					GetWorldTimerManager().SetTimer(ForgetTargetTimer,
-						[BlackboardComp]()
+						[WeakThis, BlackboardComp]()
 					{
-						BlackboardComp->ClearValue(FName("TargetActor"));
+						if (WeakThis.IsValid() && IsValid(BlackboardComp))
+						{
+							BlackboardComp->ClearValue(FName("TargetActor"));
+						}
 					},
 						3.0f, false);
 				}
@@ -154,9 +178,6 @@ float ABaseMonsterCharacter::TakeDamage(float DamageAmount, struct FDamageEvent 
 
 		float DamageMultiplier = GetDamageMultiplierForBone(HitBoneName);
 		FinalDamage *= DamageMultiplier;
-
-		UE_LOG(LogTemp, Error, TEXT("Hit Bone: %s, Damage: %f"),
-			*HitBoneName.ToString(), FinalDamage);
 	}
 
 	float DamageApplied = FMath::Clamp(DamageAmount, 0.0f, CurrentHP);
@@ -225,15 +246,19 @@ void ABaseMonsterCharacter::StopAllCurrentActions()
 
 	GetWorldTimerManager().ClearTimer(AttackTimerHandle);
 	GetWorldTimerManager().ClearTimer(AttackEnableTimerHandle);
+	GetWorldTimerManager().ClearTimer(ForgetTargetTimer);
+	GetWorldTimerManager().ClearTimer(DeathTimerHandle);
 
 	bIsAttacking = false;
 	DisableAttackCollider();
 
 	if (ABaseAIController* AIController = Cast<ABaseAIController>(GetController()))
 	{
-		AIController->StopMovement();//이동 중지
-		AIController->SetStop();
-
+		if (ABaseAIController* AI = Cast<ABaseAIController>(GetController()))
+		{
+			AI->UnPossess();
+			AI->Destroy();
+		}
 		if (UAIPerceptionComponent* PerceptionComp = AIController->GetPerceptionComponent())
 		{
 			PerceptionComp->OnTargetPerceptionUpdated.RemoveAll(this);
@@ -243,6 +268,9 @@ void ABaseMonsterCharacter::StopAllCurrentActions()
 		{
 			BlackboardComp->SetValueAsObject("TargetActor", nullptr);
 		}
+
+		AIController->StopMovement();//이동 중지
+		AIController->SetStop();
 	}
 
 	GetCharacterMovement()->StopMovementImmediately();//이동(관성) 즉시 중지, 물리적인거라 StopMovement랑 다르다고 함
@@ -251,7 +279,7 @@ void ABaseMonsterCharacter::StopAllCurrentActions()
 
 void ABaseMonsterCharacter::DestroyActor()
 {
-	if (HasAuthority())
+	if (HasAuthority() && IsValid(this))
 	{
 		Destroy();
 	}
@@ -300,6 +328,8 @@ void ABaseMonsterCharacter::OnAttackFinished()
 
 void ABaseMonsterCharacter::MulticastStartAttack_Implementation()
 {
+	if (!IsValid(this) || bIsDead) return;
+
 	if (IsValid(StartAttack))
 	{
 		PlayAnimMontage(StartAttack);
