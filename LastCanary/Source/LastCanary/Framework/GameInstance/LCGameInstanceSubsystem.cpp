@@ -131,6 +131,22 @@ FItemDataRow* ULCGameInstanceSubsystem::GetItemDataByRowName(FName ItemRowName) 
 	return ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("GetItemDataByRowName"));
 }
 
+FItemDataRow* ULCGameInstanceSubsystem::GetItemDataByItemID(int32 ItemID) const
+{
+	static const FString ContextString(TEXT("ItemInfoByItemId"));
+	TArray<FItemDataRow*> AllItems;
+	ItemDataTable->GetAllRows<FItemDataRow>(ContextString, AllItems);
+
+	for (FItemDataRow* ItemRow : AllItems)
+	{
+		if (ItemRow && ItemRow->ItemID == ItemID)
+		{
+			return ItemRow;
+		}
+	}
+	return nullptr;
+}
+
 UDataTable* ULCGameInstanceSubsystem::GetMapDataTable() const
 {
 	return MapDataTable;
