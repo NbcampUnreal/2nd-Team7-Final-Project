@@ -254,12 +254,8 @@ UItemSpawnerComponent* UInventoryComponentBase::GetItemSpawner() const
 
 void UInventoryComponentBase::ClearInventorySlots()
 {
-	LOG_Item_WARNING(TEXT("[ClearInventorySlots] 인벤토리 초기화 시작"));
-
 	ItemSlots.Empty();
 	CurrentTotalWeight = 0.0f;
-
-	LOG_Item_WARNING(TEXT("[ClearInventorySlots] 인벤토리 초기화 완료"));
 }
 
 bool UInventoryComponentBase::HasWalkieTalkieInToolbar() const
