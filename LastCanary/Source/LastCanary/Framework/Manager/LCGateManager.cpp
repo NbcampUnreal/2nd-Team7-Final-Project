@@ -3,6 +3,7 @@
 #include "Framework/Manager/LCTimeManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "EngineUtils.h" // TActorIterator
+#include "Framework/GameMode/LCGameMode.h"
 
 #include "LastCanary.h"
 
@@ -78,6 +79,12 @@ void ALCGateManager::TrySpawnGate()
 	if (SpawnedGate)
 	{
 		SpawnedGate->TravelType = EGateTravelType::ToBaseCamp;
+
+		if (ALCGameMode* LCGM = GetWorld()->GetAuthGameMode<ALCGameMode>())
+		{
+			LCGM->SendMessageToAllPC(TEXT("[Notice] 게이트 출현! 제한 시간 내로 진입하세요."));
+		}
+
 		/*SpawnedGate->InteractionPromptText = FText::FromString(TEXT("Press [F] to Escape to Base Camp"));
 		LOG_Frame_WARNING(TEXT("[GateManager] Spawned BaseCamp Gate at %s"), *SpawnTransform.GetLocation().ToString());*/
 	}
