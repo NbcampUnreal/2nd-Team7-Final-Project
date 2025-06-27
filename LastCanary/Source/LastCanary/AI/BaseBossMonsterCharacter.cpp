@@ -1,5 +1,7 @@
 ﻿#include "AI/BaseBossMonsterCharacter.h"
 #include "Animation/AnimInstance.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "PhysicsEngine/PhysicsAsset.h"
 #include "Net/UnrealNetwork.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
@@ -8,6 +10,21 @@ ABaseBossMonsterCharacter::ABaseBossMonsterCharacter()
 {
     PrimaryActorTick.bCanEverTick = true;
     bReplicates = true;
+
+    // 1) Aura 컴포넌트 생성
+    AuraFX = CreateDefaultSubobject<UNiagaraComponent>(TEXT("AuraFX"));
+    AuraFX->SetupAttachment(GetRootComponent());
+    AuraFX->bAutoActivate = true;   // 디폴트 활성화
+
+    // 1) BerserkFX1 컴포넌트 생성
+    BerserkFX1 = CreateDefaultSubobject<UNiagaraComponent>(TEXT("BerserkFX1"));
+    BerserkFX1->SetupAttachment(GetRootComponent());
+    BerserkFX1->bAutoActivate = false;   // 디폴트 비활성화
+
+    // 2) BerserkFX2 컴포넌트 생성
+    BerserkFX2 = CreateDefaultSubobject<UNiagaraComponent>(TEXT("BerserkFX2"));
+    BerserkFX2->SetupAttachment(GetRootComponent());
+    BerserkFX2->bAutoActivate = false;   // 디폴트 비활성화
 }
 
 void ABaseBossMonsterCharacter::BeginPlay()
@@ -17,6 +34,18 @@ void ABaseBossMonsterCharacter::BeginPlay()
     // ── 데칼 풀 초기화 ────────────────────────────────────────────
     RemainingCommonDecals = CommonDecalClasses;
     RemainingUniqueDecals = UniqueDecalClasses;
+
+    // 1초마다 애니메이션 초기화 실행 (true: 반복)
+    if (UWorld* World = GetWorld())
+    {
+        World->GetTimerManager().SetTimer(
+            ResetAnimTimerHandle,
+            this,
+            &ABaseBossMonsterCharacter::ResetAnimationState,
+            ResetAnimInterval,
+            true
+        );
+    }
 
     // (1) 서버 권한이 있고, 최소 하나씩 남아 있으면 타이머 예약
     if (HasAuthority() &&
@@ -54,6 +83,45 @@ void ABaseBossMonsterCharacter::EnterBerserkState()
         return;
 
     StartBerserk();
+}
+
+void ABaseBossMonsterCharacter::UpdateBlackboardValues()
+{
+
+}
+
+void ABaseBossMonsterCharacter::ResetAnimationState()
+{
+    USkeletalMeshComponent* SkelMesh = GetMesh();
+    if (!SkelMesh)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[ResetAnimationState] SkeletalMeshComponent가 없습니다"));
+        return;
+    }
+
+    // 몽타주 정지
+    if (UAnimInstance* AnimInst = SkelMesh->GetAnimInstance())
+    {
+        AnimInst->StopAllMontages(0.f);
+    }
+
+    // 본 포즈 리셋
+    SkelMesh->RefreshBoneTransforms();
+    SkelMesh->TickAnimation(0.f, false);
+
+    // Cloth 시뮬레이션을 다음 업데이트에서 Teleport & Reset 모드로 강제
+    SkelMesh->ForceClothNextUpdateTeleportAndReset();
+
+    // Physics Asset 재생성
+    SkelMesh->DestroyPhysicsState();
+    SkelMesh->CreatePhysicsState();
+
+    // 렌더·바운드 갱신
+    SkelMesh->UpdateBounds();
+    SkelMesh->MarkRenderTransformDirty();
+    SkelMesh->MarkRenderDynamicDataDirty();
+
+    UE_LOG(LogTemp, Log, TEXT("[ResetAnimationState] 메시·Cloth·Physics 상태 초기화 완료"));
 }
 
 
@@ -103,10 +171,16 @@ void ABaseBossMonsterCharacter::OnRep_IsBerserk()
     if (bIsBerserk)
     {
         UE_LOG(LogTemp, Warning, TEXT("[Berserk] 클라이언트: Berserk 시작"));
+        // 클라이언트에서 FX 활성화
+        if (BerserkFX1) BerserkFX1->Activate(true);
+        if (BerserkFX2) BerserkFX2->Activate(true);
     }
     else
     {
         UE_LOG(LogTemp, Warning, TEXT("[Berserk] 클라이언트: Berserk 종료"));
+        // 비활성화 or 제거
+        if (BerserkFX1) BerserkFX1->Deactivate();
+        if (BerserkFX2) BerserkFX2->Deactivate();
     }
 }
 
@@ -127,6 +201,14 @@ void ABaseBossMonsterCharacter::Multicast_EndBerserk_Implementation()
 
 void ABaseBossMonsterCharacter::SpawnRandomClue()
 {
+    // 0) world 널 체크
+    UWorld* World = GetWorld();
+    if (!World)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[SpawnRandomClue] World is null"));
+        return;
+    }
+
     // ─── 공통 스폰 파라미터 ──────────────────────────────────────────
     FActorSpawnParameters SpawnParams;
     SpawnParams.Owner = this;
@@ -199,6 +281,14 @@ void ABaseBossMonsterCharacter::SpawnRandomClue()
 
 void ABaseBossMonsterCharacter::DealDamageInRange(float DamageAmount)
 {
+    // 0) World 유효성 검사
+    UWorld* World = GetWorld();
+    if (!World)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[DealDamageInRange] World is null"));
+        return;
+    }
+
     FVector Origin = GetActorLocation();
     float Radius = AttackRange;
 

@@ -50,6 +50,9 @@ public:
     TArray<FMeshPartEntry> JacketMeshes;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    TArray<FMeshPartEntry> JacketMeshes_OwnerSee;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
     TArray<FMeshPartEntry> PantsMeshes;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
