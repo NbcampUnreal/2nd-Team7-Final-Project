@@ -81,7 +81,7 @@ void AGunBase::BeginPlay()
         LOG_Item_WARNING(TEXT("[GunBase::BeginPlay] 게임인스턴스 서브시스템의 GunDataTable이 null입니다!"));
     }
 
-    if (Durability <= 0.0f)
+    if (Durability <= 0.0f && !bIsEquipped)
     {
         Durability = MaxDurability;
     }
@@ -719,8 +719,10 @@ bool AGunBase::Reload()
 
             if (HasAuthority())
             {
+                int32 CurrentAmmo = FMath::RoundToInt(Durability);
+                int32 MaxAmmo = FMath::RoundToInt(MaxDurability);
                 int32 CurrentSlotIndex = ToolbarComp->GetCurrentEquippedSlotIndex();
-                ToolbarComp->MulticastSetGunAmmoUIVisibility(true, Durability, MaxDurability);
+                ToolbarComp->MulticastSetGunAmmoUIVisibility(true, CurrentAmmo, MaxAmmo);
             }
         }
     }
@@ -734,7 +736,6 @@ void AGunBase::CheckReloadCondition()
 {
     if (Durability >= MaxDurability)
     {
-        LOG_Item_WARNING(TEXT("1"));
         return;
     }
 
