@@ -45,6 +45,7 @@
 #include "Character/CustomizationMeshMap.h"
 #include "Inventory/BackpackManager.h"
 #include "Engine/DamageEvents.h"
+#include "AI/BaseBossMonsterCharacter.h"
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -205,7 +206,7 @@ void ABaseCharacter::BeginPlay()
 	if (IsValid(ToolbarInventoryComponent))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Inventory Ready"));
-		ToolbarInventoryComponent->OnInventoryUpdated.AddDynamic(this, &ABaseCharacter::HandleInventoryUpdated);
+		ToolbarInventoryComponent->OnInventoryUpdated.AddUniqueDynamic(this, &ABaseCharacter::HandleInventoryUpdated);
 	}
 
 	EnableStencilForAllMeshes(2);
@@ -266,7 +267,7 @@ void ABaseCharacter::BeginPlay()
 	//백팩은 커스터마이징과는 다르게 처리 // 기본은 투명
 	SetBackpackMesh(false);
 
-	KickHitBox->OnComponentBeginOverlap.AddDynamic(this, &ABaseCharacter::OnKickHitBoxOverlap);
+	KickHitBox->OnComponentBeginOverlap.AddUniqueDynamic(this, &ABaseCharacter::OnKickHitBoxOverlap);
 
 }
 
@@ -461,7 +462,11 @@ void ABaseCharacter::OnKickHitBoxOverlap(UPrimitiveComponent* OverlappedComp,
 	{
 		ACharacter* TargetCharacter = Cast<ACharacter>(Hit.GetActor());
 		if (!TargetCharacter || TargetCharacter == this) continue;
-
+		if (TargetCharacter->IsA<ABaseBossMonsterCharacter>())
+		{
+			continue;
+		}
+		
 		// 넉백 처리
 		FVector KnockbackDir = GetActorForwardVector();
 		KnockbackDir.Z = 0;

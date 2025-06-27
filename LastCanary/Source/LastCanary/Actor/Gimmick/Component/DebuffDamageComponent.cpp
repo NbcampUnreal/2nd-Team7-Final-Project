@@ -22,8 +22,8 @@ void UDebuffDamageComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	OnComponentBeginOverlap.AddDynamic(this, &UDebuffDamageComponent::OnOverlapBegin);
-	OnComponentEndOverlap.AddDynamic(this, &UDebuffDamageComponent::OnOverlapEnd);
+	OnComponentBeginOverlap.AddUniqueDynamic(this, &UDebuffDamageComponent::OnOverlapBegin);
+	OnComponentEndOverlap.AddUniqueDynamic(this, &UDebuffDamageComponent::OnOverlapEnd);
 }
 
 void UDebuffDamageComponent::ApplyEffectToActor(AActor* OtherActor)
@@ -196,7 +196,7 @@ void UDebuffDamageComponent::OnOverlapBegin(UPrimitiveComponent* OverlappedCompo
 
 	//LOG_Art(Log, TEXT("[DebuffComp] ▶ OnOverlapBegin → %s"), *OtherActor->GetName());
 
-	OtherActor->OnDestroyed.AddDynamic(this, &UDebuffDamageComponent::OnTargetDestroyed);
+	OtherActor->OnDestroyed.AddUniqueDynamic(this, &UDebuffDamageComponent::OnTargetDestroyed);
 
 	ApplyEffectToActor(OtherActor);
 }
@@ -212,7 +212,10 @@ void UDebuffDamageComponent::OnOverlapEnd(UPrimitiveComponent* OverlappedCompone
 		return;
 	}
 
-	OtherActor->OnDestroyed.RemoveDynamic(this, &UDebuffDamageComponent::OnTargetDestroyed);
+	if (OtherActor->OnDestroyed.IsAlreadyBound(this, &UDebuffDamageComponent::OnTargetDestroyed))
+	{
+		OtherActor->OnDestroyed.RemoveDynamic(this, &UDebuffDamageComponent::OnTargetDestroyed);
+	}
 
 	RemoveEffectFromActor(OtherActor);
 }
