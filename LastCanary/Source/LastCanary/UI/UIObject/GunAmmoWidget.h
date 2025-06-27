@@ -10,25 +10,7 @@
  */
 class UTextBlock;
 class AGunBase;
-class UImage;
-
-USTRUCT(BlueprintType)
-struct FGunTypeImageData
-{
-    GENERATED_BODY()
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun Type")
-    FGameplayTag GunTypeTag;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun Type")
-    TSoftObjectPtr<UTexture2D> GunTypeImage;
-
-    FGunTypeImageData()
-    {
-        GunTypeTag = FGameplayTag::EmptyTag;
-        GunTypeImage = nullptr;
-    }
-};
+class UProgressBar;
 
 UCLASS()
 class LASTCANARY_API UGunAmmoWidget : public ULCUserWidgetBase
@@ -43,13 +25,10 @@ public:
     UTextBlock* MaxAmmoText;
 
     UPROPERTY(meta = (BindWidget))
-    UImage* GunTypeImage;
+    UProgressBar* AmmoProgressBar;
 
     UPROPERTY()
     AGunBase* CurrentGun;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun Type Images")
-    TArray<FGunTypeImageData> GunTypeImages;
 
     UFUNCTION(BlueprintCallable)
     void UpdateAmmoDisplay();
@@ -61,7 +40,4 @@ public:
     void HideAmmoUI();
 
     void SetGunReference(AGunBase* Gun);
-
-private:
-    void UpdateGunTypeImage();
 };
