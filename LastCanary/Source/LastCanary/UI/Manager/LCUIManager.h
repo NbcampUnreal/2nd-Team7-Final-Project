@@ -24,6 +24,7 @@ class UPauseMenu;
 class UConfirmPopup;
 class UChecklistWidget;
 class UResultMenu;
+class UResultWidget;
 class URoomWidget;
 class UNotePopupWidget;
 class UDroneHUD;
@@ -83,6 +84,7 @@ public:
 	void ShowChecklistWidget();
 	void ShowNewChecklistWidget(UDataTable* CheckListTable);
 	UResultMenu* ShowResultMenu();
+	UResultWidget* ShowResultWidget();
 	void ShowRoomWidget();
 	void HideRoomWidget();
 	void ShowDroneHUD();
@@ -146,6 +148,7 @@ public:
 	FORCEINLINE UInventoryMainWidget* GetInventoryMainWidget() const { return CachedInventoryMainWidget; }
 	FORCEINLINE UChecklistWidget* GetChecklistWidget() const { return CachedChecklistWidget; }
 	FORCEINLINE UResultMenu* GetResultMenuClass() const { return CachedResultMenu; }
+	FORCEINLINE UResultWidget* GetResultWidget() const { return CachedResultWidget; }
 	FORCEINLINE URoomWidget* GetRoomWidgetInstance() const { return CachedRoomWidget; }
 	FORCEINLINE UDroneHUD* GetDroneHUD() const { return CachedDroneHUD; }
 	FORCEINLINE USpectatorWidget* GetSpectatorWidget() const { return CachedSpectatorWidget; }
@@ -214,6 +217,8 @@ private:
 	UPROPERTY()
 	TSubclassOf<UResultMenu> ResultMenuClass;
 	UPROPERTY()
+	TSubclassOf<UResultWidget> ResultWidgetClass;
+	UPROPERTY()
 	TSubclassOf<URoomWidget> RoomWidgetClass;
 	UPROPERTY()
 	TSubclassOf<UUserWidget> NotePopupWidgetClass;
@@ -257,6 +262,8 @@ private:
 	UChecklistWidget* CachedChecklistWidget;
 	UPROPERTY()
 	UResultMenu* CachedResultMenu;
+	UPROPERTY()
+	UResultWidget* CachedResultWidget;
 	UPROPERTY()
 	URoomWidget* CachedRoomWidget;
 	UPROPERTY()

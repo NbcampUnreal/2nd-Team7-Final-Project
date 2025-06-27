@@ -15,6 +15,7 @@
 #include "UI/UIElement/LoadingLevel.h"
 #include "UI/UIElement/ChecklistWidget.h"
 #include "UI/UIElement/ResultMenu.h"
+#include "UI/UIElement/ResultWidget.h"
 #include "UI/UIElement/RoomWidget.h"
 #include "UI/UIElement/DroneHUD.h"
 #include "UI/UIElement/SpectatorWidget.h"
@@ -67,6 +68,7 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			ConfirmPopupClass = Settings->FromBPConfirmPopupClass;
 			ChecklistWidgetClass = Settings->FromBPChecklistWidgetClass;
 			ResultMenuClass = Settings->FromBPResultMenuClass;
+			ResultWidgetClass = Settings->FromBPResultWidgetClass;
 			RoomWidgetClass = Settings->FromBPRoomWidgetClass;
 			NotePopupWidgetClass = Settings->FromBPNotePopupWidgetClass;
 			DroneHUDClass = Settings->FromBPDroneHUDClass;
@@ -492,7 +494,7 @@ void ULCUIManager::ShowNewChecklistWidget(UDataTable* CheckListTable)
 	HideSpectatorWidget();
 	SetInputModeUIOnly(CachedChecklistWidget);
 
-	//CachedChecklistWidget->InitWithCheckListTable(CheckListTable);
+	CachedChecklistWidget->InitWithCheckListTable(CheckListTable);
 }
 
 UResultMenu* ULCUIManager::ShowResultMenu()
@@ -509,6 +511,22 @@ UResultMenu* ULCUIManager::ShowResultMenu()
 
 	SetInputModeUIOnly(CachedResultMenu);
 	return CachedResultMenu;
+}
+
+UResultWidget* ULCUIManager::ShowResultWidget()
+{
+	if (!CachedResultWidget && ResultWidgetClass)
+	{
+		CachedResultWidget = CreateWidget<UResultWidget>(OwningPlayer, ResultWidgetClass);
+	}
+
+	if (CachedResultWidget && !CachedResultWidget->IsInViewport())
+	{
+		CachedResultWidget->AddToViewport(999);
+	}
+
+	SetInputModeUIOnly(CachedResultWidget);
+	return CachedResultWidget;
 }
 
 void ULCUIManager::ShowRoomWidget()

@@ -24,6 +24,7 @@ class UToolbarInventoryWidget;
 class UConfirmPopup;
 class UChecklistWidget;
 class UResultMenu;
+class UResultWidget;
 class URoomWidget;
 class UNotePopupWidget;
 class UDroneHUD;
@@ -68,6 +69,8 @@ public:
 	TSubclassOf<UChecklistWidget> FromBPChecklistWidgetClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UResultMenu> FromBPResultMenuClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UResultWidget> FromBPResultWidgetClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<URoomWidget> FromBPRoomWidgetClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
