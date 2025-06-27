@@ -24,4 +24,8 @@ protected:
     /** 이 정도 각도 이내면 완료로 간주 (도) */
     UPROPERTY(EditAnywhere, Category = "FacePlayer")
     float AcceptanceAngle = 5.f;
+
+    /** 회전을 멈출 최소 오차(도) - AcceptanceAngle 보다 약간 크게 잡습니다 */
+    UPROPERTY(EditAnywhere, Category = "FacePlayer")
+    float DeadzoneAngle = 5.f;
 };

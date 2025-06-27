@@ -42,12 +42,6 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Slenderman|Attack")
     USoundBase* AttackDistortionSound;
 
-    UPROPERTY(EditAnywhere, Category = "Slenderman|Berserk")
-    UNiagaraSystem* BerserkEffectFX;
-
-    UPROPERTY(EditAnywhere, Category = "Slenderman|Berserk")
-    USoundBase* BerserkSound;
-
     UPROPERTY(EditAnywhere, Category = "Slenderman|Distortion")
     UNiagaraSystem* DistortionFX;
 
@@ -178,7 +172,6 @@ protected:
     int32 BerserkCloneCount = 5;
 
     FTimerHandle BerserkTimerHandle;
-    virtual void OnRep_IsBerserk() override;
     virtual void EnterBerserkState() override;
     virtual void StartBerserk() override;
     virtual void StartBerserk(float Duration) override;
