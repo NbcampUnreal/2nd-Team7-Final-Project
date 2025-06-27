@@ -58,6 +58,20 @@ void ALCBaseGimmick::BeginPlay()
 {
 	Super::BeginPlay();
 
+	for (const TSubclassOf<AActor>& TargetClass : LinkedTargetClasses)
+	{
+		TArray<AActor*> FoundActors;
+		UGameplayStatics::GetAllActorsOfClass(GetWorld(), TargetClass, FoundActors);
+
+		for (AActor* Actor : FoundActors)
+		{
+			if (IsValid(Actor) && !LinkedTargets.Contains(Actor))
+			{
+				LinkedTargets.Add(Actor);
+			}
+		}
+	}
+
 	if (bDestructibleByGun)
 	{
 		CurrentHealth = DestructibleHealth;
