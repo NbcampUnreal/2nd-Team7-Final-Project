@@ -14,6 +14,8 @@
 #include "Engine/DamageEvents.h"
 #include "Net/UnrealNetwork.h"
 
+#include "Character/BasePlayerState.h"
+
 ABaseMonsterCharacter::ABaseMonsterCharacter()
 {
 	PrimaryActorTick.bCanEverTick = false;
@@ -214,6 +216,15 @@ float ABaseMonsterCharacter::TakeDamage(float DamageAmount, struct FDamageEvent 
 			GetWorldTimerManager().SetTimer(DeathTimerHandle, this,
 				&ABaseMonsterCharacter::DestroyActor, 1.9f, false);
 		}
+
+		if (EventInstigator && EventInstigator->PlayerState)
+		{
+			if (ABasePlayerState* PS = Cast<ABasePlayerState>(EventInstigator->PlayerState))
+			{
+				PS->KillCount++; // 또는 PS->KillCount++; 등
+			}
+		}
+
 	}
 
 
