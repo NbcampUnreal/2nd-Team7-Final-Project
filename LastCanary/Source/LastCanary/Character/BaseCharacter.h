@@ -101,8 +101,11 @@ public:
 	USkeletalMeshComponent* CustomGloveMesh;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* CustomJacketMesh;
+	USkeletalMeshComponent* CustomJacketMesh_OwnerNoSee;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CustomJacketMesh_OwnerSee;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
 	USkeletalMeshComponent* CustomPantsMesh;
 	
@@ -504,6 +507,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
 	UAnimMontage* PickAxeMontage;
 
+	void StopGunAutoFire();
+
 
 	FTimerHandle DroneTrackingTimerHandle;
 	void StartTrackingDrone();
@@ -563,7 +568,7 @@ public:
 	void Multicast_CancelUseItem_Implementation();
 
 	bool bIsPlayingUseItemMontage = false;
-
+	bool bIsMining = false;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
 	UAnimMontage* UsingBandageMontage;
 
@@ -692,6 +697,13 @@ public:
 	UFUNCTION(Client, Reliable)
 	void Client_PlayHitSound();
 	void Client_PlayHitSound_Implementation();
+
+	FTimerHandle InvincibilityTimerHandle;
+	void ActivateDamageCooldown();
+	void ResetInvincibility();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Damage")
+	float InvincibilityTime = 0.5f;
 
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	void HandlePlayerDeath();

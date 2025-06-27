@@ -163,6 +163,7 @@ protected:
     void MulticastPlaySound_Implementation(USoundBase* Sound);
 
     virtual void BeginPlay() override;
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
     UAIPerceptionComponent* AIPerceptionComponent;
