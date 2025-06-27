@@ -787,3 +787,34 @@ void ULCCheatManager::SpawnEnemy(FName EnemyRowName)
 		UE_LOG(LogCheat, Warning, TEXT("[치트] 적 스폰 실패"));
 	}
 }
+
+void ULCCheatManager::Superman(float NewSpeed)
+{
+	ToggleGodMode(); // GodMode 활성화
+	SetPlayerSpeed(NewSpeed); // 속도 설정
+	RunningMan(); // 무한 달리기 활성화
+}
+
+void ULCCheatManager::Kit1()
+{
+	SpawnItem(FName(TEXT("FlashV1"))); // Kit1 아이템 스폰
+	SpawnItem(FName(TEXT("FlashV2"))); // Kit1 아이템 스폰
+	SpawnItem(FName(TEXT("FlashV3"))); // Kit1 아이템 스폰
+	SpawnItem(FName(TEXT("Rifle01"))); // Kit1 아이템 스폰
+	SpawnItem(FName(TEXT("Rifle01_S"))); // Kit1 아이템 스폰
+	SpawnItem(FName(TEXT("Shotgun"))); // Kit1 아이템 스폰
+	SpawnItem(FName(TEXT("Shotgun_S"))); // Kit1 아이템 스폰
+}
+
+void ULCCheatManager::Kit2()
+{
+	SpawnItem(FName(TEXT("Scanner")));
+	SpawnItem(FName(TEXT("Scanner")));
+	SpawnItem(FName(TEXT("WalkieTalkie")));
+	SpawnItem(FName(TEXT("WalkieTalkie")));
+	SpawnItem(FName(TEXT("DRN01")));
+	SpawnItem(FName(TEXT("DRN02")));
+	SpawnItem(FName(TEXT("DRN03")));
+	SpawnItem(FName(TEXT("DRN04")));
+	SpawnItem(FName(TEXT("DRN05")));
+}
