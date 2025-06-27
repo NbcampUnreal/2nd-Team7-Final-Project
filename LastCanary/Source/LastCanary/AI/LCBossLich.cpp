@@ -103,27 +103,6 @@ void ALCBossLich::StartBerserk()
 {
     Super::StartBerserk();  // bIsBerserk = true 및 Multicast 호출 포함
 
-    // 이펙트 및 사운드 재생
-    if (BerserkEffectFX)
-    {
-        UNiagaraFunctionLibrary::SpawnSystemAttached(
-            BerserkEffectFX,
-            GetRootComponent(),
-            NAME_None,
-            FVector::ZeroVector,
-            FRotator::ZeroRotator,
-            EAttachLocation::KeepRelativeOffset,
-            true
-        );
-    }
-    if (BerserkSound)
-    {
-        UGameplayStatics::PlaySoundAtLocation(
-            this,
-            BerserkSound,
-            GetActorLocation()
-        );
-    }
 }
 
 // ── 지속시간 지정 버전 (StartBerserk(float)) ─────────────────
@@ -131,27 +110,6 @@ void ALCBossLich::StartBerserk(float Duration)
 {
     Super::StartBerserk(Duration);
 
-    // 동일 이펙트·사운드 재생
-    if (BerserkEffectFX)
-    {
-        UNiagaraFunctionLibrary::SpawnSystemAttached(
-            BerserkEffectFX,
-            GetRootComponent(),
-            NAME_None,
-            FVector::ZeroVector,
-            FRotator::ZeroRotator,
-            EAttachLocation::KeepRelativeOffset,
-            true
-        );
-    }
-    if (BerserkSound)
-    {
-        UGameplayStatics::PlaySoundAtLocation(
-            this,
-            BerserkSound,
-            GetActorLocation()
-        );
-    }
 }
 
 // ── Berserk 종료 시 로그만 (후처리 필요 시 여기에 추가) ─────────────────
@@ -159,38 +117,6 @@ void ALCBossLich::EndBerserk()
 {
     Super::EndBerserk();
     UE_LOG(LogTemp, Warning, TEXT("[Lich] Berserk 종료"));
-}
-
-// ── 레플리케이션 갱신 시에도 클라이언트에서 이펙트·사운드 재생 ─────────────────
-void ALCBossLich::OnRep_IsBerserk()
-{
-    Super::OnRep_IsBerserk();
-
-    if (bIsBerserk)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("[Lich] OnRep → Berserk 이펙트 클라에서 재생"));
-
-        if (BerserkEffectFX)
-        {
-            UNiagaraFunctionLibrary::SpawnSystemAttached(
-                BerserkEffectFX,
-                GetRootComponent(),
-                NAME_None,
-                FVector::ZeroVector,
-                FRotator::ZeroRotator,
-                EAttachLocation::KeepRelativeOffset,
-                true
-            );
-        }
-        if (BerserkSound)
-        {
-            UGameplayStatics::PlaySoundAtLocation(
-                this,
-                BerserkSound,
-                GetActorLocation()
-            );
-        }
-    }
 }
 
 void ALCBossLich::SpawnUndeadMinion()

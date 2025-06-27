@@ -16,6 +16,7 @@ public:
     virtual void StartBerserk() override;
     virtual void StartBerserk(float Duration) override;
     virtual void EndBerserk() override;
+    virtual void UpdateBlackboardValues() override;
 
     UFUNCTION(BlueprintCallable, Category = "Banshee|Hearing")
     void OnHeardNoise(const FVector& NoiseLocation);
@@ -24,19 +25,11 @@ protected:
     virtual void BeginPlay() override;
     virtual void Tick(float DeltaTime) override;
 
-    virtual void OnRep_IsBerserk() override;
-
     void EcholocationPing();
     void HandleRehide(ACharacter* Char);
-
-
-
     void ResetShriek();
     void AddRage(float Amount);
     void DecayRage(float DeltaTime);
-
-    UFUNCTION(NetMulticast, Reliable)
-    void MulticastActivateBerserkEffects();
 
     /** Wail: 근접 범위에 울음파를 발사해 넉백 및 공포 디버프 */
     UFUNCTION()

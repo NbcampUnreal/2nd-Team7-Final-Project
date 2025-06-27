@@ -23,7 +23,6 @@ protected:
     virtual void BeginPlay() override;
     virtual void Tick(float DeltaTime) override;
     virtual void UpdateRage(float DeltaSeconds) override;
-    virtual void OnRep_IsBerserk() override;
     virtual bool RequestAttack(float TargetDistance) override;
 
 	// ── 광폭화 ────────────────────────────────
@@ -37,13 +36,6 @@ protected:
 
     UPROPERTY(EditAnywhere, Category = "Lich|Berserk")
     float BerserkDamageFactor = 1.3f;
-
-    // 광폭화 시 재생할 이펙트 & 사운드
-    UPROPERTY(EditAnywhere, Category = "Lich|Berserk")
-    UNiagaraSystem* BerserkEffectFX;
-
-    UPROPERTY(EditAnywhere, Category = "Lich|Berserk")
-    USoundBase* BerserkSound;
 
     // ── Sound/Effect FX ───────────────
     UPROPERTY(EditAnywhere, Category = "Lich|Effects")

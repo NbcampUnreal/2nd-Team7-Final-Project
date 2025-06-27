@@ -80,15 +80,7 @@ void ALCBossEoduksini::Tick(float DeltaSeconds)
 
 void ALCBossEoduksini::UpdateBlackboardValues()
 {
-	// AI Controller 및 Blackboard 유효성 검증
-	AAIController* AICon = Cast<ALCBaseBossAIController>(GetController());
-	if (!AICon) return;
-
-	UBlackboardComponent* BB = AICon->GetBlackboardComponent();
-	if (!BB) return;
-
-	BB->SetValueAsFloat(TEXT("RagePercent"), Rage / (MaxRage > 0.f ? MaxRage : 1.f));
-	BB->SetValueAsBool(TEXT("IsBerserkMode"), bIsBerserk);
+	Super::UpdateBlackboardValues();
 }
 
 void ALCBossEoduksini::EnterBerserkState()
@@ -165,35 +157,6 @@ void ALCBossEoduksini::OnRep_IsBerserk()
 {
 	Super::OnRep_IsBerserk();
 
-	USceneComponent* Root = GetRootComponent();
-	if (bIsBerserk)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[Eoduksini] OnRep → Berserk Start (Client)"));
-		// Sound 스폰
-		if (BerserkSound && Root)
-		{
-			ActiveBerserkAudio = UGameplayStatics::SpawnSoundAttached(
-				BerserkSound,
-				Root,
-				NAME_None,
-				FVector::ZeroVector,
-				EAttachLocation::KeepRelativeOffset,
-				true
-			);
-		}
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[Eoduksini] OnRep → Berserk End (Client)"));
-
-
-		// Audio 정리
-		if (ActiveBerserkAudio)
-		{
-			ActiveBerserkAudio->Stop();
-			ActiveBerserkAudio = nullptr;
-		}
-	}
 }
 
 // --- Darkness overlap handlers ---
@@ -310,44 +273,73 @@ bool ALCBossEoduksini::IsPlayerLooking(APlayerController* PC) const
 
 void ALCBossEoduksini::UpdateRageAndScale(float DeltaSeconds)
 {
+	// 1) 서버 권한 & 월드 체크
+	if (!HasAuthority()) return;
 	UWorld* World = GetWorld();
 	if (!World) return;
 
-	int32 TotalPlayers = 0;
-	int32 LookCount = 0;
+	// 2) 플레이어 시선 집계
+	int32 LookCount = CountPlayersLooking();
 
-	// 모든 플레이어 컨트롤러 순회
-	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	// 3) 변화량 계산
+	float DeltaRage = ComputeRageDelta(DeltaSeconds, LookCount);
+
+	// 4) Rage 적용 & Berserk 자동 진입
+	ApplyRageDelta(DeltaRage);
+}
+
+int32 ALCBossEoduksini::CountPlayersLooking() const
+{
+	UWorld* World = GetWorld();
+	if (!World) return 0;
+
+	int32 Total = 0;
+	int32 Lookers = 0;
+	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
 	{
 		APlayerController* PC = It->Get();
 		if (!PC) continue;
+
 		APawn* Pawn = PC->GetPawn();
 		if (!Pawn || !Pawn->IsPlayerControlled()) continue;
 
-		++TotalPlayers;
+		++Total;
 		if (IsPlayerLooking(PC))
-			++LookCount;
+			++Lookers;
 	}
+	return Lookers;
+}
 
-	// 1) 증가량: 항상 동일
-	float DeltaRage = RageGainPerSec * DeltaSeconds;
+float ALCBossEoduksini::ComputeRageDelta(float DeltaSeconds, int32 LookCount) const
+{
+	// 기본 증가량
+	float Delta = RageGainPerSec * DeltaSeconds;
 
-	// Berserk 중이라면 증가량에 배수 적용 (선택)
+	// Berserk 상태라면 추가 배수
 	if (bIsBerserk)
-	{
-		DeltaRage *= BerserkRageGainMultiplier;
-	}
+		Delta *= BerserkRageGainMultiplier;
 
-	// 2) 감소량: 바라보는 플레이어 수에 비례
-	DeltaRage -= LookCount * RageLossPerSec * DeltaSeconds;
+	// 시선 수만큼 감소
+	Delta -= LookCount * RageLossPerSec * DeltaSeconds;
+	return Delta;
+}
 
-	// 3) Rage 적용
-	Rage = FMath::Clamp(Rage + DeltaRage, 0.f, MaxRage);
+void ALCBossEoduksini::ApplyRageDelta(float DeltaRage)
+{
+	if (FMath::IsNearlyZero(DeltaRage)) return;
 
-	// 4) Berserk 자동 진입
+	float NewRage = FMath::Clamp(Rage + DeltaRage, 0.f, MaxRage);
+	// (필요하다면 여기서 OnRageChanged 이벤트나 UpdateBlackboardValues() 호출)
+
+	Rage = NewRage;
+
+	UpdateBlackboardValues();
+
+	// 자동 Berserk 진입
 	if (Rage >= MaxRage && !bIsBerserk)
 	{
 		StartBerserk(BerserkDuration);
+		UpdateBlackboardValues();
 	}
 }
 

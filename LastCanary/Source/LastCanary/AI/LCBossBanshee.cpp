@@ -33,17 +33,25 @@ void ALCBossBanshee::BeginPlay()
 void ALCBossBanshee::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
-    DecayRage(DeltaTime);
+    // 월드 유효성 검사
+    UWorld* World = GetWorld();
+    if (!World) return;
 
-    if (auto* AICon = Cast<ALCBaseBossAIController>(GetController()))
+    // 서버 권한이 있을 때만 Rage를 감소시킵니다
+    if (HasAuthority())
     {
-        if (auto* BB = AICon->GetBlackboardComponent())
-        {
-            BB->SetValueAsFloat(TEXT("RagePercent"), Rage / MaxRage);
-            BB->SetValueAsBool(TEXT("IsBerserkMode"), bIsBerserk);
-        }
+        DecayRage(DeltaTime);
     }
+
+    // 클라이언트·서버 모두 매 Tick마다 Blackboard 동기화
+    UpdateBlackboardValues();
 }
+
+void ALCBossBanshee::UpdateBlackboardValues()
+{
+    Super::UpdateBlackboardValues();
+}
+
 
 void ALCBossBanshee::EcholocationPing()
 {
@@ -101,39 +109,11 @@ void ALCBossBanshee::StartBerserk()
 {
     Super::StartBerserk();  // bIsBerserk = true 및 Multicast 호출 포함
 
-    // 이펙트 추가
-    if (BerserkEffectFX)
-    {
-        UNiagaraFunctionLibrary::SpawnSystemAttached(
-            BerserkEffectFX,
-            GetRootComponent(),
-            NAME_None,
-            FVector::ZeroVector,
-            FRotator::ZeroRotator,
-            EAttachLocation::KeepRelativeOffset,
-            true
-        );
-    }
-
 }
 
 void ALCBossBanshee::StartBerserk(float Duration)
 {
     Super::StartBerserk(Duration);
-
-    // 동일 이펙트 재생
-    if (BerserkEffectFX)
-    {
-        UNiagaraFunctionLibrary::SpawnSystemAttached(
-            BerserkEffectFX,
-            GetRootComponent(),
-            NAME_None,
-            FVector::ZeroVector,
-            FRotator::ZeroRotator,
-            EAttachLocation::KeepRelativeOffset,
-            true
-        );
-    }
 
 
 }
@@ -147,11 +127,6 @@ void ALCBossBanshee::EndBerserk()
 
 
     // 종료 시 후처리가 필요하다면 여기에
-}
-
-void ALCBossBanshee::OnRep_IsBerserk()
-{
-    Super::OnRep_IsBerserk();
 }
 
 void ALCBossBanshee::HandleRehide(ACharacter* Char)
@@ -217,7 +192,6 @@ void ALCBossBanshee::AddRage(float Amount)
     if (Rage >= MaxRage && !bIsBerserk)
     {
         StartBerserk(BerserkDuration);
-        MulticastActivateBerserkEffects();
     }
 }
 
@@ -225,22 +199,6 @@ void ALCBossBanshee::DecayRage(float DeltaTime)
 {
     if (GetWorld()->GetTimeSeconds() - LastHeardNoiseTime >= 15.f)
         AddRage(-RageDecayPerSecond * DeltaTime);
-}
-
-void ALCBossBanshee::MulticastActivateBerserkEffects_Implementation()
-{
-    if (BerserkEffectFX)
-        UNiagaraFunctionLibrary::SpawnSystemAttached(
-            BerserkEffectFX,
-            GetRootComponent(),
-            NAME_None,
-            FVector::ZeroVector,
-            FRotator::ZeroRotator,
-            EAttachLocation::KeepRelativeOffset,
-            true
-        );
-
-    UE_LOG(LogTemp, Log, TEXT("[Banshee] Berserk Activated"));
 }
 
 void ALCBossBanshee::Wail()

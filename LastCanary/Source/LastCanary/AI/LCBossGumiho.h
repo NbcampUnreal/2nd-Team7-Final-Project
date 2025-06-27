@@ -28,15 +28,7 @@ protected:
     virtual void StartBerserk(float Duration) override;
     virtual void EndBerserk() override;
 
-    virtual void OnRep_IsBerserk() override;
-
     /** SFX,VFX */
-    UPROPERTY(EditAnywhere, Category = "Gumiho|Berserk")
-    UNiagaraSystem* BerserkEffectFX;
-
-    UPROPERTY(EditAnywhere, Category = "Gumiho|Berserk")
-    USoundBase* BerserkSound;
-
     UPROPERTY(EditAnywhere, Category = "Gumiho|Abilities")
     UNiagaraSystem* SpiritSpikeFX;
 

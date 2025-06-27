@@ -4,6 +4,8 @@
 #include "PhysicsEngine/PhysicsAsset.h"
 #include "Net/UnrealNetwork.h"
 #include "Kismet/GameplayStatics.h"
+#include "Components/AudioComponent.h"
+#include "AI/LCBaseBossAIController.h"
 #include "TimerManager.h"
 
 ABaseBossMonsterCharacter::ABaseBossMonsterCharacter()
@@ -88,6 +90,22 @@ void ABaseBossMonsterCharacter::EnterBerserkState()
 void ABaseBossMonsterCharacter::UpdateBlackboardValues()
 {
 
+    // 컨트롤러 널 체크
+    AController* C = GetController();
+    if (!C) return;
+
+    // AIController 캐스트
+    ALCBaseBossAIController* AICon = Cast<ALCBaseBossAIController>(C);
+    if (!AICon) return;
+
+    // BlackboardComponent 널 체크
+    UBlackboardComponent* BB = AICon->GetBlackboardComponent();
+    if (!BB) return;
+
+    // RagePercent 계산 시 0으로 나누기 방지
+    const float RagePct = (MaxRage > 0.f) ? (Rage / MaxRage) : 0.f;
+    BB->SetValueAsFloat(TEXT("RagePercent"), RagePct);
+    BB->SetValueAsBool(TEXT("IsBerserkMode"), bIsBerserk);
 }
 
 void ABaseBossMonsterCharacter::ResetAnimationState()
@@ -128,7 +146,7 @@ void ABaseBossMonsterCharacter::ResetAnimationState()
 void ABaseBossMonsterCharacter::StartBerserk(float Duration)
 {
     bIsBerserk = true;
-    Rage = 50.f;
+    Rage = 60.f;
     Multicast_StartBerserk();
 
     if (HasAuthority() && Duration > 0.f)
@@ -146,7 +164,7 @@ void ABaseBossMonsterCharacter::StartBerserk(float Duration)
 void ABaseBossMonsterCharacter::StartBerserk()
 {
     bIsBerserk = true;
-    Rage = 50.f;
+    Rage = 60.f;
     Multicast_StartBerserk();
 }
 
@@ -170,10 +188,31 @@ void ABaseBossMonsterCharacter::OnRep_IsBerserk()
 {
     if (bIsBerserk)
     {
+        if (EnterBerserkSound)
+        {
+            UGameplayStatics::PlaySoundAtLocation(
+                this,
+                EnterBerserkSound,
+                GetActorLocation()
+            );
+        }
+
         UE_LOG(LogTemp, Warning, TEXT("[Berserk] 클라이언트: Berserk 시작"));
         // 클라이언트에서 FX 활성화
         if (BerserkFX1) BerserkFX1->Activate(true);
         if (BerserkFX2) BerserkFX2->Activate(true);
+
+        if (BerserkSound && GetRootComponent())
+        {
+            ActiveBerserkAudio = UGameplayStatics::SpawnSoundAttached(
+                BerserkSound,
+                GetRootComponent(),
+                NAME_None,
+                FVector::ZeroVector,
+                EAttachLocation::KeepRelativeOffset,
+                true
+            );
+        }
     }
     else
     {
@@ -181,6 +220,12 @@ void ABaseBossMonsterCharacter::OnRep_IsBerserk()
         // 비활성화 or 제거
         if (BerserkFX1) BerserkFX1->Deactivate();
         if (BerserkFX2) BerserkFX2->Deactivate();
+
+        if (ActiveBerserkAudio)
+        {
+            ActiveBerserkAudio->Stop();
+            ActiveBerserkAudio = nullptr;
+        }
     }
 }
 

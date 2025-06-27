@@ -74,16 +74,6 @@ protected:
     UNiagaraSystem* VoidGraspFX;
     UPROPERTY(EditAnywhere, Category = "Eoduksini|VoidGrasp")
     USoundBase* VoidGraspSound;
-
-    // ── Berserk FX & Sound ──
-
-    /** 광폭화 진입 시 재생할 사운드 */
-    UPROPERTY(EditAnywhere, Category = "Eoduksini|Berserk")
-    USoundBase* BerserkSound;
-
-    // SpawnSoundAttached()이 리턴하는 오디오 컴포넌트를 보관
-    UPROPERTY()
-    UAudioComponent* ActiveBerserkAudio = nullptr;
     
     /** ── Darkness ── */
     UPROPERTY(VisibleAnywhere, Category = "Darkness")
@@ -274,6 +264,12 @@ protected:
 
 private:
     void UpdateRageAndScale(float DeltaSeconds);
+    /** 월드에서 플레이어 중 보스를 보고 있는 수를 반환 */
+    int32 CountPlayersLooking() const;
+    /** DeltaSeconds 동안 변화할 Rage 양을 계산 */
+    float ComputeRageDelta(float DeltaSeconds, int32 LookCount) const;
+    /** 계산된 DeltaRage를 Rage에 적용하고 Berserk 진입 검사 */
+    void ApplyRageDelta(float DeltaRage);
     void TryTriggerDarkness();
     void EndDarkness();
     // Shadow Echo 폭발 딜레이용 핸들
