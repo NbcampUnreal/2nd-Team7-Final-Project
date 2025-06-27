@@ -15,6 +15,9 @@ void UVideoPlayWidget::NativeConstruct()
 
 void UVideoPlayWidget::HandleVideoEnd()
 {
+	if (bAlreadyHandled) return;
+	bAlreadyHandled = true;
+
 	OnVideoEnded.ExecuteIfBound();
 	RemoveFromParent();
 }

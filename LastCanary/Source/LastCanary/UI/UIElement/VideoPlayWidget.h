@@ -31,4 +31,7 @@ public:
 
 	UFUNCTION()
 	void HandleVideoEnd();
+
+	UPROPERTY()
+	bool bAlreadyHandled = false;
 };
