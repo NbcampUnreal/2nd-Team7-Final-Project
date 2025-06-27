@@ -33,7 +33,7 @@ protected:
 
     /** 도달로 간주할 거리 */
     UPROPERTY(EditAnywhere, Category = "Patrol")
-    float AcceptanceRadius = 50.f;
+    float AcceptanceRadius = 150.f;
 
 private:
     // 이동 요청 ID 보관

@@ -5,6 +5,7 @@
 #include "DataTable/MapDataRow.h"
 #include "DataTable/ItemDataRow.h"
 #include "DataTable/GunDataRow.h"
+#include "DataTable/MonsterDataTable.h"
 #include "DataType/SessionInfo.h"
 #include "AdvancedSessions/Classes/AdvancedFriendsGameInstance.h"
 #include "LCGameInstance.generated.h"
@@ -39,6 +40,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data")
 	UDataTable* GunDataTable;
 	void LoadGunData();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data")
+	UDataTable* MonsterDataTable;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data")
+	UDataTable* BossDataTable;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI|Highlight")
 	UMaterialInterface* DefaultHighlightMaterial;

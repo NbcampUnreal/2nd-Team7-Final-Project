@@ -9,6 +9,8 @@ class UToolbarInventoryWidget;
 class UBackpackInventoryWidget;
 class UItemDropQuantityWidget;
 class UInventorySlotWidget;
+class UGunAmmoWidget;
+class AGunBase;
 class UTextBlock;
 struct FBaseItemSlotData;
 
@@ -87,4 +89,13 @@ private:
 
 public:
 	void RefreshInventory();
+
+	UPROPERTY(meta = (BindWidget))
+	UGunAmmoWidget* GunAmmoWidget;
+
+	UFUNCTION(BlueprintCallable, Category = "UI|Gun")
+	void SetGunAmmoUIVisibility(bool bVisible, AGunBase* Gun = nullptr);
+
+private:
+	void InitializeGunAmmoUI();
 };
