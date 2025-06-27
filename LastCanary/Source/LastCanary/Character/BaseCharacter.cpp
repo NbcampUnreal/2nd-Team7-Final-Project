@@ -618,6 +618,16 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 		FRotator ControlRot = GetControlRotation();
 		FRotator NewRot = FRotator(0.f, ControlRot.Yaw, 0.f);
 		SetActorRotation(NewRot);
+		ViewInfo.Rotation.Pitch = FMath::Clamp(ViewInfo.Rotation.Pitch, -30.f, 80.f);
+
+		// 컨트롤러 회전도 이 값으로 덮어쓰기
+		if (Controller)
+		{
+			FRotator ControlRotataion = Controller->GetControlRotation();
+			ControlRotataion.Pitch = ViewInfo.Rotation.Pitch;
+			Controller->SetControlRotation(ControlRotataion);
+		}
+
 	}
 	// 전환 중일 때만 부드러운 이동 처리
 	if (bIsTransitioning)
@@ -2001,6 +2011,7 @@ void ABaseCharacter::UseItemAfterPlayMontage(AItemBase* EquippedItem)
 	{
 		MontageToPlay = PickAxeMontage;
 		bIsMining = true;
+		Client_SetMiningState(bIsMining);
 	}
 	else
 	{
@@ -2019,6 +2030,11 @@ void ABaseCharacter::UseItemAfterPlayMontage(AItemBase* EquippedItem)
 	bIsPlayingAnimation = true;
 	LOG_Char_WARNING(TEXT("플레이 애니메이션."));
 	Server_PlayMontage(MontageToPlay, EAnimationType::UseItem);
+}
+
+void ABaseCharacter::Client_SetMiningState_Implementation(bool NewValue)
+{
+	bIsMining = NewValue;
 }
 
 void ABaseCharacter::UseItemAnimationNotified()
@@ -3511,6 +3527,8 @@ bool ABaseCharacter::IsInventoryOpen() const
 
 void ABaseCharacter::DropCurrentItem()
 {
+	CancelUseItem();
+	CancelInteraction();
 	StopAiming();
 	StopReload();
 	if (!ToolbarInventoryComponent)
