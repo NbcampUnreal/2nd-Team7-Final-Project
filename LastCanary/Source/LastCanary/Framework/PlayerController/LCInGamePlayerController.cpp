@@ -206,9 +206,10 @@ void ALCInGamePlayerController::Server_ResetPlayerState_Implementation()
 			FItemDataRow* ItemData = Subsystem->GetItemDataByItemID(PS->AquiredItemIDs[i]);
 			if (ItemData != nullptr)
 			{
-				if (ItemData->bIsResourceItem)
+				if (ItemData->bIsResourceItem || ItemData->bIsNoteItem)
 				{
 					PS->AquiredItemIDs[i] = DefaultItem->ItemID;
+					continue;
 				}
 			}
 		}

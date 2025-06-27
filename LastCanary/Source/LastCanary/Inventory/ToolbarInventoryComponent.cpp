@@ -940,11 +940,6 @@ bool UToolbarInventoryComponent::TryDropItemAtSlot(int32 SlotIndex, int32 Quanti
     }
 }
 
-void UToolbarInventoryComponent::RemoveResourceItems()
-{
-
-}
-
 bool UToolbarInventoryComponent::DropItemFromBackpack(int32 BackpackSlotIndex, int32 Quantity)
 {
     if (!BackpackManager)
@@ -1175,7 +1170,9 @@ void UToolbarInventoryComponent::SyncInventoryToPlayerState()
             LOG_Item_WARNING(TEXT("[Sync] PS에 저장된 아이템 목록: %s"), *DebugList);
 
 
+            // TO DO : 여기 아래부분 싹다 리팩토링 해야함
             TMap<FName, int32> CollectedResource;
+            TArray<int32> ExploreItemIDs;
             for (int32 i = 0; i < ItemSlots.Num(); ++i)
             {
                 const FBaseItemSlotData& SlotData = ItemSlots[i];
@@ -1190,6 +1187,11 @@ void UToolbarInventoryComponent::SyncInventoryToPlayerState()
                             const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(BackpackSlot.ItemRowName, TEXT("GetItemIDFromRowName"));
                             if (!ItemData->bIsResourceItem)
                             {
+                                if (ItemData->bIsNoteItem)
+                                {
+                                    ExploreItemIDs.Add(ItemData->ItemID);
+                                }
+
                                 continue;
                             }
 
@@ -1207,8 +1209,14 @@ void UToolbarInventoryComponent::SyncInventoryToPlayerState()
                 else
                 {
                     const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(SlotData.ItemRowName, TEXT("GetItemIDFromRowName"));
+
                     if (!ItemData->bIsResourceItem)
                     {
+                        if (ItemData->bIsNoteItem)
+                        {
+                            ExploreItemIDs.Add(ItemData->ItemID);
+                        }
+
                         continue;
                     }
 
@@ -1225,6 +1233,7 @@ void UToolbarInventoryComponent::SyncInventoryToPlayerState()
             }
 
             PS->CollectedResourceMap = CollectedResource;
+            PS->CollectedExploreItemArray = ExploreItemIDs;
         }
     }
 }
