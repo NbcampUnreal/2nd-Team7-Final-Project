@@ -7,7 +7,6 @@
 #include "NiagaraSystem.h"
 #include "Sound/SoundBase.h"
 #include "Components/AudioComponent.h"
-#include "NiagaraComponent.h"
 #include "Materials/MaterialInterface.h"
 #include "LCBossEoduksini.generated.h"
 
@@ -77,17 +76,10 @@ protected:
     USoundBase* VoidGraspSound;
 
     // ── Berserk FX & Sound ──
-    /** 광폭화 진입 시 재생할 Niagara 이펙트 */
-    UPROPERTY(EditAnywhere, Category = "Eoduksini|Berserk")
-    UNiagaraSystem* BerserkEffectFX;
 
     /** 광폭화 진입 시 재생할 사운드 */
     UPROPERTY(EditAnywhere, Category = "Eoduksini|Berserk")
     USoundBase* BerserkSound;
-
-    // SpawnSystemAttached()이 리턴하는 이펙트를 보관
-    UPROPERTY()
-    UNiagaraComponent* ActiveBerserkEffect = nullptr;
 
     // SpawnSoundAttached()이 리턴하는 오디오 컴포넌트를 보관
     UPROPERTY()

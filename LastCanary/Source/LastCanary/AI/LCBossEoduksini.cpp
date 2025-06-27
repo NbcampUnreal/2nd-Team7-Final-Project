@@ -169,22 +169,7 @@ void ALCBossEoduksini::OnRep_IsBerserk()
 	if (bIsBerserk)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[Eoduksini] OnRep → Berserk Start (Client)"));
-
-		// 1) FX 스폰
-		if (BerserkEffectFX && Root)
-		{
-			ActiveBerserkEffect = UNiagaraFunctionLibrary::SpawnSystemAttached(
-				BerserkEffectFX,
-				Root,
-				NAME_None,
-				FVector::ZeroVector,
-				FRotator::ZeroRotator,
-				EAttachLocation::KeepRelativeOffset,
-				true
-			);
-		}
-
-		// 2) Sound 스폰
+		// Sound 스폰
 		if (BerserkSound && Root)
 		{
 			ActiveBerserkAudio = UGameplayStatics::SpawnSoundAttached(
@@ -201,12 +186,6 @@ void ALCBossEoduksini::OnRep_IsBerserk()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[Eoduksini] OnRep → Berserk End (Client)"));
 
-		// FX 정리
-		if (ActiveBerserkEffect)
-		{
-			ActiveBerserkEffect->DestroyComponent();
-			ActiveBerserkEffect = nullptr;
-		}
 
 		// Audio 정리
 		if (ActiveBerserkAudio)

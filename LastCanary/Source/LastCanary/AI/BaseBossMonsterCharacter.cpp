@@ -10,6 +10,21 @@ ABaseBossMonsterCharacter::ABaseBossMonsterCharacter()
 {
     PrimaryActorTick.bCanEverTick = true;
     bReplicates = true;
+
+    // 1) Aura 컴포넌트 생성
+    AuraFX = CreateDefaultSubobject<UNiagaraComponent>(TEXT("AuraFX"));
+    AuraFX->SetupAttachment(GetRootComponent());
+    AuraFX->bAutoActivate = true;   // 디폴트 활성화
+
+    // 1) BerserkFX1 컴포넌트 생성
+    BerserkFX1 = CreateDefaultSubobject<UNiagaraComponent>(TEXT("BerserkFX1"));
+    BerserkFX1->SetupAttachment(GetRootComponent());
+    BerserkFX1->bAutoActivate = false;   // 디폴트 비활성화
+
+    // 2) BerserkFX2 컴포넌트 생성
+    BerserkFX2 = CreateDefaultSubobject<UNiagaraComponent>(TEXT("BerserkFX2"));
+    BerserkFX2->SetupAttachment(GetRootComponent());
+    BerserkFX2->bAutoActivate = false;   // 디폴트 비활성화
 }
 
 void ABaseBossMonsterCharacter::BeginPlay()
@@ -156,10 +171,16 @@ void ABaseBossMonsterCharacter::OnRep_IsBerserk()
     if (bIsBerserk)
     {
         UE_LOG(LogTemp, Warning, TEXT("[Berserk] 클라이언트: Berserk 시작"));
+        // 클라이언트에서 FX 활성화
+        if (BerserkFX1) BerserkFX1->Activate(true);
+        if (BerserkFX2) BerserkFX2->Activate(true);
     }
     else
     {
         UE_LOG(LogTemp, Warning, TEXT("[Berserk] 클라이언트: Berserk 종료"));
+        // 비활성화 or 제거
+        if (BerserkFX1) BerserkFX1->Deactivate();
+        if (BerserkFX2) BerserkFX2->Deactivate();
     }
 }
 
