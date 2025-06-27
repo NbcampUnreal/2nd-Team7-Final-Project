@@ -7,6 +7,7 @@
 #include "Character/BasePlayerState.h"
 #include "Character/BaseCharacter.h"
 
+#include "Actor/LCGateActor.h"
 
 #include "AI/BaseAIController.h"
 #include "AI/MonsterSpawnComponent.h"
@@ -15,10 +16,13 @@
 #include "Item/ItemBase.h"
 #include "Item/ItemSpawner.h"
 #include "DataTable/ItemDataRow.h"
+#include "DataTable/MonsterDataTable.h"
 
 #include "Framework/GameInstance/LCGameManager.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Framework/GameInstance/LCGameInstance.h"
+
+#include "Components/PostProcessComponent.h"
 
 #include "Kismet/GameplayStatics.h"
 #include "EngineUtils.h"
@@ -140,7 +144,10 @@ void ULCCheatManager::AddGold(int32 Amount)
 void ULCCheatManager::KillAllEnemies()
 {
 	UWorld* World = GetWorld();
-	if (!World) return;
+	if (World == nullptr)
+	{
+		return;
+	}
 
 	int32 KilledCount = 0;
 
@@ -159,7 +166,7 @@ void ULCCheatManager::KillAllEnemies()
 void ULCCheatManager::StopSpawning()
 {
 	UWorld* World = GetWorld();
-	if (!World)
+	if (World == nullptr)
 	{
 		UE_LOG(LogCheat, Warning, TEXT("World가 유효하지 않습니다."));
 		return;
@@ -170,7 +177,7 @@ void ULCCheatManager::StopSpawning()
 	for (TActorIterator<AActor> It(World); It; ++It)
 	{
 		AActor* Actor = *It;
-		if (!IsValid(Actor))
+		if (IsValid(Actor) == false)
 		{
 			continue;
 		}
@@ -194,7 +201,7 @@ void ULCCheatManager::StopSpawning()
 void ULCCheatManager::StartSpawning()
 {
 	UWorld* World = GetWorld();
-	if (!World)
+	if (World == nullptr)
 	{
 		UE_LOG(LogCheat, Warning, TEXT("World가 유효하지 않습니다."));
 		return;
@@ -205,7 +212,7 @@ void ULCCheatManager::StartSpawning()
 	for (TActorIterator<AActor> It(World); It; ++It)
 	{
 		AActor* Actor = *It;
-		if (!IsValid(Actor))
+		if (IsValid(Actor) == false)
 		{
 			continue;
 		}
@@ -231,7 +238,7 @@ void ULCCheatManager::SpawnItem(FName ItemRowName)
 	if (APlayerController* PC = GetOuterAPlayerController())
 	{
 		APawn* PlayerPawn = PC->GetPawn();
-		if (!IsValid(PlayerPawn))
+		if (IsValid(PlayerPawn) == false)
 		{
 			UE_LOG(LogCheat, Warning, TEXT("플레이어가 존재하지 않음"));
 			return;
@@ -242,14 +249,14 @@ void ULCCheatManager::SpawnItem(FName ItemRowName)
 			if (ULCGameInstanceSubsystem* Subsystem = GI->GetSubsystem<ULCGameInstanceSubsystem>())
 			{
 				const UDataTable* ItemTable = Subsystem->GetItemDataTable();
-				if (!ItemTable)
+				if (ItemTable == nullptr)
 				{
 					UE_LOG(LogCheat, Warning, TEXT("ItemDataTable이 존재하지 않습니다."));
 					return;
 				}
 
 				const FItemDataRow* Row = ItemTable->FindRow<FItemDataRow>(ItemRowName, TEXT("Cheat SpawnItem"));
-				if (!Row || !Row->ItemActorClass)
+				if (Row == nullptr || Row->ItemActorClass == nullptr)
 				{
 					UE_LOG(LogCheat, Warning, TEXT("잘못된 ItemRow: %s"), *ItemRowName.ToString());
 					return;
@@ -264,7 +271,7 @@ void ULCCheatManager::SpawnItem(FName ItemRowName)
 				Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
 				AItemSpawner* TempSpawner = PC->GetWorld()->SpawnActor<AItemSpawner>(AItemSpawner::StaticClass(), SpawnLoc, FRotator::ZeroRotator, Params);
-				if (!TempSpawner)
+				if (TempSpawner == nullptr)
 				{
 					UE_LOG(LogCheat, Warning, TEXT("임시 스포너 생성 실패"));
 					return;
@@ -294,7 +301,7 @@ void ULCCheatManager::SpawnItem(FName ItemRowName)
 
 void ULCCheatManager::SpawnItemByRowHandle(FDataTableRowHandle ItemRowHandle)
 {
-	if (!ItemRowHandle.DataTable || !ItemRowHandle.RowName.IsValid())
+	if (ItemRowHandle.DataTable == nullptr || ItemRowHandle.RowName.IsValid() == false)
 	{
 		UE_LOG(LogCheat, Warning, TEXT("[치트] ItemRowHandle이 유효하지 않습니다."));
 		return;
@@ -340,7 +347,16 @@ void ULCCheatManager::PrintLocation()
 		if (APawn* Pawn = PC->GetPawn())
 		{
 			const FVector Loc = Pawn->GetActorLocation();
-			UE_LOG(LogCheat, Warning, TEXT("[치트] 현재 위치: X=%.1f Y=%.1f Z=%.1f"), Loc.X, Loc.Y, Loc.Z);
+			const FString Message = FString::Printf(TEXT("[치트] 현재 위치: X=%.1f Y=%.1f Z=%.1f"), Loc.X, Loc.Y, Loc.Z);
+
+			// 로그 출력
+			UE_LOG(LogCheat, Warning, TEXT("%s"), *Message);
+
+			// 화면에 표시
+			if (GEngine)
+			{
+				GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, Message);
+			}
 		}
 		else
 		{
@@ -370,19 +386,19 @@ void ULCCheatManager::TravelToMap(FName MapName)
 void ULCCheatManager::ShowPlayerFrameworkInfo()
 {
 	APlayerController* PC = GetOuterAPlayerController();
-	if (!PC)
+	if (PC == nullptr)
 	{
 		UE_LOG(LogCheat, Warning, TEXT("[치트] PlayerController 없음"));
 		return;
 	}
 	ULCGameInstance* GI = Cast<ULCGameInstance>(PC->GetGameInstance());
-	if (!GI)
+	if (GI == nullptr)
 	{
 		UE_LOG(LogCheat, Warning, TEXT("[치트] GameInstance 없음"));
 		return;
 	}
 	ULCGameManager* LCGM = GI->GetSubsystem<ULCGameManager>();
-	if (!LCGM)
+	if (LCGM == nullptr)
 	{
 		UE_LOG(LogCheat, Warning, TEXT("[치트] LCGameManager 없음"));
 		return;
@@ -433,35 +449,35 @@ void ULCCheatManager::ShowPlayerFrameworkInfo()
 void ULCCheatManager::PrintAcquiredItems()
 {
 	APlayerController* PC = GetOuterAPlayerController();
-	if (!PC)
+	if (PC == nullptr)
 	{
 		UE_LOG(LogCheat, Warning, TEXT("PlayerController가 없습니다."));
 		return;
 	}
 
 	ABasePlayerState* PS = PC->GetPlayerState<ABasePlayerState>();
-	if (!PS)
+	if (PS == nullptr)
 	{
 		UE_LOG(LogCheat, Warning, TEXT("PlayerState가 BasePlayerState가 아닙니다."));
 		return;
 	}
 
 	ULCGameInstance* GI = Cast<ULCGameInstance>(PC->GetGameInstance());
-	if (!GI)
+	if (GI == nullptr)
 	{
 		UE_LOG(LogCheat, Warning, TEXT("GameInstance가 유효하지 않습니다."));
 		return;
 	}
 
 	ULCGameInstanceSubsystem* Subsystem = GI->GetSubsystem<ULCGameInstanceSubsystem>();
-	if (!Subsystem)
+	if (Subsystem == nullptr)
 	{
 		UE_LOG(LogCheat, Warning, TEXT("GameInstanceSubsystem이 유효하지 않습니다."));
 		return;
 	}
 
 	const UDataTable* ItemTable = Subsystem->GetItemDataTable();
-	if (!ItemTable)
+	if (ItemTable == nullptr)
 	{
 		UE_LOG(LogCheat, Warning, TEXT("ItemDataTable이 없습니다."));
 		return;
@@ -506,10 +522,17 @@ void ULCCheatManager::PrintAcquiredItems()
 void ULCCheatManager::KillAllOthers()
 {
 	APlayerController* MyPC = GetOuterAPlayerController();
-	if (!MyPC || !MyPC->HasAuthority()) return;
+	if (MyPC == nullptr || MyPC->HasAuthority() == false)
+	{
+		return;
+	}
 
 	UWorld* World = MyPC->GetWorld();
-	if (!World) return;
+	if (World == nullptr)
+	{
+		return;
+
+	}
 
 	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
 	{
@@ -529,5 +552,238 @@ void ULCCheatManager::KillAllOthers()
 				);
 			}
 		}
+	}
+}
+
+void ULCCheatManager::TeleportAllPlayers(float X, float Y, float Z, float Radius)
+{
+	FVector CenterLocation(X, Y, Z);
+	TeleportAllPlayers_Internal(CenterLocation, Radius);
+}
+
+void ULCCheatManager::TeleportAllPlayers_Internal(FVector CenterLocation, float OffsetRadius)
+{
+	APlayerController* MyPC = GetOuterAPlayerController();
+	if (MyPC == nullptr || MyPC->HasAuthority() == false)
+	{
+		return;
+	}
+
+	UWorld* World = MyPC->GetWorld();
+	if (World == nullptr)
+	{
+		return;
+
+	}
+
+	TArray<APlayerController*> AllPCs;
+	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (APlayerController* PC = It->Get())
+		{
+			AllPCs.Add(PC);
+		}
+	}
+
+	const int32 PlayerCount = AllPCs.Num();
+	const float AngleStep = 360.0f / FMath::Max(PlayerCount, 1);
+
+	for (int32 i = 0; i < PlayerCount; ++i)
+	{
+		APlayerController* PC = AllPCs[i];
+		if (PC == nullptr)
+		{
+			continue;
+		}
+
+		APawn* Pawn = PC->GetPawn();
+		if (Pawn == nullptr)
+		{
+			continue;
+		}
+
+		// 오프셋 위치 계산 (원형 배치)
+		float AngleDeg = i * AngleStep;
+		float Radian = FMath::DegreesToRadians(AngleDeg);
+		FVector Offset(FMath::Cos(Radian) * OffsetRadius, FMath::Sin(Radian) * OffsetRadius, 0.f);
+
+		FVector TargetLocation = CenterLocation + Offset;
+		Pawn->SetActorLocation(TargetLocation, false, nullptr, ETeleportType::TeleportPhysics);
+
+		UE_LOG(LogCheat, Warning, TEXT("[치트] %s 이동: X=%.1f Y=%.1f Z=%.1f"),
+			*PC->GetName(), TargetLocation.X, TargetLocation.Y, TargetLocation.Z);
+	}
+}
+
+void ULCCheatManager::Lumos(float ForcedValue)
+{
+	APlayerController* PC = GetOuterAPlayerController();
+	if (PC == nullptr)
+	{
+		return;
+	}
+
+	APawn* Pawn = PC->GetPawn();
+	if (Pawn == nullptr)
+	{
+		return;
+	}
+
+	if (ABaseCharacter* Character = Cast<ABaseCharacter>(Pawn))
+	{
+		if (Character->CustomPostProcessComponent == nullptr)
+		{
+			UE_LOG(LogCheat, Warning, TEXT("[치트] CustomPostProcessComponent가 없음"));
+			return;
+		}
+
+		if (FMath::IsNearlyZero(ForcedValue))
+		{
+			// 저장된 밝기 값 불러오기
+			UWorld* World = Character->GetWorld();
+			const float SavedBrightness = ULCLocalPlayerSaveGame::LoadBrightness(World);
+			Character->SetBrightness(SavedBrightness);
+
+			UE_LOG(LogCheat, Warning, TEXT("[치트] 밝기 원래대로 복구 (Saved = %.2f)"), SavedBrightness);
+		}
+		else
+		{
+			float Clamped = FMath::Clamp(ForcedValue, -5.0f, 20.0f);
+
+			Character->CustomPostProcessComponent->Settings.AutoExposureBias = Clamped;
+			Character->CustomPostProcessComponent->Settings.AutoExposureMinBrightness = Clamped - 0.01f;
+			Character->CustomPostProcessComponent->Settings.AutoExposureMaxBrightness = Clamped + 0.01f;
+
+			UE_LOG(LogCheat, Warning, TEXT("[치트] 밝기 강제 설정: %.2f"), Clamped);
+		}
+	}
+}
+
+void ULCCheatManager::EscapeToBaseCamp()
+{
+	APlayerController* PC = GetOuterAPlayerController();
+	if (PC == nullptr || PC->HasAuthority() == false)
+	{
+		return;
+	}
+
+	UWorld* World = PC->GetWorld();
+	if (World == nullptr)
+	{
+		return;
+	}
+
+	// 가장 가까운 ALCGateActor 중 ToBaseCamp 타입 찾기
+	ALCGateActor* TargetGate = nullptr;
+	float MinDistSq = FLT_MAX;
+
+	for (TActorIterator<ALCGateActor> It(World); It; ++It)
+	{
+		ALCGateActor* Gate = *It;
+		if (IsValid(Gate) == false)
+		{
+			continue;
+		}
+
+		const float DistSq = FVector::DistSquared(Gate->GetActorLocation(), PC->GetPawn()->GetActorLocation());
+		if (DistSq < MinDistSq)
+		{
+			TargetGate = Gate;
+			MinDistSq = DistSq;
+		}
+	}
+
+	if (IsValid(TargetGate))
+	{
+		UE_LOG(LogCheat, Warning, TEXT("[치트] 게이트로 탈출 시도: %s"), *TargetGate->GetName());
+		TargetGate->ReturnToBaseCamp(PC);
+	}
+	else
+	{
+		UE_LOG(LogCheat, Warning, TEXT("[치트] ToBaseCamp 게이트를 찾을 수 없음."));
+	}
+}
+
+void ULCCheatManager::PPP()
+{
+	UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return;
+	}
+
+	const bool bIsPaused = UGameplayStatics::IsGamePaused(World);
+	UGameplayStatics::SetGamePaused(World, !bIsPaused);
+
+	if (GEngine)
+	{
+		FString Status = bIsPaused ? TEXT("▶ 게임 재개") : TEXT("⏸ 게임 일시정지");
+		GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Yellow, FString::Printf(TEXT("[치트] %s"), *Status));
+	}
+
+	UE_LOG(LogCheat, Warning, TEXT("[치트] 게임 일시정지 토글 → 현재 상태: %s"), bIsPaused ? TEXT("재생 중") : TEXT("정지됨"));
+}
+
+void ULCCheatManager::SpawnEnemy(FName EnemyRowName)
+{
+	APlayerController* PC = GetOuterAPlayerController();
+	if (PC == nullptr || PC->HasAuthority() == false)
+	{
+		return;
+	}
+
+	APawn* PlayerPawn = PC->GetPawn();
+	if (IsValid(PlayerPawn) == false)
+	{
+		UE_LOG(LogCheat, Warning, TEXT("플레이어 Pawn이 없습니다."));
+		return;
+	}
+
+	ULCGameInstance* GI = Cast<ULCGameInstance>(PC->GetGameInstance());
+	if (GI == nullptr)
+	{
+		UE_LOG(LogCheat, Warning, TEXT("GameInstance가 유효하지 않습니다."));
+		return;
+	}
+
+	ULCGameInstanceSubsystem* Subsystem = GI->GetSubsystem<ULCGameInstanceSubsystem>();
+	if (Subsystem == nullptr)
+	{
+		UE_LOG(LogCheat, Warning, TEXT("GameInstanceSubsystem이 유효하지 않습니다."));
+		return;
+	}
+
+	const FString Context = TEXT("SpawnEnemyCheat");
+
+	const UDataTable* MonsterTable = Subsystem->GetMonsterDataTable();
+
+	const FMonsterDataTable* Row = nullptr;
+
+	if (Row == nullptr && MonsterTable)
+	{
+		Row = MonsterTable->FindRow<FMonsterDataTable>(EnemyRowName, Context);
+	}
+
+	if (!Row || !Row->MonsterActor)
+	{
+		return;
+	}
+
+	// 스폰
+	const FVector SpawnLocation = PlayerPawn->GetActorLocation() + PlayerPawn->GetActorForwardVector() * 300.f;
+	const FRotator SpawnRotation = FRotator::ZeroRotator;
+
+	FActorSpawnParameters Params;
+	Params.Owner = PC;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+	AActor* SpawnedEnemy = PC->GetWorld()->SpawnActor<AActor>(Row->MonsterActor, SpawnLocation, SpawnRotation, Params);
+	if (IsValid(SpawnedEnemy))
+	{
+		UE_LOG(LogCheat, Warning, TEXT("[치트] 적 스폰 완료: %s (%s)"), *Row->MonsterName.ToString(), *EnemyRowName.ToString());
+	}
+	else
+	{
+		UE_LOG(LogCheat, Warning, TEXT("[치트] 적 스폰 실패"));
 	}
 }
