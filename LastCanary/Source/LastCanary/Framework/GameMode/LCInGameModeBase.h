@@ -1,10 +1,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "DataTable/BossMonsterRow.h"
 #include "Framework/GameMode/LCGameMode.h"
 #include "LCInGameModeBase.generated.h"
 
 class AChecklistManager;
+class ALCBossSpawner;
 
 UCLASS()
 class LASTCANARY_API ALCInGameModeBase : public ALCGameMode
@@ -27,11 +29,30 @@ public:
 
 	virtual void Logout(AController* Exiting) override;
 
-protected:
+public:
+	virtual void InitLCGameMode();
+
 	// InGameMode Start Game
 	void OnAllPlayersJoined();
 	virtual void StartGame();
-	virtual void GameEnd();
+	virtual void ClearGame();
+	virtual void LoseGame();
+	virtual void EndGame();
+
+private:
+	void InitBossSpawner();
+	ALCBossSpawner* BossSpawner;
+
+protected:
+	void ShowGameLevelInfo();
+
+	//void InitMyGameState(int PlayerCount);
+	void StartCheckList();
+	virtual void CreateBossMonster();
+	virtual void CreateCheckListManager();
+
+	UPROPERTY(EditAnywhere, Category = "SafeZone")
+	FVector SafeLocation = FVector(0.f, 0.f, 0.f);
 
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Checklist")
@@ -41,8 +62,11 @@ public:
 	UPROPERTY()
 	AChecklistManager* ChecklistManager;
 
-private:
-	void InitGameState(int PlayerCount);
-	void CreateCheckListManager();
-	void ShowGameLevelInfo();
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Data")
+	TObjectPtr<UDataTable> BossDataTable;
+
+	FBossMonsterRow* CurrentBossMonsterData;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Data")
+	float ShowLoadingDelay = 1.f;
 };

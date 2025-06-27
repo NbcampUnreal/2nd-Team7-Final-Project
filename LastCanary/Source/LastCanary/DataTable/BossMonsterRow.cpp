@@ -1,0 +1,2 @@
+#include "DataTable/BossMonsterRow.h"
+
