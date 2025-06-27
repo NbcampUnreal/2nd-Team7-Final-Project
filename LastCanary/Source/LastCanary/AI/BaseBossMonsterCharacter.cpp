@@ -27,6 +27,9 @@ ABaseBossMonsterCharacter::ABaseBossMonsterCharacter()
     BerserkFX2 = CreateDefaultSubobject<UNiagaraComponent>(TEXT("BerserkFX2"));
     BerserkFX2->SetupAttachment(GetRootComponent());
     BerserkFX2->bAutoActivate = false;   // 디폴트 비활성화
+
+    // 데미지 수신 완전 차단
+    SetCanBeDamaged(false);
 }
 
 void ABaseBossMonsterCharacter::BeginPlay()
@@ -89,7 +92,6 @@ void ABaseBossMonsterCharacter::EnterBerserkState()
 
 void ABaseBossMonsterCharacter::UpdateBlackboardValues()
 {
-
     // 컨트롤러 널 체크
     AController* C = GetController();
     if (!C) return;

@@ -75,7 +75,6 @@ void ALCBossEoduksini::Tick(float DeltaSeconds)
 		NightTerror();
 	}
 
-	UpdateBlackboardValues();
 }
 
 void ALCBossEoduksini::UpdateBlackboardValues()
@@ -150,12 +149,6 @@ void ALCBossEoduksini::EndBerserk()
 	// 3) 쿨다운 복원
 	NormalAttackCooldown = PrevNormalAttackCooldown;
 	StrongAttackCooldown = PrevStrongAttackCooldown;
-
-}
-
-void ALCBossEoduksini::OnRep_IsBerserk()
-{
-	Super::OnRep_IsBerserk();
 
 }
 

@@ -28,7 +28,6 @@ protected:
     virtual void StartBerserk() override;
     virtual void StartBerserk(float Duration) override;
     virtual void EndBerserk() override;
-    virtual void OnRep_IsBerserk() override;
     virtual void UpdateBlackboardValues() override;
 
     UPROPERTY(EditAnywhere, Category = "Audio")
