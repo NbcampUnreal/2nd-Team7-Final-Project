@@ -667,7 +667,7 @@ bool AGunBase::Reload()
         return false;
     }
 
-    if (FMath::IsNearlyEqual(Durability, MaxDurability))
+    if (Durability >= MaxDurability)
     {
         return false;
     }
@@ -692,11 +692,11 @@ bool AGunBase::Reload()
 
 void AGunBase::CheckReloadCondition()
 {
-    if (FMath::IsNearlyEqual(Durability, MaxDurability)) //이미 꽉차있으면 중지
+    if (Durability >= MaxDurability)
     {
-        LOG_Item_WARNING(TEXT("총이 꽉 차있음"));
         return;
     }
+
     AActor* OwnerActor = GetOwner();
     if (!IsValid(OwnerActor))
     {
@@ -710,6 +710,7 @@ void AGunBase::CheckReloadCondition()
         LOG_Item_WARNING(TEXT("Owner Cast Fail"));
         return;
     }
+
     OwnerCharacter->StartReload();
 }
 
