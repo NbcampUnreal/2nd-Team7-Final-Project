@@ -249,6 +249,7 @@ void UItemSpawnerComponent::ApplyItemSettings(AItemBase* Item, FName ItemRowName
     if (AGunBase* Gun = Cast<AGunBase>(Item))
     {
         Gun->ApplyGunDataFromDataTable();
+        Gun->ApplyAttachmentsFromDataTable();
     }
 
     // 네트워크 업데이트

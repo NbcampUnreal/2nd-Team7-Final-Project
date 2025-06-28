@@ -99,6 +99,7 @@ void AGunBase::BeginPlay()
     }
 
     InitializeGameplayTags();
+    EnsureGunDataLoaded();
 
     if (USkeletalMeshComponent* ActiveMesh = GetSkeletalMeshComponent())
     {
@@ -686,6 +687,8 @@ void AGunBase::ApplyGunDataFromDataTable()
         ShellEjectionComponent->SetShellParticleSystem(GunData.ShellEjectEffect);
         ShellEjectionComponent->RefreshSocketCache();
     }
+
+    ApplyAttachmentsFromDataTable();
 }
 
 bool AGunBase::Reload()
@@ -948,6 +951,8 @@ void AGunBase::SetEquipped(bool bNewEquipped)
         // 데이터 로딩 확인
         EnsureGunDataLoaded();
 
+        ApplyAttachmentsFromDataTable();
+        
         // 스포트라이트 초기화
         InitializeSpotlight();
 
