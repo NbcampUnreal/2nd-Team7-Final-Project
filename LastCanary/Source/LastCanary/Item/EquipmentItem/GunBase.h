@@ -424,4 +424,40 @@ public:
 
     UFUNCTION(BlueprintPure, Category = "Gun|Ammo")
     int32 GetMaxAmmo() const { return static_cast<int32>(MaxDurability); }
+
+    //-----------------------------------------------------
+    // 스포트라이트 부착
+    //-----------------------------------------------------
+public:
+    /** 스포트라이트 컴포넌트 */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gun|Spotlight")
+    class USpotLightComponent* SpotlightComponent;
+
+    /** 현재 스포트라이트가 활성화되어 있는지 (RepNotify 추가) */
+    UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_SpotlightActive, Category = "Gun|Spotlight")
+    bool bIsSpotlightActive = false;
+
+    /** 스포트라이트 활성화 상태 복제 함수 */
+    UFUNCTION()
+    void OnRep_SpotlightActive();
+
+    /** 스포트라이트 토글 */
+    UFUNCTION(BlueprintCallable, Category = "Gun|Spotlight")
+    void ToggleSpotlight();
+
+    /** 스포트라이트 켜기/끄기 (서버 RPC) */
+    UFUNCTION(Server, Reliable, Category = "Gun|Spotlight")
+    void Server_SetSpotlightActive(bool bActive);
+    void Server_SetSpotlightActive_Implementation(bool bActive);
+
+    /** 스포트라이트가 있는 총기인지 확인 */
+    UFUNCTION(BlueprintPure, Category = "Gun|Spotlight")
+    bool HasSpotlight() const;
+
+protected:
+    /** 스포트라이트 설정 적용 */
+    void ApplySpotlightSettings();
+
+    /** 스포트라이트 초기 설정 */
+    void InitializeSpotlight();
 };
