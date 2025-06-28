@@ -387,6 +387,17 @@ void ABasePlayerState::InCreaseSurviveTime()
 	SurviveTime++;
 }
 
+void ABasePlayerState::SetCustomizationData()
+{
+	CustomizatiomData = ULCLocalPlayerSaveGame::LoadCustomizationData(GetWorld());
+}
+
+FCharacterCustomizationData ABasePlayerState::GetCustomizationData()
+{
+	SetCustomizationData();
+	return CustomizatiomData;
+}
+
 void ABasePlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
