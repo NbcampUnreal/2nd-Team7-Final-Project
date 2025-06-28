@@ -182,6 +182,7 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& Out
 
 	DOREPLIFETIME(ABaseCharacter, EquippedTags);
 	DOREPLIFETIME(ABaseCharacter, bInventoryOpen);
+	DOREPLIFETIME(ABaseCharacter, bBackpackMeshActive);
 }
 
 void ABaseCharacter::BeginPlay()
@@ -1831,31 +1832,23 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 		{
 			return;
 		}
-		/*
+		
 		if (!ToolbarInventoryComponent->CanAddItem(Item))
 		{
 			LOG_Char_WARNING(TEXT("아이템을 주으려 했으나 인벤토리가 꽉참"));
 			if (!Item->IsCollectible())
 			{
-				LOG_Char_WARNING(TEXT("수집형 아이템도 아님"));//이거 작동을 안하는 중...
-				return;
-			}
-			//TODO: 백팩에 넣을 수 있는지 판단하는 로직이 필요함
-			
-			if (!IsValid(BackpackMeshComponent) || !BackpackMeshComponent)
-			{
-				return;	
-			}
-			if (!ToolbarInventoryComponent->HasBackpackEquipped())
-			{
-				LOG_Char_WARNING(TEXT("현재 가방이 없음"));//이거 작동을 안하는 중...
+				LOG_Char_WARNING(TEXT("수집형 아이템도 아님"));
 				return;
 			}
 			
-			LOG_Char_WARNING(TEXT("현재 가방이 있음"));//이거 작동을 안하는 중...
-			
+			if (!bBackpackMeshActive)
+			{
+				LOG_Char_WARNING(TEXT("가방이 장착되어 있지 않아 수집형 아이템을 주울 수 없음"));
+				return;
+			}
 		}
-		*/
+		
 		MontageToPlay = InteractMontageOnUnderObject;
 	}
 	else
@@ -3600,11 +3593,15 @@ void ABaseCharacter::SetBackpackMesh(bool bIsEquipBackpack)
 
 	if (bIsEquipBackpack)
 	{
-		SetPartMesh(BackpackMesh, BackpackSkeletalMesh);
+		BackpackMesh->SetSkeletalMesh(BackpackSkeletalMesh);
+		BackpackMesh->SetVisibility(true);
+		LOG_Char_WARNING(TEXT("가방 메시 활성화"));
 	}
 	else
 	{
-		SetPartMesh(BackpackMesh, NULL);
+		BackpackMesh->SetSkeletalMesh(nullptr);
+		BackpackMesh->SetVisibility(false);
+		LOG_Char_WARNING(TEXT("가방 메시 비활성화"));
 	}
 }
 
