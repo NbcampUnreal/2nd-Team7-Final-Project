@@ -341,7 +341,6 @@ public:
     UFUNCTION(BlueprintPure, Category = "Gun|Attachments")
     bool HasScopeAttached() const;
 
-protected:
     /** 데이터 테이블에서 부착물 적용 */
     void ApplyAttachmentsFromDataTable();
 
