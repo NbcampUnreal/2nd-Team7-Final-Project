@@ -474,9 +474,7 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
         {
             if (UIController)
             {
-                int32 CurrentAmmo = FMath::RoundToInt(Gun->Durability);
-                int32 MaxAmmo = FMath::RoundToInt(Gun->MaxDurability);
-                MulticastSetGunAmmoUIVisibility(true, CurrentAmmo, MaxAmmo);
+                MulticastSetGunAmmoUIVisibility(false, 0, 0);
             }
         }
 
