@@ -265,8 +265,8 @@ void ABaseCharacter::BeginPlay()
 	}
 
 
-	LOG_Char_WARNING(TEXT("캐릭터 의상 적용"));
-	ApplyCustomization(CharacterMeshMap);
+	
+	//ApplyCustomization(CharacterMeshMap);
 
 
 	//백팩은 커스터마이징과는 다르게 처리 // 기본은 투명
@@ -283,6 +283,21 @@ void ABaseCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	LOG_Char_WARNING(TEXT("캐릭터 EndPlay"));
 	GetWorld()->GetTimerManager().ClearAllTimersForObject(this);
 }
+
+void ABaseCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+
+	if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+	{
+		LOG_Char_WARNING(TEXT("캐릭터 의상 적용"));
+		CharacterCustomizationData = PS->GetCustomizationData();
+		ApplyCustomization(PS->GetCustomizationData());
+		Server_SetCustomizationData(CharacterCustomizationData);
+
+	}
+}
+
 
 float ABaseCharacter::GetMouseSensitivity() 
 {
@@ -339,30 +354,27 @@ void ABaseCharacter::Server_SetCustomizationData_Implementation(const FCharacter
 {
 	LOG_Char_WARNING(TEXT("캐릭터 커스터마이징 데이터 서버에 전달됨"));
 	CharacterCustomizationData = CustomizingData;
-	
-	int BodyId = CustomizingData.DefaultBodyID;
-	int HeadId = CustomizingData.DefaultBodyID;
-	int HelmetId = CustomizingData.HelmetID;
-	int GloveId = CustomizingData.GloveID;
-	int JacketId = CustomizingData.JacketID;
-	int PantsId = CustomizingData.PantsID;
-	int BeltsId = CustomizingData.BeltsID;
-	int ArmorId = CustomizingData.ArmorID;
-	int BootsId = CustomizingData.BootsID;
+	Multicast_SetCustomizationData(CustomizingData);
+}
 
-	UE_LOG(LogTemp, Log, TEXT("[CustomizationData] Body: %d, Head: %d, Helmet: %d, Glove: %d, Jacket: %d, Pants: %d, Belts: %d, Armor: %d, Boots: %d"),
-		BodyId, HeadId, HelmetId, GloveId, JacketId, PantsId, BeltsId, ArmorId, BootsId);
+void ABaseCharacter::Multicast_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData)
+{
+	LOG_Char_WARNING(TEXT("캐릭터 커스터마이징 데이터 멀티캐스팅"));
+
+	CharacterCustomizationData = CustomizingData;
+	ApplyCustomization(CustomizingData);
+
 }
 
 
-void ABaseCharacter::ApplyCustomization(const UCustomizationMeshMap* CharacterMeshData)
+void ABaseCharacter::ApplyCustomization(const FCharacterCustomizationData CustomizationData)
 {
-	if (!CharacterMeshData || !CharacterMeshData->IsValidLowLevel())
+	if (!CharacterMeshMap || !CharacterMeshMap->IsValidLowLevel())
 	{
 		LOG_Char_WARNING(TEXT("캐릭터 메시 데이터 invalid"));
 		return;
 	}
-	FCharacterCustomizationData CustomizationData = ULCLocalPlayerSaveGame::LoadCustomizationData(GetWorld());
+	//FCharacterCustomizationData CustomizationData = ULCLocalPlayerSaveGame::LoadCustomizationData(GetWorld());
 	int BodyId = CustomizationData.DefaultBodyID;
 	int HeadId = CustomizationData.DefaultBodyID;
 	int HelmetId = CustomizationData.HelmetID;
@@ -373,16 +385,16 @@ void ABaseCharacter::ApplyCustomization(const UCustomizationMeshMap* CharacterMe
 	int ArmorId = CustomizationData.ArmorID;
 	int BootsId = CustomizationData.BootsID;
 	// Body
-	USkeletalMesh* BodySkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->DefaultBodyMeshes, BodyId);
-	USkeletalMesh* HeadSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->DefaultHeadMeshes, HeadId);
-	USkeletalMesh* HelmetSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->HelmetMeshes, HelmetId);
-	USkeletalMesh* GloveSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->GloveMeshes, GloveId);
-	USkeletalMesh* JacketSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->JacketMeshes_OwnerSee, JacketId);
-	USkeletalMesh* JacketSkeletalMesh_OwnerNosee = CharacterMeshData->GetMeshByID(CharacterMeshData->JacketMeshes, JacketId);
-	USkeletalMesh* PantsSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->PantsMeshes, PantsId);
-	USkeletalMesh* BeltsSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->BeltsMeshes, BeltsId);
-	USkeletalMesh* ArmorSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->ArmorMeshes, ArmorId);
-	USkeletalMesh* BootsSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->BootsMeshes, BootsId);
+	USkeletalMesh* BodySkeletalMesh = CharacterMeshMap->GetMeshByID(CharacterMeshMap->DefaultBodyMeshes, BodyId);
+	USkeletalMesh* HeadSkeletalMesh = CharacterMeshMap->GetMeshByID(CharacterMeshMap->DefaultHeadMeshes, HeadId);
+	USkeletalMesh* HelmetSkeletalMesh = CharacterMeshMap->GetMeshByID(CharacterMeshMap->HelmetMeshes, HelmetId);
+	USkeletalMesh* GloveSkeletalMesh = CharacterMeshMap->GetMeshByID(CharacterMeshMap->GloveMeshes, GloveId);
+	USkeletalMesh* JacketSkeletalMesh = CharacterMeshMap->GetMeshByID(CharacterMeshMap->JacketMeshes_OwnerSee, JacketId);
+	USkeletalMesh* JacketSkeletalMesh_OwnerNosee = CharacterMeshMap->GetMeshByID(CharacterMeshMap->JacketMeshes, JacketId);
+	USkeletalMesh* PantsSkeletalMesh = CharacterMeshMap->GetMeshByID(CharacterMeshMap->PantsMeshes, PantsId);
+	USkeletalMesh* BeltsSkeletalMesh = CharacterMeshMap->GetMeshByID(CharacterMeshMap->BeltsMeshes, BeltsId);
+	USkeletalMesh* ArmorSkeletalMesh = CharacterMeshMap->GetMeshByID(CharacterMeshMap->ArmorMeshes, ArmorId);
+	USkeletalMesh* BootsSkeletalMesh = CharacterMeshMap->GetMeshByID(CharacterMeshMap->BootsMeshes, BootsId);
 
 	SetPartMesh(GetMesh(), BodySkeletalMesh);
 	SetPartMesh(CustomHeadMesh, HeadSkeletalMesh);
@@ -410,16 +422,16 @@ void ABaseCharacter::ApplyCustomization(const UCustomizationMeshMap* CharacterMe
 	int FlagMatId = CustomizationData.FlagMaterialID;
 
 	// 머티리얼도 매핑용 에셋에서 가져옴 (이미 블루프린트에서 세팅되어 있다고 가정)
-	UMaterialInterface* BodyMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->DefaultBodyMaterials, BodyMatId);
-	UMaterialInterface* HeadMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->DefaultBodyMaterials, HeadMatId);
-	UMaterialInterface* HelmetMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->HelmetMaterials, HelmetMatId);
-	UMaterialInterface* GloveMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->GloveMaterials, GloveMatId);
-	UMaterialInterface* JacketMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->JacketMaterials, JacketMatId);
-	UMaterialInterface* PantsMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->PantsMaterials, PantsMatId);
-	UMaterialInterface* BeltsMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->BeltsMaterials, BeltsMatId);
-	UMaterialInterface* ArmorMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->ArmorMaterials, ArmorMatId);
-	UMaterialInterface* BootsMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->BootsMaterials, BootsMatId);
-	UMaterialInterface* FlagMat = CharacterMeshData->GetMaterialByID(CharacterMeshData->FlagMaterials, FlagMatId);
+	UMaterialInterface* BodyMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->DefaultBodyMaterials, BodyMatId);
+	UMaterialInterface* HeadMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->DefaultBodyMaterials, HeadMatId);
+	UMaterialInterface* HelmetMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->HelmetMaterials, HelmetMatId);
+	UMaterialInterface* GloveMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->GloveMaterials, GloveMatId);
+	UMaterialInterface* JacketMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->JacketMaterials, JacketMatId);
+	UMaterialInterface* PantsMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->PantsMaterials, PantsMatId);
+	UMaterialInterface* BeltsMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->BeltsMaterials, BeltsMatId);
+	UMaterialInterface* ArmorMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->ArmorMaterials, ArmorMatId);
+	UMaterialInterface* BootsMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->BootsMaterials, BootsMatId);
+	UMaterialInterface* FlagMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->FlagMaterials, FlagMatId);
 
 	// 머티리얼 적용 함수 호출 (보통 0번 슬롯만 적용한다고 가정)
 	SetPartMaterial(GetMesh(), 0, BodyMat);
@@ -436,8 +448,6 @@ void ABaseCharacter::ApplyCustomization(const UCustomizationMeshMap* CharacterMe
 	//플래그
 	SetPartMaterial(CustomHelmetMesh, 1, FlagMat);
 	SetPartMaterial(CustomArmorMesh, 0, FlagMat);
-
-	SetCustomizationDataOnServer();
 }
 
 void ABaseCharacter::SetPartMesh(USkeletalMeshComponent* Component, USkeletalMesh* LoadedMesh)
@@ -3631,6 +3641,7 @@ void ABaseCharacter::DropAllItemsOnDeath()
 
 void ABaseCharacter::SetBackpackMesh(bool bIsEquipBackpack)
 {
+	//서버에서 실행
 	if (bBackpackMeshActive == bIsEquipBackpack)
 	{
 		return;
@@ -3650,6 +3661,13 @@ void ABaseCharacter::SetBackpackMesh(bool bIsEquipBackpack)
 		BackpackMesh->SetVisibility(false);
 		LOG_Char_WARNING(TEXT("가방 메시 비활성화"));
 	}
+
+	Multicast_SetBackpackMesh(bBackpackMeshActive);
+}
+
+void ABaseCharacter::Multicast_SetBackpackMesh_Implementation(bool bIsEquipBackpack)
+{
+	SetBackpackMesh(bIsEquipBackpack);
 }
 
 void ABaseCharacter::OnInventoryWeightChanged(float WeightDifference)
@@ -3921,6 +3939,12 @@ void ABaseCharacter::OnRep_PlayerState()
 	if (IsLocallyControlled() && NameWidgetComponent)
 	{
 		NameWidgetComponent->SetVisibility(false, true);
+	}
+
+	if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+	{
+		ApplyCustomization(PS->GetCustomizationData());
+		SetCustomizationDataOnServer();
 	}
 }
 
