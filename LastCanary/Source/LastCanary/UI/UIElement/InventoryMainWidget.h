@@ -94,7 +94,7 @@ public:
 	UGunAmmoWidget* GunAmmoWidget;
 
 	UFUNCTION(BlueprintCallable, Category = "UI|Gun")
-	void SetGunAmmoUIVisibility(bool bVisible, AGunBase* Gun = nullptr);
+	void SetGunAmmoUIVisibility(bool bVisible, int32 CurrentAmmo = 0, int32 MaxAmmo = 0);
 
 private:
 	void InitializeGunAmmoUI();

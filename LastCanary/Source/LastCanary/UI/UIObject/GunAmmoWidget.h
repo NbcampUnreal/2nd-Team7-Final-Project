@@ -27,17 +27,12 @@ public:
     UPROPERTY(meta = (BindWidget))
     UProgressBar* AmmoProgressBar;
 
-    UPROPERTY()
-    AGunBase* CurrentGun;
+    UFUNCTION(BlueprintCallable)
+    void UpdateAmmoDisplay(int32 CurrentAmmo, int32 MaxAmmo);
 
     UFUNCTION(BlueprintCallable)
-    void UpdateAmmoDisplay();
-
-    UFUNCTION(BlueprintCallable)
-    void ShowAmmoUI(AGunBase* Gun);
+    void ShowAmmoUI(int32 CurrentAmmo, int32 MaxAmmo);
 
     UFUNCTION(BlueprintCallable)
     void HideAmmoUI();
-
-    void SetGunReference(AGunBase* Gun);
 };

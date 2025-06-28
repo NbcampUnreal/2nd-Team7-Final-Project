@@ -199,6 +199,12 @@ public:
     void MulticastUpdateItemText(const FText& ItemName);
     void MulticastUpdateItemText_Implementation(const FText& ItemName);
 
+    /** 장착한 총기의 탄환 수를 UI로 전달하는 함수 */
+    UFUNCTION(NetMulticast, Reliable, Category = "Gun UI")
+    void MulticastSetGunAmmoUIVisibility(bool bVisible, int32 CurrentAmmo, int32 MaxAmmo);
+    void MulticastSetGunAmmoUIVisibility_Implementation(bool bVisible, int32 CurrentAmmo, int32 MaxAmmo);
+
+
 protected:
     /** 장착된 아이템 상태 변경 시 호출되는 핸들러 */
     UFUNCTION()
