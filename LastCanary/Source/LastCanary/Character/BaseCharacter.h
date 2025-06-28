@@ -175,6 +175,19 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Brightness")
 	float MaxBrightness = 10.0f;
 
+
+	UPROPERTY(EditAnywhere, Category = "Sensitivity ")
+	float MouseSensitivity = 1.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Sensitivity ")
+	float ZoomSensitivity = 1.0f;
+
+	float GetMouseSensitivity();
+	void SetMouseSensitivity(float Value);
+
+	float GetZoomSensitivity();
+	void SetZoomSensitivity(float Value);
+
 	float GetBrightness();
 	void SetBrightness(float Value);
 
@@ -381,7 +394,7 @@ public:
 
 public:
 	/*Function called by the controller*/
-	virtual void Handle_LookMouse(const FInputActionValue& ActionValue, float Sensivity);
+	virtual void Handle_LookMouse(const FInputActionValue& ActionValue, float Sensivity, float ZoomSensivity);
 	virtual void Handle_Look(const FInputActionValue& ActionValue);
 	virtual void Handle_Move(const FInputActionValue& ActionValue);
 	virtual void Handle_Sprint(const FInputActionValue& ActionValue);

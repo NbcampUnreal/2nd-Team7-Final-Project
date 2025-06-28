@@ -283,6 +283,44 @@ void ABaseCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	GetWorld()->GetTimerManager().ClearAllTimersForObject(this);
 }
 
+float ABaseCharacter::GetMouseSensitivity() 
+{
+	if (!Controller)
+	{
+		return 1.0f;
+	}
+	ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+	if (!IsValid(PC))
+	{
+		return 1.0f;
+	}
+	return PC->MouseSensivity;
+}
+
+void ABaseCharacter::SetMouseSensitivity(float Value)
+{
+	MouseSensitivity = GetMouseSensitivity();
+}
+
+float ABaseCharacter::GetZoomSensitivity()
+{
+	if (!Controller)
+	{
+		return 1.0f;
+	}
+	ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
+	if (!IsValid(PC))
+	{
+		return 1.0f;
+	}
+	return PC->ZoomSensivity;
+}
+
+void ABaseCharacter::SetZoomSensitivity(float Value)
+{
+	ZoomSensitivity = GetZoomSensitivity();
+}
+
 
 FCharacterCustomizationData ABaseCharacter::GetCustomizationData()
 {
@@ -920,7 +958,7 @@ void ABaseCharacter::MakeNoiseSoundToBoss(float Force)
 	);
 }
 
-void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue, float Sensivity)
+void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue, float Sensivity, float ZoomSensivity)
 {
 	if (bIsPlayingInteractionMontage)
 	{
@@ -937,8 +975,17 @@ void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue, floa
 		return;
 	}
 	//ReduceRecoil(0.3f);
-	AddControllerYawInput(Value.X * Sensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
-	AddControllerPitchInput(Value.Y * Sensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
+	if (bIsAiming)
+	{
+		AddControllerYawInput(Value.X * ZoomSensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
+		AddControllerPitchInput(Value.Y * ZoomSensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
+	}
+	else
+	{
+		AddControllerYawInput(Value.X * Sensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
+		AddControllerPitchInput(Value.Y * Sensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
+	}
+	
 }
 
 
