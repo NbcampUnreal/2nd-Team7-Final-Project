@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
 #include "Character/PlayerData/PlayerDataTypes.h"
+#include "SaveGame/LCLocalPlayerSaveGame.h"
+
 #include "BasePlayerState.generated.h"
 
 class UAlsCharacterMovementComponent;
@@ -147,6 +149,11 @@ public:
 	void SetPlayerInGameName(FString Name);
 	FString GetInGameName();
 
+
+public:
+	FCharacterCustomizationData CustomizatiomData;
+	void SetCustomizationData();
+	FCharacterCustomizationData	GetCustomizationData();
 
 public:
 	// State
