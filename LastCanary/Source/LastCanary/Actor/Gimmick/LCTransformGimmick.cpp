@@ -50,7 +50,7 @@ ALCTransformGimmick::ALCTransformGimmick()
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true;
 	bAlwaysRelevant = true;
-	SetReplicateMovement(false);
+	SetReplicateMovement(true);
 
 }
 
