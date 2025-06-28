@@ -26,6 +26,45 @@ float ULCLocalPlayerSaveGame::LoadMouseSensitivity(UWorld* World)
     return DefaultSettings::DEFAULT_SENSITIVITY; // 기본값
 }
 
+bool ULCLocalPlayerSaveGame::SaveDroneSensitivity(UWorld* World, float NewSensitivity)
+{
+    if (ULCLocalPlayerSaveGame* SaveGame = GetSaveInstance(World))
+    {
+        SaveGame->Settings.DroneSensitivity = NewSensitivity;
+        return SaveGame->SaveGameToSlotForLocalPlayer();
+    }
+    return false;
+}
+
+float ULCLocalPlayerSaveGame::LoadDroneSensitivity(UWorld* World)
+{
+    if (ULCLocalPlayerSaveGame* SaveGame = GetSaveInstance(World))
+    {
+        return SaveGame->Settings.DroneSensitivity;
+    }
+
+    return DefaultSettings::DEFAULT_SENSITIVITY; // 기본값
+}
+
+bool ULCLocalPlayerSaveGame::SaveZoomSensitivity(UWorld* World, float NewSensitivity)
+{
+    if (ULCLocalPlayerSaveGame* SaveGame = GetSaveInstance(World))
+    {
+        SaveGame->Settings.ZoomSensitivity = NewSensitivity;
+        return SaveGame->SaveGameToSlotForLocalPlayer();
+    }
+    return false;
+}
+
+float ULCLocalPlayerSaveGame::LoadZoomSensitivity(UWorld* World)
+{
+    if (ULCLocalPlayerSaveGame* SaveGame = GetSaveInstance(World))
+    {
+        return SaveGame->Settings.ZoomSensitivity;
+    }
+
+    return DefaultSettings::DEFAULT_SENSITIVITY; // 기본값
+}
 
 bool ULCLocalPlayerSaveGame::SaveMasterVolume(UWorld* World, float NewVolume)
 {
