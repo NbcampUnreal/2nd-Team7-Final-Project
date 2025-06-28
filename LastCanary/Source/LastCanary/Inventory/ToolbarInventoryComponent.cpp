@@ -1283,11 +1283,6 @@ void UToolbarInventoryComponent::SetInventoryFromItemIDs(const TArray<int32>& It
         {
             // 유효한 아이템 설정
             FBaseItemSlotData& SlotData = ItemSlots[i];
-            SlotData.ItemRowName = ItemRowName;
-            SlotData.Quantity = 1;
-            SlotData.Durability = 100.0f;
-            SlotData.bIsValid = true;
-            SlotData.bIsEquipped = false;
 
             ULCGameInstanceSubsystem* GameSubsystem = GetOwner()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
             if (GameSubsystem && GameSubsystem->GunDataTable)
@@ -1317,6 +1312,13 @@ void UToolbarInventoryComponent::SetInventoryFromItemIDs(const TArray<int32>& It
 
                 LOG_Item_WARNING(TEXT("[SetInventoryFromItemIDs] 가방 아이템 복원: %s (20개 슬롯 초기화)"), *ItemRowName.ToString());
             }
+
+
+            SlotData.ItemRowName = ItemRowName;
+            SlotData.Quantity = 1;
+            SlotData.Durability = ItemData->MaxDurability;
+            SlotData.bIsValid = true;
+            SlotData.bIsEquipped = false;
 
             LOG_Item_WARNING(TEXT("[SetInventoryFromItemIDs] 슬롯 %d: ItemID %d -> %s 복원 성공"), i, ItemID, *ItemRowName.ToString());
         }
