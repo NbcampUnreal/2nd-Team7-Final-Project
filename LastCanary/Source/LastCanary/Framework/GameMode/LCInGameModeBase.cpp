@@ -5,13 +5,18 @@
 
 #include "Framework/GameState/LCGameState.h"
 #include "Framework/PlayerState/LCPlayerState.h"
+#include "Character/BasePlayerState.h"
 #include "Framework/PlayerController/LCPlayerController.h"
 #include "Framework/PlayerController/LCInGamePlayerController.h"
 
 #include "Framework/Manager/ChecklistManager.h"
+#include "Engine/TargetPoint.h"
 
+#include "DataTable/BossMonsterRow.h"
 #include "DataTable/MapDataRow.h"
+#include "Actor/LCBossSpawner.h"
 
+#include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
 
 
@@ -58,8 +63,7 @@ void ALCInGameModeBase::BeginPlay()
 	Super::BeginPlay();
 	LOG_Server(Log, TEXT("[ALCInGameModeBase] BeginPlay"));
 
-	CreateCheckListManager();
-
+	InitLCGameMode();
 }
 
 void ALCInGameModeBase::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer)
@@ -83,35 +87,6 @@ void ALCInGameModeBase::HandleStartingNewPlayer_Implementation(APlayerController
 	}
 }
 
-void ALCInGameModeBase::OnAllPlayersJoined()
-{	
-	LOG_Server(Log, TEXT("모든 플레이어가 연결되었습니다. 게임을 시작합니다."));
-
-	StartGame();
-}
-
-void ALCInGameModeBase::StartGame()
-{
-	ULCGameManager* LCGM = GetGameInstance()->GetSubsystem<ULCGameManager>();
-	if (!LCGM)
-	{
-		return;
-	}
-
-	LCGM->StartGame();
-
-	InitGameState(LCGM->GetPlayerCount());
-
-	ShowGameLevelInfo();
-
-}
-
-void ALCInGameModeBase::GameEnd()
-{
-
-
-}
-
 void ALCInGameModeBase::Logout(AController* Exiting)
 {
 	Super::Logout(Exiting);
@@ -122,12 +97,145 @@ void ALCInGameModeBase::Logout(AController* Exiting)
 	}
 }
 
-void ALCInGameModeBase::InitGameState(int PlayerCount)
+void ALCInGameModeBase::OnAllPlayersJoined()
+{	
+	LOG_Server(Log, TEXT("모든 플레이어가 연결되었습니다. 게임을 시작합니다."));
+
+	FTimerHandle StartTimerHandle;
+	FTimerDelegate TimerDel;
+
+	TimerDel.BindLambda([this]()
+		{
+			HideLoading();
+			StartGame();
+		});
+
+	GetWorldTimerManager().SetTimer(StartTimerHandle, TimerDel, ShowLoadingDelay, false);
+}
+
+void ALCInGameModeBase::StartGame()
 {
-	// 생존자 수 초기화
-	if (ALCGameState* LCGameState = GetGameState<ALCGameState>())
+	LOG_Server(Log, TEXT("InGame Mode Start Game!!"));
+
+	ULCGameManager* LCGM = GetGameInstance()->GetSubsystem<ULCGameManager>();
+	if (!IsValid(LCGM))
 	{
-		LCGameState->AlivePlayerCount = PlayerCount;
+		LOG_Server_ERROR(TEXT("LC GameManager Casting Fail!!"));
+		return;
+	}
+
+	LCGM->StartGame();
+
+	ALCGameState* LCGS = GetGameState<ALCGameState>();
+	if (!IsValid(LCGS))
+	{
+		LOG_Server_ERROR(TEXT("LC GameManager Casting Fail!!"));
+		return;
+	}
+
+	LCGS->OnGameStart();
+	LCGS->InitMyGameState(LCGM->GetPlayerCount());
+
+	CreateBossMonster();
+
+	CreateCheckListManager();
+
+	ShowGameLevelInfo();
+
+	PlayerLifeTimerStart();
+}
+
+void ALCInGameModeBase::ClearGame()
+{
+	LOG_Server(Log, TEXT("InGame Mode Clear Game!!"));
+
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (ALCInGamePlayerController* PC = Cast<ALCInGamePlayerController>(*It))
+		{
+			APawn* PlayerPawn = PC->GetPawn();
+			if (IsValid(PlayerPawn))
+			{
+				PlayerPawn->SetActorLocation(SafeLocation); // 안전 지점 이동
+				PlayerPawn->SetActorRotation(FRotator(0.f, 0.f, 0.f)); // 원하는 방향으로 회전
+			}
+
+			PC->Client_ShowEscapeGateVideo(CurrentBossMonsterData->CheckListTable);
+		}
+	}
+
+}
+
+void ALCInGameModeBase::LoseGame()
+{
+	LOG_Server(Log, TEXT("InGame Mode Lose Game!!"));
+
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (ALCInGamePlayerController* PC = Cast<ALCInGamePlayerController>(*It))
+		{
+			APawn* PlayerPawn = PC->GetPawn();
+			if (IsValid(PlayerPawn))
+			{
+				PlayerPawn->SetActorLocation(SafeLocation); // 안전 지점 이동
+				PlayerPawn->SetActorRotation(FRotator(0.f, 0.f, 0.f)); // 원하는 방향으로 회전
+			}
+
+			PC->Client_ShowLoseVideo();
+		}
+	}
+}
+
+void ALCInGameModeBase::EndGame()
+{
+	LOG_Game(Log, TEXT("GameEnd"));
+
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (ALCInGamePlayerController* PC = Cast<ALCInGamePlayerController>(*It))
+		{
+			PC->Client_OnGameEnd();
+		}
+	}
+}
+
+
+void ALCInGameModeBase::InitLCGameMode()
+{
+	InitBossSpawner();
+	//CreateBossMonster();
+}
+
+void ALCInGameModeBase::InitBossSpawner()
+{
+	for (TActorIterator<ALCBossSpawner> It(GetWorld()); It; ++It)
+	{
+		BossSpawner = *It;
+		LOG_Game(Log, TEXT("Boss Spawner 찾음 !! 초기화 작업 완료!"));
+	}
+}
+
+void ALCInGameModeBase::CreateBossMonster()
+{
+	if (!IsValid(BossDataTable))
+	{
+		LOG_Game_ERROR(TEXT("Not Found BossDataTable"));
+		return;
+	}
+
+	TArray<FBossMonsterRow*> AllBosses;
+	static const FString Ctx = TEXT("InGameMode-SelectRandomBoss");
+	BossDataTable->GetAllRows(Ctx, AllBosses);
+	if (AllBosses.Num() > 0)
+	{
+		int32 RandomIdx = FMath::RandRange(0, AllBosses.Num() - 1);
+		CurrentBossMonsterData = AllBosses[RandomIdx];
+		LOG_Game_WARNING(TEXT("InGameMode Selected Boss : %s"), *CurrentBossMonsterData->BossName.ToString());
+	}
+
+	if (IsValid(BossSpawner))
+	{
+		BossSpawner->SpawnBoss(CurrentBossMonsterData->BossClass);
 	}
 }
 
@@ -149,9 +257,11 @@ void ALCInGameModeBase::CreateCheckListManager()
 			);
 		}
 
+		ChecklistManager->InitCheckListManager(CurrentBossMonsterData->CheckListTable);
+
 		if (ChecklistManager)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("[Checklist] ChecklistManager Spawned"));
+			LOG_Game(Log, TEXT("[Checklist] ChecklistManager Spawned"));
 		}
 	}
 }
@@ -204,5 +314,19 @@ void ALCInGameModeBase::ShowGameLevelInfo()
 			false   // Loop? false = 한 번만 실행
 		);
 
+	}
+}
+
+void ALCInGameModeBase::PlayerLifeTimerStart()
+{
+	for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
+	{
+		if (APlayerController* PC = Cast<APlayerController>(Iterator->Get()))
+		{
+			if (ABasePlayerState* BasePS = Cast<ABasePlayerState>(PC->PlayerState))
+			{
+				BasePS->StartSurviveTimer();
+			}
+		}
 	}
 }

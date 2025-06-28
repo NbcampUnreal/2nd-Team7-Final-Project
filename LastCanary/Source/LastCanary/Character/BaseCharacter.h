@@ -921,7 +921,7 @@ public:
 
 private:
 	/** 현재 가방 메시 활성화 상태 추적 */
-	UPROPERTY()
+	UPROPERTY(Replicated)
 	bool bBackpackMeshActive = false;
 
 public:

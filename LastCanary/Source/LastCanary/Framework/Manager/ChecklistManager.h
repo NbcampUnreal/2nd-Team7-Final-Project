@@ -32,6 +32,77 @@ public:
 	APlayerController* OwnerController = nullptr;
 };
 
+USTRUCT(BlueprintType)
+struct FPlayerResultData
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY()
+	APlayerController* OwnerController = nullptr;
+
+	UPROPERTY(BlueprintReadWrite)
+	bool bIsSurvived = false;
+
+	UPROPERTY(BlueprintReadWrite)
+	float CorrectRate = 0.f;
+
+	UPROPERTY(BlueprintReadWrite)
+	int32 SurviveTime = 0;
+
+	UPROPERTY(BlueprintReadWrite)
+	int32 KillCount = 0;
+
+	UPROPERTY(BlueprintReadWrite)
+	TArray<FResourceScoreInfo> ResourceDetails;
+
+	UPROPERTY(BlueprintReadWrite)
+	int32 ResourcePoint = 0;
+
+	UPROPERTY(BlueprintReadWrite)
+	int32 TotalScore = 0;
+
+	UPROPERTY(BlueprintReadWrite)
+	TArray<FExplorePointInfo> ExplorePointDetails;
+
+	UPROPERTY(BlueprintReadWrite)
+	int32 ExplorePoint = 0;
+
+	UPROPERTY(BlueprintReadWrite)
+	FString Rank = TEXT("C");
+};
+
+USTRUCT(BlueprintType)
+struct FTotalResultData
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(BlueprintReadWrite)
+	int32 CurrentRound = 0;
+
+	UPROPERTY(BlueprintReadWrite)
+	FString CurrentMap = "";
+
+	UPROPERTY(BlueprintReadWrite)
+	FString MVPName = "";
+
+	UPROPERTY(BlueprintReadWrite)
+	int32 TotalReources = 0;
+
+	UPROPERTY(BlueprintReadWrite)
+	int32 Payment = 0;
+
+	UPROPERTY(BlueprintReadWrite)
+	int32 TotalEXP = 0;
+
+	UPROPERTY(BlueprintReadWrite)
+	FString TotalRank = TEXT("C");
+
+	UPROPERTY(BlueprintReadWrite)
+	TArray<FPlayerResultData> PlayersResult;
+};
+
 class UChecklistWidget;
 class UResultMenu;
 class UResultEvaluator;
@@ -46,11 +117,17 @@ public:
 	virtual void BeginPlay() override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+	void InitCheckListManager(UDataTable* CheckListTable);
 	void StartChecklist();
 
 	int32 GetNumPlayers() const;
 
 protected:
+	UPROPERTY()
+	FTotalResultData TotalGameResult;
+	UPROPERTY()
+	TMap<APlayerController*, FPlayerResultData> NewPlayerResults;
+
 	UPROPERTY()
 	TMap<APlayerController*, FChecklistResultData> PlayerResults;
 
@@ -91,9 +168,22 @@ public:
 
 	void NotifyChecklistStartToAllPlayers();
 
+	void SubmitCheckList(APlayerController* Submitter, const TArray<FChecklistQuestion>& PlayerAnswers);
+
+	void StartResult();
+
 	UFUNCTION(Server, Reliable)
 	void Server_SubmitChecklist(APlayerController* Submitter, const TArray<FChecklistQuestion>& PlayerAnswers);
 	void Server_SubmitChecklist_Implementation(APlayerController* Submitter, const TArray<FChecklistQuestion>& PlayerAnswers);
 
 	TMap<FName, int32> CollectAllPlayerResources();
+
+	FString GetMVPName();
+	int32 GetTotalResourcePoint();
+	int32 GetTotalEXP();
+
+private:
+	void SetTotalGameResult();
+	void AddOrUpdatePlayerResult(APlayerController* Submitter, const FPlayerResultData& PlayerResultData);
+	bool IsAllPlayerSubmitCheckList();
 };

@@ -60,7 +60,7 @@ void ALCGameMode::StartPlay()
 {
 	Super::StartPlay();
 
-	HideLoading();
+	//HideLoading();
 }
 
 void ALCGameMode::BeginPlay()

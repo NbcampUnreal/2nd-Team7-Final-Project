@@ -264,6 +264,8 @@ void ABasePlayerController::NotifyAtGameState()
 		GetWorld()->GetGameState<ALCGameState>()->MarkPlayerAsEscaped(PlayerState);
 	}
 
+	// 생존시간 타이머 멈춤
+	MyPlayerState->StopSurviveTimer();
 }
 
 void ABasePlayerController::Client_OnPlayerExitActivePlay_Implementation()

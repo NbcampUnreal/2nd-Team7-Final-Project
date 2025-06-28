@@ -123,15 +123,8 @@ void ALCBossSlenderman::StartBerserk()
 void ALCBossSlenderman::StartBerserk(float Duration)
 {
     // 서버: 먼저 무한 버전 실행
-    StartBerserk();
+    Super::StartBerserk(Duration);
 
-    // 일정 시간 후 End 호출 예약
-    GetWorldTimerManager().ClearTimer(BerserkTimerHandle);
-    GetWorldTimerManager().SetTimer(
-        BerserkTimerHandle,
-        this, &ALCBossSlenderman::EndBerserk,
-        Duration, false
-    );
 }
 
 void ALCBossSlenderman::EndBerserk()
@@ -149,37 +142,6 @@ void ALCBossSlenderman::EndBerserk()
     ShadowClones.Empty();
 }
 
-void ALCBossSlenderman::OnRep_IsBerserk()
-{
-    Super::OnRep_IsBerserk();
-
-    if (bIsBerserk)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("[Slenderman] OnRep → Berserk 이펙트 클라에서 재생"));
-
-        // 클라이언트 연출: 이펙트 / 사운드
-        if (BerserkEffectFX)
-        {
-            UNiagaraFunctionLibrary::SpawnSystemAttached(
-                BerserkEffectFX,
-                GetRootComponent(),
-                NAME_None,
-                FVector::ZeroVector,
-                FRotator::ZeroRotator,
-                EAttachLocation::KeepRelativeOffset,
-                true
-            );
-        }
-        if (BerserkSound)
-        {
-            UGameplayStatics::PlaySoundAtLocation(
-                this,
-                BerserkSound,
-                GetActorLocation()
-            );
-        }
-    }
-}
 
 void ALCBossSlenderman::ExecuteFearWave()
 {

@@ -36,17 +36,15 @@ void ALCGameState::BeginPlay()
 
 }
 
-void ALCGameState::InitGameState()
+void ALCGameState::InitMyGameState(int PlayerCount)
 {
-	
+	TotalPlayerCount = PlayerCount;
+	AlivePlayerCount = PlayerCount;
+	DeathPlayerCount = 0;
+	EscapedPlayerCount = 0;
 }
 
 void ALCGameState::OnGameStart()
-{
-
-}
-
-void ALCGameState::OnGameEnd()
 {
 
 }
@@ -83,7 +81,12 @@ void ALCGameState::OnRep_AlivePlayerCount()
 
 void ALCGameState::OnPlayerDeath(APlayerState* DeadPlayer)
 {
+	DeathPlayerCount++;
+}
 
+void ALCGameState::OnPlayerEscapedGate(APlayerState* EscapedPlayer)
+{
+	EscapedPlayerCount++;
 }
 
 void ALCGameState::MarkPlayerAsEscaped(APlayerState* EscapedPlayer)
@@ -100,6 +103,15 @@ void ALCGameState::MarkPlayerAsEscaped(APlayerState* EscapedPlayer)
 	if (ABasePlayerState* BasePlayerState = Cast<ABasePlayerState>(EscapedPlayer))
 	{
 		BasePlayerState->bHasEscaped = true;
+
+		if (BasePlayerState->CurrentState == EPlayerState::Dead)
+		{
+			OnPlayerDeath(EscapedPlayer);
+		}
+		else
+		{
+			OnPlayerEscapedGate(EscapedPlayer);
+		}
 
 		LOG_Frame_WARNING(TEXT("→ MarkAsEscaped 완료: %s | bHasEscaped = %s"),
 			*BasePlayerState->GetPlayerName(), BasePlayerState->bHasEscaped ? TEXT("TRUE") : TEXT("FALSE"));
@@ -147,37 +159,55 @@ void ALCGameState::CheckGameEndCondition()
 
 	if (bAllEscaped)
 	{
-		LOG_Frame_WARNING(TEXT("All players have escaped! Showing checklist now."));
-		AGameModeBase* GameModeBase = GetWorld()->GetAuthGameMode();
-		if (!GameModeBase)
+		if (EscapedPlayerCount == 0)
 		{
-			LOG_Frame_WARNING(TEXT("게임모드 가져오기 오류"));
-			return;
+			OnLoseGame();
 		}
-		ALCInGameModeBase* MyGameMode = Cast<ALCInGameModeBase>(GameModeBase);
-		if (!MyGameMode)
+		else
 		{
-			LOG_Frame_WARNING(TEXT("게임모드 캐스팅 오류"));
-			return;
-		}
-		AChecklistManager* ChecklistManager = MyGameMode->ChecklistManager;
-		if (!ChecklistManager)
-		{
-			LOG_Frame_WARNING(TEXT("체크리스트가 없음"));
-			return;
-		}
-
-		for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
-		{
-			if (ALCInGamePlayerController* PC = Cast<ALCInGamePlayerController>(*It))
-			{
-				UE_LOG(LogTemp, Log, TEXT("검사 중인 컨트롤러 이름: %s"), *PC->GetName());
-				PC->Client_StartChecklist(ChecklistManager);
-			}
+			OnEscapedGame();
 		}
 	}
 	else
 	{
 		LOG_Frame_WARNING(TEXT("Not all players have escaped yet."));
 	}
+}
+
+void ALCGameState::OnLoseGame()
+{
+	LOG_Frame_WARNING(TEXT("All players have escaped! Showing checklist now."));
+	AGameModeBase* GameModeBase = GetWorld()->GetAuthGameMode();
+	if (!GameModeBase)
+	{
+		LOG_Frame_WARNING(TEXT("게임모드 가져오기 오류"));
+		return;
+	}
+	ALCInGameModeBase* MyGameMode = Cast<ALCInGameModeBase>(GameModeBase);
+	if (!MyGameMode)
+	{
+		LOG_Frame_WARNING(TEXT("게임모드 캐스팅 오류"));
+		return;
+	}
+
+	MyGameMode->LoseGame();
+}
+
+void ALCGameState::OnEscapedGame()
+{
+	LOG_Frame_WARNING(TEXT("All players have escaped! Showing checklist now."));
+	AGameModeBase* GameModeBase = GetWorld()->GetAuthGameMode();
+	if (!GameModeBase)
+	{
+		LOG_Frame_WARNING(TEXT("게임모드 가져오기 오류"));
+		return;
+	}
+	ALCInGameModeBase* MyGameMode = Cast<ALCInGameModeBase>(GameModeBase);
+	if (!MyGameMode)
+	{
+		LOG_Frame_WARNING(TEXT("게임모드 캐스팅 오류"));
+		return;
+	}
+
+	MyGameMode->ClearGame();
 }

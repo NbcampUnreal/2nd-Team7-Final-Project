@@ -12,18 +12,18 @@ class UScrollBox;
 class URewardEntry;
 class UResourceScoreEntry;
 
-USTRUCT(BlueprintType)
-struct FResultRewardEntry
-{
-    GENERATED_BODY()
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FText RewardType; // 보상 종류 (예: "Gold", "Item", "Experience" 등)
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    FText Description; // 보상 이름
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 RewardGold; // 보상 수량
-};
+//USTRUCT(BlueprintType)
+//struct FResultRewardEntry
+//{
+//    GENERATED_BODY()
+//
+//    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+//	FText RewardType; // 보상 종류 (예: "Gold", "Item", "Experience" 등)
+//    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+//    FText Description; // 보상 이름
+//    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+//	int32 RewardGold; // 보상 수량
+//};
 
 UCLASS()
 class LASTCANARY_API UResultMenu : public ULCUserWidgetBase
@@ -44,6 +44,9 @@ protected:
     UButton* AcceptButton;
     UPROPERTY(Transient, meta = (BindWidgetAnim), BlueprintReadOnly)
     UWidgetAnimation* FadeInRankAnim;
+
+    UPROPERTY(meta = (BindWidget))
+    UTextBlock* PlayerNameText;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Result")
     TSubclassOf<URewardEntry> RewardEntryClass;
@@ -72,4 +75,5 @@ public:
     void ActivateResultCamera();
     void SetChecklistResult(const FChecklistResultData& ResultData);
 
+    int32 TotalGold;
 };

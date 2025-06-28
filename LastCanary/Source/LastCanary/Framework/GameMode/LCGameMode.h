@@ -56,7 +56,7 @@ public:
 
 	void ClearAllPlayersReady();
 
-protected:
+public:
 	TArray<APlayerController*> AllPlayerControllers;
 	TArray<FSessionPlayerInfo> SessionPlayerInfos;
 

@@ -54,6 +54,57 @@ void UChecklistWidget::InitWithQuestions(const TArray<FChecklistQuestion>& InQue
 	);
 }
 
+void UChecklistWidget::InitWithCheckListTable(UDataTable* CheckListTable)
+{
+	if (!CheckListTable)
+	{
+		UE_LOG(LogTemp, Error, TEXT("ChecklistWidget: DataTable is null"));
+		return;
+	}
+
+	Questions.Empty();
+
+	if (QuestionScrollBox == nullptr)
+	{
+		return;
+	}
+	if (QuestionEntryClass == nullptr)
+	{
+		return;
+	}
+
+	QuestionScrollBox->ClearChildren();
+	CurrentRevealIndex = 0;
+	bIsHandleAnimEnd = false;
+
+	TArray<FChecklistQuestion> ParsedQuestions;
+
+	const FString Ctx = TEXT("ChecklistTableParse");
+	TArray<FChecklistQuestionRow*> AllRows;
+	CheckListTable->GetAllRows(Ctx, AllRows);
+
+	for (auto* Row : AllRows)
+	{
+		if (Row)
+		{
+			FChecklistQuestion Q;
+			Q.QuestionText = Row->QuestionText;
+			Q.bAnswer = false;
+			Q.bIsAnswered = false;
+
+			Questions.Add(Q);
+		}
+	}
+
+	GetWorld()->GetTimerManager().SetTimer(
+		EntryAddTimerHandle,
+		this,
+		&UChecklistWidget::AddNextEntry,
+		0.3f,
+		true
+	);
+}
+
 void UChecklistWidget::AddNextEntry()
 {
 	if (!QuestionEntryClass || !QuestionScrollBox || !Questions.IsValidIndex(CurrentRevealIndex))
@@ -106,10 +157,50 @@ void UChecklistWidget::SubmitChecklist()
 	if (!ChecklistManager)
 	{
 		LOG_Frame_WARNING(TEXT("SubmitChecklist - ChecklistManager is null!"));
-		return;
+		//return;
 	}
 
 	LOG_Frame_WARNING(TEXT("SubmitChecklist - 호출 OK"));
+
+	//if (APlayerController* PC = GetOwningPlayer())
+	//{
+	//	if (ALCInGamePlayerController* InGamePC = Cast<ALCInGamePlayerController>(PC))
+	//	{
+	//		LOG_Frame_WARNING(TEXT("ChecklistWidget → 컨트롤러 통해 서버에 제출 요청"));
+	//		InGamePC->Server_RequestSubmitChecklist(Questions);
+	//	}
+	//	else
+	//	{
+	//		LOG_Frame_WARNING(TEXT("ChecklistWidget → 컨트롤러 캐스팅 실패"));
+	//	}
+	//}
+
+	PlayRevealAnimation(); // 제출 후 연출
+
+	SubmitButton->SetVisibility(ESlateVisibility::HitTestInvisible);
+}
+
+void UChecklistWidget::PlayRevealAnimation()
+{
+	if (RevealSignatureAnim)
+	{
+		LOG_Frame_WARNING(TEXT("ChecklistWidget - RevealSignatureAnim 재생 시작"));
+		FWidgetAnimationDynamicEvent AnimFinishedDelegate;
+		AnimFinishedDelegate.BindDynamic(this, &UChecklistWidget::OnRevealAnimationFinished);
+		BindToAnimationFinished(RevealSignatureAnim, AnimFinishedDelegate);
+		PlayAnimation(RevealSignatureAnim);
+	}
+	else
+	{
+		OnRevealAnimationFinished();
+	}
+}
+
+void UChecklistWidget::OnRevealAnimationFinished()
+{
+	LOG_Frame_WARNING(TEXT("ChecklistWidget - RevealAnimationFinished 호출 → 위젯 제거"));
+	if (bIsHandleAnimEnd) return;
+	bIsHandleAnimEnd = true;
 
 	if (APlayerController* PC = GetOwningPlayer())
 	{
@@ -123,30 +214,5 @@ void UChecklistWidget::SubmitChecklist()
 			LOG_Frame_WARNING(TEXT("ChecklistWidget → 컨트롤러 캐스팅 실패"));
 		}
 	}
-
-	PlayRevealAnimation(); // 제출 후 연출
-
-	SubmitButton->SetVisibility(ESlateVisibility::HitTestInvisible);
+	// RemoveFromParent();  // 끝
 }
-
-void UChecklistWidget::PlayRevealAnimation()
-{
-	if (RevealSignatureAnim)
-	{
-		LOG_Frame_WARNING(TEXT("ChecklistWidget - RevealSignatureAnim 재생 시작"));
-		FWidgetAnimationDynamicEvent AnimFinishedDelegate;
-		// AnimFinishedDelegate.BindDynamic(this, &UChecklistWidget::OnRevealAnimationFinished);
-		BindToAnimationFinished(RevealSignatureAnim, AnimFinishedDelegate);
-		PlayAnimation(RevealSignatureAnim);
-	}
-	/*else
-	{
-		OnRevealAnimationFinished();
-	}*/
-}
-
-//void UChecklistWidget::OnRevealAnimationFinished()
-//{
-//	LOG_Frame_WARNING(TEXT("ChecklistWidget - RevealAnimationFinished 호출 → 위젯 제거"));
-//	// RemoveFromParent();  // 끝
-//}
