@@ -141,6 +141,13 @@ void UInventorySlotWidget::NativeOnDragDetected(const FGeometry& InGeometry, con
 	{
 		DragVisual->SetItemData(ItemData, ItemDataTable);
 		DragVisual->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+
+		if (DragVisual->SlotBorder)
+		{
+			FSlateBrush EmptyBrush;
+			EmptyBrush.DrawAs = ESlateBrushDrawType::NoDrawType;
+			DragVisual->SlotBorder->SetBrush(EmptyBrush);
+		}
 	}
 
 	DragOp->DefaultDragVisual = DragVisual;
