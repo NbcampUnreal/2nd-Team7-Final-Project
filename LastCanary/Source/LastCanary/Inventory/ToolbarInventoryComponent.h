@@ -106,7 +106,6 @@ public:
     void Server_DropItem_Implementation(int32 SlotIndex, int32 Quantity);
 
     virtual bool TryDropItemAtSlot(int32 SlotIndex, int32 Quantity = 1) override;
-    void RemoveResourceItems();
 
     // 가방 드랍 함수
     bool DropItemFromBackpack(int32 BackpackSlotIndex, int32 Quantity);

@@ -2,12 +2,15 @@
 
 #include "CoreMinimal.h"
 #include "Framework/Manager/ChecklistManager.h"
+#include "Framework/GameInstance/LCGameManager.h"
 #include "Character/BasePlayerController.h"
 #include "LCInGamePlayerController.generated.h"
 
 class AChecklistManager;
 class UPopupLevelInfo;
 class UInputAction;
+class UVideoPlayWidget;
+class ULoseWidget;
 UCLASS()
 class LASTCANARY_API ALCInGamePlayerController : public ABasePlayerController
 {
@@ -30,28 +33,40 @@ public:
 	UPopupLevelInfo* PopupLevelInfoInstance;
 
 	UFUNCTION(Client, Reliable)
-	void Client_OnGameEnd();
-	void Client_OnGameEnd_Implementation();
+	void Client_ShowLoseVideo();
+	void Client_ShowLoseVideo_Implementation();
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UVideoPlayWidget> LoseWidgetClass;
+	UVideoPlayWidget* LoseWidgetInstance;
 	
 	UFUNCTION(Client, Reliable)
-	void Client_ShowGameEndUI();
-	void Client_ShowGameEndUI_Implementation();
+	void Client_ShowEscapeGateVideo(UDataTable* CheckListTable);
+	void Client_ShowEscapeGateVideo_Implementation(UDataTable* CheckListTable);
 
-	UFUNCTION(Server, Reliable)
-	void Server_MarkPlayerAsEscaped();
-	void Server_MarkPlayerAsEscaped_Implementation();
+private:
+	void StartCheckList(UDataTable* CheckListTable);
+
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UVideoPlayWidget> EscapeGateWidgetClass;
+	UVideoPlayWidget* EscapeGateWidgetInstance;
 
 	UFUNCTION(Client, Reliable)
-	void Client_StartChecklist(AChecklistManager* ChecklistManager);
-	void Client_StartChecklist_Implementation(AChecklistManager* ChecklistManager);
+	void Client_OnGameEnd();
+	void Client_OnGameEnd_Implementation();
 
 	UFUNCTION(Server, Reliable)
 	void Server_RequestSubmitChecklist(const TArray<FChecklistQuestion>& PlayerAnswers);
 	void Server_RequestSubmitChecklist_Implementation(const TArray<FChecklistQuestion>& PlayerAnswers);
 
 	UFUNCTION(Client, Reliable)
-	void Client_NotifyResultReady(const FChecklistResultData& ResultData);
-	void Client_NotifyResultReady_Implementation(const FChecklistResultData& ResultData);
-	
-	void SetSpectatingTarget(AActor* NewTarget);
+	void Client_ShowResultWidget(const FTotalResultData& ResultData);
+	void Client_ShowResultWidget_Implementation(const FTotalResultData& ResultData);
+
+	UFUNCTION(Server, Reliable)
+	void Server_ResetPlayerState();
+	void Server_ResetPlayerState_Implementation();
+
+	void ClearResourceItem();
 };

@@ -255,6 +255,8 @@ public:
 
 	// 자원 수집 내역 (RowName → 개수)
 	TMap<FName, int32> CollectedResourceMap;
+	// 수집한 탐사아이템 내역
+	TArray<int32> CollectedExploreItemArray;
 
 	void AddCollectedResource(FName RowName);
 
@@ -263,4 +265,15 @@ public:
 	void ClearCollectedResources();
 
 	float GetMaxWeight() const;
+
+public:
+	int32 SurviveTime = 0;
+	int32 KillCount = 0;
+
+	void StartSurviveTimer();
+	void StopSurviveTimer();
+
+	void InCreaseSurviveTime();
+
+	FTimerHandle SurviveTimerHandle;
 };

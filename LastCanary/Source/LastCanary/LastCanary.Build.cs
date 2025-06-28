@@ -8,7 +8,9 @@ public class LastCanary : ModuleRules
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
-        PublicDependencyModuleNames.AddRange(new string[] { "Core",
+        PublicDependencyModuleNames.AddRange(new string[]
+        {
+            "Core",
             "CoreUObject",
             "Engine",
             "InputCore",
@@ -27,6 +29,7 @@ public class LastCanary : ModuleRules
             "ALSCamera",
             "Niagara",
             "GeometryCollectionEngine",
+            "MediaAssets",
             "LevelSequence",
             "MovieScene",
             "MovieSceneTracks",

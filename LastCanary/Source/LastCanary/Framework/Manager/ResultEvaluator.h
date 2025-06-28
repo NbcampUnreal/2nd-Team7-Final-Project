@@ -24,6 +24,16 @@ public:
         int32 SurvivingPlayers,
         const TMap<FName, int32>& CollectedResources);
 
+    UFUNCTION(BlueprintCallable)
+    FGameResultData EvaluatePlayerResult
+    (
+        const TArray<FChecklistQuestion>& PlayerAnswers,
+        const TArray<bool>& CorrectAnswers,
+        const bool bIsSurvive,
+        const TMap<FName, int32>& CollectedResources,
+        const TArray<int32> CollectedClues
+    );
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Scoring")
     UDataTable* ResourceItemTable;
 
@@ -32,4 +42,7 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Scoring")
     UDataTable* RankThresholdTable;
+
+private:
+    int32 SurvivePoint = 50;
 };

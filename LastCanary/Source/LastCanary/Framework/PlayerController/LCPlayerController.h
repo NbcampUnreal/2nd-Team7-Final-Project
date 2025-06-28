@@ -66,7 +66,7 @@ public:
 
 	UFUNCTION(Client, Unreliable)
 	void Client_ReceiveMessageFromGM(const FString& Message);
-	void Client_ReceiveMessageFromGM_Implementation(const FString& Message);
+	virtual void Client_ReceiveMessageFromGM_Implementation(const FString& Message);
 
 public:
 	void StartGame(FString SoftPath);

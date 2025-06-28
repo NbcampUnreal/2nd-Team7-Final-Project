@@ -1,12 +1,11 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "DataType/ResourceScoreInfo.h"
+#include "DataTable/ItemDataRow.h"
 #include "GameResultData.generated.h"
 
-/**
- * 
- */
+
 USTRUCT(BlueprintType)
 struct FGameResultData
 {
@@ -32,4 +31,14 @@ struct FGameResultData
 
     UPROPERTY(BlueprintReadOnly)
     FString Rank;
+
+    // 추가 데이터
+    UPROPERTY(BlueprintReadOnly)
+    bool bIsSurvive;
+
+    UPROPERTY(BlueprintReadOnly)
+    TArray<FExplorePointInfo> ExplorePointDetails;
+
+    UPROPERTY(BlueprintReadOnly)
+    int32 FinalExporePoint;
 };

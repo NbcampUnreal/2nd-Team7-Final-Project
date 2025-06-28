@@ -21,4 +21,10 @@ public:
 protected:
     UPROPERTY(meta = (BindWidget))
     UTextBlock* GameOverText;
+
+    UPROPERTY(meta = (BindWidget))
+    UButton* GameOverButton;
+
+    UFUNCTION()
+    void OnGameOverButtonClicked();
 };

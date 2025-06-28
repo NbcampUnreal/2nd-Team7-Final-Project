@@ -21,9 +21,8 @@ protected:
 
 public:
 	virtual void BeginPlay();
-	virtual void InitGameState();
+	virtual void InitMyGameState(int PlayerCount);
 	void OnGameStart();
-	void OnGameEnd();
 
 	int32 TotalPlayerCount;
 
@@ -43,9 +42,13 @@ public:
 	void OnRep_AlivePlayerCount();
 
 	void OnPlayerDeath(APlayerState* DeadPlayer);
+	void OnPlayerEscapedGate(APlayerState* EscapedPlayer);
 
 	void MarkPlayerAsEscaped(APlayerState* EscapedPlayer);
 	void CheckGameEndCondition();
+
+	void OnLoseGame();
+	void OnEscapedGame();
 
 	UPROPERTY(BlueprintReadWrite)
 	bool bIsCutscenePlaying = false;

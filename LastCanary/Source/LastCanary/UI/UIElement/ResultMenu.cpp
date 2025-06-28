@@ -11,6 +11,7 @@
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Framework/GameInstance/LCGameManager.h"
 #include "Framework/PlayerController/LCRoomPlayerController.h"
+#include "Framework/PlayerController/LCInGamePlayerController.h"
 #include "Framework/Manager/ChecklistManager.h"
 
 #include "LastCanary.h"
@@ -21,6 +22,7 @@ void UResultMenu::NativeConstruct()
 	if (AcceptButton)
 	{
 		AcceptButton->OnClicked.AddUniqueDynamic(this, &UResultMenu::OnAcceptClicked);
+		AcceptButton->SetRenderOpacity(0.f);
 	}
 	if (RankText)
 	{
@@ -142,6 +144,7 @@ void UResultMenu::SetTotalGold(int32 InTotalGold)
 	if (TotalGoldText)
 	{
 		TotalGoldText->SetText(FText::AsNumber(InTotalGold));
+		TotalGold = InTotalGold;
 	}
 }
 
@@ -174,24 +177,23 @@ void UResultMenu::OnAcceptClicked()
 
 	LOG_Frame_WARNING(TEXT("ResultMenu - AcceptClicked → 호스트이므로 BaseCamp로 이동"));
 
-
-
 	if (ULCGameManager* GameDataManager = GetGameInstance()->GetSubsystem<ULCGameManager>())
 	{
 		if (GameDataManager->IsGameEnd())
 		{
-			//if (ULCGameInstance* GI = Cast<ULCGameInstance>(GetGameInstance()))
+			GameDataManager->EndGame();
+			//ALCInGamePlayerController* LCPC = Cast<ALCInGamePlayerController>(PC);
+			//if (LCPC)
 			//{
-			//	GI->DestroySession();
-			//	
-			//}//
+			//	LCPC->GetUIManager()->ShowGameOverWidget();
+			//}
 
 		}
 		else
 		{
 			// 게임 데이터 초기화
 			GameDataManager->EndCurrentRound();
-			GameDataManager->UpdateGold(FString::Printf(TEXT("게이트 탐사 완료!")), 3000);
+			GameDataManager->UpdateGold(FString::Printf(TEXT("게이트 탐사 완료!")), TotalGold);
 			LOG_Frame_WARNING(TEXT("ResultMenu - AcceptClicked → EndCurrentRound 호출"));
 
 			// 호스트만 처리
@@ -213,6 +215,10 @@ void UResultMenu::ActivateResultCamera()
 
 void UResultMenu::SetChecklistResult(const FChecklistResultData& Result)
 {
+	if (PlayerNameText)
+	{
+		PlayerNameText->SetText(FText::FromString(Result.OwnerController->PlayerState->GetPlayerName()));
+	}
 	// 보상 항목
 	TArray<FResultRewardEntry> RewardList;
 

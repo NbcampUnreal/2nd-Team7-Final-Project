@@ -118,55 +118,12 @@ void ALCBossGumiho::StartBerserk()
 {
     Super::StartBerserk();  // bIsBerserk = true, 멀티캐스트 호출 포함
 
-    // (3) 광폭화 시 이펙트
-    if (BerserkEffectFX)
-    {
-        UNiagaraFunctionLibrary::SpawnSystemAttached(
-            BerserkEffectFX,
-            GetRootComponent(),
-            NAME_None,
-            FVector::ZeroVector,
-            FRotator::ZeroRotator,
-            EAttachLocation::KeepRelativeOffset,
-            true
-        );
-    }
-    // (4) 사운드 재생
-    if (BerserkSound)
-    {
-        UGameplayStatics::PlaySoundAtLocation(
-            this,
-            BerserkSound,
-            GetActorLocation()
-        );
-    }
 }
 
 void ALCBossGumiho::StartBerserk(float Duration)
 {
     Super::StartBerserk(Duration);
 
-    // 2) 클라이언트 연출: 위와 동일하지만 Super 호출은 별도
-    if (BerserkEffectFX)
-    {
-        UNiagaraFunctionLibrary::SpawnSystemAttached(
-            BerserkEffectFX,
-            GetRootComponent(),
-            NAME_None,
-            FVector::ZeroVector,
-            FRotator::ZeroRotator,
-            EAttachLocation::KeepRelativeOffset,
-            true
-        );
-    }
-    if (BerserkSound)
-    {
-        UGameplayStatics::PlaySoundAtLocation(
-            this,
-            BerserkSound,
-            GetActorLocation()
-        );
-    }
 }
 
 void ALCBossGumiho::EndBerserk()
@@ -179,42 +136,6 @@ void ALCBossGumiho::EndBerserk()
     GetCharacterMovement()->MaxWalkSpeed /= BerserkSpeedMultiplier;
     NormalAttackDamage /= BerserkDamageMultiplier;
 }
-
-void ALCBossGumiho::OnRep_IsBerserk()
-{
-    Super::OnRep_IsBerserk();
-
-    // 클라이언트 연출: 광폭화 시작 시 이펙트 및 사운드 재생
-    if (bIsBerserk)
-    {
-        if (BerserkEffectFX)
-        {
-            UNiagaraFunctionLibrary::SpawnSystemAttached(
-                BerserkEffectFX,
-                GetRootComponent(),
-                NAME_None,
-                FVector::ZeroVector,
-                FRotator::ZeroRotator,
-                EAttachLocation::KeepRelativeOffset,
-                true
-            );
-        }
-
-        if (BerserkSound)
-        {
-            UGameplayStatics::PlaySoundAtLocation(
-                this,
-                BerserkSound,
-                GetActorLocation()
-            );
-        }
-    }
-    else
-    {
-        // (선택) 광폭화 해제 시 클라이언트 연출 추가 가능
-    }
-}
-
 
 void ALCBossGumiho::SpawnIllusions()
 {

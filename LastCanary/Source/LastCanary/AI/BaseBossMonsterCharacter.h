@@ -79,6 +79,22 @@ protected:
     UPROPERTY(ReplicatedUsing = OnRep_IsBerserk, BlueprintReadWrite, EditAnywhere, Category = "Boss|Berserk") // 임시로 ReadWrite
     bool bIsBerserk = false;
 
+    /** 클라이언트에서 Berserk 진입/종료 시 호출되는 함수 */
+    UFUNCTION()
+    virtual void OnRep_IsBerserk();
+
+    /** 재생할 사운드 에셋 */
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Effects")
+    USoundBase* BerserkSound;
+
+    /** 재생할 사운드 에셋 */
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Effects")
+    USoundBase* EnterBerserkSound;
+
+    /** 활성화된 AudioComponent 저장용 */
+    UPROPERTY()
+    UAudioComponent* ActiveBerserkAudio;
+
     /** Berserk 상태에서 Rage 증가 속도 배수 */
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Berserk")
     float RageGainMultiplier_Berserk = 2.0f;
@@ -92,10 +108,6 @@ protected:
     float BerserkDuration = 30.f;
 
     FTimerHandle BerserkDurationHandle;
-
-    /** Replication 후 처리용 OnRep 함수 */
-    UFUNCTION()
-    virtual void OnRep_IsBerserk();
 
     /** Berserk 시작을 클라이언트 전체에 알리는 멀티캐스트 RPC */
     UFUNCTION(NetMulticast, Reliable)
