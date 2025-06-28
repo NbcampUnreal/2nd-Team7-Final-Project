@@ -3,6 +3,7 @@
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "Inventory/InventoryUtility.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
+#include "Components/Border.h"
 #include "Components/PanelWidget.h"
 #include "LastCanary.h"
 
@@ -61,6 +62,13 @@ void UBackpackSlotWidget::NativeOnDragDetected(const FGeometry& InGeometry, cons
         DragVisual->SetItemData(ItemData, ItemDataTable);
         DragVisual->BackpackSlotIndex = this->BackpackSlotIndex;
         DragVisual->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+
+        if (DragVisual->SlotBorder)
+        {
+            FSlateBrush EmptyBrush;
+            EmptyBrush.DrawAs = ESlateBrushDrawType::NoDrawType;
+            DragVisual->SlotBorder->SetBrush(EmptyBrush);
+        }
     }
 
     DragOp->DefaultDragVisual = DragVisual;
