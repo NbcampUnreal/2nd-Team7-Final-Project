@@ -53,8 +53,10 @@ void ABasePlayerController::BeginPlay()
 		}
 	}
 	*/
-	LoadMouseSensitivity();
 	LoadBrightness();
+	LoadMouseSensitivity();
+	LoadZoomSensitivity();
+	LoadDroneSensitivity();
 
 	PlayerCameraManager->ViewPitchMin = -80.0f; // 최소 Pitch 각도 (고개 숙이기)
 	PlayerCameraManager->ViewPitchMax = 80.0f;  // 최대 Pitch 각도 (고개 들기)
@@ -98,6 +100,40 @@ void ABasePlayerController::LoadMouseSensitivity()
 void ABasePlayerController::SetMouseSensitivity(float Sensitivity)
 {
 	MouseSensivity = Sensitivity;
+}
+
+void ABasePlayerController::LoadDroneSensitivity()
+{
+	float LoadedSensitivity = ULCLocalPlayerSaveGame::LoadDroneSensitivity(GetWorld());
+
+	SetDroneSensitivity(LoadedSensitivity);
+}
+
+void ABasePlayerController::SetDroneSensitivity(float Sensitivity)
+{
+	DroneSensivity = Sensitivity;
+}
+
+void ABasePlayerController::LoadZoomSensitivity()
+{
+	float LoadedSensitivity = ULCLocalPlayerSaveGame::LoadZoomSensitivity(GetWorld());
+
+	SetZoomSensitivity(LoadedSensitivity);
+}
+
+void ABasePlayerController::SetZoomSensitivity(float Sensitivity)
+{
+	ZoomSensivity = Sensitivity;
+	if (!IsValid(CurrentPossessedPawn))
+	{
+		return;
+	}
+	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
+	if (!IsValid(PlayerCharacter))
+	{
+		return;
+	}
+	PlayerCharacter->SetZoomSensitivity(ZoomSensivity);
 }
 
 void ABasePlayerController::LoadBrightness()
@@ -569,7 +605,7 @@ void ABasePlayerController::Input_OnLookMouse(const FInputActionValue& ActionVal
 		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
 		if (IsValid(PlayerCharacter))
 		{
-			PlayerCharacter->Handle_LookMouse(ActionValue, MouseSensivity);  // ABaseCharacter에 맞는 LookMouse 호출
+			PlayerCharacter->Handle_LookMouse(ActionValue, MouseSensivity, ZoomSensivity);  // ABaseCharacter에 맞는 LookMouse 호출
 		}
 	}
 	if (CurrentPossessedPawn->IsA<ABaseDrone>())
@@ -577,7 +613,7 @@ void ABasePlayerController::Input_OnLookMouse(const FInputActionValue& ActionVal
 		ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn);
 		if (IsValid(Drone))
 		{
-			Drone->Input_Look(ActionValue, MouseSensivity);
+			Drone->Input_Look(ActionValue, DroneSensivity);
 		}
 	}
 	if (CurrentPossessedPawn->IsA<ABaseSpectatorPawn>())

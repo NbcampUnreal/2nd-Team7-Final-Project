@@ -60,6 +60,24 @@ void UGeneralOptionWidget::NativeConstruct()
 			}
 			MouseSensitivitySlider->OnValueChanged.AddUniqueDynamic(this, &UGeneralOptionWidget::OnSensitivityChanged);
 		}
+		if (DroneSensitivitySlider)
+		{
+			DroneSensitivitySlider->SetValue(OptionManager->DroneSensitivity);
+			if (DroneSensitivityText)
+			{
+				DroneSensitivityText->SetText(FText::FromString(FString::Printf(TEXT("%.2f"), OptionManager->DroneSensitivity)));
+			}
+			DroneSensitivitySlider->OnValueChanged.AddUniqueDynamic(this, &UGeneralOptionWidget::OnDroneSensitivityChanged);
+		}
+		if (ZoomSensitivitySlider)
+		{
+			ZoomSensitivitySlider->SetValue(OptionManager->ZoomSensitivity);
+			if (ZoomSensitivityText)
+			{
+				ZoomSensitivityText->SetText(FText::FromString(FString::Printf(TEXT("%.2f"), OptionManager->ZoomSensitivity)));
+			}
+			ZoomSensitivitySlider->OnValueChanged.AddUniqueDynamic(this, &UGeneralOptionWidget::OnZoomSensitivityChanged);
+		}
 		if (BrightnessSlider)
 		{
 			BrightnessSlider->SetValue(OptionManager->Brightness);
@@ -101,6 +119,14 @@ void UGeneralOptionWidget::NativeDestruct()
 	if (MouseSensitivitySlider)
 	{
 		MouseSensitivitySlider->OnValueChanged.RemoveDynamic(this, &UGeneralOptionWidget::OnSensitivityChanged);
+	}
+	if (DroneSensitivitySlider)
+	{
+		DroneSensitivitySlider->OnValueChanged.RemoveDynamic(this, &UGeneralOptionWidget::OnDroneSensitivityChanged);
+	}
+	if (ZoomSensitivitySlider)
+	{
+		ZoomSensitivitySlider->OnValueChanged.RemoveDynamic(this, &UGeneralOptionWidget::OnZoomSensitivityChanged);
 	}
 	if (BrightnessSlider)
 	{
@@ -172,7 +198,7 @@ void UGeneralOptionWidget::OnEffectVolumeChanged(float Value)
 
 void UGeneralOptionWidget::OnSensitivityChanged(float Value)
 {
-	LOG_Frame_WARNING(TEXT("SenSitivity Changed"));
+	LOG_Frame_WARNING(TEXT("Sensitivity Changed"));
 	const float MinValue = 0.01f;
 	float AdjustedValue = FMath::Max(Value, MinValue);
 
@@ -193,6 +219,61 @@ void UGeneralOptionWidget::OnSensitivityChanged(float Value)
 		if (ABasePlayerController* MyPC = Cast<ABasePlayerController>(PC))
 		{
 			MyPC->SetMouseSensitivity(AdjustedValue);
+		}
+	}
+}
+
+void UGeneralOptionWidget::OnDroneSensitivityChanged(float Value)
+{
+	LOG_Frame_WARNING(TEXT("Drone Sensitivity Changed"));
+	const float MinValue = 0.01f;
+	float AdjustedValue = FMath::Max(Value, MinValue);
+
+	if (DroneSensitivityText)
+	{
+		DroneSensitivityText->SetText(FText::FromString(FString::Printf(TEXT("%.2f"), AdjustedValue)));
+	}
+
+	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
+	{
+		OptionManager->DroneSensitivity = AdjustedValue;
+	}
+
+	ULCLocalPlayerSaveGame::SaveDroneSensitivity(GetWorld(), AdjustedValue);
+
+	if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+	{
+		if (ABasePlayerController* MyPC = Cast<ABasePlayerController>(PC))
+		{
+			MyPC->SetDroneSensitivity(AdjustedValue);
+		}
+	}
+
+}
+
+void UGeneralOptionWidget::OnZoomSensitivityChanged(float Value)
+{
+	LOG_Frame_WARNING(TEXT("Zoom Sensitivity Changed"));
+	const float MinValue = 0.01f;
+	float AdjustedValue = FMath::Max(Value, MinValue);
+
+	if (ZoomSensitivityText)
+	{
+		ZoomSensitivityText->SetText(FText::FromString(FString::Printf(TEXT("%.2f"), AdjustedValue)));
+	}
+
+	if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
+	{
+		OptionManager->ZoomSensitivity = AdjustedValue;
+	}
+
+	ULCLocalPlayerSaveGame::SaveZoomSensitivity(GetWorld(), AdjustedValue);
+
+	if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+	{
+		if (ABasePlayerController* MyPC = Cast<ABasePlayerController>(PC))
+		{
+			MyPC->SetZoomSensitivity(AdjustedValue);
 		}
 	}
 }
@@ -356,6 +437,42 @@ void UGeneralOptionWidget::InitializeSensitivity()
 	}
 }
 
+void UGeneralOptionWidget::InitializeDroneSensitivity()
+{
+	if (UWorld* World = GetWorld())
+	{
+		float SavedDroneSensitivity = ULCLocalPlayerSaveGame::LoadDroneSensitivity(World);
+
+		if (DroneSensitivitySlider)
+		{
+			DroneSensitivitySlider->SetValue(SavedDroneSensitivity);
+		}
+
+		if (DroneSensitivityText)
+		{
+			DroneSensitivityText->SetText(FText::FromString(FString::Printf(TEXT("%.2f"), SavedDroneSensitivity)));
+		}
+	}
+}
+
+void UGeneralOptionWidget::InitializeZoomSensitivity()
+{
+	if (UWorld* World = GetWorld())
+	{
+		float SavedZoomSensitivity = ULCLocalPlayerSaveGame::LoadZoomSensitivity(World);
+		
+		if (ZoomSensitivitySlider)
+		{
+			ZoomSensitivitySlider->SetValue(SavedZoomSensitivity);
+		}
+
+		if (ZoomSensitivityText)
+		{
+			ZoomSensitivityText->SetText(FText::FromString(FString::Printf(TEXT("%.2f"), SavedZoomSensitivity)));
+		}
+	}
+}
+
 void UGeneralOptionWidget::InitializeMasterVolume() 
 {
 	if (UWorld* World = GetWorld())
@@ -450,6 +567,8 @@ void UGeneralOptionWidget::InitializeScreenMode()
 void UGeneralOptionWidget::InitializeAllOptions() 
 {
 	InitializeSensitivity();
+	InitializeDroneSensitivity();
+	InitializeZoomSensitivity();
 	InitializeMasterVolume();
 	InitializeBGMVolume();
 	InitializeEffectVolume();

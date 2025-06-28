@@ -26,15 +26,22 @@ public:
 	//void RequestShowInGameHUD();
 	
 	void LoadMouseSensitivity();
-
 	void SetMouseSensitivity(float Sensitivity);
+	
+	void LoadZoomSensitivity();
+	void SetZoomSensitivity(float Sensitivity);
+	
+	void LoadDroneSensitivity();
+	void SetDroneSensitivity(float Sensitivity);
 
 	void LoadBrightness();
 
 	void SetBrightness(float Brightness);
 
-	/*Camera Settings*/
+	/*감도 Settings*/
 	float MouseSensivity = 1.0f;
+	float ZoomSensivity = 1.0f;
+	float DroneSensivity = 1.0f;
 
 	UPROPERTY()
 	float BrightnessSetting = 1.0f;
