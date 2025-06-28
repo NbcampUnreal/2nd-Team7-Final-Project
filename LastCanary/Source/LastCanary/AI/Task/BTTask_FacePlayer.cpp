@@ -13,7 +13,12 @@ UBTTask_FacePlayer::UBTTask_FacePlayer()
 
 EBTNodeResult::Type UBTTask_FacePlayer::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
 {
-    // 바로 InProgress로 리턴하면 TickTask가 호출됩니다
+    if (AAIController* AICon = OwnerComp.GetAIOwner())
+    {
+        // 진행 중이던 Patrol MoveTo 요청을 즉시 중지
+        AICon->StopMovement();
+    }
+
     return EBTNodeResult::InProgress;
 }
 
@@ -33,18 +38,25 @@ void UBTTask_FacePlayer::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* Node
 
     // 1) 방향 계산
     FVector ToTarget = (Target->GetActorLocation() - Pawn->GetActorLocation()).GetSafeNormal2D();
-    FRotator Desired = ToTarget.Rotation();
-    FRotator Current = Pawn->GetActorRotation();
-    float YawDiff = FMath::FindDeltaAngleDegrees(Current.Yaw, Desired.Yaw);
+    FRotator DesiredRot = ToTarget.Rotation();
+    FRotator CurrentRot = Pawn->GetActorRotation();
+    float YawDiff = FMath::FindDeltaAngleDegrees(CurrentRot.Yaw, DesiredRot.Yaw);
 
-    // 2) 단계별 회전
-    float MaxStep = RotateSpeed * DeltaSeconds;
-    float YawStep = FMath::Clamp(YawDiff, -MaxStep, +MaxStep);
-    Pawn->SetActorRotation(Current + FRotator(0, YawStep, 0));
-
-    // 3) 완료 조건
-    if (FMath::Abs(YawDiff) <= AcceptanceAngle)
+    // 2) 데드존 내에 있으면 성공
+    if (FMath::Abs(YawDiff) <= DeadzoneAngle)
     {
         FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
+        return;
     }
+
+    // 3) 부드러운 회전 (RInterpConstantTo)
+    float YawStep = FMath::Sign(YawDiff) * RotateSpeed * DeltaSeconds;
+    // 만약 한 스텝이 YawDiff보다 크면, 딱 맞추도록 클램프
+    if (FMath::Abs(YawStep) > FMath::Abs(YawDiff))
+    {
+        YawStep = YawDiff;
+    }
+    FRotator NewRot = CurrentRot;
+    NewRot.Yaw += YawStep;
+    Pawn->SetActorRotation(NewRot);
 }

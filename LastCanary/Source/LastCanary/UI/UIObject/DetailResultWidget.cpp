@@ -87,13 +87,13 @@ void UDetailResultWidget::SetChecklistResult(const FPlayerResultData& ResultData
 
 	if (ResourceText)
 	{
-		const FString Formatted = FString::Printf(TEXT("Score : %d"), ResultData.ResourcePoint);
+		const FString Formatted = FString::Printf(TEXT("Resrouce Score : %d"), ResultData.ResourcePoint);
 		ResourceText->SetText(FText::FromString(Formatted));
 	}
 
 	if (ScoreText)
 	{
-		const FString Formatted = FString::Printf(TEXT("Score : %d"), ResultData.TotalScore);
+		const FString Formatted = FString::Printf(TEXT("Total Score : %d"), ResultData.TotalScore);
 		ScoreText->SetText(FText::FromString(Formatted));
 	}
 

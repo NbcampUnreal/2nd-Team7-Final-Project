@@ -45,9 +45,8 @@ private:
 
 protected:
 	void ShowGameLevelInfo();
+	void PlayerLifeTimerStart();
 
-	//void InitMyGameState(int PlayerCount);
-	void StartCheckList();
 	virtual void CreateBossMonster();
 	virtual void CreateCheckListManager();
 

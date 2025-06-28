@@ -269,4 +269,11 @@ public:
 public:
 	int32 SurviveTime = 0;
 	int32 KillCount = 0;
+
+	void StartSurviveTimer();
+	void StopSurviveTimer();
+
+	void InCreaseSurviveTime();
+
+	FTimerHandle SurviveTimerHandle;
 };

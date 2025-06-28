@@ -5,6 +5,7 @@
 
 #include "Framework/GameState/LCGameState.h"
 #include "Framework/PlayerState/LCPlayerState.h"
+#include "Character/BasePlayerState.h"
 #include "Framework/PlayerController/LCPlayerController.h"
 #include "Framework/PlayerController/LCInGamePlayerController.h"
 
@@ -140,6 +141,8 @@ void ALCInGameModeBase::StartGame()
 	CreateCheckListManager();
 
 	ShowGameLevelInfo();
+
+	PlayerLifeTimerStart();
 }
 
 void ALCInGameModeBase::ClearGame()
@@ -158,9 +161,6 @@ void ALCInGameModeBase::ClearGame()
 			}
 
 			PC->Client_ShowEscapeGateVideo(CurrentBossMonsterData->CheckListTable);
-
-			//UE_LOG(LogTemp, Log, TEXT("검사 중인 컨트롤러 이름: %s"), *PC->GetName());
-			//PC->Client_StartChecklist(ChecklistManager);
 		}
 	}
 
@@ -182,9 +182,6 @@ void ALCInGameModeBase::LoseGame()
 			}
 
 			PC->Client_ShowLoseVideo();
-
-			//UE_LOG(LogTemp, Log, TEXT("검사 중인 컨트롤러 이름: %s"), *PC->GetName());
-			//PC->Client_StartChecklist(ChecklistManager);
 		}
 	}
 }
@@ -198,33 +195,16 @@ void ALCInGameModeBase::EndGame()
 		if (ALCInGamePlayerController* PC = Cast<ALCInGamePlayerController>(*It))
 		{
 			PC->Client_OnGameEnd();
-
-			//UE_LOG(LogTemp, Log, TEXT("검사 중인 컨트롤러 이름: %s"), *PC->GetName());
-			//PC->Client_StartChecklist(ChecklistManager);
 		}
 	}
 }
 
-void ALCInGameModeBase::StartCheckList()
-{
-	LOG_Server(Log, TEXT("InGame Mode End Game!!"));
-
-	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
-	{
-		if (ALCInGamePlayerController* PC = Cast<ALCInGamePlayerController>(*It))
-		{
-			UE_LOG(LogTemp, Log, TEXT("검사 중인 컨트롤러 이름: %s"), *PC->GetName());
-			PC->Client_StartChecklist(ChecklistManager);
-		}
-	}
-}
 
 void ALCInGameModeBase::InitLCGameMode()
 {
 	InitBossSpawner();
 	//CreateBossMonster();
 }
-
 
 void ALCInGameModeBase::InitBossSpawner()
 {
@@ -334,5 +314,19 @@ void ALCInGameModeBase::ShowGameLevelInfo()
 			false   // Loop? false = 한 번만 실행
 		);
 
+	}
+}
+
+void ALCInGameModeBase::PlayerLifeTimerStart()
+{
+	for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
+	{
+		if (APlayerController* PC = Cast<APlayerController>(Iterator->Get()))
+		{
+			if (ABasePlayerState* BasePS = Cast<ABasePlayerState>(PC->PlayerState))
+			{
+				BasePS->StartSurviveTimer();
+			}
+		}
 	}
 }

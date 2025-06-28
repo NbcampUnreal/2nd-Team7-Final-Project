@@ -359,6 +359,34 @@ float ABasePlayerState::GetMaxWeight() const
 	return MaxWeight;
 }
 
+void ABasePlayerState::StartSurviveTimer()
+{
+	if (HasAuthority())
+	{
+		GetWorld()->GetTimerManager().SetTimer(
+			SurviveTimerHandle,
+			this,
+			&ABasePlayerState::InCreaseSurviveTime,
+			1.0f,
+			true // 반복
+		);
+	}
+}
+
+void ABasePlayerState::StopSurviveTimer()
+{
+	if (HasAuthority() && SurviveTimerHandle.IsValid())
+	{
+		GetWorld()->GetTimerManager().ClearTimer(SurviveTimerHandle);
+		LOG_Char(Log, TEXT("Survive timer stopped for %s"), *GetPlayerName());
+	}
+}
+
+void ABasePlayerState::InCreaseSurviveTime()
+{
+	SurviveTime++;
+}
+
 void ABasePlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);

@@ -69,16 +69,9 @@ void ALCInGamePlayerController::Client_ShowLevelInfo_Implementation(int32 MapId)
 	}
 }
 
-
 void ALCInGamePlayerController::Client_OnGameEnd_Implementation()
 {
 	LCUIManager->ShowGameEndWidget();
-}
-
-void ALCInGamePlayerController::Client_ShowResult_Implementation()
-{
-
-	LCUIManager->ShowResultMenu();
 }
 
 void ALCInGamePlayerController::Client_ShowLoseVideo_Implementation()
@@ -135,20 +128,6 @@ void ALCInGamePlayerController::StartCheckList(UDataTable* CheckListTable)
 }
 
 
-void ALCInGamePlayerController::Client_StartChecklist_Implementation(AChecklistManager* ChecklistManager)
-{
-	LOG_Frame_WARNING(TEXT("로컬 컨트롤러가 되었고, 체크리스트를 띄울 준비를 하는 중"));
-	if (ChecklistManager)
-	{
-		ChecklistManager->StartChecklist();
-		LOG_Frame_WARNING(TEXT("체크리스트를 게임모드에서 받아서 띄움"));
-	}
-	else
-	{
-		LOG_Frame_WARNING(TEXT("체크리스트가 클라이언트에서 유효하지 않음"));
-	}
-}
-
 void ALCInGamePlayerController::Server_RequestSubmitChecklist_Implementation(const TArray<FChecklistQuestion>& PlayerAnswers)
 {
 	LOG_Frame_WARNING(TEXT("Server_RequestSubmitChecklist_Implementation called"));
@@ -171,30 +150,6 @@ void ALCInGamePlayerController::Server_RequestSubmitChecklist_Implementation(con
 		LCGM->SubmitChecklist(this, PlayerAnswers);
 	}
 }
-
-//void ALCInGamePlayerController::Client_NotifyResultReady_Implementation(const FChecklistResultData& ResultData)
-//{
-//	LOG_Frame_WARNING(TEXT("[Client] 결과 수신 → 결과 UI 출력 시작"));
-//
-//	if (LCUIManager)
-//	{
-//		LCUIManager->ShowResultMenu();
-//
-//		if (UResultMenu* Menu = LCUIManager->GetResultMenuClass())
-//		{
-//			Menu->SetChecklistResult(ResultData);
-//			Server_ClearResourceItem();
-//		}
-//		else
-//		{
-//			LOG_Frame_WARNING(TEXT("[Client] GetCachedResultMenu가 null을 반환함"));
-//		}
-//	}
-//	else
-//	{
-//		LOG_Frame_WARNING(TEXT("[Client] LCUIManager가 없음"));
-//	}
-//}
 
 void ALCInGamePlayerController::ClearResourceItem()
 {
@@ -228,7 +183,7 @@ void ALCInGamePlayerController::ClearResourceItem()
 	}
 }
 
-void ALCInGamePlayerController::Server_ClearResourceItem_Implementation()
+void ALCInGamePlayerController::Server_ResetPlayerState_Implementation()
 {
 	ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
 	if (!IsValid(Subsystem))
@@ -245,19 +200,22 @@ void ALCInGamePlayerController::Server_ClearResourceItem_Implementation()
 	ABasePlayerState* PS = Cast<ABasePlayerState>(PlayerState);
 	if (PS)
 	{
-		//auto itemId = PS->AquiredItemIDs;
+		// Clear Resource Item
 		for (int i = 0; i < PS->AquiredItemIDs.Num(); i++)
 		{
 			FItemDataRow* ItemData = Subsystem->GetItemDataByItemID(PS->AquiredItemIDs[i]);
 			if (ItemData != nullptr)
 			{
-				if (ItemData->bIsResourceItem)
+				if (ItemData->bIsResourceItem || ItemData->bIsNoteItem)
 				{
 					PS->AquiredItemIDs[i] = DefaultItem->ItemID;
+					continue;
 				}
 			}
-
 		}
+
+		PS->KillCount = 0;
+		PS->SurviveTime = 0;
 	}
 
 	// TO DO : 단서관련(노트) 아이템들도 초기화
@@ -272,7 +230,7 @@ void ALCInGamePlayerController::Client_ShowResultWidget_Implementation(const FTo
 		if (ResultWidget)
 		{
 			ResultWidget->SetTotalResultData(ResultData);
-			Server_ClearResourceItem();
+			Server_ResetPlayerState();
 		}
 	}
 }

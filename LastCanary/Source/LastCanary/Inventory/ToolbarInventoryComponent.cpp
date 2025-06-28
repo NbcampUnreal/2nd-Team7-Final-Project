@@ -420,9 +420,13 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
 
     if (AGunBase* Gun = Cast<AGunBase>(EquippedItemComponent->GetChildActor()))
     {
+        SyncGunStateToSlot();
+
         if (UIController)
         {
-            UIController->SetGunAmmoUIVisibility(true, Gun);
+            int32 CurrentAmmo = FMath::RoundToInt(Gun->Durability);
+            int32 MaxAmmo = FMath::RoundToInt(Gun->MaxDurability);
+            MulticastSetGunAmmoUIVisibility(true, CurrentAmmo, MaxAmmo);
         }
     }
 
@@ -470,7 +474,7 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
         {
             if (UIController)
             {
-                UIController->SetGunAmmoUIVisibility(false);
+                MulticastSetGunAmmoUIVisibility(false, 0, 0);
             }
         }
 
@@ -625,6 +629,7 @@ void UToolbarInventoryComponent::RestoreGunStateFromSlot(AGunBase* Gun, const FB
     }
 
     // 총기 상태 복원
+    Gun->Durability = SlotData.Durability;
     Gun->CurrentFireMode = static_cast<EFireMode>(SlotData.FireMode);
 }
 
@@ -940,11 +945,6 @@ bool UToolbarInventoryComponent::TryDropItemAtSlot(int32 SlotIndex, int32 Quanti
     }
 }
 
-void UToolbarInventoryComponent::RemoveResourceItems()
-{
-
-}
-
 bool UToolbarInventoryComponent::DropItemFromBackpack(int32 BackpackSlotIndex, int32 Quantity)
 {
     if (!BackpackManager)
@@ -1175,7 +1175,9 @@ void UToolbarInventoryComponent::SyncInventoryToPlayerState()
             LOG_Item_WARNING(TEXT("[Sync] PS에 저장된 아이템 목록: %s"), *DebugList);
 
 
+            // TO DO : 여기 아래부분 싹다 리팩토링 해야함
             TMap<FName, int32> CollectedResource;
+            TArray<int32> ExploreItemIDs;
             for (int32 i = 0; i < ItemSlots.Num(); ++i)
             {
                 const FBaseItemSlotData& SlotData = ItemSlots[i];
@@ -1190,6 +1192,11 @@ void UToolbarInventoryComponent::SyncInventoryToPlayerState()
                             const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(BackpackSlot.ItemRowName, TEXT("GetItemIDFromRowName"));
                             if (!ItemData->bIsResourceItem)
                             {
+                                if (ItemData->bIsNoteItem)
+                                {
+                                    ExploreItemIDs.Add(ItemData->ItemID);
+                                }
+
                                 continue;
                             }
 
@@ -1207,8 +1214,14 @@ void UToolbarInventoryComponent::SyncInventoryToPlayerState()
                 else
                 {
                     const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(SlotData.ItemRowName, TEXT("GetItemIDFromRowName"));
+
                     if (!ItemData->bIsResourceItem)
                     {
+                        if (ItemData->bIsNoteItem)
+                        {
+                            ExploreItemIDs.Add(ItemData->ItemID);
+                        }
+
                         continue;
                     }
 
@@ -1225,6 +1238,7 @@ void UToolbarInventoryComponent::SyncInventoryToPlayerState()
             }
 
             PS->CollectedResourceMap = CollectedResource;
+            PS->CollectedExploreItemArray = ExploreItemIDs;
         }
     }
 }
@@ -1342,6 +1356,18 @@ void UToolbarInventoryComponent::MulticastUpdateItemText_Implementation(const FT
     if (UIController)
     {
         UIController->Multicast_UpdateItemText(ItemName);
+    }
+}
+
+void UToolbarInventoryComponent::MulticastSetGunAmmoUIVisibility_Implementation(bool bVisible, int32 CurrentAmmo, int32 MaxAmmo)
+{
+    if (UIController)
+    {
+        UIController->SetGunAmmoUIVisibility(bVisible, CurrentAmmo, MaxAmmo);
+    }
+    else
+    {
+        LOG_Item_WARNING(TEXT("[MulticastSetGunAmmoUIVisibility] 실패: UIController가 null"));
     }
 }
 
