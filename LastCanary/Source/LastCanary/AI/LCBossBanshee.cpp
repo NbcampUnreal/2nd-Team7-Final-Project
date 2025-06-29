@@ -46,7 +46,7 @@ void ALCBossBanshee::Tick(float DeltaTime)
 	}
 
 	// (1) 특수 스킬 - Desperate Wail (한 번만)
-	if (!bHasUsedDesperateWail && Rage>=DesperateWailRageThreshold)
+	if (!bHasUsedDesperateWail && Rage >= DesperateWailRageThreshold)
 	{
 		bHasUsedDesperateWail = true;
 		UE_LOG(LogTemp, Log, TEXT("[Banshee] Desperate Wail 발동"));
@@ -284,6 +284,9 @@ void ALCBossBanshee::ResetShriek()
 
 void ALCBossBanshee::AddRage(float Amount)
 {
+	if (!HasAuthority())
+		return;
+
 	// 0) MaxRage 유효성 검사
 	if (MaxRage <= 0.f)
 	{
@@ -296,13 +299,12 @@ void ALCBossBanshee::AddRage(float Amount)
 	Rage = FMath::Clamp(Rage + Amount * Mult, 0.f, MaxRage);
 
 	// 2) 서버 권한이 있을 때만 Blackboard 업데이트
-	if (HasAuthority())
-	{
-		UpdateBlackboardValues();
-	}
+
+	UpdateBlackboardValues();
+
 
 	// 3) 광폭화
-	if (HasAuthority() && Rage >= MaxRage && !bIsBerserk)
+	if (Rage >= MaxRage && !bIsBerserk)
 	{
 		StartBerserk(BerserkDuration);
 		UpdateBlackboardValues();
