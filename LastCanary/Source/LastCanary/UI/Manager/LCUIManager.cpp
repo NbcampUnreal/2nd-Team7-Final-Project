@@ -560,9 +560,22 @@ void ULCUIManager::HideRoomWidget()
 		if (CachedRoomWidget->IsInViewport())
 		{
 			CachedRoomWidget->RemoveFromParent();
-			SwitchToWidget(CachedInGameHUD);
-			ShowInventoryMainWidget();
-			SetInputModeGameOnly();
+			if (ABasePlayerController* LCPC = Cast<ABasePlayerController>(OwningPlayer))
+			{
+				if (APawn* Pawn = LCPC->GetMyPawn())
+				{
+					if (Pawn->IsA<ABaseSpectatorPawn>())
+					{
+						SwitchToWidget(CachedSpectatorWidget);
+					}
+					else
+					{
+						SwitchToWidget(CachedInGameHUD);
+						ShowInventoryMainWidget();
+					}
+					SetInputModeGameOnly();
+				}
+			}
 		}
 	}
 	else

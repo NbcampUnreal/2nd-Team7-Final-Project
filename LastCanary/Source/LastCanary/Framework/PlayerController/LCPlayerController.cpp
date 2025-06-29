@@ -157,14 +157,10 @@ void ALCPlayerController::ToggleShowRoomWidget()
     if (bIsShowRoomUI)
     {
         LCUIManager->ShowRoomWidget();
-        FInputModeGameAndUI GameAndUIInputMode;
-        SetInputMode(GameAndUIInputMode);
     }
     else
     {
         LCUIManager->HideRoomWidget();
-        FInputModeGameOnly GameInputMode;
-        SetInputMode(GameInputMode);
     }
 
     bShowMouseCursor = bIsShowRoomUI;
