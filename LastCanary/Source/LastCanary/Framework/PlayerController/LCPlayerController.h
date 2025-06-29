@@ -7,7 +7,7 @@
 #include "Framework/PlayerController/LCPlayerInputController.h"
 #include "Character/CinematicDummyCharacter.h"
 #include "LevelSequenceActor.h"
-
+#include "Framework/Manager/GateCutsceneManager.h"
 #include "LCPlayerController.generated.h"
 
 class ULCUIManager;
@@ -47,9 +47,9 @@ public:
 	void ClientWasKicked_Implementation(const FText& KickReason);
 	// 강퇴시나 PreLogIn에서 ErrorMessage가 있으면 해당 함수를 통해 
 	// MainMenu로 돌아가는거 같은데 디버깅이 안됨... 아오...
-	void ClientReturnToMainMenuWithTextReason_Implementation(const FText& ReturnReason);
+	 void ClientReturnToMainMenuWithTextReason_Implementation(const FText& ReturnReason);
 
-	virtual void ToggleShowRoomWidget() override;
+	 void ToggleShowRoomWidget() override;
 
 private:
 	FTimerHandle UpdatePlayerListTimerHandle;
@@ -86,20 +86,33 @@ public:
 	void Client_HideHUD_Implementation();
 
 	UFUNCTION(Client, Unreliable)
-	void Client_PlayGateCutscene(ULevelSequence* Sequence, ACinematicDummyCharacter* CinematicDummyCharacter, const FTransform& SpawnTransform, int32 PlayerIndex);
-	void Client_PlayGateCutscene_Implementation(ULevelSequence* Sequence, ACinematicDummyCharacter* CinematicDummyCharacter, const FTransform& SpawnTransform, int32 PlayerIndex);
+	void Client_PlayGateCutscene(ULevelSequence* Sequence, ACinematicDummyCharacter* CinematicDummyCharacter, const FTransform& SpawnTransform, int32 PlayerIndex, ECutsceneType CutsceneType);
+	void Client_PlayGateCutscene_Implementation(ULevelSequence* Sequence, ACinematicDummyCharacter* CinematicDummyCharacter, const FTransform& SpawnTransform, int32 PlayerIndex, ECutsceneType CutsceneType);
 
 	// LevelSequenceActor를 클라이언트에 알려주기 위한 변수
 	UPROPERTY(Replicated)
 	ALevelSequenceActor* LinkedSequenceActor;
 
-
 	UFUNCTION()
 	void OnCutsceneFinished();
+
+	// 헬퍼 함수들 추가
+	void SetCameraFromSequence(ALevelSequenceActor* SequenceActor);
+	void HideUIForCutscene();
+	void ShowUIAfterCutscene();
+
+	// 현재 컷신 타입 저장용 변수
+	UPROPERTY()
+	ECutsceneType CurrentCutsceneType;
 
 	UFUNCTION(Server, Reliable)
 	void Server_RequestIntoGameLevel();
 	void Server_RequestIntoGameLevel_Implementation();
+
+	// 레벨 이동 요청 (베이스로 돌아가기)
+	UFUNCTION(Server, Reliable)
+	void Server_RequestReturnToBase();
+	void Server_RequestReturnToBase_Implementation();
 
 	ULCUIManager* GetUIManager() { return LCUIManager; }
 protected:
