@@ -7,6 +7,7 @@
 #include "InventoryMainWidget.generated.h"
 
 class UToolbarInventoryWidget;
+class UToolbarInventoryComponent;
 class UBackpackInventoryWidget;
 class UItemDropQuantityWidget;
 class UInventorySlotWidget;
@@ -99,4 +100,8 @@ public:
 
 private:
 	void InitializeGunAmmoUI();
+
+	void RestoreGunAmmoUIState();
+
+	UToolbarInventoryComponent* GetOwnerToolbarComponent() const;
 };
