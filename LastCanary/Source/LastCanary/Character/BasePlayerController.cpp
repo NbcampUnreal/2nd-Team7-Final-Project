@@ -830,7 +830,7 @@ void ABasePlayerController::Input_OnViewMode(const FInputActionValue& ActionValu
 	{
 		return;
 	}
-#if WITH_EDITOR
+
 	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
 		PlayerCharacter->Handle_ViewMode();
@@ -839,7 +839,7 @@ void ABasePlayerController::Input_OnViewMode(const FInputActionValue& ActionValu
 	{
 		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is not an ABaseCharacter: %s"), *CurrentPossessedPawn->GetName());
 	}
-#endif
+
 }
 
 
