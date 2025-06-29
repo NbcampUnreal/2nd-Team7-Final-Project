@@ -12,6 +12,13 @@ class ALCGateActor;
 class APlayerController;
 class ABaseCharacter;
 
+UENUM(BlueprintType)
+enum class ECutsceneType : uint8
+{
+	GateEntry,
+	GateExit
+};
+
 UCLASS()
 class LASTCANARY_API AGateCutsceneManager : public AActor
 {
@@ -20,7 +27,8 @@ class LASTCANARY_API AGateCutsceneManager : public AActor
 public:
 	AGateCutsceneManager();
 
-	void PlayGateCutscene(const TArray<ABaseCharacter*>& InPlayerCharacters);
+	// 기존 함수를 수정하여 타입을 받도록 변경
+	void PlayGateCutscene(const TArray<ABaseCharacter*>& InPlayerCharacters, ECutsceneType CutsceneType = ECutsceneType::GateEntry);
 
 protected:
 	virtual void BeginPlay() override;
@@ -36,16 +44,22 @@ protected:
 
 	//UFUNCTION()
 	//void OnCutsceneFinished();
+
 	UPROPERTY(Replicated)
 	class ALevelSequenceActor* ReplicatedSequenceActor;
 
-	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
 
 
 	FTimerHandle CutsceneDelayTimer;
+
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Cutscene")
 	ULevelSequence* GateSuckInSequence;
+
+	// 나가는 시네마틱용 시퀀스
+	UPROPERTY(EditDefaultsOnly, Category = "Cutscene")
+	ULevelSequence* GateExitSequence;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Cutscene")
 	TSubclassOf<AActor> DummyCharacterClass;
