@@ -416,8 +416,15 @@ void ABasePlayerState::InCreaseSurviveTime()
 void ABasePlayerState::SetCustomizationData()
 {
 	CustomizatiomData = ULCLocalPlayerSaveGame::LoadCustomizationData(GetWorld());
+	Server_SetCustomizationData(CustomizatiomData);
 	UpdatePlayerCustomizingData();
 }
+
+void ABasePlayerState::Server_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData)
+{
+	CustomizatiomData = CustomizingData;
+}
+
 
 void ABasePlayerState::OnRep_Customization()
 {

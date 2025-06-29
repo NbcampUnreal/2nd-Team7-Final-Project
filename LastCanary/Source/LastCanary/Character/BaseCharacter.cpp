@@ -261,6 +261,8 @@ void ABaseCharacter::BeginPlay()
 		{
 			NameWidgetComponent->SetVisibility(false, true);
 		}	
+		NameWidgetComponent->SetCastShadow(false);
+		NameWidgetComponent->CastShadow = false;
 	}
 
 	if (IsLocallyControlled())
@@ -942,7 +944,11 @@ void ABaseCharacter::Tick(float DeltaSeconds)
 		if (Distance < MaxVisibleDistance)
 		{
 			FRotator LookAtRotation = UKismetMathLibrary::FindLookAtRotation(WidgetLocation, CameraLocation);
-			NameWidgetComponent->SetWorldRotation(LookAtRotation);
+			// Pitch와 Roll 제거 → Yaw만 남김
+			FRotator YawOnlyRotation = FRotator(0.f, LookAtRotation.Yaw, 0.f);
+
+			// 적용
+			NameWidgetComponent->SetWorldRotation(YawOnlyRotation);
 		}
 	}
 }// 전환이 완료되었는지 확인하는 유틸리티 함수 (선택사항)
@@ -1837,12 +1843,41 @@ void ABaseCharacter::SetCameraMode(bool bIsFirstPersonView)
 {
 	if (bIsFirstPersonView)
 	{
+		EmoteMode = false;
+		CustomHeadMesh->SetOwnerNoSee(true);
 		SwapHeadMaterialTransparent(true);
 		SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 		SpringArm->TargetArmLength = 0.0f;
 	}
 	else
 	{
+		EmoteMode = true;
+		CustomHeadMesh->SetOwnerNoSee(false);
+		SwapHeadMaterialTransparent(false);
+		SpringArm->TargetArmLength = 200.0f;
+	}
+}
+
+void ABaseCharacter::SetCameraEmoteMode(bool bIsFirstPersonView)
+{
+	if (bIsFirstPersonView)
+	{
+		EmoteMode = false;
+		SpringArm->bDoCollisionTest = false;
+		SpringArm->ProbeChannel = ECC_Camera;
+		SpringArm->ProbeSize = 3.0f;
+		CustomHeadMesh->SetOwnerNoSee(true);
+		SwapHeadMaterialTransparent(true);
+		SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+		SpringArm->TargetArmLength = 0.0f;
+	}
+	else
+	{
+		EmoteMode = true;
+		SpringArm->bDoCollisionTest = true;
+		SpringArm->ProbeChannel = ECC_Camera;
+		SpringArm->ProbeSize = 3.0f;
+		CustomHeadMesh->SetOwnerNoSee(false);
 		SwapHeadMaterialTransparent(false);
 		SpringArm->TargetArmLength = 200.0f;
 	}
