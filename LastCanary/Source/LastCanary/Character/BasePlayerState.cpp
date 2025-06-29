@@ -16,7 +16,7 @@ ABasePlayerState::ABasePlayerState()
 void ABasePlayerState::BeginPlay()
 {
 	Super::BeginPlay();
-	LOG_Char_WARNING(TEXT("Character BeginPlay"));
+	LOG_Char_WARNING(TEXT("Character State BeginPlay"));
 
 	if (bAlreadyInitialized)
 	{
@@ -37,7 +37,33 @@ void ABasePlayerState::BeginPlay()
 	}
 
 	SetInGameStatus(EPlayerInGameStatus::Alive);
+
+	if (AController* Ctrl = GetOwner<AController>())
+	{
+		if (Ctrl->IsLocalController())
+		{
+			SetCustomizationData();
+		}
+	}
 }
+
+void ABasePlayerState::OnRep_PlayerGameName()
+{
+	if (ABaseCharacter* MyCharacter = Cast<ABaseCharacter>(GetPawn()))
+	{
+		MyCharacter->UpdateNameWidget();
+	}
+
+}
+
+void ABasePlayerState::UpdatePlayerCustomizingData()
+{
+	if (ABaseCharacter* MyCharacter = Cast<ABaseCharacter>(GetPawn()))
+	{
+		MyCharacter->SetCustomizationData(CustomizatiomData);
+	}
+}
+
 
 void ABasePlayerState::SetPlayerInGameName(FString Name)
 {
@@ -385,6 +411,26 @@ void ABasePlayerState::StopSurviveTimer()
 void ABasePlayerState::InCreaseSurviveTime()
 {
 	SurviveTime++;
+}
+
+void ABasePlayerState::SetCustomizationData()
+{
+	CustomizatiomData = ULCLocalPlayerSaveGame::LoadCustomizationData(GetWorld());
+	UpdatePlayerCustomizingData();
+}
+
+void ABasePlayerState::OnRep_Customization()
+{
+	if (ABaseCharacter* MyCharacter = Cast<ABaseCharacter>(GetPawn()))
+	{
+		MyCharacter->ApplyCustomization(CustomizatiomData);
+	}
+}
+
+FCharacterCustomizationData ABasePlayerState::GetCustomizationData()
+{
+	SetCustomizationData();
+	return CustomizatiomData;
 }
 
 void ABasePlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

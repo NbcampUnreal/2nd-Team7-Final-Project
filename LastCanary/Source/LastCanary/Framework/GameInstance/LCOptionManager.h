@@ -60,6 +60,10 @@ public:
 	UPROPERTY(BlueprintReadWrite, Category = "Option")
 	float MouseSensitivity = 0.5f;
 	UPROPERTY(BlueprintReadWrite, Category = "Option")
+	float DroneSensitivity = 0.5f;
+	UPROPERTY(BlueprintReadWrite, Category = "Option")
+	float ZoomSensitivity = 0.5f;
+	UPROPERTY(BlueprintReadWrite, Category = "Option")
 	float Brightness = 0.5f;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Option")

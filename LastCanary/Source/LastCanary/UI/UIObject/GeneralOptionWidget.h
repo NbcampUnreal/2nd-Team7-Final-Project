@@ -39,6 +39,14 @@ private:
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* MouseSensitivityText;
 	UPROPERTY(meta = (BindWidget))
+	USlider* DroneSensitivitySlider;
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* DroneSensitivityText;
+	UPROPERTY(meta = (BindWidget))
+	USlider* ZoomSensitivitySlider;
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* ZoomSensitivityText;
+	UPROPERTY(meta = (BindWidget))
 	USlider* BrightnessSlider;
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* BrightnessText;
@@ -58,6 +66,10 @@ public:
 	UFUNCTION()
 	void OnSensitivityChanged(float Value);
 	UFUNCTION()
+	void OnDroneSensitivityChanged(float Value);
+	UFUNCTION()
+	void OnZoomSensitivityChanged(float Value);
+	UFUNCTION()
 	void OnBrightnessChanged(float Value);
 	UFUNCTION()
 	void OnScreenModeChanged(bool bIsFullscreen);
@@ -67,6 +79,8 @@ public:
 	void PopulateResolutionOptions();
 
 	void InitializeSensitivity();
+	void InitializeDroneSensitivity();
+	void InitializeZoomSensitivity();
 	void InitializeMasterVolume();
 	void InitializeBGMVolume();
 	void InitializeEffectVolume();
