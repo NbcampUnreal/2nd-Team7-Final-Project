@@ -38,101 +38,233 @@ void AGateCutsceneManager::BeginPlay()
 	}
 }
 
-void AGateCutsceneManager::PlayGateCutscene(const TArray<ABaseCharacter*>& InPlayerCharacters)
+void AGateCutsceneManager::PlayGateCutscene(const TArray<ABaseCharacter*>& InPlayerCharacters, ECutsceneType CutsceneType)
 {
-	if (!HasAuthority())
-	{
-		return;
-	}
+    if (!HasAuthority())
+    {
+        return;
+    }
 
-	TArray<ACinematicDummyCharacter*> DummyPlayerCharacters;
+    // 시퀀스 선택
+    ULevelSequence* SelectedSequence = nullptr;
+    switch (CutsceneType)
+    {
+    case ECutsceneType::GateEntry:
+        SelectedSequence = GateSuckInSequence;
+        break;
+    case ECutsceneType::GateExit:
+        SelectedSequence = GateExitSequence;
+        break;
+    }
 
-	for (int32 i = 0; i < InPlayerCharacters.Num(); ++i)
-	{
-		ABaseCharacter* Char = InPlayerCharacters[i];
-		if (!IsValid(Char))
-		{
-			continue;
-		}
+    if (!SelectedSequence)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Selected sequence is not set for cutscene type: %d"), (int32)CutsceneType);
+        return;
+    }
 
-		AActor* Dummy = GetWorld()->SpawnActor<AActor>(DummyCharacterClass, Char->GetActorTransform());
-		if (!Dummy)
-		{
-			UE_LOG(LogTemp, Error, TEXT("Failed to spawn dummy for character %s"), *Char->GetName());
-			continue;
-		}
-		else
-		{
-			UE_LOG(LogTemp, Log, TEXT("Spawned dummy %s for character %s"), *Dummy->GetName(), *Char->GetName());
-		}
+    TArray<ACinematicDummyCharacter*> DummyPlayerCharacters;
 
-		Dummy->SetReplicates(true);
+    for (int32 i = 0; i < InPlayerCharacters.Num(); ++i)
+    {
+        ABaseCharacter* Char = InPlayerCharacters[i];
+        if (!IsValid(Char))
+        {
+            continue;
+        }
 
-		ACinematicDummyCharacter* CinematicDummyCharacter = Cast<ACinematicDummyCharacter>(Dummy);
-		if (!CinematicDummyCharacter)
-		{
-			continue;
-		}
+        AActor* Dummy = GetWorld()->SpawnActor<AActor>(DummyCharacterClass, Char->GetActorTransform());
+        if (!Dummy)
+        {
+            UE_LOG(LogTemp, Error, TEXT("Failed to spawn dummy for character %s"), *Char->GetName());
+            continue;
+        }
+        else
+        {
+            UE_LOG(LogTemp, Log, TEXT("Spawned dummy %s for character %s"), *Dummy->GetName(), *Char->GetName());
+        }
 
-		CinematicDummyCharacter->ApplyAppearance(Char->GetCustomizationData());
-		DummyPlayerCharacters.Add(CinematicDummyCharacter);
+        Dummy->SetReplicates(true);
 
-		if (ALCPlayerController* PC = Cast<ALCPlayerController>(Char->GetController()))
-		{
-			PC->SetLinkedGateActor(LinkedGateActor);
-			UE_LOG(LogTemp, Log, TEXT("클라이언트에서 시퀀스 실행"));
-			PC->Client_HideHUD();
-			// 여전히 카메라 제어와 UI는 각 클라이언트에서 진행
-			PC->Client_PlayGateCutscene(GateSuckInSequence, CinematicDummyCharacter, Char->GetActorTransform(), i);
-		}
+        ACinematicDummyCharacter* CinematicDummyCharacter = Cast<ACinematicDummyCharacter>(Dummy);
+        if (!CinematicDummyCharacter)
+        {
+            continue;
+        }
 
-		Char->SetActorHiddenInGame(true);
-	}
+        CinematicDummyCharacter->ApplyAppearance(Char->GetCustomizationData());
+        DummyPlayerCharacters.Add(CinematicDummyCharacter);
 
-	// ✅ 서버에서 LevelSequenceActor 생성 및 바인딩 처리
-	FMovieSceneSequencePlaybackSettings PlaybackSettings;
-	ALevelSequenceActor* OutSequenceActor = nullptr;
+        if (ALCPlayerController* PC = Cast<ALCPlayerController>(Char->GetController()))
+        {
+            PC->SetLinkedGateActor(LinkedGateActor);
+            UE_LOG(LogTemp, Log, TEXT("클라이언트에서 시퀀스 실행"));
+            PC->Client_HideHUD();
 
-	ULevelSequencePlayer* SequencePlayer = ULevelSequencePlayer::CreateLevelSequencePlayer(
-		GetWorld(),
-		GateSuckInSequence,
-		PlaybackSettings,
-		OutSequenceActor
-	);
+            // 통합된 함수 호출 - 컷신 타입을 매개변수로 전달
+            PC->Client_PlayGateCutscene(SelectedSequence, CinematicDummyCharacter, Char->GetActorTransform(), i, CutsceneType);
+          
+        }
 
-	if (!SequencePlayer || !OutSequenceActor)
-	{
-		UE_LOG(LogTemp, Error, TEXT("Failed to create LevelSequencePlayer"));
-		return;
-	}
+        Char->SetActorHiddenInGame(true);
+    }
 
-	OutSequenceActor->SetReplicates(true);
-	for (int32 i = 0; i < InPlayerCharacters.Num(); ++i)
-	{
-		ABaseCharacter* Char = InPlayerCharacters[i];
-		if (!IsValid(Char))
-		{
-			continue;
-		}
+    // 서버에서 LevelSequenceActor 생성 및 바인딩 처리
+    FMovieSceneSequencePlaybackSettings PlaybackSettings;
+    ALevelSequenceActor* OutSequenceActor = nullptr;
 
-		if (ALCPlayerController* PC = Cast<ALCPlayerController>(Char->GetController()))
-		{
-			PC->LinkedSequenceActor = OutSequenceActor;
-		}
+    ULevelSequencePlayer* SequencePlayer = ULevelSequencePlayer::CreateLevelSequencePlayer(
+        GetWorld(),
+        SelectedSequence,
+        PlaybackSettings,
+        OutSequenceActor
+    );
 
-	}
+    if (!SequencePlayer || !OutSequenceActor)
+    {
+        UE_LOG(LogTemp, Error, TEXT("Failed to create LevelSequencePlayer"));
+        return;
+    }
 
-	// ✅ 모든 더미를 시퀀스에 바인딩
-	for (int32 i = 0; i < DummyPlayerCharacters.Num(); ++i)
-	{
-		FName TrackTag = FName(FString::Printf(TEXT("Slot%d"), i + 1));
-		OutSequenceActor->SetBindingByTag(TrackTag, { DummyPlayerCharacters[i] });
-		UE_LOG(LogTemp, Log, TEXT("바인딩 완료: %s -> %s"), *TrackTag.ToString(), *DummyPlayerCharacters[i]->GetName());
-	}
+    OutSequenceActor->SetReplicates(true);
+    for (int32 i = 0; i < InPlayerCharacters.Num(); ++i)
+    {
+        ABaseCharacter* Char = InPlayerCharacters[i];
+        if (!IsValid(Char))
+        {
+            continue;
+        }
 
-	// ✅ 시퀀스 서버에서 재생
-	SequencePlayer->Play();
+        if (ALCPlayerController* PC = Cast<ALCPlayerController>(Char->GetController()))
+        {
+            PC->LinkedSequenceActor = OutSequenceActor;
+        }
+    }
+
+    // 모든 더미를 시퀀스에 바인딩
+    for (int32 i = 0; i < DummyPlayerCharacters.Num(); ++i)
+    {
+        FName TrackTag = FName(FString::Printf(TEXT("Slot%d"), i + 1));
+        OutSequenceActor->SetBindingByTag(TrackTag, { DummyPlayerCharacters[i] });
+        UE_LOG(LogTemp, Log, TEXT("바인딩 완료: %s -> %s"), *TrackTag.ToString(), *DummyPlayerCharacters[i]->GetName());
+    }
+
+    // 시퀀스 서버에서 재생
+    SequencePlayer->Play();
+
+    UE_LOG(LogTemp, Log, TEXT("Cutscene started: %s"), CutsceneType == ECutsceneType::GateEntry ? TEXT("Entry") : TEXT("Exit"));
 }
+
+void AGateCutsceneManager::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+    DOREPLIFETIME(AGateCutsceneManager, ReplicatedSequenceActor);
+}
+
+//void AGateCutsceneManager::PlayGateCutscene(const TArray<ABaseCharacter*>& InPlayerCharacters)
+//{
+//	if (!HasAuthority())
+//	{
+//		return;
+//	}
+//
+//	// 나가는 시네마틱이 설정되지 않은 경우 바로 리턴
+//	if (!GateExitSequence)
+//	{
+//		UE_LOG(LogTemp, Warning, TEXT("GateExitSequence is not set!"));
+//		return;
+//	}
+//
+//	TArray<ACinematicDummyCharacter*> DummyPlayerCharacters;
+//
+//	for (int32 i = 0; i < InPlayerCharacters.Num(); ++i)
+//	{
+//		ABaseCharacter* Char = InPlayerCharacters[i];
+//		if (!IsValid(Char))
+//		{
+//			continue;
+//		}
+//
+//		AActor* Dummy = GetWorld()->SpawnActor<AActor>(DummyCharacterClass, Char->GetActorTransform());
+//		if (!Dummy)
+//		{
+//			UE_LOG(LogTemp, Error, TEXT("Failed to spawn dummy for character %s"), *Char->GetName());
+//			continue;
+//		}
+//		else
+//		{
+//			UE_LOG(LogTemp, Log, TEXT("Spawned dummy %s for character %s"), *Dummy->GetName(), *Char->GetName());
+//		}
+//
+//		Dummy->SetReplicates(true);
+//
+//		ACinematicDummyCharacter* CinematicDummyCharacter = Cast<ACinematicDummyCharacter>(Dummy);
+//		if (!CinematicDummyCharacter)
+//		{
+//			continue;
+//		}
+//
+//		CinematicDummyCharacter->ApplyAppearance(Char->GetCustomizationData());
+//		DummyPlayerCharacters.Add(CinematicDummyCharacter);
+//
+//		if (ALCPlayerController* PC = Cast<ALCPlayerController>(Char->GetController()))
+//		{
+//			PC->SetLinkedGateActor(LinkedGateActor);
+//			UE_LOG(LogTemp, Log, TEXT("클라이언트에서 시퀀스 실행"));
+//			PC->Client_HideHUD();
+//			// 여전히 카메라 제어와 UI는 각 클라이언트에서 진행
+//			PC->Client_PlayGateCutscene(GateSuckInSequence, CinematicDummyCharacter, Char->GetActorTransform(), i);
+//		}
+//
+//		Char->SetActorHiddenInGame(true);
+//	}
+//
+//	// ✅ 서버에서 LevelSequenceActor 생성 및 바인딩 처리
+//	FMovieSceneSequencePlaybackSettings PlaybackSettings;
+//	ALevelSequenceActor* OutSequenceActor = nullptr;
+//
+//	ULevelSequencePlayer* SequencePlayer = ULevelSequencePlayer::CreateLevelSequencePlayer(
+//		GetWorld(),
+//		GateSuckInSequence,
+//		GateExitSequence,
+//		PlaybackSettings,
+//		OutSequenceActor
+//	);
+//
+//	if (!SequencePlayer || !OutSequenceActor)
+//	{
+//		UE_LOG(LogTemp, Error, TEXT("Failed to create LevelSequencePlayer"));
+//		return;
+//	}
+//
+//	OutSequenceActor->SetReplicates(true);
+//	for (int32 i = 0; i < InPlayerCharacters.Num(); ++i)
+//	{
+//		ABaseCharacter* Char = InPlayerCharacters[i];
+//		if (!IsValid(Char))
+//		{
+//			continue;
+//		}
+//
+//		if (ALCPlayerController* PC = Cast<ALCPlayerController>(Char->GetController()))
+//		{
+//			PC->LinkedSequenceActor = OutSequenceActor;
+//		}
+//
+//	}
+//
+//	// ✅ 모든 더미를 시퀀스에 바인딩
+//	for (int32 i = 0; i < DummyPlayerCharacters.Num(); ++i)
+//	{
+//		FName TrackTag = FName(FString::Printf(TEXT("Slot%d"), i + 1));
+//		OutSequenceActor->SetBindingByTag(TrackTag, { DummyPlayerCharacters[i] });
+//		UE_LOG(LogTemp, Log, TEXT("바인딩 완료: %s -> %s"), *TrackTag.ToString(), *DummyPlayerCharacters[i]->GetName());
+//	}
+//
+//	// ✅ 시퀀스 서버에서 재생
+//	SequencePlayer->Play();
+//}
 
 
 //void AGateCutsceneManager::Client_HideHUD_Implementation()
@@ -212,11 +344,3 @@ void AGateCutsceneManager::PlayGateCutscene(const TArray<ABaseCharacter*>& InPla
 //		}
 //	}
 //}
-
-
-void AGateCutsceneManager::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	DOREPLIFETIME(AGateCutsceneManager, ReplicatedSequenceActor);
-}
