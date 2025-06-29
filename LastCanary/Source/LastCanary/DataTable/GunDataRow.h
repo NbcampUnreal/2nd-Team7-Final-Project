@@ -9,6 +9,7 @@
 UENUM(BlueprintType)
 enum class EFireMode : uint8
 {
+    None        UMETA(DisplayName = "없음"),
     Single      UMETA(DisplayName = "단발"),
     FullAuto    UMETA(DisplayName = "연발")
 };
@@ -123,6 +124,9 @@ struct FGunDataRow : public FTableRowBase
     USoundBase* EmptySound;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Sound")
+    USoundBase* FireModeSwitchSound;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Sound")
     USoundBase* DefaultImpactSound;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Sound")
@@ -177,4 +181,27 @@ struct FGunDataRow : public FTableRowBase
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Magazine")
     FName AttachMagazineSocketName = TEXT("Magazine_joint");
+
+    // 스포트라이트 속성들
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Spotlight")
+    bool bHasSpotlight = false;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Spotlight")
+    FName SpotlightSocketName = TEXT("SpotlightSocket");
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Spotlight", meta = (ClampMin = "0.0", ClampMax = "10000.0"))
+    float SpotlightAttenuationRadius = 1000.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Spotlight", meta = (ClampMin = "0.0", ClampMax = "100000.0"))
+    float SpotlightIntensity = 10000.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Spotlight")
+    FLinearColor SpotlightColor = FLinearColor::White;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Spotlight", meta = (ClampMin = "0.0", ClampMax = "80.0"))
+    float SpotlightInnerConeAngle = 10.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Spotlight", meta = (ClampMin = "0.0", ClampMax = "80.0"))
+    float SpotlightOuterConeAngle = 20.0f;
+
 };

@@ -4,6 +4,8 @@
 #include "AI/BaseBossMonsterCharacter.h"
 #include "NiagaraSystem.h"
 #include "Sound/SoundBase.h"
+#include "Materials/MaterialInterface.h"
+#include "AI/Summon/Illusion.h"
 #include "LCBossGumiho.generated.h"
 
 UCLASS()
@@ -18,6 +20,7 @@ protected:
     virtual void BeginPlay() override;
     virtual void Tick(float DeltaTime) override;
     virtual void UpdateRage(float DeltaSeconds) override;
+    virtual void UpdateBlackboardValues() override;
 
     // ── RequestAttack override ─────────────────────────
     virtual bool RequestAttack(float TargetDistance) override;
@@ -29,6 +32,10 @@ protected:
     virtual void EndBerserk() override;
 
     /** SFX,VFX */
+    /** Tail Strike attenuation asset */
+    UPROPERTY(EditAnywhere, Category = "Gumiho|Sound")
+    USoundAttenuation* AttackAttenuation;
+
     UPROPERTY(EditAnywhere, Category = "Gumiho|Abilities")
     UNiagaraSystem* SpiritSpikeFX;
 
@@ -54,10 +61,11 @@ protected:
     USoundBase* CharmGazeSound;
 
     UPROPERTY(EditAnywhere, Category = "Gumiho|Illusion")
-    UNiagaraSystem* IllusionSpawnFX;
-
-    UPROPERTY(EditAnywhere, Category = "Gumiho|Illusion")
     USoundBase* IllusionSpawnSound;
+
+    /** Nine-Tail Burst sound */
+    UPROPERTY(EditAnywhere, Category = "Gumiho|Sound")
+    USoundBase* NineTailBurstSound;
 
     /** 이동 속도 버프 배수 */
     UPROPERTY(EditAnywhere, Category = "Gumiho|Berserk")
@@ -69,7 +77,7 @@ protected:
 
     // ── Illusion Dance ──
     UPROPERTY(EditAnywhere, Category = "Gumiho|Illusion")
-    TSubclassOf<AActor> IllusionClass;
+    TSubclassOf<AIllusion> IllusionClass;
 
     UPROPERTY(EditAnywhere, Category = "Gumiho|Illusion", meta = (ClampMin = "1", ClampMax = "10"))
     int32 NumIllusions = 3;
@@ -78,13 +86,14 @@ protected:
     float IllusionInterval = 20.f;
 
     UPROPERTY(EditAnywhere, Category = "Gumiho|Illusion")
-    float IllusionRagePerSecond = 1.f;
+    float IllusionRagePerSecond = 0.15f;
 
     UPROPERTY(EditAnywhere, Category = "Gumiho|Illusion")
-    float IllusionDeathPenalty = 10.f;
+    float IllusionDeathPenalty = 2.f;
 
     FTimerHandle IllusionTimerHandle;
-    TArray<AActor*> IllusionActors;
+    UPROPERTY()
+    TArray<AIllusion*> IllusionActors;
     void SpawnIllusions();
     UFUNCTION()
     void OnIllusionDestroyed(AActor* DestroyedActor);
@@ -94,7 +103,7 @@ protected:
     float TailStrikeRadius = 400.f;
 
     UPROPERTY(EditAnywhere, Category = "Gumiho|TailStrike")
-    float TailStrikeDamage = 30.f;
+    float TailStrikeDamage = 10.f;
 
     UPROPERTY(EditAnywhere, Category = "Gumiho|TailStrike")
     float TailStrikeCooldown = 10.f;
@@ -102,21 +111,26 @@ protected:
     FTimerHandle TailStrikeTimerHandle;
     void ExecuteTailStrike();
 
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_PlayTailStrikeEffects();
+
     // ── Spirit Spike 특수 공격 ─────────────────────────
 
     UPROPERTY(EditAnywhere, Category = "Gumiho|Abilities", meta = (ClampMin = "0.0"))
     float SpiritSpikeRadius = 500.f;
 
     UPROPERTY(EditAnywhere, Category = "Gumiho|Abilities", meta = (ClampMin = "0.0"))
-    float SpiritSpikeDamage = 80.f;
+    float SpiritSpikeDamage = 15.f;
 
     UPROPERTY(EditAnywhere, Category = "Gumiho|Abilities", meta = (ClampMin = "0.0"))
     float SpiritSpikeCooldown = 15.f;
 
-
-
     // 실제 실행 함수
     void ExecuteSpiritSpike(AActor* Target);
+
+    /** 클라이언트에 VFX/SFX 재생용 RPC */
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_PlaySpiritSpikeEffects(const FVector& Location);
 
     // ── Foxfire Volley ──
     UPROPERTY(EditAnywhere, Category = "Gumiho|Foxfire")
@@ -131,6 +145,10 @@ protected:
     FTimerHandle FoxfireTimerHandle;
     void ExecuteFoxfireVolley();
 
+    /** 클라이언트에 Foxfire FX/SFX 재생용 RPC */
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_PlayFoxfireVolleyEffects(const FVector& Origin);
+
     // ── Illusion Swap ──
     UPROPERTY(EditAnywhere, Category = "Gumiho|Illusion")
     float IllusionSwapInterval = 25.f;
@@ -142,6 +160,10 @@ protected:
     FTimerHandle SwapTimerHandle;
     void PerformIllusionSwap();
 
+    /** 클라이언트 이펙트/사운드 재생용 RPC */
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_PlayIllusionSwapEffects(const FVector& Origin);
+
     // ── Charm Gaze ──
     UPROPERTY(EditAnywhere, Category = "Gumiho|Charm")
     float CharmRadius = 1000.f;
@@ -150,14 +172,38 @@ protected:
     float CharmInterval = 10.f;
 
     UPROPERTY(EditAnywhere, Category = "Gumiho|Charm")
-    float CharmRagePerSecond = 5.f;
+    float CharmRagePerSecond = 0.05f;
 
     FTimerHandle CharmTimerHandle;
+
     void ExecuteCharmGaze();
 
     // ── Nine-Tail Burst ──
     bool bHasUsedNineTail = false;
     void ExecuteNineTailBurst();
+    /** Rage 임계치(<= 이하) 도달 시 1회 사용 */
+    UPROPERTY(EditAnywhere, Category = "Gumiho|Abilities", meta = (ClampMin = "0.0", ClampMax = "100.0"))
+    float NineTailBurstRageThreshold = 0.8f;  // RagePercent 기준
+
+    /** Nine-Tail Burst 전 범위 데미지 값 */
+    UPROPERTY(EditAnywhere, Category = "Gumiho|Combat")
+    float NineTailBurstDamage = 40.f;
+
+    /** Nine-Tail Burst post-process material */
+    UPROPERTY(EditAnywhere, Category = "Gumiho|Effects")
+    UMaterialInterface* NineTailBurstPPMaterial;
+
+    /** Blend weight for the post-process effect */
+    UPROPERTY(EditAnywhere, Category = "Gumiho|Effects", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+    float NineTailBurstPPWeight = 1.0f;
+
+    /** Duration of the post-process effect in seconds */
+    UPROPERTY(EditAnywhere, Category = "Gumiho|Effects", meta = (ClampMin = "0.1"))
+    float NineTailBurstPPDuration = 2.0f;
+
+    /** RPC to trigger the post-process on all clients */
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_PlayNineTailBurstEffects();
 
     // ── Divine Grace ──
     UPROPERTY(ReplicatedUsing = OnRep_DivineGrace)

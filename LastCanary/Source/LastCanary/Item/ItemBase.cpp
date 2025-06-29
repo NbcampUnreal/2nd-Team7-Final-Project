@@ -81,7 +81,7 @@ void AItemBase::BeginPlay()
 
 		if (!ItemRowName.IsNone() && GetOwner() != GetAttachParentActor())
 		{
-			//ApplyItemDataFromTable();
+			ApplyItemDataFromTable();
 		}
 	}
 
@@ -344,8 +344,8 @@ USkeletalMeshComponent* AItemBase::GetSkeletalMeshComponent() const
 
 bool AItemBase::IsCollectible() const
 {
-	// TODO : 태그를 통해 판정하는 로직 작성 필요
-	return false;
+	FGameplayTag CollectibleTag = FGameplayTag::RequestGameplayTag(TEXT("ItemType.Collectible"));
+	return ItemData.ItemType.MatchesTag(CollectibleTag) || ItemData.ItemType == CollectibleTag;
 }
 
 #if WITH_EDITOR

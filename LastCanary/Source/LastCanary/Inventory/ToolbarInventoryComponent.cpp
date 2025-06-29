@@ -420,9 +420,13 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
 
     if (AGunBase* Gun = Cast<AGunBase>(EquippedItemComponent->GetChildActor()))
     {
+        SyncGunStateToSlot();
+
         if (UIController)
         {
-            UIController->SetGunAmmoUIVisibility(true, Gun);
+            int32 CurrentAmmo = FMath::RoundToInt(Gun->Durability);
+            int32 MaxAmmo = FMath::RoundToInt(Gun->MaxDurability);
+            MulticastSetGunAmmoUIVisibility(true, CurrentAmmo, MaxAmmo, Gun->CurrentFireMode, Gun->AvailableFireModes);
         }
     }
 
@@ -470,7 +474,8 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
         {
             if (UIController)
             {
-                UIController->SetGunAmmoUIVisibility(false);
+                TArray<EFireMode> EmptyModes;
+                MulticastSetGunAmmoUIVisibility(false, 0, 0, EFireMode::None, EmptyModes);
             }
         }
 
@@ -625,6 +630,7 @@ void UToolbarInventoryComponent::RestoreGunStateFromSlot(AGunBase* Gun, const FB
     }
 
     // 총기 상태 복원
+    Gun->Durability = SlotData.Durability;
     Gun->CurrentFireMode = static_cast<EFireMode>(SlotData.FireMode);
 }
 
@@ -1278,11 +1284,6 @@ void UToolbarInventoryComponent::SetInventoryFromItemIDs(const TArray<int32>& It
         {
             // 유효한 아이템 설정
             FBaseItemSlotData& SlotData = ItemSlots[i];
-            SlotData.ItemRowName = ItemRowName;
-            SlotData.Quantity = 1;
-            SlotData.Durability = 100.0f;
-            SlotData.bIsValid = true;
-            SlotData.bIsEquipped = false;
 
             ULCGameInstanceSubsystem* GameSubsystem = GetOwner()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
             if (GameSubsystem && GameSubsystem->GunDataTable)
@@ -1312,6 +1313,13 @@ void UToolbarInventoryComponent::SetInventoryFromItemIDs(const TArray<int32>& It
 
                 LOG_Item_WARNING(TEXT("[SetInventoryFromItemIDs] 가방 아이템 복원: %s (20개 슬롯 초기화)"), *ItemRowName.ToString());
             }
+
+
+            SlotData.ItemRowName = ItemRowName;
+            SlotData.Quantity = 1;
+            SlotData.Durability = ItemData->MaxDurability;
+            SlotData.bIsValid = true;
+            SlotData.bIsEquipped = false;
 
             LOG_Item_WARNING(TEXT("[SetInventoryFromItemIDs] 슬롯 %d: ItemID %d -> %s 복원 성공"), i, ItemID, *ItemRowName.ToString());
         }
@@ -1351,6 +1359,18 @@ void UToolbarInventoryComponent::MulticastUpdateItemText_Implementation(const FT
     if (UIController)
     {
         UIController->Multicast_UpdateItemText(ItemName);
+    }
+}
+
+void UToolbarInventoryComponent::MulticastSetGunAmmoUIVisibility_Implementation(bool bVisible, int32 CurrentAmmo, int32 MaxAmmo, EFireMode CurrentFireMode, const TArray<EFireMode>& AvailableFireModes)
+{
+    if (UIController)
+    {
+        UIController->SetGunAmmoUIVisibility(bVisible, CurrentAmmo, MaxAmmo, CurrentFireMode, AvailableFireModes);
+    }
+    else
+    {
+        LOG_Item_WARNING(TEXT("[MulticastSetGunAmmoUIVisibility] 실패: UIController가 null"));
     }
 }
 

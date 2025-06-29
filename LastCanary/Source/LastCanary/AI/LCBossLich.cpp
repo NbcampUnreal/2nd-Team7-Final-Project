@@ -115,6 +115,9 @@ void ALCBossLich::UpdateRage(float DeltaSeconds)
 
 void ALCBossLich::AddRage(float Amount)
 {
+    if (!HasAuthority())
+        return;
+
     // 0) MaxRage 유효성 검사
     if (MaxRage <= 0.f)
     {
@@ -126,16 +129,15 @@ void ALCBossLich::AddRage(float Amount)
     Rage = FMath::Clamp(Rage + Amount, 0.f, MaxRage);
 
     // 2) 서버 권한이 있을 때만 Blackboard 업데이트
-    if (HasAuthority())
-    {
+
         UpdateBlackboardValues();
-    }
+
 
     // 3) 광폭화 진입 조건 확인 (서버 전용)
-    if (HasAuthority() && Rage >= MaxRage && !bIsBerserk)
+    if (Rage >= MaxRage && !bIsBerserk)
     {
         UE_LOG(LogTemp, Warning, TEXT("[Lich] Rage가 최대치에 도달하여 Berserk 모드 진입"));
-        EnterBerserkState();
+        StartBerserk(BerserkDuration);
 
         // EnterBerserkState() 내부에서도 HasAuthority 체크가 이루어지지만,
         // 필요하다면 즉시 Blackboard 갱신

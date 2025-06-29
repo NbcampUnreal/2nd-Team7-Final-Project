@@ -232,37 +232,64 @@ void UInventoryUIController::SetInputModeGameOnly()
     LOG_Item_WARNING(TEXT("[SetInputModeGameOnly] 가방 UI 닫힘 - 입력모드: GameOnly"));
 }
 
-void UInventoryUIController::SetGunAmmoUIVisibility(bool bVisible, AGunBase* Gun)
+void UInventoryUIController::SetGunAmmoUIVisibility(bool bVisible, int32 CurrentAmmo, int32 MaxAmmo, EFireMode CurrentFireMode, const TArray<EFireMode>& AvailableFireModes)
 {
+    if (!IsLocalPlayer())
+    {
+        LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] IsLocalPlayer() false"));
+        return;
+    }
+
     if (!OwnerInventory || !OwnerInventory->GetOwner())
     {
+        LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] OwnerInventory 또는 Owner가 null"));
         return;
     }
 
     UWorld* World = OwnerInventory->GetOwner()->GetWorld();
     if (!World)
     {
+        LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] World가 null"));
         return;
     }
 
     UGameInstance* GI = World->GetGameInstance();
     if (!GI)
     {
+        LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] GameInstance가 null"));
         return;
     }
 
     ULCGameInstanceSubsystem* GISubsystem = GI->GetSubsystem<ULCGameInstanceSubsystem>();
     if (!GISubsystem)
     {
+        LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] GameInstanceSubsystem이 null"));
         return;
     }
 
-    if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
+    ULCUIManager* UIManager = GISubsystem->GetUIManager();
+    if (!UIManager)
     {
-        if (UInventoryMainWidget* InventoryWidget = UIManager->GetInventoryMainWidget())
-        {
-            InventoryWidget->SetGunAmmoUIVisibility(bVisible, Gun);
-        }
+        LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] UIManager가 null"));
+        return;
+    }
+
+    UInventoryMainWidget* InventoryWidget = UIManager->GetInventoryMainWidget();
+    if (!InventoryWidget)
+    {
+        LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] InventoryMainWidget이 null"));
+        return;
+    }
+
+    if (bVisible && MaxAmmo > 0)
+    {
+        InventoryWidget->SetGunAmmoUIVisibility(true, CurrentAmmo, MaxAmmo, CurrentFireMode, AvailableFireModes);
+        LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] ✅ 탄환 UI 표시: %d/%d"), CurrentAmmo, MaxAmmo);
+    }
+    else
+    {
+        InventoryWidget->SetGunAmmoUIVisibility(false, 0, 0, CurrentFireMode, AvailableFireModes);
+        LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] 탄환 UI 숨김"));
     }
 }
 

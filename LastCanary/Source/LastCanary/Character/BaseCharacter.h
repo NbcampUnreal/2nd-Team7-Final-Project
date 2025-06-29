@@ -124,22 +124,28 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
 	USkeletalMeshComponent* BackpackMesh;
 
-	void ApplyCustomization(const UCustomizationMeshMap* Data);
+	void ApplyCustomization(const FCharacterCustomizationData CustomizationData);
 
 	void SetPartMesh(USkeletalMeshComponent* Component, USkeletalMesh* LoadedMesh);
 
 	void SetPartMaterial(USkeletalMeshComponent* Component, int32 MaterialIndex, UMaterialInterface* Material);
 
-	
-	
 	FCharacterCustomizationData GetCustomizationData();
-	
+	void SetCustomizationData(const FCharacterCustomizationData& CustomizingData);
+
 	void SetCustomizationDataOnServer();
 
 	UFUNCTION(Server, Reliable)
-	void Server_SetCustomizationData(const FCharacterCustomizationData& CustomizingData);
+	void Server_UpdateCustomizationData();
+	void Server_UpdateCustomizationData_Implementation();
 
+	UFUNCTION(Server, Reliable)
+	void Server_SetCustomizationData(const FCharacterCustomizationData& CustomizingData);
 	void Server_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_SetCustomizationData(const FCharacterCustomizationData& CustomizingData);
+	void Multicast_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData);
 
 	FCharacterCustomizationData CharacterCustomizationData = FCharacterCustomizationData();
 
@@ -148,7 +154,15 @@ public:
 	
 	/** 가방 메시 설정 */
 	void SetBackpackMesh(bool bIsEquipBackpack);
+	
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_SetBackpackMesh(bool bIsEquipBackpack);
+	void Multicast_SetBackpackMesh_Implementation(bool bIsEquipBackpack);
 
+
+	void SetCharacterPoseSynchronization();
+
+	void ForceUpdateAllPlayerCustomizing();
 
 	UPROPERTY(VisibleAnywhere, Category = "Kick")
 	UBoxComponent* KickHitBox;
@@ -175,10 +189,25 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Brightness")
 	float MaxBrightness = 10.0f;
 
+
+	UPROPERTY(EditAnywhere, Category = "Sensitivity ")
+	float MouseSensitivity = 1.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Sensitivity ")
+	float ZoomSensitivity = 1.0f;
+
+	float GetMouseSensitivity();
+	void SetMouseSensitivity(float Value);
+
+	float GetZoomSensitivity();
+	void SetZoomSensitivity(float Value);
+
 	float GetBrightness();
 	void SetBrightness(float Value);
 
 	virtual void Tick(float DeltaSeconds);
+
+	float TimeAccumulator = 0.0f;
 
 	float WallClipAimOffsetPitch;
 	float MaxWallClipPitch = 90.0f;
@@ -229,7 +258,7 @@ protected:
 	virtual void NotifyControllerChanged() override;
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-
+	virtual void PossessedBy(AController* NewController) override;
 	// Camera Settings
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Camera", Meta = (ClampMin = 0, ClampMax = 90, ForceUnits = "deg"))
@@ -331,10 +360,13 @@ public:
 
 
 public:
+	UFUNCTION(BlueprintCallable)
 	void SetCameraMode(bool bIsFirstPersonView);
 
+	UFUNCTION(BlueprintCallable)
+	void SetCameraEmoteMode(bool bIsFirstPersonView);
 
-
+	bool EmoteMode = false;
 
 	void SwapHeadMaterialTransparent(bool bUseTransparent);
 public:
@@ -381,7 +413,7 @@ public:
 
 public:
 	/*Function called by the controller*/
-	virtual void Handle_LookMouse(const FInputActionValue& ActionValue, float Sensivity);
+	virtual void Handle_LookMouse(const FInputActionValue& ActionValue, float Sensivity, float ZoomSensivity);
 	virtual void Handle_Look(const FInputActionValue& ActionValue);
 	virtual void Handle_Move(const FInputActionValue& ActionValue);
 	virtual void Handle_Sprint(const FInputActionValue& ActionValue);
@@ -908,7 +940,7 @@ public:
 
 private:
 	/** 현재 가방 메시 활성화 상태 추적 */
-	UPROPERTY()
+	UPROPERTY(Replicated)
 	bool bBackpackMeshActive = false;
 
 public:
