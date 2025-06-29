@@ -279,7 +279,7 @@ void ABaseCharacter::BeginPlay()
 	//ApplyCustomization(CharacterMeshMap);
 	SetCharacterPoseSynchronization();
 
-	if (IsLocallyControlled())
+	if (HasAuthority())
 	{
 		ForceUpdateAllPlayerCustomizing();
 	}
@@ -322,32 +322,62 @@ void ABaseCharacter::SetCharacterPoseSynchronization()
 
 void ABaseCharacter::ForceUpdateAllPlayerCustomizing()
 {
+	LOG_Char_WARNING(TEXT("ForceUpdateAllPlayerCustomizing"));
+
 	AGameStateBase* GameState = GetWorld()->GetGameState<AGameStateBase>();
 	if (!IsValid(GameState))
 	{
+		LOG_Char_WARNING(TEXT("GameState Is Invalid"));
 		return;
+	}
+
+	bool bNeedRetry = false;
+	if (GameState->PlayerArray.Num() <= 0)
+	{
+		bNeedRetry = true;
 	}
 	for (APlayerState* PS : GameState->PlayerArray)
 	{
 		ABasePlayerState* BasePS = Cast<ABasePlayerState>(PS);
 		if (!IsValid(BasePS))
-		{
 			continue;
-		}
 
 		ABaseCharacter* Char = Cast<ABaseCharacter>(BasePS->GetPawn());
 		if (!IsValid(Char))
 		{
+			LOG_Char_WARNING(TEXT("Pawn is not valid yet. Will retry."));
+			bNeedRetry = true;
 			continue;
 		}
+
 		if (HasAuthority())
 		{
+			LOG_Char_WARNING(TEXT("서버에서 업데이트 시키기"));
 			Char->Server_UpdateCustomizationData_Implementation();
 		}
 		else
 		{
+			LOG_Char_WARNING(TEXT("클라이언트에서 업데이트 시키기"));
 			Char->Server_UpdateCustomizationData();
 		}
+	}
+
+	if (bNeedRetry)
+	{
+		LOG_Char_WARNING(TEXT("Retrying ForceUpdateAllPlayerCustomizing..."));
+		// 0.5초 후 재시도
+		FTimerHandle RetryHandle;
+		GetWorld()->GetTimerManager().SetTimer(
+			RetryHandle,
+			this,
+			&ABaseCharacter::ForceUpdateAllPlayerCustomizing,
+			0.5f,
+			false
+		);
+	}
+	else
+	{
+		LOG_Char_WARNING(TEXT("포스 업데이트 완료"));
 	}
 }
 
@@ -416,15 +446,15 @@ void ABaseCharacter::Server_SetCustomizationData_Implementation(const FCharacter
 
 void ABaseCharacter::Multicast_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData)
 {
-	LOG_Char_WARNING(TEXT("캐릭터 커스터마이징 데이터 멀티캐스팅"));
-
+	LOG_Char_WARNING(TEXT("멀티캐스트로 전파 "));
 	CharacterCustomizationData = CustomizingData;
 	ApplyCustomization(CustomizingData);
-
 }
 
 void ABaseCharacter::Server_UpdateCustomizationData_Implementation()
 {
+	LOG_Char_WARNING(TEXT("서버에서 전체에게 전파 준비"));
+
 	Multicast_SetCustomizationData(CharacterCustomizationData);
 }
 

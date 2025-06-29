@@ -158,7 +158,7 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_SetBackpackMesh(bool bIsEquipBackpack);
 	void Multicast_SetBackpackMesh_Implementation(bool bIsEquipBackpack);
-
+	bool Updated = false;
 
 	void SetCharacterPoseSynchronization();
 

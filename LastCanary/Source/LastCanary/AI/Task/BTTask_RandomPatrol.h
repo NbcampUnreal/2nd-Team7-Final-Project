@@ -14,23 +14,28 @@ public:
 
     virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
 
-    virtual void TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds) override;
+    virtual void OnTaskFinished(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, EBTNodeResult::Type TaskResult) override;
 
 protected:
-    UPROPERTY(EditAnywhere, Category = "Movement")
+    void CheckPatrolStatus(UBehaviorTreeComponent* OwnerComp);
+
+    void CleanupPatrolTimer(UBehaviorTreeComponent* OwnerComp);
+
+public:
+    UPROPERTY(EditAnywhere, Category = "Patrol")
     float MinDistance = 300.0f;
 
-    UPROPERTY(EditAnywhere, Category = "Movement")
-    float MaxDistance = 600.0f;
+    UPROPERTY(EditAnywhere, Category = "Patrol")
+    float MaxDistance = 800.0f;
 
-    UPROPERTY(EditAnywhere, Category = "Movement")
+    UPROPERTY(EditAnywhere, Category = "Patrol")
     float AcceptableRadius = 5.0f;
 
-    UPROPERTY(EditAnywhere, Category = "Movement")
+    UPROPERTY(EditAnywhere, Category = "Patrol")
     float Delay = 2.0f;
 
 private:
-    FTimerHandle TimerHandle;
+    TMap<TWeakObjectPtr<UBehaviorTreeComponent>, FTimerHandle> PatrolTimerMap;
 
-    float EndTime = 0.0f;
+    TMap<TWeakObjectPtr<UBehaviorTreeComponent>, float> EndTimeMap;
 };
