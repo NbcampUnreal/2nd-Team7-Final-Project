@@ -415,13 +415,26 @@ void ABasePlayerState::InCreaseSurviveTime()
 
 void ABasePlayerState::SetCustomizationData()
 {
+	LOG_Char_WARNING(TEXT("커스터마이징 데이터 로드"));
 	CustomizatiomData = ULCLocalPlayerSaveGame::LoadCustomizationData(GetWorld());
-	Server_SetCustomizationData(CustomizatiomData);
-	UpdatePlayerCustomizingData();
+	if (HasAuthority())
+	{
+		if (ABaseCharacter* MyCharacter = Cast<ABaseCharacter>(GetPawn()))
+		{
+			MyCharacter->ApplyCustomization(CustomizatiomData);
+		}
+
+	}
+	else
+	{
+		Server_SetCustomizationData(CustomizatiomData);
+	}
+	//UpdatePlayerCustomizingData();
 }
 
 void ABasePlayerState::Server_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData)
 {
+	LOG_Char_WARNING(TEXT("서버에 커스텀 데이터 반영"));
 	CustomizatiomData = CustomizingData;
 }
 
@@ -436,7 +449,6 @@ void ABasePlayerState::OnRep_Customization()
 
 FCharacterCustomizationData ABasePlayerState::GetCustomizationData()
 {
-	SetCustomizationData();
 	return CustomizatiomData;
 }
 
@@ -452,4 +464,5 @@ void ABasePlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME(ABasePlayerState, CurrentState);
 	DOREPLIFETIME(ABasePlayerState, AquiredItemIDs);
 	DOREPLIFETIME(ABasePlayerState, PlayerInGameName);
+	DOREPLIFETIME(ABasePlayerState, CustomizatiomData);
 }
