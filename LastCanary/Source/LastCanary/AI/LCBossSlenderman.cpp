@@ -12,6 +12,7 @@
 #include "Camera/PlayerCameraManager.h"
 #include "AI/LCBaseBossAIController.h"
 #include "Camera/CameraComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "Character/BaseCharacter.h"
 
 ALCBossSlenderman::ALCBossSlenderman()
@@ -24,7 +25,12 @@ void ALCBossSlenderman::BeginPlay()
 {
     Super::BeginPlay();
 
-    GetWorldTimerManager().SetTimer(FearTimerHandle, this, &ALCBossSlenderman::ExecuteFearWave, FearInterval, true);
+    // 시작 시 원래 속도 저장
+    if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+    {
+        DefaultWalkSpeed = MoveComp->MaxWalkSpeed;
+    }
+
     GetWorldTimerManager().SetTimer(WhisperTimerHandle, this, &ALCBossSlenderman::ExecuteAbyssalWhisper, WhisperInterval, true);
     GetWorldTimerManager().SetTimer(TeleportTimerHandle, this, &ALCBossSlenderman::TeleportToRandomLocation, TeleportInterval, true);
     GetWorldTimerManager().SetTimer(DistortionTimerHandle, this, &ALCBossSlenderman::ExecuteDistortion, DistortionInterval, true);
@@ -34,73 +40,170 @@ void ALCBossSlenderman::BeginPlay()
 void ALCBossSlenderman::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
-    UpdateRage(DeltaTime);
+    // 1) DeltaTime 유효성 검사
+    if (DeltaTime <= KINDA_SMALL_NUMBER)
+        return;
 
-    if (auto* AICon = Cast<ALCBaseBossAIController>(GetController()))
-    {
-        if (auto* BB = AICon->GetBlackboardComponent())
-        {
-            BB->SetValueAsFloat(TEXT("RagePercent"), Rage / MaxRage);
-            BB->SetValueAsBool(TEXT("IsBerserkMode"), bIsBerserk);
-        }
-    }
+    // 2) 서버 권한 & World 널 체크
+    UWorld* World = GetWorld();
+    if (!World || !HasAuthority())
+        return;
+
+    // 3) Rage 갱신
+    UpdateRage(DeltaTime);
+}
+
+void ALCBossSlenderman::UpdateBlackboardValues()
+{
+    Super::UpdateBlackboardValues();
 }
 
 bool ALCBossSlenderman::IsPlayerLookingAtMe(APawn* PlayerPawn) const
 {
-    FVector ToBoss = GetActorLocation() - PlayerPawn->GetActorLocation();
-    FVector Forward = PlayerPawn->GetViewRotation().Vector();
-    return FVector::DotProduct(Forward, ToBoss.GetSafeNormal()) > 0.8f;
+    // 0) 유효성 검사: PlayerPawn이 nullptr이거나 이미 파괴된 경우
+    if (!IsValid(PlayerPawn))
+    {
+        return false;
+    }
+
+    // 1) 시야 회전 값 얻기: 컨트롤러가 있으면 그 회전, 없으면 Pawn의 회전 사용
+    FRotator ViewRot;
+    if (AController* C = PlayerPawn->GetController())
+    {
+        ViewRot = C->GetControlRotation();
+    }
+    else
+    {
+        ViewRot = PlayerPawn->GetActorRotation();
+    }
+
+    // 2) 플레이어 전방 벡터
+    const FVector Forward = ViewRot.Vector();
+
+    // 3) Boss까지의 방향 벡터
+    const FVector ToBoss = GetActorLocation() - PlayerPawn->GetActorLocation();
+    // 거의 같은 위치라면 false
+    if (ToBoss.IsNearlyZero())
+    {
+        return false;
+    }
+    const FVector ToBossDir = ToBoss.GetSafeNormal();
+
+    // 4) 내적 계산
+    const float Dot = FVector::DotProduct(Forward, ToBossDir);
+
+    // 5) 시야 한계치(예: 코사인 0.8 이상이면 정면으로 간주)
+    return Dot > 0.8f;
 }
 
 void ALCBossSlenderman::UpdateRage(float DeltaSeconds)
 {
-    Super::UpdateRage(DeltaSeconds);
-
-    // (1) 실제 플레이어만 찾아서
-    float TotalDelta = 0.f;
-    for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+    // 0) DeltaSeconds 유효성 검사
+    if (DeltaSeconds <= KINDA_SMALL_NUMBER)
     {
-        if (APlayerController* PC = Cast<APlayerController>(*It))
-        {
-            if (APawn* P = PC->GetPawn())
-            {
-                // (2) 시야 체크
-                FVector ToBoss = (GetActorLocation() - P->GetActorLocation()).GetSafeNormal();
-                FVector Forward = P->GetViewRotation().Vector();
-                bool bLooking = FVector::DotProduct(Forward, ToBoss) > LookDotThreshold;
-
-                // (3) 누적
-                float Rate = bLooking ? LookRagePerSecond : -LoseRagePerSecond;
-                TotalDelta += Rate * DeltaSeconds;
-            }
-        }
+        return;
     }
 
-    // (4) 한 번만 Rage 갱신
+    // 1) World & 서버 권한 검사
+    UWorld* World = GetWorld();
+    if (!World || !HasAuthority())
+    {
+        return;
+    }
+
+    // 2) 부모 로직 (Decay 등) 먼저 실행
+    Super::UpdateRage(DeltaSeconds);
+
+    // 3) 플레이어 시야에 따른 Rage 증감 누적
+    float TotalDelta = 0.f;
+
+    for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+    {
+        APlayerController* PC = It->Get();
+        if (!IsValid(PC))
+        {
+            continue;
+        }
+
+        APawn* P = PC->GetPawn();
+        if (!IsValid(P))
+        {
+            continue;
+        }
+
+        // 4) 플레이어 컨트롤러가 있으면 컨트롤 회전 사용, 없으면 Pawn 회전 사용
+        FRotator ViewRot = PC->IsLocalController()
+            ? PC->GetControlRotation()
+            : P->GetActorRotation();
+
+        FVector Forward = ViewRot.Vector();
+
+        // 5) Boss 쪽 방향 계산 (위치 동일 시 스킵)
+        FVector ToBoss = GetActorLocation() - P->GetActorLocation();
+        if (ToBoss.IsNearlyZero())
+        {
+            continue;
+        }
+        ToBoss.Normalize();
+
+        // 6) Dot 검사
+        const bool bLooking = FVector::DotProduct(Forward, ToBoss) > LookDotThreshold;
+
+        // 7) 누적치 계산
+        const float Rate = bLooking ? LookRagePerSecond : -LoseRagePerSecond;
+        TotalDelta += Rate * DeltaSeconds;
+    }
+
+    // 8) 한 번에 Rage 업데이트
     AddRage(TotalDelta);
 }
 
 void ALCBossSlenderman::AddRage(float Amount)
 {
+    // 0) MaxRage 유효성 검사
+    if (MaxRage <= KINDA_SMALL_NUMBER)
+    {
+        UE_LOG(LogTemp, Error, TEXT("[Slenderman] AddRage called with invalid MaxRage=%f"), MaxRage);
+        return;
+    }
+
+    // 1) Rage 갱신 및 클램프
     Rage = FMath::Clamp(Rage + Amount, 0.f, MaxRage);
-    if (Rage >= MaxRage && !bIsBerserk)
-        EnterBerserkState();
+
+    // 2) 서버 권한이 있을 때만 Blackboard 업데이트 및 Berserk 진입 처리
+    if (HasAuthority())
+    {
+        UpdateBlackboardValues();
+
+        // Berserk 진입 조건
+        if (Rage >= MaxRage && !bIsBerserk)
+        {
+            // Berserk 시작 (Duration이 0 이하일 수 있으니 검사)
+            if (BerserkDuration > 0.f)
+            {
+                StartBerserk(BerserkDuration);
+            }
+            else
+            {
+                StartBerserk();
+            }
+            UpdateBlackboardValues();
+        }
+    }
 }
 
 void ALCBossSlenderman::EnterBerserkState()
 {
     Super::EnterBerserkState();
     UE_LOG(LogTemp, Warning, TEXT("[Slenderman] 영구 Berserk 진입"));
-    // (서버) Speed 증가 등, 기존 로직만 남겨둡니다
-    GetCharacterMovement()->MaxWalkSpeed *= BerserkSpeedMultiplier;
 }
 
 void ALCBossSlenderman::StartBerserk()
 {
     Super::StartBerserk();  // bIsBerserk = true 및 Multicast 호출
 
-    // (서버) 분신 소환 로직 등 원래 구현 유지
+    EnterEndlessStalk();
+
     if (ShadowCloneClass)
     {
         for (int32 i = 0; i < BerserkCloneCount; ++i)
@@ -125,6 +228,25 @@ void ALCBossSlenderman::StartBerserk(float Duration)
     // 서버: 먼저 무한 버전 실행
     Super::StartBerserk(Duration);
 
+    EnterEndlessStalk();
+
+    if (ShadowCloneClass)
+    {
+        for (int32 i = 0; i < BerserkCloneCount; ++i)
+        {
+            FVector Offset = FMath::VRand() * 300.f;
+            FActorSpawnParameters Params;
+            Params.Owner = this;
+            if (AActor* Clone = GetWorld()->SpawnActor<AActor>(
+                ShadowCloneClass,
+                GetActorLocation() + Offset,
+                GetActorRotation(),
+                Params))
+            {
+                ShadowClones.Add(Clone);
+            }
+        }
+    }
 }
 
 void ALCBossSlenderman::EndBerserk()
@@ -133,63 +255,145 @@ void ALCBossSlenderman::EndBerserk()
     UE_LOG(LogTemp, Warning, TEXT("[Slenderman] Berserk 종료"));
 
     // (서버) Speed 원복 및 분신 정리
-    GetCharacterMovement()->MaxWalkSpeed /= BerserkSpeedMultiplier;
     for (AActor* Clone : ShadowClones)
     {
         if (IsValid(Clone))
+        {
             Clone->Destroy();
+        }
     }
     ShadowClones.Empty();
-}
 
+    // (서버) EndlessStalk 종료
+    if (HasAuthority() && bIsEndlessStalk)
+    {
+        bIsEndlessStalk = false;
+        // 즉시 로컬 서버에서도 복원
+        OnRep_EndlessStalk();
+    }
+}
 
 void ALCBossSlenderman::ExecuteFearWave()
 {
-    if (!HasAuthority() || !FearPostProcessMaterial) return;
+    UWorld* World = GetWorld();
+    if (!HasAuthority() || !World)
+        return;
 
-    // (0) VFX
+    // 1) 시각·음향 효과 (멀티캐스트)
+    Multicast_PlayFearWaveEffects();
+
+    // 2) 맵상의 모든 플레이어에게 데미지 및 공포·슬로우
+    const float DamageAmount = FearWaveDamage;      // UPROPERTY 노출된 값
+    for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+    {
+        APlayerController* PC = It->Get();
+        if (!IsValid(PC))
+            continue;
+
+        APawn* Pawn = PC->GetPawn();
+        if (!IsValid(Pawn))
+            continue;
+
+        auto* Target = Cast<ABaseCharacter>(Pawn);
+        if (!Target)
+            continue;
+
+        // ── 2‑1) 일반 대미지 적용
+        UGameplayStatics::ApplyDamage(
+            Target,
+            DamageAmount,
+            GetController(),
+            this,
+            UDamageType::StaticClass()
+        );
+
+        // ── 2‑2) 공포 디버프 (포스트프로세스)
+        Client_ApplyFearPostProcess(Target);
+
+        // ── 2‑3) 슬로우 디버프
+        if (UCharacterMovementComponent* MoveComp = Target->GetCharacterMovement())
+        {
+            const float OrigSpeed = MoveComp->MaxWalkSpeed;
+            MoveComp->MaxWalkSpeed = OrigSpeed * FearSlowMultiplier;
+
+            FTimerHandle TimerHandle;
+            World->GetTimerManager().SetTimer(
+                TimerHandle,
+                FTimerDelegate::CreateLambda([MoveComp, OrigSpeed]()
+                    {
+                        if (IsValid(MoveComp))
+                            MoveComp->MaxWalkSpeed = OrigSpeed;
+                    }),
+                FearSlowDuration,
+                false
+            );
+        }
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("[Slenderman] ExecuteFearWave: applied to all players"));
+}
+
+void ALCBossSlenderman::Multicast_PlayFearWaveEffects_Implementation()
+{
+    UWorld* World = GetWorld();
+    if (!World)
+        return;
+
+    FVector Loc = GetActorLocation();
+
+    // VFX
     if (FearWaveFX)
     {
         UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-            GetWorld(),
+            World,
             FearWaveFX,
-            GetActorLocation(),
-            FRotator::ZeroRotator
+            Loc,
+            FRotator::ZeroRotator,
+            FVector(1.f),
+            true
         );
     }
-    // (1) SFX
+
+    // SFX with attenuation
     if (FearWaveSound)
     {
         UGameplayStatics::PlaySoundAtLocation(
             this,
             FearWaveSound,
-            GetActorLocation()
+            Loc
         );
     }
+}
 
-    // (2) 기존 포스트프로세스 적용 로직…
-    TArray<FHitResult> Hits;
-    FCollisionShape Sphere = FCollisionShape::MakeSphere(FearRadius);
-    if (GetWorld()->SweepMultiByChannel(Hits, GetActorLocation(), GetActorLocation(),
-        FQuat::Identity, ECC_Pawn, Sphere))
+void ALCBossSlenderman::Client_ApplyFearPostProcess_Implementation(ACharacter* Target)
+{
+    // Only on clients
+    if (!FearPostProcessMaterial)
+        return;
+
+    // Find local pawn's camera
+    if (APawn* P = Cast<APawn>(GetOwner()))
     {
-        for (auto& Hit : Hits)
+        if (UCameraComponent* Cam = P->FindComponentByClass<UCameraComponent>())
         {
-            if (APawn* P = Cast<APawn>(Hit.GetActor()))
+            Cam->PostProcessSettings.AddBlendable(FearPostProcessMaterial, FearPPBlendWeight);
+
+            // remove after duration
+            FTimerHandle Handle;
+            if (UWorld* World = GetWorld())
             {
-                const float Dist = FVector::Dist(P->GetActorLocation(), GetActorLocation());
-                if (!IsPlayerLookingAtMe(P) && Dist < FearRadius)
-                {
-                    if (UCameraComponent* CamComp = P->FindComponentByClass<UCameraComponent>())
-                    {
-                        CamComp->PostProcessSettings.AddBlendable(FearPostProcessMaterial, FearPPBlendWeight);
-                        FTimerHandle TmpHandle;
-                        GetWorldTimerManager().SetTimer(TmpHandle, [CamComp, this]()
+                World->GetTimerManager().SetTimer(
+                    Handle,
+                    FTimerDelegate::CreateLambda([Cam, this]()
+                        {
+                            if (Cam && FearPostProcessMaterial)
                             {
-                                CamComp->PostProcessSettings.RemoveBlendable(FearPostProcessMaterial);
-                            }, FearPPDuration, false);
-                    }
-                }
+                                Cam->PostProcessSettings.RemoveBlendable(FearPostProcessMaterial);
+                            }
+                        }),
+                    FearPPDuration,
+                    false
+                );
             }
         }
     }
@@ -197,68 +401,170 @@ void ALCBossSlenderman::ExecuteFearWave()
 
 void ALCBossSlenderman::ExecuteAbyssalWhisper()
 {
-    if (!HasAuthority()) return;
+    // 서버 전용 & World 유효성 검사
+    if (!HasAuthority())
+        return;
 
-    for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+    UWorld* World = GetWorld();
+    if (!World)
+        return;
+
+    // 플레이어마다 위치 왜곡 후 멀티캐스트 호출
+    for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
     {
-        if (APlayerController* PC = Cast<APlayerController>(*It))
-        {
-            FVector TrueLoc = PC->GetPawn()->GetActorLocation();
-            FVector FakeLoc = TrueLoc + FMath::VRand() * 500.f;
+        APlayerController* PC = It->Get();
+        if (!IsValid(PC))
+            continue;
 
-            // SFX
-            if (WhisperSound)
-            {
-                UGameplayStatics::PlaySoundAtLocation(
-                    this,
-                    WhisperSound,
-                    FakeLoc
-                );
-            }
+        APawn* Pawn = PC->GetPawn();
+        if (!IsValid(Pawn))
+            continue;
 
-            UE_LOG(LogTemp, Warning, TEXT("[Slenderman] Whisper distorted for %s: %s"),
-                *PC->GetName(), *FakeLoc.ToString());
-        }
+        const FVector TrueLoc = Pawn->GetActorLocation();
+        const FVector FakeLoc = TrueLoc + FMath::VRand() * 500.f;  // UPROPERTY에 선언된 반경 사용
+
+        // 클라이언트에 재생 요청
+        Multicast_PlayAbyssalWhisper(FakeLoc);
+
+        UE_LOG(LogTemp, Warning,
+            TEXT("[Slenderman] Whisper distorted for %s at %s"),
+            *PC->GetName(),
+            *FakeLoc.ToString());
     }
+}
+
+void ALCBossSlenderman::Multicast_PlayAbyssalWhisper_Implementation(const FVector& Location)
+{
+    // 클라이언트 전용 & 사운드 유효성 검사
+    if (!IsValid(WhisperSound))
+        return;
+
+    // Attenuation이 설정되어 있으면 적용, 없으면 nullptr로 전역 사운드처럼 재생
+    UGameplayStatics::PlaySoundAtLocation(
+        this,
+        WhisperSound,
+        Location,
+        /*VolumeMultiplier=*/1.f,
+        /*PitchMultiplier=*/1.f,
+        /*StartTime=*/0.f,
+        WhisperAttenuation  // ← 여기에 Attenuation 에셋 지정
+    );
 }
 
 void ALCBossSlenderman::TeleportToRandomLocation()
 {
-    if (!HasAuthority()) return;
+    // 0) 서버 전용 검사
+    if (!HasAuthority())
+        return;
 
-    if (auto* Nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld()))
+    UWorld* World = GetWorld();
+    if (!World)
+        return;
+
+    // 1) 네비게이션 시스템 & 랜덤 포인트
+    UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(World);
+    if (!NavSys)
+        return;
+
+    FNavLocation NavLoc;
+    constexpr float Radius = 1000.f;
+    if (!NavSys->GetRandomPointInNavigableRadius(GetActorLocation(), Radius, NavLoc))
+        return;
+
+    // 2) 캡슐 컴포넌트 얻기
+    UCapsuleComponent* Cap = FindComponentByClass<UCapsuleComponent>();
+    float CapsuleHalfHeight = Cap ? Cap->GetScaledCapsuleHalfHeight() : 0.f;
+    float CapsuleRadius = Cap ? Cap->GetScaledCapsuleRadius() : 50.f;
+
+    // 3) 바닥 높이 보정 (라인 트레이스)
+    FVector Desired = NavLoc.Location;
     {
-        FNavLocation Loc;
-        if (Nav->GetRandomPointInNavigableRadius(GetActorLocation(), 1000.f, Loc))
-        {
-            SetActorLocation(Loc.Location);
+        const float TraceUp = 500.f;
+        const float TraceDown = 1000.f;
+        FVector Start = Desired + FVector(0, 0, TraceUp);
+        FVector End = Desired - FVector(0, 0, TraceDown);
 
-            // (0) VFX
-            if (TeleportFX)
-            {
-                UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-                    GetWorld(),
-                    TeleportFX,
-                    Loc.Location,
-                    FRotator::ZeroRotator
-                );
-            }
-            // (1) SFX
-            if (TeleportSound)
-            {
-                UGameplayStatics::PlaySoundAtLocation(
-                    this,
-                    TeleportSound,
-                    Loc.Location
-                );
-            }
+        FHitResult Hit;
+        FCollisionQueryParams Params(NAME_None, false, this);
+        if (World->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params))
+        {
+            Desired.Z = Hit.Location.Z + CapsuleHalfHeight;
         }
+        else
+        {
+            Desired.Z += CapsuleHalfHeight;
+        }
+    }
+
+    // 4) 충돌 스윕 체크: 벽이나 장애물 안에 들어가지 않도록
+    FHitResult SweepHit;
+    FCollisionQueryParams SweepParams(NAME_None, false, this);
+    if (World->SweepSingleByChannel(
+        SweepHit,
+        GetActorLocation(),
+        Desired,
+        FQuat::Identity,
+        ECC_Pawn,
+        FCollisionShape::MakeCapsule(CapsuleRadius, CapsuleHalfHeight),
+        SweepParams))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[Slenderman] Teleport path blocked, aborting"));
+        return;
+    }
+
+    // 5) 텔레포트
+    SetActorLocation(Desired, /*bSweep=*/false, /*OutSweepHitResult=*/nullptr, ETeleportType::TeleportPhysics);
+
+    // 6) 모든 클라이언트에 VFX/SFX 요청
+    Multicast_PlayTeleportEffects(Desired);
+}
+
+void ALCBossSlenderman::Multicast_PlayTeleportEffects_Implementation(const FVector& Location)
+{
+    UWorld* World = GetWorld();
+    if (!World)
+        return;
+
+    // VFX
+    if (IsValid(TeleportFX))
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+            World,
+            TeleportFX,
+            Location,
+            FRotator::ZeroRotator,
+            FVector(1.f),
+            true
+        );
+    }
+
+    // SFX with attenuation
+    if (IsValid(TeleportSound))
+    {
+        UGameplayStatics::PlaySoundAtLocation(
+            this,
+            TeleportSound,
+            Location,
+            /*VolumeMultiplier=*/1.f,
+            /*PitchMultiplier=*/1.f,
+            /*StartTime=*/0.f,
+            TeleportAttenuation  // attenuation asset or nullptr
+        );
     }
 }
 
 void ALCBossSlenderman::ExecuteDistortion()
 {
-    if (!HasAuthority()) return;
+    // (1) 서버 전용 확인
+    if (!HasAuthority())
+        return;
+
+    // (2) World 유효성 검사
+    UWorld* World = GetWorld();
+    if (!World)
+        return;
+
+    // (3) 모든 클라이언트에게 이펙트/SFX 재생 요청
     Multicast_DistortionEffect();
 }
 
@@ -266,40 +572,79 @@ void ALCBossSlenderman::Multicast_DistortionEffect_Implementation()
 {
     UE_LOG(LogTemp, Warning, TEXT("[Slenderman] Distortion Effect Triggered"));
 
+    UWorld* World = GetWorld();
+    if (!World)
+        return;
+
+    const FVector Loc = GetActorLocation();
+
     // (0) VFX
-    if (DistortionFX)
+    if (IsValid(DistortionFX))
     {
         UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-            GetWorld(),
+            World,
             DistortionFX,
-            GetActorLocation(),
-            FRotator::ZeroRotator
+            Loc,
+            FRotator::ZeroRotator,
+            FVector(1.f),
+            true
         );
     }
-    // (1) SFX
-    if (DistortionSound)
+
+    // (1) SFX with attenuation
+    if (IsValid(DistortionSound))
     {
         UGameplayStatics::PlaySoundAtLocation(
             this,
             DistortionSound,
-            GetActorLocation()
+            Loc
         );
     }
 
     // (2) BP/머티리얼 맵 왜곡 처리…
+    // 필요한 경우 여기서도 World·Asset 유효성 검사 추가
 }
 
 void ALCBossSlenderman::EnterEndlessStalk()
 {
-    if (!HasAuthority() || bIsEndlessStalk) return;
+    // 서버 전용 & 이미 진입했는지 확인
+    if (!HasAuthority() || bIsEndlessStalk)
+        return;
+
+    // World 검사
+    UWorld* World = GetWorld();
+    if (!World)
+        return;
+
+    // 플래그 설정
     bIsEndlessStalk = true;
+
+    // 클라이언트에 효과 시작 알림
     Multicast_StartEndlessStalk();
 }
 
 void ALCBossSlenderman::OnRep_EndlessStalk()
 {
-    if (bIsEndlessStalk)
-        GetCharacterMovement()->MaxWalkSpeed *= 2.f;
+    // CharacterMovementComponent 유효성 검사
+    if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+    {
+        if (bIsEndlessStalk)
+        {
+            // EndlessStalk 시작: 속도 2배
+            MoveComp->MaxWalkSpeed = DefaultWalkSpeed * 2.f;
+            UE_LOG(LogTemp, Warning, TEXT("[Slenderman] EndlessStalk ON: WalkSpeed=%.1f"), MoveComp->MaxWalkSpeed);
+        }
+        else
+        {
+            // EndlessStalk 종료: 원래 속도로 복원
+            MoveComp->MaxWalkSpeed = DefaultWalkSpeed;
+            UE_LOG(LogTemp, Warning, TEXT("[Slenderman] EndlessStalk OFF: WalkSpeed=%.1f"), MoveComp->MaxWalkSpeed);
+        }
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("[Slenderman] OnRep_EndlessStalk: CharacterMovementComponent 없음"));
+    }
 }
 
 void ALCBossSlenderman::Multicast_StartEndlessStalk_Implementation()
@@ -333,68 +678,317 @@ void ALCBossSlenderman::Multicast_StartEndlessStalk_Implementation()
 
 void ALCBossSlenderman::ExecuteReachSlash()
 {
-    GetWorldTimerManager().SetTimer(ReachSlashTimerHandle, ReachSlashCooldown, false);
-    FVector O = GetActorLocation();
+    // 서버 전용 & World 체크
+    if (!HasAuthority())
+        return;
+    UWorld* World = GetWorld();
+    if (!World)
+        return;
+
+    // 쿨다운 타이머 설정
+    World->GetTimerManager().SetTimer(ReachSlashTimerHandle, ReachSlashCooldown, false);
+
+    const FVector Origin = GetActorLocation();
+
+    // (1) 데미지 판정
     TArray<FHitResult> Hits;
     FCollisionShape Sphere = FCollisionShape::MakeSphere(ReachSlashRadius);
-    if (GetWorld()->SweepMultiByChannel(Hits, O, O, FQuat::Identity, ECC_Pawn, Sphere))
-        for (auto& H : Hits)
-            if (auto* C = Cast<ABaseCharacter>(H.GetActor()))
-                UGameplayStatics::ApplyDamage(C, ReachSlashDamage, GetController(), this, nullptr);
+    if (World->SweepMultiByChannel(Hits, Origin, Origin, FQuat::Identity, ECC_Pawn, Sphere))
+    {
+        for (const FHitResult& H : Hits)
+        {
+            if (ABaseCharacter* C = Cast<ABaseCharacter>(H.GetActor()))
+            {
+                UGameplayStatics::ApplyDamage(
+                    C,
+                    ReachSlashDamage,
+                    GetController(),
+                    this,
+                    UDamageType::StaticClass()
+                );
+            }
+        }
+    }
+
+    // (2) 모든 클라이언트에 VFX/SFX 재생 요청
+    Multicast_PlayReachSlashEffects(Origin);
+}
+
+void ALCBossSlenderman::Multicast_PlayReachSlashEffects_Implementation(const FVector& Origin)
+{
+    UWorld* World = GetWorld();
+    if (!World)
+        return;
+
+    // VFX
+    if (IsValid(ReachSlashFX))
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+            World,
+            ReachSlashFX,
+            Origin,
+            FRotator::ZeroRotator,
+            FVector(1.f),
+            true
+        );
+    }
+
+    // SFX with attenuation
+    if (IsValid(ReachSlashSound))
+    {
+        UGameplayStatics::PlaySoundAtLocation(
+            this,
+            ReachSlashSound,
+            Origin,
+            /*VolumeMultiplier=*/1.f,
+            /*PitchMultiplier=*/1.f,
+            /*StartTime=*/0.f,
+            AttackAttenuation
+        );
+    }
 }
 
 void ALCBossSlenderman::ExecuteShadowGrasp()
 {
-    GetWorldTimerManager().SetTimer(ShadowGraspTimerHandle, ShadowGraspCooldown, false);
-    if (auto* AC = Cast<AAIController>(GetController()))
+    // 서버 전용 & World 체크
+    if (!HasAuthority())
+        return;
+    UWorld* World = GetWorld();
+    if (!World)
+        return;
+
+    // 쿨다운 타이머 설정
+    World->GetTimerManager().SetTimer(ShadowGraspTimerHandle, ShadowGraspCooldown, false);
+
+    // 타겟 획득
+    if (AAIController* AC = Cast<AAIController>(GetController()))
     {
-        if (auto* BB = AC->GetBlackboardComponent())
+        if (UBlackboardComponent* BB = AC->GetBlackboardComponent())
         {
-            if (auto* T = Cast<ABaseCharacter>(BB->GetValueAsObject(TEXT("TargetActor"))))
+            UObject* Obj = BB->GetValueAsObject(TEXT("TargetActor"));
+            ABaseCharacter* Target = Obj ? Cast<ABaseCharacter>(Obj) : nullptr;
+            if (IsValid(Target))
             {
-                FVector Dir = (T->GetActorLocation() - GetActorLocation()).GetSafeNormal();
-                T->LaunchCharacter(-Dir * 1000.f, true, true);
+                // 넉백
+                FVector Dir = (Target->GetActorLocation() - GetActorLocation()).GetSafeNormal();
+                Target->LaunchCharacter(-Dir * 1000.f, true, true);
+
+                // 모든 클라이언트에 VFX/SFX 재생 요청
+                Multicast_PlayShadowGraspEffects(Target->GetActorLocation());
             }
         }
     }
 }
 
+void ALCBossSlenderman::Multicast_PlayShadowGraspEffects_Implementation(const FVector& Location)
+{
+    UWorld* World = GetWorld();
+    if (!World)
+        return;
+
+    // VFX
+    if (IsValid(ShadowGraspFX))
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+            World,
+            ShadowGraspFX,
+            Location,
+            FRotator::ZeroRotator,
+            FVector(1.f),
+            true
+        );
+    }
+
+    // SFX with attenuation
+    if (IsValid(ShadowGraspSound))
+    {
+        UGameplayStatics::PlaySoundAtLocation(
+            this,
+            ShadowGraspSound,
+            Location,
+            /*VolumeMultiplier=*/1.f,
+            /*PitchMultiplier=*/1.f,
+            /*StartTime=*/0.f,
+            AttackAttenuation
+        );
+    }
+}
+
 void ALCBossSlenderman::ExecuteAttackDistortion()
 {
-    GetWorldTimerManager().SetTimer(AttackDistortionTimerHandle, DistortionCooldown, false);
+    // (1) 서버 전용 검사
+    if (!HasAuthority())
+        return;
+
+    UWorld* World = GetWorld();
+    if (!World)
+        return;
+
+    // (2) 쿨다운 타이머
+    World->GetTimerManager().SetTimer(
+        AttackDistortionTimerHandle,
+        DistortionCooldown,
+        false
+    );
+
     UE_LOG(LogTemp, Warning, TEXT("[Slenderman] Attack Distortion Triggered"));
+
+    // (3) 범위 내 ABaseCharacter 수집
+    TArray<FHitResult> Hits;
+    FCollisionShape Sphere = FCollisionShape::MakeSphere(DistortionRadius);
+    if (World->SweepMultiByChannel(
+        Hits,
+        GetActorLocation(), GetActorLocation(),
+        FQuat::Identity,
+        ECC_Pawn,
+        Sphere))
+    {
+        for (const FHitResult& H : Hits)
+        {
+            if (auto* C = Cast<ABaseCharacter>(H.GetActor()))
+            {
+                if (IsValid(C))
+                    AffectedPlayers.AddUnique(C);
+            }
+        }
+    }
+
+    // (4) **클라이언트에 VFX/SFX 재생 요청** (보스 위치 기준)
+    Multicast_PlayAttackDistortionEffects(GetActorLocation());
+
+    FVector BossLoc = GetActorLocation();
+
+    // (5) 플레이어들만 랜덤 위치로 텔레포트
+    for (auto* C : AffectedPlayers)
+    {
+        if (!IsValid(C))
+            continue;
+
+        // (5‑1) 랜덤 방향 & 위치 계산 (XY 평면)
+        FVector Dir = FMath::VRand();
+        Dir.Z = 0.f;
+        Dir = Dir.GetSafeNormal();
+        if (Dir.IsNearlyZero())
+            continue;
+
+        FVector Desired = BossLoc + Dir * AttackDistortionRange;
+
+        // (5‑2) 내비게이션 메쉬 보정
+        if (UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(World))
+        {
+            FNavLocation Projected;
+            if (NavSys->ProjectPointToNavigation(Desired, Projected, FVector(200.f)))
+            {
+                Desired = Projected.Location;
+            }
+            else
+            {
+                UE_LOG(LogTemp, Warning, TEXT("[Slenderman] Player Distortion NavMesh 보정 실패, 해당 플레이어 건너뜀"));
+                continue;
+            }
+        }
+
+        // (5‑3) 플레이어 텔레포트 (Sweep 충돌처리)
+        C->SetActorLocation(Desired, /*bSweep=*/true, /*OutSweepHitResult=*/nullptr, ETeleportType::TeleportPhysics);
+    }
+
+    // (6) 배열 비우기
+    AffectedPlayers.Empty();
+}
+
+void ALCBossSlenderman::Multicast_PlayAttackDistortionEffects_Implementation(const FVector& Location)
+{
+    UWorld* World = GetWorld();
+    if (!World)
+        return;
+
+    // (a) VFX
+    if (AttackDistortionFX)
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+            World,
+            AttackDistortionFX,
+            Location,
+            FRotator::ZeroRotator,
+            FVector(1.f),
+            true
+        );
+    }
+
+    // (b) SFX with attenuation
+    if (AttackDistortionSound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(
+            this,
+            AttackDistortionSound,
+            Location,
+            1.f,                      // VolumeMultiplier
+            1.f,                      // PitchMultiplier
+            0.f,                      // StartTime
+            AttackAttenuation
+        );
+    }
 }
 
 bool ALCBossSlenderman::RequestAttack(float TargetDistance)
 {
-    if (!HasAuthority()) return false;
-    const float Now = GetWorld()->GetTimeSeconds();
-    AActor* Target = nullptr;
-    if (auto* AC = Cast<AAIController>(GetController()))
-        Target = Cast<AActor>(AC->GetBlackboardComponent()->GetValueAsObject(TEXT("TargetActor")));
+    // (1) 서버 권한 및 World 유효성 검사
+    if (!HasAuthority())
+        return false;
+    UWorld* World = GetWorld();
+    if (!World)
+        return false;
 
-    struct FEntry { float W; TFunction<void()> A; };
+    // (2) AIController·Blackboard로 목표 획득
+    AAIController* AICon = Cast<AAIController>(GetController());
+    UBlackboardComponent* BB = AICon ? AICon->GetBlackboardComponent() : nullptr;
+    AActor* Target = BB ? Cast<AActor>(BB->GetValueAsObject(TEXT("TargetActor"))) : nullptr;
+
+    // (3) 타이머 매니저 취득
+    FTimerManager& TM = World->GetTimerManager();
+
+    // (4) 공격 후보 리스트 구성
+    struct FEntry { float Weight; TFunction<void()> Action; };
     TArray<FEntry> Entries;
 
-    // Reach Slash
-    if (Target && TargetDistance <= ReachSlashRadius && !GetWorldTimerManager().IsTimerActive(ReachSlashTimerHandle))
-        Entries.Add({ 3.f, [this]() { ExecuteReachSlash(); } });
-
-    // Shadow Grasp
-    if (Target && TargetDistance <= ShadowGraspDistance && !GetWorldTimerManager().IsTimerActive(ShadowGraspTimerHandle))
-        Entries.Add({ 2.f, [this]() { ExecuteShadowGrasp(); } });
-
-    // Distortion Attack
-    if (!GetWorldTimerManager().IsTimerActive(AttackDistortionTimerHandle))
-        Entries.Add({ 1.f, [this]() { ExecuteAttackDistortion(); } });
-
-    float Total = 0; for (auto& e : Entries) Total += e.W;
-    float Pick = FMath::FRandRange(0.f, Total), Acc = 0;
-    for (auto& e : Entries)
+    if (Target && TargetDistance <= ReachSlashRadius
+        && !TM.IsTimerActive(ReachSlashTimerHandle))
     {
-        Acc += e.W;
-        if (Pick <= Acc) { e.A(); return true; }
+        Entries.Add({ 3.f, [this]() { ExecuteReachSlash(); } });
     }
+
+    if (Target && TargetDistance <= ShadowGraspDistance
+        && !TM.IsTimerActive(ShadowGraspTimerHandle))
+    {
+        Entries.Add({ 2.f, [this]() { ExecuteShadowGrasp(); } });
+    }
+
+    if (!TM.IsTimerActive(AttackDistortionTimerHandle))
+    {
+        Entries.Add({ 1.f, [this]() { ExecuteAttackDistortion(); } });
+    }
+
+    // (5) 실행 가능한 공격이 없으면
+    if (Entries.Num() == 0)
+        return false;
+
+    // (6) 가중치 랜덤 선택
+    float TotalWeight = 0.f;
+    for (auto& E : Entries)
+        TotalWeight += E.Weight;
+
+    float Pick = FMath::FRandRange(0.f, TotalWeight);
+    float Accum = 0.f;
+    for (auto& E : Entries)
+    {
+        Accum += E.Weight;
+        if (Pick <= Accum)
+        {
+            E.Action();
+            return true;
+        }
+    }
+
     return false;
 }
 

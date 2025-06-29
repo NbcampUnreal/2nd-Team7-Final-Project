@@ -6,6 +6,7 @@
 #include "Materials/MaterialInterface.h"
 #include "NiagaraSystem.h"
 #include "Sound/SoundBase.h" 
+#include "Character/BaseCharacter.h"
 #include "LCBossSlenderman.generated.h"
 
 UCLASS()
@@ -21,6 +22,7 @@ protected:
     virtual void Tick(float DeltaTime) override;
     virtual void UpdateRage(float DeltaSeconds) override;
     virtual bool RequestAttack(float TargetDistance) override;
+    virtual void UpdateBlackboardValues() override;
 
     // VFX/SFX
 
@@ -69,6 +71,10 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Slenderman|Fear")
     USoundBase* FearWaveSound;
 
+    /** SFX attenuation asset */
+    UPROPERTY(EditAnywhere, Category = "Slenderman|ReachSlash")
+    USoundAttenuation* AttackAttenuation;
+
     /** 플레이어가 바라보는 시야 허용 한계 (Dot>Threshold 일 때만 Rage 증가) */
     UPROPERTY(EditAnywhere, Category = "Slenderman|Rage")
     float LookDotThreshold = 0.95f;
@@ -81,13 +87,6 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Slenderman|Rage")
     float LoseRagePerSecond = 20.f;
 
-    // ── Fear Wave (공포 파동) ──
-    UPROPERTY(EditAnywhere, Category = "Slenderman|Fear")
-    float FearRadius = 1200.f;
-
-    UPROPERTY(EditAnywhere, Category = "Slenderman|Fear")
-    float FearInterval = 12.f;
-
     UPROPERTY(EditAnywhere, Category = "Slenderman|Fear")
     UMaterialInterface* FearPostProcessMaterial;
 
@@ -97,8 +96,28 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Slenderman|Fear")
     float FearPPDuration = 1.0f;
 
+    UPROPERTY(EditAnywhere, Category = "Slenderman|Fear")
+    float FearWaveDamage = 40.f;
+
+    UPROPERTY(EditAnywhere, Category = "Slenderman|Fear")
+    float FearSlowMultiplier = 0.6f;
+
+    UPROPERTY(EditAnywhere, Category = "Slenderman|Fear")
+    float FearSlowDuration = 4.f;
+
+    UPROPERTY(EditAnywhere, Category = "Slenderman|Fear")
+    float FearWaveRageThreshold = 80.f;
+
     FTimerHandle FearTimerHandle;
     void ExecuteFearWave();
+
+    /** RPC: play VFX/SFX on all clients */
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_PlayFearWaveEffects();
+
+    /** RPC: apply PP on this client */
+    UFUNCTION(Client, Unreliable)
+    void Client_ApplyFearPostProcess(ACharacter* Target);
 
     // ── Abyssal Whisper (심연의 속삭임) ──
     UPROPERTY(EditAnywhere, Category = "Slenderman|Whisper")
@@ -107,12 +126,28 @@ protected:
     FTimerHandle WhisperTimerHandle;
     void ExecuteAbyssalWhisper();
 
+    /** Whisper 사운드를 모든 클라이언트에 재생하는 RPC */
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_PlayAbyssalWhisper(const FVector& Location);
+
+    /** Whisper SFX attenuation asset */
+    UPROPERTY(EditAnywhere, Category = "Slenderman|Sound")
+    USoundAttenuation* WhisperAttenuation;
+
     // ── Teleport ──
     UPROPERTY(EditAnywhere, Category = "Slenderman|Teleport")
     float TeleportInterval = 15.f;
 
     FTimerHandle TeleportTimerHandle;
     void TeleportToRandomLocation();
+
+    /** RPC: play teleport effects on all clients */
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_PlayTeleportEffects(const FVector& Location);
+
+    /** Attenuation asset for teleport sound */
+    UPROPERTY(EditAnywhere, Category = "Slenderman|Teleport")
+    USoundAttenuation* TeleportAttenuation;
 
     // ── Distortion ──
     UPROPERTY(EditAnywhere, Category = "Slenderman|Distortion")
@@ -128,6 +163,9 @@ protected:
 
     UPROPERTY(ReplicatedUsing = OnRep_EndlessStalk)
     bool bIsEndlessStalk = false;
+
+    /** 원래 이동 속도 저장 */
+    float DefaultWalkSpeed = 0.f;
 
     UFUNCTION()
     void OnRep_EndlessStalk();
@@ -145,6 +183,10 @@ protected:
     FTimerHandle ReachSlashTimerHandle;
     void ExecuteReachSlash();
 
+    /** 멀티캐스트 RPC: Reach Slash 효과 재생 */
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_PlayReachSlashEffects(const FVector& Origin);
+
     UPROPERTY(EditAnywhere, Category = "Slenderman|Attack")
     float ShadowGraspDistance = 1000.f;
     UPROPERTY(EditAnywhere, Category = "Slenderman|Attack")
@@ -152,12 +194,25 @@ protected:
     FTimerHandle ShadowGraspTimerHandle;
     void ExecuteShadowGrasp();
 
+    /** 멀티캐스트 RPC: Shadow Grasp 효과 재생 */
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_PlayShadowGraspEffects(const FVector& Location);
+
+    /** Distortion 명령에 의해 함께 이동시킬 플레이어 캐릭터 목록 */
+    UPROPERTY()
+    TArray<ABaseCharacter*> AffectedPlayers;
     UPROPERTY(EditAnywhere, Category = "Slenderman|Attack")
     float DistortionRadius = 500.f;
     UPROPERTY(EditAnywhere, Category = "Slenderman|Attack")
     float DistortionCooldown = 20.f;
+    /** Distortion 공격 후 텔레포트 거리 */
+    UPROPERTY(EditAnywhere, Category = "Slenderman|Distortion")
+    float AttackDistortionRange = 800.f;
     FTimerHandle AttackDistortionTimerHandle;
     void ExecuteAttackDistortion();
+    // --- RPC for client VFX/SFX ---
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_PlayAttackDistortionEffects(const FVector& Location);
 
     // ── Berserk ──
     UPROPERTY(EditAnywhere, Category = "Slenderman|Berserk")
