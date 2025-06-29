@@ -46,9 +46,9 @@ void UPlayerResultWidget::SetChecklistResult(const FPlayerResultData& ResultData
 {
 	CachedResultData = ResultData;
 
-	if (PlayerNameText && ResultData.OwnerController)
+	if (PlayerNameText)
 	{
-		PlayerNameText->SetText(FText::FromString(ResultData.OwnerController->PlayerState->GetPlayerName()));
+		PlayerNameText->SetText(FText::FromString(ResultData.PlayerName));
 	}
 
 	if (SurvivalText)
@@ -74,10 +74,10 @@ void UPlayerResultWidget::SetChecklistResult(const FPlayerResultData& ResultData
 		ExpText->SetText(FText::FromString(Formatted));
 	}
 
-	if (ScoreText)
+	if (ResourceText)
 	{
-		const FString Formatted = FString::Printf(TEXT("Score : %d"), ResultData.TotalScore);
-		ScoreText->SetText(FText::FromString(Formatted));
+		const FString Formatted = FString::Printf(TEXT("Resource : %d"), ResultData.ResourcePoint);
+		ResourceText->SetText(FText::FromString(Formatted));
 	}
 
 	//if (SurviveTimeText)
@@ -167,9 +167,9 @@ void UPlayerResultWidget::ClearPlayerResult()
 	//{
 	//	ClueText->SetText(FText::GetEmpty());
 	//}
-	if (ScoreText)
+	if (ResourceText)
 	{
-		ScoreText->SetText(FText::GetEmpty());
+		ResourceText->SetText(FText::GetEmpty());
 	}
 	//if (GatheredResourceText)
 	//{

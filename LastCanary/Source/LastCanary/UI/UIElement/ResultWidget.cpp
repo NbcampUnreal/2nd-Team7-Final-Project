@@ -92,7 +92,7 @@ void UResultWidget::SetTotalResultData(const FTotalResultData& TotalResult)
 
 	if (ExpText)
 	{
-		const FString Formatted = FString::Printf(TEXT("탐사 포인트 : %d"), TotalResult.TotalEXP);
+		const FString Formatted = FString::Printf(TEXT("총 탐사 포인트 : %d"), TotalResult.TotalEXP);
 		ExpText->SetText(FText::FromString(Formatted));
 	}
 

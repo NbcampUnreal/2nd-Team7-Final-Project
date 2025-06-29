@@ -140,7 +140,17 @@ FGameResultData UResultEvaluator::EvaluateResult(
     return Result;
 }
 
-FGameResultData UResultEvaluator::EvaluatePlayerResult(const TArray<FChecklistQuestion>& PlayerAnswers, const TArray<bool>& CorrectAnswers, const bool bIsSurvive, const TMap<FName, int32>& CollectedResources, const TArray<int32> CollectedClues)
+
+FGameResultData UResultEvaluator::EvaluatePlayerResult
+(
+    const TArray<FChecklistQuestion>& PlayerAnswers,
+    const TArray<bool>& CorrectAnswers,
+    const bool bIsSurvive,
+    const int32 SurviveTime,
+    const int32 KillCount,
+    const TMap<FName, int32>& CollectedResources,
+    const TArray<int32> CollectedClues
+)
 {
     ULCGameInstanceSubsystem* Subsystem = GetWorld()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
     if (!Subsystem)
@@ -150,6 +160,9 @@ FGameResultData UResultEvaluator::EvaluatePlayerResult(const TArray<FChecklistQu
     }
 
     const FString Context = TEXT("EvaluateResult");
+
+    int32 ResourceScoreSum = 0;
+    int32 TotalExplorePoint = 0;
 
     // 1. 체크리스트 정답 수 계산
     int32 CorrectCount = 0;
@@ -162,19 +175,28 @@ FGameResultData UResultEvaluator::EvaluatePlayerResult(const TArray<FChecklistQu
     }
 
     const int32 TotalChecklistCount = CorrectAnswers.Num();
-    int32 Score = 0;
+   
+    //int32 BonusPoint = 0;
 
     // 2. 정답 점수
-    Score += CorrectCount * 100;
+    float CorrectRate = (float)CorrectCount / TotalChecklistCount;
+    int32 RoundedPoint = FMath::RoundToInt(CorrectRate * 100);
 
-    // 3. 생존자 점수
+    TotalExplorePoint += CorrectRate;
+
+    // 3. 생존자 여부에 따른 점수
     if (bIsSurvive)
     {
-        Score += SurvivePoint;
+        TotalExplorePoint += 50;
     }
 
+    // 생존시간 에 따른 탐사포인트
+    TotalExplorePoint += SurviveTime * 0.5f;
+
+    // 처치 수에 따른 탐사포인트
+    TotalExplorePoint += KillCount * 20;
+
     // 4. 자원 점수 (혼합형 계산)
-    int32 ResourceScoreSum = 0;
 
     TArray<FResourceScoreInfo> ResourceScoreDetails;
     LOG_Frame_WARNING(TEXT("CollectedResources.Num(): %d"), CollectedResources.Num());
@@ -225,11 +247,10 @@ FGameResultData UResultEvaluator::EvaluatePlayerResult(const TArray<FChecklistQu
         ResourceScoreDetails.Add(ResourceScoreInfo);
     }
 
-    Score += ResourceScoreSum;
+    //BonusPoint += ResourceScoreSum;
 
-    // 5. 탐사 포인트 산정
+    // 5. 탐사 아이템 포인트 산정
     TArray<FExplorePointInfo> EXPDetails;
-    int32 TotalExplorePoint = 0;
 
     for (const auto& ClueItemID : CollectedClues)
     {
@@ -240,7 +261,20 @@ FGameResultData UResultEvaluator::EvaluatePlayerResult(const TArray<FChecklistQu
             EXPInfo.NoteTypeIndex = static_cast<int32>(ClueItem->NoteType);
             EXPInfo.ExplorePoint = ClueItem->BaseExplorePoint;
 
-            TotalExplorePoint += ClueItem->BaseExplorePoint;
+            // TO DO : 아이템 의 BaseExplorePoint 받아와서 하거나 수정 될거 같음
+            switch (ClueItem->NoteType)
+            {
+            case ENoteType::Truth:
+                TotalExplorePoint += 50;
+                break;
+            case ENoteType::Lie:
+                TotalExplorePoint -= 20;
+                break;
+            case ENoteType::Noise:
+            default:
+                break;
+            }
+            //TotalExplorePoint += ClueItem->BaseExplorePoint;
             EXPDetails.Add(EXPInfo);
         }
     }
@@ -248,7 +282,7 @@ FGameResultData UResultEvaluator::EvaluatePlayerResult(const TArray<FChecklistQu
     // 6. 랭크 산정 : 로직 수정되어야 할거같음
 
     FString Rank = "C"; // Default fallback
-    int32 TotalScore = TotalExplorePoint + Score;
+    int32 TotalScore = TotalExplorePoint + ResourceScoreSum;
 
     if (RankThresholdTable)
     {
@@ -265,16 +299,20 @@ FGameResultData UResultEvaluator::EvaluatePlayerResult(const TArray<FChecklistQu
             if (TotalScore >= Row->MinScore)
             {
                 Rank = Row->Rank;
+                //TotalExplorePoint += Row->ExplorationPoint;
                 break;
             }
         }
 
-        LOG_Frame_WARNING(TEXT("랭크 판정 기준: 총점 %d → Rank %s"), Score, *Rank);
+        LOG_Frame_WARNING(TEXT("랭크 판정 기준: 총점 %d → Rank %s"), TotalScore, *Rank);
     }
     else
     {
         LOG_Frame_WARNING(TEXT("RankThresholdTable이 설정되지 않았습니다. 기본 랭크 C로 설정됩니다."));
     }
+
+    // 랭크에 따라 탐사포인트 지급후 최종 스코어 다시 산정
+    //TotalScore = TotalExplorePoint + ResourceScoreSum;
 
     // 6. 결과 패킹
     FGameResultData Result;
@@ -282,7 +320,7 @@ FGameResultData UResultEvaluator::EvaluatePlayerResult(const TArray<FChecklistQu
     Result.TotalChecklistCount = TotalChecklistCount;
     Result.CollectedResourcePoints = ResourceScoreSum;
     Result.ResourceScoreDetails = ResourceScoreDetails;
-    Result.FinalScore = Score;
+    Result.FinalScore = TotalScore;
     Result.Rank = Rank;
 
     Result.bIsSurvive = bIsSurvive;
@@ -293,7 +331,7 @@ FGameResultData UResultEvaluator::EvaluatePlayerResult(const TArray<FChecklistQu
         CorrectCount,
         TotalChecklistCount,
         ResourceScoreSum,
-        Score,
+        TotalScore,
         *Rank);
 
     return Result;
