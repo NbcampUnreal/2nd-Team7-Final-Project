@@ -55,6 +55,12 @@ struct FUserSettings
 	float MouseSensitivity = DefaultSettings::DEFAULT_SENSITIVITY;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float DroneSensitivity = DefaultSettings::DEFAULT_SENSITIVITY;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float ZoomSensitivity = DefaultSettings::DEFAULT_SENSITIVITY;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float MasterVolume = DefaultSettings::DEFAULT_VOLUME;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -84,6 +90,8 @@ struct FUserSettings
 	void ResetToDefault()
 	{
 		MouseSensitivity = DefaultSettings::DEFAULT_SENSITIVITY;
+		DroneSensitivity = DefaultSettings::DEFAULT_SENSITIVITY;
+		ZoomSensitivity = DefaultSettings::DEFAULT_SENSITIVITY;
 		MasterVolume = DefaultSettings::DEFAULT_VOLUME;
 		BGMVolume = DefaultSettings::DEFAULT_VOLUME;
 		EffectVolume = DefaultSettings::DEFAULT_VOLUME;
@@ -187,6 +195,12 @@ public:
 
 	static bool SaveMouseSensitivity(UWorld* World, float NewSensitivity);
 	static float LoadMouseSensitivity(UWorld* World);
+
+	static bool SaveDroneSensitivity(UWorld* World, float NewSensitivity);
+	static float LoadDroneSensitivity(UWorld* World);
+
+	static bool SaveZoomSensitivity(UWorld* World, float NewSensitivity);
+	static float LoadZoomSensitivity(UWorld* World);
 
 	static bool SaveMasterVolume(UWorld* World, float NewVolume);
 	static float LoadMasterVolume(UWorld* World);

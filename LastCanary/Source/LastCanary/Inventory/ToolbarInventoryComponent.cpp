@@ -420,9 +420,13 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
 
     if (AGunBase* Gun = Cast<AGunBase>(EquippedItemComponent->GetChildActor()))
     {
+        SyncGunStateToSlot();
+
         if (UIController)
         {
-            UIController->SetGunAmmoUIVisibility(true, Gun);
+            int32 CurrentAmmo = FMath::RoundToInt(Gun->Durability);
+            int32 MaxAmmo = FMath::RoundToInt(Gun->MaxDurability);
+            MulticastSetGunAmmoUIVisibility(true, CurrentAmmo, MaxAmmo);
         }
     }
 
@@ -470,7 +474,7 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
         {
             if (UIController)
             {
-                UIController->SetGunAmmoUIVisibility(false);
+                MulticastSetGunAmmoUIVisibility(false, 0, 0);
             }
         }
 
@@ -625,6 +629,7 @@ void UToolbarInventoryComponent::RestoreGunStateFromSlot(AGunBase* Gun, const FB
     }
 
     // 총기 상태 복원
+    Gun->Durability = SlotData.Durability;
     Gun->CurrentFireMode = static_cast<EFireMode>(SlotData.FireMode);
 }
 
@@ -1351,6 +1356,18 @@ void UToolbarInventoryComponent::MulticastUpdateItemText_Implementation(const FT
     if (UIController)
     {
         UIController->Multicast_UpdateItemText(ItemName);
+    }
+}
+
+void UToolbarInventoryComponent::MulticastSetGunAmmoUIVisibility_Implementation(bool bVisible, int32 CurrentAmmo, int32 MaxAmmo)
+{
+    if (UIController)
+    {
+        UIController->SetGunAmmoUIVisibility(bVisible, CurrentAmmo, MaxAmmo);
+    }
+    else
+    {
+        LOG_Item_WARNING(TEXT("[MulticastSetGunAmmoUIVisibility] 실패: UIController가 null"));
     }
 }
 

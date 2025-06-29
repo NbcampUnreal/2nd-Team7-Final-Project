@@ -5,6 +5,7 @@
 #include "Perception/AISenseConfig_Hearing.h"
 #include "Character/BaseCharacter.h"
 #include "Actor/Gimmick/LCBaseGimmick.h"
+#include "Components/SpotLightComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/DamageEvents.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
@@ -42,8 +43,19 @@ AGunBase::AGunBase()
 
     ShellEjectionComponent = CreateDefaultSubobject<UShellEjectionComponent>(TEXT("ShellEjectionComponent"));
 
+    SpotlightComponent = CreateDefaultSubobject<USpotLightComponent>(TEXT("SpotlightComponent"));
+    SpotlightComponent->SetVisibility(true);
+    SpotlightComponent->SetHiddenInGame(true);
+    SpotlightComponent->SetCastShadows(true);
+    SpotlightComponent->SetIntensity(10000.0f);
+    SpotlightComponent->SetAttenuationRadius(1000.0f);
+    SpotlightComponent->SetInnerConeAngle(20.0f);
+    SpotlightComponent->SetOuterConeAngle(40.0f);
+    SpotlightComponent->SetLightColor(FLinearColor::White);
+
     CurrentFireMode = EFireMode::Single;
     bCanToggleFireMode = false;
+    bIsSpotlightActive = false;
 }
 
 void AGunBase::BeginPlay()
@@ -81,12 +93,13 @@ void AGunBase::BeginPlay()
         LOG_Item_WARNING(TEXT("[GunBase::BeginPlay] 게임인스턴스 서브시스템의 GunDataTable이 null입니다!"));
     }
 
-    if (Durability <= 0.0f)
+    if (Durability <= 0.0f && !bIsEquipped)
     {
         Durability = MaxDurability;
     }
 
     InitializeGameplayTags();
+    EnsureGunDataLoaded();
 
     if (USkeletalMeshComponent* ActiveMesh = GetSkeletalMeshComponent())
     {
@@ -197,9 +210,36 @@ void AGunBase::Server_Fire_Implementation()
 
 void AGunBase::HandleFire()
 {
+    LOG_Item_WARNING(TEXT("[HandleFire] 시작 - 현재 탄환: %.1f"), Durability);
+
     float OldDurability = Durability;
     Durability = FMath::Max(0.0f, Durability - 1.0f);
-    OnAmmoChanged.Broadcast();
+
+    LOG_Item_WARNING(TEXT("[HandleFire] 탄환 감소: %.1f → %.1f"), OldDurability, Durability);
+
+    if (APawn* OwnerPawn = Cast<APawn>(GetOwner()))
+    {
+        if (UToolbarInventoryComponent* ToolbarComp = OwnerPawn->FindComponentByClass<UToolbarInventoryComponent>())
+        {
+            LOG_Item_WARNING(TEXT("[HandleFire] SyncGunStateToSlot 호출"));
+            ToolbarComp->SyncGunStateToSlot();
+
+            if (HasAuthority())
+            {
+                int32 CurrentAmmo = FMath::RoundToInt(Durability);
+                int32 MaxAmmo = FMath::RoundToInt(MaxDurability);
+                ToolbarComp->MulticastSetGunAmmoUIVisibility(true, CurrentAmmo, MaxAmmo);
+            }
+        }
+        else
+        {
+            LOG_Item_WARNING(TEXT("[HandleFire] ToolbarInventoryComponent를 찾을 수 없음"));
+        }
+    }
+    else
+    {
+        LOG_Item_WARNING(TEXT("[HandleFire] Owner Pawn을 찾을 수 없음"));
+    }
 
     FVector SoundLocation = GetActorLocation();
 
@@ -667,7 +707,7 @@ bool AGunBase::Reload()
         return false;
     }
 
-    if (FMath::IsNearlyEqual(Durability, MaxDurability))
+    if (Durability >= MaxDurability)
     {
         return false;
     }
@@ -684,7 +724,22 @@ bool AGunBase::Reload()
         Durability = MaxDurability;
     }
 
-    OnAmmoChanged.Broadcast();
+    if (APawn* OwnerPawn = Cast<APawn>(GetOwner()))
+    {
+        if (UToolbarInventoryComponent* ToolbarComp = OwnerPawn->FindComponentByClass<UToolbarInventoryComponent>())
+        {
+            ToolbarComp->SyncGunStateToSlot();
+
+            if (HasAuthority())
+            {
+                int32 CurrentAmmo = FMath::RoundToInt(Durability);
+                int32 MaxAmmo = FMath::RoundToInt(MaxDurability);
+                int32 CurrentSlotIndex = ToolbarComp->GetCurrentEquippedSlotIndex();
+                ToolbarComp->MulticastSetGunAmmoUIVisibility(true, CurrentAmmo, MaxAmmo);
+            }
+        }
+    }
+
     OnItemStateChanged.Broadcast();
 
     return true;
@@ -692,11 +747,11 @@ bool AGunBase::Reload()
 
 void AGunBase::CheckReloadCondition()
 {
-    if (FMath::IsNearlyEqual(Durability, MaxDurability)) //이미 꽉차있으면 중지
+    if (Durability >= MaxDurability)
     {
-        LOG_Item_WARNING(TEXT("총이 꽉 차있음"));
         return;
     }
+
     AActor* OwnerActor = GetOwner();
     if (!IsValid(OwnerActor))
     {
@@ -710,6 +765,7 @@ void AGunBase::CheckReloadCondition()
         LOG_Item_WARNING(TEXT("Owner Cast Fail"));
         return;
     }
+
     OwnerCharacter->StartReload();
 }
 
@@ -718,6 +774,7 @@ void AGunBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetime
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
     DOREPLIFETIME(AGunBase, RecentHits);
     DOREPLIFETIME(AGunBase, CurrentFireMode);
+    DOREPLIFETIME(AGunBase, bIsSpotlightActive);
 }
 
 bool AGunBase::CanFire()
@@ -882,11 +939,6 @@ void AGunBase::Server_ToggleFireMode_Implementation()
         // 현재 모드가 목록에 없다면 첫 번째 모드로 설정
         CurrentFireMode = AvailableFireModes.Num() > 0 ? AvailableFireModes[0] : EFireMode::Single;
     }
-
-    FString OldModeString = (OldMode == EFireMode::Single) ? TEXT("단발") : TEXT("연발");
-    FString NewModeString = (CurrentFireMode == EFireMode::Single) ? TEXT("단발") : TEXT("연발");
-
-    LOG_Item_WARNING(TEXT("[Server_ToggleFireMode] 발사 모드 변경: %s → %s"), *OldModeString, *NewModeString);
 }
 
 
@@ -894,20 +946,42 @@ void AGunBase::SetEquipped(bool bNewEquipped)
 {
     Super::SetEquipped(bNewEquipped);
 
-    // 장착 해제 시 연발 사격 중단
-    if (!bNewEquipped && bIsAutoFiring)
+    if (bNewEquipped)
     {
-        StopAutoFire();
-        LOG_Item_WARNING(TEXT("[SetEquipped] 장착 해제로 인한 연발 사격 중단"));
+        // 데이터 로딩 확인
+        EnsureGunDataLoaded();
+
+        ApplyAttachmentsFromDataTable();
+        
+        // 스포트라이트 초기화
+        InitializeSpotlight();
+
+        // 스포트라이트가 있는 총기라면 장착 시 자동으로 켜기
+        if (HasSpotlight())
+        {
+            Server_SetSpotlightActive(true);
+        }
+    }
+    else
+    {
+        // 장착 해제 시 연발 사격 중단
+        if (bIsAutoFiring)
+        {
+            StopAutoFire();
+        }
+
+        // 장착 해제 시 스포트라이트 끄기
+        if (bIsSpotlightActive)
+        {
+            Server_SetSpotlightActive(false);
+        }
     }
 }
 
 bool AGunBase::IsGunDataLoaded() const
 {
     // 핵심 데이터들이 로드되었는지 확인
-    return ImpactDecalMaterial != nullptr &&
-        GunData.FireAnimation != nullptr &&
-        !ItemRowName.IsNone();
+    return ImpactDecalMaterial != nullptr && GunData.FireAnimation != nullptr && !ItemRowName.IsNone();
 }
 
 void AGunBase::EnsureGunDataLoaded()
@@ -918,9 +992,6 @@ void AGunBase::EnsureGunDataLoaded()
         LOG_Item_WARNING(TEXT("[EnsureGunDataLoaded] 데이터가 이미 로드됨 - 스킵"));
         return;
     }
-
-    LOG_Item_WARNING(TEXT("[EnsureGunDataLoaded] 데이터 로드 시도 - HasAuthority: %s"),
-        HasAuthority() ? TEXT("true") : TEXT("false"));
 
     // ItemRowName이 설정되었는지 확인
     if (ItemRowName.IsNone())
@@ -945,7 +1016,6 @@ void AGunBase::EnsureGunDataLoaded()
                 if (GISubsystem && GISubsystem->GunDataTable)
                 {
                     GunDataTable = GISubsystem->GunDataTable;
-                    LOG_Item_WARNING(TEXT("[EnsureGunDataLoaded] GunDataTable 재획득 성공"));
                 }
             }
         }
@@ -957,17 +1027,12 @@ void AGunBase::EnsureGunDataLoaded()
         }
     }
 
-    // 데이터 로드 실행
-    LOG_Item_WARNING(TEXT("[EnsureGunDataLoaded] 데이터 로드 실행"));
     ApplyGunDataFromDataTable();
     ApplyItemDataFromTable();
+    ApplyAttachmentsFromDataTable();
 
     // 로드 결과 확인
-    if (IsGunDataLoaded())
-    {
-        LOG_Item_WARNING(TEXT("[EnsureGunDataLoaded] 데이터 로드 성공!"));
-    }
-    else
+    if (!IsGunDataLoaded())
     {
         LOG_Item_WARNING(TEXT("[EnsureGunDataLoaded] 데이터 로드 실패"));
     }
@@ -979,8 +1044,6 @@ void AGunBase::ApplyAttachmentsFromDataTable()
     if (GunData.ScopeMesh)
     {
         AttachScope(GunData.ScopeMesh, GunData.ScopeSocketName);
-        LOG_Item_WARNING(TEXT("[ApplyAttachmentsFromDataTable] 스코프 부착: %s"),
-            *GunData.ScopeMesh->GetName());
     }
     else
     {
@@ -989,6 +1052,7 @@ void AGunBase::ApplyAttachmentsFromDataTable()
     }
 
     ApplyMagazineFromDataTable();
+    InitializeSpotlight();
 }
 
 void AGunBase::ApplyMagazineFromDataTable()
@@ -996,8 +1060,7 @@ void AGunBase::ApplyMagazineFromDataTable()
     if (!GunData.bHasMagazine)
     {
         DetachMagazine();
-        LOG_Item_WARNING(TEXT("[ApplyMagazineFromDataTable] 이 총기는 탄창을 사용하지 않음: %s"),
-            *GunData.GunName.ToString());
+        LOG_Item_WARNING(TEXT("[ApplyMagazineFromDataTable] 이 총기는 탄창을 사용하지 않음: %s"), *GunData.GunName.ToString());
         return;
     }
 
@@ -1005,8 +1068,6 @@ void AGunBase::ApplyMagazineFromDataTable()
     if (GunData.MagazineMesh)
     {
         AttachMagazine(GunData.MagazineMesh, GunData.AttachMagazineSocketName);
-        LOG_Item_WARNING(TEXT("[ApplyMagazineFromDataTable] 탄창 부착: %s"),
-            *GunData.MagazineMesh->GetName());
     }
     else
     {
@@ -1033,18 +1094,15 @@ void AGunBase::AttachScope(UStaticMesh* ScopeMesh, FName SocketName)
     // 소켓 존재 확인
     if (!GunMesh->DoesSocketExist(SocketName))
     {
-        LOG_Item_WARNING(TEXT("[AttachScope] 소켓 '%s'이 존재하지 않음. 기본 위치에 부착"),
-            *SocketName.ToString());
+        LOG_Item_WARNING(TEXT("[AttachScope] 소켓 '%s'이 존재하지 않음. 기본 위치에 부착"), *SocketName.ToString());
 
         // 소켓이 없으면 기본 위치에 부착
-        ScopeComponent->AttachToComponent(GunMesh,
-            FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+        ScopeComponent->AttachToComponent(GunMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
     }
     else
     {
         // 소켓에 부착
-        ScopeComponent->AttachToComponent(GunMesh,
-            FAttachmentTransformRules::SnapToTargetNotIncludingScale, SocketName);
+        ScopeComponent->AttachToComponent(GunMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, SocketName);
     }
 
     // 스코프 메시 설정
@@ -1055,9 +1113,6 @@ void AGunBase::AttachScope(UStaticMesh* ScopeMesh, FName SocketName)
 
     // 현재 부착된 스코프 저장
     CurrentAttachedScope = ScopeMesh;
-
-    LOG_Item_WARNING(TEXT("[AttachScope] 스코프 부착 완료: %s (소켓: %s)"),
-        *ScopeMesh->GetName(), *SocketName.ToString());
 }
 
 void AGunBase::DetachScope()
@@ -1075,8 +1130,6 @@ void AGunBase::DetachScope()
 
     // 현재 부착된 스코프 초기화
     CurrentAttachedScope = nullptr;
-
-    LOG_Item_WARNING(TEXT("[DetachScope] 스코프 제거 완료"));
 }
 
 bool AGunBase::HasScopeAttached() const
@@ -1144,8 +1197,7 @@ void AGunBase::Multicast_DropMagazine_Implementation()
     {
         SpawnLocation = GetActorLocation() + GetActorForwardVector() * 20.0f + GetActorRightVector() * -15.0f;
         SpawnRotation = GetActorRotation();
-        LOG_Item_WARNING(TEXT("[DropMagazine] 소켓 없음 - 기본 위치에서 생성: %s (소켓명: %s)"),
-            *SpawnLocation.ToString(), *GunData.MagazineSocketName.ToString());
+        LOG_Item_WARNING(TEXT("[DropMagazine] 소켓 없음 - 기본 위치에서 생성: %s (소켓명: %s)"), *SpawnLocation.ToString(), *GunData.MagazineSocketName.ToString());
     }
 
     SpawnAndDropMagazine(GunData.MagazineMesh, SpawnLocation, SpawnRotation);
@@ -1238,9 +1290,6 @@ void AGunBase::AttachMagazine(UStaticMesh* MagazineMesh, FName SocketName)
 
     // 현재 부착된 탄창 저장
     CurrentAttachedMagazine = MagazineMesh;
-
-    LOG_Item_WARNING(TEXT("[AttachMagazine] 탄창 부착 완료: %s (소켓: %s)"),
-        *MagazineMesh->GetName(), *SocketName.ToString());
 }
 
 void AGunBase::DetachMagazine()
@@ -1252,11 +1301,6 @@ void AGunBase::DetachMagazine()
 
     // 탄창 숨기기
     MagazineComponent->SetVisibility(false);
-
-    // 메리얼 제거는 하지 않음 (재장전 후 다시 보여줄 예정)
-    // MagazineComponent->SetStaticMesh(nullptr);
-
-    LOG_Item_WARNING(TEXT("[DetachMagazine] 탄창 제거 완료"));
 }
 
 bool AGunBase::UsesMagazine() const
@@ -1266,7 +1310,84 @@ bool AGunBase::UsesMagazine() const
 
 bool AGunBase::HasMagazineAttached() const
 {
-    return CurrentAttachedMagazine != nullptr &&
-        MagazineComponent &&
-        MagazineComponent->IsVisible();
+    return CurrentAttachedMagazine != nullptr && MagazineComponent && MagazineComponent->IsVisible();
+}
+
+void AGunBase::OnRep_SpotlightActive()
+{
+    // 복제 변수가 변경될 때마다 자동으로 호출
+    if (SpotlightComponent && HasSpotlight())
+    {
+        SpotlightComponent->SetHiddenInGame(!bIsSpotlightActive);
+    }
+}
+
+void AGunBase::ToggleSpotlight()
+{
+    Server_SetSpotlightActive(!bIsSpotlightActive);
+}
+
+void AGunBase::Server_SetSpotlightActive_Implementation(bool bActive)
+{
+    if (!HasSpotlight())
+    {
+        LOG_Item_WARNING(TEXT("[Server_SetSpotlightActive] 이 총기는 스포트라이트가 없음"));
+        return;
+    }
+
+    bIsSpotlightActive = bActive;
+
+    // 서버에서도 즉시 적용 (RepNotify는 클라이언트만 호출됨)
+    OnRep_SpotlightActive();
+}
+
+bool AGunBase::HasSpotlight() const
+{
+    return GunData.bHasSpotlight;
+}
+
+void AGunBase::ApplySpotlightSettings()
+{
+    if (!SpotlightComponent)
+    {
+        return;
+    }
+
+    // 데이터 테이블에서 가져온 설정 적용
+    SpotlightComponent->SetIntensity(GunData.SpotlightIntensity);
+    SpotlightComponent->SetAttenuationRadius(GunData.SpotlightAttenuationRadius);
+    SpotlightComponent->SetInnerConeAngle(GunData.SpotlightInnerConeAngle);
+    SpotlightComponent->SetOuterConeAngle(GunData.SpotlightOuterConeAngle);
+    SpotlightComponent->SetLightColor(GunData.SpotlightColor);
+}
+
+void AGunBase::InitializeSpotlight()
+{
+    if (!HasSpotlight() || !SpotlightComponent)
+    {
+        return;
+    }
+
+    USkeletalMeshComponent* GunMesh = GetSkeletalMeshComponent();
+    if (!GunMesh)
+    {
+        return;
+    }
+
+    // 소켓 존재 확인 후 부착
+    if (GunMesh->DoesSocketExist(GunData.SpotlightSocketName))
+    {
+        SpotlightComponent->AttachToComponent(GunMesh,
+            FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+            GunData.SpotlightSocketName);
+    }
+    else
+    {
+        LOG_Item_WARNING(TEXT("[InitializeSpotlight] 소켓 '%s'이 존재하지 않음 - 기본 부착 유지"),
+            *GunData.SpotlightSocketName.ToString());
+    }
+
+    // 설정 적용
+    ApplySpotlightSettings();
+    SpotlightComponent->SetHiddenInGame(!bIsSpotlightActive);
 }
