@@ -289,10 +289,26 @@ void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor*
 			if (bCallReturnToInitialStateInsteadOfActivate)
 			{
 				ILCGimmickInterface::Execute_ReturnToInitialState(this);
+
+				for (AActor* Target : LinkedTargets)
+				{
+					if (IsValid(Target))
+					{
+						ILCGimmickInterface::Execute_ReturnToInitialState(Target);
+					}
+				}
 			}
 			else
 			{
 				ILCGimmickInterface::Execute_ActivateGimmick(this);
+
+				for (AActor* Target : LinkedTargets)
+				{
+					if (IsValid(Target))
+					{
+						ILCGimmickInterface::Execute_ActivateGimmick(Target);
+					}
+				}
 			}
 		}
 	}
@@ -355,9 +371,25 @@ void ALCBaseGimmick::OnTriggerExit(UPrimitiveComponent* OverlappedComp, AActor* 
 		{
 			ILCGimmickInterface::Execute_DeactivateGimmick(this);
 
+			for (AActor* Target : LinkedTargets)
+			{
+				if (IsValid(Target))
+				{
+					ILCGimmickInterface::Execute_DeactivateGimmick(Target);
+				}
+			}
+
 			if (!bToggleState)
 			{
 				ILCGimmickInterface::Execute_ReturnToInitialState(this);
+
+				for (AActor* Target : LinkedTargets)
+				{
+					if (IsValid(Target))
+					{
+						ILCGimmickInterface::Execute_ReturnToInitialState(Target);
+					}
+				}
 			}
 		}
 	}

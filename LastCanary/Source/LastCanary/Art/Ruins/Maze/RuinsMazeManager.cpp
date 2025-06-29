@@ -556,6 +556,7 @@ void ARuinsMazeManager::TryPlaceGimmicks()
 		UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld());
 		if (NavSys)
 		{
+			LOG_Art(Log, TEXT("[Gimmick] 내비 메쉬 재빌드 완료"));
 			NavSys->Build();
 		}
 	}
@@ -689,7 +690,7 @@ void ARuinsMazeManager::SpawnMonsterInMidPath()
 
 	if (ValidCells.Num() < EliteSpawnCount)
 	{
-		LOG_Art_WARNING(TEXT("[Monster] 후보 셀 부족 → 요청: %d, 가능: %d"), EliteSpawnCount, ValidCells.Num());
+		//LOG_Art_WARNING(TEXT("[Monster] 후보 셀 부족 → 요청: %d, 가능: %d"), EliteSpawnCount, ValidCells.Num());
 		return;
 	}
 
@@ -704,7 +705,7 @@ void ARuinsMazeManager::SpawnMonsterInMidPath()
 		AActor* Spawned = GetWorld()->SpawnActor<AActor>(MonsterClass, SpawnLoc, FRotator::ZeroRotator, Params);
 		if (IsValid(Spawned))
 		{
-			LOG_Art(Log, TEXT("[Monster] 몬스터 스폰 성공 (%d/%d): (%d, %d)"), i + 1, EliteSpawnCount, ValidCells[i].X, ValidCells[i].Y);
+			//LOG_Art(Log, TEXT("[Monster] 몬스터 스폰 성공 (%d/%d): (%d, %d)"), i + 1, EliteSpawnCount, ValidCells[i].X, ValidCells[i].Y);
 			MonsterSpawnedCells.Add(ValidCells[i]);
 		}
 	}
@@ -760,7 +761,7 @@ void ARuinsMazeManager::HideWall(const FIntPoint& Cell, const FString& Direction
 			Wall->SetActorHiddenInGame(true);
 			Wall->SetActorEnableCollision(false);
 			WallCache.Add(Key, Wall);
-			LOG_Art(Log, TEXT("[Wall] 숨김 처리 fallback 성공 [%s:%s]"), *Cell.ToString(), *Direction);
+			//LOG_Art(Log, TEXT("[Wall] 숨김 처리 fallback 성공 [%s:%s]"), *Cell.ToString(), *Direction);
 			return;
 		}
 	}
@@ -860,7 +861,7 @@ void ARuinsMazeManager::SpawnNotesAfterMaze()
 	//	SpawnManager->SpawnNoteItemsAtLocation(1, WorldPos); // 내부에서 랜덤 Row 선택
 	//}
 
-	LOG_Item_WARNING(TEXT("[Notes] 노트 스폰 완료: %d개 생성됨"), NoteSpawnCount);
+	//LOG_Item_WARNING(TEXT("[Notes] 노트 스폰 완료: %d개 생성됨"), NoteSpawnCount);
 }
 
 //void ARuinsMazeManager::SpawnTreasureBoxAfterMaze()
@@ -947,7 +948,7 @@ void ARuinsMazeManager::SpawnTreasureBoxAfterMaze()
 
 	if (TreasureBoxSpawnCandidates.Num() == 0)
 	{
-		LOG_Art_WARNING(TEXT("[Chest] TreasureBoxSpawnCandidates가 비어 있습니다. 스폰 생략"));
+		//LOG_Art_WARNING(TEXT("[Chest] TreasureBoxSpawnCandidates가 비어 있습니다. 스폰 생략"));
 		return;
 	}
 
@@ -969,7 +970,7 @@ void ARuinsMazeManager::SpawnTreasureBoxAfterMaze()
 
 	if (CandidateCells.Num() < TreasureBoxSpawnCount)
 	{
-		LOG_Art_WARNING(TEXT("[Chest] 후보 셀 부족 → 요청: %d, 가능: %d"), TreasureBoxSpawnCount, CandidateCells.Num());
+		//LOG_Art_WARNING(TEXT("[Chest] 후보 셀 부족 → 요청: %d, 가능: %d"), TreasureBoxSpawnCount, CandidateCells.Num());
 		return;
 	}
 
@@ -992,7 +993,7 @@ void ARuinsMazeManager::SpawnTreasureBoxAfterMaze()
 		if (IsValid(Node))
 		{
 			Node->ResourceItemSpawnManager = ResourceItemSpawnManagerRef;
-			LOG_Art(Log, TEXT("[Chest] 상자 스폰 성공 (%s) at (%d, %d)"), *Node->GetName(), CandidateCells[i].X, CandidateCells[i].Y);
+			//LOG_Art(Log, TEXT("[Chest] 상자 스폰 성공 (%s) at (%d, %d)"), *Node->GetName(), CandidateCells[i].X, CandidateCells[i].Y);
 		}
 	}
 }
