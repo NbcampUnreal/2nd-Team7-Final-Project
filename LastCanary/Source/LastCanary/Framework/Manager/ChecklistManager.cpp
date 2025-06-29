@@ -13,6 +13,7 @@
 #include "Net/UnrealNetwork.h"
 #include "Kismet/GameplayStatics.h"
 #include "DataTable/ItemDataRow.h"
+#include "DataTable/RankThresholdRow.h"
 #include "Engine/World.h"
 
 #include "LastCanary.h"
@@ -155,9 +156,9 @@ FString AChecklistManager::GetMVPName()
 		const APlayerController* Controller = Pair.Key;
 		const FPlayerResultData& Result = Pair.Value;
 
-		if (Result.ResourcePoint > HighestScore && Controller && Controller->PlayerState)
+		if (Result.TotalScore > HighestScore && Controller && Controller->PlayerState)
 		{
-			HighestScore = Result.ResourcePoint;
+			HighestScore = Result.TotalScore;
 			TopPlayerName = Controller->PlayerState->GetPlayerName();
 		}
 	}
@@ -244,6 +245,8 @@ void AChecklistManager::SubmitCheckList(APlayerController* Submitter, const TArr
 		PlayerAnswers,
 		CorrectAnswers,
 		bIsSurvive,
+		SubmitterPS->SurviveTime,
+		SubmitterPS->KillCount,
 		ParsedResources,
 		ExpItems
 	);
@@ -260,6 +263,7 @@ void AChecklistManager::SubmitCheckList(APlayerController* Submitter, const TArr
 	// =============================================================================
 	FPlayerResultData PlayerResultData;
 	PlayerResultData.OwnerController = Submitter;
+	PlayerResultData.PlayerName = Submitter->PlayerState->GetPlayerName();
 	PlayerResultData.bIsSurvived = bIsSurvive;
 	PlayerResultData.CorrectRate = (float)GameResult.CorrectChecklistCount / GameResult.TotalChecklistCount;
 	PlayerResultData.SurviveTime = SubmitterPS->SurviveTime;
@@ -326,8 +330,34 @@ void AChecklistManager::SetTotalGameResult()
 	TotalGameResult.TotalReources = GetTotalResourcePoint();
 	TotalGameResult.Payment = LCGM->GetPayMent();
 	TotalGameResult.TotalEXP = GetTotalEXP();
+
+	int32 TotalResource = GetTotalResourcePoint();
+	int32 TotalEXP = GetTotalEXP();
+	int32 TotalScore = TotalResource + TotalEXP;
+
+	FString TotalRank = TEXT("C");
 	// TO DO : Total Rank 점수 산정 로직 필요
-	FString TotalRank = TEXT("S");
+	if (TotalRankTable)
+	{
+		TArray<FRankThresholdRow*> RankRows;
+		TotalRankTable->GetAllRows(TEXT("Rank Lookup"), RankRows);
+
+		// 점수 높은 순서로 정렬
+		RankRows.Sort([](const FRankThresholdRow& A, const FRankThresholdRow& B) {
+			return A.MinScore > B.MinScore;
+			});
+
+		for (const auto* Row : RankRows)
+		{
+			if (TotalScore >= Row->MinScore * TotalPlayerCount)
+			{
+				TotalRank = Row->Rank;
+				//TotalEXP += Row->ExplorationPoint;
+				break;
+			}
+		}
+	}
+
 	TotalGameResult.TotalRank = TotalRank;
 
 	for (auto PlayerResult : NewPlayerResults)
