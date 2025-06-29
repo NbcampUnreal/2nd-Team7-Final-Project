@@ -261,6 +261,8 @@ void ABaseCharacter::BeginPlay()
 		{
 			NameWidgetComponent->SetVisibility(false, true);
 		}	
+		NameWidgetComponent->SetCastShadow(false);
+		NameWidgetComponent->CastShadow = false;
 	}
 
 	if (IsLocallyControlled())
@@ -277,7 +279,7 @@ void ABaseCharacter::BeginPlay()
 	//ApplyCustomization(CharacterMeshMap);
 	SetCharacterPoseSynchronization();
 
-	if (IsLocallyControlled())
+	if (HasAuthority())
 	{
 		ForceUpdateAllPlayerCustomizing();
 	}
@@ -320,32 +322,62 @@ void ABaseCharacter::SetCharacterPoseSynchronization()
 
 void ABaseCharacter::ForceUpdateAllPlayerCustomizing()
 {
+	LOG_Char_WARNING(TEXT("ForceUpdateAllPlayerCustomizing"));
+
 	AGameStateBase* GameState = GetWorld()->GetGameState<AGameStateBase>();
 	if (!IsValid(GameState))
 	{
+		LOG_Char_WARNING(TEXT("GameState Is Invalid"));
 		return;
+	}
+
+	bool bNeedRetry = false;
+	if (GameState->PlayerArray.Num() <= 0)
+	{
+		bNeedRetry = true;
 	}
 	for (APlayerState* PS : GameState->PlayerArray)
 	{
 		ABasePlayerState* BasePS = Cast<ABasePlayerState>(PS);
 		if (!IsValid(BasePS))
-		{
 			continue;
-		}
 
 		ABaseCharacter* Char = Cast<ABaseCharacter>(BasePS->GetPawn());
 		if (!IsValid(Char))
 		{
+			LOG_Char_WARNING(TEXT("Pawn is not valid yet. Will retry."));
+			bNeedRetry = true;
 			continue;
 		}
+
 		if (HasAuthority())
 		{
+			LOG_Char_WARNING(TEXT("서버에서 업데이트 시키기"));
 			Char->Server_UpdateCustomizationData_Implementation();
 		}
 		else
 		{
+			LOG_Char_WARNING(TEXT("클라이언트에서 업데이트 시키기"));
 			Char->Server_UpdateCustomizationData();
 		}
+	}
+
+	if (bNeedRetry)
+	{
+		LOG_Char_WARNING(TEXT("Retrying ForceUpdateAllPlayerCustomizing..."));
+		// 0.5초 후 재시도
+		FTimerHandle RetryHandle;
+		GetWorld()->GetTimerManager().SetTimer(
+			RetryHandle,
+			this,
+			&ABaseCharacter::ForceUpdateAllPlayerCustomizing,
+			0.5f,
+			false
+		);
+	}
+	else
+	{
+		LOG_Char_WARNING(TEXT("포스 업데이트 완료"));
 	}
 }
 
@@ -414,15 +446,15 @@ void ABaseCharacter::Server_SetCustomizationData_Implementation(const FCharacter
 
 void ABaseCharacter::Multicast_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData)
 {
-	LOG_Char_WARNING(TEXT("캐릭터 커스터마이징 데이터 멀티캐스팅"));
-
+	LOG_Char_WARNING(TEXT("멀티캐스트로 전파 "));
 	CharacterCustomizationData = CustomizingData;
 	ApplyCustomization(CustomizingData);
-
 }
 
 void ABaseCharacter::Server_UpdateCustomizationData_Implementation()
 {
+	LOG_Char_WARNING(TEXT("서버에서 전체에게 전파 준비"));
+
 	Multicast_SetCustomizationData(CharacterCustomizationData);
 }
 
@@ -942,7 +974,11 @@ void ABaseCharacter::Tick(float DeltaSeconds)
 		if (Distance < MaxVisibleDistance)
 		{
 			FRotator LookAtRotation = UKismetMathLibrary::FindLookAtRotation(WidgetLocation, CameraLocation);
-			NameWidgetComponent->SetWorldRotation(LookAtRotation);
+			// Pitch와 Roll 제거 → Yaw만 남김
+			FRotator YawOnlyRotation = FRotator(0.f, LookAtRotation.Yaw, 0.f);
+
+			// 적용
+			NameWidgetComponent->SetWorldRotation(YawOnlyRotation);
 		}
 	}
 }// 전환이 완료되었는지 확인하는 유틸리티 함수 (선택사항)
@@ -1837,12 +1873,41 @@ void ABaseCharacter::SetCameraMode(bool bIsFirstPersonView)
 {
 	if (bIsFirstPersonView)
 	{
+		EmoteMode = false;
+		CustomHeadMesh->SetOwnerNoSee(true);
 		SwapHeadMaterialTransparent(true);
 		SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 		SpringArm->TargetArmLength = 0.0f;
 	}
 	else
 	{
+		EmoteMode = true;
+		CustomHeadMesh->SetOwnerNoSee(false);
+		SwapHeadMaterialTransparent(false);
+		SpringArm->TargetArmLength = 200.0f;
+	}
+}
+
+void ABaseCharacter::SetCameraEmoteMode(bool bIsFirstPersonView)
+{
+	if (bIsFirstPersonView)
+	{
+		EmoteMode = false;
+		SpringArm->bDoCollisionTest = false;
+		SpringArm->ProbeChannel = ECC_Camera;
+		SpringArm->ProbeSize = 3.0f;
+		CustomHeadMesh->SetOwnerNoSee(true);
+		SwapHeadMaterialTransparent(true);
+		SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+		SpringArm->TargetArmLength = 0.0f;
+	}
+	else
+	{
+		EmoteMode = true;
+		SpringArm->bDoCollisionTest = true;
+		SpringArm->ProbeChannel = ECC_Camera;
+		SpringArm->ProbeSize = 3.0f;
+		CustomHeadMesh->SetOwnerNoSee(false);
 		SwapHeadMaterialTransparent(false);
 		SpringArm->TargetArmLength = 200.0f;
 	}

@@ -158,7 +158,7 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_SetBackpackMesh(bool bIsEquipBackpack);
 	void Multicast_SetBackpackMesh_Implementation(bool bIsEquipBackpack);
-
+	bool Updated = false;
 
 	void SetCharacterPoseSynchronization();
 
@@ -360,10 +360,13 @@ public:
 
 
 public:
+	UFUNCTION(BlueprintCallable)
 	void SetCameraMode(bool bIsFirstPersonView);
 
+	UFUNCTION(BlueprintCallable)
+	void SetCameraEmoteMode(bool bIsFirstPersonView);
 
-
+	bool EmoteMode = false;
 
 	void SwapHeadMaterialTransparent(bool bUseTransparent);
 public:

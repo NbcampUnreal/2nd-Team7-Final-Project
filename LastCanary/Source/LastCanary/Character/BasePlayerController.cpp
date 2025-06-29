@@ -830,7 +830,7 @@ void ABasePlayerController::Input_OnViewMode(const FInputActionValue& ActionValu
 	{
 		return;
 	}
-#if WITH_EDITOR
+
 	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
 		PlayerCharacter->Handle_ViewMode();
@@ -839,7 +839,7 @@ void ABasePlayerController::Input_OnViewMode(const FInputActionValue& ActionValu
 	{
 		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is not an ABaseCharacter: %s"), *CurrentPossessedPawn->GetName());
 	}
-#endif
+
 }
 
 
@@ -1169,23 +1169,27 @@ void ABasePlayerController::Input_VoiceChat(const FInputActionValue& ActionValue
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("!IsValid(MyPlayerState)"));
+
 		return;
 	}
 
 	if (!IsValid(CurrentPossessedPawn))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn Is Invalid"));
+
 		return;
 	}
-
-	if (MyPlayerState->InGameState == EPlayerInGameStatus::Spectating)
+	if (CurrentPossessedPawn->IsA<ABaseSpectatorPawn>())
 	{
-		if (!IsValid(SpawnedSpectatorPawn))
+		ABaseSpectatorPawn* Spectator = Cast<ABaseSpectatorPawn>(CurrentPossessedPawn);
+		if (IsValid(Spectator))
 		{
+			Spectator->Handle_VoiceChatting(ActionValue);
 			return;
 		}
-		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is Spectating"));
-		SpawnedSpectatorPawn->Handle_VoiceChatting(ActionValue);
 	}
+
 	if (!IsValid(SpanwedPlayerCharacter))
 	{
 		return;
@@ -1331,7 +1335,7 @@ void ABasePlayerController::Input_OpenPauseMenu(const FInputActionValue& ActionV
 		{
 			if (UIManager->IsPauseMenuOpen())
 			{
-				UIManager->HidePauseMenu();				
+				UIManager->HidePauseMenu();	
 			}
 			else
 			{
