@@ -244,7 +244,6 @@ void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor*
 	if (!HasAuthority() || !IsValid(OtherActor)) return;
 	if (!IsValidActivator(OtherActor)) return;
 
-	// ✅ Trigger용 쿨타임 검사 (WhileStepping 제외)
 	const float CurrentTime = GetWorld()->GetTimeSeconds();
 	const float Elapsed = CurrentTime - LastActivatedTime;
 
@@ -290,10 +289,26 @@ void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor*
 			if (bCallReturnToInitialStateInsteadOfActivate)
 			{
 				ILCGimmickInterface::Execute_ReturnToInitialState(this);
+
+				for (AActor* Target : LinkedTargets)
+				{
+					if (IsValid(Target))
+					{
+						ILCGimmickInterface::Execute_ReturnToInitialState(Target);
+					}
+				}
 			}
 			else
 			{
 				ILCGimmickInterface::Execute_ActivateGimmick(this);
+
+				for (AActor* Target : LinkedTargets)
+				{
+					if (IsValid(Target))
+					{
+						ILCGimmickInterface::Execute_ActivateGimmick(Target);
+					}
+				}
 			}
 		}
 	}
@@ -312,7 +327,6 @@ void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor*
 						const float CurrentTime = GetWorld()->GetTimeSeconds();
 						const float Elapsed = CurrentTime - LastActivatedTime;
 
-						// ✅ Delay 후에도 쿨타임 검사
 						if (Elapsed >= CooldownTime)
 						{
 							if (bCallReturnToInitialStateInsteadOfActivate)
@@ -357,9 +371,25 @@ void ALCBaseGimmick::OnTriggerExit(UPrimitiveComponent* OverlappedComp, AActor* 
 		{
 			ILCGimmickInterface::Execute_DeactivateGimmick(this);
 
+			for (AActor* Target : LinkedTargets)
+			{
+				if (IsValid(Target))
+				{
+					ILCGimmickInterface::Execute_DeactivateGimmick(Target);
+				}
+			}
+
 			if (!bToggleState)
 			{
 				ILCGimmickInterface::Execute_ReturnToInitialState(this);
+
+				for (AActor* Target : LinkedTargets)
+				{
+					if (IsValid(Target))
+					{
+						ILCGimmickInterface::Execute_ReturnToInitialState(Target);
+					}
+				}
 			}
 		}
 	}
