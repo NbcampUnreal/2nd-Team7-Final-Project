@@ -130,11 +130,14 @@ public:
 
 	void SetPartMaterial(USkeletalMeshComponent* Component, int32 MaterialIndex, UMaterialInterface* Material);
 
-	
-	
 	FCharacterCustomizationData GetCustomizationData();
-	
+	void SetCustomizationData(const FCharacterCustomizationData& CustomizingData);
+
 	void SetCustomizationDataOnServer();
+
+	UFUNCTION(Server, Reliable)
+	void Server_UpdateCustomizationData();
+	void Server_UpdateCustomizationData_Implementation();
 
 	UFUNCTION(Server, Reliable)
 	void Server_SetCustomizationData(const FCharacterCustomizationData& CustomizingData);
@@ -155,6 +158,11 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_SetBackpackMesh(bool bIsEquipBackpack);
 	void Multicast_SetBackpackMesh_Implementation(bool bIsEquipBackpack);
+
+
+	void SetCharacterPoseSynchronization();
+
+	void ForceUpdateAllPlayerCustomizing();
 
 	UPROPERTY(VisibleAnywhere, Category = "Kick")
 	UBoxComponent* KickHitBox;
@@ -198,6 +206,8 @@ public:
 	void SetBrightness(float Value);
 
 	virtual void Tick(float DeltaSeconds);
+
+	float TimeAccumulator = 0.0f;
 
 	float WallClipAimOffsetPitch;
 	float MaxWallClipPitch = 90.0f;
