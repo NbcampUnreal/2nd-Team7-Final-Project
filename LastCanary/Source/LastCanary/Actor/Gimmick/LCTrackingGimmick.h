@@ -6,6 +6,7 @@
 
 class ALCTrackingManager;
 class USpotLightComponent;
+class UPointLightComponent;
 
 /**
  *
@@ -63,13 +64,21 @@ protected:
 	/** 주기적으로 타겟을 바라보도록 회전 처리 */
 	void RotateToTarget();
 
-	/** 추적용 조명 - 왼쪽 */
+	/** 추적용 포인트 라이트 - 왼쪽 */
 	UPROPERTY(VisibleAnywhere, Category = "Tracking|Effect")
-	USpotLightComponent* TrackingLightLeft;
+	UPointLightComponent* TrackingPointLightLeft;
 
-	/** 추적용 조명 - 오른쪽 */
+	/** 추적용 포인트 라이트 - 오른쪽 */
 	UPROPERTY(VisibleAnywhere, Category = "Tracking|Effect")
-	USpotLightComponent* TrackingLightRight;
+	UPointLightComponent* TrackingPointLightRight;
+
+	/** 타겟 플레이어 위에서 비추는 스포트라이트 */
+	UPROPERTY(VisibleAnywhere, Category = "Tracking|Effect")
+	USpotLightComponent* TrackingSpotLight;
+
+	/** 스포트라이트 발사 지속 시간 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tracking|Effect")
+	float SpotLightDuration;
 
 	/** 이펙트 Yaw 회전 보정값 (좌우 공용) */
 	UPROPERTY(EditAnywhere, Category = "Tracking|Effect")
@@ -79,4 +88,6 @@ protected:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_FireEffect();
 	void Multicast_FireEffect_Implementation();
+
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
 };
