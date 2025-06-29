@@ -79,4 +79,10 @@ protected:
 public:
 	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category = "Cutscene")
 	TObjectPtr<ALCGateActor> LinkedGateActor;
+
+	// Dummy Character Spawn Points
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cutscene")
+	TArray<AActor*> ToInGameDummySpawnPoints;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cutscene")
+	TArray<AActor*> ToBaseCampDummySpawnPoints;
 };

@@ -9,8 +9,6 @@
 UBTTask_Move::UBTTask_Move()
 {
 	NodeName = TEXT("Move to Target");
-	bNotifyTick = true;
-	SoundTimer = 2.5f;
 }
 
 EBTNodeResult::Type UBTTask_Move::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
@@ -19,6 +17,22 @@ EBTNodeResult::Type UBTTask_Move::ExecuteTask(UBehaviorTreeComponent& OwnerComp,
 	if (!AIController)
 	{
 		return EBTNodeResult::Failed;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return EBTNodeResult::Failed;
+	}
+
+	APawn* AIPawn = AIController->GetPawn();
+	if (!AIPawn)
+	{
+		return EBTNodeResult::Failed;
+	}
+	if (AIPawn->GetLocalRole() != ROLE_Authority)
+	{
+		return EBTNodeResult::Succeeded;
 	}
 
 	UBlackboardComponent* BlackboardComp = OwnerComp.GetBlackboardComponent();
@@ -43,11 +57,7 @@ EBTNodeResult::Type UBTTask_Move::ExecuteTask(UBehaviorTreeComponent& OwnerComp,
 		return EBTNodeResult::Failed;
 	}
 
-	TWeakObjectPtr<UBehaviorTreeComponent> WeakOwnerComp = &OwnerComp;
-	FTimerHandle& TimerHandle = MoveTimerMap.FindOrAdd(WeakOwnerComp);
-	LastSoundTimeMap.FindOrAdd(WeakOwnerComp) = GetWorld()->GetTimeSeconds();
-
-	ABaseMonsterCharacter* Monster = Cast<ABaseMonsterCharacter>(AIController->GetPawn());
+	ABaseMonsterCharacter* Monster = Cast<ABaseMonsterCharacter>(AIPawn);
 	if (Monster)
 	{
 		MyAcceptableRadius = Monster->GetAttackRange();
@@ -55,19 +65,27 @@ EBTNodeResult::Type UBTTask_Move::ExecuteTask(UBehaviorTreeComponent& OwnerComp,
 		Monster->PlayChaseSound();
 	}
 
-	GetWorld()->GetTimerManager().SetTimer(
+	AIController->MoveToActor(TargetActor, MyAcceptableRadius);
+
+	TWeakObjectPtr<UBTTask_Move> WeakThis = this;
+	TWeakObjectPtr<UBehaviorTreeComponent> WeakOwnerComp = &OwnerComp;
+	FTimerHandle& TimerHandle = MoveTimerMap.FindOrAdd(WeakOwnerComp);
+
+	LastSoundTimeMap.FindOrAdd(WeakOwnerComp) = World->GetTimeSeconds();
+
+	World->GetTimerManager().SetTimer(
 		TimerHandle,
-		[this, WeakOwnerComp]() {
-		if (IsValid(this) && WeakOwnerComp.IsValid())
+		[WeakThis, WeakOwnerComp]() {
+		if (WeakThis.IsValid())
 		{
-			this->CheckMoveStatus(WeakOwnerComp.Get());
-		}
-		else
-		{
-			if (IsValid(this))
+			if (WeakOwnerComp.IsValid())
 			{
-				MoveTimerMap.Remove(WeakOwnerComp);
-				LastSoundTimeMap.Remove(WeakOwnerComp);
+				WeakThis->CheckMoveStatus(WeakOwnerComp.Get());
+			}
+			else
+			{
+				WeakThis->MoveTimerMap.Remove(WeakOwnerComp);
+				WeakThis->LastSoundTimeMap.Remove(WeakOwnerComp);
 			}
 		}
 	},
@@ -89,6 +107,12 @@ void UBTTask_Move::CheckMoveStatus(UBehaviorTreeComponent* OwnerComp)
 	{
 		CleanupTimer(OwnerComp);
 		FinishLatentTask(*OwnerComp, EBTNodeResult::Failed);
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
 		return;
 	}
 
@@ -156,6 +180,7 @@ void UBTTask_Move::CheckMoveStatus(UBehaviorTreeComponent* OwnerComp)
 void UBTTask_Move::OnTaskFinished(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, EBTNodeResult::Type TaskResult)
 {
 	CleanupTimer(&OwnerComp);
+
 	Super::OnTaskFinished(OwnerComp, NodeMemory, TaskResult);
 }
 
@@ -165,10 +190,12 @@ void UBTTask_Move::CleanupTimer(UBehaviorTreeComponent* OwnerComp)
 
 	TWeakObjectPtr<UBehaviorTreeComponent> WeakOwnerComp = OwnerComp;
 	FTimerHandle* TimerHandle = MoveTimerMap.Find(WeakOwnerComp);
+
 	if (TimerHandle && TimerHandle->IsValid())
 	{
 		GetWorld()->GetTimerManager().ClearTimer(*TimerHandle);
 	}
+
 	MoveTimerMap.Remove(WeakOwnerComp);
 	LastSoundTimeMap.Remove(WeakOwnerComp);
 }

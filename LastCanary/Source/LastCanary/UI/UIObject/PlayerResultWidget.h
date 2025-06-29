@@ -37,7 +37,7 @@ protected:
 	UTextBlock* AccuracyText;
 
 	UPROPERTY(meta = (BindWidget))
-	UTextBlock* ScoreText;
+	UTextBlock* ResourceText;
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* ExpText;

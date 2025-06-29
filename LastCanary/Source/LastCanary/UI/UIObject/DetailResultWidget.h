@@ -23,45 +23,53 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* PlayerNameText;
-
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* SurvivalText;
-
-	UPROPERTY(meta = (BindWidget))
-	UTextBlock* AccuracyText;
-
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* SurviveTimeText;
-
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* AccuracyText;
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* KillText;
 
 	UPROPERTY(meta = (BindWidget))
+	UTextBlock* GatheredResourceText;
+	UPROPERTY(meta = (BindWidget))
+	UScrollBox* RewardScrollBox;
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<UResourceScoreEntry> ResourceEntryClass;
+
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* SurvivalPointText;
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* SurviveTimePointText;
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* AccuracyPointText;
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* KillPointText;
+
+	UPROPERTY(meta = (BindWidget))
 	UTextBlock* ClueText;
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* CorrectClueText;
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* WorngClueText;
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* NoiseClueText;
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* ExpText;
-
-	UPROPERTY(meta = (BindWidget))
-	UTextBlock* GatheredResourceText;
-
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* ResourceText;
-
-	UPROPERTY(meta = (BindWidget))
-	UTextBlock* ScoreText;
-
+	//UPROPERTY(meta = (BindWidget))
+	//UTextBlock* ScoreText;
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* RankText;
 
 	UPROPERTY(meta = (BindWidget))
-	UScrollBox* RewardScrollBox;
-
-	UPROPERTY(meta = (BindWidget))
 	UButton* ExitButton;
 
-	UPROPERTY(EditAnywhere)
-	TSubclassOf<UResourceScoreEntry> ResourceEntryClass;
 
 public:
 	void SetChecklistResult(const FPlayerResultData& ResultData);

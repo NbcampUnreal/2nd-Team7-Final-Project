@@ -5,11 +5,11 @@ void UPopupLevelInfo::InitLevelInfoWidget(FMapDataRow* MapDataRow)
 {
 	if (TextMapName)
 	{
-		TextMapName->SetText(FText::FromName(MapDataRow->MapInfo.MapName));
+		TextMapName->SetText(MapDataRow->MapInfo.MapName);
 	}
 	if (TextDescription)
 	{
-		TextDescription->SetText(FText::FromString(MapDataRow->MapInfo.Description));
+		TextDescription->SetText(MapDataRow->MapInfo.Description);
 	}
 }
 

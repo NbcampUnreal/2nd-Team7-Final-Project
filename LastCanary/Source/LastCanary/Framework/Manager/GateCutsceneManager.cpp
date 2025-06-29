@@ -47,13 +47,16 @@ void AGateCutsceneManager::PlayGateCutscene(const TArray<ABaseCharacter*>& InPla
 
     // 시퀀스 선택
     ULevelSequence* SelectedSequence = nullptr;
+    TArray<AActor*> SpawnPoints;
     switch (CutsceneType)
     {
     case ECutsceneType::GateEntry:
         SelectedSequence = GateSuckInSequence;
+        SpawnPoints = ToInGameDummySpawnPoints;
         break;
     case ECutsceneType::GateExit:
         SelectedSequence = GateExitSequence;
+        SpawnPoints = ToBaseCampDummySpawnPoints;
         break;
     }
 
@@ -73,15 +76,28 @@ void AGateCutsceneManager::PlayGateCutscene(const TArray<ABaseCharacter*>& InPla
             continue;
         }
 
-        AActor* Dummy = GetWorld()->SpawnActor<AActor>(DummyCharacterClass, Char->GetActorTransform());
+        FTransform SpawnPoint;
+        if (SpawnPoints.IsValidIndex(i))
+        {
+            SpawnPoint = SpawnPoints[i]->GetActorTransform();
+        }
+        else
+        {
+            SpawnPoint = Char->GetActorTransform();
+        }
+
+        FActorSpawnParameters SpawnParams;
+        SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+        AActor* Dummy = GetWorld()->SpawnActor<AActor>(DummyCharacterClass, SpawnPoint, SpawnParams);
         if (!Dummy)
         {
-            UE_LOG(LogTemp, Error, TEXT("Failed to spawn dummy for character %s"), *Char->GetName());
+            LOG_Game_ERROR(TEXT("Failed to spawn dummy for character %s"), *Char->GetName());
             continue;
         }
         else
         {
-            UE_LOG(LogTemp, Log, TEXT("Spawned dummy %s for character %s"), *Dummy->GetName(), *Char->GetName());
+            LOG_Game(Log, TEXT("Spawned dummy %s for character %s"), *Dummy->GetName(), *Char->GetName());
         }
 
         Dummy->SetReplicates(true);
@@ -98,12 +114,11 @@ void AGateCutsceneManager::PlayGateCutscene(const TArray<ABaseCharacter*>& InPla
         if (ALCPlayerController* PC = Cast<ALCPlayerController>(Char->GetController()))
         {
             PC->SetLinkedGateActor(LinkedGateActor);
-            UE_LOG(LogTemp, Log, TEXT("클라이언트에서 시퀀스 실행"));
+            LOG_Game(Log, TEXT("클라이언트에서 시퀀스 실행"));
             PC->Client_HideHUD();
 
             // 통합된 함수 호출 - 컷신 타입을 매개변수로 전달
-            PC->Client_PlayGateCutscene(SelectedSequence, CinematicDummyCharacter, Char->GetActorTransform(), i, CutsceneType);
-          
+            PC->Client_PlayGateCutscene_Implementation(SelectedSequence, CinematicDummyCharacter, Char->GetActorTransform(), i, CutsceneType);
         }
 
         Char->SetActorHiddenInGame(true);
@@ -122,7 +137,7 @@ void AGateCutsceneManager::PlayGateCutscene(const TArray<ABaseCharacter*>& InPla
 
     if (!SequencePlayer || !OutSequenceActor)
     {
-        UE_LOG(LogTemp, Error, TEXT("Failed to create LevelSequencePlayer"));
+        LOG_Game_ERROR(TEXT("Failed to Create LevelSequencePlayer"));
         return;
     }
 

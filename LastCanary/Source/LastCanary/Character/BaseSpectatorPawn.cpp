@@ -76,10 +76,13 @@ void ABaseSpectatorPawn::Handle_VoiceChatting(const FInputActionValue& ActionVal
 
 	if (Value > 0.5f)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("StartVoiceChat"));
+
 		StartVoiceChat();
 	}
 	else
 	{
+		UE_LOG(LogTemp, Warning, TEXT("CancelVoiceChat"));
 		CancelVoiceChat();
 	}
 }

@@ -8,10 +8,6 @@
 #include "UI/UIElement/InGameHUD.h"
 #include "UI/UIElement/ShopWidget.h"
 #include "UI/UIElement/InventoryMainWidget.h"
-#include "UI/Popup/PopupCreateSession.h"
-#include "UI/Popup/PopupNotice.h"
-#include "UI/Popup/PopupLoading.h"
-#include "UI/Popup/NotePopupWidget.h"
 #include "UI/UIElement/LoadingLevel.h"
 #include "UI/UIElement/ChecklistWidget.h"
 #include "UI/UIElement/ResultMenu.h"
@@ -23,6 +19,11 @@
 #include "UI/UIElement/GameEndWidget.h"
 #include "UI/UIElement/ServerMessageWidget.h"
 
+#include "UI/Popup/PopupCreateSession.h"
+#include "UI/Popup/PopupNotice.h"
+#include "UI/Popup/PopupLoading.h"
+#include "UI/Popup/NotePopupWidget.h"
+
 #include "UI/UIObject/ConfirmPopup.h"
 
 #include "Framework/PlayerController/LCRoomPlayerController.h"
@@ -30,6 +31,7 @@
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "Components/WidgetComponent.h"
+#include "Character/BaseSpectatorPawn.h"
 #include "LastCanary.h"
 
 ULCUIManager::ULCUIManager()
@@ -304,20 +306,28 @@ void ULCUIManager::ShowPauseMenu()
 
 void ULCUIManager::HidePauseMenu()
 {
-	if (OwningPlayer == nullptr)
+	if (OwningPlayer == nullptr || !OwningPlayer->IsLocalPlayerController())
 	{
 		return;
 	}
-	if (OwningPlayer->IsLocalPlayerController() == false)
-	{
-		return;
-	}
+
 	if (IsValid(CachedPauseMenu) && CachedPauseMenu->IsInViewport())
 	{
 		CachedPauseMenu->RemoveFromParent();
 	}
+
+	if (ABasePlayerController* LCPC = Cast<ABasePlayerController>(OwningPlayer))
+	{
+		if (APawn* Pawn = LCPC->GetMyPawn())
+		{
+			if (Pawn->IsA<ABaseSpectatorPawn>())
+			{
+				SetInputModeGameOnly();
+				return;
+			}
+		}
+	}
 	ShowInGameHUD();
-	SetInputModeGameOnly();
 }
 
 bool ULCUIManager::IsPauseMenuOpen() const
@@ -550,9 +560,22 @@ void ULCUIManager::HideRoomWidget()
 		if (CachedRoomWidget->IsInViewport())
 		{
 			CachedRoomWidget->RemoveFromParent();
-			SwitchToWidget(CachedInGameHUD);
-			ShowInventoryMainWidget();
-			SetInputModeGameOnly();
+			if (ABasePlayerController* LCPC = Cast<ABasePlayerController>(OwningPlayer))
+			{
+				if (APawn* Pawn = LCPC->GetMyPawn())
+				{
+					if (Pawn->IsA<ABaseSpectatorPawn>())
+					{
+						SwitchToWidget(CachedSpectatorWidget);
+					}
+					else
+					{
+						SwitchToWidget(CachedInGameHUD);
+						ShowInventoryMainWidget();
+					}
+					SetInputModeGameOnly();
+				}
+			}
 		}
 	}
 	else
@@ -598,6 +621,7 @@ void ULCUIManager::ShowSpectatorWidget()
 		if (!CachedSpectatorWidget->IsInViewport())
 		{
 			CachedSpectatorWidget->AddToViewport(1);
+			SetInputModeGameOnly();
 		}
 	}
 	else
