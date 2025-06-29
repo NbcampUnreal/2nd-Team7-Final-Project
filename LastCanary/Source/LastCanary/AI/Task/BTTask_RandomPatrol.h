@@ -36,6 +36,5 @@ public:
 
 private:
     TMap<TWeakObjectPtr<UBehaviorTreeComponent>, FTimerHandle> PatrolTimerMap;
-
     TMap<TWeakObjectPtr<UBehaviorTreeComponent>, float> EndTimeMap;
 };
