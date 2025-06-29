@@ -78,7 +78,7 @@ void ABaseAIController::SetChasing(AActor* Target)
 		UCharacterMovementComponent* MovementComp = MyCharacter->GetCharacterMovement();
 		if (MovementComp)
 		{
-			MovementComp->MaxWalkSpeed = 300.f;
+			MovementComp->MaxWalkSpeed = ChaseWalkSpeed;
 		}
 
 		BlackboardComponent->SetValueAsObject(TargetActorKeyName, Target);

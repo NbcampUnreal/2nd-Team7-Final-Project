@@ -156,6 +156,7 @@ void UBTTask_Move::CheckMoveStatus(UBehaviorTreeComponent* OwnerComp)
 void UBTTask_Move::OnTaskFinished(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, EBTNodeResult::Type TaskResult)
 {
 	CleanupTimer(&OwnerComp);
+
 	Super::OnTaskFinished(OwnerComp, NodeMemory, TaskResult);
 }
 

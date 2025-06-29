@@ -103,8 +103,8 @@ void ABaseMonsterCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void ABaseMonsterCharacter::InitializeBoneDamageMap()
 {
 	//cave
-	BoneDamageMultipliers.Add("Neck", 1.5f);
-	BoneDamageMultipliers.Add("head", 1.5f);
+	BoneDamageMultipliers.Add("Neck", HeadShotMultiplier);
+	BoneDamageMultipliers.Add("head", HeadShotMultiplier);
 }
 
 void ABaseMonsterCharacter::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
@@ -172,6 +172,7 @@ float ABaseMonsterCharacter::TakeDamage(float DamageAmount, struct FDamageEvent 
 		return 0.0f;
 	}
 
+	float StunTime = 0.1f;
 	float FinalDamage = DamageAmount;
 	if (DamageEvent.IsOfType(FPointDamageEvent::ClassID))
 	{
@@ -180,6 +181,10 @@ float ABaseMonsterCharacter::TakeDamage(float DamageAmount, struct FDamageEvent 
 
 		float DamageMultiplier = GetDamageMultiplierForBone(HitBoneName);
 		FinalDamage *= DamageMultiplier;
+		if (HitBoneName == "head" || HitBoneName == "Neck")
+		{
+			StunTime = GroggyTime;
+		}
 	}
 
 	float DamageApplied = FMath::Clamp(DamageAmount, 0.0f, CurrentHP);
@@ -190,8 +195,7 @@ float ABaseMonsterCharacter::TakeDamage(float DamageAmount, struct FDamageEvent 
 	{
 		if (ABaseAIController* AIController = Cast<ABaseAIController>(GetController()))
 		{
-			AIController->SetStun(0.1f);//경직 시간
-			//피격 사운드 넣기
+			AIController->SetStun(StunTime);//경직 시간
 		}
 	}
 	else
