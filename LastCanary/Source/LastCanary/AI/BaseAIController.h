@@ -67,4 +67,7 @@ protected:
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI|Blackboard")
     FName LastKnownLocationKeyName = "LastKnownLocation";
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Combat")
+    float ChaseWalkSpeed = 300.f;
 };

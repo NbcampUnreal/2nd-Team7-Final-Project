@@ -183,6 +183,12 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Monster|Combat")
     float AttackCooldown = 1.f;
 
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Monster|Combat")
+    float HeadShotMultiplier = 1.5f; //헤드 데미지 배율
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Monster|Combat")
+    float GroggyTime = 0.5f; //헤드 경직 시간
+
     FTimerHandle AttackTimerHandle;
     FTimerHandle DeathTimerHandle;
     FTimerHandle AttackEnableTimerHandle;

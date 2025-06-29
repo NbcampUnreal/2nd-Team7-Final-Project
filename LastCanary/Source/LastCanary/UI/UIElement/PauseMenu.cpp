@@ -2,8 +2,19 @@
 #include "Components/Button.h"
 #include "UI/Manager/LCUIManager.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "Character/BasePlayerState.h"
 
 #include "LastCanary.h"
+
+FReply UPauseMenu::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
+{
+	if (InKeyEvent.GetKey() == EKeys::Escape)
+	{
+		OnResumeButtonClicked();
+		return FReply::Handled();
+	}
+	return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
+}
 
 void UPauseMenu::NativeConstruct()
 {
@@ -20,6 +31,7 @@ void UPauseMenu::NativeConstruct()
 	{
 		ExitButton->OnClicked.AddUniqueDynamic(this, &UPauseMenu::OnExitButtonClicked);
 	}
+	FSlateApplication::Get().SetKeyboardFocus(this->TakeWidget());
 }
 
 void UPauseMenu::NativeDestruct()
@@ -45,6 +57,7 @@ void UPauseMenu::OnResumeButtonClicked()
 	{
 		ELCUIContext CurrentContext = UIManager->GetUIContext();
 		UIManager->HidePauseMenu();
+		
 		switch (CurrentContext)
 		{
 		case ELCUIContext::Title:
@@ -53,8 +66,28 @@ void UPauseMenu::OnResumeButtonClicked()
 		case ELCUIContext::Room:
 			// falls through
 		case ELCUIContext::InGame:
-			UIManager->ShowInGameHUD();
+		{
+			APlayerController* PC = GetOwningPlayer();
+			if (!PC)
+			{
+				return;
+			}
+			ABasePlayerState* MyPS = Cast<ABasePlayerState>(PC->PlayerState);
+			if (!MyPS)
+			{
+				return;
+			}
+
+			if (MyPS->GetInGameStatus() == EPlayerInGameStatus::Spectating)
+			{
+				UIManager->ShowSpectatorWidget();
+			}
+			else
+			{
+				UIManager->ShowInGameHUD();
+			}
 			break;
+		}
 		default:
 			UIManager->ShowInGameHUD(); 
 			break;

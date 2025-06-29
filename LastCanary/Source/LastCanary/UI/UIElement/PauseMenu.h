@@ -14,6 +14,7 @@ class LASTCANARY_API UPauseMenu : public ULCUserWidgetBase
 	GENERATED_BODY()
 	
 protected:
+	FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent);
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
 

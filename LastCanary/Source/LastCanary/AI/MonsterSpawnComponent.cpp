@@ -447,15 +447,4 @@ void UMonsterSpawnComponent::DestroyAllMonsters()
     });
 
     ReSpawnCount = SpawnedMonsters.Num();
-
-    //위는 기존 몬스터 유지, 아래는 기존 몬스터 삭제 후 리스폰
-    /*for (ACharacter* Monster : SpawnedMonsters)
-    {
-        if (IsValid(Monster))
-        {
-            Monster->Destroy();
-        }
-    }
-    SpawnedMonsters.Empty();
-    ReSpawnCount = 0;*/
 }
