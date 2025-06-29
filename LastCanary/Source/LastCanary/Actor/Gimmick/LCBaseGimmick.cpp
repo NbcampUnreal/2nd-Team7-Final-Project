@@ -244,7 +244,6 @@ void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor*
 	if (!HasAuthority() || !IsValid(OtherActor)) return;
 	if (!IsValidActivator(OtherActor)) return;
 
-	// ✅ Trigger용 쿨타임 검사 (WhileStepping 제외)
 	const float CurrentTime = GetWorld()->GetTimeSeconds();
 	const float Elapsed = CurrentTime - LastActivatedTime;
 
@@ -312,7 +311,6 @@ void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor*
 						const float CurrentTime = GetWorld()->GetTimeSeconds();
 						const float Elapsed = CurrentTime - LastActivatedTime;
 
-						// ✅ Delay 후에도 쿨타임 검사
 						if (Elapsed >= CooldownTime)
 						{
 							if (bCallReturnToInitialStateInsteadOfActivate)
