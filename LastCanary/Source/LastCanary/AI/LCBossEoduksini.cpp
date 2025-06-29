@@ -319,6 +319,9 @@ float ALCBossEoduksini::ComputeRageDelta(float DeltaSeconds, int32 LookCount) co
 
 void ALCBossEoduksini::ApplyRageDelta(float DeltaRage)
 {
+	if (!HasAuthority())
+		return;
+
 	if (FMath::IsNearlyZero(DeltaRage)) return;
 
 	// MaxRage 유효성 검사
@@ -331,13 +334,10 @@ void ALCBossEoduksini::ApplyRageDelta(float DeltaRage)
 	float NewRage = FMath::Clamp(Rage + DeltaRage, 0.f, MaxRage);
 	// (필요하다면 여기서 OnRageChanged 이벤트나 UpdateBlackboardValues() 호출)
 
-	if (HasAuthority())
-	{
-		UpdateBlackboardValues();
-	}
+	UpdateBlackboardValues();
 
 	// 자동 Berserk 진입
-	if (HasAuthority() && Rage >= MaxRage && !bIsBerserk)
+	if (Rage >= MaxRage && !bIsBerserk)
 	{
 		StartBerserk(BerserkDuration);
 		UpdateBlackboardValues();
