@@ -201,8 +201,8 @@ public:
 
     /** 장착한 총기의 탄환 수를 UI로 전달하는 함수 */
     UFUNCTION(NetMulticast, Reliable, Category = "Gun UI")
-    void MulticastSetGunAmmoUIVisibility(bool bVisible, int32 CurrentAmmo, int32 MaxAmmo);
-    void MulticastSetGunAmmoUIVisibility_Implementation(bool bVisible, int32 CurrentAmmo, int32 MaxAmmo);
+    void MulticastSetGunAmmoUIVisibility(bool bVisible, int32 CurrentAmmo, int32 MaxAmmo, EFireMode CurrentFireMode, const TArray<EFireMode>& AvailableFireModes);
+    void MulticastSetGunAmmoUIVisibility_Implementation(bool bVisible, int32 CurrentAmmo, int32 MaxAmmo, EFireMode CurrentFireMode, const TArray<EFireMode>& AvailableFireModes);
 
 
 protected:
