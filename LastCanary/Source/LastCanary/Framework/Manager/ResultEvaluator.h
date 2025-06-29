@@ -30,6 +30,8 @@ public:
         const TArray<FChecklistQuestion>& PlayerAnswers,
         const TArray<bool>& CorrectAnswers,
         const bool bIsSurvive,
+        const int32 SurviveTime,
+        const int32 KillCount,
         const TMap<FName, int32>& CollectedResources,
         const TArray<int32> CollectedClues
     );

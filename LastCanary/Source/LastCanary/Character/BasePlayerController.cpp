@@ -1335,7 +1335,7 @@ void ABasePlayerController::Input_OpenPauseMenu(const FInputActionValue& ActionV
 		{
 			if (UIManager->IsPauseMenuOpen())
 			{
-				UIManager->HidePauseMenu();				
+				UIManager->HidePauseMenu();	
 			}
 			else
 			{
