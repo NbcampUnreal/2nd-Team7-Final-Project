@@ -239,12 +239,15 @@ void ALCPlayerController::Client_HideHUD_Implementation()
     }
 }
 
-void ALCPlayerController::Client_PlayGateCutscene_Implementation(ULevelSequence* Sequence, ACinematicDummyCharacter* CinematicDummyCharacter, const FTransform& SpawnTransform, int32 PlayerIndex)
+void ALCPlayerController::Client_PlayGateCutscene_Implementation(ULevelSequence* Sequence, ACinematicDummyCharacter* CinematicDummyCharacter, const FTransform& SpawnTransform, int32 PlayerIndex, ECutsceneType CutsceneType)
 {
     if (!Sequence || !CinematicDummyCharacter)
     {
         return;
     }
+
+    // 현재 컷신 타입 저장 (콜백에서 사용)
+    CurrentCutsceneType = CutsceneType;
 
     // 1. 클라이언트가 직접 레벨 시퀀스 플레이어를 생성해서 재생하도록 변경 권장
     FMovieSceneSequencePlaybackSettings PlaybackSettings;
@@ -255,21 +258,67 @@ void ALCPlayerController::Client_PlayGateCutscene_Implementation(ULevelSequence*
         return;
     }
 
+    // 2. 더미 캐릭터를 시퀀스에 바인딩
     FName TrackTag = FName(FString::Printf(TEXT("Slot%d"), PlayerIndex + 1));
     OutSequenceActor->SetBindingByTag(TrackTag, { CinematicDummyCharacter });
 
+    // 3. 시퀀스 재생
     LocalSequencePlayer->Play();
 
+    // 4. 통합된 콜백 연결
     LocalSequencePlayer->OnFinished.AddUniqueDynamic(this, &ALCPlayerController::OnCutsceneFinished);
 
-    // 2. 카메라 전환 (기존에 하던 방식 유지)
+    // 5. 카메라 전환
+    SetCameraFromSequence(OutSequenceActor);
+
+    // 6. UI 숨기기
+    HideUIForCutscene();
+
+
+    //// 2. 카메라 전환 (기존에 하던 방식 유지)
+    //FName CameraTag = TEXT("Camera");
+    //TArray<FMovieSceneObjectBindingID> Bindings = OutSequenceActor->GetSequence()->FindBindingsByTag(CameraTag);
+
+    //if (Bindings.Num() > 0)
+    //{
+    //    FMovieSceneObjectBindingID BindingID = Bindings[0];
+    //    TArray<UObject*> BoundObjects = OutSequenceActor->SequencePlayer->GetBoundObjects(BindingID);
+    //    for (UObject* Obj : BoundObjects)
+    //    {
+    //        if (ACameraActor* CameraActor = Cast<ACameraActor>(Obj))
+    //        {
+    //            if (IsLocalController())
+    //            {
+    //                SetViewTargetWithBlend(CameraActor, 0.0f);
+    //            }
+    //            break;
+    //        }
+    //    }
+    //}
+
+    //// 3. UI 숨기기
+    //if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+    //{
+    //    if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+    //    {
+    //        UIManager->HideInGameHUD();
+    //        UIManager->HideSpectatorWidget();
+    //    }
+    //}
+}
+
+// 카메라 설정을 별도 함수로 분리
+void ALCPlayerController::SetCameraFromSequence(ALevelSequenceActor* SequenceActor)
+{
+    if (!SequenceActor) return;
+
     FName CameraTag = TEXT("Camera");
-    TArray<FMovieSceneObjectBindingID> Bindings = OutSequenceActor->GetSequence()->FindBindingsByTag(CameraTag);
+    TArray<FMovieSceneObjectBindingID> Bindings = SequenceActor->GetSequence()->FindBindingsByTag(CameraTag);
 
     if (Bindings.Num() > 0)
     {
         FMovieSceneObjectBindingID BindingID = Bindings[0];
-        TArray<UObject*> BoundObjects = OutSequenceActor->SequencePlayer->GetBoundObjects(BindingID);
+        TArray<UObject*> BoundObjects = SequenceActor->GetSequencePlayer()->GetBoundObjects(BindingID);
         for (UObject* Obj : BoundObjects)
         {
             if (ACameraActor* CameraActor = Cast<ACameraActor>(Obj))
@@ -282,8 +331,11 @@ void ALCPlayerController::Client_PlayGateCutscene_Implementation(ULevelSequence*
             }
         }
     }
+}
 
-    // 3. UI 숨기기
+// UI 숨기기를 별도 함수로 분리
+void ALCPlayerController::HideUIForCutscene()
+{
     if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
     {
         if (ULCUIManager* UIManager = Subsystem->GetUIManager())
@@ -294,12 +346,34 @@ void ALCPlayerController::Client_PlayGateCutscene_Implementation(ULevelSequence*
     }
 }
 
+// UI 복원을 별도 함수로 분리
+void ALCPlayerController::ShowUIAfterCutscene()
+{
+    if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+    {
+        if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+        {
+            UIManager->ShowInGameHUD();
+        }
+    }
+}
+
+// 통합된 컷신 종료 처리
 void ALCPlayerController::OnCutsceneFinished()
 {
-    // 필요한 후처리
-    Server_RequestIntoGameLevel();
-
-    // Cutscene 종료 알림이 필요한 경우 서버로 RPC 호출 가능
+    // 컷신 타입에 따라 다른 처리
+    switch (CurrentCutsceneType)
+    {
+    case ECutsceneType::GateEntry:
+        // 게임 레벨로 이동
+        Server_RequestIntoGameLevel();
+        break;
+    case ECutsceneType::GateExit:
+        // 베이스로 돌아가기
+        Server_RequestReturnToBase();
+        ShowUIAfterCutscene(); // 나가는 경우에만 UI 복원
+        break;
+    }
 }
 
 void ALCPlayerController::Server_RequestIntoGameLevel_Implementation()
@@ -310,6 +384,16 @@ void ALCPlayerController::Server_RequestIntoGameLevel_Implementation()
     }
 }
 
+void ALCPlayerController::Server_RequestReturnToBase_Implementation()
+{
+    // 베이스로 돌아가는 로직 구현
+    // 예: 특정 레벨로 이동하거나 게이트 액터에 요청
+    if (IsValid(LinkedGateActor))
+    {
+        // LinkedGateActor에 베이스로 돌아가는 함수가 있다면 호출
+       // LinkedGateActor->ReturnToBaseCamp(this);
+    }
+}
 
 void ALCPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
