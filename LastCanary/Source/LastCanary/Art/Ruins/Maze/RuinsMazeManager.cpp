@@ -9,6 +9,7 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/GameplayStatics.h"
 #include "LastCanary.h"
+#include "NavigationSystem.h"
 
 ARuinsMazeManager::ARuinsMazeManager()
 {
@@ -547,6 +548,16 @@ void ARuinsMazeManager::TryPlaceGimmicks()
 	for (const FIntPoint& Coord : Candidates)
 	{
 		MaybeSpawnGimmickAtCell(Coord);
+	}
+
+	//NavMesh 재빌드
+	if (HasAuthority())
+	{
+		UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld());
+		if (NavSys)
+		{
+			NavSys->Build();
+		}
 	}
 
 	LOG_Art(Log, TEXT("[Gimmick] 전체 기믹 배치 완료"));
