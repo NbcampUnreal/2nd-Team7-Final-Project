@@ -74,7 +74,7 @@ void ACaveEliteMonster::FreezeAI()
 		}
 	}
 
-	MulticastAIGimmick_Implementation();
+	MulticastAIGimmick();
 
 	if (AAIController* AIController = Cast<AAIController>(GetController()))
 	{
