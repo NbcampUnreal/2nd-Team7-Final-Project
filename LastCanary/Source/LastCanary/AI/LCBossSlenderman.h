@@ -75,17 +75,21 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Slenderman|ReachSlash")
     USoundAttenuation* AttackAttenuation;
 
+    /** 기본 초당 Rage 회복량 (아무도 쳐다보지 않아도 이만큼은 회복) */
+    UPROPERTY(EditAnywhere, Category = "Slenderman|Rage", meta = (ClampMin = "0.0"))
+    float BaseRagePerSecond = 0.35f; // 예: 0.35f/sec × 300초 ≈ 105 → 대략 5분 내 MaxRage 도달
+
     /** 플레이어가 바라보는 시야 허용 한계 (Dot>Threshold 일 때만 Rage 증가) */
     UPROPERTY(EditAnywhere, Category = "Slenderman|Rage")
     float LookDotThreshold = 0.95f;
 
     /** 플레이어가 바라볼 때 초당 증가시킬 Rage 양 */
     UPROPERTY(EditAnywhere, Category = "Slenderman|Rage")
-    float LookRagePerSecond = 50.f;
+    float LookRagePerSecond = 0.2f;
 
     /** 플레이어가 바라보지 않을 때 초당 감소시킬 Rage 양 */
     UPROPERTY(EditAnywhere, Category = "Slenderman|Rage")
-    float LoseRagePerSecond = 20.f;
+    float LoseRagePerSecond = 0.05f;
 
     UPROPERTY(EditAnywhere, Category = "Slenderman|Fear")
     UMaterialInterface* FearPostProcessMaterial;

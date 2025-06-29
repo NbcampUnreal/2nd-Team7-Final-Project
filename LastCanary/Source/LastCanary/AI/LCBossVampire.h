@@ -29,20 +29,16 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Vampire|Bloodlust")
     USoundBase* BloodlustSound;
 
-    /** Spawn된 Berserk FX 컴포넌트 보관 */
-    UPROPERTY()
-    UNiagaraComponent* BerserkEffectComp = nullptr;
-
-    /** Spawn된 Berserk Audio 컴포넌트 보관 */
-    UPROPERTY()
-    UAudioComponent* BerserkAudioComp = nullptr;
+    // Attenuation asset (사운드 감쇠)
+    UPROPERTY(EditAnywhere, Category = "Vampire|Sound")
+    USoundAttenuation* AttackAttenuation;
 
     FTimerHandle BerserkTimerHandle;
-    virtual void OnRep_IsBerserk() override;
     virtual void EnterBerserkState() override;
     virtual void StartBerserk() override;
     virtual void StartBerserk(float Duration) override;
     virtual void EndBerserk() override;
+    virtual void UpdateBlackboardValues() override;
 
     UPROPERTY(EditAnywhere, Category = "Vampire|Berserk")
 	float BerserkMistRadius = 1200.f;
@@ -55,6 +51,21 @@ protected:
     // ── Bat Swarm ──
     UPROPERTY(EditAnywhere, Category = "Vampire|Bat")
     TSubclassOf<AActor> BatSwarmClass;
+
+    UPROPERTY()
+    TArray<AActor*> SpawnedBatSwarm;
+
+    // Bat Swarm 관련
+    /** Bat 하나당 초당 Rage 증가량 */
+    UPROPERTY(EditAnywhere, Category = "Vampire|Swarm")
+    float BatRagePerSecond = 0.00042f;
+
+    // Bat 하나당 언데드처럼 죽었을 때 깎이는 Rage 양
+    UPROPERTY(EditAnywhere, Category = "Vampire|Swarm", meta = (ClampMin = "0.0"))
+    float BatDeathRagePenalty = 2.0f;
+
+    UFUNCTION()
+    void OnBatDestroyed(AActor* DestroyedActor);
 
     UPROPERTY(EditAnywhere, Category = "Vampire|Bat", meta = (ClampMin = "1"))
     int32 BatCount = 10;
@@ -110,14 +121,21 @@ protected:
 
     void EnterMistForm();
 
+    UPROPERTY(EditAnywhere, Category = "Vampire|Mist|Sound")
+    USoundAttenuation* MistSoundAttenuation;
+
+    // ●●● 멀티캐스트 RPC ●●●
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_PlayMistEnterEffects(APawn* Pawn);
+
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_PlayMistExitEffects(const FVector& Location, const FRotator& Rotation);
+
     void EndMistForm();
-    /** MistForm 중 기본 초당 Rage 회복량 */
-    UPROPERTY(EditAnywhere, Category = "Vampire|Mist")
-    float MistRagePerSecond = 20.f;
 
     /** MistForm 중 플레이어에게 추가로 주는 초당 Rage */
     UPROPERTY(EditAnywhere, Category = "Vampire|Mist")
-    float MistPlayerBonusRagePerSecond = 10.f;
+    float MistPlayerBonusRagePerSecond = 2.5f;
 
     /** MistForm 기본 범위(구) */
     UPROPERTY(EditAnywhere, Category = "Vampire|Mist")
@@ -157,6 +175,9 @@ protected:
 
     void ExecuteNightmareGaze();
 
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_PlayNightmareGazeEffects();
+
     // ── Crimson Slash ──
     /** Crimson Slash */
     UPROPERTY(EditAnywhere, Category = "Vampire|CrimsonSlash")
@@ -169,7 +190,7 @@ protected:
     float CrimsonSlashRadius = 500.f;
 
     UPROPERTY(EditAnywhere, Category = "Vampire|CrimsonSlash")
-    float CrimsonSlashDamage = 30.f;
+    float CrimsonSlashDamage = 10.f;
 
     UPROPERTY(EditAnywhere, Category = "Vampire|CrimsonSlash")
     float CrimsonSlashCooldown = 8.f;
@@ -177,6 +198,9 @@ protected:
     FTimerHandle CrimsonSlashHandle;
 
     void ExecuteCrimsonSlash();
+
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_PlayCrimsonSlashEffects();
 
     // ── Crimson Chains ────────────────────────────────
     /** 사슬 FX */
@@ -205,6 +229,9 @@ protected:
     FTimerHandle CrimsonChainsTimerHandle;
 
     void ExecuteCrimsonChains();
+
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_PlayCrimsonChainsEffects();
 
     // ── Sanguine Rain ────────────────────────────────
     /** 비 FX */
@@ -238,6 +265,13 @@ protected:
 
     void ExecuteSanguineRain();
 
+    UPROPERTY(EditAnywhere, Category = "Vampire|Abilities", meta = (ClampMin = "0.0", ClampMax = "100.0"))
+    float SanguineRainRageThreshold = 80.f;
+
+    /** 클라이언트용 FX/SFX 재생 RPC */
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_PlaySanguineRainEffects();
+
     void TickRainDamage();
 
     void EndSanguineRain();
@@ -250,7 +284,7 @@ protected:
     float SanguineBurstRadius = 400.f;
 
     UPROPERTY(EditAnywhere, Category = "Vampire|SanguineBurst")
-    float SanguineBurstDamage = 25.f;
+    float SanguineBurstDamage = 15.f;
 
     UPROPERTY(EditAnywhere, Category = "Vampire|SanguineBurst")
     float SanguineBurstCooldown = 12.f;
@@ -258,6 +292,10 @@ protected:
     FTimerHandle BurstHandle;
 
     void ExecuteSanguineBurst();
+
+    /** 클라이언트용 FX/SFX 재생 RPC */
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_PlaySanguineBurstEffects();
 
     // ── Eternal Bloodlust (특수 상태) ──
     UPROPERTY(ReplicatedUsing = OnRep_Bloodlust)

@@ -182,7 +182,7 @@ protected:
     bool bHasUsedNineTail = false;
     void ExecuteNineTailBurst();
     /** Rage 임계치(<= 이하) 도달 시 1회 사용 */
-    UPROPERTY(EditAnywhere, Category = "Gumiho|Abilities", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+    UPROPERTY(EditAnywhere, Category = "Gumiho|Abilities", meta = (ClampMin = "0.0", ClampMax = "100.0"))
     float NineTailBurstRageThreshold = 0.8f;  // RagePercent 기준
 
     /** Nine-Tail Burst 전 범위 데미지 값 */

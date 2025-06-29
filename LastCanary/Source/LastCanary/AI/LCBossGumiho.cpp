@@ -103,20 +103,22 @@ void ALCBossGumiho::UpdateRage(float DeltaSeconds)
 
 void ALCBossGumiho::AddRage(float Amount)
 {
+	if (!HasAuthority())
+		return;
+
 	// Rage 갱신
 	Rage = FMath::Clamp(Rage + Amount, 0.f, MaxRage);
 
 	// 2) 서버 권한이 있을 때만 Blackboard 업데이트
-	if (HasAuthority())
-	{
-		UpdateBlackboardValues();
-	}
+
+	UpdateBlackboardValues();
+
 
 	// MaxRage 도달 시 광폭화
-	if (HasAuthority() && Rage >= MaxRage && !bIsBerserk)
+	if (Rage >= MaxRage && !bIsBerserk)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[Gumiho] Rage가 최대치에 도달하여 Berserk 모드 진입"));
-		EnterBerserkState();
+		StartBerserk(BerserkDuration);
 		UpdateBlackboardValues();
 	}
 }
@@ -183,7 +185,7 @@ void ALCBossGumiho::SpawnIllusions()
 	Params.Owner = this;
 	Params.Instigator = Cast<APawn>(GetController() ? GetController()->GetPawn() : nullptr);
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	
+
 	// 5) 분신 소환 루프
 	for (int32 i = 0; i < ToSpawn; ++i)
 	{
