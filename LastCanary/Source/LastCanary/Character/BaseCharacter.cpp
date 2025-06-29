@@ -1843,12 +1843,41 @@ void ABaseCharacter::SetCameraMode(bool bIsFirstPersonView)
 {
 	if (bIsFirstPersonView)
 	{
+		EmoteMode = false;
+		CustomHeadMesh->SetOwnerNoSee(true);
 		SwapHeadMaterialTransparent(true);
 		SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 		SpringArm->TargetArmLength = 0.0f;
 	}
 	else
 	{
+		EmoteMode = true;
+		CustomHeadMesh->SetOwnerNoSee(false);
+		SwapHeadMaterialTransparent(false);
+		SpringArm->TargetArmLength = 200.0f;
+	}
+}
+
+void ABaseCharacter::SetCameraEmoteMode(bool bIsFirstPersonView)
+{
+	if (bIsFirstPersonView)
+	{
+		EmoteMode = false;
+		SpringArm->bDoCollisionTest = false;
+		SpringArm->ProbeChannel = ECC_Camera;
+		SpringArm->ProbeSize = 3.0f;
+		CustomHeadMesh->SetOwnerNoSee(true);
+		SwapHeadMaterialTransparent(true);
+		SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+		SpringArm->TargetArmLength = 0.0f;
+	}
+	else
+	{
+		EmoteMode = true;
+		SpringArm->bDoCollisionTest = true;
+		SpringArm->ProbeChannel = ECC_Camera;
+		SpringArm->ProbeSize = 3.0f;
+		CustomHeadMesh->SetOwnerNoSee(false);
 		SwapHeadMaterialTransparent(false);
 		SpringArm->TargetArmLength = 200.0f;
 	}
