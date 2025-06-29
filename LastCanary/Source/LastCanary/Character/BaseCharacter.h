@@ -360,10 +360,13 @@ public:
 
 
 public:
+	UFUNCTION(BlueprintCallable)
 	void SetCameraMode(bool bIsFirstPersonView);
 
+	UFUNCTION(BlueprintCallable)
+	void SetCameraEmoteMode(bool bIsFirstPersonView);
 
-
+	bool EmoteMode = false;
 
 	void SwapHeadMaterialTransparent(bool bUseTransparent);
 public:

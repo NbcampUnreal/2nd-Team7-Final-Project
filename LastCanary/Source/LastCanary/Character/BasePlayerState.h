@@ -158,6 +158,10 @@ public:
 	UPROPERTY(ReplicatedUsing = OnRep_Customization)
 	FCharacterCustomizationData CustomizatiomData;
 
+	UFUNCTION(Server, Reliable)
+	void Server_SetCustomizationData(const FCharacterCustomizationData& CustomizingData);
+	void Server_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData);
+
 	UFUNCTION()
 	void OnRep_Customization();
 
