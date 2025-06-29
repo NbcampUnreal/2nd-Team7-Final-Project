@@ -55,49 +55,48 @@ ABaseCharacter::ABaseCharacter()
 	bAlwaysRelevant = true;
 	NetCullDistanceSquared = FMath::Square(20000.f); // 최대 동기화 거리 증가
 
-
-
 	CustomHeadMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomHeadMesh"));
 	CustomHeadMesh->SetupAttachment(GetMesh());
-	CustomHeadMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
+//	CustomHeadMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
 
 	CustomGloveMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomGloveMesh"));
 	CustomGloveMesh->SetupAttachment(GetMesh());
-	CustomGloveMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
+//	CustomGloveMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
 
 	CustomJacketMesh_OwnerNoSee = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomJacketMesh_OwnerNoSee"));
 	CustomJacketMesh_OwnerNoSee->SetupAttachment(GetMesh());
-	CustomJacketMesh_OwnerNoSee->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
+//	CustomJacketMesh_OwnerNoSee->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
 
 	CustomJacketMesh_OwnerSee = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomJacketMesh_OwnerSee"));
 	CustomJacketMesh_OwnerSee->SetupAttachment(GetMesh());
-	CustomJacketMesh_OwnerSee->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
+//	CustomJacketMesh_OwnerSee->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
 
 	CustomPantsMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomPantsMesh"));
 	CustomPantsMesh->SetupAttachment(GetMesh());
-	CustomPantsMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
+//	CustomPantsMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
 
 	CustomBeltsMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomBeltsMesh"));
 	CustomBeltsMesh->SetupAttachment(GetMesh());
-	CustomBeltsMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
+//	CustomBeltsMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
 
 	CustomHelmetMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomHelmetMesh"));
 	CustomHelmetMesh->SetupAttachment(GetMesh());
-	CustomHelmetMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
+//	CustomHelmetMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
 	
 	CustomArmorMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomArmorMesh"));
 	CustomArmorMesh->SetupAttachment(GetMesh());
-	CustomArmorMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
+//	CustomArmorMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
 
 	CustomBootsMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomBootsMesh"));
 	CustomBootsMesh->SetupAttachment(GetMesh());
-	CustomBootsMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
+//	CustomBootsMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
 
 	////* 가방 메시 *////
 	BackpackMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("BackpackMesh"));
 	BackpackMesh->SetupAttachment(GetMesh());
-	BackpackMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
+//	BackpackMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
 
+	SetCharacterPoseSynchronization();
 
 	OverlayStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("OverlayStaticMesh"));
 	OverlayStaticMesh->SetupAttachment(GetMesh());
@@ -188,7 +187,7 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& Out
 void ABaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-
+	
 	if (IsLocallyControlled())
 	{
 		// "head"는 스켈레탈 메시의 머리 본에 해당하는 이름
@@ -264,11 +263,25 @@ void ABaseCharacter::BeginPlay()
 		}	
 	}
 
-
+	if (IsLocallyControlled())
+	{
+		if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+		{
+			LOG_Char_WARNING(TEXT("캐릭터 의상 적용"));
+			CharacterCustomizationData = PS->GetCustomizationData();
+			ApplyCustomization(CharacterCustomizationData);
+			Server_SetCustomizationData(CharacterCustomizationData);
+		}
+	}
 	
 	//ApplyCustomization(CharacterMeshMap);
+	SetCharacterPoseSynchronization();
 
-
+	if (IsLocallyControlled())
+	{
+		ForceUpdateAllPlayerCustomizing();
+	}
+	
 	//백팩은 커스터마이징과는 다르게 처리 // 기본은 투명
 	SetBackpackMesh(false);
 
@@ -288,16 +301,53 @@ void ABaseCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 
-	if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
-	{
-		LOG_Char_WARNING(TEXT("캐릭터 의상 적용"));
-		CharacterCustomizationData = PS->GetCustomizationData();
-		ApplyCustomization(PS->GetCustomizationData());
-		Server_SetCustomizationData(CharacterCustomizationData);
-
-	}
+	SetCharacterPoseSynchronization();
 }
 
+void ABaseCharacter::SetCharacterPoseSynchronization()
+{
+	CustomHeadMesh->SetLeaderPoseComponent(GetMesh());
+	CustomGloveMesh->SetLeaderPoseComponent(GetMesh());
+	CustomJacketMesh_OwnerNoSee->SetLeaderPoseComponent(GetMesh());
+	CustomJacketMesh_OwnerSee->SetLeaderPoseComponent(GetMesh());
+	CustomPantsMesh->SetLeaderPoseComponent(GetMesh());
+	CustomBeltsMesh->SetLeaderPoseComponent(GetMesh());
+	CustomHelmetMesh->SetLeaderPoseComponent(GetMesh());
+	CustomArmorMesh->SetLeaderPoseComponent(GetMesh());
+	CustomBootsMesh->SetLeaderPoseComponent(GetMesh());
+	BackpackMesh->SetLeaderPoseComponent(GetMesh());
+}
+
+void ABaseCharacter::ForceUpdateAllPlayerCustomizing()
+{
+	AGameStateBase* GameState = GetWorld()->GetGameState<AGameStateBase>();
+	if (!IsValid(GameState))
+	{
+		return;
+	}
+	for (APlayerState* PS : GameState->PlayerArray)
+	{
+		ABasePlayerState* BasePS = Cast<ABasePlayerState>(PS);
+		if (!IsValid(BasePS))
+		{
+			continue;
+		}
+
+		ABaseCharacter* Char = Cast<ABaseCharacter>(BasePS->GetPawn());
+		if (!IsValid(Char))
+		{
+			continue;
+		}
+		if (HasAuthority())
+		{
+			Char->Server_UpdateCustomizationData_Implementation();
+		}
+		else
+		{
+			Char->Server_UpdateCustomizationData();
+		}
+	}
+}
 
 float ABaseCharacter::GetMouseSensitivity() 
 {
@@ -343,11 +393,16 @@ FCharacterCustomizationData ABaseCharacter::GetCustomizationData()
 	return CharacterCustomizationData;
 }
 
+void ABaseCharacter::SetCustomizationData(const FCharacterCustomizationData& CustomizingData)
+{
+	CharacterCustomizationData = CustomizingData;
+	SetCustomizationDataOnServer();
+}
+
 
 void ABaseCharacter::SetCustomizationDataOnServer()
 {
-	FCharacterCustomizationData CustomizationData = ULCLocalPlayerSaveGame::LoadCustomizationData(GetWorld());
-	Server_SetCustomizationData(CustomizationData);
+	Server_SetCustomizationData(GetCustomizationData());
 }
 
 void ABaseCharacter::Server_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData)
@@ -366,6 +421,10 @@ void ABaseCharacter::Multicast_SetCustomizationData_Implementation(const FCharac
 
 }
 
+void ABaseCharacter::Server_UpdateCustomizationData_Implementation()
+{
+	Multicast_SetCustomizationData(CharacterCustomizationData);
+}
 
 void ABaseCharacter::ApplyCustomization(const FCharacterCustomizationData CustomizationData)
 {
@@ -448,6 +507,8 @@ void ABaseCharacter::ApplyCustomization(const FCharacterCustomizationData Custom
 	//플래그
 	SetPartMaterial(CustomHelmetMesh, 1, FlagMat);
 	SetPartMaterial(CustomArmorMesh, 0, FlagMat);
+
+	SetCharacterPoseSynchronization();
 }
 
 void ABaseCharacter::SetPartMesh(USkeletalMeshComponent* Component, USkeletalMesh* LoadedMesh)
@@ -859,7 +920,7 @@ void ABaseCharacter::Tick(float DeltaSeconds)
 	}
 
 	// 누적 시간 계산
-	static float TimeAccumulator = 0.f;
+	
 	TimeAccumulator += DeltaSeconds;
 
 	// 0.1초마다 갱신

@@ -143,15 +143,24 @@ public:
 	float CrouchingFootSoundModifier = 0.2f;
 
 public:
-	UPROPERTY(Replicated, BlueprintReadWrite)
+	UPROPERTY(ReplicatedUsing = OnRep_PlayerGameName, BlueprintReadWrite)
 	FString PlayerInGameName = "Default";
+	UFUNCTION()
+	void OnRep_PlayerGameName();
+
+	void UpdatePlayerCustomizingData();
 
 	void SetPlayerInGameName(FString Name);
 	FString GetInGameName();
 
 
 public:
+	UPROPERTY(ReplicatedUsing = OnRep_Customization)
 	FCharacterCustomizationData CustomizatiomData;
+
+	UFUNCTION()
+	void OnRep_Customization();
+
 	void SetCustomizationData();
 	FCharacterCustomizationData	GetCustomizationData();
 
