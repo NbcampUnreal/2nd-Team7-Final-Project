@@ -228,7 +228,7 @@ void AGunBase::HandleFire()
             {
                 int32 CurrentAmmo = FMath::RoundToInt(Durability);
                 int32 MaxAmmo = FMath::RoundToInt(MaxDurability);
-                ToolbarComp->MulticastSetGunAmmoUIVisibility(true, CurrentAmmo, MaxAmmo);
+                ToolbarComp->MulticastSetGunAmmoUIVisibility(true, CurrentAmmo, MaxAmmo, CurrentFireMode, AvailableFireModes);
             }
         }
         else
@@ -488,6 +488,23 @@ void AGunBase::Multicast_PlayReloadSound_Implementation()
     }
 }
 
+void AGunBase::Multicast_PlayFireModeSwitchSound_Implementation()
+{
+    if (FireModeSwitchSound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(this, FireModeSwitchSound, GetActorLocation());
+    }
+    else if (GunData.FireModeSwitchSound)
+    {
+        // 로컬 변수가 없으면 데이터 테이블에서 직접 재생
+        UGameplayStatics::PlaySoundAtLocation(this, GunData.FireModeSwitchSound, GetActorLocation());
+    }
+    else
+    {
+        LOG_Item_WARNING(TEXT("[Multicast_PlayFireModeSwitchSound] 발사 모드 교체 사운드가 설정되지 않음"));
+    }
+}
+
 void AGunBase::Client_PlayCameraShake_Implementation()
 {
     if (ABaseCharacter* OwnerCharacter = Cast<ABaseCharacter>(GetOwner()))
@@ -680,6 +697,7 @@ void AGunBase::ApplyGunDataFromDataTable()
     DecalLifeSpan = GunData.DecalLifeSpan;
     FireSound = GunData.FireSound;
     EmptySound = GunData.EmptySound;
+    FireModeSwitchSound = GunData.FireModeSwitchSound;
 
     // 탄피 이펙트 설정 및 소켓 할당
     if (ShellEjectionComponent && GunData.ShellEjectEffect)
@@ -735,7 +753,7 @@ bool AGunBase::Reload()
                 int32 CurrentAmmo = FMath::RoundToInt(Durability);
                 int32 MaxAmmo = FMath::RoundToInt(MaxDurability);
                 int32 CurrentSlotIndex = ToolbarComp->GetCurrentEquippedSlotIndex();
-                ToolbarComp->MulticastSetGunAmmoUIVisibility(true, CurrentAmmo, MaxAmmo);
+                ToolbarComp->MulticastSetGunAmmoUIVisibility(true, CurrentAmmo, MaxAmmo, CurrentFireMode, AvailableFireModes);
             }
         }
     }
@@ -939,6 +957,9 @@ void AGunBase::Server_ToggleFireMode_Implementation()
         // 현재 모드가 목록에 없다면 첫 번째 모드로 설정
         CurrentFireMode = AvailableFireModes.Num() > 0 ? AvailableFireModes[0] : EFireMode::Single;
     }
+
+    Multicast_PlayFireModeSwitchSound();
+    UpdateGunUI();
 }
 
 
@@ -1073,6 +1094,22 @@ void AGunBase::ApplyMagazineFromDataTable()
     {
         DetachMagazine();
         LOG_Item_WARNING(TEXT("[ApplyMagazineFromDataTable] 탄창 없음"));
+    }
+}
+
+void AGunBase::UpdateGunUI()
+{
+    if (APawn* OwnerPawn = Cast<APawn>(GetOwner()))
+    {
+        if (UToolbarInventoryComponent* ToolbarComp = OwnerPawn->FindComponentByClass<UToolbarInventoryComponent>())
+        {
+            if (HasAuthority())
+            {
+                int32 CurrentAmmo = FMath::RoundToInt(Durability);
+                int32 MaxAmmo = FMath::RoundToInt(MaxDurability);
+                ToolbarComp->MulticastSetGunAmmoUIVisibility(true, CurrentAmmo, MaxAmmo, CurrentFireMode, AvailableFireModes);
+            }
+        }
     }
 }
 

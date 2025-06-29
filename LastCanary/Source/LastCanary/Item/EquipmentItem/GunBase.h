@@ -134,6 +134,10 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Effects")
     USoundBase* EmptySound;
 
+    /** 발사 모드 교체 사운드 */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Effects")
+    USoundBase* FireModeSwitchSound;
+
     /** 피격 사운드 */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Effects")
     USoundBase* ImpactSound;
@@ -245,6 +249,11 @@ public:
     UFUNCTION(NetMulticast, Unreliable)
     void Multicast_PlayReloadSound();
     void Multicast_PlayReloadSound_Implementation();
+
+    /** 발사 모드 교체 사운드 재생 */
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_PlayFireModeSwitchSound();
+    void Multicast_PlayFireModeSwitchSound_Implementation();
 
     /** 총기 반동 효과 적용 */
     UFUNCTION(Client, Unreliable)
@@ -423,6 +432,9 @@ public:
 
     UFUNCTION(BlueprintPure, Category = "Gun|Ammo")
     int32 GetMaxAmmo() const { return static_cast<int32>(MaxDurability); }
+
+    UFUNCTION(BlueprintCallable, Category = "Gun|UI")
+    void UpdateGunUI();
 
     //-----------------------------------------------------
     // 스포트라이트 부착

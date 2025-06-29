@@ -426,7 +426,7 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
         {
             int32 CurrentAmmo = FMath::RoundToInt(Gun->Durability);
             int32 MaxAmmo = FMath::RoundToInt(Gun->MaxDurability);
-            MulticastSetGunAmmoUIVisibility(true, CurrentAmmo, MaxAmmo);
+            MulticastSetGunAmmoUIVisibility(true, CurrentAmmo, MaxAmmo, Gun->CurrentFireMode, Gun->AvailableFireModes);
         }
     }
 
@@ -474,7 +474,8 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
         {
             if (UIController)
             {
-                MulticastSetGunAmmoUIVisibility(false, 0, 0);
+                TArray<EFireMode> EmptyModes;
+                MulticastSetGunAmmoUIVisibility(false, 0, 0, EFireMode::None, EmptyModes);
             }
         }
 
@@ -1361,11 +1362,11 @@ void UToolbarInventoryComponent::MulticastUpdateItemText_Implementation(const FT
     }
 }
 
-void UToolbarInventoryComponent::MulticastSetGunAmmoUIVisibility_Implementation(bool bVisible, int32 CurrentAmmo, int32 MaxAmmo)
+void UToolbarInventoryComponent::MulticastSetGunAmmoUIVisibility_Implementation(bool bVisible, int32 CurrentAmmo, int32 MaxAmmo, EFireMode CurrentFireMode, const TArray<EFireMode>& AvailableFireModes)
 {
     if (UIController)
     {
-        UIController->SetGunAmmoUIVisibility(bVisible, CurrentAmmo, MaxAmmo);
+        UIController->SetGunAmmoUIVisibility(bVisible, CurrentAmmo, MaxAmmo, CurrentFireMode, AvailableFireModes);
     }
     else
     {
