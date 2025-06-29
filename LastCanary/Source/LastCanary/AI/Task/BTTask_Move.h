@@ -19,20 +19,14 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Movement")
     float MyAcceptableRadius;
 
-    FTimerHandle MoveCheckTimer;
-
     UFUNCTION()
     void CheckMoveStatus(UBehaviorTreeComponent* OwnerComp);
 
-    UPROPERTY()
-    UBehaviorTreeComponent* CurrentOwnerComp;
-
-    TMap<TWeakObjectPtr<UBehaviorTreeComponent>, FTimerHandle> MoveTimerMap;
-    TMap<TWeakObjectPtr<UBehaviorTreeComponent>, float> LastSoundTimeMap;
-
+    void CleanupTimer(UBehaviorTreeComponent* OwnerComp);
 private:
     UPROPERTY(EditAnywhere)
     float SoundTimer = 2.5f;
 
-    void CleanupTimer(UBehaviorTreeComponent* OwnerComp);
+    TMap<TWeakObjectPtr<UBehaviorTreeComponent>, FTimerHandle> MoveTimerMap;
+    TMap<TWeakObjectPtr<UBehaviorTreeComponent>, float> LastSoundTimeMap;
 };
