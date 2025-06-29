@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "UI/LCUserWidgetBase.h"
 #include "DataType/BackpackSlotData.h"
+#include "DataTable/GunDataRow.h"
 #include "InventoryMainWidget.generated.h"
 
 class UToolbarInventoryWidget;
@@ -94,7 +95,7 @@ public:
 	UGunAmmoWidget* GunAmmoWidget;
 
 	UFUNCTION(BlueprintCallable, Category = "UI|Gun")
-	void SetGunAmmoUIVisibility(bool bVisible, int32 CurrentAmmo = 0, int32 MaxAmmo = 0);
+	void SetGunAmmoUIVisibility(bool bVisible, int32 CurrentAmmo, int32 MaxAmmo, EFireMode CurrentFireMode, const TArray<EFireMode>& AvailableFireModes);
 
 private:
 	void InitializeGunAmmoUI();

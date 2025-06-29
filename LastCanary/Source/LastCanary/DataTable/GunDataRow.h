@@ -9,6 +9,7 @@
 UENUM(BlueprintType)
 enum class EFireMode : uint8
 {
+    None        UMETA(DisplayName = "없음"),
     Single      UMETA(DisplayName = "단발"),
     FullAuto    UMETA(DisplayName = "연발")
 };
@@ -121,6 +122,9 @@ struct FGunDataRow : public FTableRowBase
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Sound")
     USoundBase* EmptySound;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Sound")
+    USoundBase* FireModeSwitchSound;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Sound")
     USoundBase* DefaultImpactSound;

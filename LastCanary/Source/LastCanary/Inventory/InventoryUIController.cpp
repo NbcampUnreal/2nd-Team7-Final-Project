@@ -232,7 +232,7 @@ void UInventoryUIController::SetInputModeGameOnly()
     LOG_Item_WARNING(TEXT("[SetInputModeGameOnly] 가방 UI 닫힘 - 입력모드: GameOnly"));
 }
 
-void UInventoryUIController::SetGunAmmoUIVisibility(bool bVisible, int32 CurrentAmmo, int32 MaxAmmo)
+void UInventoryUIController::SetGunAmmoUIVisibility(bool bVisible, int32 CurrentAmmo, int32 MaxAmmo, EFireMode CurrentFireMode, const TArray<EFireMode>& AvailableFireModes)
 {
     if (!IsLocalPlayer())
     {
@@ -283,12 +283,12 @@ void UInventoryUIController::SetGunAmmoUIVisibility(bool bVisible, int32 Current
 
     if (bVisible && MaxAmmo > 0)
     {
-        InventoryWidget->SetGunAmmoUIVisibility(true, CurrentAmmo, MaxAmmo);
+        InventoryWidget->SetGunAmmoUIVisibility(true, CurrentAmmo, MaxAmmo, CurrentFireMode, AvailableFireModes);
         LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] ✅ 탄환 UI 표시: %d/%d"), CurrentAmmo, MaxAmmo);
     }
     else
     {
-        InventoryWidget->SetGunAmmoUIVisibility(false, 0, 0);
+        InventoryWidget->SetGunAmmoUIVisibility(false, 0, 0, CurrentFireMode, AvailableFireModes);
         LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] 탄환 UI 숨김"));
     }
 }
