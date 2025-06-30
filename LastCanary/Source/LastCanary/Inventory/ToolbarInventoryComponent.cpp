@@ -265,6 +265,17 @@ bool UToolbarInventoryComponent::TryAddItem(AItemBase* ItemActor)
         return false;
     }
 
+    // 노트 아이템인 경우 즉시 사용
+    if (IsNoteItem(ItemActor->ItemRowName) && GetOwner()->HasAuthority())
+    {
+        LOG_Item_WARNING(TEXT("[TryAddItem] 노트 아이템 획득 - 즉시 사용: %s"), *ItemActor->ItemRowName.ToString());
+
+        ItemActor->SetOwner(CachedOwnerCharacter);
+        ItemActor->SetInstigator(CachedOwnerCharacter);
+
+        ItemActor->UseItem();
+    }
+
     // 수집 아이템(Collectible)일 때 가방이 있다면 가방 슬롯에 추가
     if (IsCollectibleItem(ItemData))
     {
@@ -1038,6 +1049,11 @@ bool UToolbarInventoryComponent::CanChangeEquipment() const
 bool UToolbarInventoryComponent::IsCollectibleItem(const FItemDataRow* ItemData) const
 {
     return UInventoryUtility::IsCollectibleItem(ItemData);
+}
+
+bool UToolbarInventoryComponent::IsNoteItem(FName ItemRowName) const
+{
+    return UInventoryUtility::IsNoteItem(ItemRowName, ItemDataTable);
 }
 
 TArray<FBackpackSlotData> UToolbarInventoryComponent::GetCurrentBackpackSlots() const
