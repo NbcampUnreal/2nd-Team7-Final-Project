@@ -2,13 +2,9 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
-#include "Sound/SoundMix.h"
-#include "Sound/SoundClass.h"
 #include "LCOptionSettingAsset.generated.h"
 
-/**
- * 
- */
+
 UCLASS(BlueprintType)
 class LASTCANARY_API ULCOptionSettingAsset : public UDataAsset
 {

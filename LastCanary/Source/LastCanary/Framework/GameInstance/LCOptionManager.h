@@ -2,8 +2,6 @@
 
 #include "CoreMinimal.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
-#include "Sound/SoundMix.h"
-#include "Sound/SoundClass.h"
 #include "UI/UIObject/VoiceOptionWidget.h"
 #include "LCOptionManager.generated.h"
 

@@ -1,7 +1,6 @@
 #include "Framework/Manager/LCGateManager.h"
 #include "Actor/LCGateActor.h"
 #include "Framework/Manager/LCTimeManager.h"
-#include "Kismet/GameplayStatics.h"
 #include "EngineUtils.h" // TActorIterator
 #include "Framework/GameMode/LCGameMode.h"
 
