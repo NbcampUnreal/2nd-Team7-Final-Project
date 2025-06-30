@@ -2,26 +2,14 @@
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Framework/GameInstance/LCGameManager.h"
-#include "Framework/PlayerState/LCPlayerState.h"
 #include "Framework/GameMode/LCRoomGameMode.h"
-#include "Framework/GameState/LCGameState.h"
 #include "Character/BasePlayerState.h"
-#include "Framework/Manager/LCCheatManager.h"
-#include "Character/BaseCharacter.h"
-#include "Inventory/ToolbarInventoryComponent.h"
 
 #include "Actor/LCDroneDelivery.h"
-#include "Item/ItemBase.h"
-
 #include "UI/UIElement/ResultMenu.h"
 
 #include "Engine/World.h"
-#include "EngineUtils.h"
 #include "Misc/PackageName.h"
-
-#include "Blueprint/UserWidget.h"
-
-#include "EnhancedInputComponent.h"
 
 ALCRoomPlayerController::ALCRoomPlayerController()
 {

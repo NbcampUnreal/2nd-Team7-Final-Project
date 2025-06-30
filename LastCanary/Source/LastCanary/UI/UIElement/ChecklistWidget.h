@@ -5,9 +5,6 @@
 #include "DataType/ChecklistQuestion.h"
 #include "ChecklistWidget.generated.h"
 
-/**
- * 
- */
 class AChecklistManager;
 class UScrollBox;
 class UChecklistQuestionEntryWidget;

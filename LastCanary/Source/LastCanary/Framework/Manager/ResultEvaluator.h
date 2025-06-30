@@ -1,15 +1,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "UObject/NoExportTypes.h"
 #include "DataType/ChecklistQuestion.h"
 #include "DataType/GameResultData.h"
-#include "DataType/ResourceCategory.h"
 #include "ResultEvaluator.generated.h"
 
-/**
- *
- */
 class UDataTable;
 UCLASS()
 class LASTCANARY_API UResultEvaluator : public UObject

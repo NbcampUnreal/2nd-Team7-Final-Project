@@ -2,7 +2,6 @@
 
 #include "CoreMinimal.h"
 #include "LastCanary.h"
-#include "Framework/GameInstance/LCGameManager.h"
 #include "GameFramework/GameModeBase.h"
 #include "LCGameMode.generated.h"
 

@@ -1,11 +1,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Engine/GameInstance.h"
 #include "DataTable/MapDataRow.h"
 #include "DataTable/ItemDataRow.h"
-#include "DataTable/GunDataRow.h"
-#include "DataTable/MonsterDataTable.h"
 #include "DataType/SessionInfo.h"
 #include "AdvancedSessions/Classes/AdvancedFriendsGameInstance.h"
 #include "LCGameInstance.generated.h"

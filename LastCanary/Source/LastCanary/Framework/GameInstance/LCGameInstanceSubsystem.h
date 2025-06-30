@@ -4,7 +4,6 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "DataTable/MapDataRow.h"
 #include "DataTable/ItemDataRow.h"
-#include "DataTable/MonsterDataTable.h"
 #include "LCGameInstanceSubsystem.generated.h"
 
 class ULCLocalPlayerSaveGame;
