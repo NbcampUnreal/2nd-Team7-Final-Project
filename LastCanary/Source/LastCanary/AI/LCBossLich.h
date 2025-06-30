@@ -57,6 +57,18 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Lich|Sound")
     USoundBase* DeathNovaSound;
 
+    // 번개 VFX
+    UPROPERTY(EditAnywhere, Category = "Lich|Effects")
+    UNiagaraSystem* LightningFX;
+
+    // 번개 SFX
+    UPROPERTY(EditAnywhere, Category = "Lich|Sound")
+    USoundBase* LightningSound;
+
+    // 어테뉴에이션 에셋
+    UPROPERTY(EditAnywhere, Category = "Lich|Sound")
+    USoundAttenuation* LightningAttenuation;
+
     UPROPERTY(EditAnywhere, Category = "Lich|Effects")
     UParticleSystem* ArcaneBoltFX;
 
@@ -96,11 +108,11 @@ protected:
 
     /** 살아있는 언데드 한 마리당 초당 Rage 증가량 */
     UPROPERTY(EditAnywhere, Category = "Lich|Undead")
-    float UndeadRagePerSecond = 2.f;
+    float UndeadRagePerSecond = 0.1f;
 
     /** 언데드 사망 시 감소량 (언데드 1마리당) */
     UPROPERTY(EditAnywhere, Category = "Lich|Undead")
-    float UndeadDeathRagePenalty = 10.f;
+    float UndeadDeathRagePenalty = 5.f;
 
     // 소환된 언데드 추적용
     UPROPERTY()
@@ -125,21 +137,17 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Lich|Abilities", meta = (ClampMin = "0.1"))
     float PhantomVortexDuration = 5.0f;
 
-    /** 소용돌이 반경 */
-    UPROPERTY(EditAnywhere, Category = "Lich|Abilities", meta = (ClampMin = "0.0"))
-    float PhantomVortexRadius = 600.0f;
-
     /** Tick 당 대미지량 */
     UPROPERTY(EditAnywhere, Category = "Lich|Abilities", meta = (ClampMin = "0.0"))
-    float PhantomVortexDamagePerTick = 20.0f;
+    float PhantomVortexDamagePerTick = 8.f;
 
     /** Tick 간격 */
     UPROPERTY(EditAnywhere, Category = "Lich|Abilities", meta = (ClampMin = "0.1"))
     float PhantomVortexTickInterval = 1.0f;
 
     /** Rage 임계치(<= 이하) 도달 시 1회 사용 */
-    UPROPERTY(EditAnywhere, Category = "Lich|Abilities", meta = (ClampMin = "0.0", ClampMax = "1.0"))
-    float PhantomVortexRageThreshold = 0.8f;  // RagePercent 기준
+    UPROPERTY(EditAnywhere, Category = "Lich|Abilities", meta = (ClampMin = "0.0", ClampMax = "100.0"))
+    float PhantomVortexRageThreshold = 80.f;
 
     /** 한 번만 쓰도록 체크 */
     bool bHasUsedPhantomVortex = false;
@@ -170,7 +178,7 @@ protected:
     float ManaPulseInterval = 25.f;
 
     UPROPERTY(EditAnywhere, Category = "Lich|ManaPulse")
-    float ManaPulseDamage = 15.f;
+    float ManaPulseDamage = 3.f;
 
     UPROPERTY(EditAnywhere, Category = "Lich|ManaPulse")
     float ManaPulseRadius = 600.f;
@@ -180,19 +188,19 @@ protected:
 
     // ── 공격 패턴 ─────────────────────────────────
     UPROPERTY(EditAnywhere, Category = "Lich|Combat")
-    float ArcaneBoltCooldown = 4.f;
+    float ArcaneBoltCooldown = 8.f;
 
     UPROPERTY(EditAnywhere, Category = "Lich|Combat")
-    float ArcaneBoltRange = 2000.f;
+    float ArcaneBoltRange = 1200.f;
 
     UPROPERTY(EditAnywhere, Category = "Lich|Combat")
     float SoulBindCooldown = 12.f;
 
     UPROPERTY(EditAnywhere, Category = "Lich|Combat")
-    float SoulBindRange = 1200.f;
+    float SoulBindRange = 600.f;
 
     UPROPERTY(EditAnywhere, Category = "Lich|Combat")
-    float DeathNovaThreshold = 0.8f;
+    float DeathNovaThreshold = 80.f;
 
     UPROPERTY(EditAnywhere, Category = "Lich|Combat")
     float DeathNovaDamage = 30.f;
@@ -205,8 +213,15 @@ protected:
     float DeathNovaRadius = 1000.f;
 
     UPROPERTY(EditAnywhere, Category = "Lich|Combat")
-    float SoulAbsorbDamage = 20.f;
+    float SoulAbsorbDamage = 10.f;
 
+    UPROPERTY(EditAnywhere, Category = "Lich|Combat")
+    float SoulAbsorbRange = 200.f;
+
+    UPROPERTY(EditAnywhere, Category = "Lich|Skills")
+    float SoulAbsorbCooldown = 5.f;
+
+    float LastSoulAbsorbTime = -FLT_MAX;
     float LastArcaneBoltTime = -FLT_MAX;
     float LastSoulBindTime = -FLT_MAX;
     bool  bHasUsedDeathNova = false;

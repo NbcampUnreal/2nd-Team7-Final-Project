@@ -12,7 +12,17 @@ class LASTCANARY_API ABaseBossMonsterCharacter : public ACharacter
 
 public:
     ABaseBossMonsterCharacter();
-	virtual void BeginPlay() override;
+    virtual void BeginPlay() override;
+
+    /** 공격 범위(반경)를 읽어오는 Getter */
+    UFUNCTION(BlueprintCallable, Category = "Attack")
+    float GetNextAttackRange() const;
+
+    /** 다음에 실행할 공격 액션 */
+    TFunction<void()> NextAttackAction;
+
+    /** RequestNextAttack() 로 선택된 스킬을 실행합니다. */
+    void ExecuteSelectedAttack();
 
     /** Berserk FX 컴포넌트 (미리 생성해 두고 Activate/Deactivate) */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Effects|Berserk")
@@ -41,9 +51,8 @@ public:
     UPROPERTY(EditAnywhere, Category = "Attack")
     float StrongAttackDamage = 50.f;
 
-    /** 공격 범위 (반경) */
-    UPROPERTY(EditAnywhere, Category = "Attack")
-    float AttackRange = 200.f;
+    UPROPERTY(VisibleAnywhere, Category = "AI")
+    float NextAttackRange;
 
     /** ── Rage ── */
     UPROPERTY(EditAnywhere, Category = "Boss|Rage")
@@ -73,11 +82,22 @@ protected:
     float LastNormalTime = -FLT_MAX;
     float LastStrongTime = -FLT_MAX;
 
+    /** 스폰 시점 위치를 저장해 두는 변수 */
+    FVector InitialSpawnLocation;
+
+    /** 텔레포트할 때 최대 반경(근처 이내) */
+    UPROPERTY(EditAnywhere, Category = "Berserk|Teleport")
+    float TeleportRadius = 500.f;
+
+    /** 공격 범위 (반경) */
+    UPROPERTY(EditAnywhere, Category = "Attack")
+    float AttackRange = 200.f;
+
     /** ── 광폭화(Berserk) 상태 ── */
 
     /** 현재 Berserk 활성 여부 (Replicated) */
     UPROPERTY(ReplicatedUsing = OnRep_IsBerserk, BlueprintReadWrite, EditAnywhere, Category = "Boss|Berserk") // 임시로 ReadWrite
-    bool bIsBerserk = false;
+        bool bIsBerserk = false;
 
     /** 클라이언트에서 Berserk 진입/종료 시 호출되는 함수 */
     UFUNCTION()

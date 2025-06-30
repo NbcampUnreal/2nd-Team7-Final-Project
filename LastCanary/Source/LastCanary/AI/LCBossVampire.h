@@ -195,8 +195,6 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Vampire|CrimsonSlash")
     float CrimsonSlashCooldown = 8.f;
 
-    FTimerHandle CrimsonSlashHandle;
-
     void ExecuteCrimsonSlash();
 
     UFUNCTION(NetMulticast, Unreliable)
@@ -288,8 +286,11 @@ protected:
 
     UPROPERTY(EditAnywhere, Category = "Vampire|SanguineBurst")
     float SanguineBurstCooldown = 12.f;
+;
 
-    FTimerHandle BurstHandle;
+    // Lich 스타일의 쿨다운 타이밍을 위한 멤버
+    float LastCrimsonSlashTime = -FLT_MAX;
+    float LastBurstTime = -FLT_MAX;
 
     void ExecuteSanguineBurst();
 
