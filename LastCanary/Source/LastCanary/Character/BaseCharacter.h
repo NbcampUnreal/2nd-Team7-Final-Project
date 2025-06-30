@@ -133,8 +133,6 @@ public:
 	FCharacterCustomizationData GetCustomizationData();
 	void SetCustomizationData(const FCharacterCustomizationData& CustomizingData);
 
-	void SetCustomizationDataOnServer();
-
 	UFUNCTION(Server, Reliable)
 	void Server_UpdateCustomizationData();
 	void Server_UpdateCustomizationData_Implementation();
@@ -262,6 +260,12 @@ protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void PossessedBy(AController* NewController) override;
 	
+	void InitializePlayerLocalSettings();
+
+
+	FTimerHandle RetryInitializeNameWidgetHandle;
+	void InitializePlayerNameWidget();
+
 	UFUNCTION(Server, Reliable)
 	void Server_ClientLogin();
 	void Server_ClientLogin_Implementation();
@@ -1048,6 +1052,13 @@ public:
 
 	virtual void OnRep_PlayerState() override;
 	void UpdateNameWidget(); // 위젯 업데이트용 함수
+	void ApplyNameToWidget();
+	void TurnOffNameWidget(); // 사망 시 네임 위젯 가리는 함수
+	
+	UFUNCTION(Client, Reliable)
+	void Client_TurnOffNameWidget(); // 관전할 때 가리는 함수.
+	void Client_TurnOffNameWidget_Implementation(); 
+
 	UFUNCTION(Server, Reliable)
 	void Server_UpdateNameWidget(); // 서버 위젯 업데이트용 함수
 	void Server_UpdateNameWidget_Implementation(); // 서버 위젯 업데이트용 함수

@@ -65,6 +65,8 @@ public:
 
 	void SetPartMaterial(USkeletalMeshComponent* Component, int32 MaterialIndex, UMaterialInterface* Material);
 
+	void SetCharacterPoseSynchronization();
+
     // 외형 복사 적용
     UFUNCTION(BlueprintCallable, Category = "Appearance")
     void ApplyAppearance(FCharacterCustomizationData Data);
