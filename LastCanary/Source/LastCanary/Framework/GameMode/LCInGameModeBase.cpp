@@ -2,15 +2,12 @@
 
 #include "Framework/GameInstance/LCGameManager.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
-
 #include "Framework/GameState/LCGameState.h"
-#include "Framework/PlayerState/LCPlayerState.h"
-#include "Character/BasePlayerState.h"
 #include "Framework/PlayerController/LCPlayerController.h"
 #include "Framework/PlayerController/LCInGamePlayerController.h"
-
 #include "Framework/Manager/ChecklistManager.h"
-#include "Engine/TargetPoint.h"
+
+#include "Character/BasePlayerState.h"
 
 #include "DataTable/BossMonsterRow.h"
 #include "DataTable/MapDataRow.h"
@@ -18,7 +15,6 @@
 
 #include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
-
 
 ALCInGameModeBase::ALCInGameModeBase()
 {
@@ -160,7 +156,7 @@ void ALCInGameModeBase::ClearGame()
 				PlayerPawn->SetActorRotation(FRotator(0.f, 0.f, 0.f)); // 원하는 방향으로 회전
 			}
 
-			PC->Client_ShowEscapeGateVideo(CurrentBossMonsterData->CheckListTable);
+			PC->Client_OnEscapeGate(CurrentBossMonsterData->CheckListTable);
 		}
 	}
 
@@ -181,7 +177,7 @@ void ALCInGameModeBase::LoseGame()
 				PlayerPawn->SetActorRotation(FRotator(0.f, 0.f, 0.f)); // 원하는 방향으로 회전
 			}
 
-			PC->Client_ShowLoseVideo();
+			PC->Client_OnGameLose();
 		}
 	}
 }

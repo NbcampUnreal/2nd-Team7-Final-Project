@@ -1,17 +1,16 @@
 ﻿#include "Framework/GameMode/LCRoomGameMode.h"
 
-#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Framework/GameInstance/LCGameManager.h"
-
 #include "Framework/PlayerController/LCRoomPlayerController.h"
 #include "Framework/GameState/LCGameState.h"
-#include "Framework/PlayerState/LCPlayerState.h"
+
+#include "Actor/LCGateActor.h"
+#include "Character/BaseCharacter.h"
+#include "Framework/Manager/GateCutsceneManager.h"
+#include "Actor/PlayerChecker.h"
 
 #include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
-
-#include "Actor/PlayerChecker.h"
-
 
 ALCRoomGameMode::ALCRoomGameMode()
 {
@@ -71,6 +70,57 @@ void ALCRoomGameMode::HandleStartingNewPlayer_Implementation(APlayerController* 
 {
 	Super::HandleStartingNewPlayer_Implementation(NewPlayer);
 
+	if (ULCGameManager* LCGM = GetGameInstance()->GetSubsystem<ULCGameManager>())
+	{
+		if (LCGM->CurrentRound == 0)
+		{
+			return;
+		}
+		if (LCGM->CurrentPlayerCount == CurrentPlayerNum)
+		{
+			OnAllPlayersJoined();
+		}
+	}
+}
+
+void ALCRoomGameMode::OnAllPlayersJoined()
+{
+	TArray<AActor*> FoundCharacters;
+
+	UGameplayStatics::GetAllActorsOfClass(this, ABaseCharacter::StaticClass(), FoundCharacters);
+
+	TArray<ABaseCharacter*> PlayerCharacters;
+	for (AActor* Actor : FoundCharacters)
+	{
+		if (ABaseCharacter* BaseChar = Cast<ABaseCharacter>(Actor))
+		{
+			if (APlayerController* PC = Cast<APlayerController>(BaseChar->GetController()))
+			{
+				// Valid한 플레이어 컨트롤러가 소유한 캐릭터만 추가
+				PlayerCharacters.Add(BaseChar);
+			}
+		}
+	}
+
+	ALCGateActor* GateActor = nullptr;
+	for (TActorIterator<ALCGateActor> It(GetWorld()); It; ++It)
+	{
+		GateActor = *It;
+		break;
+	}
+
+	// GateCutsceneManager 찾고 컷신 시작
+	for (TActorIterator<AGateCutsceneManager> It(GetWorld()); It; ++It)
+	{
+		AGateCutsceneManager* GateCutsceneManager = *It;
+		if (GateActor != nullptr)
+		{
+			GateCutsceneManager->LinkedGateActor = GateActor;
+		}
+		//서버에서 실행, 서버의 모든 플레이어 캐릭터의 정보를 게이트 매니저로 전송
+		GateCutsceneManager->PlayGateCutscene(PlayerCharacters, ECutsceneType::GateExit);
+		break;
+	}
 }
 
 //void ALCRoomGameMode::StartGame()

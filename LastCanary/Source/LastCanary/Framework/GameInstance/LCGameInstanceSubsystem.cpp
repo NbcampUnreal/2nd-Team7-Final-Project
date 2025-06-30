@@ -2,7 +2,6 @@
 #include "UI/Manager/LCUIManager.h"
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "Framework/GameMode/LCRoomGameMode.h"
-#include "Kismet/GameplayStatics.h"
 #include "GameFramework/GameUserSettings.h"
 #include "SaveGame/LCLocalPlayerSaveGame.h"
 #include "LCOptionManager.h"
@@ -166,18 +165,11 @@ void ULCGameInstanceSubsystem::LoadSaveData()
 {
 	if (!IsValid(GetUIManager()))
 	{
-		LOG_Char_WARNING(TEXT("UIManager가 유효하지 않음"));		
 		return;
-	}
-	else
-	{
-		LOG_Char_WARNING(TEXT("UIManager가 유효함"));
 	}
 
 	if (UGameUserSettings* Settings = GEngine->GetGameUserSettings())
 	{
-		
-		LOG_Char_WARNING(TEXT("Settings->LoadSettings(true)"));
 		Settings->LoadSettings(true);
 		Settings->ApplySettings(false);	
 	}
@@ -199,14 +191,6 @@ void ULCGameInstanceSubsystem::LoadUserSettings()
 		float SavedMicrophoneVolume = ULCLocalPlayerSaveGame::LoadMicrophoneVolume(World);
 		if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
 		{
-#if WITH_EDITOR
-			LOG_Char_WARNING(TEXT("OptionManager Exist"));
-			LOG_Char_WARNING(TEXT("SavedMasterVolume : %f"), SavedMasterVolume);
-			LOG_Char_WARNING(TEXT("SavedBGMVolume : %f"), SavedBGMVolume);
-			LOG_Char_WARNING(TEXT("SavedEffectVolume : %f"), SavedEffectVolume);
-			LOG_Char_WARNING(TEXT("SavedVoiceChatVolume : %f"), SavedVoiceChatVolume);
-			LOG_Char_WARNING(TEXT("SavedMicrophoneVolume : %f"), SavedMicrophoneVolume);
-#endif
 			OptionManager->MasterVolume = SavedMasterVolume;
 			OptionManager->BGMVolume = SavedBGMVolume;
 			OptionManager->EffectVolume = SavedEffectVolume;

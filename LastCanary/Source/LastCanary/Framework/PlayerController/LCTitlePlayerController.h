@@ -1,7 +1,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "LCPlayerController.h"
 #include "Framework/PlayerController/LCPlayerInputController.h"
 #include "LCTitlePlayerController.generated.h"
 

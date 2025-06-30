@@ -30,6 +30,9 @@ public:
     UFUNCTION(BlueprintPure, Category = "Inventory Utility|Validation")
     static bool IsWalkieTalkieItem(FName ItemRowName, const UDataTable* ItemDataTable);
 
+    UFUNCTION(BlueprintPure, Category = "Inventory Utility")
+    static bool IsNoteItem(FName ItemRowName, UDataTable* ItemDataTable);
+
     /** 슬롯 관리 관련 */
     UFUNCTION(BlueprintCallable, Category = "Inventory Utility|Slot")
     static void SetSlotToDefault(FBaseItemSlotData& Slot, const UInventoryConfig* Config = nullptr);

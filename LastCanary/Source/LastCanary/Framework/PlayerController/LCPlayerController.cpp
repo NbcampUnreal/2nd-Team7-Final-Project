@@ -1,7 +1,6 @@
 ﻿#include "Framework/PlayerController/LCPlayerController.h"
 
 #include "Framework/GameMode/LCGameMode.h"
-#include "Framework/GameInstance/LCGameInstance.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 
 #include "Character/BasePlayerState.h"
@@ -12,8 +11,6 @@
 #include "UI/Manager/LCUIManager.h"
 #include "UI/UIElement/RoomWidget.h"
 
-#include "Kismet/GameplayStatics.h"
-#include "Blueprint/UserWidget.h"
 #include "Net/UnrealNetwork.h"
 
 #include "LevelSequenceActor.h"
@@ -22,9 +19,6 @@
 #include "Actor/LCGateActor.h"
 #include "CineCameraActor.h"
 #include "MovieSceneSequencePlayer.h"
-
-#include "SaveGame/LCLocalPlayerSaveGame.h"
-
 
 ALCPlayerController::ALCPlayerController()
 {
@@ -157,14 +151,10 @@ void ALCPlayerController::ToggleShowRoomWidget()
     if (bIsShowRoomUI)
     {
         LCUIManager->ShowRoomWidget();
-        FInputModeGameAndUI GameAndUIInputMode;
-        SetInputMode(GameAndUIInputMode);
     }
     else
     {
         LCUIManager->HideRoomWidget();
-        FInputModeGameOnly GameInputMode;
-        SetInputMode(GameInputMode);
     }
 
     bShowMouseCursor = bIsShowRoomUI;
@@ -365,13 +355,20 @@ void ALCPlayerController::OnCutsceneFinished()
     switch (CurrentCutsceneType)
     {
     case ECutsceneType::GateEntry:
+        // 두번 호출되서 호스타만 하도록 수정
+        if (HasAuthority())
+        {
+            LinkedGateActor->IntoGameLevel(this);
+        }
         // 게임 레벨로 이동
-        Server_RequestIntoGameLevel();
+        //Server_RequestIntoGameLevel();
         break;
     case ECutsceneType::GateExit:
-        // 베이스로 돌아가기
-        Server_RequestReturnToBase();
+        // 베이스로 돌아가기 -> 베이스캠프에서 실행하기때문에 지움
+        //Server_RequestReturnToBase();
         ShowUIAfterCutscene(); // 나가는 경우에만 UI 복원
+        ACharacter* Char = GetCharacter();
+        Char->SetActorHiddenInGame(false);
         break;
     }
 }
@@ -386,6 +383,9 @@ void ALCPlayerController::Server_RequestIntoGameLevel_Implementation()
 
 void ALCPlayerController::Server_RequestReturnToBase_Implementation()
 {
+    //ACharacter* Char = GetCharacter();
+    //Char->SetActorHiddenInGame(false);
+
     // 베이스로 돌아가는 로직 구현
     // 예: 특정 레벨로 이동하거나 게이트 액터에 요청
     if (IsValid(LinkedGateActor))

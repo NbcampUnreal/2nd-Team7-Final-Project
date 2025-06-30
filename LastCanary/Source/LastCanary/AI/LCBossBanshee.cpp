@@ -611,62 +611,87 @@ void ALCBossBanshee::SpawnBansheeClones()
 
 bool ALCBossBanshee::RequestAttack(float TargetDistance)
 {
-	// 0) 서버 권한 & 월드 체크
-	UWorld* World = GetWorld();
-	if (!HasAuthority() || !World)
-	{
+	// 0) 서버 권한 및 World 유효성 검사
+	if (!HasAuthority())
 		return false;
-	}
 
+	UWorld* World = GetWorld();
+	if (!World)
+		return false;
+
+	// 1) 컨트롤러 & AIController & Blackboard 유효성 검사
+	AController* C = GetController();
+	if (!C)
+		return false;
+
+	AAIController* AICon = Cast<AAIController>(C);
+	if (!AICon)
+		return false;
+
+	UBlackboardComponent* BB = AICon->GetBlackboardComponent();
+	if (!BB)
+		return false;
+
+	// 2) 타겟 획득 (Blackboard에 Object로 저장됨)
+	UObject* Obj = BB->GetValueAsObject(TEXT("TargetActor"));
+	AActor* Target = Cast<AActor>(Obj);
+	const bool bHasTarget = IsValid(Target);
+
+	// 3) 현재 시간
 	const float Now = World->GetTimeSeconds();
-	struct FAttackEntry { float Weight; TFunction<void()> Action; };
+
+	struct FAttackEntry { float Weight, Range; TFunction<void()> Action; };
 	TArray<FAttackEntry> Entries;
 
-	// (1) EchoSlash - 핑된 위치가 유효하고, 먼 거리 & 쿨다운 체크
+	// (1) EchoSlash 후보 수집 (쿨타임·거리만 체크)
+	const float EchoSlashRange = 800.f;  // 원하는 범위 변수로 대체 가능
 	if (!LastPingedLocation.IsZero()
-		&& TargetDistance > 800.f
+		&& TargetDistance > EchoSlashRange
 		&& Now - LastEchoSlashTime >= EchoSlashCooldown)
 	{
-		Entries.Add({ EchoSlashWeight, [this, Now]()
-		{
-			LastEchoSlashTime = Now;
-			UE_LOG(LogTemp, Log, TEXT("[Banshee] Echo Slash 발동"));
-			EchoSlash();
-		} });
+		Entries.Add({
+			EchoSlashWeight,
+			EchoSlashRange,
+			[this, Now]() {
+				LastEchoSlashTime = Now;
+				UE_LOG(LogTemp, Warning, TEXT("[Banshee] Echo Slash 발동"));
+				EchoSlash();
+			}
+			});
 	}
 
-	// (2) Wail - 근접 범위 & 쿨다운 체크
-	if (TargetDistance <= WailRange
-		&& Now - LastWailTime >= WailCooldown)
+	// (2) Wail 후보 수집
+	if (Now - LastWailTime >= WailCooldown)
 	{
-		Entries.Add({ WailWeight, [this, Now]()
-		{
-			LastWailTime = Now;
-			UE_LOG(LogTemp, Log, TEXT("[Banshee] Wail 발동"));
-			Wail();
-		} });
+		Entries.Add({
+			WailWeight,
+			WailRange,
+			[this, Now]() {
+				LastWailTime = Now;
+				UE_LOG(LogTemp, Warning, TEXT("[Banshee] Wail 발동"));
+				Wail();
+			}
+			});
 	}
 
-	// 가중치 랜덤 선택
-	float TotalWeight = 0.f;
-	for (auto& Entry : Entries)
-	{
-		TotalWeight += Entry.Weight;
-	}
-	if (TotalWeight <= KINDA_SMALL_NUMBER)
-	{
+	// 3) 후보가 없으면 선택 실패
+	if (Entries.Num() == 0)
 		return false;
-	}
 
-	float Pick = FMath::FRandRange(0.f, TotalWeight);
-	float Acc = 0.f;
-	for (auto& Entry : Entries)
+	// 4) 가중치 랜덤 선택
+	float TotalW = 0.f;
+	for (auto& E : Entries) TotalW += E.Weight;
+
+	float Pick = FMath::FRandRange(0.f, TotalW), Acc = 0.f;
+	for (auto& E : Entries)
 	{
-		Acc += Entry.Weight;
+		Acc += E.Weight;
 		if (Pick <= Acc)
 		{
-			Entry.Action();
-			return true;
+			// 선택된 스킬의 사거리와 액션만 저장
+			NextAttackRange = E.Range;
+			NextAttackAction = E.Action;
+			return true;  // 선택만 하고 즉시 공격은 하지 않음
 		}
 	}
 

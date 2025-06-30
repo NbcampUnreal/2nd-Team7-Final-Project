@@ -230,6 +230,10 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Slenderman|Berserk")
     int32 BerserkCloneCount = 5;
 
+    float LastReachSlashTime = -FLT_MAX;
+    float LastShadowGraspTime = -FLT_MAX;
+    float LastAttackDistortionTime = -FLT_MAX;
+
     FTimerHandle BerserkTimerHandle;
     virtual void EnterBerserkState() override;
     virtual void StartBerserk() override;

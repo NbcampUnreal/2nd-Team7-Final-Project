@@ -18,4 +18,8 @@ struct FRankThresholdRow : public FTableRowBase
     /** 해당 랭크가 적용되는 최소 점수 (내림차순 정렬 권장) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     int32 MinScore;
+
+    /** 랭크에 따라 지급되는 탐사 포인트 */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    int32 ExplorationPoint;
 };

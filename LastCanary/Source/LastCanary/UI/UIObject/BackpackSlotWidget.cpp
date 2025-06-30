@@ -10,9 +10,14 @@
 bool UBackpackSlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
 {
     UInventorySlotWidget* SourceWidget = Cast<UInventorySlotWidget>(InOperation->Payload);
-    if (!SourceWidget || SourceWidget == this)
+    if (!SourceWidget)
     {
         return false;
+    }
+
+    if (SourceWidget == this)
+    {
+        return true;
     }
 
     UToolbarInventoryComponent* ToolbarInventory = Cast<UToolbarInventoryComponent>(InventoryComponent);

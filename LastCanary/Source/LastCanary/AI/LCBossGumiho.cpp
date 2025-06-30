@@ -430,8 +430,12 @@ void ALCBossGumiho::PerformIllusionSwap()
 	for (auto& Hit : Hits)
 	{
 		APawn* P = Cast<APawn>(Hit.GetActor());
-		if (P && P->IsPlayerControlled())
-			ValidPlayers.Add(P);
+		if (!P || !P->IsPlayerControlled())
+			continue;
+		// 태그 체크
+		if (!P->ActorHasTag(CharmTag))
+			continue;
+		ValidPlayers.Add(P);
 	}
 	if (ValidPlayers.Num() == 0)
 		return;
@@ -525,7 +529,6 @@ void ALCBossGumiho::ExecuteCharmGaze()
 	}
 
 	// 4) 플레이어 캐릭터에 태그 적용 및 타이머 등록
-	const FName CharmTag(TEXT("Charmed"));
 	for (const FHitResult& Hit : Hits)
 	{
 		AActor* HitActor = Hit.GetActor();
@@ -544,14 +547,18 @@ void ALCBossGumiho::ExecuteCharmGaze()
 
 			// (b) 일정 시간 후 태그 제거
 			FTimerHandle TimerHandle;
-			FTimerDelegate RemoveDel = FTimerDelegate::CreateLambda([WeakP = TWeakObjectPtr<ABaseCharacter>(P), CharmTag]()
+			// this를 캡처해 CharmTag에 접근할 수 있도록 하고,
+			// WeakP로 안전하게 P를 유지
+			FTimerDelegate RemoveDel = FTimerDelegate::CreateLambda(
+				[this, WeakP = TWeakObjectPtr<ABaseCharacter>(P)]()
 				{
 					if (ABaseCharacter* CP = WeakP.Get())
 					{
-						CP->Tags.Remove(CharmTag);
+						CP->Tags.Remove(this->CharmTag);
 						UE_LOG(LogTemp, Log, TEXT("[Gumiho] %s is Uncharmed"), *CP->GetName());
 					}
-				});
+				}
+			);
 			World->GetTimerManager().SetTimer(
 				TimerHandle,
 				RemoveDel,
@@ -767,85 +774,99 @@ bool ALCBossGumiho::RequestAttack(float TargetDistance)
 	if (!World)
 		return false;
 
-	// 1) 너무 멀면 공격하지 않음
-	if (TargetDistance > 600.f)
+	// 1) 컨트롤러 & AIController & Blackboard 유효성 검사
+	AController* C = GetController();
+	if (!C)
 		return false;
 
-	// 2) Controller 및 Blackboard 검사
-	AController* Ctrl = GetController();
-	AAIController* AICon = Ctrl ? Cast<AAIController>(Ctrl) : nullptr;
-	UBlackboardComponent* BB = AICon ? AICon->GetBlackboardComponent() : nullptr;
+	AAIController* AICon = Cast<AAIController>(C);
+	if (!AICon)
+		return false;
 
-	// 3) Target 획득
-	AActor* Target = nullptr;
-	if (BB)
-	{
-		UObject* Obj = BB->GetValueAsObject(TEXT("TargetActor"));
-		Target = Obj ? Cast<AActor>(Obj) : nullptr;
-	}
+	UBlackboardComponent* BB = AICon->GetBlackboardComponent();
+	if (!BB)
+		return false;
+
+	// 2) 타겟 획득 (Blackboard에 Object로 저장됨)
+	UObject* Obj = BB->GetValueAsObject(TEXT("TargetActor"));
+	AActor* Target = Cast<AActor>(Obj);
 	const bool bHasTarget = IsValid(Target);
 
-	const float Now = World->GetTimeSeconds();
+	const float Now = GetWorld()->GetTimeSeconds();
+	FTimerManager& TM = GetWorld()->GetTimerManager();
 
-	struct FEntry { float Weight; TFunction<void()> Action; };
+	struct FEntry { float Weight, Range; TFunction<void()> Action; };
 	TArray<FEntry> Entries;
 
-	// Foxfire Volley
+	// --- Foxfire Volley (거리 무관) ---
 	if (FoxfireInterval > 0.f && Now - LastFoxfireTime >= FoxfireInterval)
 	{
-		Entries.Add({ 3.f, [this, Now]() {
-			LastFoxfireTime = Now;
-			ExecuteFoxfireVolley();
-		} });
+		Entries.Add({
+			1.f,
+			/*Range=*/FLT_MAX,
+			[this, Now]() {
+				LastFoxfireTime = Now;
+				ExecuteFoxfireVolley();
+			}
+			});
 	}
 
-	// Tail Strike
-	if (TailStrikeCooldown > 0.f && bHasTarget && TargetDistance <= TailStrikeRadius
-		&& Now - LastTailStrikeTime >= TailStrikeCooldown)
+	// --- Tail Strike (쿨타임만 체크) ---
+	if (TailStrikeCooldown > 0.f && Now - LastTailStrikeTime >= TailStrikeCooldown)
 	{
-		Entries.Add({ 2.f, [this, Now]() {
-			LastTailStrikeTime = Now;
-			ExecuteTailStrike();
-		} });
+		Entries.Add({
+			2.f,
+			TailStrikeRadius,  // 사거리 정보만 기록
+			[this, Now]() {
+				LastTailStrikeTime = Now;
+				ExecuteTailStrike();
+			}
+			});
 	}
 
-	// Illusion Swap
+	// --- Illusion Swap (거리 무관) ---
 	if (IllusionSwapInterval > 0.f && Now - LastIllusionSwapTime >= IllusionSwapInterval)
 	{
-		Entries.Add({ 1.f, [this, Now]() {
-			LastIllusionSwapTime = Now;
-			PerformIllusionSwap();
-		} });
+		Entries.Add({
+			2.f,
+			/*Range=*/FLT_MAX,
+			[this, Now]() {
+				LastIllusionSwapTime = Now;
+				PerformIllusionSwap();
+			}
+			});
 	}
 
-	// Spirit Spike
-	if (SpiritSpikeCooldown > 0.f && bHasTarget && Now - LastSpiritSpikeTime >= SpiritSpikeCooldown)
+	// --- Spirit Spike (쿨타임만 체크) ---
+	if (SpiritSpikeCooldown > 0.f && Now - LastSpiritSpikeTime >= SpiritSpikeCooldown)
 	{
-		Entries.Add({ 2.f, [this, Now, Target]() {
-			LastSpiritSpikeTime = Now;
-			UE_LOG(LogTemp, Warning, TEXT("[Gumiho] SpiritSpike 실행 → 대상: %s"), *Target->GetName());
-			ExecuteSpiritSpike(Target);
-		} });
+		Entries.Add({
+			3.f,
+			SpiritSpikeRadius,
+			[this, Now, Target]()
+			{
+			UE_LOG(LogTemp, Warning, TEXT("[Lich] 선택된 공격 → SoulAbsorb"));
+				LastSpiritSpikeTime = Now;
+				ExecuteSpiritSpike(Target);
+			}
+			});
 	}
 
-	// 4) 가중치 랜덤 선택
-	float TotalWeight = 0.f;
-	for (const auto& E : Entries)
-	{
-		TotalWeight += E.Weight;
-	}
-	if (TotalWeight <= KINDA_SMALL_NUMBER)
+	if (Entries.Num() == 0)
 		return false;
 
-	float Pick = FMath::FRandRange(0.f, TotalWeight);
-	float Accum = 0.f;
-	for (const auto& E : Entries)
+	// 2) 가중치 랜덤 선택
+	float TotalW = 0.f;
+	for (auto& E : Entries) TotalW += E.Weight;
+	float Pick = FMath::FRandRange(0.f, TotalW), Acc = 0.f;
+	for (auto& E : Entries)
 	{
-		Accum += E.Weight;
-		if (Pick <= Accum)
+		Acc += E.Weight;
+		if (Pick <= Acc)
 		{
-			E.Action();
-			return true;
+			NextAttackRange = E.Range;
+			NextAttackAction = E.Action;
+			return true;  // 실행은 보류
 		}
 	}
 

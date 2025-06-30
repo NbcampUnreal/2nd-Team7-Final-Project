@@ -3,9 +3,6 @@
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Framework/PlayerState/LCPlayerState.h"
-#include "Framework/GameMode/LCRoomGameMode.h"
-#include "Framework/GameState/LCGameState.h"
-#include "Framework/Manager/LCCheatManager.h"
 #include "Framework/GameMode/LCInGameModeBase.h"
 #include "Character/BasePlayerState.h"
 
@@ -69,12 +66,45 @@ void ALCInGamePlayerController::Client_ShowLevelInfo_Implementation(int32 MapId)
 	}
 }
 
+void ALCInGamePlayerController::Client_OnEscapeGate_Implementation(UDataTable* CheckListTable)
+{
+	this->StartCheckList(CheckListTable);
+}
+
+void ALCInGamePlayerController::Client_OnGameLose_Implementation()
+{
+	ShowLoseVideo();
+}
+
 void ALCInGamePlayerController::Client_OnGameEnd_Implementation()
 {
 	LCUIManager->ShowGameEndWidget();
 }
 
-void ALCInGamePlayerController::Client_ShowLoseVideo_Implementation()
+void ALCInGamePlayerController::ShowEscapeGateVideo(UDataTable* CheckListTable)
+{
+	if (EscapeGateWidgetClass && !EscapeGateWidgetInstance)
+	{
+		EscapeGateWidgetInstance = CreateWidget<UVideoPlayWidget>(this, EscapeGateWidgetClass);
+		if (EscapeGateWidgetInstance)
+		{
+			EscapeGateWidgetInstance->AddToViewport(100);
+
+			EscapeGateWidgetInstance->OnVideoEnded.BindLambda
+			(
+				[this, CheckListTable]()
+				{
+					LOG_Frame_WARNING(TEXT("On Video Play Finished!!"));
+					EscapeGateWidgetInstance = nullptr;
+
+					this->StartCheckList(CheckListTable);
+				}
+			);
+		}
+	}
+}
+
+void ALCInGamePlayerController::ShowLoseVideo()
 {
 	if (LoseWidgetClass && !LoseWidgetInstance)
 	{
@@ -91,30 +121,6 @@ void ALCInGamePlayerController::Client_ShowLoseVideo_Implementation()
 					LoseWidgetInstance = nullptr;
 
 					LCUIManager->ShowGameOverWidget();
-				}
-			);
-		}
-	}
-}
-
-void ALCInGamePlayerController::Client_ShowEscapeGateVideo_Implementation(UDataTable* CheckListTable)
-{
-	//this->StartCheckList(CheckListTable);
-	if (EscapeGateWidgetClass && !EscapeGateWidgetInstance)
-	{
-		EscapeGateWidgetInstance = CreateWidget<UVideoPlayWidget>(this, EscapeGateWidgetClass);
-		if (EscapeGateWidgetInstance)
-		{
-			EscapeGateWidgetInstance->AddToViewport(100);
-
-			EscapeGateWidgetInstance->OnVideoEnded.BindLambda
-			(
-				[this, CheckListTable]()
-				{
-					LOG_Frame_WARNING(TEXT("On Video Play Finished!!"));
-					EscapeGateWidgetInstance = nullptr;
-
-					this->StartCheckList(CheckListTable);
 				}
 			);
 		}
