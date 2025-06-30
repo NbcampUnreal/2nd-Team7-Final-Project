@@ -41,6 +41,9 @@ public:
 	UPROPERTY()
 	APlayerController* OwnerController = nullptr;
 
+	UPROPERTY()
+	FString PlayerName = TEXT("C");
+
 	UPROPERTY(BlueprintReadWrite)
 	bool bIsSurvived = false;
 
@@ -155,6 +158,8 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "Checklist|Evaluation")
 	UDataTable* RankThresholdTable;
+	UPROPERTY(EditAnywhere, Category = "Checklist|Evaluation")
+	UDataTable* TotalRankTable;
 
 	UPROPERTY(EditAnywhere, Category = "Checklist")
 	TSubclassOf<UResultMenu> ResultMenuClass;

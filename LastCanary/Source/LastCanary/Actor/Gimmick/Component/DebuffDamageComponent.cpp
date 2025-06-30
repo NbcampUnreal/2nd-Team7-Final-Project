@@ -30,30 +30,30 @@ void UDebuffDamageComponent::ApplyEffectToActor(AActor* OtherActor)
 {
 	if (!IsValid(OtherActor) || AffectedActors.Contains(OtherActor))
 	{
-		//LOG_Art(Log, TEXT("[DebuffComp]  Already affected or invalid: %s"), *GetNameSafe(OtherActor));
+		LOG_Art(Log, TEXT("[DebuffComp]  Already affected or invalid: %s"), *GetNameSafe(OtherActor));
 		return;
 	}
 
 	const IGameplayTagAssetInterface* TagInterface = Cast<IGameplayTagAssetInterface>(OtherActor);
 	if (!TagInterface)
 	{
-		//LOG_Art_WARNING(TEXT("[DebuffComp]  Target does not implement GameplayTag interface: %s"), *GetNameSafe(OtherActor));
+		LOG_Art_WARNING(TEXT("[DebuffComp]  Target does not implement GameplayTag interface: %s"), *GetNameSafe(OtherActor));
 		return;
 	}
 
 	FGameplayTagContainer ActorTags;
 	TagInterface->GetOwnedGameplayTags(ActorTags);
 
-	//LOG_Art(Log, TEXT("[DebuffComp] Tags of %s → %s"), *OtherActor->GetName(), *ActorTags.ToStringSimple());
+	LOG_Art(Log, TEXT("[DebuffComp] Tags of %s → %s"), *OtherActor->GetName(), *ActorTags.ToStringSimple());
 
 	if (DamageType != EGimmickDamageType::None && ActorTags.HasTagExact(RequiredDamageTag))
 	{
-		//LOG_Art(Log, TEXT("[DebuffComp]  Damage condition passed"));
+		LOG_Art(Log, TEXT("[DebuffComp]  Damage condition passed"));
 
 		if (DamageType == EGimmickDamageType::InstantDamage)
 		{
 			UGameplayStatics::ApplyDamage(OtherActor, DamageValue, nullptr, GetOwner(), nullptr);
-			//LOG_Art(Log, TEXT("[DebuffComp] → Instant Damage %.1f applied to %s"), DamageValue, *OtherActor->GetName());
+			LOG_Art(Log, TEXT("[DebuffComp] Instant Damage %.1f applied to %s"), DamageValue, *OtherActor->GetName());
 		}
 		else if (DamageType == EGimmickDamageType::DamageOverTime)
 		{
@@ -63,7 +63,7 @@ void UDebuffDamageComponent::ApplyEffectToActor(AActor* OtherActor)
 
 			GetWorld()->GetTimerManager().SetTimer(TimerHandle, TimerDel, DamageInterval, true);
 			DamageTimers.Add(OtherActor, TimerHandle);
-			//LOG_Art(Log, TEXT("[DebuffComp] → DOT started for %s"), *OtherActor->GetName());
+			LOG_Art(Log, TEXT("[DebuffComp] DOT started for %s"), *OtherActor->GetName());
 		}
 	}
 	else
@@ -73,19 +73,19 @@ void UDebuffDamageComponent::ApplyEffectToActor(AActor* OtherActor)
 
 	if (DebuffType != EGimmickDebuffType::None && ActorTags.HasTagExact(RequiredDebuffTag))
 	{
-		if (OtherActor->GetClass()->ImplementsInterface(UGimmickDebuffInterface::StaticClass()))
+		if (IGimmickDebuffInterface* DebuffActor = Cast<IGimmickDebuffInterface>(OtherActor))
 		{
-			//LOG_Art(Log, TEXT("[DebuffComp]  Debuff condition passed → ApplyMovementDebuff"));
-			IGimmickDebuffInterface::Execute_ApplyMovementDebuff(OtherActor, DebuffSlowRate, -1.f);
+			LOG_Art(Log, TEXT("[DebuffComp] ApplyMovementDebuff 호출 → %s"), *GetNameSafe(OtherActor));
+			DebuffActor->ApplyMovementDebuff_Implementation(DebuffSlowRate, -1.f);
 		}
 		else
 		{
-			//LOG_Art_WARNING(TEXT("[DebuffComp] Actor has debuff tag but does not implement interface: %s"), *OtherActor->GetName());
+			LOG_Art_WARNING(TEXT("[DebuffComp] 인터페이스 캐스팅 실패 → %s"), *GetNameSafe(OtherActor));
 		}
 	}
 	else
 	{
-		//LOG_Art(Log, TEXT("[DebuffComp] Debuff condition failed for %s"), *OtherActor->GetName());
+		LOG_Art(Log, TEXT("[DebuffComp] Debuff condition failed for %s"), *OtherActor->GetName());
 	}
 
 	AffectedActors.Add(OtherActor);
@@ -182,9 +182,16 @@ void UDebuffDamageComponent::StopDamageTimer(AActor* Target)
 
 void UDebuffDamageComponent::RemoveDebuff(AActor* Target)
 {
-	if (Target->GetClass()->ImplementsInterface(UGimmickDebuffInterface::StaticClass()))
+	if (!IsValid(Target)) return;
+
+	if (IGimmickDebuffInterface* DebuffActor = Cast<IGimmickDebuffInterface>(Target))
 	{
-		IGimmickDebuffInterface::Execute_RemoveMovementDebuff(Target);
+		LOG_Art(Log, TEXT("[DebuffComp] RemoveMovementDebuff 호출 → %s"), *GetNameSafe(Target));
+		DebuffActor->RemoveMovementDebuff_Implementation();
+	}
+	else
+	{
+		LOG_Art_WARNING(TEXT("[DebuffComp] RemoveMovementDebuff 캐스팅 실패 → %s"), *GetNameSafe(Target));
 	}
 }
 
@@ -194,7 +201,7 @@ void UDebuffDamageComponent::OnOverlapBegin(UPrimitiveComponent* OverlappedCompo
 	if (!IsValid(OtherActor) || OtherActor == GetOwner())
 		return;
 
-	//LOG_Art(Log, TEXT("[DebuffComp] ▶ OnOverlapBegin → %s"), *OtherActor->GetName());
+	LOG_Art(Log, TEXT("[DebuffComp] OnOverlapBegin → %s"), *OtherActor->GetName());
 
 	OtherActor->OnDestroyed.AddUniqueDynamic(this, &UDebuffDamageComponent::OnTargetDestroyed);
 

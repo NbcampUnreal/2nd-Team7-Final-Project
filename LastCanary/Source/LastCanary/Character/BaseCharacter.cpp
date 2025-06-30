@@ -265,6 +265,7 @@ void ABaseCharacter::BeginPlay()
 		NameWidgetComponent->CastShadow = false;
 	}
 
+	/*
 	if (IsLocallyControlled())
 	{
 		if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
@@ -275,15 +276,17 @@ void ABaseCharacter::BeginPlay()
 			Server_SetCustomizationData(CharacterCustomizationData);
 		}
 	}
-	
+	*/
+
 	//ApplyCustomization(CharacterMeshMap);
 	SetCharacterPoseSynchronization();
 
-	if (HasAuthority())
+	/*
+	if (HasAuthority() && IsLocallyControlled())
 	{
 		ForceUpdateAllPlayerCustomizing();
 	}
-	
+	*/
 	//백팩은 커스터마이징과는 다르게 처리 // 기본은 투명
 	SetBackpackMesh(false);
 
@@ -294,16 +297,16 @@ void ABaseCharacter::BeginPlay()
 void ABaseCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	Super::EndPlay(EndPlayReason);
-
-	LOG_Char_WARNING(TEXT("캐릭터 EndPlay"));
 	GetWorld()->GetTimerManager().ClearAllTimersForObject(this);
 }
 
 void ABaseCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
-
-	SetCharacterPoseSynchronization();
+	if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+	{
+		ApplyCustomization(PS->GetCustomizationData());
+	}
 }
 
 void ABaseCharacter::SetCharacterPoseSynchronization()
@@ -434,13 +437,14 @@ void ABaseCharacter::SetCustomizationData(const FCharacterCustomizationData& Cus
 
 void ABaseCharacter::SetCustomizationDataOnServer()
 {
-	Server_SetCustomizationData(GetCustomizationData());
+	Server_SetCustomizationData(CharacterCustomizationData);
 }
 
 void ABaseCharacter::Server_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData)
 {
 	LOG_Char_WARNING(TEXT("캐릭터 커스터마이징 데이터 서버에 전달됨"));
 	CharacterCustomizationData = CustomizingData;
+	ApplyCustomization(CustomizingData);
 	Multicast_SetCustomizationData(CustomizingData);
 }
 
@@ -460,6 +464,7 @@ void ABaseCharacter::Server_UpdateCustomizationData_Implementation()
 
 void ABaseCharacter::ApplyCustomization(const FCharacterCustomizationData CustomizationData)
 {
+	LOG_Char_WARNING(TEXT("캐릭터 커스터마이징 어플라이"));
 	if (!CharacterMeshMap || !CharacterMeshMap->IsValidLowLevel())
 	{
 		LOG_Char_WARNING(TEXT("캐릭터 메시 데이터 invalid"));
@@ -651,7 +656,6 @@ float ABaseCharacter::GetBrightness()
 	{
 		return 1.0f;
 	}
-	LOG_Char_WARNING(TEXT("플레이어 밝기 설정 초기화 비긴플레이: %f"), PC->BrightnessSetting);
 
 	return PC->BrightnessSetting;
 }
@@ -664,9 +668,6 @@ void ABaseCharacter::SetBrightness(float Value)
 	CustomPostProcessComponent->Settings.AutoExposureMaxBrightness = baseBrightness + 0.1f;
 	CustomPostProcessComponent->Settings.AutoExposureBias = baseBrightness; // 유저 설정값 반영
 	*/
-
-
-	LOG_Char_WARNING(TEXT("플레이어 밝기 설정 초기화 : %f"), Value);
 	// UI 슬라이더 값: 0 ~ 100 → 0.0 ~ 1.0
 	float Normalized = FMath::Clamp(Value, 0.0f, 1.0f);
 
@@ -716,17 +717,6 @@ void ABaseCharacter::NotifyControllerChanged()
 		}
 		PC->SetInputMode(FInputModeGameOnly());
 		PC->bShowMouseCursor = false;
-
-		ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
-		if (IsValid(MyPlayerState))
-		{
-			//SetMovementSetting();
-			LOG_Char_WARNING(TEXT("플레이어 무브먼트 세팅 초기화 성공"));
-		}
-		else
-		{
-			LOG_Char_WARNING(TEXT("플레이어 무브먼트 세팅 초기화 실패"));
-		}
 	}
 
 	Super::NotifyControllerChanged();
@@ -838,8 +828,6 @@ void ABaseCharacter::AttachCameraToRifle()
 			{
 				if (Gun->HasScopeAttached())
 				{
-					LOG_Char_WARNING(TEXT("스코프 장착됨."));
-
 					SpringArm->AttachToComponent(OverlaySkeletalMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("RifleScope"));
 					return;
 				}
@@ -1959,7 +1947,6 @@ void ABaseCharacter::Handle_Interact(const FInputActionValue& ActionValue)
 
 	if (!CurrentFocusedActor)
 	{
-		LOG_Char_WARNING(TEXT("Handle_Interact: No focused actor."));
 		return;
 	}
 
@@ -1983,19 +1970,9 @@ void ABaseCharacter::Handle_Interact(const FInputActionValue& ActionValue)
 			//CancelInteraction();
 			//IInteractableInterface::Execute_Interact(CurrentFocusedActor, PC);
 			LOG_Char_WARNING(TEXT("Handle_Interact: Called Interact on %s"), *actor->GetName());
-			LOG_Char_WARNING(TEXT("Equipped item on slot"));
 			InteractAfterPlayMontage(actor);
 		}
-		else
-		{
-			LOG_Char_WARNING(TEXT("Handle_Interact: Controller is nullptr"));
-		}
 	}
-	else
-	{
-		LOG_Char_WARNING(TEXT("Handle_Interact: %s does not implement IInteractableInterface"), *CurrentFocusedActor->GetName());
-	}
-	LOG_Char_WARNING(TEXT("Interact Ended"));
 }
 
 void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
@@ -2018,16 +1995,13 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 		
 		if (!ToolbarInventoryComponent->CanAddItem(Item))
 		{
-			LOG_Char_WARNING(TEXT("아이템을 주으려 했으나 인벤토리가 꽉참"));
 			if (!Item->IsCollectible())
 			{
-				LOG_Char_WARNING(TEXT("수집형 아이템도 아님"));
 				return;
 			}
 			
 			if (!bBackpackMeshActive)
 			{
-				LOG_Char_WARNING(TEXT("가방이 장착되어 있지 않아 수집형 아이템을 주울 수 없음"));
 				return;
 			}
 		}
@@ -2038,17 +2012,14 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 	{
 		if (InteractTargetActor->Tags.Contains("Roll"))
 		{
-			LOG_Char_WARNING(TEXT("태그는 Roll"));
 			MontageToPlay = OpeningValveMontage;
 		}
 		else if (InteractTargetActor->Tags.Contains("Kick"))
 		{
-			LOG_Char_WARNING(TEXT("태그는 Kick"));
 			MontageToPlay = KickMontage;
 		}
 		else if (InteractTargetActor->Tags.Contains("Press"))
 		{
-			LOG_Char_WARNING(TEXT("태그는 Press"));
 			MontageToPlay = PressButtonMontage;
 		}
 		else
@@ -2063,7 +2034,6 @@ void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
 			{
 				return;
 			}
-			LOG_Char_WARNING(TEXT("excute interact For Interact Tag"));
 			IInteractableInterface::Execute_Interact(InteractTargetActor, PC);
 			return;
 		}
@@ -2191,20 +2161,17 @@ void ABaseCharacter::UseItemAfterPlayMontage(AItemBase* EquippedItem)
 	}
 	else
 	{
-		LOG_Char_WARNING(TEXT("태그가 없음"));
 		//태그가 없으면 바로 실행
 		EquippedItem->UseItem();
 		return;
 	}
 	if (!IsValid(MontageToPlay))
 	{
-		LOG_Char_WARNING(TEXT("Anim Montage does not exist."));
 		return;
 	}
 	CurrentUseItemMontage = MontageToPlay;	
 	bIsPlayingUseItemMontage = true;
 	bIsPlayingAnimation = true;
-	LOG_Char_WARNING(TEXT("플레이 애니메이션."));
 	Server_PlayMontage(MontageToPlay, EAnimationType::UseItem);
 }
 
@@ -2215,7 +2182,6 @@ void ABaseCharacter::Client_SetMiningState_Implementation(bool NewValue)
 
 void ABaseCharacter::UseItemAnimationNotified()
 {
-	LOG_Char_WARNING(TEXT("애니메이션 재생 후 아이템 사용됨"));
 	//재생 후 notify로
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (!IsValid(PC))
@@ -2583,7 +2549,7 @@ void ABaseCharacter::StopCurrentPlayingMontage()
 
 void ABaseCharacter::HandleInventoryUpdated()
 {
-	LOG_Char_WARNING(TEXT("Inventory updated!"));
+	LOG_Item_WARNING(TEXT("Inventory updated!"));
 	RefreshOverlayObject();
 }
 
@@ -4069,7 +4035,8 @@ void ABaseCharacter::OnRep_PlayerState()
 
 	if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
 	{
-		ApplyCustomization(PS->GetCustomizationData());
+		SetCustomizationData(PS->GetCustomizationData());
+		ApplyCustomization(CharacterCustomizationData);
 		SetCustomizationDataOnServer();
 	}
 }

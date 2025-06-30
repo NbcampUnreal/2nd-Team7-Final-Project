@@ -40,6 +40,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Lux")
 	float LightRange;
 
+	/** 빛 발사 지속 시간 (0이면 무한) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Lux")
+	float LuxActiveDuration;
+
+	/** Lux 지속 시간 타이머 */
+	FTimerHandle LuxActiveDurationTimer;
+
 	/** 빛 발사 사운드 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Lux")
 	USoundBase* LightActivateSound;
