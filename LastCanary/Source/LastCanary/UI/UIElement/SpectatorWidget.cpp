@@ -101,7 +101,6 @@ void USpectatorWidget::SetVoiceKeyGuideText()
 
 FString USpectatorWidget::GetCurrentKeyNameForAction(UInputAction* InputAction) const
 {
-	LOG_Frame_WARNING(TEXT("테스트테스트테스트테스트테스트테스트"));
 	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
 	if (IsValid(PC) == false)
 	{
