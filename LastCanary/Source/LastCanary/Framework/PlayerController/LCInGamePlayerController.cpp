@@ -99,26 +99,26 @@ void ALCInGamePlayerController::Client_ShowLoseVideo_Implementation()
 
 void ALCInGamePlayerController::Client_ShowEscapeGateVideo_Implementation(UDataTable* CheckListTable)
 {
-	//this->StartCheckList(CheckListTable);
-	if (EscapeGateWidgetClass && !EscapeGateWidgetInstance)
-	{
-		EscapeGateWidgetInstance = CreateWidget<UVideoPlayWidget>(this, EscapeGateWidgetClass);
-		if (EscapeGateWidgetInstance)
-		{
-			EscapeGateWidgetInstance->AddToViewport(100);
+	this->StartCheckList(CheckListTable);
+	//if (EscapeGateWidgetClass && !EscapeGateWidgetInstance)
+	//{
+	//	EscapeGateWidgetInstance = CreateWidget<UVideoPlayWidget>(this, EscapeGateWidgetClass);
+	//	if (EscapeGateWidgetInstance)
+	//	{
+	//		EscapeGateWidgetInstance->AddToViewport(100);
 
-			EscapeGateWidgetInstance->OnVideoEnded.BindLambda
-			(
-				[this, CheckListTable]()
-				{
-					LOG_Frame_WARNING(TEXT("On Video Play Finished!!"));
-					EscapeGateWidgetInstance = nullptr;
+	//		EscapeGateWidgetInstance->OnVideoEnded.BindLambda
+	//		(
+	//			[this, CheckListTable]()
+	//			{
+	//				LOG_Frame_WARNING(TEXT("On Video Play Finished!!"));
+	//				EscapeGateWidgetInstance = nullptr;
 
-					this->StartCheckList(CheckListTable);
-				}
-			);
-		}
-	}
+	//				this->StartCheckList(CheckListTable);
+	//			}
+	//		);
+	//	}
+	//}
 }
 
 void ALCInGamePlayerController::StartCheckList(UDataTable* CheckListTable)

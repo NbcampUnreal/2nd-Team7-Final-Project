@@ -50,7 +50,7 @@ ALCTransformGimmick::ALCTransformGimmick()
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true;
 	bAlwaysRelevant = true;
-	SetReplicateMovement(false);
+	SetReplicateMovement(true);
 
 }
 
@@ -66,6 +66,16 @@ void ALCTransformGimmick::BeginPlay()
 	OriginalRotationQuat = VisualMesh->GetComponentQuat();
 
 	CurrentRotationQuat = OriginalRotationQuat;
+
+	//LOG_Art(Log, TEXT(" BeginPlay : 초기 위치: %s | 초기 회전: %s"),
+	//	*OriginalLocation.ToCompactString(),
+	//	*OriginalRotation.ToCompactString());
+
+	/*LOG_Art(Log, TEXT(" BeginPlay 호출 테스트 로그"));
+	LOG_Art_WARNING(TEXT("BeginPlay 호출 테스트 경고"));
+	LOG_Art_ERROR(TEXT("BeginPlay 호출 테스트 에러"));
+
+	CHECK_Art(false, ); */
 
 	if (bUseAlternateToggle)
 	{

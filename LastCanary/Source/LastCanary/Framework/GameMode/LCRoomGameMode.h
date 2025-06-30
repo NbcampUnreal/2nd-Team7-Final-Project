@@ -23,6 +23,8 @@ public:
 
 	void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
 
+	void OnAllPlayersJoined();
+
 public:
 	void UpdatePlayers() override;
 

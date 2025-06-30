@@ -13,6 +13,7 @@ ALCRotationLuxStatue::ALCRotationLuxStatue()
 	: bIsLuxActive(false)
 	, LightRange(2000.f)
 	, bUseDebugLine(true)
+	, LuxActiveDuration(0.f)
 {
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true;
@@ -56,6 +57,17 @@ void ALCRotationLuxStatue::ActivateLux()
 	Multicast_PlayLightSound();
 
 	GetWorldTimerManager().SetTimer(LuxEmitTimer, this, &ALCRotationLuxStatue::EmitLuxRay, 0.2f, true);
+
+	if (LuxActiveDuration > 0.f)
+	{
+		GetWorldTimerManager().SetTimer(
+			LuxActiveDurationTimer,
+			this,
+			&ALCRotationLuxStatue::DeactivateLux,
+			LuxActiveDuration,
+			false
+		);
+	}
 }
 
 bool ALCRotationLuxStatue::IsLuxActive() const
@@ -128,6 +140,7 @@ void ALCRotationLuxStatue::DeactivateLux()
 
 	bIsLuxActive = false;
 	GetWorldTimerManager().ClearTimer(LuxEmitTimer);
+	GetWorldTimerManager().ClearTimer(LuxActiveDurationTimer);
 
 	if (LastLitTarget && LastLitTarget->GetClass()->ImplementsInterface(ULCGimmickInterface::StaticClass()))
 	{
