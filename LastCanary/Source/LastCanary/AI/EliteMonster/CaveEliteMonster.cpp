@@ -13,6 +13,8 @@ ACaveEliteMonster::ACaveEliteMonster()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
+	bReplicates = true;
+
 	if (UCapsuleComponent* CapsuleComp = GetCapsuleComponent())
 	{
 		CapsuleComp->SetGenerateOverlapEvents(true);
@@ -40,7 +42,13 @@ void ACaveEliteMonster::PlayGimmickSound()
 
 void ACaveEliteMonster::FreezeAI()
 {
-	if (bIsFrozen || CooldownTimerHandle.IsValid()) return;
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		if (CooldownTimerHandle.IsValid())
+		{
+			return;
+		}
+	}
 
 	bIsFrozen = true;
 
