@@ -43,6 +43,8 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Gimmick")
 	bool bIsFrozen = false;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	bool bIsInCooldown = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
 	USoundBase* GimmickSound;
