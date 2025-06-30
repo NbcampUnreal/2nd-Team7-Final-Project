@@ -917,59 +917,94 @@ void ALCBossSlenderman::Multicast_PlayAttackDistortionEffects_Implementation(con
 
 bool ALCBossSlenderman::RequestAttack(float TargetDistance)
 {
-	// (1) 서버 권한 및 World 유효성 검사
+	// 0) 서버 권한 및 World 유효성 검사
 	if (!HasAuthority())
 		return false;
+
 	UWorld* World = GetWorld();
 	if (!World)
 		return false;
 
-	// (2) AIController·Blackboard로 목표 획득
-	AAIController* AICon = Cast<AAIController>(GetController());
-	UBlackboardComponent* BB = AICon ? AICon->GetBlackboardComponent() : nullptr;
-	AActor* Target = BB ? Cast<AActor>(BB->GetValueAsObject(TEXT("TargetActor"))) : nullptr;
-
-	// (3) 타이머 매니저 취득
-	FTimerManager& TM = World->GetTimerManager();
-
-	// (4) 공격 후보 리스트 구성
-	struct FEntry { float Weight; TFunction<void()> Action; };
-	TArray<FEntry> Entries;
-
-	if (Target && TargetDistance <= ReachSlashRadius
-		&& !TM.IsTimerActive(ReachSlashTimerHandle))
-	{
-		Entries.Add({ 3.f, [this]() { ExecuteReachSlash(); } });
-	}
-
-	if (Target && TargetDistance <= ShadowGraspDistance
-		&& !TM.IsTimerActive(ShadowGraspTimerHandle))
-	{
-		Entries.Add({ 2.f, [this]() { ExecuteShadowGrasp(); } });
-	}
-
-	if (!TM.IsTimerActive(AttackDistortionTimerHandle))
-	{
-		Entries.Add({ 1.f, [this]() { ExecuteAttackDistortion(); } });
-	}
-
-	// (5) 실행 가능한 공격이 없으면
-	if (Entries.Num() == 0)
+	// 1) 컨트롤러 & AIController & Blackboard 유효성 검사
+	AController* C = GetController();
+	if (!C)
 		return false;
 
-	// (6) 가중치 랜덤 선택
-	float TotalWeight = 0.f;
-	for (auto& E : Entries)
-		TotalWeight += E.Weight;
+	AAIController* AICon = Cast<AAIController>(C);
+	if (!AICon)
+		return false;
 
-	float Pick = FMath::FRandRange(0.f, TotalWeight);
-	float Accum = 0.f;
+	UBlackboardComponent* BB = AICon->GetBlackboardComponent();
+	if (!BB)
+		return false;
+
+	// 2) 타겟 획득 (Blackboard에 Object로 저장됨)
+	UObject* Obj = BB->GetValueAsObject(TEXT("TargetActor"));
+	AActor* Target = Cast<AActor>(Obj);
+	const bool bHasTarget = IsValid(Target);
+
+	// 3) 현재 시간
+	const float Now = World->GetTimeSeconds();
+
+	// 4) 쿨타임 기준으로 후보군만 수집 (거리 검사 제거)
+	struct FEntry { float Weight, Range; TFunction<void()> Action; };
+	TArray<FEntry> Entries;
+
+	// ReachSlash
+	if (Now - LastReachSlashTime >= ReachSlashCooldown)
+	{
+		Entries.Add({
+			3.f,                     // 가중치
+			ReachSlashRadius,        // 사거리 정보만 기록
+			[this, Now]() {
+				LastReachSlashTime = Now;
+				ExecuteReachSlash();
+			}
+			});
+	}
+
+	// ShadowGrasp 후보
+	if (Now - LastShadowGraspTime >= ShadowGraspCooldown)
+	{
+		Entries.Add({
+			2.f,
+			ShadowGraspDistance,
+			[this, Now]() {
+				LastShadowGraspTime = Now;
+				ExecuteShadowGrasp();
+			}
+			});
+	}
+
+	// AttackDistortion 후보
+	if (Now - LastAttackDistortionTime >= DistortionCooldown)
+	{
+		Entries.Add({
+			1.f,
+			AttackDistortionRange,
+			[this, Now]() {
+				LastAttackDistortionTime = Now;
+				ExecuteAttackDistortion();
+			}
+			});
+	}
+
+	
+	if (Entries.IsEmpty())
+		return false;
+
+	// 5) 가중치 랜덤 선택
+	float TotalW = 0.f;
+	for (auto& E : Entries) TotalW += E.Weight;
+
+	float Pick = FMath::FRandRange(0.f, TotalW), Acc = 0.f;
 	for (auto& E : Entries)
 	{
-		Accum += E.Weight;
-		if (Pick <= Accum)
+		Acc += E.Weight;
+		if (Pick <= Acc)
 		{
-			E.Action();
+			NextAttackRange = E.Range;
+			NextAttackAction = E.Action;
 			return true;
 		}
 	}
