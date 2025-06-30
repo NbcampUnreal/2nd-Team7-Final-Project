@@ -219,24 +219,29 @@ FVector2D UInventoryWidgetBase::CalculateTooltipScreenPosition() const
 		GEngine->GameViewport->GetViewportSize(ViewportSize);
 	}
 
-	const FVector2D EstimatedTooltipSize(230.f, 230.f);
+	FVector2D TooltipSize = FVector2D(0.f, 0.f);
+	if (SharedTooltipWidget)
+	{
+		TooltipSize = SharedTooltipWidget->GetDesiredSize();
+	}
+
 	const float PaddingOffset = 10.f;
 
 	// 방향 결정
-	bool bShowLeft = (MousePosition.X + EstimatedTooltipSize.X + PaddingOffset > ViewportSize.X);
-	bool bShowAbove = (MousePosition.Y + EstimatedTooltipSize.Y + PaddingOffset > ViewportSize.Y);
+	bool bShowLeft = (MousePosition.X + TooltipSize.X + PaddingOffset > ViewportSize.X);
+	bool bShowAbove = (MousePosition.Y + TooltipSize.Y + PaddingOffset > ViewportSize.Y);
 
 	FVector2D Offset;
-	Offset.X = bShowLeft ? -EstimatedTooltipSize.X - 15.f : 15.f;
-	Offset.Y = bShowAbove ? -EstimatedTooltipSize.Y - 15.f : 15.f;
+	Offset.X = bShowLeft ? -TooltipSize.X - 15.f : 15.f;
+	Offset.Y = bShowAbove ? -TooltipSize.Y - 15.f : 15.f;
 
 	FVector2D DesiredPosition = MousePosition + Offset;
 
 	// Clamp 처리
 	float MinX = PaddingOffset;
 	float MinY = PaddingOffset;
-	float MaxX = ViewportSize.X - EstimatedTooltipSize.X - PaddingOffset;
-	float MaxY = ViewportSize.Y - EstimatedTooltipSize.Y - PaddingOffset;
+	float MaxX = ViewportSize.X - TooltipSize.X - PaddingOffset;
+	float MaxY = ViewportSize.Y - TooltipSize.Y - PaddingOffset;
 
 	DesiredPosition.X = FMath::Clamp(DesiredPosition.X, MinX, MaxX);
 	DesiredPosition.Y = FMath::Clamp(DesiredPosition.Y, MinY, MaxY);
