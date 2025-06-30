@@ -113,6 +113,7 @@ void UInventoryMainWidget::ToggleBackpackInventory()
 	if (bBackpackInventoryOpen)
 	{
 		HideItemDropQuantityWidget();
+		CancelCurrentDragOperation();
 		BackpackWidget->HideTooltip();
 		BackpackWidget->SetVisibility(ESlateVisibility::Collapsed);
 		bBackpackInventoryOpen = false;
@@ -121,6 +122,7 @@ void UInventoryMainWidget::ToggleBackpackInventory()
 	else
 	{
 		BackpackWidget->SetVisibility(ESlateVisibility::Visible);
+		CancelCurrentDragOperation();
 		BackpackWidget->HideTooltip();
 		BackpackWidget->RefreshInventoryUI();
 		bBackpackInventoryOpen = true;
@@ -250,6 +252,27 @@ void UInventoryMainWidget::HandleDropOutsideSlots(UInventorySlotWidget* SourceWi
 		UE_LOG(LogTemp, Log, TEXT("[HandleDropOutsideSlots] 툴바 아이템 드롭 결과: %s (슬롯: %d, 개수: %d)"),
 			bSuccess ? TEXT("성공") : TEXT("실패"), SourceWidget->SlotIndex, Quantity);
 	}
+}
+
+void UInventoryMainWidget::CancelCurrentDragOperation()
+{
+	if (FSlateApplication::IsInitialized())
+	{
+		FSlateApplication& SlateApp = FSlateApplication::Get();
+		if (SlateApp.IsDragDropping())
+		{
+			SlateApp.CancelDragDrop();
+		}
+	}
+}
+
+bool UInventoryMainWidget::IsDragInProgress() const
+{
+	if (FSlateApplication::IsInitialized())
+	{
+		return FSlateApplication::Get().IsDragDropping();
+	}
+	return false;
 }
 
 void UInventoryMainWidget::OnQuantityConfirmed(int32 Quantity)

@@ -60,6 +60,12 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void HandleDropOutsideSlots(UInventorySlotWidget* SourceWidget, int32 Quantity);
 
+	UFUNCTION(BlueprintCallable, Category = "Inventory|Drag")
+	void CancelCurrentDragOperation();
+
+	UFUNCTION(BlueprintPure, Category = "Inventory|Drag")
+	bool IsDragInProgress() const;
+
 	FTimerHandle SlotItemTextTimerHandle;
 
 protected:
