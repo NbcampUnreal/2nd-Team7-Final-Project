@@ -2998,6 +2998,11 @@ void ABaseCharacter::HandlePlayerDeath()
 		return;
 	}
 
+	if (NameWidgetComponent)
+	{
+		NameWidgetComponent->SetVisibility(false, true); // true: 자식까지 모두 비활성화
+	}
+
 	//if 캐릭터가 죽으면
 	//장착 아이템 제거
 	//캐릭터 래그돌
@@ -3062,6 +3067,10 @@ void ABaseCharacter::Multicast_SetPlayerInGameStateOnDie_Implementation()
 	MyPlayerState->CurrentState = EPlayerState::Dead;
 	MyPlayerState->SetInGameStatus(EPlayerInGameStatus::Spectating);
 	SwapHeadMaterialTransparent(false);
+	if (NameWidgetComponent)
+	{
+		NameWidgetComponent->SetVisibility(false, true); // true: 자식까지 모두 비활성화
+	}
 }
 
 float ABaseCharacter::CalculateTakeDamage(float DamageAmount)
