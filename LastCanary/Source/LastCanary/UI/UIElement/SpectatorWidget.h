@@ -23,6 +23,8 @@ protected:
 	UTextBlock* NextKeyText;
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* PlayerName;
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* VoiceKeyGuideText;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	UInputMappingContext* IMC_Default;
@@ -34,4 +36,12 @@ private:
 
 public:
 	void UpdatePlayerName(FString Name);
+
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* IA_Voice;
+
+	UFUNCTION(BlueprintCallable)
+	void SetVoiceKeyGuideText();
+	UFUNCTION(BlueprintCallable)
+	FString GetCurrentKeyNameForAction(UInputAction* InputAction) const;
 };
