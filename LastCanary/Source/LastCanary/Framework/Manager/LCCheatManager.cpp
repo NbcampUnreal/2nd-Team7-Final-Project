@@ -1,15 +1,12 @@
 #include "Framework/Manager/LCCheatManager.h"
 #include "GameFramework/PlayerController.h"
-#include "GameFramework/Character.h"
 #include "GameFramework/Pawn.h"
-#include "GameFramework/CharacterMovementComponent.h"
 
 #include "Character/BasePlayerState.h"
 #include "Character/BaseCharacter.h"
 
 #include "Actor/LCGateActor.h"
 
-#include "AI/BaseAIController.h"
 #include "AI/MonsterSpawnComponent.h"
 #include "AIController.h"
 

@@ -67,6 +67,17 @@ bool UInventoryUtility::IsWalkieTalkieItem(FName ItemRowName, const UDataTable* 
     return ItemData->ItemType.MatchesTag(WalkieTalkieTag);
 }
 
+bool UInventoryUtility::IsNoteItem(FName ItemRowName, UDataTable* ItemDataTable)
+{
+    const FItemDataRow* ItemData = GetItemDataByRowName(ItemRowName, ItemDataTable);
+    if (!ItemData)
+    {
+        return false;
+    }
+
+    return ItemData->bIsNoteItem;
+}
+
 void UInventoryUtility::SetSlotToDefault(FBaseItemSlotData& Slot, const UInventoryConfig* Config)
 {
     FName DefaultName = Config ? Config->DefaultItemRowName : FName("Default");

@@ -38,15 +38,13 @@ void ANoteItem::UseItem()
 	}
 
 	// 클라이언트에게 UI 요청
-	Client_ShowNotePopup(ItemData.NoteContent, ItemData.CandidateNoteImages, SelectedNoteImageIndex);
+	Client_ShowNotePopup(PC, ItemData.NoteContent, ItemData.CandidateNoteImages, SelectedNoteImageIndex);
 }
 
-void ANoteItem::Client_ShowNotePopup_Implementation(const FText& Content, const TArray<TSoftObjectPtr<UTexture2D>>& Images, int32 ImageIndex)
+void ANoteItem::Client_ShowNotePopup_Implementation(APlayerController* TargetController, const FText& Content, const TArray<TSoftObjectPtr<UTexture2D>>& Images, int32 ImageIndex)
 {
-	APawn* OwnerPawn = Cast<APawn>(GetOwner());
-	APlayerController* PC = IsValid(OwnerPawn) ? Cast<APlayerController>(OwnerPawn->GetController()) : nullptr;
-
-	if (IsValid(PC) == false || PC->IsLocalController() == false)
+	APlayerController* LocalPC = GetWorld()->GetFirstPlayerController();
+	if (!LocalPC || LocalPC != TargetController)
 	{
 		return;
 	}

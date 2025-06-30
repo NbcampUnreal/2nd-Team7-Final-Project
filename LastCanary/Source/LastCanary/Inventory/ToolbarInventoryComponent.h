@@ -229,6 +229,9 @@ protected:
     /** 수집품인지 확인 */
     bool IsCollectibleItem(const FItemDataRow* ItemData) const;
 
+    /** 노트 아이템인지 확인 */
+    bool IsNoteItem(FName ItemRowName) const;
+
     /** 아이템 습득 및 드랍 시 플레이어 스테이트와 동기화 */
     void SyncInventoryToPlayerState();
 

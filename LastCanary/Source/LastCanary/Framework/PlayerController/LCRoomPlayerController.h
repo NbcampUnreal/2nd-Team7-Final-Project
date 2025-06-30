@@ -1,10 +1,6 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
-#include "LCPlayerController.h"
-#include "DataType/SessionPlayerInfo.h"
-#include "DataType/GameResultData.h"
-#include "Framework/Manager/ChecklistManager.h"
 #include "Character/BasePlayerController.h"
 #include "DataType/ItemDropData.h"
 #include "LCRoomPlayerController.generated.h"
