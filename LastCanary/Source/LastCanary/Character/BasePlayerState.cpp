@@ -421,7 +421,8 @@ void ABasePlayerState::SetCustomizationData()
 	{
 		if (ABaseCharacter* MyCharacter = Cast<ABaseCharacter>(GetPawn()))
 		{
-			MyCharacter->ApplyCustomization(CustomizatiomData);
+			MyCharacter->SetCustomizationData(CustomizatiomData);
+//			MyCharacter->ApplyCustomization(CustomizatiomData);
 		}
 
 	}

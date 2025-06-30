@@ -46,6 +46,8 @@
 #include "Inventory/BackpackManager.h"
 #include "Engine/DamageEvents.h"
 #include "AI/BaseBossMonsterCharacter.h"
+#include "Framework/GameMode/LCGameMode.h"
+
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -292,7 +294,43 @@ void ABaseCharacter::BeginPlay()
 
 	KickHitBox->OnComponentBeginOverlap.AddUniqueDynamic(this, &ABaseCharacter::OnKickHitBoxOverlap);
 
+
+	if (IsLocallyControlled())
+	{
+		Server_ClientLogin();
+	}
 }
+
+void ABaseCharacter::Server_ClientLogin_Implementation()
+{
+	if (HasAuthority())
+	{
+		if (ALCGameMode* GM = GetWorld()->GetAuthGameMode<ALCGameMode>())
+		{
+			LOG_Char_WARNING(TEXT("빙의 성공"));
+
+			//GM->PlayerPossessedByPawn();
+		}
+	}
+}
+
+void ABaseCharacter::CheckPlayerCharacterIsReadyToGameMode()
+{
+	if (bPossessedCheck == true)
+	{
+		return;
+	}
+	if (HasAuthority())
+	{
+		if (ALCGameMode* GM = GetWorld()->GetAuthGameMode<ALCGameMode>())
+		{
+			LOG_Char_WARNING(TEXT("준비 성공"));
+			bPossessedCheck = true;
+			GM->PlayerPossessedByPawn();
+		}
+	}
+}
+
 
 void ABaseCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
@@ -303,10 +341,17 @@ void ABaseCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void ABaseCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
-	if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+	/*
+	if (HasAuthority())
 	{
-		ApplyCustomization(PS->GetCustomizationData());
+		if (ALCGameMode* GM = GetWorld()->GetAuthGameMode<ALCGameMode>())
+		{
+			LOG_Char_WARNING(TEXT("빙의 성공"));
+
+			GM->PlayerPossessedByPawn();
+		}
 	}
+	*/
 }
 
 void ABaseCharacter::SetCharacterPoseSynchronization()
@@ -445,6 +490,7 @@ void ABaseCharacter::Server_SetCustomizationData_Implementation(const FCharacter
 	LOG_Char_WARNING(TEXT("캐릭터 커스터마이징 데이터 서버에 전달됨"));
 	CharacterCustomizationData = CustomizingData;
 	ApplyCustomization(CustomizingData);
+	CheckPlayerCharacterIsReadyToGameMode();
 	Multicast_SetCustomizationData(CustomizingData);
 }
 
@@ -4037,7 +4083,7 @@ void ABaseCharacter::OnRep_PlayerState()
 	{
 		SetCustomizationData(PS->GetCustomizationData());
 		ApplyCustomization(CharacterCustomizationData);
-		SetCustomizationDataOnServer();
+		//SetCustomizationDataOnServer();
 	}
 }
 

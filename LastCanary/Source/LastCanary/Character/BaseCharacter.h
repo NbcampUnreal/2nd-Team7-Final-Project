@@ -149,7 +149,7 @@ public:
 
 	FCharacterCustomizationData CharacterCustomizationData;
 
-
+	bool bPossessedCheck = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
 	USkeletalMesh* BackpackSkeletalMesh;
@@ -261,6 +261,12 @@ protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void PossessedBy(AController* NewController) override;
+	
+	UFUNCTION(Server, Reliable)
+	void Server_ClientLogin();
+	void Server_ClientLogin_Implementation();
+
+	void CheckPlayerCharacterIsReadyToGameMode();
 	// Camera Settings
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Camera", Meta = (ClampMin = 0, ClampMax = 90, ForceUnits = "deg"))
