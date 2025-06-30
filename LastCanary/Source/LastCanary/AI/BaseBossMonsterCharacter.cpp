@@ -68,6 +68,21 @@ void ABaseBossMonsterCharacter::BeginPlay()
     }
 }
 
+float ABaseBossMonsterCharacter::GetNextAttackRange() const
+{
+    return NextAttackRange;
+}
+
+void ABaseBossMonsterCharacter::ExecuteSelectedAttack()
+{
+    if (NextAttackAction)
+        NextAttackAction();
+
+    // 실행 후 초기화
+    NextAttackAction = nullptr;
+    NextAttackRange = 0.f;
+}
+
 bool ABaseBossMonsterCharacter::RequestAttack(float TargetDistance)
 {
 

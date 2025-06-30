@@ -14,6 +14,16 @@ public:
     ABaseBossMonsterCharacter();
 	virtual void BeginPlay() override;
 
+    /** 공격 범위(반경)를 읽어오는 Getter */
+    UFUNCTION(BlueprintCallable, Category = "Attack")
+    float GetNextAttackRange() const;
+
+    /** 다음에 실행할 공격 액션 */
+    TFunction<void()> NextAttackAction;
+
+    /** RequestNextAttack() 로 선택된 스킬을 실행합니다. */
+    void ExecuteSelectedAttack();
+
     /** Berserk FX 컴포넌트 (미리 생성해 두고 Activate/Deactivate) */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Effects|Berserk")
     UNiagaraComponent* AuraFX;
@@ -41,9 +51,8 @@ public:
     UPROPERTY(EditAnywhere, Category = "Attack")
     float StrongAttackDamage = 50.f;
 
-    /** 공격 범위 (반경) */
-    UPROPERTY(EditAnywhere, Category = "Attack")
-    float AttackRange = 200.f;
+    UPROPERTY(VisibleAnywhere, Category = "AI")
+    float NextAttackRange;
 
     /** ── Rage ── */
     UPROPERTY(EditAnywhere, Category = "Boss|Rage")
@@ -72,6 +81,10 @@ public:
 protected:
     float LastNormalTime = -FLT_MAX;
     float LastStrongTime = -FLT_MAX;
+
+    /** 공격 범위 (반경) */
+    UPROPERTY(EditAnywhere, Category = "Attack")
+    float AttackRange = 200.f;
 
     /** ── 광폭화(Berserk) 상태 ── */
 

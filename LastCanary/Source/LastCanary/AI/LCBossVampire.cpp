@@ -328,19 +328,12 @@ void ALCBossVampire::ExecuteCrimsonSlash()
     UWorld* World = GetWorld();
     if (!World) return;
 
-    // (2) 쿨다운 타이머 설정
-    World->GetTimerManager().SetTimer(
-        CrimsonSlashHandle,
-        CrimsonSlashCooldown,
-        false
-    );
-
     UE_LOG(LogTemp, Warning, TEXT("[Vampire] CrimsonSlash"));
 
-    // (3) FX/SFX 멀티캐스트
+    // (2) FX/SFX 멀티캐스트
     Multicast_PlayCrimsonSlashEffects();
 
-    // (4) 범위 내 플레이어 데미지 적용
+    // (3) 범위 내 플레이어 데미지 적용
     TArray<FHitResult> Hits;
     if (World->SweepMultiByChannel(
         Hits,
@@ -556,20 +549,12 @@ void ALCBossVampire::ExecuteSanguineBurst()
     if (!World)
         return;
 
-    // (2) 쿨다운 타이머 재설정
-    World->GetTimerManager().SetTimer(
-        BurstHandle,
-        this, &ALCBossVampire::ExecuteSanguineBurst,
-        SanguineBurstCooldown,
-        false
-    );
-
     UE_LOG(LogTemp, Warning, TEXT("[Vampire] ExecuteSanguineBurst"));
 
-    // (3) 모든 클라이언트에 FX/SFX 재생 요청
+    // (2) 모든 클라이언트에 FX/SFX 재생 요청
     Multicast_PlaySanguineBurstEffects();
 
-    // (4) 범위 내 플레이어에게 데미지 적용
+    // (3) 범위 내 플레이어에게 데미지 적용
     TArray<FHitResult> Hits;
     if (World->SweepMultiByChannel(
         Hits,
@@ -828,60 +813,83 @@ void ALCBossVampire::EndBerserk()
 
 bool ALCBossVampire::RequestAttack(float TargetDistance)
 {
-    // 1) 서버 전용 & 월드 유효성 검사
+    // 0) 서버 권한 및 World 유효성 검사
     if (!HasAuthority())
         return false;
+
     UWorld* World = GetWorld();
     if (!World)
         return false;
-    FTimerManager& TimerManager = World->GetTimerManager();
 
-    // 2) 가능한 공격 목록 수집
-    struct FAttackEntry { float Weight; TFunction<void()> Action; };
-    TArray<FAttackEntry> Entries;
-
-    // Crimson Slash (근접)
-    if (TargetDistance <= CrimsonSlashRadius
-        && !TimerManager.IsTimerActive(CrimsonSlashHandle))
-    {
-        Entries.Add({ 3.f, [this]() {
-            ExecuteCrimsonSlash();
-        } });
-    }
-
-    // Sanguine Burst (중거리)
-    if (TargetDistance <= SanguineBurstRadius
-        && !TimerManager.IsTimerActive(BurstHandle))
-    {
-        Entries.Add({ 2.f, [this]() {
-            ExecuteSanguineBurst();
-        } });
-    }
-
-    // 3) 선택지 없으면 false 반환
-    if (Entries.Num() == 0)
+    // 1) 컨트롤러 & AIController & Blackboard 유효성 검사
+    AController* C = GetController();
+    if (!C)
         return false;
 
-    // 4) 가중치 합산
-    float TotalWeight = 0.f;
-    for (const auto& E : Entries)
-        TotalWeight += E.Weight;
-    if (TotalWeight <= KINDA_SMALL_NUMBER)
+    AAIController* AICon = Cast<AAIController>(C);
+    if (!AICon)
         return false;
 
-    // 5) 랜덤 선택
-    float Pick = FMath::FRandRange(0.f, TotalWeight);
-    float Accum = 0.f;
-    for (const auto& E : Entries)
+    UBlackboardComponent* BB = AICon->GetBlackboardComponent();
+    if (!BB)
+        return false;
+
+    // 2) 타겟 획득 (Blackboard에 Object로 저장됨)
+    UObject* Obj = BB->GetValueAsObject(TEXT("TargetActor"));
+    AActor* Target = Cast<AActor>(Obj);
+    const bool bHasTarget = IsValid(Target);
+
+    // 3) 현재 시간
+    const float Now = World->GetTimeSeconds();
+
+    // 4) 쿨타임 기준으로 후보군만 수집 (거리 검사 제거)
+    struct FEntry { float Weight, Range; TFunction<void()> Action; };
+    TArray<FEntry> Entries;
+
+    //  Crimson Slash
+    if (Now - LastCrimsonSlashTime >= CrimsonSlashCooldown)
     {
-        Accum += E.Weight;
-        if (Pick <= Accum)
+        Entries.Add({
+            3.f,
+            CrimsonSlashRadius,
+            [this, Now]() {
+                LastCrimsonSlashTime = Now;
+                ExecuteCrimsonSlash();
+            }
+            });
+    }
+
+    // Sanguine Burst
+    if (Now - LastBurstTime >= SanguineBurstCooldown)
+    {
+        Entries.Add({
+            2.f,
+            SanguineBurstRadius,
+            [this, Now]() {
+                LastBurstTime = Now;
+                ExecuteSanguineBurst();
+            }
+            });
+    }
+
+    if (Entries.IsEmpty())
+        return false;
+
+    // 5) 가중치 선택
+    float TotalW = 0.f;
+    for (auto& E : Entries) TotalW += E.Weight;
+
+    float Pick = FMath::FRandRange(0.f, TotalW), Acc = 0.f;
+    for (auto& E : Entries)
+    {
+        Acc += E.Weight;
+        if (Pick <= Acc)
         {
-            E.Action();
+            NextAttackRange = E.Range;
+            NextAttackAction = E.Action;
             return true;
         }
     }
-
     return false;
 }
 

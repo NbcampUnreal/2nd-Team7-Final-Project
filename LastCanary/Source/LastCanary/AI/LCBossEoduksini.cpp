@@ -890,64 +890,104 @@ void ALCBossEoduksini::Multicast_OnVoidGrasp_Implementation()
 
 bool ALCBossEoduksini::RequestAttack(float TargetDistance)
 {
-	if (!HasAuthority()) return false;
+	// 0) 서버 권한 및 World 유효성 검사
+	if (!HasAuthority())
+		return false;
 
 	UWorld* World = GetWorld();
-	if (!World) return false;
+	if (!World)
+		return false;
 
-	const float Now = GetWorld()->GetTimeSeconds();
-	struct FEntry { float Weight; TFunction<void()> Action; };
+	// 1) 컨트롤러 & AIController & Blackboard 유효성 검사
+	AController* C = GetController();
+	if (!C)
+		return false;
+
+	AAIController* AICon = Cast<AAIController>(C);
+	if (!AICon)
+		return false;
+
+	UBlackboardComponent* BB = AICon->GetBlackboardComponent();
+	if (!BB)
+		return false;
+
+	// 2) 타겟 획득 (Blackboard에 Object로 저장됨)
+	UObject* Obj = BB->GetValueAsObject(TEXT("TargetActor"));
+	AActor* Target = Cast<AActor>(Obj);
+	const bool bHasTarget = IsValid(Target);
+
+	// 3) 현재 시간
+	const float Now = World->GetTimeSeconds();
+
+	struct FEntry { float Weight, Range; TFunction<void()> Action; };
 	TArray<FEntry> Entries;
 
-	// 1) ShadowEcho
-	if (TargetDistance <= ShadowEchoRange
-		&& Now - LastShadowEchoTime >= ShadowEchoInterval
+	// 1) ShadowEcho 후보
+	if (Now - LastShadowEchoTime >= ShadowEchoInterval
 		&& ShadowEchoWeight > 0.f)
 	{
-		Entries.Add({ ShadowEchoWeight, [this, Now]()
-		{
-			LastShadowEchoTime = Now;
-			ShadowEcho();
-		} });
+		Entries.Add({
+			ShadowEchoWeight,
+			ShadowEchoRange,
+			[this, Now]() {
+				LastShadowEchoTime = Now;
+				ShadowEcho();
+			}
+			});
 	}
 
-	// 2) NightmareGrasp
-	if (TargetDistance <= NightmareGraspRange && Now - LastNightmareGraspTime >= NightmareGraspInterval && NightmareGraspWeight > 0.f)
+	// 2) NightmareGrasp 후보
+	if (Now - LastNightmareGraspTime >= NightmareGraspInterval
+		&& NightmareGraspWeight > 0.f)
 	{
-		Entries.Add({ NightmareGraspWeight, [this, Now]()
-		{
-			LastNightmareGraspTime = Now;
-			UE_LOG(LogTemp, Log, TEXT("[Eodu] NightmareGrasp 실행"));
-			NightmareGrasp();
-		} });
+		Entries.Add({
+			NightmareGraspWeight,
+			NightmareGraspRange,
+			[this, Now]() {
+				LastNightmareGraspTime = Now;
+				UE_LOG(LogTemp, Log, TEXT("[Eoduksini] NightmareGrasp 실행"));
+				NightmareGrasp();
+			}
+			});
 	}
 
-	// 3) 근접계열 (ShadowSwipe)
-	if (TargetDistance <= ShadowSwipeRange && Now - LastNormalTime >= NormalAttackCooldown && ShadowSwipeWeight > 0.f)
+	// 3) ShadowSwipe 후보
+	if (Now - LastNormalTime >= NormalAttackCooldown
+		&& ShadowSwipeWeight > 0.f)
 	{
-		Entries.Add({ ShadowSwipeWeight, [this, Now]()
-		{
-			LastNormalTime = Now;
-			UE_LOG(LogTemp, Log, TEXT("[Eodu] ShadowSwipe 실행"));
-			ShadowSwipe();
-		} });
+		Entries.Add({
+			ShadowSwipeWeight,
+			ShadowSwipeRange,
+			[this, Now]() {
+				LastNormalTime = Now;
+				UE_LOG(LogTemp, Log, TEXT("[Eoduksini] ShadowSwipe 실행"));
+				ShadowSwipe();
+			}
+			});
 	}
 
-	// 4) 견인계열 (VoidGrasp)
-	if (TargetDistance <= VoidGraspRange && Now - LastStrongTime >= StrongAttackCooldown && VoidGraspWeight > 0.f)
+	// 4) VoidGrasp 후보
+	if (Now - LastStrongTime >= StrongAttackCooldown
+		&& VoidGraspWeight > 0.f)
 	{
-		Entries.Add({ VoidGraspWeight, [this, Now]()
-		{
-			LastStrongTime = Now;
-			UE_LOG(LogTemp, Log, TEXT("[Eodu] VoidGrasp 실행"));
-			VoidGrasp();
-		} });
+		Entries.Add({
+			VoidGraspWeight,
+			VoidGraspRange,
+			[this, Now]() {
+				LastStrongTime = Now;
+				UE_LOG(LogTemp, Log, TEXT("[Eoduksini] VoidGrasp 실행"));
+				VoidGrasp();
+			}
+			});
 	}
 
-	// 가중치 랜덤 선택
+	// 5) 후보 없으면 실패
+	if (Entries.Num() == 0)
+		return false;
+
+	// 6) 가중치 랜덤 선택만, 실행은 나중에
 	float TotalW = 0.f;
 	for (auto& E : Entries) TotalW += E.Weight;
-	if (TotalW <= 0.f) return false;
 
 	float Pick = FMath::FRandRange(0.f, TotalW), Acc = 0.f;
 	for (auto& E : Entries)
@@ -955,8 +995,9 @@ bool ALCBossEoduksini::RequestAttack(float TargetDistance)
 		Acc += E.Weight;
 		if (Pick <= Acc)
 		{
-			E.Action();
-			return true;
+			NextAttackRange = E.Range;
+			NextAttackAction = E.Action;
+			return true;  // 선택만 하고 즉시 실행하지 않음
 		}
 	}
 
