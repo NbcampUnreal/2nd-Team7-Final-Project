@@ -1,7 +1,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "DataTable/MapDataRow.h"
 #include "GameFramework/GameStateBase.h"
 #include "LCGameState.generated.h"
 

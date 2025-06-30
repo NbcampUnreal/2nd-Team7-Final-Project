@@ -7,6 +7,7 @@
 #include "InventoryMainWidget.generated.h"
 
 class UToolbarInventoryWidget;
+class UToolbarInventoryComponent;
 class UBackpackInventoryWidget;
 class UItemDropQuantityWidget;
 class UInventorySlotWidget;
@@ -59,6 +60,15 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void HandleDropOutsideSlots(UInventorySlotWidget* SourceWidget, int32 Quantity);
 
+	UFUNCTION(BlueprintCallable, Category = "Inventory|Drag")
+	void CancelCurrentDragOperation();
+
+	UFUNCTION(BlueprintPure, Category = "Inventory|Drag")
+	bool IsDragInProgress() const;
+
+	UToolbarInventoryWidget* GetToolbarWidget();
+	UBackpackInventoryWidget* GetBackpackWidget();
+
 	FTimerHandle SlotItemTextTimerHandle;
 
 protected:
@@ -99,4 +109,8 @@ public:
 
 private:
 	void InitializeGunAmmoUI();
+
+	void RestoreGunAmmoUIState();
+
+	UToolbarInventoryComponent* GetOwnerToolbarComponent() const;
 };

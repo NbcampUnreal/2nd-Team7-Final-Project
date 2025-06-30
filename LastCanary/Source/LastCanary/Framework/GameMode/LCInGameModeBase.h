@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 
 #include "CoreMinimal.h"
 #include "DataTable/BossMonsterRow.h"
@@ -16,7 +16,7 @@ class LASTCANARY_API ALCInGameModeBase : public ALCGameMode
 public:
 	ALCInGameModeBase();
 
-	// ¾ğ¸®¾ó ¿£ÁøÀÇ ¶óÀÌÇÁ »çÀÌÅ¬
+	// ì–¸ë¦¬ì–¼ ì—”ì§„ì˜ ë¼ì´í”„ ì‚¬ì´í´
 	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
 	virtual void InitGameState() override;
 

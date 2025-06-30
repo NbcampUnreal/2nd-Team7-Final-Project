@@ -1,8 +1,9 @@
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "UI/Manager/LCUIManagerSettings.h"
-#include "Engine/Engine.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "DataTable/GunDataRow.h"
 
+#include "Engine/Engine.h"
 #include "LastCanary.h"
 
 

@@ -22,8 +22,8 @@ public:
 
 protected:
 	UFUNCTION(Client, Reliable)
-	void Client_ShowNotePopup(const FText& Content, const TArray<TSoftObjectPtr<UTexture2D>>& Images, int32 ImageIndex);
-	void Client_ShowNotePopup_Implementation(const FText& Content, const TArray<TSoftObjectPtr<UTexture2D>>& Images, int32 ImageIndex);
+	void Client_ShowNotePopup(APlayerController* TargetController, const FText& Content, const TArray<TSoftObjectPtr<UTexture2D>>& Images, int32 ImageIndex);
+	void Client_ShowNotePopup_Implementation(APlayerController* TargetController, const FText& Content, const TArray<TSoftObjectPtr<UTexture2D>>& Images, int32 ImageIndex);
 
 	/** 노트 이미지 인덱스 최초 선택 */
 	void InitializeNoteImageIndex();

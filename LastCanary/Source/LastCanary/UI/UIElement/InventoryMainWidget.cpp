@@ -5,6 +5,7 @@
 #include "UI/UIObject/ItemDropQuantityWidget.h"
 #include "UI/UIObject/BackpackSlotWidget.h"
 #include "UI/UIObject/GunAmmoWidget.h"
+#include "Inventory/ToolbarInventoryComponent.h"
 #include "Character/BaseCharacter.h"
 #include "DataType/BaseItemSlotData.h"
 #include "Inventory/ToolbarInventoryComponent.h"
@@ -22,7 +23,7 @@ void UInventoryMainWidget::NativeConstruct()
 
 	ShowToolbarOnly();
 
-	InitializeGunAmmoUI();
+	RestoreGunAmmoUIState();
 }
 
 bool UInventoryMainWidget::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
@@ -112,6 +113,8 @@ void UInventoryMainWidget::ToggleBackpackInventory()
 	if (bBackpackInventoryOpen)
 	{
 		HideItemDropQuantityWidget();
+		CancelCurrentDragOperation();
+		BackpackWidget->HideTooltip();
 		BackpackWidget->SetVisibility(ESlateVisibility::Collapsed);
 		bBackpackInventoryOpen = false;
 		LOG_Item_WARNING(TEXT("[ToggleBackpackInventory] 가방 인벤토리 닫기 (드롭 위젯 포함)"));
@@ -119,6 +122,8 @@ void UInventoryMainWidget::ToggleBackpackInventory()
 	else
 	{
 		BackpackWidget->SetVisibility(ESlateVisibility::Visible);
+		CancelCurrentDragOperation();
+		BackpackWidget->HideTooltip();
 		BackpackWidget->RefreshInventoryUI();
 		bBackpackInventoryOpen = true;
 		LOG_Item_WARNING(TEXT("[ToggleBackpackInventory] 가방 인벤토리 열기"));
@@ -249,6 +254,46 @@ void UInventoryMainWidget::HandleDropOutsideSlots(UInventorySlotWidget* SourceWi
 	}
 }
 
+void UInventoryMainWidget::CancelCurrentDragOperation()
+{
+	if (FSlateApplication::IsInitialized())
+	{
+		FSlateApplication& SlateApp = FSlateApplication::Get();
+		if (SlateApp.IsDragDropping())
+		{
+			SlateApp.CancelDragDrop();
+		}
+	}
+
+	if (ToolbarWidget)
+	{
+		ToolbarWidget->HideTooltip();
+	}
+	if (BackpackWidget)
+	{
+		BackpackWidget->HideTooltip();
+	}
+}
+
+bool UInventoryMainWidget::IsDragInProgress() const
+{
+	if (FSlateApplication::IsInitialized())
+	{
+		return FSlateApplication::Get().IsDragDropping();
+	}
+	return false;
+}
+
+UToolbarInventoryWidget* UInventoryMainWidget::GetToolbarWidget()
+{
+	return ToolbarWidget;
+}
+
+UBackpackInventoryWidget* UInventoryMainWidget::GetBackpackWidget()
+{
+	return BackpackWidget;
+}
+
 void UInventoryMainWidget::OnQuantityConfirmed(int32 Quantity)
 {
 	if (PendingDropSourceWidget)
@@ -258,14 +303,14 @@ void UInventoryMainWidget::OnQuantityConfirmed(int32 Quantity)
 
 	HideItemDropQuantityWidget();
 
-	UE_LOG(LogTemp, Log, TEXT("[OnQuantityConfirmed] 드롭 확인: %d개"), Quantity);
+	LOG_Item_WARNING(TEXT("[OnQuantityConfirmed] 드롭 확인: %d개"), Quantity);
 }
 
 void UInventoryMainWidget::OnQuantityCanceled()
 {
 	HideItemDropQuantityWidget();
 
-	UE_LOG(LogTemp, Log, TEXT("[OnQuantityCanceled] 드롭 취소됨"));
+	LOG_Item_WARNING(TEXT("[OnQuantityCanceled] 드롭 취소됨"));
 }
 
 void UInventoryMainWidget::RefreshInventory()
@@ -307,4 +352,54 @@ void UInventoryMainWidget::InitializeGunAmmoUI()
 	{
 		GunAmmoWidget->SetVisibility(ESlateVisibility::Hidden);
 	}
+}
+
+void UInventoryMainWidget::RestoreGunAmmoUIState()
+{
+	InitializeGunAmmoUI();
+
+	// 현재 장착된 총기가 있는지 확인
+	UToolbarInventoryComponent* ToolbarComp = GetOwnerToolbarComponent();
+	if (!ToolbarComp)
+	{
+		LOG_Item_WARNING(TEXT("[RestoreGunAmmoUIState] ToolbarComponent를 찾을 수 없음"));
+		return;
+	}
+
+	// 현재 장착된 아이템 확인
+	AItemBase* CurrentEquippedItem = ToolbarComp->GetCurrentEquippedItem();
+	if (!CurrentEquippedItem)
+	{
+		LOG_Item_WARNING(TEXT("[RestoreGunAmmoUIState] 장착된 아이템 없음"));
+		return;
+	}
+
+	// 총기인지 확인
+	AGunBase* EquippedGun = Cast<AGunBase>(CurrentEquippedItem);
+	if (!EquippedGun)
+	{
+		LOG_Item_WARNING(TEXT("[RestoreGunAmmoUIState] 장착된 아이템이 총기가 아님"));
+		return;
+	}
+
+	// 총기 UI 복원
+	int32 CurrentAmmo = FMath::RoundToInt(EquippedGun->Durability);
+	int32 MaxAmmo = FMath::RoundToInt(EquippedGun->MaxDurability);
+
+	if (GunAmmoWidget && MaxAmmo > 0)
+	{
+		GunAmmoWidget->ShowAmmoUI(CurrentAmmo, MaxAmmo, EquippedGun->CurrentFireMode, EquippedGun->AvailableFireModes);
+		LOG_Item_WARNING(TEXT("[RestoreGunAmmoUIState] 총기 UI 복원 완료: %d/%d"), CurrentAmmo, MaxAmmo);
+	}
+}
+
+UToolbarInventoryComponent* UInventoryMainWidget::GetOwnerToolbarComponent() const
+{
+	APlayerController* PC = GetOwningPlayer();
+	if (!PC || !PC->GetPawn())
+	{
+		return nullptr;
+	}
+
+	return PC->GetPawn()->FindComponentByClass<UToolbarInventoryComponent>();
 }

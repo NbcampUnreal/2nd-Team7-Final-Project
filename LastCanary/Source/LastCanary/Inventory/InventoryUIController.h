@@ -57,6 +57,10 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Inventory UI")
     void HideTooltip();
 
+    /** 모든 인벤토리 위젯의 툴팁 숨기기 */
+    UFUNCTION(BlueprintCallable, Category = "UI|Tooltip")
+    void HideAllTooltips();
+
     //-----------------------------------------------------
     // 가방 UI
     //-----------------------------------------------------
