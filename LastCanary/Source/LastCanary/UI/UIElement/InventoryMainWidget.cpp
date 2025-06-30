@@ -264,6 +264,15 @@ void UInventoryMainWidget::CancelCurrentDragOperation()
 			SlateApp.CancelDragDrop();
 		}
 	}
+
+	if (ToolbarWidget)
+	{
+		ToolbarWidget->HideTooltip();
+	}
+	if (BackpackWidget)
+	{
+		BackpackWidget->HideTooltip();
+	}
 }
 
 bool UInventoryMainWidget::IsDragInProgress() const
@@ -275,6 +284,16 @@ bool UInventoryMainWidget::IsDragInProgress() const
 	return false;
 }
 
+UToolbarInventoryWidget* UInventoryMainWidget::GetToolbarWidget()
+{
+	return ToolbarWidget;
+}
+
+UBackpackInventoryWidget* UInventoryMainWidget::GetBackpackWidget()
+{
+	return BackpackWidget;
+}
+
 void UInventoryMainWidget::OnQuantityConfirmed(int32 Quantity)
 {
 	if (PendingDropSourceWidget)
@@ -284,14 +303,14 @@ void UInventoryMainWidget::OnQuantityConfirmed(int32 Quantity)
 
 	HideItemDropQuantityWidget();
 
-	UE_LOG(LogTemp, Log, TEXT("[OnQuantityConfirmed] 드롭 확인: %d개"), Quantity);
+	LOG_Item_WARNING(TEXT("[OnQuantityConfirmed] 드롭 확인: %d개"), Quantity);
 }
 
 void UInventoryMainWidget::OnQuantityCanceled()
 {
 	HideItemDropQuantityWidget();
 
-	UE_LOG(LogTemp, Log, TEXT("[OnQuantityCanceled] 드롭 취소됨"));
+	LOG_Item_WARNING(TEXT("[OnQuantityCanceled] 드롭 취소됨"));
 }
 
 void UInventoryMainWidget::RefreshInventory()

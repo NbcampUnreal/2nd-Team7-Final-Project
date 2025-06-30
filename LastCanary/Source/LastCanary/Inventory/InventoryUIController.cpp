@@ -2,6 +2,8 @@
 #include "Inventory/InventoryComponentBase.h"
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "UI/UIElement/InventoryMainWidget.h"
+#include "UI/UIElement/BackpackInventoryWidget.h"
+#include "UI/UIElement/ToolbarInventoryWidget.h"
 #include "UI/Manager/LCUIManager.h"
 #include "Character/BaseCharacter.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
@@ -112,6 +114,32 @@ void UInventoryUIController::HideTooltip()
     // 현재 시스템에서는 각 슬롯 위젯이 개별적으로 툴팁을 관리하므로
     // 이 함수는 로깅용으로만 사용
     LOG_Item_WARNING(TEXT("[InventoryUIController::HideTooltip] 툴팁 숨김"));
+}
+
+void UInventoryUIController::HideAllTooltips()
+{
+    if (!IsLocalPlayer())
+    {
+        return;
+    }
+
+    if (ULCUIManager* UIManager = GetUIManager())
+    {
+        if (UInventoryMainWidget* InventoryWidget = UIManager->GetInventoryMainWidget())
+        {
+            InventoryWidget->CancelCurrentDragOperation();
+
+            if (InventoryWidget->GetToolbarWidget())
+            {
+                InventoryWidget->GetToolbarWidget()->HideTooltip();
+            }
+
+            if (InventoryWidget->GetBackpackWidget())
+            {
+                InventoryWidget->GetBackpackWidget()->HideTooltip();
+            }
+        }
+    }
 }
 
 void UInventoryUIController::ShowBackpackUI(const TArray<FBackpackSlotData>& BackpackSlots)

@@ -66,6 +66,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Inventory|Drag")
 	bool IsDragInProgress() const;
 
+	UToolbarInventoryWidget* GetToolbarWidget();
+	UBackpackInventoryWidget* GetBackpackWidget();
+
 	FTimerHandle SlotItemTextTimerHandle;
 
 protected:

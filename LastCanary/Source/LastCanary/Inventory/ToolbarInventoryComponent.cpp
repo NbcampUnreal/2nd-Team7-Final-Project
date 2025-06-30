@@ -476,6 +476,11 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
         return;
     }
 
+    if (UIController)
+    {
+        UIController->HideAllTooltips();
+    }
+
     SyncEquippedItemDurabilityToSlot();
     SyncGunStateToSlot();
 

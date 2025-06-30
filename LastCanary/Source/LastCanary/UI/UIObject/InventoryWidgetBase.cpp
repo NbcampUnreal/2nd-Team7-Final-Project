@@ -10,7 +10,7 @@ void UInventoryWidgetBase::NativeConstruct()
 
 	if (!SlotWidgetClass)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[InventoryWidgetBase::NativeConstruct] SlotWidgetClass가 설정되지 않음. 블루프린트에서 설정하세요."));
+		LOG_Item_WARNING(TEXT("[InventoryWidgetBase::NativeConstruct] SlotWidgetClass가 설정되지 않음. 블루프린트에서 설정하세요."));
 	}
 
 	CreateSharedTooltipWidget();
@@ -35,7 +35,7 @@ void UInventoryWidgetBase::CreateSharedTooltipWidget()
 {
 	if (!TooltipWidgetClass)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[InventoryWidgetBase::CreateSharedTooltipWidget] TooltipWidgetClass가 설정되지 않음"));
+		LOG_Item_WARNING(TEXT("[InventoryWidgetBase::CreateSharedTooltipWidget] TooltipWidgetClass가 설정되지 않음"));
 		return;
 	}
 
@@ -44,11 +44,11 @@ void UInventoryWidgetBase::CreateSharedTooltipWidget()
 		SharedTooltipWidget = CreateWidget<UItemTooltipWidget>(this, TooltipWidgetClass);
 		if (!SharedTooltipWidget)
 		{
-			UE_LOG(LogTemp, Error, TEXT("[InventoryWidgetBase::CreateSharedTooltipWidget] 공유 툴팁 위젯 생성 실패"));
+			LOG_Item_WARNING(TEXT("[InventoryWidgetBase::CreateSharedTooltipWidget] 공유 툴팁 위젯 생성 실패"));
 		}
 		else
 		{
-			UE_LOG(LogTemp, Log, TEXT("[InventoryWidgetBase::CreateSharedTooltipWidget] 공유 툴팁 위젯 생성 성공"));
+			LOG_Item_WARNING(TEXT("[InventoryWidgetBase::CreateSharedTooltipWidget] 공유 툴팁 위젯 생성 성공"));
 		}
 	}
 }
@@ -99,21 +99,21 @@ void UInventoryWidgetBase::ShowTooltipForSlot(const FBaseItemSlotData& ItemData,
 		CreateSharedTooltipWidget();
 		if (!SharedTooltipWidget)
 		{
-			UE_LOG(LogTemp, Error, TEXT("[ShowTooltipForSlot] 공유 툴팁 위젯이 없음"));
+			LOG_Item_WARNING(TEXT("[ShowTooltipForSlot] 공유 툴팁 위젯이 없음"));
 			return;
 		}
 	}
 
 	if (!ItemDataTable)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[ShowTooltipForSlot] ItemDataTable이 NULL"));
+		LOG_Item_WARNING(TEXT("[ShowTooltipForSlot] ItemDataTable이 NULL"));
 		return;
 	}
 
 	FItemDataRow* ItemRowData = ItemDataTable->FindRow<FItemDataRow>(ItemData.ItemRowName, TEXT("ShowTooltipForSlot"));
 	if (!ItemRowData)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[ShowTooltipForSlot] 아이템 데이터를 찾을 수 없음: %s"), *ItemData.ItemRowName.ToString());
+		LOG_Item_WARNING(TEXT("[ShowTooltipForSlot] 아이템 데이터를 찾을 수 없음: %s"), *ItemData.ItemRowName.ToString());
 		return;
 	}
 
@@ -135,7 +135,7 @@ void UInventoryWidgetBase::ShowTooltipForSlot(const FBaseItemSlotData& ItemData,
 		this, &UInventoryWidgetBase::UpdateTooltipPosition,
 		0.016f, true);
 
-	UE_LOG(LogTemp, Log, TEXT("[ShowTooltipForSlot] 툴팁 표시: %s"), *ItemData.ItemRowName.ToString());
+	LOG_Item_WARNING(TEXT("[ShowTooltipForSlot] 툴팁 표시: %s"), *ItemData.ItemRowName.ToString());
 }
 
 void UInventoryWidgetBase::HideTooltip()
@@ -154,7 +154,7 @@ void UInventoryWidgetBase::HideTooltip()
 	if (SharedTooltipWidget && SharedTooltipWidget->IsInViewport())
 	{
 		SharedTooltipWidget->RemoveFromParent();
-		UE_LOG(LogTemp, Log, TEXT("[HideTooltip] 툴팁 숨김"));
+		LOG_Item_WARNING(TEXT("[HideTooltip] 툴팁 숨김"));
 	}
 }
 
@@ -253,14 +253,14 @@ UInventorySlotWidget* UInventoryWidgetBase::CreateSlotWidget(int32 SlotIndex, co
 {
 	if (!SlotWidgetClass)
 	{
-		UE_LOG(LogTemp, Error, TEXT("[InventoryWidgetBase::CreateSlotWidget] SlotWidgetClass가 설정되지 않음"));
+		LOG_Item_WARNING(TEXT("[InventoryWidgetBase::CreateSlotWidget] SlotWidgetClass가 설정되지 않음"));
 		return nullptr;
 	}
 
 	UInventorySlotWidget* SlotWidget = CreateWidget<UInventorySlotWidget>(this, SlotWidgetClass);
 	if (!SlotWidget)
 	{
-		UE_LOG(LogTemp, Error, TEXT("[InventoryWidgetBase::CreateSlotWidget] 슬롯 위젯 생성 실패: %d"), SlotIndex);
+		LOG_Item_WARNING(TEXT("[InventoryWidgetBase::CreateSlotWidget] 슬롯 위젯 생성 실패: %d"), SlotIndex);
 		return nullptr;
 	}
 
@@ -300,21 +300,21 @@ void UInventoryWidgetBase::UpdateCurrentTooltip()
 	if (!SlotWidget)
 	{
 		// 다른 타입의 슬롯 위젯일 수도 있음 (예: BackpackSlotWidget)
-		UE_LOG(LogTemp, Log, TEXT("[UpdateCurrentTooltip] 소스 위젯이 InventorySlotWidget이 아님"));
+		LOG_Item_WARNING(TEXT("[UpdateCurrentTooltip] 소스 위젯이 InventorySlotWidget이 아님"));
 		return;
 	}
 
 	// 업데이트된 슬롯 데이터 가져오기
 	if (!InventoryComponent)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[UpdateCurrentTooltip] InventoryComponent가 없음"));
+		LOG_Item_WARNING(TEXT("[UpdateCurrentTooltip] InventoryComponent가 없음"));
 		return;
 	}
 
 	// 슬롯 인덱스가 유효한지 확인
 	if (SlotWidget->SlotIndex < 0)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[UpdateCurrentTooltip] 유효하지 않은 슬롯 인덱스"));
+		LOG_Item_WARNING(TEXT("[UpdateCurrentTooltip] 유효하지 않은 슬롯 인덱스"));
 		return;
 	}
 
@@ -329,7 +329,7 @@ void UInventoryWidgetBase::UpdateCurrentTooltip()
 		}
 		else
 		{
-			UE_LOG(LogTemp, Warning, TEXT("[UpdateCurrentTooltip] 슬롯 데이터를 가져올 수 없음"));
+			LOG_Item_WARNING(TEXT("[UpdateCurrentTooltip] 슬롯 데이터를 가져올 수 없음"));
 			return;
 		}
 	}
@@ -342,7 +342,7 @@ void UInventoryWidgetBase::UpdateCurrentTooltip()
 		}
 		else
 		{
-			UE_LOG(LogTemp, Warning, TEXT("[UpdateCurrentTooltip] 슬롯 인덱스가 범위를 벗어남"));
+			LOG_Item_WARNING(TEXT("[UpdateCurrentTooltip] 슬롯 인덱스가 범위를 벗어남"));
 			return;
 		}
 	}
@@ -415,7 +415,7 @@ void UInventoryWidgetBase::RefreshCurrentTooltip()
 		SharedTooltipWidget->SetTooltipData(*ItemRowData, UpdatedSlotData);
 		CurrentTooltipItemData = UpdatedSlotData;
 
-		UE_LOG(LogTemp, Log, TEXT("[RefreshCurrentTooltip] 툴팁 새로고침: %s (내구도: %.1f)"),
+		LOG_Item_WARNING(TEXT("[RefreshCurrentTooltip] 툴팁 새로고침: %s (내구도: %.1f)"),
 			*UpdatedSlotData.ItemRowName.ToString(), UpdatedSlotData.Durability);
 	}
 }
