@@ -16,12 +16,13 @@ public:
 
 	void UnfreezeAI();
 
-	void CooldownEnd();
-
-	virtual void HandlePerceptionUpdate(AActor* Actor, FAIStimulus Stimulus) override;
+	FTimerHandle ForgetTargetTimerHandle;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MaxAge")
 	float HearingMaxAge = 6.5f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Animation")
+	UAnimMontage* AIGimmick;
 
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastAIGimmick();
@@ -30,8 +31,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Audio")
 	void PlayGimmickSound();
 
-	UFUNCTION()
-	void ForgetTarget();
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+	USoundBase* GimmickSound;
 
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick")
@@ -43,15 +44,15 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Gimmick")
 	bool bIsFrozen = false;
 
+	FTimerHandle FreezeTimerHandle;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
-	USoundBase* GimmickSound;
+	FTimerHandle CooldownTimerHandle;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Animation")
-	UAnimMontage* AIGimmick;
+	virtual void HandlePerceptionUpdate(AActor* Actor, FAIStimulus Stimulus) override;
+
+	UFUNCTION()
+	void ForgetTarget();
 
 private:
-	FTimerHandle CooldownTimerHandle;
-	FTimerHandle FreezeTimerHandle;
-	FTimerHandle ForgetTargetTimerHandle;
+	void CooldownEnd();
 };
