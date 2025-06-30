@@ -247,8 +247,32 @@ void ABaseBossMonsterCharacter::EndBerserk()
             }
         }
 
+        // 캡슐 반높이 계산
+        float HalfHeight = Capsule->GetUnscaledCapsuleHalfHeight();
+
+        // Z를 반높이만큼 띄워 줍니다.
+        BestLocation.Z += HalfHeight;
+
         // (D) 실제 텔레포트
-        SetActorLocation(BestLocation, false, nullptr, ETeleportType::TeleportPhysics);
+        // Sweep=true 로 설정해서, 만약 그래도 파고들면 충돌 위치로 자동 보정
+        SetActorLocation(
+            BestLocation,
+            /*bSweep=*/true,
+            /*OutSweepHitResult=*/nullptr,
+            ETeleportType::TeleportPhysics
+        );
+
+        // (E) 블랙보드에서 TargetActor 초기화
+        if (AController* C = GetController())
+        {
+            if (AAIController* AICon = Cast<AAIController>(C))
+            {
+                if (UBlackboardComponent* BB = AICon->GetBlackboardComponent())
+                {
+                    BB->ClearValue(TEXT("TargetActor"));
+                }
+            }
+        }
     }
 
     Multicast_EndBerserk();
