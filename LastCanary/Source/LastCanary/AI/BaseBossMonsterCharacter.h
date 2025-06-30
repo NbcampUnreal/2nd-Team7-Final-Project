@@ -12,7 +12,7 @@ class LASTCANARY_API ABaseBossMonsterCharacter : public ACharacter
 
 public:
     ABaseBossMonsterCharacter();
-	virtual void BeginPlay() override;
+    virtual void BeginPlay() override;
 
     /** 공격 범위(반경)를 읽어오는 Getter */
     UFUNCTION(BlueprintCallable, Category = "Attack")
@@ -82,6 +82,13 @@ protected:
     float LastNormalTime = -FLT_MAX;
     float LastStrongTime = -FLT_MAX;
 
+    /** 스폰 시점 위치를 저장해 두는 변수 */
+    FVector InitialSpawnLocation;
+
+    /** 텔레포트할 때 최대 반경(근처 이내) */
+    UPROPERTY(EditAnywhere, Category = "Berserk|Teleport")
+    float TeleportRadius = 500.f;
+
     /** 공격 범위 (반경) */
     UPROPERTY(EditAnywhere, Category = "Attack")
     float AttackRange = 200.f;
@@ -90,7 +97,7 @@ protected:
 
     /** 현재 Berserk 활성 여부 (Replicated) */
     UPROPERTY(ReplicatedUsing = OnRep_IsBerserk, BlueprintReadWrite, EditAnywhere, Category = "Boss|Berserk") // 임시로 ReadWrite
-    bool bIsBerserk = false;
+        bool bIsBerserk = false;
 
     /** 클라이언트에서 Berserk 진입/종료 시 호출되는 함수 */
     UFUNCTION()
