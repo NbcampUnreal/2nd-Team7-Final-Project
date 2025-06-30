@@ -6,6 +6,9 @@
 #include "Kismet/GameplayStatics.h"
 #include "Components/AudioComponent.h"
 #include "AI/LCBaseBossAIController.h"
+#include "Components/CapsuleComponent.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "NavigationSystem.h"
 #include "TimerManager.h"
 
 ABaseBossMonsterCharacter::ABaseBossMonsterCharacter()
@@ -34,7 +37,10 @@ ABaseBossMonsterCharacter::ABaseBossMonsterCharacter()
 
 void ABaseBossMonsterCharacter::BeginPlay()
 {
-    Super::BeginPlay();   // ← 추가!
+    Super::BeginPlay();
+
+    // 최초 스폰 위치를 저장
+    InitialSpawnLocation = GetActorLocation();
 
     // ── 데칼 풀 초기화 ────────────────────────────────────────────
     RemainingCommonDecals = CommonDecalClasses;
@@ -66,6 +72,21 @@ void ABaseBossMonsterCharacter::BeginPlay()
             false
         );
     }
+}
+
+float ABaseBossMonsterCharacter::GetNextAttackRange() const
+{
+    return NextAttackRange;
+}
+
+void ABaseBossMonsterCharacter::ExecuteSelectedAttack()
+{
+    if (NextAttackAction)
+        NextAttackAction();
+
+    // 실행 후 초기화
+    NextAttackAction = nullptr;
+    NextAttackRange = 0.f;
 }
 
 bool ABaseBossMonsterCharacter::RequestAttack(float TargetDistance)
@@ -181,6 +202,77 @@ void ABaseBossMonsterCharacter::EndBerserk()
     if (HasAuthority())
     {
         GetWorldTimerManager().ClearTimer(BerserkDurationHandle);
+
+        // (A) 캐릭터 캡슐 정보
+        UCapsuleComponent* Capsule = GetCapsuleComponent();
+        float CapsuleRadius = Capsule->GetUnscaledCapsuleRadius();
+        float CapsuleHalfHeight = Capsule->GetUnscaledCapsuleHalfHeight();
+        FCollisionShape CapsuleShape = FCollisionShape::MakeCapsule(CapsuleRadius, CapsuleHalfHeight);
+
+        // (B) NavSys 참조
+        UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld());
+
+        // (C) 안전한 위치 찾기
+        FVector BestLocation = InitialSpawnLocation;
+        for (int32 i = 0; i < 10; ++i)
+        {
+            // 1) 반경 내 랜덤 샘플
+            FVector Offset = UKismetMathLibrary::RandomUnitVector()
+                * FMath::FRandRange(0.f, TeleportRadius);
+            FVector Candidate = InitialSpawnLocation + Offset;
+
+            // 2) NavMesh 위로 스냅
+            if (NavSys)
+            {
+                FNavLocation NavLoc;
+                if (NavSys->ProjectPointToNavigation(Candidate, NavLoc, FVector(50, 50, 200)))
+                    Candidate = NavLoc.Location;
+            }
+
+            // 3) 캡슐 겹침 검사: Pawn 채널로 테스트
+            //    위치 기준점은 발바닥이 아니라 캡슐 중심이므로 높이 보정
+            FVector TestPos = Candidate + FVector(0, CapsuleHalfHeight, 0);
+            bool bBlocked = GetWorld()->OverlapBlockingTestByChannel(
+                TestPos,
+                FQuat::Identity,
+                ECC_Pawn,
+                CapsuleShape
+            );
+
+            if (!bBlocked)
+            {
+                // 장애물과 겹치지 않으면 이 위치로 결정
+                BestLocation = Candidate;
+                break;
+            }
+        }
+
+        // 캡슐 반높이 계산
+        float HalfHeight = Capsule->GetUnscaledCapsuleHalfHeight();
+
+        // Z를 반높이만큼 띄워 줍니다.
+        BestLocation.Z += HalfHeight;
+
+        // (D) 실제 텔레포트
+        // Sweep=true 로 설정해서, 만약 그래도 파고들면 충돌 위치로 자동 보정
+        SetActorLocation(
+            BestLocation,
+            /*bSweep=*/true,
+            /*OutSweepHitResult=*/nullptr,
+            ETeleportType::TeleportPhysics
+        );
+
+        // (E) 블랙보드에서 TargetActor 초기화
+        if (AController* C = GetController())
+        {
+            if (AAIController* AICon = Cast<AAIController>(C))
+            {
+                if (UBlackboardComponent* BB = AICon->GetBlackboardComponent())
+                {
+                    BB->ClearValue(TEXT("TargetActor"));
+                }
+            }
+        }
     }
 
     Multicast_EndBerserk();

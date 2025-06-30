@@ -174,6 +174,9 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Gumiho|Charm")
     float CharmRagePerSecond = 0.05f;
 
+    UPROPERTY(EditAnywhere, Category = "Gumiho|Swap")
+    FName CharmTag = TEXT("Charmed");
+
     FTimerHandle CharmTimerHandle;
 
     void ExecuteCharmGaze();
