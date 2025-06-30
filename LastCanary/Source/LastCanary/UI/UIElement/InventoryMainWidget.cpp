@@ -113,6 +113,7 @@ void UInventoryMainWidget::ToggleBackpackInventory()
 	if (bBackpackInventoryOpen)
 	{
 		HideItemDropQuantityWidget();
+		BackpackWidget->HideTooltip();
 		BackpackWidget->SetVisibility(ESlateVisibility::Collapsed);
 		bBackpackInventoryOpen = false;
 		LOG_Item_WARNING(TEXT("[ToggleBackpackInventory] 가방 인벤토리 닫기 (드롭 위젯 포함)"));
@@ -120,6 +121,7 @@ void UInventoryMainWidget::ToggleBackpackInventory()
 	else
 	{
 		BackpackWidget->SetVisibility(ESlateVisibility::Visible);
+		BackpackWidget->HideTooltip();
 		BackpackWidget->RefreshInventoryUI();
 		bBackpackInventoryOpen = true;
 		LOG_Item_WARNING(TEXT("[ToggleBackpackInventory] 가방 인벤토리 열기"));
