@@ -253,7 +253,7 @@ void UInventorySlotWidget::ShowTooltip()
 {
 	if (!ParentInventoryWidget)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[InventorySlotWidget::ShowTooltip] ParentInventoryWidget이 설정되지 않음"));
+		LOG_Item_WARNING(TEXT("[InventorySlotWidget::ShowTooltip] ParentInventoryWidget이 설정되지 않음"));
 		return;
 	}
 
@@ -265,7 +265,7 @@ void UInventorySlotWidget::HideTooltip()
 {
 	if (!ParentInventoryWidget)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[InventorySlotWidget::HideTooltip] ParentInventoryWidget이 설정되지 않음"));
+		LOG_Item_WARNING(TEXT("[InventorySlotWidget::HideTooltip] ParentInventoryWidget이 설정되지 않음"));
 		return;
 	}
 
@@ -289,7 +289,7 @@ void UInventorySlotWidget::OnUseButtonClicked()
 		if (ItemRowData->ItemType.MatchesTag(BackpackTag))
 		{
 			// 가방 사용 (인벤토리 열기)
-			UE_LOG(LogTemp, Warning, TEXT("[OnUseButtonClicked] 가방 사용 - 인벤토리 열기"));
+			LOG_Item_WARNING(TEXT("[OnUseButtonClicked] 가방 사용 - 인벤토리 열기"));
 
 			if (ULCGameInstanceSubsystem* Subsystem = GetWorld()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 			{

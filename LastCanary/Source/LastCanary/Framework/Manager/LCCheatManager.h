@@ -4,9 +4,6 @@
 #include "GameFramework/CheatManager.h"
 #include "LCCheatManager.generated.h"
 
-/**
- *
- */
 
 DECLARE_LOG_CATEGORY_EXTERN(LogCheat, Log, Warning);
 

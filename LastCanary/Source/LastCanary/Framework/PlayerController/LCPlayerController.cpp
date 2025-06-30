@@ -1,7 +1,6 @@
 ﻿#include "Framework/PlayerController/LCPlayerController.h"
 
 #include "Framework/GameMode/LCGameMode.h"
-#include "Framework/GameInstance/LCGameInstance.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 
 #include "Character/BasePlayerState.h"
@@ -12,8 +11,6 @@
 #include "UI/Manager/LCUIManager.h"
 #include "UI/UIElement/RoomWidget.h"
 
-#include "Kismet/GameplayStatics.h"
-#include "Blueprint/UserWidget.h"
 #include "Net/UnrealNetwork.h"
 
 #include "LevelSequenceActor.h"
@@ -22,9 +19,6 @@
 #include "Actor/LCGateActor.h"
 #include "CineCameraActor.h"
 #include "MovieSceneSequencePlayer.h"
-
-#include "SaveGame/LCLocalPlayerSaveGame.h"
-
 
 ALCPlayerController::ALCPlayerController()
 {

@@ -7,6 +7,7 @@
 #include "Components/Button.h"
 #include "Algo/AllOf.h"
 #include "LastCanary.h"
+#include "DataTable/ChecklistQuestionRow.h"
 
 void UChecklistWidget::NativeConstruct()
 {

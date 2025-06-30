@@ -1,7 +1,6 @@
 #include "Framework/PlayerController/LCTitlePlayerController.h"
-#include "Framework/GameInstance/LCGameInstance.h"
-#include "GameFramework/PlayerState.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "UI/Manager/LCUIManager.h"
 
 void ALCTitlePlayerController::BeginPlay()
 {

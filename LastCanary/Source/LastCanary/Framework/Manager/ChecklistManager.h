@@ -2,7 +2,6 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "DataTable/ChecklistQuestionRow.h"
 #include "DataType/ChecklistQuestion.h"
 #include "DataType/GameResultData.h"
 #include "ChecklistManager.generated.h"

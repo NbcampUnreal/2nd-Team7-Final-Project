@@ -23,39 +23,39 @@ protected:
 	virtual void BeginPlay() override;
 
 public:
-	UFUNCTION(Client, Reliable)
-	void Client_ShowLevelInfo(int32 MapId);
-	void Client_ShowLevelInfo_Implementation(int32 MapId);
-
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UPopupLevelInfo> PopupLevelInfoClass;
 	UPROPERTY()
 	UPopupLevelInfo* PopupLevelInfoInstance;
 
 	UFUNCTION(Client, Reliable)
-	void Client_ShowLoseVideo();
-	void Client_ShowLoseVideo_Implementation();
+	void Client_ShowLevelInfo(int32 MapId);
+	void Client_ShowLevelInfo_Implementation(int32 MapId);
+
+	UFUNCTION(Client, Reliable)
+	void Client_OnEscapeGate(UDataTable* CheckListTable);
+	void Client_OnEscapeGate_Implementation(UDataTable* CheckListTable);
+	UFUNCTION(Client, Reliable)
+	void Client_OnGameLose();
+	void Client_OnGameLose_Implementation();
+	UFUNCTION(Client, Reliable)
+	void Client_OnGameEnd();
+	void Client_OnGameEnd_Implementation();
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UVideoPlayWidget> LoseWidgetClass;
 	UVideoPlayWidget* LoseWidgetInstance;
-	
-	UFUNCTION(Client, Reliable)
-	void Client_ShowEscapeGateVideo(UDataTable* CheckListTable);
-	void Client_ShowEscapeGateVideo_Implementation(UDataTable* CheckListTable);
+	void ShowLoseVideo();
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UVideoPlayWidget> EscapeGateWidgetClass;
+	UVideoPlayWidget* EscapeGateWidgetInstance;
+	void ShowEscapeGateVideo(UDataTable* CheckListTable);
 
 private:
 	void StartCheckList(UDataTable* CheckListTable);
 
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
-	TSubclassOf<UVideoPlayWidget> EscapeGateWidgetClass;
-	UVideoPlayWidget* EscapeGateWidgetInstance;
-
-	UFUNCTION(Client, Reliable)
-	void Client_OnGameEnd();
-	void Client_OnGameEnd_Implementation();
-
 	UFUNCTION(Server, Reliable)
 	void Server_RequestSubmitChecklist(const TArray<FChecklistQuestion>& PlayerAnswers);
 	void Server_RequestSubmitChecklist_Implementation(const TArray<FChecklistQuestion>& PlayerAnswers);
