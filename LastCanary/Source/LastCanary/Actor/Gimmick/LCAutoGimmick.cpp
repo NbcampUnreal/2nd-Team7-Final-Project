@@ -78,7 +78,7 @@ void ALCAutoGimmick::HandleLoop()
 	{
 	case EGimmickLoopType::LoopForward:
 	{
-		LOG_Art(Log, TEXT("[HandleLoop] LoopForward - 회전 상태 초기화 및 실행"));
+		//LOG_Art(Log, TEXT("[HandleLoop] LoopForward - 회전 상태 초기화 및 실행"));
 
 		bUseAlternateToggle = false;
 
@@ -217,7 +217,6 @@ void ALCAutoGimmick::CompleteMovement()
 		bIsMovingServer = false;
 	}
 
-	// ✅ 루프 처리
 	if (bLoopingEnabled)
 	{
 		if (LoopInterval > 0.f)
@@ -226,7 +225,7 @@ void ALCAutoGimmick::CompleteMovement()
 		}
 		else
 		{
-			HandleLoop(); // 즉시 반복
+			HandleLoop();
 		}
 	}
 }
@@ -239,7 +238,7 @@ void ALCAutoGimmick::CompleteRotation()
 
 	if (bShouldReturn)
 	{
-		LOG_Art(Log, TEXT("▶ [CompleteRotation] 복귀 예약"));
+		//LOG_Art(Log, TEXT(" [CompleteRotation] 복귀 예약"));
 		Super::CompleteRotation();
 	}
 	else
@@ -248,7 +247,6 @@ void ALCAutoGimmick::CompleteRotation()
 		bIsRotatingServer = false;
 	}
 
-	// ✅ 루프 처리
 	if (bLoopingEnabled)
 	{
 		if (LoopInterval > 0.f)

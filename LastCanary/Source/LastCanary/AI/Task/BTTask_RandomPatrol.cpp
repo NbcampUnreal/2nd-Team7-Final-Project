@@ -10,125 +10,158 @@
 UBTTask_RandomPatrol::UBTTask_RandomPatrol()
 {
 	NodeName = TEXT("Random Patrol");
-
-	bNotifyTick = true;
 }
 
 EBTNodeResult::Type UBTTask_RandomPatrol::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
 {
-    AAIController* AIController = OwnerComp.GetAIOwner();
-    if (!AIController) return EBTNodeResult::Failed;
+	AAIController* AIController = OwnerComp.GetAIOwner();
+	if (!AIController)
+	{
+		return EBTNodeResult::Failed;
+	}
 
-    APawn* AIPawn = AIController->GetPawn();
-    if (!AIPawn) return EBTNodeResult::Failed;
+	APawn* AIPawn = AIController->GetPawn();
+	if (!AIPawn)
+	{
+		return EBTNodeResult::Failed;
+	}
 
-    UBlackboardComponent* BlackboardComp = OwnerComp.GetBlackboardComponent();
-    if (!BlackboardComp) return EBTNodeResult::Failed;
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return EBTNodeResult::Failed;
+	}
 
-    FVector CurrentLocation = AIPawn->GetActorLocation();
+	if (AIPawn->GetLocalRole() != ROLE_Authority)
+	{
+		return EBTNodeResult::Succeeded;
+	}
 
-    float RandomAngle = FMath::RandRange(0.0f, 2.0f * PI);
-    FVector Direction(FMath::Cos(RandomAngle), FMath::Sin(RandomAngle), 0.0f);
-    Direction.Normalize();
+	UBlackboardComponent* BlackboardComp = OwnerComp.GetBlackboardComponent();
+	if (!BlackboardComp)
+	{
+		return EBTNodeResult::Failed;
+	}
 
-    float Distance = FMath::RandRange(MinDistance, MaxDistance);
-    FVector TargetLocation = CurrentLocation + Direction * Distance;
+	FVector CurrentLocation = AIPawn->GetActorLocation();
+	float RandomAngle = FMath::RandRange(0.0f, 2.0f * PI);
+	FVector Direction(FMath::Cos(RandomAngle), FMath::Sin(RandomAngle), 0.0f);
+	Direction.Normalize();
 
-    ABaseMonsterCharacter* Monster = Cast<ABaseMonsterCharacter>(AIController->GetPawn());
-    if (Monster)
-    {
-        Monster->MulticastAIMove();
-        AIController->MoveToLocation(TargetLocation, AcceptableRadius);
-    }
+	float Distance = FMath::RandRange(MinDistance, MaxDistance);
+	FVector TargetLocation = CurrentLocation + Direction * Distance;
 
-    TWeakObjectPtr<UBehaviorTreeComponent> WeakOwnerComp = &OwnerComp;
-    FTimerHandle& TimerHandle = PatrolTimerMap.FindOrAdd(WeakOwnerComp);
-    EndTimeMap.FindOrAdd(WeakOwnerComp) = AIController->GetWorld()->GetTimeSeconds() + Delay;
+	ABaseMonsterCharacter* Monster = Cast<ABaseMonsterCharacter>(AIPawn);
+	if (Monster)
+	{
+		Monster->MulticastAIMove();
+		AIController->MoveToLocation(TargetLocation, AcceptableRadius);
+	}
+	else
+	{
+		AIController->MoveToLocation(TargetLocation, AcceptableRadius);
+	}
 
-    GetWorld()->GetTimerManager().SetTimer(
-        TimerHandle,
-        [this, WeakOwnerComp]() {
-        if (IsValid(this) && WeakOwnerComp.IsValid())
-        {
-            this->CheckPatrolStatus(WeakOwnerComp.Get());
-        }
-        else
-        {
-            if (IsValid(this))
-            {
-                PatrolTimerMap.Remove(WeakOwnerComp);
-                EndTimeMap.Remove(WeakOwnerComp);
-            }
-        }
-    },
-        0.1f, true
-    );
+	TWeakObjectPtr<UBehaviorTreeComponent> WeakOwnerComp = &OwnerComp;
+	FTimerHandle& TimerHandle = PatrolTimerMap.FindOrAdd(WeakOwnerComp);
+	EndTimeMap.FindOrAdd(WeakOwnerComp) = World->GetTimeSeconds() + Delay;
 
-    return EBTNodeResult::InProgress;
+	//This를 직접 남게 하지 말고 대신 남아있게 할 것
+	TWeakObjectPtr<UBTTask_RandomPatrol> WeakThis = this;
+
+	World->GetTimerManager().SetTimer(
+		TimerHandle,
+		[WeakThis, WeakOwnerComp]()
+	{
+		//Task(this)있고
+		if (WeakThis.IsValid())
+		{
+			//OwnerComp있으면
+			if (WeakOwnerComp.IsValid())
+			{
+				WeakThis->CheckPatrolStatus(WeakOwnerComp.Get());
+			}
+			else
+			{
+				//OwnerComp없으면 정리
+				WeakThis->PatrolTimerMap.Remove(WeakOwnerComp);
+				WeakThis->EndTimeMap.Remove(WeakOwnerComp);
+			}
+		}
+	},
+		0.1f,
+		true
+	);
+
+
+	return EBTNodeResult::InProgress;
 }
 
 void UBTTask_RandomPatrol::CheckPatrolStatus(UBehaviorTreeComponent* OwnerComp)
 {
-    if (!OwnerComp) return;
+	if (!OwnerComp) return;
 
-    AAIController* AIController = OwnerComp->GetAIOwner();
-    if (!AIController)
-    {
-        CleanupPatrolTimer(OwnerComp);
-        FinishLatentTask(*OwnerComp, EBTNodeResult::Failed);
-        return;
-    }
+	AAIController* AIController = OwnerComp->GetAIOwner();
+	if (!AIController)
+	{
+		CleanupPatrolTimer(OwnerComp);
+		FinishLatentTask(*OwnerComp, EBTNodeResult::Failed);
+		return;
+	}
 
-    UBlackboardComponent* BlackboardComp = OwnerComp->GetBlackboardComponent();
-    if (!BlackboardComp)
-    {
-        CleanupPatrolTimer(OwnerComp);
-        FinishLatentTask(*OwnerComp, EBTNodeResult::Failed);
-        return;
-    }
+	UBlackboardComponent* BlackboardComp = OwnerComp->GetBlackboardComponent();
+	if (!BlackboardComp)
+	{
+		CleanupPatrolTimer(OwnerComp);
+		FinishLatentTask(*OwnerComp, EBTNodeResult::Failed);
+		return;
+	}
 
-    AActor* TargetActor = Cast<AActor>(BlackboardComp->GetValueAsObject("TargetActor"));
-    if (TargetActor)
-    {
-        ABaseAIController* BaseAIController = Cast<ABaseAIController>(AIController);
-        if (BaseAIController)
-        {
-            AIController->StopMovement();
-            BaseAIController->SetChasing(TargetActor);
+	AActor* TargetActor = Cast<AActor>(BlackboardComp->GetValueAsObject("TargetActor"));
+	if (TargetActor)
+	{
+		ABaseAIController* BaseAIController = Cast<ABaseAIController>(AIController);
+		if (BaseAIController)
+		{
+			AIController->StopMovement();
+			BaseAIController->SetChasing(TargetActor);
+			CleanupPatrolTimer(OwnerComp);
+			FinishLatentTask(*OwnerComp, EBTNodeResult::Succeeded);
+			return;
+		}
+	}
 
-            CleanupPatrolTimer(OwnerComp);
-            FinishLatentTask(*OwnerComp, EBTNodeResult::Succeeded);
-            return;
-        }
-    }
+	float* EndTime = EndTimeMap.Find(OwnerComp);
 
-    float* EndTime = EndTimeMap.Find(OwnerComp);
-    if (EndTime && AIController->GetWorld()->GetTimeSeconds() >= *EndTime)
-    {
-        AIController->StopMovement();
-        CleanupPatrolTimer(OwnerComp);
-        FinishLatentTask(*OwnerComp, EBTNodeResult::Succeeded);
-    }
+	UWorld* World = GetWorld();
+	if (EndTime && World && World->GetTimeSeconds() >= *EndTime)
+	{
+		AIController->StopMovement();
+		CleanupPatrolTimer(OwnerComp);
+		FinishLatentTask(*OwnerComp, EBTNodeResult::Succeeded);
+	}
 }
 
 void UBTTask_RandomPatrol::OnTaskFinished(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, EBTNodeResult::Type TaskResult)
 {
-    CleanupPatrolTimer(&OwnerComp);
+	CleanupPatrolTimer(&OwnerComp);
 
-    Super::OnTaskFinished(OwnerComp, NodeMemory, TaskResult);
+	Super::OnTaskFinished(OwnerComp, NodeMemory, TaskResult);
 }
 
 void UBTTask_RandomPatrol::CleanupPatrolTimer(UBehaviorTreeComponent* OwnerComp)
 {
-    if (!OwnerComp) return;
+	if (!OwnerComp) return;
 
-    TWeakObjectPtr<UBehaviorTreeComponent> WeakOwnerComp = OwnerComp;
-    FTimerHandle* TimerHandle = PatrolTimerMap.Find(WeakOwnerComp);
-    if (TimerHandle && TimerHandle->IsValid())
-    {
-        GetWorld()->GetTimerManager().ClearTimer(*TimerHandle);
-    }
+	TWeakObjectPtr<UBehaviorTreeComponent> WeakOwnerComp = OwnerComp;
+	FTimerHandle* TimerHandle = PatrolTimerMap.Find(WeakOwnerComp);
 
-    PatrolTimerMap.Remove(WeakOwnerComp);
-    EndTimeMap.Remove(WeakOwnerComp);
+	UWorld* World = GetWorld();
+	if (World && TimerHandle && TimerHandle->IsValid())
+	{
+		World->GetTimerManager().ClearTimer(*TimerHandle);
+	}
+
+	PatrolTimerMap.Remove(WeakOwnerComp);
+	EndTimeMap.Remove(WeakOwnerComp);
 }

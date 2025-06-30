@@ -147,7 +147,9 @@ public:
 	void Multicast_SetCustomizationData(const FCharacterCustomizationData& CustomizingData);
 	void Multicast_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData);
 
-	FCharacterCustomizationData CharacterCustomizationData = FCharacterCustomizationData();
+	FCharacterCustomizationData CharacterCustomizationData;
+
+
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
 	USkeletalMesh* BackpackSkeletalMesh;

@@ -1,4 +1,5 @@
 #include "Actor/Gimmick/LCTrackingGimmick.h"
+#include "Components/PointLightComponent.h"
 #include "Components/SpotLightComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -9,27 +10,34 @@ ALCTrackingGimmick::ALCTrackingGimmick()
 	: TargetActor(nullptr)
 	, TrackingInterval(0.2f)
 	, YawOffset(0.f)
+	, EffectYawOffset(0.f)
+	, SpotLightDuration(2.f)
 	, bIsTracking(false)
 {
 	PrimaryActorTick.bCanEverTick = false;
 
-	TrackingLightLeft = CreateDefaultSubobject<USpotLightComponent>(TEXT("TrackingLightLeft"));
-	TrackingLightLeft->SetupAttachment(VisualMesh);
-	TrackingLightLeft->SetVisibility(false);
-	TrackingLightLeft->SetIntensity(200000.f); // 30,000 거리 기준 고출력
-	TrackingLightLeft->SetAttenuationRadius(35000.f);
-	TrackingLightLeft->SetOuterConeAngle(20.f);
-	TrackingLightLeft->SetInnerConeAngle(5.f);
-	TrackingLightLeft->SetIsReplicated(true);
+	TrackingPointLightLeft = CreateDefaultSubobject<UPointLightComponent>(TEXT("TrackingPointLightLeft"));
+	TrackingPointLightLeft->SetupAttachment(VisualMesh);
+	TrackingPointLightLeft->SetIntensity(20000.f);
+	TrackingPointLightLeft->SetAttenuationRadius(3000.f);
+	TrackingPointLightLeft->SetVisibility(false);
+	TrackingPointLightLeft->SetIsReplicated(true);
 
-	TrackingLightRight = CreateDefaultSubobject<USpotLightComponent>(TEXT("TrackingLightRight"));
-	TrackingLightRight->SetupAttachment(VisualMesh);
-	TrackingLightRight->SetVisibility(false);
-	TrackingLightRight->SetIntensity(200000.f);
-	TrackingLightRight->SetAttenuationRadius(35000.f);
-	TrackingLightRight->SetOuterConeAngle(20.f);
-	TrackingLightRight->SetInnerConeAngle(5.f);
-	TrackingLightRight->SetIsReplicated(true);
+	TrackingPointLightRight = CreateDefaultSubobject<UPointLightComponent>(TEXT("TrackingPointLightRight"));
+	TrackingPointLightRight->SetupAttachment(VisualMesh);
+	TrackingPointLightRight->SetIntensity(20000.f);
+	TrackingPointLightRight->SetAttenuationRadius(3000.f);
+	TrackingPointLightRight->SetVisibility(false);
+	TrackingPointLightRight->SetIsReplicated(true);
+
+	TrackingSpotLight = CreateDefaultSubobject<USpotLightComponent>(TEXT("TrackingSpotLight"));
+	TrackingSpotLight->SetupAttachment(RootComponent);
+	TrackingSpotLight->SetIntensity(50000.f);
+	TrackingSpotLight->SetAttenuationRadius(6000.f);
+	TrackingSpotLight->SetOuterConeAngle(25.f);
+	TrackingSpotLight->SetInnerConeAngle(5.f);
+	TrackingSpotLight->SetVisibility(false);
+	TrackingSpotLight->SetIsReplicated(true);
 
 	bReplicates = true;
 }
@@ -38,10 +46,10 @@ void ALCTrackingGimmick::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (TrackingLightLeft) TrackingLightLeft->SetVisibility(false);
-	if (TrackingLightRight) TrackingLightRight->SetVisibility(false);
+	if (TrackingPointLightLeft) TrackingPointLightLeft->SetVisibility(false);
+	if (TrackingPointLightRight) TrackingPointLightRight->SetVisibility(false);
+	if (TrackingSpotLight) TrackingSpotLight->SetVisibility(false);
 }
-
 
 void ALCTrackingGimmick::SetTargetActor(AActor* NewTarget)
 {
@@ -70,7 +78,6 @@ void ALCTrackingGimmick::StartTracking()
 
 	bIsTracking = true;
 
-	// ▶ 타워 간 타이머 분산을 위한 딜레이
 	const float DelayOffset = FMath::FRandRange(0.f, TrackingInterval);
 
 	GetWorldTimerManager().SetTimer(
@@ -81,6 +88,17 @@ void ALCTrackingGimmick::StartTracking()
 		true,
 		DelayOffset
 	);
+
+	if (TrackingPointLightLeft)
+	{
+		TrackingPointLightLeft->SetLightColor(FLinearColor::White);
+		TrackingPointLightLeft->SetVisibility(true);
+	}
+	if (TrackingPointLightRight)
+	{
+		TrackingPointLightRight->SetLightColor(FLinearColor::White);
+		TrackingPointLightRight->SetVisibility(true);
+	}
 }
 
 void ALCTrackingGimmick::StopTracking()
@@ -91,8 +109,9 @@ void ALCTrackingGimmick::StopTracking()
 	GetWorldTimerManager().ClearTimer(TrackingTimerHandle);
 	GetWorldTimerManager().ClearTimer(FireTimerHandle);
 
-	if (TrackingLightLeft)  TrackingLightLeft->SetVisibility(false);
-	if (TrackingLightRight) TrackingLightRight->SetVisibility(false);
+	if (TrackingPointLightLeft)  TrackingPointLightLeft->SetVisibility(false);
+	if (TrackingPointLightRight) TrackingPointLightRight->SetVisibility(false);
+	if (TrackingSpotLight)       TrackingSpotLight->SetVisibility(false);
 }
 
 void ALCTrackingGimmick::RotateToTarget()
@@ -107,35 +126,20 @@ void ALCTrackingGimmick::RotateToTarget()
 	const FVector To = TargetActor->GetActorLocation();
 	const float DesiredYaw = UKismetMathLibrary::FindLookAtRotation(From, To).Yaw + YawOffset;
 
-	if (!FMath::IsNearlyEqual(GetActorRotation().Yaw, DesiredYaw, 1.f))
+	SetActorRotation(FRotator(0.f, DesiredYaw, 0.f));
+
+	// 라이트 위치 → 타겟 위
+	const float SpotLightHeightOffset = 500.f;
+	FVector TargetLoc = TargetActor->GetActorLocation();
+	FVector SpotLoc(TargetLoc.X, TargetLoc.Y, TargetLoc.Z + SpotLightHeightOffset);
+
+	if (TrackingSpotLight)
 	{
-		SetActorRotation(FRotator(0.f, DesiredYaw, 0.f));
-	}
+		TrackingSpotLight->SetWorldLocation(SpotLoc);
 
-	const FVector TargetLoc = TargetActor->GetActorLocation();
-
-	if (TrackingLightLeft)
-	{
-		const FVector LightLoc = TrackingLightLeft->GetComponentLocation();
-		const float NewPitch = UKismetMathLibrary::FindLookAtRotation(LightLoc, TargetLoc).Pitch;
-		const float OldPitch = TrackingLightLeft->GetRelativeRotation().Pitch;
-
-		if (!FMath::IsNearlyEqual(NewPitch, OldPitch, 1.f))
-		{
-			TrackingLightLeft->SetRelativeRotation(FRotator(NewPitch, EffectYawOffset, 0.f));
-		}
-	}
-
-	if (TrackingLightRight)
-	{
-		const FVector LightLoc = TrackingLightRight->GetComponentLocation();
-		const float NewPitch = UKismetMathLibrary::FindLookAtRotation(LightLoc, TargetLoc).Pitch;
-		const float OldPitch = TrackingLightRight->GetRelativeRotation().Pitch;
-
-		if (!FMath::IsNearlyEqual(NewPitch, OldPitch, 1.f))
-		{
-			TrackingLightRight->SetRelativeRotation(FRotator(NewPitch, EffectYawOffset, 0.f));
-		}
+		// 타겟 바라보는 회전값으로 라이트 회전
+		FRotator LookAtRot = UKismetMathLibrary::FindLookAtRotation(SpotLoc, TargetLoc);
+		TrackingSpotLight->SetWorldRotation(LookAtRot);
 	}
 }
 
@@ -143,16 +147,55 @@ void ALCTrackingGimmick::Fire()
 {
 	if (!HasAuthority() || !IsValid(TargetActor)) return;
 
+	// 클라이언트에 시각적 효과 전파
 	Multicast_FireEffect();
-
-	if (TrackingLightLeft)  TrackingLightLeft->SetVisibility(true);
-	if (TrackingLightRight) TrackingLightRight->SetVisibility(true);
 }
 
 void ALCTrackingGimmick::Multicast_FireEffect_Implementation()
 {
-	if (TrackingLightLeft)  TrackingLightLeft->SetVisibility(true);
-	if (TrackingLightRight) TrackingLightRight->SetVisibility(true);
+	// 포인트 라이트 → 빨간색으로 변경
+	if (TrackingPointLightLeft)
+	{
+		TrackingPointLightLeft->SetVisibility(true);
+		TrackingPointLightLeft->SetLightColor(FLinearColor::Red);
+	}
+
+	if (TrackingPointLightRight)
+	{
+		TrackingPointLightRight->SetVisibility(true);
+		TrackingPointLightRight->SetLightColor(FLinearColor::Red);
+	}
+
+	// SpotLight 켜기
+	if (TrackingSpotLight)
+	{
+		TrackingSpotLight->SetVisibility(true);
+
+		GetWorldTimerManager().SetTimer(
+			FireTimerHandle,
+			[this]()
+			{
+				if (TrackingSpotLight)
+				{
+					TrackingSpotLight->SetVisibility(false);
+				}
+
+				if (TrackingPointLightLeft)
+				{
+					TrackingPointLightLeft->SetVisibility(true);
+					TrackingPointLightLeft->SetLightColor(FLinearColor::White);
+				}
+
+				if (TrackingPointLightRight)
+				{
+					TrackingPointLightRight->SetVisibility(true);
+					TrackingPointLightRight->SetLightColor(FLinearColor::White);
+				}
+			},
+			SpotLightDuration,
+			false
+		);
+	}
 }
 
 void ALCTrackingGimmick::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
