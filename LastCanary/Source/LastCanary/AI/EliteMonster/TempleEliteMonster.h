@@ -25,6 +25,13 @@ public:
 
 	void ToggleOnReceive();
 
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastAIGimmick();
+	void MulticastAIGimmick_Implementation();
+
+	UFUNCTION(BlueprintCallable, Category = "Audio")
+	void PlayGimmickSound();
+
 protected:
 	virtual void HandlePerceptionUpdate(AActor* Actor, FAIStimulus Stimulus) override;
 	virtual void EnableAttackCollider() override;
@@ -46,4 +53,10 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Gimmick|Combat")
 	TMap<FName, float> BoneHitCountMultipliers;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+	USoundBase* GimmickSound;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Animation")
+	UAnimMontage* AIGimmick;
 };

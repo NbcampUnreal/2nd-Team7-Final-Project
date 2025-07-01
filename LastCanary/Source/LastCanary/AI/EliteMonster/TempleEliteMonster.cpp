@@ -21,6 +21,24 @@ ATempleEliteMonster::ATempleEliteMonster()
 	Extra_AttackCollider->OnComponentBeginOverlap.AddUniqueDynamic(this, &ABaseMonsterCharacter::OnAttackHit);
 }
 
+void ATempleEliteMonster::MulticastAIGimmick_Implementation()
+{
+	if (IsValid(AIGimmick))
+	{
+		PlayAnimMontage(AIGimmick);
+
+		PlayGimmickSound();
+	}
+}
+
+void ATempleEliteMonster::PlayGimmickSound()
+{
+	if (GimmickSound)
+	{
+		MulticastPlaySound(GimmickSound);
+	}
+}
+
 void ATempleEliteMonster::BeginPlay()
 {
 	Super::BeginPlay();
@@ -71,6 +89,7 @@ float ATempleEliteMonster::TakeDamage(float DamageAmount, FDamageEvent const& Da
 				if (ABaseAIController* AIController = Cast<ABaseAIController>(GetController()))
 				{
 					AIController->SetStun(GroggyTime);
+					MulticastAIGimmick();
 				}
 			}
 		}
