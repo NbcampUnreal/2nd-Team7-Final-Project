@@ -55,6 +55,7 @@ public:
 
 	void ClearAllPlayersReady();
 
+	virtual void PlayerPossessedByPawn();
 public:
 	TArray<APlayerController*> AllPlayerControllers;
 	TArray<FSessionPlayerInfo> SessionPlayerInfos;
@@ -65,6 +66,7 @@ public:
 	int MaxPlayerNum = 4;
 	int CurrentPlayerNum = 0;
 
+	int PossessReadyPlayer = 0;
 public:
 	// Server Travel Logic
 	UFUNCTION(BlueprintCallable, Category = "Session")
