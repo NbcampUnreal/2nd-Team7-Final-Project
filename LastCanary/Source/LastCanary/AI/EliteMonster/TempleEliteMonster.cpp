@@ -9,6 +9,8 @@
 #include "AI/BaseAIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Item/ResourceNode.h"
+#include "Engine/DamageEvents.h"
+#include "Containers/Map.h"
 
 ATempleEliteMonster::ATempleEliteMonster()
 {
@@ -18,6 +20,84 @@ ATempleEliteMonster::ATempleEliteMonster()
 
 	Extra_AttackCollider->OnComponentBeginOverlap.AddUniqueDynamic(this, &ABaseMonsterCharacter::OnAttackHit);
 }
+
+void ATempleEliteMonster::MulticastAIGimmick_Implementation()
+{
+	if (IsValid(AIGimmick))
+	{
+		PlayAnimMontage(AIGimmick);
+
+		PlayGimmickSound();
+	}
+}
+
+void ATempleEliteMonster::PlayGimmickSound()
+{
+	if (GimmickSound)
+	{
+		MulticastPlaySound(GimmickSound);
+	}
+}
+
+void ATempleEliteMonster::BeginPlay()
+{
+	Super::BeginPlay();
+
+	if (BoneHitCountMultipliers.IsEmpty())
+	{
+		BoneHitCountMultipliers.Add(TEXT("head"), 2.5f);//머리
+		BoneHitCountMultipliers.Add(TEXT("spine_02"), 3.0f);//허리
+		BoneHitCountMultipliers.Add(TEXT("spine_03"), 1.5f);//몸통
+		BoneHitCountMultipliers.Add(TEXT("pelvis"), 1.5f);
+
+		//팔
+		BoneHitCountMultipliers.Add(TEXT("upperarm_l"), 1.0f);
+		BoneHitCountMultipliers.Add(TEXT("lowerarm_l"), 1.0f);
+		BoneHitCountMultipliers.Add(TEXT("hand_l"), 1.0f);
+		BoneHitCountMultipliers.Add(TEXT("upperarm_r"), 1.0f);
+		BoneHitCountMultipliers.Add(TEXT("lowerarm_r"), 1.0f);
+		BoneHitCountMultipliers.Add(TEXT("hand_r"), 1.0f);
+
+		//다리
+		BoneHitCountMultipliers.Add(TEXT("thigh_L"), 1.0f);
+		BoneHitCountMultipliers.Add(TEXT("calf_l"), 1.0f);
+		BoneHitCountMultipliers.Add(TEXT("foot_L"), 1.0f);
+		BoneHitCountMultipliers.Add(TEXT("thigh_R"), 1.0f);
+		BoneHitCountMultipliers.Add(TEXT("calf_r"), 1.0f);
+		BoneHitCountMultipliers.Add(TEXT("foot_R"), 1.0f);
+	}
+}
+
+float ATempleEliteMonster::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	if (DamageAmount > 0.0f)
+	{
+		if (DamageEvent.IsOfType(FPointDamageEvent::ClassID))
+		{
+			const FPointDamageEvent* PointDamageEvent = static_cast<const FPointDamageEvent*>(&DamageEvent);
+
+			if (const float* Multiplier = BoneHitCountMultipliers.Find(PointDamageEvent->HitInfo.BoneName))
+			{
+				HitCount += *Multiplier;
+				UE_LOG(LogTemp, Error, TEXT("현재 카운트 = %f (맞은 뼈: %s)"), HitCount, *PointDamageEvent->HitInfo.BoneName.ToString());
+			}
+
+			if (HitCount >= GroggyCount)
+			{
+				HitCount = 0.0f;
+
+				if (ABaseAIController* AIController = Cast<ABaseAIController>(GetController()))
+				{
+					AIController->SetStun(GroggyTime);
+					MulticastAIGimmick();
+				}
+			}
+		}
+	}
+
+	return 0.0f;
+}
+
 
 void ATempleEliteMonster::EnableAttackCollider()
 {
