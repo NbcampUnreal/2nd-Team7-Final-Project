@@ -6,6 +6,7 @@
 #include "Framework/PlayerController/LCPlayerController.h"
 #include "Character/CinematicDummyCharacter.h"
 #include "Net/UnrealNetwork.h"
+#include "EngineUtils.h"
 
 
 AGateCutsceneManager::AGateCutsceneManager()
@@ -55,7 +56,6 @@ void AGateCutsceneManager::PlayGateCutscene(const TArray<ABaseCharacter*>& InPla
 
     if (!SelectedSequence)
     {
-        UE_LOG(LogTemp, Warning, TEXT("Selected sequence is not set for cutscene type: %d"), (int32)CutsceneType);
         return;
     }
 
@@ -69,55 +69,54 @@ void AGateCutsceneManager::PlayGateCutscene(const TArray<ABaseCharacter*>& InPla
             continue;
         }
 
-        FTransform SpawnPoint;
-        if (SpawnPoints.IsValidIndex(i))
+        FTransform SpawnPoint = SpawnPoints.IsValidIndex(i)
+            ? SpawnPoints[i]->GetActorTransform()
+            : Char->GetActorTransform();
+
+        // 미리 정해둘 이름
+        FName DummyName = FName(*FString::Printf(TEXT("CinematicDummy_%d"), i));
+
+        // 동일 이름의 더미가 이미 있는지 검사
+        ACinematicDummyCharacter* ExistingDummy = nullptr;
+        for (TActorIterator<ACinematicDummyCharacter> It(GetWorld()); It; ++It)
         {
-            SpawnPoint = SpawnPoints[i]->GetActorTransform();
-        }
-        else
-        {
-            SpawnPoint = Char->GetActorTransform();
+            if (It->GetFName() == DummyName)
+            {
+                ExistingDummy = *It;
+                break;
+            }
         }
 
-        FActorSpawnParameters SpawnParams;
-        SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-        AActor* Dummy = GetWorld()->SpawnActor<AActor>(DummyCharacterClass, SpawnPoint, SpawnParams);
-        if (!Dummy)
+        if (ExistingDummy)
         {
-            LOG_Game_ERROR(TEXT("Failed to spawn dummy for character %s"), *Char->GetName());
+            DummyPlayerCharacters.Add(ExistingDummy);
+            ExistingDummy->ApplyAppearance(Char->GetCustomizationData());
+            ExistingDummy->CutsceneIndex = i;
+            Char->SetActorHiddenInGame(true);
             continue;
         }
-        else
+
+        // 없다면 새로 스폰
+        FActorSpawnParameters SpawnParams;
+        SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+        SpawnParams.Name = DummyName;
+
+        ACinematicDummyCharacter* Dummy = GetWorld()->SpawnActor<ACinematicDummyCharacter>(
+            DummyCharacterClass, SpawnPoint, SpawnParams);
+
+        if (!Dummy)
         {
-            LOG_Game(Log, TEXT("Spawned dummy %s for character %s"), *Dummy->GetName(), *Char->GetName());
+            continue;
         }
 
         Dummy->SetReplicates(true);
-
-        ACinematicDummyCharacter* CinematicDummyCharacter = Cast<ACinematicDummyCharacter>(Dummy);
-        if (!CinematicDummyCharacter)
-        {
-            continue;
-        }
-
-        CinematicDummyCharacter->ApplyAppearance(Char->GetCustomizationData());
-        DummyPlayerCharacters.Add(CinematicDummyCharacter);
-
-        if (ALCPlayerController* PC = Cast<ALCPlayerController>(Char->GetController()))
-        {
-            PC->SetLinkedGateActor(LinkedGateActor);
-            LOG_Game(Log, TEXT("클라이언트에서 시퀀스 실행"));
-            PC->Client_HideHUD();
-
-            // 통합된 함수 호출 - 컷신 타입을 매개변수로 전달
-            PC->Client_PlayGateCutscene_Implementation(SelectedSequence, CinematicDummyCharacter, Char->GetActorTransform(), i, CutsceneType);
-        }
-
+        Dummy->ApplyAppearance(Char->GetCustomizationData());
+        Dummy->CutsceneIndex = i;
+        DummyPlayerCharacters.Add(Dummy);
         Char->SetActorHiddenInGame(true);
     }
 
-    // 서버에서 LevelSequenceActor 생성 및 바인딩 처리
+    // LevelSequenceActor 생성 (리플리케이트)
     FMovieSceneSequencePlaybackSettings PlaybackSettings;
     ALevelSequenceActor* OutSequenceActor = nullptr;
 
@@ -130,14 +129,31 @@ void AGateCutsceneManager::PlayGateCutscene(const TArray<ABaseCharacter*>& InPla
 
     if (!SequencePlayer || !OutSequenceActor)
     {
-        LOG_Game_ERROR(TEXT("Failed to Create LevelSequencePlayer"));
         return;
     }
 
     OutSequenceActor->SetReplicates(true);
-    for (int32 i = 0; i < InPlayerCharacters.Num(); ++i)
+    CachedPlayerCharacters = InPlayerCharacters;          // 멤버 변수에 저장
+    CachedSequenceActor = OutSequenceActor;
+    CachedCutsceneType = CutsceneType;
+
+    GetWorld()->GetTimerManager().SetTimer(
+        CutsceneRPC_TimerHandle,
+        this,
+        &AGateCutsceneManager::DelayedSendCutsceneRPC,
+        0.5f,     // 딜레이 시간
+        false
+    );
+
+    // 서버에서 시퀀스 재생
+    SequencePlayer->Play();
+}
+
+void AGateCutsceneManager::DelayedSendCutsceneRPC()
+{
+    for (int32 i = 0; i < CachedPlayerCharacters.Num(); ++i)
     {
-        ABaseCharacter* Char = InPlayerCharacters[i];
+        ABaseCharacter* Char = CachedPlayerCharacters[i];
         if (!IsValid(Char))
         {
             continue;
@@ -145,22 +161,12 @@ void AGateCutsceneManager::PlayGateCutscene(const TArray<ABaseCharacter*>& InPla
 
         if (ALCPlayerController* PC = Cast<ALCPlayerController>(Char->GetController()))
         {
-            PC->LinkedSequenceActor = OutSequenceActor;
+            PC->LinkedSequenceActor = CachedSequenceActor;
+            PC->Client_PlayGateCutscene(CachedSequenceActor, CachedPlayerCharacters.Num(), CachedCutsceneType);
+            PC->Client_HideHUD();
+            PC->SetLinkedGateActor(LinkedGateActor);
         }
     }
-
-    // 모든 더미를 시퀀스에 바인딩
-    for (int32 i = 0; i < DummyPlayerCharacters.Num(); ++i)
-    {
-        FName TrackTag = FName(FString::Printf(TEXT("Slot%d"), i + 1));
-        OutSequenceActor->SetBindingByTag(TrackTag, { DummyPlayerCharacters[i] });
-        UE_LOG(LogTemp, Log, TEXT("바인딩 완료: %s -> %s"), *TrackTag.ToString(), *DummyPlayerCharacters[i]->GetName());
-    }
-
-    // 시퀀스 서버에서 재생
-    SequencePlayer->Play();
-
-    UE_LOG(LogTemp, Log, TEXT("Cutscene started: %s"), CutsceneType == ECutsceneType::GateEntry ? TEXT("Entry") : TEXT("Exit"));
 }
 
 void AGateCutsceneManager::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

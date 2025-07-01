@@ -3,6 +3,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "SaveGame/LCLocalPlayerSaveGame.h"
 #include "LastCanary.h"
+#include "Net/UnrealNetwork.h"
 
 ACinematicDummyCharacter::ACinematicDummyCharacter()
 {
@@ -244,4 +245,11 @@ void ACinematicDummyCharacter::SetCharacterPoseSynchronization()
 	CustomArmorMesh->SetLeaderPoseComponent(GetMesh());
 	CustomBootsMesh->SetLeaderPoseComponent(GetMesh());
 	BackpackMesh->SetLeaderPoseComponent(GetMesh());
+}
+
+void ACinematicDummyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ACinematicDummyCharacter, CutsceneIndex);
 }

@@ -85,9 +85,15 @@ public:
 	void Client_HideHUD();
 	void Client_HideHUD_Implementation();
 
-	UFUNCTION(Client, Unreliable)
-	void Client_PlayGateCutscene(ULevelSequence* Sequence, ACinematicDummyCharacter* CinematicDummyCharacter, const FTransform& SpawnTransform, int32 PlayerIndex, ECutsceneType CutsceneType);
-	void Client_PlayGateCutscene_Implementation(ULevelSequence* Sequence, ACinematicDummyCharacter* CinematicDummyCharacter, const FTransform& SpawnTransform, int32 PlayerIndex, ECutsceneType CutsceneType);
+	UFUNCTION(Client, Reliable)
+	void Client_PlayGateCutscene(
+		ALevelSequenceActor* SequenceActor,
+		int32 TotalPlayers,
+		ECutsceneType CutsceneType);
+	void Client_PlayGateCutscene_Implementation(
+		ALevelSequenceActor* SequenceActor,
+		int32 TotalPlayers,
+		ECutsceneType CutsceneType);
 
 	// LevelSequenceActor를 클라이언트에 알려주기 위한 변수
 	UPROPERTY(Replicated)
