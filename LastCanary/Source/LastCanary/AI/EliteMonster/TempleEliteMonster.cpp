@@ -9,6 +9,7 @@
 #include "AI/BaseAIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Item/ResourceNode.h"
+#include "Engine/DamageEvents.h"
 
 ATempleEliteMonster::ATempleEliteMonster()
 {
@@ -18,6 +19,31 @@ ATempleEliteMonster::ATempleEliteMonster()
 
 	Extra_AttackCollider->OnComponentBeginOverlap.AddUniqueDynamic(this, &ABaseMonsterCharacter::OnAttackHit);
 }
+
+float ATempleEliteMonster::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+		if (DamageEvent.IsOfType(FPointDamageEvent::ClassID))
+		{
+			const FPointDamageEvent* PointDamageEvent = static_cast<const FPointDamageEvent*>(&DamageEvent);
+
+			if (PointDamageEvent->HitInfo.BoneName == "head")
+			{
+				NeckHitCount++;
+				UE_LOG(LogTemp, Error, TEXT("카운트 = %d"), NeckHitCount);
+
+				if (NeckHitCount >= 10) //카운트 횟수 에디터로 뺄 것, 쿨타임 넣을 것
+				{
+					NeckHitCount = 0;
+					if (ABaseAIController* AIController = Cast<ABaseAIController>(GetController()))
+					{
+						AIController->SetStun(GroggyTime);
+					}
+				}
+			}
+		}
+		return 0;
+}
+
 
 void ATempleEliteMonster::EnableAttackCollider()
 {

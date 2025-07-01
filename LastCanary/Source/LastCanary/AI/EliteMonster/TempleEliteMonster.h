@@ -36,4 +36,8 @@ protected:
 
 	bool OnReceiveTracking = false;
 
+	float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+
+	UPROPERTY(VisibleAnywhere, Category = "Combat")
+	int32 NeckHitCount = 0;
 };
