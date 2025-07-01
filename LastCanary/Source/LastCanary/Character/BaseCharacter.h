@@ -1031,6 +1031,14 @@ public:
 	UFUNCTION(BlueprintPure, Category = "WalkieTalkie")
 	bool HasWalkieTalkieChannel() const { return bHasWalkieTalkieChannel; }
 
+	// 워키토키 상태 확인 및 중지
+	UFUNCTION(BlueprintCallable)
+	void CheckAndStopWalkieTalkie();
+
+	// 현재 장착된 워키토키가 사용 중인지 확인
+	UFUNCTION(BlueprintPure)
+	bool IsCurrentWalkieTalkieActive() const;
+
 	/** 워키토키 채널 상태 설정 (C++에서 호출용) */
 	UFUNCTION(BlueprintCallable, Category = "WalkieTalkie")
 	void SetWalkieTalkieChannelStatus(bool bActive);
