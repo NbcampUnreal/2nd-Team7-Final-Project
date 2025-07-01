@@ -24,6 +24,7 @@
 #include "Item/EquipmentItem/GunBase.h"
 #include "Item/EquipmentItem/EquipmentItemBase.h"
 #include "Item/EquipmentItem/BackpackItem.h"
+#include "Item/EquipmentItem/WalkieTalkie.h"
 #include "UI/Manager/LCUIManager.h"
 #include "LastCanary.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -2511,6 +2512,7 @@ void ABaseCharacter::Server_SetQuickSlotIndex_Implementation(int32 NewIndex)
 
 void ABaseCharacter::EquipItem(int32 Index)
 {
+	CheckAndStopWalkieTalkie();
 	ToolbarInventoryComponent->EquipItemAtSlot(Index);
 	// 동기화된 장착 요청
 	Multicast_ResetAnimationAndCamera(Index);
@@ -2560,6 +2562,9 @@ void ABaseCharacter::UnequipCurrentItem()
 		LOG_Item_WARNING(TEXT("현재 장비 상태가 아니거나 툴바가 없습니다."));
 		return;
 	}
+
+	CheckAndStopWalkieTalkie();
+
 	// 클라이언트에서 호출된 경우 서버에 요청
 	if (GetLocalRole() < ROLE_Authority)
 	{
@@ -3678,6 +3683,7 @@ bool ABaseCharacter::IsInventoryOpen() const
 
 void ABaseCharacter::DropCurrentItem()
 {
+	CheckAndStopWalkieTalkie();
 	CancelUseItem();
 	CancelInteraction();
 	StopAiming();
@@ -3708,6 +3714,11 @@ void ABaseCharacter::DropItemAtSlot(int32 SlotIndex, int32 Quantity)
 	{
 		LOG_Item_WARNING(TEXT("[ABaseCharacter::DropItemAtSlot] ToolbarInventoryComponent is null"));
 		return;
+	}
+
+	if (SlotIndex == ToolbarInventoryComponent->GetCurrentEquippedSlotIndex())
+	{
+		CheckAndStopWalkieTalkie();
 	}
 
 	bool bSuccess = ToolbarInventoryComponent->TryDropItemAtSlot(SlotIndex, Quantity);
@@ -3988,6 +3999,30 @@ void ABaseCharacter::GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) c
 {
 	TagContainer = OwnedTags;
 }
+
+void ABaseCharacter::CheckAndStopWalkieTalkie()
+{
+	AItemBase* CurrentItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
+	if (AWalkieTalkie* WalkieTalkie = Cast<AWalkieTalkie>(CurrentItem))
+	{
+		if (WalkieTalkie->IsWalkieTalkieActive())
+		{
+			LOG_Item_WARNING(TEXT("워키토키 사용 중지: 장비 해제/교체/드랍"));
+			WalkieTalkie->StopWalkieTalkie();
+		}
+	}
+}
+
+bool ABaseCharacter::IsCurrentWalkieTalkieActive() const
+{
+	AItemBase* CurrentItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
+	if (AWalkieTalkie* WalkieTalkie = Cast<AWalkieTalkie>(CurrentItem))
+	{
+		return WalkieTalkie->IsWalkieTalkieActive();
+	}
+	return false;
+}
+
 void ABaseCharacter::SetWalkieTalkieChannelStatus(bool bActive)
 {
 	bool bPreviousStatus = bHasWalkieTalkieChannel;
