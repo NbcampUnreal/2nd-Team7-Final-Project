@@ -1,48 +1,61 @@
 #include "Item/EquipmentItem/WalkieTalkie.h"
 #include "WalkieTalkie.h"
 #include "Character/BaseCharacter.h"
+
+#include "Net/UnrealNetwork.h"
+
 #include "LastCanary.h"
+
+void AWalkieTalkie::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+    DOREPLIFETIME(AWalkieTalkie, bUseWalkie);
+}
 
 void AWalkieTalkie::UseItem()
 {
 	Super::UseItem();
 
-    // 아이템 소유자의 PlayerController 획득
-    if (AActor* OwnerActor = GetOwner())
-    {
-        if (ABaseCharacter* OwnerCharacter = Cast<ABaseCharacter>(OwnerActor))
-        {
-            if (APlayerController* PC = OwnerCharacter->GetController<APlayerController>())
-            {
-                // 서버에서 워키토키 사용 처리
-                Server_UseWalkieTalkie(PC);
-            }
-        }
-    }
+    StartWalkieTalkie();
+
+    bUseWalkie = !bUseWalkie;
 }
 
-void AWalkieTalkie::Server_UseWalkieTalkie_Implementation(APlayerController* UserController)
+void AWalkieTalkie::Server_UseWalkieTalkie_Implementation()
 {
-    if (!UserController)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("UserController is null"));
-        return;
-    }
+    // 워키토키 사용 상태 활성화
+    bUseWalkie = true;
 
-    // 해당 플레이어 클라이언트에서만 워키토키 시작
-    if (UserController->IsLocalController())
-    {
-        // 서버에서 실행 중인 경우 (리슨 서버)
-        StartWalkieTalkie();
-    }
-    else
-    {
-        // 원격 클라이언트에게 RPC 전송
-        Client_StartWalkieTalkie();
-    }
+    // 클라이언트에 시작 알림
+    Client_StartWalkieTalkie();
+}
+
+void AWalkieTalkie::Server_StopWalkieTalkie_Implementation()
+{
+    if (!bUseWalkie) return;
+
+    // 워키토키 사용 상태 비활성화
+    bUseWalkie = false;
+
+    // 클라이언트에 중지 알림
+    Client_StopWalkieTalkie();
 }
 
 void AWalkieTalkie::Client_StartWalkieTalkie_Implementation()
 {
     StartWalkieTalkie();
+}
+
+void AWalkieTalkie::Client_StopWalkieTalkie_Implementation()
+{
+    StopWalkieTalkie();
+}
+
+void AWalkieTalkie::StopWalkieTalkie()
+{
+    if (bUseWalkie)
+    {
+        StartWalkieTalkie();
+        bUseWalkie = false;
+    }
 }
