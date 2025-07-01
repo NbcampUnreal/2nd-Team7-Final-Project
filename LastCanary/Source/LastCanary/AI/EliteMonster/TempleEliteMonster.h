@@ -25,15 +25,38 @@ public:
 
 	void ToggleOnReceive();
 
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastAIGimmick();
+	void MulticastAIGimmick_Implementation();
+
+	UFUNCTION(BlueprintCallable, Category = "Audio")
+	void PlayGimmickSound();
+
 protected:
 	virtual void HandlePerceptionUpdate(AActor* Actor, FAIStimulus Stimulus) override;
-
 	virtual void EnableAttackCollider() override;
 	virtual void DisableAttackCollider() override;
+	virtual void BeginPlay() override;
 
 	UFUNCTION()
 	void ForgetTarget();
 
 	bool OnReceiveTracking = false;
 
+	float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Combat")
+	float HitCount = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Combat")
+	float GroggyCount = 100;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Gimmick|Combat")
+	TMap<FName, float> BoneHitCountMultipliers;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+	USoundBase* GimmickSound;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Animation")
+	UAnimMontage* AIGimmick;
 };
