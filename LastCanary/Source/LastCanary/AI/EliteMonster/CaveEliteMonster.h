@@ -37,12 +37,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick")
 	float MaxFreezeTime = 5.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Gimmick")
 	float FreezeCooldown = 7.f;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Gimmick")
 	bool bIsFrozen = false;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	bool bIsInCooldown = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
 	USoundBase* GimmickSound;
