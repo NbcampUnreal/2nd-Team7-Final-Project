@@ -2,6 +2,8 @@
 #include "TimerManager.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "SaveGame/LCLocalPlayerSaveGame.h"
+#include "LastCanary.h"
+#include "Net/UnrealNetwork.h"
 
 ACinematicDummyCharacter::ACinematicDummyCharacter()
 {
@@ -199,6 +201,8 @@ void ACinematicDummyCharacter::ApplyCustomization(const UCustomizationMeshMap* C
 	//플래그
 	SetPartMaterial(CustomHelmetMesh, 1, FlagMat);
 	SetPartMaterial(CustomArmorMesh, 0, FlagMat);
+
+	SetCharacterPoseSynchronization();
 }
 
 void ACinematicDummyCharacter::SetPartMesh(USkeletalMeshComponent* Component, USkeletalMesh* LoadedMesh)
@@ -228,4 +232,24 @@ void ACinematicDummyCharacter::SetPartMaterial(USkeletalMeshComponent* Component
 	{
 		Component->SetMaterial(MaterialIndex, Material);
 	}
+}
+
+void ACinematicDummyCharacter::SetCharacterPoseSynchronization()
+{
+	CustomHeadMesh->SetLeaderPoseComponent(GetMesh());
+	CustomGloveMesh->SetLeaderPoseComponent(GetMesh());
+	CustomJacketMesh->SetLeaderPoseComponent(GetMesh());
+	CustomPantsMesh->SetLeaderPoseComponent(GetMesh());
+	CustomBeltsMesh->SetLeaderPoseComponent(GetMesh());
+	CustomHelmetMesh->SetLeaderPoseComponent(GetMesh());
+	CustomArmorMesh->SetLeaderPoseComponent(GetMesh());
+	CustomBootsMesh->SetLeaderPoseComponent(GetMesh());
+	BackpackMesh->SetLeaderPoseComponent(GetMesh());
+}
+
+void ACinematicDummyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ACinematicDummyCharacter, CutsceneIndex);
 }

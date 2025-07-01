@@ -65,6 +65,8 @@ public:
 
 	void SetPartMaterial(USkeletalMeshComponent* Component, int32 MaterialIndex, UMaterialInterface* Material);
 
+	void SetCharacterPoseSynchronization();
+
     // 외형 복사 적용
     UFUNCTION(BlueprintCallable, Category = "Appearance")
     void ApplyAppearance(FCharacterCustomizationData Data);
@@ -79,6 +81,11 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Movement")
     void PlayAnimMontageOnce(UAnimMontage* Montage);
+
+	UPROPERTY(VisibleAnywhere, Replicated)
+	int32 CutsceneIndex = -1;
+
+	void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const;
 
 protected:
     virtual void BeginPlay() override;

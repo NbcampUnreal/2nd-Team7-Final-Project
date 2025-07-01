@@ -78,7 +78,7 @@ void ALCRoomGameMode::HandleStartingNewPlayer_Implementation(APlayerController* 
 		}
 		if (LCGM->CurrentPlayerCount == CurrentPlayerNum)
 		{
-			OnAllPlayersJoined();
+		//	OnAllPlayersJoined();
 		}
 	}
 }
@@ -149,6 +149,24 @@ void ALCRoomGameMode::HandleBaseCampDoors()
 		else
 		{
 			It->Server_OpenDoors();
+		}
+	}
+}
+
+void ALCRoomGameMode::PlayerPossessedByPawn()
+{
+	Super::PlayerPossessedByPawn();
+
+	if (ULCGameManager* LCGM = GetGameInstance()->GetSubsystem<ULCGameManager>())
+	{
+		if (LCGM->CurrentRound == 0)
+		{
+			return;
+		}
+		if (LCGM->CurrentPlayerCount == PossessReadyPlayer)
+		{
+			LOG_Char_WARNING(TEXT("모든 캐릭터 빙의 성공 컷신 재생"));
+			OnAllPlayersJoined();
 		}
 	}
 }

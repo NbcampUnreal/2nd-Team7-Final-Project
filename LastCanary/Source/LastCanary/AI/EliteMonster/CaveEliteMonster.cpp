@@ -42,15 +42,18 @@ void ACaveEliteMonster::PlayGimmickSound()
 
 void ACaveEliteMonster::FreezeAI()
 {
-	if (GetLocalRole() == ROLE_Authority)
+	if (GetLocalRole() != ROLE_Authority)
 	{
-		if (CooldownTimerHandle.IsValid())
-		{
-			return;
-		}
+		return;
+	}
+
+	if (bIsInCooldown)
+	{
+		return;
 	}
 
 	bIsFrozen = true;
+	bIsInCooldown = true;
 
 	if (UCharacterMovementComponent* MovementComp = GetCharacterMovement())
 	{
@@ -156,6 +159,8 @@ void ACaveEliteMonster::UnfreezeAI()
 
 void ACaveEliteMonster::CooldownEnd()
 {
+	bIsInCooldown = false;
+
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().ClearTimer(CooldownTimerHandle);
