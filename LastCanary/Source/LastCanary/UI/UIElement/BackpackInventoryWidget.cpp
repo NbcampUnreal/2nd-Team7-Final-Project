@@ -106,8 +106,6 @@ void UBackpackInventoryWidget::RefreshInventoryUI()
 
 	if (WeightText)
 	{
-		UE_LOG(LogTemp, Error, TEXT(" %f"), MaxWeight);
-
 		FString WeightStr = FString::Printf(TEXT("%.1f / %.1f"), CurrentWeight, MaxWeight);
 		WeightText->SetText(FText::FromString(WeightStr));
 	}
@@ -130,14 +128,14 @@ UBackpackSlotWidget* UBackpackInventoryWidget::CreateBackpackSlotWidget(int32 Ba
 {
 	if (!BackpackSlotWidgetClass)
 	{
-		UE_LOG(LogTemp, Error, TEXT("[BackpackInventoryWidget::CreateBackpackSlotWidget] BackpackSlotWidgetClass가 설정되지 않음"));
+		LOG_Item_ERROR(TEXT("[BackpackInventoryWidget::CreateBackpackSlotWidget] BackpackSlotWidgetClass가 설정되지 않음"));
 		return nullptr;
 	}
 
 	UBackpackSlotWidget* SlotWidget = CreateWidget<UBackpackSlotWidget>(this, BackpackSlotWidgetClass);
 	if (!SlotWidget)
 	{
-		UE_LOG(LogTemp, Error, TEXT("[BackpackInventoryWidget::CreateBackpackSlotWidget] 가방 슬롯 위젯 생성 실패: %d"), BackpackSlotIndex);
+		LOG_Item_ERROR(TEXT("[BackpackInventoryWidget::CreateBackpackSlotWidget] 가방 슬롯 위젯 생성 실패: %d"), BackpackSlotIndex);
 		return nullptr;
 	}
 

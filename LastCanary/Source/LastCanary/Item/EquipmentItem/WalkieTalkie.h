@@ -25,4 +25,7 @@ public:
 	UFUNCTION(Client, Reliable, Category = "WalkieTalkie")
 	void Client_StartWalkieTalkie();
 	void Client_StartWalkieTalkie_Implementation();
+
+	UPROPERTY(BlueprintReadWrite)
+	bool bUseWalkie;
 };

@@ -24,6 +24,7 @@ void USpectatorWidget::NativeConstruct()
 	{
 		PlayerName->SetText(FText::FromString(FString::Printf(TEXT("%s"), TEXT("Default"))));
 	}
+	SetVoiceKeyGuideText();
 }
 
 FString USpectatorWidget::GetDirectionalKeyName(UInputAction* InputAction, float DirectionThreshold) const
@@ -83,4 +84,49 @@ void USpectatorWidget::UpdatePlayerName(FString Name)
 	{
 		PlayerName->SetText(FText::FromString(Name));
 	}
+}
+
+void USpectatorWidget::SetVoiceKeyGuideText()
+{
+	if (IA_Voice == nullptr)
+	{
+		return;
+	}
+
+	FString InteractKeyName = GetCurrentKeyNameForAction(IA_Voice);
+	FString DisplayText = FString::Printf(TEXT("[ %s ]"), *InteractKeyName);
+
+	VoiceKeyGuideText->SetText(FText::FromString(DisplayText));
+}
+
+FString USpectatorWidget::GetCurrentKeyNameForAction(UInputAction* InputAction) const
+{
+	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+	if (IsValid(PC) == false)
+	{
+		return TEXT("Invalid");
+	}
+
+	ULocalPlayer* LocalPlayer = PC->GetLocalPlayer();
+	if (IsValid(LocalPlayer) == false)
+	{
+		return TEXT("Invalid");
+	}
+
+	UEnhancedInputLocalPlayerSubsystem* Subsystem = LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
+	if (IsValid(Subsystem) == false)
+	{
+		return TEXT("Invalid");
+	}
+	const TArray<FEnhancedActionKeyMapping> Mappings = Subsystem->GetAllPlayerMappableActionKeyMappings();
+
+	for (const FEnhancedActionKeyMapping& Mapping : Mappings)
+	{
+		if (Mapping.Action == InputAction)
+		{
+			LOG_Frame_WARNING(TEXT("Mapping Key = %s"), *Mapping.Key.GetDisplayName().ToString());
+			return Mapping.Key.GetDisplayName().ToString();
+		}
+	}
+	return TEXT("V");
 }

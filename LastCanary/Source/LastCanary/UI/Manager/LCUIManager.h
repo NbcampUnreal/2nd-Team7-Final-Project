@@ -168,6 +168,10 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	UInGameHUD* GetInGameHUDBlueprint() const { return CachedInGameHUD; }
+	UFUNCTION(BlueprintCallable)
+	USpectatorWidget* GetSpectatorWidgetBlueprint() const { return CachedSpectatorWidget; }
+
+
 
 private:
 	//-----------------
