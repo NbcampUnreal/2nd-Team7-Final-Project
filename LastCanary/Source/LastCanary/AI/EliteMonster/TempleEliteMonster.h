@@ -27,9 +27,9 @@ public:
 
 protected:
 	virtual void HandlePerceptionUpdate(AActor* Actor, FAIStimulus Stimulus) override;
-
 	virtual void EnableAttackCollider() override;
 	virtual void DisableAttackCollider() override;
+	virtual void BeginPlay() override;
 
 	UFUNCTION()
 	void ForgetTarget();
@@ -38,6 +38,12 @@ protected:
 
 	float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 
-	UPROPERTY(VisibleAnywhere, Category = "Combat")
-	int32 NeckHitCount = 0;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Combat")
+	float HitCount = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Combat")
+	float GroggyCount = 100;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Gimmick|Combat")
+	TMap<FName, float> BoneHitCountMultipliers;
 };
