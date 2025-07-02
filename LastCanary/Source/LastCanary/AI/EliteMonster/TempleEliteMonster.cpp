@@ -86,7 +86,7 @@ float ATempleEliteMonster::TakeDamage(float DamageAmount, FDamageEvent const& Da
 				if (!bIsInStunCooldown)//타이머 엔드 플레이에서 정리해주자
 				{
 					HitCount += *Multiplier;
-					UE_LOG(LogTemp, Error, TEXT("현재 카운트 = %f (맞은 뼈: %s)"), HitCount, *PointDamageEvent->HitInfo.BoneName.ToString());
+					//UE_LOG(LogTemp, Error, TEXT("현재 카운트 = %f (맞은 뼈: %s)"), HitCount, *PointDamageEvent->HitInfo.BoneName.ToString());
 				}
 			}
 
@@ -96,7 +96,7 @@ float ATempleEliteMonster::TakeDamage(float DamageAmount, FDamageEvent const& Da
 
 				if (ABaseAIController* AIController = Cast<ABaseAIController>(GetController()))
 				{
-					AIController->SetStun(GroggyTime);
+					AIController->SetStun(EliteGroggy);
 					MulticastAIGimmick();
 					bIsInStunCooldown = true;
 
