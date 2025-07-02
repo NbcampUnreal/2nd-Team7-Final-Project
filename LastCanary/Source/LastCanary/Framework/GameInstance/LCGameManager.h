@@ -45,9 +45,9 @@ class LASTCANARY_API ULCGameManager : public UGameInstanceSubsystem
 
 protected:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
-	void InitGameManager();
 
 public:
+	void InitGameManager();
 	int CurrentPlayerCount = 0; // 현재 플레이어 수
 	int SubmitPlayerCount = 0;
 	bool bIsAllSubmit() { return CurrentPlayerCount == SubmitPlayerCount; }
