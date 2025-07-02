@@ -1,13 +1,10 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "UI/LCUserWidgetBase.h"
 #include "DataType/RoomInfo.h"
 #include "RoomListEntry.generated.h"
 
-/**
- * 
- */
 class UTextBlock;
 class UImage;
 class UButton;

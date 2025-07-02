@@ -19,6 +19,8 @@
 #include "Actor/LCGateActor.h"
 #include "CineCameraActor.h"
 #include "MovieSceneSequencePlayer.h"
+#include "Character/CinematicDummyCharacter.h"
+#include "EngineUtils.h"
 
 ALCPlayerController::ALCPlayerController()
 {
@@ -229,72 +231,47 @@ void ALCPlayerController::Client_HideHUD_Implementation()
     }
 }
 
-void ALCPlayerController::Client_PlayGateCutscene_Implementation(ULevelSequence* Sequence, ACinematicDummyCharacter* CinematicDummyCharacter, const FTransform& SpawnTransform, int32 PlayerIndex, ECutsceneType CutsceneType)
+void ALCPlayerController::Client_PlayGateCutscene_Implementation(
+    ALevelSequenceActor* SequenceActor,
+    int32 TotalPlayers,
+    ECutsceneType CutsceneType)
 {
-    if (!Sequence || !CinematicDummyCharacter)
+    if (!IsValid(SequenceActor) || !IsValid(SequenceActor->SequencePlayer))
     {
         return;
     }
-
-    // 현재 컷신 타입 저장 (콜백에서 사용)
+    
     CurrentCutsceneType = CutsceneType;
 
-    // 1. 클라이언트가 직접 레벨 시퀀스 플레이어를 생성해서 재생하도록 변경 권장
-    FMovieSceneSequencePlaybackSettings PlaybackSettings;
-    ALevelSequenceActor* OutSequenceActor = nullptr;
-    ULevelSequencePlayer* LocalSequencePlayer = ULevelSequencePlayer::CreateLevelSequencePlayer(GetWorld(), Sequence, PlaybackSettings, OutSequenceActor);
-    if (!LocalSequencePlayer || !OutSequenceActor)
+    // 월드에서 모든 더미를 이름으로 찾아 바인딩
+    for (int32 i = 0; i < TotalPlayers; ++i)
     {
-        return;
+        ACinematicDummyCharacter* FoundDummy = nullptr;
+        for (TActorIterator<ACinematicDummyCharacter> It(GetWorld()); It; ++It)
+        {            
+            if (It->CutsceneIndex == i)
+            {
+                FoundDummy = *It;
+                break;
+            }
+        }
+
+        if (IsValid(FoundDummy))
+        {
+            FName TrackTag = FName(FString::Printf(TEXT("Slot%d"), i + 1));
+            SequenceActor->SetBindingByTag(TrackTag, { FoundDummy });            
+        }
     }
 
-    // 2. 더미 캐릭터를 시퀀스에 바인딩
-    FName TrackTag = FName(FString::Printf(TEXT("Slot%d"), PlayerIndex + 1));
-    OutSequenceActor->SetBindingByTag(TrackTag, { CinematicDummyCharacter });
+    // 시퀀스 재생
+    SequenceActor->SequencePlayer->Play();
 
-    // 3. 시퀀스 재생
-    LocalSequencePlayer->Play();
-
-    // 4. 통합된 콜백 연결
-    LocalSequencePlayer->OnFinished.AddUniqueDynamic(this, &ALCPlayerController::OnCutsceneFinished);
-
-    // 5. 카메라 전환
-    SetCameraFromSequence(OutSequenceActor);
-
-    // 6. UI 숨기기
+    // 카메라 전환 & UI 숨기기
+    SetCameraFromSequence(SequenceActor);
     HideUIForCutscene();
 
-
-    //// 2. 카메라 전환 (기존에 하던 방식 유지)
-    //FName CameraTag = TEXT("Camera");
-    //TArray<FMovieSceneObjectBindingID> Bindings = OutSequenceActor->GetSequence()->FindBindingsByTag(CameraTag);
-
-    //if (Bindings.Num() > 0)
-    //{
-    //    FMovieSceneObjectBindingID BindingID = Bindings[0];
-    //    TArray<UObject*> BoundObjects = OutSequenceActor->SequencePlayer->GetBoundObjects(BindingID);
-    //    for (UObject* Obj : BoundObjects)
-    //    {
-    //        if (ACameraActor* CameraActor = Cast<ACameraActor>(Obj))
-    //        {
-    //            if (IsLocalController())
-    //            {
-    //                SetViewTargetWithBlend(CameraActor, 0.0f);
-    //            }
-    //            break;
-    //        }
-    //    }
-    //}
-
-    //// 3. UI 숨기기
-    //if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
-    //{
-    //    if (ULCUIManager* UIManager = Subsystem->GetUIManager())
-    //    {
-    //        UIManager->HideInGameHUD();
-    //        UIManager->HideSpectatorWidget();
-    //    }
-    //}
+    // OnFinished 콜백 등록 (필요하면)
+    SequenceActor->SequencePlayer->OnFinished.AddUniqueDynamic(this, &ALCPlayerController::OnCutsceneFinished);
 }
 
 // 카메라 설정을 별도 함수로 분리
@@ -355,7 +332,7 @@ void ALCPlayerController::OnCutsceneFinished()
     switch (CurrentCutsceneType)
     {
     case ECutsceneType::GateEntry:
-        // 두번 호출되서 호스타만 하도록 수정
+        // 두번 호출돼서 호스트만 하도록 수정
         if (HasAuthority())
         {
             LinkedGateActor->IntoGameLevel(this);
@@ -365,10 +342,10 @@ void ALCPlayerController::OnCutsceneFinished()
         break;
     case ECutsceneType::GateExit:
         // 베이스로 돌아가기 -> 베이스캠프에서 실행하기때문에 지움
-        //Server_RequestReturnToBase();
+        Server_RequestReturnToBase();
         ShowUIAfterCutscene(); // 나가는 경우에만 UI 복원
-        ACharacter* Char = GetCharacter();
-        Char->SetActorHiddenInGame(false);
+        //ACharacter* Char = GetCharacter();
+        //Char->SetActorHiddenInGame(false);
         break;
     }
 }
@@ -383,8 +360,8 @@ void ALCPlayerController::Server_RequestIntoGameLevel_Implementation()
 
 void ALCPlayerController::Server_RequestReturnToBase_Implementation()
 {
-    //ACharacter* Char = GetCharacter();
-    //Char->SetActorHiddenInGame(false);
+    ACharacter* Char = GetCharacter();
+    Char->SetActorHiddenInGame(false);
 
     // 베이스로 돌아가는 로직 구현
     // 예: 특정 레벨로 이동하거나 게이트 액터에 요청

@@ -22,8 +22,10 @@ public:
 	virtual void BeginPlay() override;
 
 	void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
-
+	
 	void OnAllPlayersJoined();
+
+	void PlayerPossessedByPawn() override;
 
 public:
 	void UpdatePlayers() override;

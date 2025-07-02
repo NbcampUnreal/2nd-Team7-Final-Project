@@ -52,7 +52,13 @@ protected:
 
 
 	FTimerHandle CutsceneDelayTimer;
+	FTimerHandle CutsceneRPC_TimerHandle;
+	TArray<ABaseCharacter*> CachedPlayerCharacters;
+	ALevelSequenceActor* CachedSequenceActor;
+	ECutsceneType CachedCutsceneType;
 
+	// 타이머 콜백 함수 (인자 없음)
+	void DelayedSendCutsceneRPC();
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Cutscene")
 	ULevelSequence* GateSuckInSequence;

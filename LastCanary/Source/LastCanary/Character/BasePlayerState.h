@@ -144,7 +144,7 @@ public:
 
 public:
 	UPROPERTY(ReplicatedUsing = OnRep_PlayerGameName, BlueprintReadWrite)
-	FString PlayerInGameName = "Default";
+	FString PlayerInGameName = "";
 	UFUNCTION()
 	void OnRep_PlayerGameName();
 
@@ -165,7 +165,7 @@ public:
 	UFUNCTION()
 	void OnRep_Customization();
 
-	void SetCustomizationData();
+	void SetCustomizationData(const FCharacterCustomizationData& CustomizingData);
 	FCharacterCustomizationData	GetCustomizationData();
 
 public:
@@ -173,7 +173,7 @@ public:
 	UPROPERTY(ReplicatedUsing = OnRep_bHasEscaped)
 	bool bHasEscaped = false;
 
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(Replicated,BlueprintReadWrite)
 	bool bIsOpenMic = false;
 
 	UFUNCTION()
