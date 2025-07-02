@@ -131,7 +131,6 @@ void ABasePlayerState::Client_UpdateSpirit_Implementation(float NewSpirit)
 
 void ABasePlayerState::OnRep_CurrentStamina()
 {
-	LOG_Char_WARNING(TEXT("OnRep_CurrentStamina"));
 	UpdateStaminaUI();
 }
 
