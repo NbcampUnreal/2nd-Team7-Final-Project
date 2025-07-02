@@ -4103,9 +4103,10 @@ void ABaseCharacter::CheckAndStopWalkieTalkie()
 	AItemBase* CurrentItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
 	if (AWalkieTalkie* WalkieTalkie = Cast<AWalkieTalkie>(CurrentItem))
 	{
-		if (WalkieTalkie->IsWalkieTalkieActive())
+		if (WalkieTalkie->IsWalkieTalkieActive() && WalkieTalkie->IsOwnedByLocalPlayer())
 		{
-			LOG_Item_WARNING(TEXT("워키토키 사용 중지: 장비 해제/교체/드랍"));
+			LOG_Item_WARNING(TEXT("워키토키 사용 중지: 장비 해제/교체/드랍 (bUseWalkie: %s)"),
+				WalkieTalkie->IsWalkieTalkieActive() ? TEXT("true") : TEXT("false"));
 			WalkieTalkie->StopWalkieTalkie();
 		}
 	}
@@ -4116,7 +4117,7 @@ bool ABaseCharacter::IsCurrentWalkieTalkieActive() const
 	AItemBase* CurrentItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
 	if (AWalkieTalkie* WalkieTalkie = Cast<AWalkieTalkie>(CurrentItem))
 	{
-		return WalkieTalkie->IsWalkieTalkieActive();
+		return WalkieTalkie->IsWalkieTalkieActive() && WalkieTalkie->IsOwnedByLocalPlayer();
 	}
 	return false;
 }

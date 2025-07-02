@@ -22,8 +22,8 @@ public:
 	void StopWalkieTalkie();
 
 	UFUNCTION(Server, Reliable, Category = "WalkieTalkie")
-	void Server_UseWalkieTalkie();
-	void Server_UseWalkieTalkie_Implementation();
+	void Server_UseWalkieTalkie(APlayerController* UserController);
+	void Server_UseWalkieTalkie_Implementation(APlayerController* UserController);
 
 	UFUNCTION(Server, Reliable, Category = "WalkieTalkie")
 	void Server_StopWalkieTalkie();
@@ -37,11 +37,13 @@ public:
 	void Client_StopWalkieTalkie();
 	void Client_StopWalkieTalkie_Implementation();
 
-	UPROPERTY(BlueprintReadWrite, Replicated)
+	UPROPERTY(BlueprintReadWrite)
 	bool bUseWalkie;
 
 	UFUNCTION(BlueprintPure)
 	bool IsWalkieTalkieActive() const { return bUseWalkie; }
+
+	bool IsOwnedByLocalPlayer() const;
 
 protected:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
