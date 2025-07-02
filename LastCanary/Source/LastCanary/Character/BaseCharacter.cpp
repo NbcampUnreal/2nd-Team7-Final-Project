@@ -359,15 +359,9 @@ void ABaseCharacter::PossessedBy(AController* NewController)
 void ABaseCharacter::InitializePlayerLocalSettings()
 {
 	//1. 커스터마이징 데이터 로드 (로컬 환경)
-	CharacterCustomizationData = ULCLocalPlayerSaveGame::LoadCustomizationData(GetWorld());
+	InitializePlayerCustomizing();
 
-	//2. 로드한 커스터마이징 데이터를 적용
-	ApplyCustomization(CharacterCustomizationData);
-
-	//3. 서버로 커스터마이징 데이터 전송 (서버 RPC)
-	Server_SetCustomizationData(CharacterCustomizationData);
-
-	//4. 플레이어 네임 위젯 초기화
+	//2. 플레이어 네임 위젯 초기화
 	InitializePlayerNameWidget();
 }
 
@@ -395,6 +389,40 @@ void ABaseCharacter::InitializePlayerNameWidget()
 			RetryInitializeNameWidgetHandle,
 			this,
 			&ABaseCharacter::InitializePlayerNameWidget,
+			0.2f,    // 0.2초 후에 재시도
+			false    // 반복 호출 아님 (한 번만 실행)
+		);
+	}
+}
+
+void ABaseCharacter::InitializePlayerCustomizing()
+{
+	//로컬 환경에서만
+	if (!IsLocallyControlled())
+	{
+		return;
+	}
+
+	APlayerState* PS = GetPlayerState();
+	if (IsValid(PS)) // 플레이어 스테이트가 존재하면
+	{
+		LOG_Char_WARNING(TEXT("커스터마이징 데이터 로드"));
+		CharacterCustomizationData = ULCLocalPlayerSaveGame::LoadCustomizationData(GetWorld());
+		LogCustomizationData(CharacterCustomizationData);
+
+		//2. 로드한 커스터마이징 데이터를 적용
+		ApplyCustomization(CharacterCustomizationData);
+
+		//3. 서버로 커스터마이징 데이터 전송 (서버 RPC)
+		Server_SetCustomizationData(CharacterCustomizationData);
+	}
+	else //존재하지 않으면 몇초 뒤 다시 시도
+	{
+		// PlayerState가 아직 준비 안 됐으므로 타이머로 재시도
+		GetWorldTimerManager().SetTimer(
+			RetryInitializeCustomizingHandle,
+			this,
+			&ABaseCharacter::InitializePlayerCustomizing,
 			0.2f,    // 0.2초 후에 재시도
 			false    // 반복 호출 아님 (한 번만 실행)
 		);
@@ -523,13 +551,12 @@ FCharacterCustomizationData ABaseCharacter::GetCustomizationData()
 void ABaseCharacter::SetCustomizationData(const FCharacterCustomizationData& CustomizingData)
 {
 	CharacterCustomizationData = CustomizingData;
-	Server_SetCustomizationData(CharacterCustomizationData);
 }
 
 void ABaseCharacter::Server_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData)
 {
 	LOG_Char_WARNING(TEXT("캐릭터 커스터마이징 데이터 서버에 전달됨"));
-	
+	LogCustomizationData(CustomizingData);
 	//1. 서버의 캐릭터에 커스터마이징 정보 저장 (혹시 모르니까)
 	CharacterCustomizationData = CustomizingData;
 
@@ -567,6 +594,7 @@ void ABaseCharacter::Server_UpdateCustomizationData_Implementation()
 void ABaseCharacter::ApplyCustomization(const FCharacterCustomizationData CustomizationData)
 {
 	LOG_Char_WARNING(TEXT("캐릭터 커스터마이징 어플라이"));
+	LogCustomizationData(CustomizationData);
 	if (!CharacterMeshMap || !CharacterMeshMap->IsValidLowLevel())
 	{
 		return;
@@ -3482,15 +3510,6 @@ void ABaseCharacter::AttachOverlayObject(UStaticMesh* NewStaticMesh, USkeletalMe
 	OverlayStaticMesh->SetStaticMesh(NewStaticMesh);
 	OverlayStaticMesh->AttachToComponent(GetMesh(), AttachRules, ResultSocketName);
 
-	if (NewSkeletalMesh)
-	{
-		LOG_Item_WARNING(TEXT("오버레이 스켈레탈 메시 등록"));
-		
-	}
-	else
-	{
-		LOG_Item_WARNING(TEXT("오버레이 스켈레탈 메시 등록실패"));
-	}
 	OverlaySkeletalMesh->SetSkinnedAssetAndUpdate(NewSkeletalMesh, true);
 	OverlaySkeletalMesh->SetAnimInstanceClass(NewAnimationClass);
 	OverlaySkeletalMesh->AttachToComponent(GetMesh(), AttachRules, ResultSocketName);
@@ -4178,6 +4197,7 @@ void ABaseCharacter::OnRep_PlayerState()
 	if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
 	{
 		SetCustomizationData(PS->GetCustomizationData()); 
+		LogCustomizationData(PS->GetCustomizationData());
 		ApplyCustomization(CharacterCustomizationData);
 	}
 }
@@ -4279,4 +4299,23 @@ void ABaseCharacter::Client_TurnOffNameWidget_Implementation()
 
 		Char->TurnOffNameWidget();
 	}
+}
+
+
+
+
+
+void ABaseCharacter::LogCustomizationData(const FCharacterCustomizationData& Data)
+{
+	UE_LOG(LogTemp, Warning,
+		TEXT(
+			"커스터마이징 데이터: "
+			"DefaultBodyID=%d, GloveID=%d, JacketID=%d, PantsID=%d, BeltsID=%d, HelmetID=%d, ArmorID=%d, BootsID=%d, "
+			"DefaultBodyMaterialID=%d, GloveMaterialID=%d, JacketMaterialID=%d, PantsMaterialID=%d, BeltsMaterialID=%d, "
+			"HelmetMaterialID=%d, ArmorMaterialID=%d, BootsMaterialID=%d, FlagMaterialID=%d"
+		),
+		Data.DefaultBodyID, Data.GloveID, Data.JacketID, Data.PantsID, Data.BeltsID, Data.HelmetID, Data.ArmorID, Data.BootsID,
+		Data.DefaultBodyMaterialID, Data.GloveMaterialID, Data.JacketMaterialID, Data.PantsMaterialID, Data.BeltsMaterialID,
+		Data.HelmetMaterialID, Data.ArmorMaterialID, Data.BootsMaterialID, Data.FlagMaterialID
+	);
 }

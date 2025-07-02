@@ -147,6 +147,8 @@ public:
 
 	FCharacterCustomizationData CharacterCustomizationData;
 
+	void LogCustomizationData(const FCharacterCustomizationData& Data);
+
 	bool bPossessedCheck = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
@@ -265,6 +267,9 @@ protected:
 
 	FTimerHandle RetryInitializeNameWidgetHandle;
 	void InitializePlayerNameWidget();
+
+	FTimerHandle RetryInitializeCustomizingHandle;
+	void InitializePlayerCustomizing();
 
 	UFUNCTION(Server, Reliable)
 	void Server_ClientLogin();
