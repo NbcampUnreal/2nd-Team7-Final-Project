@@ -45,18 +45,31 @@ protected:
 
 	float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Combat")
 	float HitCount = 0;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Gimmick|Combat")
+	TMap<FName, float> BoneHitCountMultipliers;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Combat")
 	float GroggyCount = 100;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Gimmick|Combat")
-	TMap<FName, float> BoneHitCountMultipliers;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Combat")
+	float EliteGroggy = 5.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick|Combat")//방어 기믹 끝나고 카운트 다시 시작, 연속 스턴 방어용
+	float StunCooldownTime = EliteGroggy + 1.f;
+
+	bool bIsInStunCooldown = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
 	USoundBase* GimmickSound;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Animation")
 	UAnimMontage* AIGimmick;
+
+	UFUNCTION()
+	void EndStunCooldown();
+
+private:
+	FTimerHandle StunCooldownTimerHandle;
 };

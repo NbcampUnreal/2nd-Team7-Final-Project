@@ -43,6 +43,8 @@ void ATempleEliteMonster::BeginPlay()
 {
 	Super::BeginPlay();
 
+	StunCooldownTime = EliteGroggy + 1.f;
+
 	if (BoneHitCountMultipliers.IsEmpty())
 	{
 		BoneHitCountMultipliers.Add(TEXT("head"), 2.5f);//머리
@@ -70,6 +72,9 @@ void ATempleEliteMonster::BeginPlay()
 
 float ATempleEliteMonster::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
+	if (!HasAuthority()) return 0.0f;
+	if (!IsValid(DamageCauser)) return 0.0f;
+
 	if (DamageAmount > 0.0f)
 	{
 		if (DamageEvent.IsOfType(FPointDamageEvent::ClassID))
@@ -78,8 +83,11 @@ float ATempleEliteMonster::TakeDamage(float DamageAmount, FDamageEvent const& Da
 
 			if (const float* Multiplier = BoneHitCountMultipliers.Find(PointDamageEvent->HitInfo.BoneName))
 			{
-				HitCount += *Multiplier;
-				UE_LOG(LogTemp, Error, TEXT("현재 카운트 = %f (맞은 뼈: %s)"), HitCount, *PointDamageEvent->HitInfo.BoneName.ToString());
+				if (!bIsInStunCooldown)//타이머 엔드 플레이에서 정리해주자
+				{
+					HitCount += *Multiplier;
+					UE_LOG(LogTemp, Error, TEXT("현재 카운트 = %f (맞은 뼈: %s)"), HitCount, *PointDamageEvent->HitInfo.BoneName.ToString());
+				}
 			}
 
 			if (HitCount >= GroggyCount)
@@ -90,6 +98,18 @@ float ATempleEliteMonster::TakeDamage(float DamageAmount, FDamageEvent const& Da
 				{
 					AIController->SetStun(GroggyTime);
 					MulticastAIGimmick();
+					bIsInStunCooldown = true;
+
+					if (UWorld* World = GetWorld())
+					{
+						World->GetTimerManager().SetTimer(
+							StunCooldownTimerHandle,
+							this,
+							&ATempleEliteMonster::EndStunCooldown,
+							StunCooldownTime,
+							false
+						);
+					}
 				}
 			}
 		}
@@ -98,6 +118,14 @@ float ATempleEliteMonster::TakeDamage(float DamageAmount, FDamageEvent const& Da
 	return 0.0f;
 }
 
+void ATempleEliteMonster::EndStunCooldown()
+{
+	bIsInStunCooldown = false;
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(StunCooldownTimerHandle);
+	}
+}
 
 void ATempleEliteMonster::EnableAttackCollider()
 {
