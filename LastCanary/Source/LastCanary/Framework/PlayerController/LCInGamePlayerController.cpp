@@ -74,6 +74,10 @@ void ALCInGamePlayerController::Client_OnEscapeGate_Implementation(UDataTable* C
 void ALCInGamePlayerController::Client_OnGameLose_Implementation()
 {
 	ShowLoseVideo();
+	if (ULCGameManager* GameManager = GetGameInstance()->GetSubsystem<ULCGameManager>())
+	{
+		GameManager->InitGameManager();
+	}
 }
 
 void ALCInGamePlayerController::Client_OnGameEnd_Implementation()

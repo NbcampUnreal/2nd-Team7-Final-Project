@@ -455,4 +455,5 @@ void ABasePlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME(ABasePlayerState, AquiredItemIDs);
 	DOREPLIFETIME(ABasePlayerState, PlayerInGameName);
 	DOREPLIFETIME(ABasePlayerState, CustomizatiomData);
+	DOREPLIFETIME(ABasePlayerState, bIsOpenMic);
 }
