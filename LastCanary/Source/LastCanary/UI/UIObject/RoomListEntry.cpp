@@ -1,4 +1,4 @@
-#include "UI/UIObject/RoomListEntry.h"
+ï»¿#include "UI/UIObject/RoomListEntry.h"
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
 #include "Components/Button.h"
@@ -9,7 +9,7 @@
 void URoomListEntry::NativeConstruct()
 {
 	Super::NativeConstruct();
-    // BluePrint¿¡¼­ ¿ÂÅ¬¸¯ ÀÌº¥Æ® ¹ÙÀÎµù
+    // BluePrintì—ì„œ ì˜¨í´ë¦­ ì´ë²¤íŠ¸ ë°”ì¸ë”©
 	//if (JoinButton)
 	//{
 	//	JoinButton->OnClicked.AddUniqueDynamic(this, &URoomListEntry::OnJoinButtonClicked);

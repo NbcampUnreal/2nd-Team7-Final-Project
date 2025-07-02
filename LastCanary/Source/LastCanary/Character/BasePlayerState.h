@@ -173,7 +173,7 @@ public:
 	UPROPERTY(ReplicatedUsing = OnRep_bHasEscaped)
 	bool bHasEscaped = false;
 
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(Replicated,BlueprintReadWrite)
 	bool bIsOpenMic = false;
 
 	UFUNCTION()
