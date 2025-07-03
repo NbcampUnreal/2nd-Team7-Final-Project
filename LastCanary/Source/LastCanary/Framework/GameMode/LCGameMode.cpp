@@ -81,6 +81,10 @@ void ALCGameMode::Logout(AController* Exiting)
 	if (ULCGameManager* LCGM = GetGameInstance()->GetSubsystem<ULCGameManager>())
 	{
 		LCGM->CurrentPlayerCount--;
+		if (LCGM->CurrentPlayerCount == 0)
+		{
+			LCGM->InitGameManager();
+		}
 	}
 }
 
