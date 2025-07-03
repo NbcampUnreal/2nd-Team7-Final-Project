@@ -82,7 +82,7 @@ void AResourceNode::Interact_Implementation(APlayerController* Interactor)
 
 	if (ABaseCharacter* Character = Cast<ABaseCharacter>(Interactor->GetPawn()))
 	{
-		Server_RequestInteract(Interactor);
+		Character->Server_InteractWithResourceNode(this);
 	}
 }
 
@@ -177,7 +177,7 @@ void AResourceNode::HarvestResource(APlayerController* Interactor)
 
 	FVector SpawnLocation = CalculateResourceSpawnLocation(Interactor);
 	ResourceItemSpawnManager->SpawnItemAtLocation(SelectedItemRow, SpawnLocation);
-	OnResourceOpened();
+	Multicast_OnResourceOpened();
 
 	if (!bInfiniteHarvest)
 	{
@@ -435,7 +435,7 @@ void AResourceNode::HandleLootSpawn(APlayerController* Interactor)
 		ResourceItemSpawnManager->SpawnItemAtLocation(ItemRow, SpawnLocation);
 	}
 
-	OnResourceOpened();
+	Multicast_OnResourceOpened();
 	CurrentHarvestCount = MaxHarvestCount; // 즉시 상호작용 금지 처리
 
 	// 몬스터 스폰: 조건 필터링
@@ -577,6 +577,11 @@ void AResourceNode::DestroyResourceNode()
 		LOG_Item_WARNING(TEXT("[ResourceNode] 자원 노드 파괴됨"));
 		Destroy();
 	}
+}
+
+void AResourceNode::Multicast_OnResourceOpened_Implementation()
+{
+	OnResourceOpened();
 }
 
 void AResourceNode::OnResourceOpened_Implementation()
