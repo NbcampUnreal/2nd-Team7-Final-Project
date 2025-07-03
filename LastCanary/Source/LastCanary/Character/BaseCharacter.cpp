@@ -4001,13 +4001,6 @@ void ABaseCharacter::Server_InteractWithResourceNode_Implementation(AResourceNod
 		return;
 	}
 
-	AItemBase* EquippedItem = GetToolbarInventoryComponent()->GetCurrentEquippedItem();
-	if (!EquippedItem || !EquippedItem->ItemData.ItemType.MatchesTag(TargetNode->RequiredToolTag))
-	{
-		LOG_Item_WARNING(TEXT("올바른 도구를 장착하지 않았습니다."));
-		return;
-	}
-
 	TargetNode->HarvestResource(GetController<APlayerController>());
 }
 
