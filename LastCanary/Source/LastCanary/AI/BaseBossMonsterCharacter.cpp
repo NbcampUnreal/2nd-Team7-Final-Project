@@ -42,6 +42,8 @@ void ABaseBossMonsterCharacter::BeginPlay()
     // 최초 스폰 위치를 저장
     InitialSpawnLocation = GetActorLocation();
 
+    NextAttackAction = nullptr;
+
     // ── 데칼 풀 초기화 ────────────────────────────────────────────
     RemainingCommonDecals = CommonDecalClasses;
     RemainingUniqueDecals = UniqueDecalClasses;
