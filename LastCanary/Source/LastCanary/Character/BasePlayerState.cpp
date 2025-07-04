@@ -38,6 +38,7 @@ void ABasePlayerState::BeginPlay()
 
 	SetInGameStatus(EPlayerInGameStatus::Alive);
 
+	/*
 	if (AController* Ctrl = GetOwner<AController>())
 	{
 		if (Ctrl->IsLocalController())
@@ -45,6 +46,7 @@ void ABasePlayerState::BeginPlay()
 			SetCustomizationData();
 		}
 	}
+	*/
 }
 
 void ABasePlayerState::OnRep_PlayerGameName()
@@ -129,7 +131,6 @@ void ABasePlayerState::Client_UpdateSpirit_Implementation(float NewSpirit)
 
 void ABasePlayerState::OnRep_CurrentStamina()
 {
-	LOG_Char_WARNING(TEXT("OnRep_CurrentStamina"));
 	UpdateStaminaUI();
 }
 
@@ -413,23 +414,11 @@ void ABasePlayerState::InCreaseSurviveTime()
 	SurviveTime++;
 }
 
-void ABasePlayerState::SetCustomizationData()
+void ABasePlayerState::SetCustomizationData(const FCharacterCustomizationData& CustomizingData)
 {
-	LOG_Char_WARNING(TEXT("커스터마이징 데이터 로드"));
-	CustomizatiomData = ULCLocalPlayerSaveGame::LoadCustomizationData(GetWorld());
-	if (HasAuthority())
-	{
-		if (ABaseCharacter* MyCharacter = Cast<ABaseCharacter>(GetPawn()))
-		{
-			MyCharacter->ApplyCustomization(CustomizatiomData);
-		}
-
-	}
-	else
-	{
-		Server_SetCustomizationData(CustomizatiomData);
-	}
-	//UpdatePlayerCustomizingData();
+	LOG_Char_WARNING(TEXT("커스터마이징 데이터 스테이트에 저장"));
+	
+	CustomizatiomData = CustomizingData;
 }
 
 void ABasePlayerState::Server_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData)
@@ -465,4 +454,5 @@ void ABasePlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME(ABasePlayerState, AquiredItemIDs);
 	DOREPLIFETIME(ABasePlayerState, PlayerInGameName);
 	DOREPLIFETIME(ABasePlayerState, CustomizatiomData);
+	DOREPLIFETIME(ABasePlayerState, bIsOpenMic);
 }

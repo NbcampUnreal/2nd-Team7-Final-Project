@@ -305,6 +305,7 @@ void ABasePlayerController::SpawnSpectatablePawn()
 	{
 		LOG_Char_WARNING(TEXT("SpawnSpectatablePawn"));
 		FActorSpawnParameters Params;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn; //반드시 생성 무조건 생성
 		Params.Owner = this;
 		ABaseSpectatorPawn* Spectator = GetWorld()->SpawnActor<ABaseSpectatorPawn>(SpectatorClass, SpectatorSpawnLocation, SpectatorSpawnRotation, Params);
 		if (!IsValid(Spectator))

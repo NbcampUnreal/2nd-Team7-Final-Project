@@ -199,6 +199,10 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Effects")
 	USoundBase* DestroySound;
 
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_OnResourceOpened();
+	void Multicast_OnResourceOpened_Implementation();
+
 	UFUNCTION(BlueprintNativeEvent, Category = "Resource|Interaction")
 	void OnResourceOpened();
 };

@@ -81,6 +81,10 @@ void ALCGameMode::Logout(AController* Exiting)
 	if (ULCGameManager* LCGM = GetGameInstance()->GetSubsystem<ULCGameManager>())
 	{
 		LCGM->CurrentPlayerCount--;
+		if (LCGM->CurrentPlayerCount == 0)
+		{
+			LCGM->InitGameManager();
+		}
 	}
 }
 
@@ -328,4 +332,9 @@ void ALCGameMode::ClearAllPlayersReady()
 	}
 
 	LOG_Frame_WARNING(TEXT("모든 플레이어의 Ready 상태를 초기화했습니다 (false로 설정됨)"));
+}
+
+void ALCGameMode::PlayerPossessedByPawn()
+{
+	PossessReadyPlayer++;
 }

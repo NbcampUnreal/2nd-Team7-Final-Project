@@ -34,13 +34,13 @@ public:
 	void ForgetTarget();
 
 protected:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick|Combat")
 	float MaxFreezeTime = 5.0f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Gimmick")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Gimmick|Combat")
 	float FreezeCooldown = 7.f;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Gimmick")
+	UPROPERTY(BlueprintReadOnly, Category = "Gimmick|Combat")
 	bool bIsFrozen = false;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)

@@ -24,6 +24,7 @@
 #include "Item/EquipmentItem/GunBase.h"
 #include "Item/EquipmentItem/EquipmentItemBase.h"
 #include "Item/EquipmentItem/BackpackItem.h"
+#include "Item/EquipmentItem/WalkieTalkie.h"
 #include "UI/Manager/LCUIManager.h"
 #include "LastCanary.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -46,6 +47,8 @@
 #include "Inventory/BackpackManager.h"
 #include "Engine/DamageEvents.h"
 #include "AI/BaseBossMonsterCharacter.h"
+#include "Framework/GameMode/LCGameMode.h"
+
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -292,7 +295,44 @@ void ABaseCharacter::BeginPlay()
 
 	KickHitBox->OnComponentBeginOverlap.AddUniqueDynamic(this, &ABaseCharacter::OnKickHitBoxOverlap);
 
+
+	if (IsLocallyControlled())
+	{
+		Server_ClientLogin();
+		InitializePlayerLocalSettings();
+	}
 }
+
+void ABaseCharacter::Server_ClientLogin_Implementation()
+{
+	if (HasAuthority())
+	{
+		if (ALCGameMode* GM = GetWorld()->GetAuthGameMode<ALCGameMode>())
+		{
+			LOG_Char_WARNING(TEXT("빙의 성공"));
+
+			//GM->PlayerPossessedByPawn();
+		}
+	}
+}
+
+void ABaseCharacter::CheckPlayerCharacterIsReadyToGameMode()
+{
+	if (bPossessedCheck == true)
+	{
+		return;
+	}
+	if (HasAuthority())
+	{
+		if (ALCGameMode* GM = GetWorld()->GetAuthGameMode<ALCGameMode>())
+		{
+			LOG_Char_WARNING(TEXT("준비 성공"));
+			bPossessedCheck = true;
+			GM->PlayerPossessedByPawn();
+		}
+	}
+}
+
 
 void ABaseCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
@@ -303,9 +343,89 @@ void ABaseCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void ABaseCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
-	if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+	/*
+	if (HasAuthority())
 	{
-		ApplyCustomization(PS->GetCustomizationData());
+		if (ALCGameMode* GM = GetWorld()->GetAuthGameMode<ALCGameMode>())
+		{
+			LOG_Char_WARNING(TEXT("빙의 성공"));
+
+			GM->PlayerPossessedByPawn();
+		}
+	}
+	*/
+}
+
+void ABaseCharacter::InitializePlayerLocalSettings()
+{
+	//1. 커스터마이징 데이터 로드 (로컬 환경)
+	InitializePlayerCustomizing();
+
+	//2. 플레이어 네임 위젯 초기화
+	InitializePlayerNameWidget();
+}
+
+void ABaseCharacter::InitializePlayerNameWidget()
+{
+	//로컬 환경에서만
+	if (!IsLocallyControlled())
+	{
+		return;
+	}
+
+	APlayerState* PS = GetPlayerState();
+	if (IsValid(PS) && IsValid(NameWidgetComponent)) // 플레이어 스테이트가 존재하며, 네임 위젯에 접근할 수 있을 때만
+	{
+		UpdateNameWidget();
+		if (IsValid(NameWidgetComponent))
+		{
+			NameWidgetComponent->SetVisibility(false, true);
+		}
+	}
+	else //존재하지 않으면 몇초 뒤 다시 시도
+	{
+		// PlayerState가 아직 준비 안 됐으므로 타이머로 재시도
+		GetWorldTimerManager().SetTimer(
+			RetryInitializeNameWidgetHandle,
+			this,
+			&ABaseCharacter::InitializePlayerNameWidget,
+			0.2f,    // 0.2초 후에 재시도
+			false    // 반복 호출 아님 (한 번만 실행)
+		);
+	}
+}
+
+void ABaseCharacter::InitializePlayerCustomizing()
+{
+	//로컬 환경에서만
+	if (!IsLocallyControlled())
+	{
+		return;
+	}
+
+	APlayerState* PS = GetPlayerState();
+	if (IsValid(PS)) // 플레이어 스테이트가 존재하면
+	{
+		LOG_Char_WARNING(TEXT("커스터마이징 데이터 로드"));
+		CharacterCustomizationData = ULCLocalPlayerSaveGame::LoadCustomizationData(GetWorld());
+		LogCustomizationData(CharacterCustomizationData);
+
+		//2. 로드한 커스터마이징 데이터를 적용
+		ApplyCustomization(CharacterCustomizationData);
+
+		//3. 서버로 커스터마이징 데이터 전송 (서버 RPC)
+		Server_SetCustomizationData(CharacterCustomizationData);
+	}
+	else //존재하지 않으면 몇초 뒤 다시 시도
+	{
+		// PlayerState가 아직 준비 안 됐으므로 타이머로 재시도
+		GetWorldTimerManager().SetTimer(
+			RetryInitializeCustomizingHandle,
+			this,
+			&ABaseCharacter::InitializePlayerCustomizing,
+			0.2f,    // 0.2초 후에 재시도
+			false    // 반복 호출 아님 (한 번만 실행)
+		);
 	}
 }
 
@@ -431,28 +551,37 @@ FCharacterCustomizationData ABaseCharacter::GetCustomizationData()
 void ABaseCharacter::SetCustomizationData(const FCharacterCustomizationData& CustomizingData)
 {
 	CharacterCustomizationData = CustomizingData;
-	SetCustomizationDataOnServer();
-}
-
-
-void ABaseCharacter::SetCustomizationDataOnServer()
-{
-	Server_SetCustomizationData(CharacterCustomizationData);
 }
 
 void ABaseCharacter::Server_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData)
 {
 	LOG_Char_WARNING(TEXT("캐릭터 커스터마이징 데이터 서버에 전달됨"));
+	LogCustomizationData(CustomizingData);
+	//1. 서버의 캐릭터에 커스터마이징 정보 저장 (혹시 모르니까)
 	CharacterCustomizationData = CustomizingData;
-	ApplyCustomization(CustomizingData);
+
+	//2. 서버 및 모든 클라이언트에 커스터마이징 데이터 저장 및 적용
 	Multicast_SetCustomizationData(CustomizingData);
+
+	//3. 플레이어 스테이트에 커스터마이징 값 저장
+	if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+	{
+		PS->SetCustomizationData(CustomizingData);
+	}
+
+	//4. 게이트 퇴장시를 위해 설정 완료되었음을 게임모드에 전파
+	CheckPlayerCharacterIsReadyToGameMode();
 }
 
 void ABaseCharacter::Multicast_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData)
 {
 	LOG_Char_WARNING(TEXT("멀티캐스트로 전파 "));
+
+	//1. 각 클라이언트 커스터마이징 정보 저장
 	CharacterCustomizationData = CustomizingData;
-	ApplyCustomization(CustomizingData);
+
+	//2. 받은 커스터마이징 정보를 토대로 커스터마이징 적용
+	ApplyCustomization(CharacterCustomizationData);
 }
 
 void ABaseCharacter::Server_UpdateCustomizationData_Implementation()
@@ -465,12 +594,12 @@ void ABaseCharacter::Server_UpdateCustomizationData_Implementation()
 void ABaseCharacter::ApplyCustomization(const FCharacterCustomizationData CustomizationData)
 {
 	LOG_Char_WARNING(TEXT("캐릭터 커스터마이징 어플라이"));
+	LogCustomizationData(CustomizationData);
 	if (!CharacterMeshMap || !CharacterMeshMap->IsValidLowLevel())
 	{
-		LOG_Char_WARNING(TEXT("캐릭터 메시 데이터 invalid"));
 		return;
 	}
-	//FCharacterCustomizationData CustomizationData = ULCLocalPlayerSaveGame::LoadCustomizationData(GetWorld());
+
 	int BodyId = CustomizationData.DefaultBodyID;
 	int HeadId = CustomizationData.DefaultBodyID;
 	int HelmetId = CustomizationData.HelmetID;
@@ -2511,6 +2640,7 @@ void ABaseCharacter::Server_SetQuickSlotIndex_Implementation(int32 NewIndex)
 
 void ABaseCharacter::EquipItem(int32 Index)
 {
+	CheckAndStopWalkieTalkie();
 	ToolbarInventoryComponent->EquipItemAtSlot(Index);
 	// 동기화된 장착 요청
 	Multicast_ResetAnimationAndCamera(Index);
@@ -2560,6 +2690,9 @@ void ABaseCharacter::UnequipCurrentItem()
 		LOG_Item_WARNING(TEXT("현재 장비 상태가 아니거나 툴바가 없습니다."));
 		return;
 	}
+
+	CheckAndStopWalkieTalkie();
+
 	// 클라이언트에서 호출된 경우 서버에 요청
 	if (GetLocalRole() < ROLE_Authority)
 	{
@@ -2964,10 +3097,7 @@ void ABaseCharacter::HandlePlayerDeath()
 		return;
 	}
 
-	if (NameWidgetComponent)
-	{
-		NameWidgetComponent->SetVisibility(false, true); // true: 자식까지 모두 비활성화
-	}
+	TurnOffNameWidget();
 
 	//if 캐릭터가 죽으면
 	//장착 아이템 제거
@@ -2985,6 +3115,7 @@ void ABaseCharacter::HandlePlayerDeath()
 	// State 변경
 	MyPlayerState->CurrentState = EPlayerState::Dead;
 	MyPlayerState->SetInGameStatus(EPlayerInGameStatus::Spectating);
+	Client_TurnOffNameWidget();
 	Client_HandlePlayerVoiceChattingState();
 	Multicast_SetPlayerInGameStateOnDie();
 	PC->PlayerExitActivePlayOnDeath();
@@ -3033,10 +3164,7 @@ void ABaseCharacter::Multicast_SetPlayerInGameStateOnDie_Implementation()
 	MyPlayerState->CurrentState = EPlayerState::Dead;
 	MyPlayerState->SetInGameStatus(EPlayerInGameStatus::Spectating);
 	SwapHeadMaterialTransparent(false);
-	if (NameWidgetComponent)
-	{
-		NameWidgetComponent->SetVisibility(false, true); // true: 자식까지 모두 비활성화
-	}
+	TurnOffNameWidget();
 }
 
 float ABaseCharacter::CalculateTakeDamage(float DamageAmount)
@@ -3079,6 +3207,8 @@ void ABaseCharacter::EscapeThroughGate()
 	{
 		return;
 	}
+	Client_TurnOffNameWidget();
+	TurnOffNameWidget();
 	MyPlayerState->CurrentState = EPlayerState::Escape;
 	MyPlayerState->SetInGameStatus(EPlayerInGameStatus::Spectating);	
 	Multicast_SetPlayerInGameStateOnEscapeGate();
@@ -3093,6 +3223,7 @@ void ABaseCharacter::Multicast_SetPlayerInGameStateOnEscapeGate_Implementation()
 		LOG_Char_WARNING(TEXT("PlayerState Isn`t Valid"));
 		return;
 	}
+	TurnOffNameWidget();
 	MyPlayerState->CurrentState = EPlayerState::Escape;
 	MyPlayerState->InGameState = EPlayerInGameStatus::Spectating; // 관전 상태 돌입
 }
@@ -3379,15 +3510,6 @@ void ABaseCharacter::AttachOverlayObject(UStaticMesh* NewStaticMesh, USkeletalMe
 	OverlayStaticMesh->SetStaticMesh(NewStaticMesh);
 	OverlayStaticMesh->AttachToComponent(GetMesh(), AttachRules, ResultSocketName);
 
-	if (NewSkeletalMesh)
-	{
-		LOG_Item_WARNING(TEXT("오버레이 스켈레탈 메시 등록"));
-		
-	}
-	else
-	{
-		LOG_Item_WARNING(TEXT("오버레이 스켈레탈 메시 등록실패"));
-	}
 	OverlaySkeletalMesh->SetSkinnedAssetAndUpdate(NewSkeletalMesh, true);
 	OverlaySkeletalMesh->SetAnimInstanceClass(NewAnimationClass);
 	OverlaySkeletalMesh->AttachToComponent(GetMesh(), AttachRules, ResultSocketName);
@@ -3678,6 +3800,7 @@ bool ABaseCharacter::IsInventoryOpen() const
 
 void ABaseCharacter::DropCurrentItem()
 {
+	CheckAndStopWalkieTalkie();
 	CancelUseItem();
 	CancelInteraction();
 	StopAiming();
@@ -3708,6 +3831,11 @@ void ABaseCharacter::DropItemAtSlot(int32 SlotIndex, int32 Quantity)
 	{
 		LOG_Item_WARNING(TEXT("[ABaseCharacter::DropItemAtSlot] ToolbarInventoryComponent is null"));
 		return;
+	}
+
+	if (SlotIndex == ToolbarInventoryComponent->GetCurrentEquippedSlotIndex())
+	{
+		CheckAndStopWalkieTalkie();
 	}
 
 	bool bSuccess = ToolbarInventoryComponent->TryDropItemAtSlot(SlotIndex, Quantity);
@@ -3873,13 +4001,6 @@ void ABaseCharacter::Server_InteractWithResourceNode_Implementation(AResourceNod
 		return;
 	}
 
-	AItemBase* EquippedItem = GetToolbarInventoryComponent()->GetCurrentEquippedItem();
-	if (!EquippedItem || !EquippedItem->ItemData.ItemType.MatchesTag(TargetNode->RequiredToolTag))
-	{
-		LOG_Item_WARNING(TEXT("올바른 도구를 장착하지 않았습니다."));
-		return;
-	}
-
 	TargetNode->HarvestResource(GetController<APlayerController>());
 }
 
@@ -3988,6 +4109,31 @@ void ABaseCharacter::GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) c
 {
 	TagContainer = OwnedTags;
 }
+
+void ABaseCharacter::CheckAndStopWalkieTalkie()
+{
+	AItemBase* CurrentItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
+	if (AWalkieTalkie* WalkieTalkie = Cast<AWalkieTalkie>(CurrentItem))
+	{
+		if (WalkieTalkie->IsWalkieTalkieActive() && WalkieTalkie->IsOwnedByLocalPlayer())
+		{
+			LOG_Item_WARNING(TEXT("워키토키 사용 중지: 장비 해제/교체/드랍 (bUseWalkie: %s)"),
+				WalkieTalkie->IsWalkieTalkieActive() ? TEXT("true") : TEXT("false"));
+			WalkieTalkie->StopWalkieTalkie();
+		}
+	}
+}
+
+bool ABaseCharacter::IsCurrentWalkieTalkieActive() const
+{
+	AItemBase* CurrentItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
+	if (AWalkieTalkie* WalkieTalkie = Cast<AWalkieTalkie>(CurrentItem))
+	{
+		return WalkieTalkie->IsWalkieTalkieActive() && WalkieTalkie->IsOwnedByLocalPlayer();
+	}
+	return false;
+}
+
 void ABaseCharacter::SetWalkieTalkieChannelStatus(bool bActive)
 {
 	bool bPreviousStatus = bHasWalkieTalkieChannel;
@@ -4036,7 +4182,7 @@ void ABaseCharacter::OnRep_PlayerState()
 	LOG_Char_WARNING(TEXT("[OnRep_PlayerState] for %s"), *GetName());
 
 	UpdateNameWidget(); // PlayerState가 복제될 때 UI 갱신
-	
+		
 	if (IsLocallyControlled() && NameWidgetComponent)
 	{
 		NameWidgetComponent->SetVisibility(false, true);
@@ -4044,76 +4190,126 @@ void ABaseCharacter::OnRep_PlayerState()
 
 	if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
 	{
-		SetCustomizationData(PS->GetCustomizationData());
+		SetCustomizationData(PS->GetCustomizationData()); 
+		LogCustomizationData(PS->GetCustomizationData());
 		ApplyCustomization(CharacterCustomizationData);
-		SetCustomizationDataOnServer();
 	}
 }
 
 void ABaseCharacter::UpdateNameWidget()
 {
-	LOG_Char_WARNING(TEXT("[UpdateNameWidget] Called on %s"), *GetName());
+	//1. 위젯에 내 이름 적용
+	ApplyNameToWidget();
 
-	if (!NameWidgetComponent)
+	if (IsLocallyControlled())
 	{
-		LOG_Char_WARNING(TEXT("[UpdateNameWidget] NameWidgetComponent is NULL"));
-		return;
+		Server_UpdateNameWidget();
 	}
-
-	UUserWidget* Widget = NameWidgetComponent->GetWidget();
-	if (!Widget)
-	{
-		LOG_Char_WARNING(TEXT("[UpdateNameWidget] Widget is NULL"));
-		return;
-	}
-
-	if (UPlayerNameWidget* NameWidget = Cast<UPlayerNameWidget>(Widget))
-	{
-		APlayerState* PS = GetPlayerState();
-		if (!PS)
-		{
-			LOG_Char_WARNING(TEXT("[UpdateNameWidget] PlayerState is NULL"));
-			return;
-		}
-
-		const FString Name = PS->GetPlayerName();
-		LOG_Char_WARNING(TEXT("[UpdateNameWidget] PlayerState name = %s"), *Name);
-
-		NameWidget->SetPlayerName(Name);
-	}
-	Server_UpdateNameWidget();
-
 }
 
 void ABaseCharacter::Server_UpdateNameWidget_Implementation()
 {
-	LOG_Char_WARNING(TEXT("[UpdateNameWidget] Called on Server:: %s"), *GetName());
+	ApplyNameToWidget();
+}
 
-	if (!NameWidgetComponent)
+void ABaseCharacter::ApplyNameToWidget()
+{
+	if (!IsValid(NameWidgetComponent))
 	{
-		LOG_Char_WARNING(TEXT("[UpdateNameWidget] NameWidgetComponent is NULL"));
 		return;
 	}
 
 	UUserWidget* Widget = NameWidgetComponent->GetWidget();
-	if (!Widget)
+	if (!IsValid(Widget))
 	{
-		LOG_Char_WARNING(TEXT("[UpdateNameWidget] Widget is NULL"));
 		return;
 	}
 
-	if (UPlayerNameWidget* NameWidget = Cast<UPlayerNameWidget>(Widget))
+	UPlayerNameWidget* NameWidget = Cast<UPlayerNameWidget>(Widget);
+	if (!IsValid(NameWidget))
 	{
-		APlayerState* PS = GetPlayerState();
-		if (!PS)
+		return;
+	}
+	
+	APlayerState* PS = GetPlayerState();
+	if (!IsValid(PS))
+	{
+		return;
+	}
+
+	const FString Name = PS->GetPlayerName();
+	NameWidget->SetPlayerName(Name);
+
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	ABasePlayerState* BPS = Cast<ABasePlayerState>(PS);
+	if (!IsValid(BPS))
+	{
+		BPS->SetPlayerInGameName(Name);
+	}
+}
+
+void ABaseCharacter::TurnOffNameWidget()
+{
+	if (!IsValid(NameWidgetComponent))
+	{
+		return;
+	}
+	NameWidgetComponent->SetVisibility(false, true);
+}
+
+void ABaseCharacter::Client_TurnOffNameWidget_Implementation()
+{
+	LOG_Char_WARNING(TEXT("관전시 위젯 해제"));
+
+	AGameStateBase* GameState = GetWorld()->GetGameState<AGameStateBase>();
+	if (!IsValid(GameState))
+	{
+		LOG_Char_WARNING(TEXT("GameState Is Invalid"));
+		return;
+	}
+
+	if (GameState->PlayerArray.Num() <= 0)
+	{
+		return;
+	}
+
+	for (APlayerState* PS : GameState->PlayerArray)
+	{
+		ABasePlayerState* BasePS = Cast<ABasePlayerState>(PS);
+		if (!IsValid(BasePS))
 		{
-			LOG_Char_WARNING(TEXT("[UpdateNameWidget] PlayerState is NULL"));
-			return;
+			continue;
 		}
 
-		const FString Name = PS->GetPlayerName();
-		LOG_Char_WARNING(TEXT("[UpdateNameWidget] PlayerState name = %s"), *Name);
+		ABaseCharacter* Char = Cast<ABaseCharacter>(BasePS->GetPawn());
+		if (!IsValid(Char))
+		{
+			continue;
+		}
 
-		NameWidget->SetPlayerName(Name);
+		Char->TurnOffNameWidget();
 	}
+}
+
+
+
+
+
+void ABaseCharacter::LogCustomizationData(const FCharacterCustomizationData& Data)
+{
+	UE_LOG(LogTemp, Warning,
+		TEXT(
+			"커스터마이징 데이터: "
+			"DefaultBodyID=%d, GloveID=%d, JacketID=%d, PantsID=%d, BeltsID=%d, HelmetID=%d, ArmorID=%d, BootsID=%d, "
+			"DefaultBodyMaterialID=%d, GloveMaterialID=%d, JacketMaterialID=%d, PantsMaterialID=%d, BeltsMaterialID=%d, "
+			"HelmetMaterialID=%d, ArmorMaterialID=%d, BootsMaterialID=%d, FlagMaterialID=%d"
+		),
+		Data.DefaultBodyID, Data.GloveID, Data.JacketID, Data.PantsID, Data.BeltsID, Data.HelmetID, Data.ArmorID, Data.BootsID,
+		Data.DefaultBodyMaterialID, Data.GloveMaterialID, Data.JacketMaterialID, Data.PantsMaterialID, Data.BeltsMaterialID,
+		Data.HelmetMaterialID, Data.ArmorMaterialID, Data.BootsMaterialID, Data.FlagMaterialID
+	);
 }

@@ -133,8 +133,6 @@ public:
 	FCharacterCustomizationData GetCustomizationData();
 	void SetCustomizationData(const FCharacterCustomizationData& CustomizingData);
 
-	void SetCustomizationDataOnServer();
-
 	UFUNCTION(Server, Reliable)
 	void Server_UpdateCustomizationData();
 	void Server_UpdateCustomizationData_Implementation();
@@ -149,7 +147,9 @@ public:
 
 	FCharacterCustomizationData CharacterCustomizationData;
 
+	void LogCustomizationData(const FCharacterCustomizationData& Data);
 
+	bool bPossessedCheck = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
 	USkeletalMesh* BackpackSkeletalMesh;
@@ -261,6 +261,21 @@ protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void PossessedBy(AController* NewController) override;
+	
+	void InitializePlayerLocalSettings();
+
+
+	FTimerHandle RetryInitializeNameWidgetHandle;
+	void InitializePlayerNameWidget();
+
+	FTimerHandle RetryInitializeCustomizingHandle;
+	void InitializePlayerCustomizing();
+
+	UFUNCTION(Server, Reliable)
+	void Server_ClientLogin();
+	void Server_ClientLogin_Implementation();
+
+	void CheckPlayerCharacterIsReadyToGameMode();
 	// Camera Settings
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Camera", Meta = (ClampMin = 0, ClampMax = 90, ForceUnits = "deg"))
@@ -1031,6 +1046,14 @@ public:
 	UFUNCTION(BlueprintPure, Category = "WalkieTalkie")
 	bool HasWalkieTalkieChannel() const { return bHasWalkieTalkieChannel; }
 
+	// 워키토키 상태 확인 및 중지
+	UFUNCTION(BlueprintCallable)
+	void CheckAndStopWalkieTalkie();
+
+	// 현재 장착된 워키토키가 사용 중인지 확인
+	UFUNCTION(BlueprintPure)
+	bool IsCurrentWalkieTalkieActive() const;
+
 	/** 워키토키 채널 상태 설정 (C++에서 호출용) */
 	UFUNCTION(BlueprintCallable, Category = "WalkieTalkie")
 	void SetWalkieTalkieChannelStatus(bool bActive);
@@ -1042,6 +1065,13 @@ public:
 
 	virtual void OnRep_PlayerState() override;
 	void UpdateNameWidget(); // 위젯 업데이트용 함수
+	void ApplyNameToWidget();
+	void TurnOffNameWidget(); // 사망 시 네임 위젯 가리는 함수
+	
+	UFUNCTION(Client, Reliable)
+	void Client_TurnOffNameWidget(); // 관전할 때 가리는 함수.
+	void Client_TurnOffNameWidget_Implementation(); 
+
 	UFUNCTION(Server, Reliable)
 	void Server_UpdateNameWidget(); // 서버 위젯 업데이트용 함수
 	void Server_UpdateNameWidget_Implementation(); // 서버 위젯 업데이트용 함수
