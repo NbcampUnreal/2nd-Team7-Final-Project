@@ -55,6 +55,19 @@ class LASTCANARY_API ULCUIManager : public UObject
 
 public:
 	//-----------------
+	// Cached Widgets
+	//-------------------
+	template<typename T>
+	T* CreateAndCacheWidget(T*& CachedWidget, TSubclassOf<UUserWidget> WidgetClass)
+	{
+		if (CachedWidget == nullptr && WidgetClass)
+		{
+			CachedWidget = CreateWidget<T>(OwningPlayer, WidgetClass);
+		}
+		return CachedWidget;
+	}
+
+	//-----------------
 	// Constructor & Init
 	//-------------------
 	ULCUIManager();

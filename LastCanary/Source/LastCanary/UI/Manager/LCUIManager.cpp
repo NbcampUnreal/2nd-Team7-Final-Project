@@ -79,84 +79,113 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			GameEndWidgetClass = Settings->FromBPGameEndWidgetClass;
 			ServerMessageWidgetClass = Settings->FromBPServerMessageWidgetClass;
 
-			if ((CachedTitleMenu == nullptr) && TitleMenuClass)
+			CreateAndCacheWidget(CachedTitleMenu, TitleMenuClass);
+			CreateAndCacheWidget(CachedLobbyMenu, LobbyMenuClass);
+			CreateAndCacheWidget(CachedOptionWidget, OptionWidgetClass);
+			CreateAndCacheWidget(CachedPauseMenu, PauseMenuClass);
+			CreateAndCacheWidget(CachedInGameHUD, InGameHUDWidgetClass);
+			CreateAndCacheWidget(CachedShopWidget, ShopWidgetClass);
+			CreateAndCacheWidget(CachedPopupLoading, PopUpLoadingClass);
+			CreateAndCacheWidget(CachedPopupNotice, PopUpNoticeClass);
+			CreateAndCacheWidget(CachedLoadingLevel, LoadingLevelClass);
+			CreateAndCacheWidget(CachedInventoryMainWidget, InventoryMainWidgetClass);
+			CreateAndCacheWidget(CachedChecklistWidget, ChecklistWidgetClass);
+			CreateAndCacheWidget(CachedResultMenu, ResultMenuClass);
+			CreateAndCacheWidget(CachedRoomWidget, RoomWidgetClass);
+			CreateAndCacheWidget(CachedNotePopupWidget, NotePopupWidgetClass);
+			CreateAndCacheWidget(CachedDroneHUD, DroneHUDClass);
+			CreateAndCacheWidget(CachedSpectatorWidget, SpectatorWidgetClass);
+			CreateAndCacheWidget(CachedGameOverWidget, GameOverWidgetClass);
+			CreateAndCacheWidget(CachedGameEndWidget, GameEndWidgetClass);
+			CreateAndCacheWidget(CachedServerMessageWidget, ServerMessageWidgetClass);
+
+			if (CachedRoomWidget)
 			{
-				CachedTitleMenu = CreateWidget<UTitleMenu>(PlayerController, TitleMenuClass);
-			}
-			if ((CachedLobbyMenu == nullptr) && LobbyMenuClass)
-			{
-				CachedLobbyMenu = CreateWidget<ULobbyMenu>(PlayerController, LobbyMenuClass);
-			}
-			if ((CachedOptionWidget == nullptr) && OptionWidgetClass)
-			{
-				CachedOptionWidget = CreateWidget<UOptionWidget>(PlayerController, OptionWidgetClass);
-			}
-			if ((CachedPauseMenu == nullptr) && PauseMenuClass)
-			{
-				CachedPauseMenu = CreateWidget<UPauseMenu>(PlayerController, PauseMenuClass);
-			}
-			if ((CachedInGameHUD == nullptr) && InGameHUDWidgetClass)
-			{
-				CachedInGameHUD = CreateWidget<UInGameHUD>(PlayerController, InGameHUDWidgetClass);
-			}
-			if ((CachedShopWidget == nullptr) && ShopWidgetClass)
-			{
-				CachedShopWidget = CreateWidget<UShopWidget>(PlayerController, ShopWidgetClass);
-			}
-			if ((CachedPopupLoading == nullptr) && PopUpLoadingClass)
-			{
-				CachedPopupLoading = CreateWidget<UPopupLoading>(PlayerController, PopUpLoadingClass);
-			}
-			if ((CachedPopupNotice == nullptr) && PopUpNoticeClass)
-			{
-				CachedPopupNotice = CreateWidget<UPopupNotice>(PlayerController, PopUpNoticeClass);
-			}
-			if ((CachedLoadingLevel == nullptr) && LoadingLevelClass)
-			{
-				CachedLoadingLevel = CreateWidget<ULoadingLevel>(PlayerController, LoadingLevelClass);
-			}
-			if ((CachedInventoryMainWidget == nullptr) && InventoryMainWidgetClass)
-			{
-				CachedInventoryMainWidget = CreateWidget<UInventoryMainWidget>(PlayerController, InventoryMainWidgetClass);
-			}
-			if ((CachedChecklistWidget == nullptr) && ChecklistWidgetClass)
-			{
-				CachedChecklistWidget = CreateWidget<UChecklistWidget>(PlayerController, ChecklistWidgetClass);
-			}
-			if ((CachedResultMenu == nullptr) && ResultMenuClass)
-			{
-				CachedResultMenu = CreateWidget<UResultMenu>(PlayerController, ResultMenuClass);
-			}
-			if ((CachedRoomWidget == nullptr) && RoomWidgetClass)
-			{
-				CachedRoomWidget = CreateWidget<URoomWidget>(PlayerController, RoomWidgetClass);
 				CachedRoomWidget->CreatePlayerSlots();
 			}
-			if ((CachedNotePopupWidget == nullptr) && NotePopupWidgetClass)
+			if (CachedServerMessageWidget)
 			{
-				CachedNotePopupWidget = CreateWidget<UNotePopupWidget>(PlayerController, NotePopupWidgetClass);
-			}
-			if ((CachedDroneHUD == nullptr) && DroneHUDClass)
-			{
-				CachedDroneHUD = CreateWidget<UDroneHUD>(PlayerController, DroneHUDClass);
-			}
-			if ((CachedSpectatorWidget == nullptr) && SpectatorWidgetClass)
-			{
-				CachedSpectatorWidget = CreateWidget<USpectatorWidget>(PlayerController, SpectatorWidgetClass);
-			}
-			if ((CachedGameOverWidget == nullptr) && GameOverWidgetClass)
-			{
-				CachedGameOverWidget = CreateWidget<UGameOverWidget>(PlayerController, GameOverWidgetClass);
-			}
-			if ((CachedGameEndWidget == nullptr) && GameEndWidgetClass)
-			{
-				CachedGameEndWidget = CreateWidget<UGameEndWidget>(PlayerController, GameEndWidgetClass);
-			}
-			if ((CachedServerMessageWidget == nullptr) && ServerMessageWidgetClass)
-			{
-				CachedServerMessageWidget = CreateWidget<UServerMessageWidget>(PlayerController, ServerMessageWidgetClass);
 				CachedServerMessageWidget->AddToViewport();
 			}
+
+			//if ((CachedTitleMenu == nullptr) && TitleMenuClass)
+			//{
+			//	CachedTitleMenu = CreateWidget<UTitleMenu>(PlayerController, TitleMenuClass);
+			//}
+			//if ((CachedLobbyMenu == nullptr) && LobbyMenuClass)
+			//{
+			//	CachedLobbyMenu = CreateWidget<ULobbyMenu>(PlayerController, LobbyMenuClass);
+			//}
+			//if ((CachedOptionWidget == nullptr) && OptionWidgetClass)
+			//{
+			//	CachedOptionWidget = CreateWidget<UOptionWidget>(PlayerController, OptionWidgetClass);
+			//}
+			//if ((CachedPauseMenu == nullptr) && PauseMenuClass)
+			//{
+			//	CachedPauseMenu = CreateWidget<UPauseMenu>(PlayerController, PauseMenuClass);
+			//}
+			//if ((CachedInGameHUD == nullptr) && InGameHUDWidgetClass)
+			//{
+			//	CachedInGameHUD = CreateWidget<UInGameHUD>(PlayerController, InGameHUDWidgetClass);
+			//}
+			//if ((CachedShopWidget == nullptr) && ShopWidgetClass)
+			//{
+			//	CachedShopWidget = CreateWidget<UShopWidget>(PlayerController, ShopWidgetClass);
+			//}
+			//if ((CachedPopupLoading == nullptr) && PopUpLoadingClass)
+			//{
+			//	CachedPopupLoading = CreateWidget<UPopupLoading>(PlayerController, PopUpLoadingClass);
+			//}
+			//if ((CachedPopupNotice == nullptr) && PopUpNoticeClass)
+			//{
+			//	CachedPopupNotice = CreateWidget<UPopupNotice>(PlayerController, PopUpNoticeClass);
+			//}
+			//if ((CachedLoadingLevel == nullptr) && LoadingLevelClass)
+			//{
+			//	CachedLoadingLevel = CreateWidget<ULoadingLevel>(PlayerController, LoadingLevelClass);
+			//}
+			//if ((CachedInventoryMainWidget == nullptr) && InventoryMainWidgetClass)
+			//{
+			//	CachedInventoryMainWidget = CreateWidget<UInventoryMainWidget>(PlayerController, InventoryMainWidgetClass);
+			//}
+			//if ((CachedChecklistWidget == nullptr) && ChecklistWidgetClass)
+			//{
+			//	CachedChecklistWidget = CreateWidget<UChecklistWidget>(PlayerController, ChecklistWidgetClass);
+			//}
+			//if ((CachedResultMenu == nullptr) && ResultMenuClass)
+			//{
+			//	CachedResultMenu = CreateWidget<UResultMenu>(PlayerController, ResultMenuClass);
+			//}
+			//if ((CachedRoomWidget == nullptr) && RoomWidgetClass)
+			//{
+			//	CachedRoomWidget = CreateWidget<URoomWidget>(PlayerController, RoomWidgetClass);
+			//	CachedRoomWidget->CreatePlayerSlots();
+			//}
+			//if ((CachedNotePopupWidget == nullptr) && NotePopupWidgetClass)
+			//{
+			//	CachedNotePopupWidget = CreateWidget<UNotePopupWidget>(PlayerController, NotePopupWidgetClass);
+			//}
+			//if ((CachedDroneHUD == nullptr) && DroneHUDClass)
+			//{
+			//	CachedDroneHUD = CreateWidget<UDroneHUD>(PlayerController, DroneHUDClass);
+			//}
+			//if ((CachedSpectatorWidget == nullptr) && SpectatorWidgetClass)
+			//{
+			//	CachedSpectatorWidget = CreateWidget<USpectatorWidget>(PlayerController, SpectatorWidgetClass);
+			//}
+			//if ((CachedGameOverWidget == nullptr) && GameOverWidgetClass)
+			//{
+			//	CachedGameOverWidget = CreateWidget<UGameOverWidget>(PlayerController, GameOverWidgetClass);
+			//}
+			//if ((CachedGameEndWidget == nullptr) && GameEndWidgetClass)
+			//{
+			//	CachedGameEndWidget = CreateWidget<UGameEndWidget>(PlayerController, GameEndWidgetClass);
+			//}
+			//if ((CachedServerMessageWidget == nullptr) && ServerMessageWidgetClass)
+			//{
+			//	CachedServerMessageWidget = CreateWidget<UServerMessageWidget>(PlayerController, ServerMessageWidgetClass);
+			//	CachedServerMessageWidget->AddToViewport();
+			//}
 		}
 	}
 
