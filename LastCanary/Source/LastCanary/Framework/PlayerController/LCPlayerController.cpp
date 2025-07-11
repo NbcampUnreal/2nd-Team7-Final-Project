@@ -225,8 +225,8 @@ void ALCPlayerController::Client_HideHUD_Implementation()
     {
         if (ULCUIManager* UIManager = Subsystem->GetUIManager())
         {
-            UIManager->HideInGameHUD();
-            UIManager->HideSpectatorWidget();
+            UIManager->HideHUD();
+            //UIManager->HideSpectatorWidget();
         }
     }
 }
@@ -307,8 +307,8 @@ void ALCPlayerController::HideUIForCutscene()
     {
         if (ULCUIManager* UIManager = Subsystem->GetUIManager())
         {
-            UIManager->HideInGameHUD();
-            UIManager->HideSpectatorWidget();
+            UIManager->HideHUD();
+            //UIManager->HideSpectatorWidget();
         }
     }
 }
@@ -320,7 +320,8 @@ void ALCPlayerController::ShowUIAfterCutscene()
     {
         if (ULCUIManager* UIManager = Subsystem->GetUIManager())
         {
-            UIManager->ShowInGameHUD();
+            UIManager->SetUIContext(ELCUIContext::InGame);
+            UIManager->ChangeHUD();
         }
     }
 }

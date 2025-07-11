@@ -18,6 +18,7 @@ protected:
 
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
+	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 
 public:
 	UFUNCTION(BlueprintCallable, Category="Room")
@@ -39,6 +40,7 @@ public:
 	void UpdatePlayerLists(const TArray<FSessionPlayerInfo>& PlayerInfos);
 
 	void UpdatePlayerSlots(const TArray<FSessionPlayerInfo>& PlayerInfos);
+
 
 protected:
 	UFUNCTION()
