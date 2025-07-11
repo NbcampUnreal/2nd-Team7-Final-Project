@@ -31,6 +31,8 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UButton* PurchaseButton;
 	UPROPERTY(meta = (BindWidget))
+	UButton* MinimizeButton;
+	UPROPERTY(meta = (BindWidget))
 	UButton* ExitButton;
 	UPROPERTY(meta = (BindWidget))
 	UShopItemInfoWidget* ItemInfoWidget;
@@ -49,6 +51,8 @@ protected:
 	void OnShopItemClicked(UShopItemEntry* ClickedEntry);
 	UFUNCTION()
 	void OnPurchaseButtonClicked();
+	UFUNCTION()
+	void CloseShopAndShowDesktop();
 	UFUNCTION()
 	void CloseShopWidget();
 

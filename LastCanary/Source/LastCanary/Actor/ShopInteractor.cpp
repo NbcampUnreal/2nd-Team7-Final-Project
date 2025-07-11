@@ -78,8 +78,10 @@ void AShopInteractor::Interact_Implementation(APlayerController* InteractingPlay
 						UIManager->SetLastShopInteractor(this);
 						LOG_Frame_WARNING(TEXT("PC : %s"), *RoomPC->GetActorNameOrLabel());
 						//GM->GetGold();
-						RoomPC->Server_ShowShopWidget();
+						//RoomPC->Server_ShowShopWidget();
 						//UIManager->ShowShopPopup(GM->GetGold());
+
+						UIManager->ShowDesktop();
 
 						ShopWidgetComponent->SetVisibility(false);
 					}

@@ -32,6 +32,7 @@ class USpectatorWidget;
 class UGameOverWidget;
 class UGameEndWidget;
 class UServerMessageWidget;
+class UDesktopWidget;
 
 //-----------------
 // Enum
@@ -97,6 +98,8 @@ public:
 	void ShowHideEndWidget();
 	UFUNCTION(BlueprintCallable)
 	void AddServerMessage(const FString& Message);
+	void ShowDesktop();
+	void HideDesktop();
 
 	//-----------------
 	// Special Popups
@@ -236,6 +239,9 @@ private:
 	TSubclassOf<UGameEndWidget> GameEndWidgetClass;
 	UPROPERTY()
 	TSubclassOf<UServerMessageWidget> ServerMessageWidgetClass;
+	UPROPERTY()
+	TSubclassOf<UDesktopWidget> DesktopWidgetClass;
+
 
 	//-----------------
 	// Widget Instances
@@ -282,6 +288,8 @@ private:
 	UGameEndWidget* CachedGameEndWidget;
 	UPROPERTY()
 	UServerMessageWidget* CachedServerMessageWidget;
+	UPROPERTY()
+	UDesktopWidget* CachedDesktopWidget;
 
 	//-----------------
 	// Session Error Info

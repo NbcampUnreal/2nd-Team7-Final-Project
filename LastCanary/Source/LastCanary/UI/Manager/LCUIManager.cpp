@@ -18,6 +18,7 @@
 #include "UI/UIElement/GameOverWidget.h"
 #include "UI/UIElement/GameEndWidget.h"
 #include "UI/UIElement/ServerMessageWidget.h"
+#include "UI/UIElement/DesktopWidget.h"
 
 #include "UI/Popup/PopupCreateSession.h"
 #include "UI/Popup/PopupNotice.h"
@@ -78,6 +79,7 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			GameOverWidgetClass = Settings->FromBPGameOverWidgetClass;
 			GameEndWidgetClass = Settings->FromBPGameEndWidgetClass;
 			ServerMessageWidgetClass = Settings->FromBPServerMessageWidgetClass;
+			DesktopWidgetClass = Settings->FromBPDesktopWidgetClass;
 
 			if ((CachedTitleMenu == nullptr) && TitleMenuClass)
 			{
@@ -156,6 +158,10 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			{
 				CachedServerMessageWidget = CreateWidget<UServerMessageWidget>(PlayerController, ServerMessageWidgetClass);
 				CachedServerMessageWidget->AddToViewport();
+			}
+			if ((CachedDesktopWidget == nullptr) && DesktopWidgetClass)
+			{
+				CachedDesktopWidget = CreateWidget<UDesktopWidget>(PlayerController, DesktopWidgetClass);
 			}
 		}
 	}
@@ -388,38 +394,46 @@ void ULCUIManager::ShowShopPopup(int Gold)
 
 void ULCUIManager::HideShopPopup()
 {
-	if (OwningPlayer == nullptr)
+	//if (OwningPlayer == nullptr)
+	//{
+	//	return;
+	//}
+	//if (OwningPlayer->IsLocalPlayerController() == false)
+	//{
+	//	return;
+	//}
+	//if (LastShopInteractor && LastShopInteractor->GetShopWidgetComponent())
+	//{
+	//	LastShopInteractor->GetShopWidgetComponent()->SetVisibility(true);
+	//}
+
+	//SwitchToWidget(CachedInGameHUD);
+	//ShowInventoryMainWidget();
+	//SetInputModeGameOnly();
+
+	//if (OwningPlayer)
+	//{
+	//	LOG_Frame_WARNING(TEXT("OwningPlayer Exist %s"), *OwningPlayer->GetActorNameOrLabel());
+	//	if (APawn* Pawn = OwningPlayer->GetPawn())
+	//	{
+	//		LOG_Frame_WARNING(TEXT("Pawn Exist : %s"), *Pawn->GetActorNameOrLabel());
+
+	//		Pawn->EnableInput(OwningPlayer);
+	//	}
+	//	OwningPlayer->SetViewTargetWithBlend(OwningPlayer->GetPawn(), 1.0f);
+	//}
+	//else
+	//{
+	//	LOG_Frame_WARNING(TEXT("OwningPlayer is nullptr"));
+	//}
+
+	if (CachedShopWidget && CachedShopWidget->IsInViewport())
 	{
-		return;
-	}
-	if (OwningPlayer->IsLocalPlayerController() == false)
-	{
-		return;
-	}
-	if (LastShopInteractor && LastShopInteractor->GetShopWidgetComponent())
-	{
-		LastShopInteractor->GetShopWidgetComponent()->SetVisibility(true);
+		CachedShopWidget->RemoveFromParent(); // 상점만 숨김
 	}
 
-	SwitchToWidget(CachedInGameHUD);
-	ShowInventoryMainWidget();
-	SetInputModeGameOnly();
-
-	if (OwningPlayer)
-	{
-		LOG_Frame_WARNING(TEXT("OwningPlayer Exist %s"), *OwningPlayer->GetActorNameOrLabel());
-		if (APawn* Pawn = OwningPlayer->GetPawn())
-		{
-			LOG_Frame_WARNING(TEXT("Pawn Exist : %s"), *Pawn->GetActorNameOrLabel());
-
-			Pawn->EnableInput(OwningPlayer);
-		}
-		OwningPlayer->SetViewTargetWithBlend(OwningPlayer->GetPawn(), 1.0f);
-	}
-	else
-	{
-		LOG_Frame_WARNING(TEXT("OwningPlayer is nullptr"));
-	}
+	// 데스크탑 다시 표시
+	ShowDesktop();
 }
 
 void ULCUIManager::ShowCreateSession()
@@ -715,6 +729,67 @@ void ULCUIManager::AddServerMessage(const FString& Message)
 			//CachedServerMessageWidget->AddMessage(Message);
 		}
 		CachedServerMessageWidget->AddMessage(Message);
+	}
+}
+
+void ULCUIManager::ShowDesktop()
+{
+	if (OwningPlayer == nullptr)
+	{
+		return;
+	}
+	if (OwningPlayer->IsLocalPlayerController() == false)
+	{
+		return;
+	}
+	if (LastShopInteractor && LastShopInteractor->GetShopWidgetComponent())
+	{
+		LastShopInteractor->GetShopWidgetComponent()->SetVisibility(false);
+	}
+
+	SwitchToWidget(CachedDesktopWidget);
+	HideInventoryMainWidget();
+
+	if (APawn* Pawn = OwningPlayer->GetPawn())
+	{
+		Pawn->DisableInput(OwningPlayer);
+	}
+	SetInputModeUIOnly(CachedDesktopWidget);
+}
+
+void ULCUIManager::HideDesktop()
+{
+	if (OwningPlayer == nullptr)
+	{
+		return;
+	}
+	if (OwningPlayer->IsLocalPlayerController() == false)
+	{
+		return;
+	}
+	if (LastShopInteractor && LastShopInteractor->GetShopWidgetComponent())
+	{
+		LastShopInteractor->GetShopWidgetComponent()->SetVisibility(true);
+	}
+
+	SwitchToWidget(CachedInGameHUD);
+	ShowInventoryMainWidget();
+	SetInputModeGameOnly();
+
+	if (OwningPlayer)
+	{
+		LOG_Frame_WARNING(TEXT("OwningPlayer Exist %s"), *OwningPlayer->GetActorNameOrLabel());
+		if (APawn* Pawn = OwningPlayer->GetPawn())
+		{
+			LOG_Frame_WARNING(TEXT("Pawn Exist : %s"), *Pawn->GetActorNameOrLabel());
+
+			Pawn->EnableInput(OwningPlayer);
+		}
+		OwningPlayer->SetViewTargetWithBlend(OwningPlayer->GetPawn(), 1.0f);
+	}
+	else
+	{
+		LOG_Frame_WARNING(TEXT("OwningPlayer is nullptr"));
 	}
 }
 

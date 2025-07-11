@@ -23,6 +23,10 @@ void UShopWidget::NativeConstruct()
 		PurchaseButton->OnClicked.AddUniqueDynamic(this, &UShopWidget::OnPurchaseButtonClicked);
 		PurchaseButton->SetIsEnabled(false); // 시작 시 비활성화
 	}
+	if (MinimizeButton)
+	{
+		MinimizeButton->OnClicked.AddUniqueDynamic(this, &UShopWidget::CloseShopAndShowDesktop);
+	}
 	if (ExitButton)
 	{
 		ExitButton->OnClicked.AddUniqueDynamic(this, &UShopWidget::CloseShopWidget);
@@ -153,11 +157,21 @@ void UShopWidget::OnPurchaseButtonClicked()
 	CloseShopWidget();
 }
 
+void UShopWidget::CloseShopAndShowDesktop()
+{
+	ULCUIManager* UIManager = ResolveUIManager();
+	if (UIManager)
+	{
+		UIManager->HideShopPopup();     // 상점 닫고
+		UIManager->ShowDesktop();       // 바탕화면 다시 표시
+	}
+}
+
 void UShopWidget::CloseShopWidget()
 {
 	ULCUIManager* UIManager = ResolveUIManager();
 	if (UIManager)
 	{
-		UIManager->HideShopPopup();
+		UIManager->HideDesktop();
 	}
 }
