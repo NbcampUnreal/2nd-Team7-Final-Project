@@ -43,6 +43,8 @@ enum class ELCUIContext : uint8
 	Title,
 	Room,
 	InGame,
+	Spectator,
+	DroneHUD
 };
 
 //-----------------
@@ -55,6 +57,19 @@ class LASTCANARY_API ULCUIManager : public UObject
 
 public:
 	//-----------------
+	// Cached Widgets
+	//-------------------
+	template<typename T>
+	T* CreateAndCacheWidget(T*& CachedWidget, TSubclassOf<UUserWidget> WidgetClass)
+	{
+		if (CachedWidget == nullptr && WidgetClass)
+		{
+			CachedWidget = CreateWidget<T>(OwningPlayer, WidgetClass);
+		}
+		return CachedWidget;
+	}
+
+	//-----------------
 	// Constructor & Init
 	//-------------------
 	ULCUIManager();
@@ -66,9 +81,12 @@ public:
 	//-------------------
 	void ShowTitleMenu();
 	void ShowLobbyMenu();
-	void ShowRoomListMenu();
-	void ShowInGameHUD();
-	void HideInGameHUD();
+	//void ShowRoomListMenu();
+	//void ShowHUD();
+	void HideHUD();
+	void ChangeHUD();
+	//void ShowInGameHUD();
+	//void HideInGameHUD();
 	void ShowInventoryMainWidget();
 	void HideInventoryMainWidget();
 	void ShowOptionWidget();
@@ -87,10 +105,10 @@ public:
 	UResultWidget* ShowResultWidget();
 	void ShowRoomWidget();
 	void HideRoomWidget();
-	void ShowDroneHUD();
-	void HideDroneHUD();
-	void ShowSpectatorWidget();
-	void HideSpectatorWidget();
+	//void ShowDroneHUD();
+	//void HideDroneHUD();
+	//void ShowSpectatorWidget();
+	//void HideSpectatorWidget();
 	void ShowGameOverWidget();
 	void HideGameOverWidget();
 	void ShowGameEndWidget();
