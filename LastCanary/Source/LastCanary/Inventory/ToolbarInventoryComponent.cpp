@@ -123,7 +123,7 @@ bool UToolbarInventoryComponent::TryAddItemSlot(FName ItemRowName, int32 Amount)
         FBaseItemSlotData NewSlot;
         NewSlot.ItemRowName = ItemRowName;
         NewSlot.Quantity = Addable;
-        NewSlot.Durability = 0.0f;
+        NewSlot.Durability = 0.0f; 
         NewSlot.bIsValid = true;
         NewSlot.bIsEquipped = false;
 
@@ -1181,87 +1181,71 @@ TArray<int32> UToolbarInventoryComponent::GetAllBackpackItemIDs() const
 
 void UToolbarInventoryComponent::SyncInventoryToPlayerState()
 {
-    if (IsOwnerCharacterValid())
+    if (!IsOwnerCharacterValid())
     {
-        if (ABasePlayerState* PS = CachedOwnerCharacter->GetPlayerState<ABasePlayerState>())
+        LOG_Item_WARNING(TEXT("[SyncInventoryToPlayerState] 유효하지 않은 캐릭터입니다."));
+        return;
+    }
+
+    ABasePlayerState* PS = CachedOwnerCharacter->GetPlayerState<ABasePlayerState>();
+    if (!PS)
+    {
+        LOG_Item_WARNING(TEXT("[SyncInventoryToPlayerState] PlayerState가 유효하지 않습니다."));
+        return;
+    }
+
+    PS->AquiredItemIDs = GetInventoryItemIDs();
+
+    // [디버그 로그] 현재 PS의 AquiredItemIDs를 이름으로 출력
+    FString DebugList;
+    for (int32 SavedItemID : PS->AquiredItemIDs)
+    {
+        FName RowName = GetItemRowNameFromID(SavedItemID);
+        DebugList += RowName.ToString() + TEXT(", ");
+    }
+    LOG_Item_WARNING(TEXT("[Sync] PS에 저장된 아이템 목록: %s"), *DebugList);
+
+
+    // TO DO : 여기 아래부분 싹다 리팩토링 해야함
+    TMap<FName, int32> CollectedResource;
+    TArray<int32> ExploreItemIDs;
+
+    // 통합 아이템 처리
+    for (const FBaseItemSlotData& SlotData : ItemSlots)
+    {
+        ProcessSyncItem(SlotData.ItemRowName, SlotData.Quantity, CollectedResource, ExploreItemIDs);
+
+        // 백팩 처리
+        if (SlotData.bIsBackpack)
         {
-            PS->AquiredItemIDs = GetInventoryItemIDs();
-
-            // [디버그 로그] 현재 PS의 AquiredItemIDs를 이름으로 출력
-            FString DebugList;
-            for (int32 SavedItemID : PS->AquiredItemIDs)
+            for (const FBackpackSlotData& BackpackSlot : SlotData.BackpackSlots)
             {
-                FName RowName = GetItemRowNameFromID(SavedItemID);
-                DebugList += RowName.ToString() + TEXT(", ");
+                ProcessSyncItem(BackpackSlot.ItemRowName, BackpackSlot.Quantity, CollectedResource, ExploreItemIDs);
             }
-            LOG_Item_WARNING(TEXT("[Sync] PS에 저장된 아이템 목록: %s"), *DebugList);
-
-
-            // TO DO : 여기 아래부분 싹다 리팩토링 해야함
-            TMap<FName, int32> CollectedResource;
-            TArray<int32> ExploreItemIDs;
-            for (int32 i = 0; i < ItemSlots.Num(); ++i)
-            {
-                const FBaseItemSlotData& SlotData = ItemSlots[i];
-
-                if (SlotData.bIsBackpack)
-                {
-                    for (const FBackpackSlotData& BackpackSlot : SlotData.BackpackSlots)
-                    {
-                        // 빈 아이템 제외 (Default 등)
-                        if (!IsDefaultItem(BackpackSlot.ItemRowName) && BackpackSlot.Quantity > 0)
-                        {
-                            const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(BackpackSlot.ItemRowName, TEXT("GetItemIDFromRowName"));
-                            if (!ItemData->bIsResourceItem)
-                            {
-                                if (ItemData->bIsNoteItem)
-                                {
-                                    ExploreItemIDs.Add(ItemData->ItemID);
-                                }
-
-                                continue;
-                            }
-
-                            if (CollectedResource.Contains(BackpackSlot.ItemRowName))
-                            {
-                                CollectedResource[BackpackSlot.ItemRowName]++;
-                            }
-                            else
-                            {
-                                CollectedResource.Add(BackpackSlot.ItemRowName, BackpackSlot.Quantity);
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(SlotData.ItemRowName, TEXT("GetItemIDFromRowName"));
-
-                    if (!ItemData->bIsResourceItem)
-                    {
-                        if (ItemData->bIsNoteItem)
-                        {
-                            ExploreItemIDs.Add(ItemData->ItemID);
-                        }
-
-                        continue;
-                    }
-
-                    if (CollectedResource.Contains(SlotData.ItemRowName))
-                    {
-                        CollectedResource[SlotData.ItemRowName]++;
-                    }
-                    else
-                    {
-                        CollectedResource.Add(SlotData.ItemRowName, SlotData.Quantity);
-                    }
-                }
-                //int32 ItemID = GetItemIDFromRowName(SlotData.ItemRowName);
-            }
-
-            PS->CollectedResourceMap = CollectedResource;
-            PS->CollectedExploreItemArray = ExploreItemIDs;
         }
+    }
+
+    // PlayerState 업데이트
+    PS->CollectedResourceMap = CollectedResource;
+    PS->CollectedExploreItemArray = ExploreItemIDs;
+}
+
+void UToolbarInventoryComponent::ProcessSyncItem(const FName& ItemRowName, int32 Quantity, TMap<FName, int32>& ResourceMap, TArray<int32>& ExploreItems)
+{
+    const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("ProcessItemForSync"));
+    if (!ItemData)
+    {
+        LOG_Item_WARNING(TEXT("[ProcessSyncItem] ItemData가 null"));
+        return;
+    }
+
+    if (ItemData->bIsNoteItem)
+    {
+        ExploreItems.Add(ItemData->ItemID);
+    }
+    else if (ItemData->bIsResourceItem)
+    {
+        ResourceMap.FindOrAdd(ItemRowName) += Quantity;
     }
 }
 

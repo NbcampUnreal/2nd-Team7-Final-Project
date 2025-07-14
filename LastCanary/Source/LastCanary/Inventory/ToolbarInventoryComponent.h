@@ -235,6 +235,9 @@ protected:
     /** 아이템 습득 및 드랍 시 플레이어 스테이트와 동기화 */
     void SyncInventoryToPlayerState();
 
+    /** 동기화 시  */
+    void ProcessSyncItem(const FName& ItemRowName, int32 Quantity, TMap<FName, int32>& ResourceMap, TArray<int32>& ExploreItems);
+
     /** 가방메시 비가시화 RPC함수 */
     UFUNCTION(NetMulticast, Reliable)
     void Multicast_SetBackpackVisibility(bool bVisible);

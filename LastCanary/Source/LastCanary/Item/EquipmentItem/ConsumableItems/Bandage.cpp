@@ -47,18 +47,17 @@ void ABandage::UseItem()
 	Durability--;
 	LOG_Item_WARNING(TEXT("CurrentDurability : %0.f"), Durability);
 
-	if (Durability <= 0)
+	// 인벤토리에서 아이템 1개 소모
+	UToolbarInventoryComponent* Inventory = OwnerCharacter->GetToolbarInventoryComponent();
+	if (Inventory)
 	{
-		// 내구도가 0 이하일 때
-		if (TryRemoveFromInventory())
+		if (Inventory->TryDecreaseItem(ItemRowName, 1))
 		{
-			LOG_Item_WARNING(TEXT("붕대 제거 성공"));
+			LOG_Item_WARNING(TEXT("붕대 사용 완료 - 1개 소모"));
 		}
 		else
 		{
-			LOG_Item_WARNING(TEXT("붕대 제거 실패"));
+			LOG_Item_WARNING(TEXT("붕대 소모 실패"));
 		}
-		LOG_Item_WARNING(TEXT("붕대의 내구도가 소진되어 사용 노노~"));
-		return;
 	}
 }
