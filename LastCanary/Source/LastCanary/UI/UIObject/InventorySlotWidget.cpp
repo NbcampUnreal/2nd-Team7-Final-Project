@@ -60,6 +60,11 @@ void UInventorySlotWidget::UpdateSlotUI()
 			//ItemIconImage->SetVisibility(ESlateVisibility::Hidden);
 		}
 
+		if (QuantityText)
+		{
+			QuantityText->SetVisibility(ESlateVisibility::Hidden);
+		}
+
 		UpdateBorderImage();
 		return;
 	}
@@ -85,6 +90,7 @@ void UInventorySlotWidget::UpdateSlotUI()
 		}
 	}
 
+	UpdateQuantityText();
 	UpdateBorderImage();
 }
 
@@ -249,6 +255,35 @@ void UInventorySlotWidget::UpdateBorderImage()
 	}
 }
 
+void UInventorySlotWidget::UpdateQuantityText()
+{
+	if (!QuantityText)
+	{
+		return;
+	}
+
+	// Default 아이템이면 수량 숨김
+	if (IsDefaultItem(ItemData.ItemRowName))
+	{
+		QuantityText->SetVisibility(ESlateVisibility::Hidden);
+		return;
+	}
+
+	// 소모품이고 수량이 1개보다 많을 때만 표시
+	if ((IsCollectibleItem() || IsConsumableItem()) && ItemData.Quantity > 1)
+	{
+		QuantityText->SetText(FText::AsNumber(ItemData.Quantity));
+		QuantityText->SetVisibility(ESlateVisibility::Visible);
+
+		LOG_Item_WARNING(TEXT("[UpdateQuantityText] 수량 표시: %s x%d"), *ItemData.ItemRowName.ToString(), ItemData.Quantity);
+	}
+	else
+	{
+		// 소모품이 아니거나 수량이 1개면 숨김
+		QuantityText->SetVisibility(ESlateVisibility::Hidden);
+	}
+}
+
 void UInventorySlotWidget::ShowTooltip()
 {
 	if (!ParentInventoryWidget)
@@ -306,4 +341,36 @@ void UInventorySlotWidget::OnUseButtonClicked()
 bool UInventorySlotWidget::IsDefaultItem(FName ItemRowName) const
 {
 	return ItemRowName == FName("Default");
+}
+
+bool UInventorySlotWidget::IsCollectibleItem() const
+{
+	if (ItemData.ItemRowName.IsNone() || !ItemDataTable)
+	{
+		return false;
+	}
+
+	const FItemDataRow* ItemRowData = ItemDataTable->FindRow<FItemDataRow>(ItemData.ItemRowName, TEXT("IsCollectibleItem"));
+	if (!ItemRowData)
+	{
+		return false;
+	}
+
+	return UInventoryUtility::IsCollectibleItem(ItemRowData);
+}
+
+bool UInventorySlotWidget::IsConsumableItem() const
+{
+	if (ItemData.ItemRowName.IsNone() || !ItemDataTable)
+	{
+		return false;
+	}
+
+	const FItemDataRow* ItemRowData = ItemDataTable->FindRow<FItemDataRow>(ItemData.ItemRowName, TEXT("IsConsumableItem"));
+	if (!ItemRowData)
+	{
+		return false;
+	}
+
+	return UInventoryUtility::IsConsumableItem(ItemRowData);
 }

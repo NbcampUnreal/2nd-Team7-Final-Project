@@ -169,7 +169,7 @@ bool UToolbarInventoryComponent::TryDecreaseItem(FName ItemRowName, int32 Amount
 
             if (ItemSlots[i].Quantity <= 0)
             {
-                SetSlotToDefault(i);
+                TryRemoveItemAtSlot(i);
             }
 
             UpdateWeight();
@@ -236,7 +236,7 @@ bool UToolbarInventoryComponent::TryRemoveItemAtSlot(int32 SlotIndex)
         return false;
     }
 
-    UInventoryUtility::SetSlotToDefault(ItemSlots[SlotIndex], GetInventoryConfig());
+    SetSlotToDefault(SlotIndex);
 
     SyncInventoryToPlayerState();
     UpdateWalkieTalkieChannelStatus();
@@ -818,6 +818,37 @@ bool UToolbarInventoryComponent::TryStoreItem(AItemBase* ItemActor)
     {
         LOG_Item_WARNING(TEXT("[ToolbarInventoryComponent::TryStoreItem] ItemData가 없습니다: %s"), *ItemActor->ItemRowName.ToString());
         return false;
+    }
+
+    // 소모품 태그 확인
+    static const FGameplayTag ConsumableTag = FGameplayTag::RequestGameplayTag(TEXT("ItemType.Consumable"));
+    bool bIsConsumable = ItemData->ItemType.MatchesTag(ConsumableTag);
+
+    if (bIsConsumable)
+    {
+        for (int32 i = 0; i < ItemSlots.Num(); ++i)
+        {
+            if (UInventoryUtility::CanStackItems(ItemSlots[i], ItemActor->ItemRowName, ItemData))
+            {
+                int32 Addable = UInventoryUtility::AddToStack(ItemSlots[i], ItemActor->Quantity, ItemData->MaxStack);
+                if (Addable > 0)
+                {
+                    // 스택 성공
+                    OnInventoryUpdated.Broadcast();
+                    if (GetOwner()->HasAuthority() && ItemActor)
+                    {
+                        ItemActor->Destroy();
+                    }
+                    UpdateWeight();
+                    UpdateWalkieTalkieChannelStatus();
+                    UpdateBackpackMeshStatus();
+
+                    LOG_Item_WARNING(TEXT("[TryStoreItem] 소모품 스택 성공: %s (추가: %d개)"),
+                        *ItemActor->ItemRowName.ToString(), Addable);
+                    return true;
+                }
+            }
+        }
     }
 
     // 빈 슬롯 찾기

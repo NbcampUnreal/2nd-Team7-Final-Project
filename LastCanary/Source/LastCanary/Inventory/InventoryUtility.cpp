@@ -50,6 +50,18 @@ bool UInventoryUtility::IsCollectibleItem(const FItemDataRow* ItemData)
     return ItemData->ItemType.MatchesTag(CollectibleTag);
 }
 
+bool UInventoryUtility::IsConsumableItem(const FItemDataRow* ItemData)
+{
+    if (!ItemData)
+    {
+        return false;
+    }
+
+    // 소모품 태그 확인
+    static const FGameplayTag ConsumableTag = FGameplayTag::RequestGameplayTag(TEXT("ItemType.Consumable"));
+    return ItemData->ItemType.MatchesTag(ConsumableTag);
+}
+
 bool UInventoryUtility::IsWalkieTalkieItem(FName ItemRowName, const UDataTable* ItemDataTable)
 {
     if (ItemRowName.IsNone() || !ItemDataTable)
@@ -102,7 +114,15 @@ bool UInventoryUtility::CanStackItems(const FBaseItemSlotData& Slot, FName ItemR
         return false;
     }
 
-    return Slot.ItemRowName == ItemRowName && Slot.Quantity < ItemData->MaxStack;
+    if (Slot.ItemRowName != ItemRowName || Slot.Quantity >= ItemData->MaxStack)
+    {
+        return false;
+    }
+
+    static const FGameplayTag ConsumableTag = FGameplayTag::RequestGameplayTag(TEXT("ItemType.Consumable"));
+    bool bIsConsumable = ItemData->ItemType.MatchesTag(ConsumableTag);
+
+    return bIsConsumable;
 }
 
 int32 UInventoryUtility::AddToStack(FBaseItemSlotData& Slot, int32 Amount, int32 MaxStack)

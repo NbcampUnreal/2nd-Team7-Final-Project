@@ -27,6 +27,9 @@ public:
     UPROPERTY(meta = (BindWidget))
     class UBorder* SlotBorder;
 
+    UPROPERTY(meta = (BindWidget))
+    class UTextBlock* QuantityText;
+
     //-----------------------------------------------------
     // 슬롯 데이터
     //-----------------------------------------------------
@@ -64,6 +67,13 @@ protected:
     /** Default 아이템 Row Name */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory|Default")
     FName DefaultItemRowName = FName("Default");
+
+    UFUNCTION(BlueprintPure, Category = "Inventory|Utility")
+    bool IsCollectibleItem() const;
+
+    /** 소모품인지 확인 */
+    UFUNCTION(BlueprintPure, Category = "Inventory|Utility")
+    bool IsConsumableItem() const;
 
     //-----------------------------------------------------
     // 데이터 설정 함수
@@ -131,6 +141,10 @@ public:
 private:
     /** 보더 색상 업데이트 */
     void UpdateBorderImage();
+
+    /** 수량 텍스트 업데이트 */
+    UFUNCTION(BlueprintCallable, Category = "Inventory|UI")
+    void UpdateQuantityText();
     
     // TODO : 추후 구현 예정인 블루프린트 이벤트 (현재 미사용)
     /*
