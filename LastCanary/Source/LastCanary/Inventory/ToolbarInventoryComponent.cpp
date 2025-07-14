@@ -169,7 +169,7 @@ bool UToolbarInventoryComponent::TryDecreaseItem(FName ItemRowName, int32 Amount
 
             if (ItemSlots[i].Quantity <= 0)
             {
-                ItemSlots.RemoveAt(i);
+                SetSlotToDefault(i);
             }
 
             UpdateWeight();
