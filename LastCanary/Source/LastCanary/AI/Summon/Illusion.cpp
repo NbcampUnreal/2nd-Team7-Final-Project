@@ -11,22 +11,35 @@ AIllusion::AIllusion()
     PrimaryActorTick.bCanEverTick = true;
     bReplicates = true;
     SetReplicateMovement(true);
+    
+
+    // → 추가: 데미지용 캡슐 콜리전
+    DamageCapsule = CreateDefaultSubobject<UCapsuleComponent>(TEXT("DamageCapsule"));
+    // 캡슐 크기 설정 (예시)
+    RootComponent = DamageCapsule;
+    DamageCapsule->InitCapsuleSize(50.f, 100.f);
+    DamageCapsule->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+    DamageCapsule->SetCollisionObjectType(ECC_Pawn);     // Pawn 타입으로
+    DamageCapsule->SetCollisionResponseToAllChannels(ECR_Ignore);
+    // 프로젝타일 라인 트레이스가 기본적으로 Visibility 채널을 씁니다.
+    DamageCapsule->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+    // 혹은 발사체가 WorldDynamic 채널이라면
+    DamageCapsule->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);
 
     MeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComp"));
-    RootComponent = MeshComp;
+    MeshComp->SetupAttachment(RootComponent);
+    MeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-    // 기본 충돌 프로필
-    MeshComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-    // 월드 정적 지형은 블록
-    MeshComp->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
-    // Pawn(플레이어)하고는 겹침(혹은 원하는 대로)
-    MeshComp->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
-    // **동적 액터끼리(WorldDynamic) 서로 무시**
-    MeshComp->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Ignore);
+    GameplayTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Character.Enemy")));
 
-    MeshComp->SetCastShadow(false);
 
-    OnTakeAnyDamage.AddDynamic(this, &AIllusion::OnTakeAnyDamage_Handler);
+    SetCanBeDamaged(true);
+
+}
+
+void AIllusion::GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) const
+{
+    TagContainer = GameplayTags;
 }
 
 void AIllusion::BeginPlay()
@@ -34,9 +47,9 @@ void AIllusion::BeginPlay()
     Super::BeginPlay();
     Health = MaxHealth;
 
-    // 주기적으로 랜덤 플레이어에게 Illusion 효과 걸기 시작
     if (IllusionPostProcessMaterial && IllusionInterval > 0.f)
     {
+        // 타이머 핸들에 바로 바인딩
         GetWorldTimerManager().SetTimer(
             IllusionTimerHandle,
             this, &AIllusion::ExecuteRandomPlayerIllusion,
@@ -55,71 +68,71 @@ void AIllusion::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
 
-    if (!BossOwner)
+    if (!IsValid(BossOwner))
         return;
 
     const FVector Current = GetActorLocation();
     const FVector BossLoc = BossOwner->GetActorLocation();
 
-    // 1) 목표가 보스 범위를 벗어났으면 즉시 재선정
     if (FVector::DistSquared(MoveTarget, BossLoc) > FMath::Square(MoveRadius))
     {
         PickNewMoveTarget();
     }
 
-    // 3) 목표로 부드럽게 보간
     FVector Next = FMath::VInterpTo(Current, MoveTarget, DeltaTime, MoveInterpSpeed);
-
-    // 4) Sweep 활성화 (지형·벽만 차단)
     FHitResult Hit;
     SetActorLocation(Next, true, &Hit);
 
-    // 5) 목표 도달 여부 재확인 후 재선정
     if (FVector::DistSquared(Next, MoveTarget) < FMath::Square(20.f))
+    {
         PickNewMoveTarget();
+    }
 }
 
 void AIllusion::PickNewMoveTarget()
 {
-    if (!BossOwner) return;
+    if (!IsValid(BossOwner)) return;
+
     UNavigationSystemV1* Nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
     if (!Nav) return;
 
     FNavLocation RandLoc;
-    if (Nav->GetRandomPointInNavigableRadius(
-        BossOwner->GetActorLocation(),
-        MoveRadius,
-        RandLoc))
+    if (Nav->GetRandomPointInNavigableRadius(BossOwner->GetActorLocation(), MoveRadius, RandLoc))
     {
-        RandLoc.Location.Z = BossOwner->GetActorLocation().Z; // 동일 높이 유지
+        RandLoc.Location.Z = BossOwner->GetActorLocation().Z;
         MoveTarget = RandLoc.Location;
-
-        // 디버그 시각화 (2초)
-        DrawDebugSphere(GetWorld(), MoveTarget, 25.f, 8, FColor::Green, false, 2.f);
     }
 }
 
 void AIllusion::ExecuteRandomPlayerIllusion()
 {
-    // 1) 반경 내 Pawn Sweep (시작과 끝 위치 동일 → 단순 범위 검사)
+    if (!IsValid(this))
+        return;
+
+    UWorld* World = GetWorld();
+    if (!World)
+    {
+        UE_LOG(LogTemp, Error, TEXT("[Illusion] World == nullptr"));
+        return;
+    }
+
+    // 1) SweepMultiByChannel
     TArray<FHitResult> Hits;
     FVector Loc = GetActorLocation();
     FCollisionShape Sphere = FCollisionShape::MakeSphere(IllusionRadius);
 
-    bool bHit = GetWorld()->SweepMultiByChannel(
-        Hits,
-        Loc, Loc,
-        FQuat::Identity,
-        ECC_Pawn,
-        Sphere
-    );
-    if (!bHit) return;
+    World->SweepMultiByChannel(Hits, Loc, Loc, FQuat::Identity, ECC_Pawn, Sphere);
+    if (Hits.Num() == 0)
+        return;
 
-    // 2) 유효한 로컬 플레이어 컨트롤러만 필터
+    // 2) ValidPCs 필터
     TArray<APlayerController*> ValidPCs;
     for (const FHitResult& Hit : Hits)
     {
-        if (APawn* P = Cast<APawn>(Hit.GetActor()))
+        AActor* Actor = Hit.GetActor();
+        if (!Actor) continue;
+
+        if (APawn* P = Cast<APawn>(Actor))
         {
             if (AController* C = P->GetController())
             {
@@ -130,61 +143,83 @@ void AIllusion::ExecuteRandomPlayerIllusion()
             }
         }
     }
-    if (ValidPCs.Num() == 0) return;
+    if (ValidPCs.IsEmpty())
+        return;
 
-    // 3) 랜덤으로 한 명 선택
+    // 3) 랜덤 선택
     int32 Idx = FMath::RandRange(0, ValidPCs.Num() - 1);
-    APlayerController* ChosenPC = ValidPCs[Idx];
+    APlayerController* ChosenPC = ValidPCs.IsValidIndex(Idx) ? ValidPCs[Idx] : nullptr;
+    if (!ChosenPC) return;
+
     APawn* ChosenPawn = ChosenPC->GetPawn();
     if (!ChosenPawn) return;
 
-    // 4) 선택된 플레이어 카메라에 포스트프로세스 적용
-    if (UCameraComponent* Cam = ChosenPawn->FindComponentByClass<UCameraComponent>())
+    // 4) 카메라 컴포넌트
+    UCameraComponent* Cam = ChosenPawn->FindComponentByClass<UCameraComponent>();
+    if (!Cam)
     {
-        // 중복 적용 방지: 이미 같은 머티리얼이 있으면 스킵
-        auto& BlendArray = Cam->PostProcessSettings.WeightedBlendables.Array;
-        bool bAlready = BlendArray.ContainsByPredicate(
-            [this](const FWeightedBlendable& Elem)
-            {
-                return Elem.Object == IllusionPostProcessMaterial;
-            });
+        UE_LOG(LogTemp, Warning, TEXT("[Illusion] CameraComponent not found on %s"), *ChosenPawn->GetName());
+        return;
+    }
 
-        if (!bAlready)
+    // 중복 적용 방지
+    auto& BlendArray = Cam->PostProcessSettings.WeightedBlendables.Array;
+    bool bAlready = BlendArray.ContainsByPredicate(
+        [this](const FWeightedBlendable& Elem)
         {
-            // a) 추가
-            Cam->PostProcessSettings.AddBlendable(
-                IllusionPostProcessMaterial,
-                IllusionBlendWeight
-            );
+            return Elem.Object == IllusionPostProcessMaterial;
+        });
 
-            // b) 제거 예약
-            FTimerHandle TmpHandle;
-            GetWorldTimerManager().SetTimer(
-                TmpHandle,
-                FTimerDelegate::CreateLambda([Cam, this]()
-                    {
-                        Cam->PostProcessSettings.RemoveBlendable(IllusionPostProcessMaterial);
-                    }),
-                IllusionDuration,
-                false
-            );
-        }
+    if (!bAlready)
+    {
+        Cam->PostProcessSettings.AddBlendable(IllusionPostProcessMaterial, IllusionBlendWeight);
+
+        // 제거용 델리게이트로 안전하게 바인딩
+        FTimerDelegate RemoveDel;
+        RemoveDel.BindUFunction(this, FName("RemovePostProcess"), Cam);
+        GetWorldTimerManager().SetTimer(
+            RemovePPHandle,
+            RemoveDel,
+            IllusionDuration,
+            false);
     }
 }
 
-void AIllusion::OnTakeAnyDamage_Handler(
-    AActor*,
-    float Damage,
-    const UDamageType*,
-    AController*,
-    AActor*)
+void AIllusion::RemovePostProcess(UCameraComponent* Cam)
 {
-    Health -= Damage;
+    if (IsValid(Cam) && IllusionPostProcessMaterial)
+    {
+        Cam->PostProcessSettings.RemoveBlendable(IllusionPostProcessMaterial);
+    }
+}
+
+float AIllusion::TakeDamage(
+    float DamageAmount,
+    FDamageEvent const& DamageEvent,
+    AController* EventInstigator,
+    AActor* DamageCauser
+)
+{
+    float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+    if (ActualDamage <= 0.f)
+        return 0.f;
+
+    // HP 차감
+    Health -= ActualDamage;
+    UE_LOG(LogTemp, Warning, TEXT("[Illusion] Took %f damage, HP now %f"), ActualDamage, Health);
+
     if (Health <= 0.f)
+    {
         DestroyIllusion();
+    }
+
+    return ActualDamage;
 }
 
 void AIllusion::DestroyIllusion()
 {
+    // 타이머 정리
+    GetWorldTimerManager().ClearTimer(IllusionTimerHandle);
+    GetWorldTimerManager().ClearTimer(RemovePPHandle);
     Destroy();
 }

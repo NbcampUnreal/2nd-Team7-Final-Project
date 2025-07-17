@@ -8,32 +8,53 @@ void UNotePopupWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 	SetIsFocusable(true);
-	if (CloseButton)
-	{
-		CloseButton->OnClicked.AddUniqueDynamic(this, &UNotePopupWidget::OnCloseButtonClicked);
-	}
+	//if (CloseButton)
+	//{
+	//	CloseButton->OnClicked.AddUniqueDynamic(this, &UNotePopupWidget::OnCloseButtonClicked);
+	//}
 }
 
 void UNotePopupWidget::NativeDestruct()
 {
-	if (CloseButton)
-	{
-		CloseButton->OnClicked.RemoveDynamic(this, &UNotePopupWidget::OnCloseButtonClicked);
-	}
+	//if (CloseButton)
+	//{
+	//	CloseButton->OnClicked.RemoveDynamic(this, &UNotePopupWidget::OnCloseButtonClicked);
+	//}
 	Super::NativeDestruct();
 }
 
-void UNotePopupWidget::OnCloseButtonClicked()
+//void UNotePopupWidget::OnCloseButtonClicked()
+//{
+//	ULCUIManager* UIManager = ResolveUIManager();
+//	if (UIManager)
+//	{
+//		UIManager->HideNotePopup();
+//	}
+//	else
+//	{
+//		UE_LOG(LogTemp, Warning, TEXT("UIManager is not available when closing NotePopupWidget."));
+//	}
+//}
+
+FReply UNotePopupWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
-	ULCUIManager* UIManager = ResolveUIManager();
-	if (UIManager)
+	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton ||
+		InMouseEvent.GetEffectingButton() == EKeys::RightMouseButton)
 	{
-		UIManager->HideNotePopup();
+		ULCUIManager* UIManager = ResolveUIManager();
+		if (UIManager)
+		{
+			UIManager->HideNotePopup();
+			UE_LOG(LogTemp, Log, TEXT("NotePopup: Clicked (L or R) to close."));
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("UIManager is not available when closing NotePopupWidget."));
+		}
+
+		return FReply::Handled();
 	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("UIManager is not available when closing NotePopupWidget."));
-	}
+	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
 }
 
 FReply UNotePopupWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)

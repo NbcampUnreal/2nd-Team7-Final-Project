@@ -28,7 +28,8 @@ void ABasePlayerController::BeginPlay()
 	{
 		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
 		{
-			UIManager->ShowInGameHUD();
+			UIManager->SetUIContext(ELCUIContext::InGame);
+			UIManager->ChangeHUD();
 		}
 	}
 	
@@ -293,7 +294,7 @@ void ABasePlayerController::Client_OnPlayerExitActivePlay_Implementation()
 	// HUD 숨기고 관전 모드 전환
 	if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
 	{
-		UIManager->HideInGameHUD();
+		UIManager->HideHUD();
 	}
 }
 
@@ -322,7 +323,8 @@ void ABasePlayerController::SpawnSpectatablePawn()
 			{
 				if (IsLocalController())
 				{
-					UIManager->ShowSpectatorWidget();
+					UIManager->SetUIContext(ELCUIContext::Spectator);
+					UIManager->ChangeHUD();
 				}
 			}
 		}
@@ -364,7 +366,8 @@ void ABasePlayerController::Client_StartSpectation_Implementation()
 	{
 		if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
 		{
-			UIManager->ShowSpectatorWidget();
+			UIManager->SetUIContext(ELCUIContext::Spectator);
+			UIManager->ChangeHUD();
 		}
 	}
 }
@@ -1459,8 +1462,10 @@ void ABasePlayerController::Input_DroneExit(const FInputActionValue& ActionValue
 	{
 		if (IsLocalController())
 		{
-			UIManager->HideDroneHUD();
-			UIManager->ShowInGameHUD();
+			UIManager->SetUIContext(ELCUIContext::InGame);
+			UIManager->ChangeHUD();
+			//UIManager->HideDroneHUD();
+			//UIManager->ShowInGameHUD();
 		}
 	}
 }
@@ -1583,8 +1588,9 @@ void ABasePlayerController::PossessOnDrone()
 	{
 		if (IsLocalController())
 		{
-			UIManager->HideInGameHUD();
-			UIManager->ShowDroneHUD();
+			UIManager->SetUIContext(ELCUIContext::DroneHUD);
+			UIManager->ChangeHUD();
+			//UIManager->ShowDroneHUD();
 		}
 	}
 }
