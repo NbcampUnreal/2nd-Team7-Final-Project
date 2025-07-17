@@ -13,7 +13,6 @@ ALCAutoGimmick::ALCAutoGimmick()
 	, ForwardRotationDuration(1.0f)
 	, BackwardRotationDuration(1.0f)
 {
-	ActivationType = EGimmickActivationType::ActivateOnConditionMet;
 	bToggleState = false;
 	bUseAlternateToggle = false;
 }
