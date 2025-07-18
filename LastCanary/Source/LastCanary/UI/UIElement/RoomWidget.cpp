@@ -3,6 +3,7 @@
 #include "GameFramework/GameStateBase.h"
 #include "Framework/PlayerController/LCRoomPlayerController.h"
 #include "Framework/GameInstance/LCGameInstance.h"
+#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
 #include "Components/Button.h"
@@ -14,6 +15,9 @@
 void URoomWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+	
+	bIsFocusable = true;
+	SetKeyboardFocus();
 
 	if (InviteButton)
 	{
@@ -31,6 +35,24 @@ void URoomWidget::NativeDestruct()
 	{
 		InviteButton->OnClicked.RemoveDynamic(this, &URoomWidget::OnInviteButtonClicked);
 	}
+}
+
+FReply URoomWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
+{
+	const FKey PressedKey = InKeyEvent.GetKey();
+
+	if (PressedKey == EKeys::Tab || PressedKey == EKeys::Escape)
+	{
+		if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+		{
+			if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+			{
+				UIManager->HideRoomWidget();
+			}
+		}
+		return FReply::Handled();
+	}
+	return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
 }
 
 
