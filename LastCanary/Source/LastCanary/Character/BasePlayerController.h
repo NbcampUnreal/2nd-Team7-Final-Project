@@ -15,6 +15,7 @@ class ABaseSpectatorPawn;
 class ABasePlayerState;
 class ALCBaseGimmick;
 class ABaseSpectatorPawn;
+class UMouseSensitivityComponent;
 
 UCLASS()
 class LASTCANARY_API ABasePlayerController : public ALCPlayerController
@@ -22,6 +23,8 @@ class LASTCANARY_API ABasePlayerController : public ALCPlayerController
 	GENERATED_BODY()
 
 public:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UMouseSensitivityComponent* MouseSensitivityComponent;
 
 	//void RequestShowInGameHUD();
 	
@@ -46,6 +49,8 @@ public:
 	UPROPERTY()
 	float BrightnessSetting = 1.0f;
 
+protected:
+	ABasePlayerController();
 private:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
 private:

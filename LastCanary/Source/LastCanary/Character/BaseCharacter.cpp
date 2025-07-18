@@ -48,6 +48,12 @@
 #include "Engine/DamageEvents.h"
 #include "AI/BaseBossMonsterCharacter.h"
 #include "Framework/GameMode/LCGameMode.h"
+#include "Character/Component/CharacterHealthComponent.h"
+#include "Character/Component/CharacterStaminaComponent.h"
+#include "Character/Component/CharacterAnimationComponent.h"
+#include "Character/Component/CharacterCustomizationComponent.h"
+#include "Character/Component/CharacterInteractionComponent.h"
+#include "Character/Component/CharacterFootstepNoiseComponent.h"
 
 
 ABaseCharacter::ABaseCharacter()
@@ -60,44 +66,34 @@ ABaseCharacter::ABaseCharacter()
 
 	CustomHeadMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomHeadMesh"));
 	CustomHeadMesh->SetupAttachment(GetMesh());
-//	CustomHeadMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
 
 	CustomGloveMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomGloveMesh"));
 	CustomGloveMesh->SetupAttachment(GetMesh());
-//	CustomGloveMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
 
 	CustomJacketMesh_OwnerNoSee = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomJacketMesh_OwnerNoSee"));
 	CustomJacketMesh_OwnerNoSee->SetupAttachment(GetMesh());
-//	CustomJacketMesh_OwnerNoSee->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
 
 	CustomJacketMesh_OwnerSee = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomJacketMesh_OwnerSee"));
 	CustomJacketMesh_OwnerSee->SetupAttachment(GetMesh());
-//	CustomJacketMesh_OwnerSee->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
 
 	CustomPantsMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomPantsMesh"));
 	CustomPantsMesh->SetupAttachment(GetMesh());
-//	CustomPantsMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
 
 	CustomBeltsMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomBeltsMesh"));
 	CustomBeltsMesh->SetupAttachment(GetMesh());
-//	CustomBeltsMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
 
 	CustomHelmetMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomHelmetMesh"));
 	CustomHelmetMesh->SetupAttachment(GetMesh());
-//	CustomHelmetMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
 	
 	CustomArmorMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomArmorMesh"));
 	CustomArmorMesh->SetupAttachment(GetMesh());
-//	CustomArmorMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
 
 	CustomBootsMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomBootsMesh"));
 	CustomBootsMesh->SetupAttachment(GetMesh());
-//	CustomBootsMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
 
 	////* 가방 메시 *////
 	BackpackMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("BackpackMesh"));
 	BackpackMesh->SetupAttachment(GetMesh());
-//	BackpackMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
 
 	SetCharacterPoseSynchronization();
 
@@ -176,6 +172,14 @@ ABaseCharacter::ABaseCharacter()
 	KickHitBox->SetCollisionResponseToAllChannels(ECR_Ignore);
 	KickHitBox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 
+
+	//캐릭터 컴포넌트
+	HealthComponent = CreateDefaultSubobject<UCharacterHealthComponent>(TEXT("HealthComponent"));
+	StaminaComponent = CreateDefaultSubobject<UCharacterStaminaComponent>(TEXT("StaminaComponent"));
+	InteractionComponent = CreateDefaultSubobject<UCharacterInteractionComponent>(TEXT("InteractionComponent"));
+	AnimationComponent = CreateDefaultSubobject<UCharacterAnimationComponent>(TEXT("AnimationComponent"));
+	CustomizationComponent = CreateDefaultSubobject<UCharacterCustomizationComponent>(TEXT("CustomizationComponent"));
+	FootstepNoiseComponent = CreateDefaultSubobject<UCharacterFootstepNoiseComponent>(TEXT("FootstepNoiseComponent"));
 }
 
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
@@ -230,17 +234,6 @@ void ABaseCharacter::BeginPlay()
 		CustomPostProcessComponent->Priority = 100.0f;
 	}
 	SetMovementSetting();
-	//if (ABasePlayerController* PC = Cast<ABasePlayerController>(GetController()))
-	//{
-	//	if (IsLocallyControlled())
-	//	{
-	//		PC->RequestShowInGameHUD();
-	//	}
-	//}
-
-	UE_LOG(LogTemp, Warning, TEXT("IsLocal: %s / IsServer: %s"),
-		IsLocallyControlled() ? TEXT("YES") : TEXT("NO"),
-		HasAuthority() ? TEXT("YES") : TEXT("NO"));
 
 	if (NameWidgetComponent && IsValid(NameWidgetComponent->GetWidget()))
 	{
@@ -268,28 +261,10 @@ void ABaseCharacter::BeginPlay()
 		NameWidgetComponent->CastShadow = false;
 	}
 
-	/*
-	if (IsLocallyControlled())
-	{
-		if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
-		{
-			LOG_Char_WARNING(TEXT("캐릭터 의상 적용"));
-			CharacterCustomizationData = PS->GetCustomizationData();
-			ApplyCustomization(CharacterCustomizationData);
-			Server_SetCustomizationData(CharacterCustomizationData);
-		}
-	}
-	*/
 
 	//ApplyCustomization(CharacterMeshMap);
 	SetCharacterPoseSynchronization();
 
-	/*
-	if (HasAuthority() && IsLocallyControlled())
-	{
-		ForceUpdateAllPlayerCustomizing();
-	}
-	*/
 	//백팩은 커스터마이징과는 다르게 처리 // 기본은 투명
 	SetBackpackMesh(false);
 
@@ -300,6 +275,27 @@ void ABaseCharacter::BeginPlay()
 	{
 		Server_ClientLogin();
 		InitializePlayerLocalSettings();
+	}
+
+	//컴포넌트 델리게이트 연결
+	if (HealthComponent)
+	{
+		HealthComponent->OnDied.AddDynamic(this, &ABaseCharacter::HandlePlayerDeath);
+	}
+
+	if (StaminaComponent)
+	{
+		StaminaComponent->OnStaminaChanged.AddDynamic(this, &ABaseCharacter::HandleStaminaConsumed);
+	}
+
+	if (StaminaComponent)
+	{
+		StaminaComponent->OnStaminaExhausted.AddDynamic(this, &ABaseCharacter::HandleStaminaExhausted);
+	}
+
+	if (StaminaComponent)
+	{
+		StaminaComponent->OnStaminaThresholdReached.AddDynamic(this, &ABaseCharacter::HandleStaminaThresholdReached);
 	}
 }
 
@@ -343,17 +339,6 @@ void ABaseCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void ABaseCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
-	/*
-	if (HasAuthority())
-	{
-		if (ALCGameMode* GM = GetWorld()->GetAuthGameMode<ALCGameMode>())
-		{
-			LOG_Char_WARNING(TEXT("빙의 성공"));
-
-			GM->PlayerPossessedByPawn();
-		}
-	}
-	*/
 }
 
 void ABaseCharacter::InitializePlayerLocalSettings()
@@ -408,7 +393,6 @@ void ABaseCharacter::InitializePlayerCustomizing()
 	{
 		LOG_Char_WARNING(TEXT("커스터마이징 데이터 로드"));
 		CharacterCustomizationData = ULCLocalPlayerSaveGame::LoadCustomizationData(GetWorld());
-		LogCustomizationData(CharacterCustomizationData);
 
 		//2. 로드한 커스터마이징 데이터를 적용
 		ApplyCustomization(CharacterCustomizationData);
@@ -443,65 +427,9 @@ void ABaseCharacter::SetCharacterPoseSynchronization()
 	BackpackMesh->SetLeaderPoseComponent(GetMesh());
 }
 
-void ABaseCharacter::ForceUpdateAllPlayerCustomizing()
+float ABaseCharacter::GetCurrentNoiseLevel() const
 {
-	LOG_Char_WARNING(TEXT("ForceUpdateAllPlayerCustomizing"));
-
-	AGameStateBase* GameState = GetWorld()->GetGameState<AGameStateBase>();
-	if (!IsValid(GameState))
-	{
-		LOG_Char_WARNING(TEXT("GameState Is Invalid"));
-		return;
-	}
-
-	bool bNeedRetry = false;
-	if (GameState->PlayerArray.Num() <= 0)
-	{
-		bNeedRetry = true;
-	}
-	for (APlayerState* PS : GameState->PlayerArray)
-	{
-		ABasePlayerState* BasePS = Cast<ABasePlayerState>(PS);
-		if (!IsValid(BasePS))
-			continue;
-
-		ABaseCharacter* Char = Cast<ABaseCharacter>(BasePS->GetPawn());
-		if (!IsValid(Char))
-		{
-			LOG_Char_WARNING(TEXT("Pawn is not valid yet. Will retry."));
-			bNeedRetry = true;
-			continue;
-		}
-
-		if (HasAuthority())
-		{
-			LOG_Char_WARNING(TEXT("서버에서 업데이트 시키기"));
-			Char->Server_UpdateCustomizationData_Implementation();
-		}
-		else
-		{
-			LOG_Char_WARNING(TEXT("클라이언트에서 업데이트 시키기"));
-			Char->Server_UpdateCustomizationData();
-		}
-	}
-
-	if (bNeedRetry)
-	{
-		LOG_Char_WARNING(TEXT("Retrying ForceUpdateAllPlayerCustomizing..."));
-		// 0.5초 후 재시도
-		FTimerHandle RetryHandle;
-		GetWorld()->GetTimerManager().SetTimer(
-			RetryHandle,
-			this,
-			&ABaseCharacter::ForceUpdateAllPlayerCustomizing,
-			0.5f,
-			false
-		);
-	}
-	else
-	{
-		LOG_Char_WARNING(TEXT("포스 업데이트 완료"));
-	}
+	return FootstepNoiseComponent ? FootstepNoiseComponent->GetCurrentNoiseLevel() : 0.f;
 }
 
 float ABaseCharacter::GetMouseSensitivity() 
@@ -556,7 +484,6 @@ void ABaseCharacter::SetCustomizationData(const FCharacterCustomizationData& Cus
 void ABaseCharacter::Server_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData)
 {
 	LOG_Char_WARNING(TEXT("캐릭터 커스터마이징 데이터 서버에 전달됨"));
-	LogCustomizationData(CustomizingData);
 	//1. 서버의 캐릭터에 커스터마이징 정보 저장 (혹시 모르니까)
 	CharacterCustomizationData = CustomizingData;
 
@@ -594,7 +521,6 @@ void ABaseCharacter::Server_UpdateCustomizationData_Implementation()
 void ABaseCharacter::ApplyCustomization(const FCharacterCustomizationData CustomizationData)
 {
 	LOG_Char_WARNING(TEXT("캐릭터 커스터마이징 어플라이"));
-	LogCustomizationData(CustomizationData);
 	if (!CharacterMeshMap || !CharacterMeshMap->IsValidLowLevel())
 	{
 		return;
@@ -1426,17 +1352,11 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 		bIsSprinting = false;
 		FootSoundModifier = MyPlayerState->RunningFootSoundModifier;
 		SetDesiredGait(AlsGaitTags::Running);
-		StopStaminaDrain();
-		StartStaminaRecoverAfterDelay();
+		StaminaComponent->StopStaminaDrain();
+		StaminaComponent->StartStaminaRecoverAfterDelay();
 		return;
 	}
-	//만약 지친 상태라면 불가
-	if (MyPlayerState->MovementState == ECharacterMovementState::Exhausted)
-	{
-		return;
-	}
-	//만약 스테미나가 0이어도 불가 // 위에 조건이랑 같긴 할텐데 혹시 모르니까
-	if (!HasStamina())
+	if (StaminaComponent->bIsExhausted) //만약 지친 상태라면 불가
 	{
 		return;
 	}
@@ -1445,22 +1365,21 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 
 	if (MyPlayerState->SprintInputMode == EInputMode::Hold)
 	{
-		//입력이 떼지는 거면 어차피 뛰는 거 아님..
-		if (Value < 0.5f)
+		if (Value < 0.5f) //입력이 떼지는 거면 어차피 뛰는 거 아님..
 		{
 			bIsSprinting = false;
 			FootSoundModifier = MyPlayerState->RunningFootSoundModifier;
 			SetDesiredGait(AlsGaitTags::Running);
-			StopStaminaDrain();
-			StartStaminaRecoverAfterDelay();
+			StaminaComponent->StopStaminaDrain();
+			StaminaComponent->StartStaminaRecoverAfterDelay();
 			return;
 		}
 		FootSoundModifier = MyPlayerState->SprintingFootSoundModifier;
-
+		
 		//달리기 시작하면서 스테미나 소모 시작
-		StartStaminaDrain();
-		StopStaminaRecovery();
-		StopStaminaRecoverAfterDelay();
+		StaminaComponent->StartStaminaDrain();
+		StaminaComponent->StopStaminaRecovery();
+		StaminaComponent->StopStaminaRecoverAfterDelay();
 	}
 	else if (MyPlayerState->SprintInputMode == EInputMode::Toggle)
 	{
@@ -1471,8 +1390,8 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 				bIsSprinting = false;
 				FootSoundModifier = MyPlayerState->RunningFootSoundModifier;
 				SetDesiredGait(AlsGaitTags::Running);
-				StopStaminaDrain();
-				StartStaminaRecoverAfterDelay();
+				StaminaComponent->StopStaminaDrain();
+				StaminaComponent->StartStaminaRecoverAfterDelay();
 			}
 			else if (GetDesiredGait() == AlsGaitTags::Running)
 			{
@@ -1482,9 +1401,9 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 				Camera->AttachToComponent(SpringArm, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
 				Camera->SetRelativeLocation(FVector::ZeroVector);
 				Camera->SetRelativeRotation(FRotator::ZeroRotator); // 필요 시 원래 회전 복구
-				StopStaminaRecovery();
-				StopStaminaRecoverAfterDelay();
-				StartStaminaDrain();
+				StaminaComponent->StopStaminaRecovery();
+				StaminaComponent->StopStaminaRecoverAfterDelay();
+				StaminaComponent->StartStaminaDrain();
 				//SetDesiredGait(AlsGaitTags::Sprinting);
 			}
 			else
@@ -1495,9 +1414,9 @@ void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 				Camera->AttachToComponent(SpringArm, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
 				Camera->SetRelativeLocation(FVector::ZeroVector);
 				Camera->SetRelativeRotation(FRotator::ZeroRotator); // 필요 시 원래 회전 복구
-				StopStaminaRecovery();
-				StopStaminaRecoverAfterDelay();
-				StartStaminaDrain();
+				StaminaComponent->StopStaminaRecovery();
+				StaminaComponent->StopStaminaRecoverAfterDelay();
+				StaminaComponent->StartStaminaDrain();
 				//SetDesiredGait(AlsGaitTags::Sprinting);
 			}
 		}
@@ -1636,30 +1555,14 @@ void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
 			SetDesiredStance(AlsStanceTags::Standing);
 			return;
 		}
-		ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
-		if (!IsValid(MyPlayerState))
-		{
-			return;
-		}
-		if (MyPlayerState->MovementState == ECharacterMovementState::Exhausted)
-		{
-			return;
-		}
-		if (MyPlayerState->GetStamina() >= MyPlayerState->InitialStats.JumpStaminaCost)
+		if (StaminaComponent->CanJump())
 		{
 			Jump();
 			if (!CanJump())
 			{
 				return;
 			}
-			if (MyPlayerState->bInfiniteStamina == true)
-			{
-				return;
-			}
-			float Stamina = FMath::Clamp(MyPlayerState->GetStamina() - MyPlayerState->InitialStats.JumpStaminaCost, 0.f, MyPlayerState->InitialStats.MaxStamina);
-			MyPlayerState->SetStamina(Stamina);
-			StopStaminaRecovery();
-			StartStaminaRecoverAfterDelayOnJump();
+			StaminaComponent->ConsumeStaminaOnJump();
 		}
 	}
 	else
@@ -1668,133 +1571,67 @@ void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
 	}
 }
 
-
-
-
-void ABaseCharacter::StartStaminaDrain()
-{
-	TickStaminaDrain();
-	if (!GetWorldTimerManager().IsTimerActive(StaminaDrainHandle))
-	{
-		GetWorldTimerManager().SetTimer(
-			StaminaDrainHandle,
-			this,
-			&ABaseCharacter::TickStaminaDrain,
-			0.1f,
-			true);
-	}
-}
-
-void ABaseCharacter::TickStaminaDrain()
-{
-	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
-	if (IsValid(MyPlayerState))
-	{
-		//플레이어 스테이트에 있는 스테미나를 계속 까기.
-		ConsumeStamina();
-	}
-}
-
-void ABaseCharacter::StopStaminaDrain()
-{
-	//스테미나 소모 중지
-	GetWorldTimerManager().ClearTimer(StaminaDrainHandle);
-}
-
-void ABaseCharacter::StartStaminaRecovery()
-{
-	if (!GetWorldTimerManager().IsTimerActive(StaminaRecoveryHandle))
-	{
-		GetWorldTimerManager().SetTimer(
-			StaminaRecoveryHandle,
-			this,
-			&ABaseCharacter::TickStaminaRecovery,
-			0.1f,
-			true);
-	}
-}
-
-void ABaseCharacter::TickStaminaRecovery()
-{
-	//스테미나가 가득 차 있으면 중지
-	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
-	if (!IsValid(MyPlayerState))
-	{
-		return;
-	}
-	if (MyPlayerState->GetStamina() >= MyPlayerState->InitialStats.ExhaustionRecoveryThreshold)
-	{
-		MyPlayerState->SetPlayerMovementState(ECharacterMovementState::Walking);
-	}
-	if (IsStaminaFull())
-	{
-		MyPlayerState->SetPlayerMovementState(ECharacterMovementState::Walking);
-		StopStaminaRecovery();
-		return;
-	}
-	float Stamina = FMath::Clamp(MyPlayerState->CurrentStamina + MyPlayerState->InitialStats.StaminaRecoveryRate * 0.1f, 0.f, MyPlayerState->InitialStats.MaxStamina);
-	MyPlayerState->SetStamina(Stamina);
-}
-
-void ABaseCharacter::StopStaminaRecovery()
-{
-	//스태미나 회복 중지
-	GetWorldTimerManager().ClearTimer(StaminaRecoveryHandle);
-}
-
-void ABaseCharacter::StartStaminaRecoverAfterDelay()
+void ABaseCharacter::HandleStaminaConsumed()
 {
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
-	{
-		return;
-	}
-	if (GetWorldTimerManager().IsTimerActive(StaminaRecoveryDelayHandle)) //이미 발동되었으면 넘기기
-	{
-		return;
-	}
-
-	//몇초 뒤에 실행할 건지
-	GetWorldTimerManager().SetTimer(StaminaRecoveryDelayHandle, this, &ABaseCharacter::StartStaminaRecovery, MyPlayerState->InitialStats.RecoverDelayTime, false);
-}
-
-void ABaseCharacter::StartStaminaRecoverAfterDelayOnJump()
-{
-	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
-	if (!IsValid(MyPlayerState))
-	{
-		return;
-	}
-
-	//몇초 뒤에 실행할 건지
-	GetWorldTimerManager().SetTimer(StaminaRecoveryDelayHandle, this, &ABaseCharacter::StartStaminaRecovery, MyPlayerState->InitialStats.RecoverDelayTime, false);
-}
-
-void ABaseCharacter::StopStaminaRecoverAfterDelay()
-{
-	//몇초 뒤에 실행할 건지
-	GetWorldTimerManager().ClearTimer(StaminaRecoveryDelayHandle);
-}
-
-
-void ABaseCharacter::ConsumeStamina()
-{
-	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
-	if (!IsValid(MyPlayerState))
-	{
-		return;
-	}
-	if (MyPlayerState->bInfiniteStamina == true)
 	{
 		return;
 	}
 	float CurrentPlayerSpeed = GetPlayerMovementSpeed();
 	if (FrontInput < 0.1f)
 	{
+		StaminaComponent->bCanCharacterSprint = false;
 		bIsSprinting = false;
 		SetDesiredGait(AlsGaitTags::Running);
 		//일단 회복 시키기는 해
-		StartStaminaRecoverAfterDelay();
+		StaminaComponent->StartStaminaRecoverAfterDelay();
+		return;
+	}
+	StaminaComponent->bCanCharacterSprint = true;
+	bIsSprinting = true;
+	SetDesiredAiming(false);
+	SetDesiredGait(AlsGaitTags::Sprinting);
+	Camera->AttachToComponent(SpringArm, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+	Camera->SetRelativeLocation(FVector::ZeroVector);
+	Camera->SetRelativeRotation(FRotator::ZeroRotator); // 필요 시 원래 회전 복구
+	StaminaComponent->StopStaminaRecovery();
+	StaminaComponent->StopStaminaRecoverAfterDelay();
+	StaminaComponent->StartStaminaRecoverAfterDelayOnJump();
+	
+	StaminaComponent->StartStaminaDrain();
+}
+
+void ABaseCharacter::HandleStaminaExhausted()
+{
+	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
+	if (!IsValid(MyPlayerState))
+	{
+		return;
+	}
+	MyPlayerState->SetPlayerMovementState(ECharacterMovementState::Exhausted);
+	bIsSprinting = false;
+	SetDesiredAiming(true);
+	SetDesiredGait(AlsGaitTags::Running);
+	StaminaComponent->StopStaminaDrain();
+	StaminaComponent->StartStaminaRecoverAfterDelay();
+}
+
+void ABaseCharacter::HandleStaminaThresholdReached()
+{
+
+}
+
+void ABaseCharacter::PlayerIsSprint()
+{
+	float CurrentPlayerSpeed = GetPlayerMovementSpeed();
+	if (FrontInput < 0.1f)
+	{
+		bIsSprinting = false;
+		SetDesiredGait(AlsGaitTags::Running);
+		//일단 회복 시키기는 해
+		StaminaComponent->StartStaminaRecoverAfterDelay();
+		LOG_Char_WARNING(TEXT("속도가 모자라서 스태미나 회복"));
 		return;
 	}
 	bIsSprinting = true;
@@ -1803,43 +1640,15 @@ void ABaseCharacter::ConsumeStamina()
 	Camera->AttachToComponent(SpringArm, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
 	Camera->SetRelativeLocation(FVector::ZeroVector);
 	Camera->SetRelativeRotation(FRotator::ZeroRotator); // 필요 시 원래 회전 복구
-	StopStaminaRecovery();
-	StopStaminaRecoverAfterDelay();
-	StartStaminaRecoverAfterDelayOnJump();
-	float Amount = MyPlayerState->InitialStats.StaminaDrainRate * 0.1f;
-	float Stamina = FMath::Clamp(MyPlayerState->CurrentStamina - Amount, 0.f, MyPlayerState->InitialStats.MaxStamina);
-	MyPlayerState->SetStamina(Stamina);
+	StaminaComponent->StopStaminaRecovery();
+	StaminaComponent->StopStaminaRecoverAfterDelay();
+	StaminaComponent->StartStaminaRecoverAfterDelayOnJump();
 
-	if (MyPlayerState->CurrentStamina <= 0.f)
-	{
-		MyPlayerState->SetPlayerMovementState(ECharacterMovementState::Exhausted);
-		bIsSprinting = false;
-		SetDesiredAiming(true);
-		SetDesiredGait(AlsGaitTags::Running);
-		StopStaminaDrain();
-		StartStaminaRecoverAfterDelay();
-	}
-}
+	StaminaComponent->StartStaminaDrain();
 
-bool ABaseCharacter::HasStamina() const
-{
-	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
-	if (!IsValid(MyPlayerState))
-	{
-		return false;
-	}
-	return MyPlayerState->CurrentStamina > 0.f;
-}
 
-bool ABaseCharacter::IsStaminaFull() const
-{
-	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
-	if (!IsValid(MyPlayerState))
-	{
-		//혹시 몰라서 일단 타이머는 끌 수 있게
-		return true;
-	}
-	return MyPlayerState->GetStamina() >= MyPlayerState->InitialStats.MaxStamina;
+	//진짜 달리기 중인지 판단하는 로직이 필요
+
 }
 
 float ABaseCharacter::GetPlayerMovementSpeed() const
@@ -2993,55 +2802,18 @@ float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageE
 	if (!HasAuthority())
 	{
 		return 0;
-	}
+	}	
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
 	{
 		return 0;
 	}
-	if (MyPlayerState->bInfiniteHP == true)
+	if (MyPlayerState->bInfiniteHP == true) // 삭제하고 싶은데, 삭제하면 치트매니저에 문제가 생길 것 같은 느낌
 	{
 		return 0;
 	}
-	float FinalDamage = CalculateTakeDamage(DamageAmount);
-	float CurrentHP = MyPlayerState->GetHP();
-	float MaxHP = MyPlayerState->MaxHP;
-	float CalCulatedHP = FMath::Clamp(CurrentHP - FinalDamage, 0.0f, MaxHP);
-	MyPlayerState->SetHP(CalCulatedHP);
-	//실제 데미지가 들어왔다면
-	if (FinalDamage > 0.0f)
-	{
-		Client_PlayHitSound();
-		MyPlayerState->Client_PlayDamageUI();
-		ActivateDamageCooldown(); // 0.5초간 무적
-	}
-	LOG_Char_WARNING(TEXT("Current HP : %f"), CalCulatedHP);
-	if (CalCulatedHP <= 0.f)
-	{
-		HandlePlayerDeath(); // 사망 처리
-	}
+	HealthComponent->TakeDamage(DamageAmount);
 	return DamageAmount;
-}
-
-void ABaseCharacter::ActivateDamageCooldown()
-{
-	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
-	if (!IsValid(MyPlayerState))
-	{
-		return;
-	}
-	MyPlayerState->bInfiniteHP = true;
-	GetWorld()->GetTimerManager().SetTimer(InvincibilityTimerHandle, this, &ABaseCharacter::ResetInvincibility, InvincibilityTime, false);
-}
-
-void ABaseCharacter::ResetInvincibility()
-{
-	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
-	if (!IsValid(MyPlayerState))
-	{
-		return;
-	}
-	MyPlayerState->bInfiniteHP = false;
 }
 
 void ABaseCharacter::GetFallDamage(float Velocity)
@@ -3061,22 +2833,7 @@ void ABaseCharacter::GetFallDamage(float Velocity)
 		return;
 	}
 
-	float FinalDamage = CalculateFallDamage(Velocity);
-	float CurrentHP = MyPlayerState->GetHP();
-	float MaxHP = MyPlayerState->MaxHP;
-	float CalCulatedHP = FMath::Clamp(CurrentHP - FinalDamage, 0.0f, MaxHP);
-	LOG_Char_WARNING(TEXT("Current HP : %f"), CalCulatedHP);
-	MyPlayerState->SetHP(CalCulatedHP);
-	
-	if (FinalDamage > 0.0f)
-	{
-		Client_PlayHitSound();
-		MyPlayerState->Client_PlayDamageUI();
-	}	
-	if (CalCulatedHP <= 0.f)
-	{
-		HandlePlayerDeath(); // 사망 처리
-	}
+	HealthComponent->TakeFallDamage(Velocity);
 }
 
 void ABaseCharacter::HandlePlayerDeath()
@@ -3142,9 +2899,6 @@ void ABaseCharacter::NotifyPlayerDeathToGameState()
 		LOG_Char_WARNING(TEXT("PlayerState가 유효하지 않음"));
 		return;
 	}
-
-	//여기서부터는 게임스테이트의 코드가 바뀔 것은 알지만 테스트를 위해서 임의로 넣은 코드입니다.
-	//LCGameState->MarkPlayerAsEscaped(MyPlayerState);
 }
 
 void ABaseCharacter::Client_HandlePlayerVoiceChattingState_Implementation()
@@ -4198,7 +3952,6 @@ void ABaseCharacter::OnRep_PlayerState()
 	if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
 	{
 		SetCustomizationData(PS->GetCustomizationData()); 
-		LogCustomizationData(PS->GetCustomizationData());
 		ApplyCustomization(CharacterCustomizationData);
 	}
 }
@@ -4300,23 +4053,4 @@ void ABaseCharacter::Client_TurnOffNameWidget_Implementation()
 
 		Char->TurnOffNameWidget();
 	}
-}
-
-
-
-
-
-void ABaseCharacter::LogCustomizationData(const FCharacterCustomizationData& Data)
-{
-	UE_LOG(LogTemp, Warning,
-		TEXT(
-			"커스터마이징 데이터: "
-			"DefaultBodyID=%d, GloveID=%d, JacketID=%d, PantsID=%d, BeltsID=%d, HelmetID=%d, ArmorID=%d, BootsID=%d, "
-			"DefaultBodyMaterialID=%d, GloveMaterialID=%d, JacketMaterialID=%d, PantsMaterialID=%d, BeltsMaterialID=%d, "
-			"HelmetMaterialID=%d, ArmorMaterialID=%d, BootsMaterialID=%d, FlagMaterialID=%d"
-		),
-		Data.DefaultBodyID, Data.GloveID, Data.JacketID, Data.PantsID, Data.BeltsID, Data.HelmetID, Data.ArmorID, Data.BootsID,
-		Data.DefaultBodyMaterialID, Data.GloveMaterialID, Data.JacketMaterialID, Data.PantsMaterialID, Data.BeltsMaterialID,
-		Data.HelmetMaterialID, Data.ArmorMaterialID, Data.BootsMaterialID, Data.FlagMaterialID
-	);
 }

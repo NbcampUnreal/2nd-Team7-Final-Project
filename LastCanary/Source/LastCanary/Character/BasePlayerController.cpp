@@ -20,6 +20,13 @@
 #include "SaveGame/LCLocalPlayerSaveGame.h"
 #include "LastCanary.h"
 
+#include "Settings/Component/MouseSensitivityComponent.h"
+
+ABasePlayerController::ABasePlayerController()
+{
+	MouseSensitivityComponent = CreateDefaultSubobject<UMouseSensitivityComponent>(TEXT("MouseSensitivityComponent"));
+}
+
 void ABasePlayerController::BeginPlay()
 {
 	Super::BeginPlay();
@@ -60,6 +67,11 @@ void ABasePlayerController::BeginPlay()
 
 	PlayerCameraManager->ViewPitchMin = -80.0f; // 최소 Pitch 각도 (고개 숙이기)
 	PlayerCameraManager->ViewPitchMax = 80.0f;  // 최대 Pitch 각도 (고개 들기)
+
+	if (MouseSensitivityComponent)
+	{
+		//MouseSensitivityComponent->OnSensitivitySettingsChanged.AddDynamic(this, &ABasePlayerController::LoadSensitivity);
+	}
 }
 
 //void ABasePlayerController::RequestShowInGameHUD()

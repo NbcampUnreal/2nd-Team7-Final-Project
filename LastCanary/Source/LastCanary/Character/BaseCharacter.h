@@ -4,6 +4,7 @@
 #include "../Plugins/ALS-Refactored-4.15/Source/ALS/Public/AlsCharacter.h"
 #include "Character/PlayerData/PlayerDataTypes.h"
 #include "Interface/GimmickDebuffInterface.h"
+#include "Interface/NoiseEmitterInterface.h"
 #include "SaveGame/LCLocalPlayerSaveGame.h"
 #include "GameplayTagAssetInterface.h"
 #include "BaseCharacter.generated.h"
@@ -26,6 +27,12 @@ class UWidgetComponent;
 class UPlayerNameWidget;
 class UCustomizationMeshMap;
 struct FCharacterCustomizationData;
+class UCharacterHealthComponent;
+class UCharacterStaminaComponent;
+class UCharacterAnimationComponent;
+class UCharacterCustomizationComponent;
+class UCharacterInteractionComponent;
+class UCharacterFootstepNoiseComponent;
 
 UENUM(BlueprintType)
 enum class EAnimationType : uint8
@@ -37,7 +44,7 @@ enum class EAnimationType : uint8
 };
 
 UCLASS()
-class LASTCANARY_API ABaseCharacter : public AAlsCharacter, public IGimmickDebuffInterface, public IGameplayTagAssetInterface
+class LASTCANARY_API ABaseCharacter : public AAlsCharacter, public IGimmickDebuffInterface, public IGameplayTagAssetInterface, public INoiseEmitterInterface
 {
 	GENERATED_BODY()
 
@@ -82,6 +89,30 @@ public:
 	UCameraComponent* SpectatorCamera;
 
 
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
+	UCharacterHealthComponent* HealthComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
+	UCharacterStaminaComponent* StaminaComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
+	UCharacterAnimationComponent* AnimationComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
+	UCharacterCustomizationComponent* CustomizationComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
+	UCharacterInteractionComponent* InteractionComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UCharacterFootstepNoiseComponent* FootstepNoiseComponent;
+	
+
+
+public:
+	UFUNCTION()
+	virtual float GetCurrentNoiseLevel() const override;
 
 	UPROPERTY(VisibleAnywhere)
 	UPostProcessComponent* CustomPostProcessComponent;
@@ -147,8 +178,6 @@ public:
 
 	FCharacterCustomizationData CharacterCustomizationData;
 
-	void LogCustomizationData(const FCharacterCustomizationData& Data);
-
 	bool bPossessedCheck = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
@@ -163,8 +192,6 @@ public:
 	bool Updated = false;
 
 	void SetCharacterPoseSynchronization();
-
-	void ForceUpdateAllPlayerCustomizing();
 
 	UPROPERTY(VisibleAnywhere, Category = "Kick")
 	UBoxComponent* KickHitBox;
@@ -751,14 +778,9 @@ public:
 	void Client_PlayHitSound();
 	void Client_PlayHitSound_Implementation();
 
-	FTimerHandle InvincibilityTimerHandle;
-	void ActivateDamageCooldown();
-	void ResetInvincibility();
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Damage")
-	float InvincibilityTime = 0.5f;
-
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+	
+	UFUNCTION()
 	void HandlePlayerDeath();
 
 	void NotifyPlayerDeathToGameState();
@@ -853,6 +875,17 @@ public:
 	//달리기 관련 로직
 	float GetPlayerMovementSpeed() const;
 
+	UFUNCTION()
+	void HandleStaminaConsumed();
+
+	UFUNCTION()
+	void HandleStaminaExhausted();
+
+	UFUNCTION()
+	void HandleStaminaThresholdReached();
+
+	void PlayerIsSprint();
+	/*
 	void ConsumeStamina();
 	void TickStaminaDrain();
 	void StartStaminaDrain();
@@ -869,7 +902,7 @@ private:
 	FTimerHandle StaminaDrainHandle;
 	FTimerHandle StaminaRecoveryHandle;
 	FTimerHandle StaminaRecoveryDelayHandle;
-
+	*/
 	// 인벤토리 아이템 관련 변수 및 함수
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tags")
