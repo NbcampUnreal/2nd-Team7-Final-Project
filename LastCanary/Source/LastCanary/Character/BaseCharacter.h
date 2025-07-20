@@ -225,12 +225,6 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Sensitivity ")
 	float ZoomSensitivity = 1.0f;
 
-	float GetMouseSensitivity();
-	void SetMouseSensitivity(float Value);
-
-	float GetZoomSensitivity();
-	void SetZoomSensitivity(float Value);
-
 	float GetBrightness();
 	void SetBrightness(float Value);
 

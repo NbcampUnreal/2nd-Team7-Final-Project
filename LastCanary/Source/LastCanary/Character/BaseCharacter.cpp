@@ -432,45 +432,6 @@ float ABaseCharacter::GetCurrentNoiseLevel() const
 	return FootstepNoiseComponent ? FootstepNoiseComponent->GetCurrentNoiseLevel() : 0.f;
 }
 
-float ABaseCharacter::GetMouseSensitivity() 
-{
-	if (!Controller)
-	{
-		return 1.0f;
-	}
-	ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
-	if (!IsValid(PC))
-	{
-		return 1.0f;
-	}
-	return PC->MouseSensivity;
-}
-
-void ABaseCharacter::SetMouseSensitivity(float Value)
-{
-	MouseSensitivity = GetMouseSensitivity();
-}
-
-float ABaseCharacter::GetZoomSensitivity()
-{
-	if (!Controller)
-	{
-		return 1.0f;
-	}
-	ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
-	if (!IsValid(PC))
-	{
-		return 1.0f;
-	}
-	return PC->ZoomSensivity;
-}
-
-void ABaseCharacter::SetZoomSensitivity(float Value)
-{
-	ZoomSensitivity = GetZoomSensitivity();
-}
-
-
 FCharacterCustomizationData ABaseCharacter::GetCustomizationData()
 {
 	return CharacterCustomizationData;

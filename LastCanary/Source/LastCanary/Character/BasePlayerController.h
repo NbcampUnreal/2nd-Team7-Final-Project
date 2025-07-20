@@ -26,15 +26,10 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UMouseSensitivityComponent* MouseSensitivityComponent;
 
-	//void RequestShowInGameHUD();
-	
-	void LoadMouseSensitivity();
+	UMouseSensitivityComponent* GetMouseSensitivityComponent();
+
 	void SetMouseSensitivity(float Sensitivity);
-	
-	void LoadZoomSensitivity();
 	void SetZoomSensitivity(float Sensitivity);
-	
-	void LoadDroneSensitivity();
 	void SetDroneSensitivity(float Sensitivity);
 
 	void LoadBrightness();
@@ -186,8 +181,6 @@ public:
 	*/
 public:
 	virtual void Input_OnLookMouse(const FInputActionValue& ActionValue) override;
-
-	virtual void Input_OnLook(const FInputActionValue& ActionValue) override;
 
 	virtual void Input_OnMove(const FInputActionValue& ActionValue) override;
 
