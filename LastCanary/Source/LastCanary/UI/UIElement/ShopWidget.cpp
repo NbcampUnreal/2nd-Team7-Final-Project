@@ -2,35 +2,25 @@
 #include "UI/UIObject/ShopItemEntry.h"
 #include "UI/UIObject/ShopItemInfoWidget.h"
 #include "UI/UIObject/ShoppingCartWidget.h"
-#include "UI/Manager/LCUIManager.h"
 
 #include "Components/ScrollBox.h"
 #include "Components/Button.h"
-
-#include "Actor/LCDroneDelivery.h"
-#include "Actor/LCDronePath.h"
+#include "Components/CanvasPanelSlot.h"
+#include "Components/Border.h"
 
 #include "Framework/PlayerController/LCRoomPlayerController.h"
 #include "Character/BasePlayerState.h"
 
-#include "LastCanary.h"
-
 void UShopWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+
 	if (PurchaseButton)
 	{
 		PurchaseButton->OnClicked.AddUniqueDynamic(this, &UShopWidget::OnPurchaseButtonClicked);
-		PurchaseButton->SetIsEnabled(false); // 시작 시 비활성화
+		PurchaseButton->SetIsEnabled(false);
 	}
-	if (MinimizeButton)
-	{
-		MinimizeButton->OnClicked.AddUniqueDynamic(this, &UShopWidget::CloseShopAndShowDesktop);
-	}
-	if (ExitButton)
-	{
-		ExitButton->OnClicked.AddUniqueDynamic(this, &UShopWidget::CloseShopWidget);
-	}
+
 	if (ItemInfoWidget && ShoppingCartWidget)
 	{
 		ItemInfoWidget->SetShoppingCartWidget(ShoppingCartWidget);
@@ -38,18 +28,6 @@ void UShopWidget::NativeConstruct()
 
 	if (ShoppingCartWidget)
 	{
-		// 골드 가져오기 
-		//int32 PlayerGold = 0;
-		//if (const APlayerState* PS = GetOwningPlayerState())
-		//{
-		//	if (const ABasePlayerState* MyPS = Cast<ABasePlayerState>(PS))
-		//	{
-		//		PlayerGold = MyPS->GetTotalGold();
-		//	}
-		//}
-		//ShoppingCartWidget->SetPlayerGold(PlayerGold);
-
-		// 델리게이트 바인딩
 		ShoppingCartWidget->OnCartValidityChanged.BindLambda([this](bool bCanAfford)
 			{
 				if (PurchaseButton)
@@ -60,65 +38,30 @@ void UShopWidget::NativeConstruct()
 	}
 
 	PopulateShopItems();
+	InitDesktopWindow();
 }
 
 void UShopWidget::NativeDestruct()
 {
 	Super::NativeDestruct();
-	if (PurchaseButton)
-	{
-		PurchaseButton->OnClicked.RemoveDynamic(this, &UShopWidget::OnPurchaseButtonClicked);
-	}
-	if (ExitButton)
-	{
-		ExitButton->OnClicked.RemoveDynamic(this, &UShopWidget::CloseShopWidget);
-	}
-}
-
-void UShopWidget::PopulateShopItems()
-{
-	if (!ItemListBox || !ItemDataTable || !ShopItemEntryClass)
-	{
-		return;
-	}
-
-	ItemListBox->ClearChildren();
-
-	TArray<FName> RowNames = ItemDataTable->GetRowNames();
-	for (const FName& RowName : RowNames)
-	{
-		if (const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(RowName, TEXT("Shop Load")))
-		{
-			if (ItemData->bCanBuy == false)
-			{
-				continue;
-			}
-
-			UShopItemEntry* ItemEntry = CreateWidget<UShopItemEntry>(this, ShopItemEntryClass);
-			if (ItemEntry)
-			{
-				ItemEntry->InitItem(*ItemData);
-				ItemEntry->OnItemClicked.BindUObject(this, &UShopWidget::OnShopItemClicked);
-				ItemListBox->AddChild(ItemEntry);
-
-				// LOG_Frame_WARNING(TEXT("Shop item bound: %s"), *ItemData->ItemName.ToString());
-			}
-		}
-	}
 }
 
 void UShopWidget::SetGold(int gold)
 {
-	ShoppingCartWidget->SetPlayerGold(gold);
+	if (ShoppingCartWidget)
+	{
+		ShoppingCartWidget->SetPlayerGold(gold);
+	}
+}
+
+void UShopWidget::OpenShopWidget()
+{
+	SetVisibility(ESlateVisibility::Visible);
 }
 
 void UShopWidget::OnShopItemClicked(UShopItemEntry* ClickedEntry)
 {
-	LOG_Frame_WARNING(TEXT("OnShopItemClicked"));
-	if (ClickedEntry == nullptr)
-	{
-		return;
-	}
+	if (!ClickedEntry) return;
 
 	if (CurrentlySelectedEntry)
 	{
@@ -137,41 +80,75 @@ void UShopWidget::OnShopItemClicked(UShopItemEntry* ClickedEntry)
 
 void UShopWidget::OnPurchaseButtonClicked()
 {
-	/*TArray<FItemDropData> DropList = ShoppingCartWidget->GetItemDropList();
-
-	LOG_Frame_WARNING(TEXT("DropList Count: %d"), DropList.Num());
-
-	for (const auto& Drop : DropList)
-	{
-		LOG_Frame_WARNING(TEXT("Drop Item: %s, Count: %d"),
-			Drop.ItemClass ? *Drop.ItemClass->GetName() : TEXT("nullptr"),
-			Drop.Count);
-	}*/
-
-	ALCRoomPlayerController* PC = Cast<ALCRoomPlayerController>(GetOwningPlayer());
-	if (PC)
+	if (ALCRoomPlayerController* PC = Cast<ALCRoomPlayerController>(GetOwningPlayer()))
 	{
 		PC->Server_RequestPurchase(ShoppingCartWidget->GetItemDropList());
 	}
+
 	ShoppingCartWidget->ClearCart();
-	CloseShopWidget();
+	CloseWindow(); // 부모 기능 사용
 }
 
-void UShopWidget::CloseShopAndShowDesktop()
+void UShopWidget::PopulateShopItems()
 {
-	ULCUIManager* UIManager = ResolveUIManager();
-	if (UIManager)
+	if (!ItemListBox || !ItemDataTable || !ShopItemEntryClass) return;
+
+	ItemListBox->ClearChildren();
+
+	TArray<FName> RowNames = ItemDataTable->GetRowNames();
+	for (const FName& RowName : RowNames)
 	{
-		UIManager->HideShopPopup();     // 상점 닫고
-		UIManager->ShowDesktop();       // 바탕화면 다시 표시
+		if (const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(RowName, TEXT("Shop Load")))
+		{
+			if (!ItemData->bCanBuy)
+			{
+				continue;
+			}
+
+			UShopItemEntry* ItemEntry = CreateWidget<UShopItemEntry>(this, ShopItemEntryClass);
+			if (ItemEntry)
+			{
+				ItemEntry->InitItem(*ItemData);
+				ItemEntry->OnItemClicked.BindUObject(this, &UShopWidget::OnShopItemClicked);
+				ItemListBox->AddChild(ItemEntry);
+			}
+		}
 	}
 }
 
-void UShopWidget::CloseShopWidget()
+FReply UShopWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
-	ULCUIManager* UIManager = ResolveUIManager();
-	if (UIManager)
+	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton && IsInTitleBar(InMouseEvent.GetScreenSpacePosition()))
 	{
-		UIManager->HideDesktop();
+		StartDragging(InMouseEvent.GetScreenSpacePosition());
+		return FReply::Handled();
 	}
+	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
+}
+
+FReply UShopWidget::NativeOnMouseMove(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	if (bDragging && InMouseEvent.IsMouseButtonDown(EKeys::LeftMouseButton))
+	{
+		UpdateDrag(InMouseEvent.GetScreenSpacePosition());
+		return FReply::Handled();
+	}
+	return Super::NativeOnMouseMove(InGeometry, InMouseEvent);
+}
+
+FReply UShopWidget::NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	StopDragging();
+	return Super::NativeOnMouseButtonUp(InGeometry, InMouseEvent);
+}
+
+bool UShopWidget::IsInTitleBar(const FVector2D& ScreenPos) const
+{
+	if (!TitleBar) return false;
+	return TitleBar->GetCachedGeometry().IsUnderLocation(ScreenPos);
+}
+
+void UShopWidget::ToggleMaximizeRestore()
+{
+	Super::ToggleMaximizeRestore();
 }

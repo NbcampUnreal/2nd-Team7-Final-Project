@@ -1,68 +1,71 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "UI/LCUserWidgetBase.h"
+#include "UI/UIObject/DesktopWindowBaseWidget.h"
 #include "DataTable/ItemDataRow.h"
 #include "DataType/ItemDropData.h"
 #include "ShopWidget.generated.h"
 
-/**
- * 
- */
 class UScrollBox;
 class UShopItemEntry;
 class UButton;
 class UDataTable;
 class UShopItemInfoWidget;
 class UShoppingCartWidget;
-class ALCDroneDelivery;
-class ALCDronePath;
+
 UCLASS()
-class LASTCANARY_API UShopWidget : public ULCUserWidgetBase
+class LASTCANARY_API UShopWidget : public UDesktopWindowBaseWidget
 {
 	GENERATED_BODY()
 
 public:
 	void SetGold(int gold);
-	
+	void OpenShopWidget();
+
+	UShoppingCartWidget* GetShoppingCartWidget() const { return ShoppingCartWidget; }
+
 protected:
+	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
+
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnMouseMove(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+
+	virtual void ToggleMaximizeRestore() override;
+
+	UFUNCTION()
+	void OnShopItemClicked(UShopItemEntry* ClickedEntry);
+
+	UFUNCTION()
+	void OnPurchaseButtonClicked();
+
+	void PopulateShopItems();
+
+private:
+	bool IsInTitleBar(const FVector2D& ScreenPos) const;
+
+private:
 	UPROPERTY(meta = (BindWidget))
 	UScrollBox* ItemListBox;
+
 	UPROPERTY(meta = (BindWidget))
 	UButton* PurchaseButton;
-	UPROPERTY(meta = (BindWidget))
-	UButton* MinimizeButton;
-	UPROPERTY(meta = (BindWidget))
-	UButton* ExitButton;
+
 	UPROPERTY(meta = (BindWidget))
 	UShopItemInfoWidget* ItemInfoWidget;
+
 	UPROPERTY(meta = (BindWidget))
 	UShoppingCartWidget* ShoppingCartWidget;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Shop")
 	UDataTable* ItemDataTable;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Shop")
 	TSubclassOf<UShopItemEntry> ShopItemEntryClass;
 
-	virtual void NativeConstruct() override;
-	virtual void NativeDestruct() override;
+	UPROPERTY(EditDefaultsOnly, Category = "Shop")
+	UTexture2D* ShopIconTexture;
 
-	UFUNCTION()
-	void OnShopItemClicked(UShopItemEntry* ClickedEntry);
-	UFUNCTION()
-	void OnPurchaseButtonClicked();
-	UFUNCTION()
-	void CloseShopAndShowDesktop();
-	UFUNCTION()
-	void CloseShopWidget();
-
-	void PopulateShopItems();
-
-private:
-	UPROPERTY()
 	UShopItemEntry* CurrentlySelectedEntry = nullptr;
-
-public:
-	UShoppingCartWidget* GetShoppingCartWidget() const { return ShoppingCartWidget; }
-
 };
