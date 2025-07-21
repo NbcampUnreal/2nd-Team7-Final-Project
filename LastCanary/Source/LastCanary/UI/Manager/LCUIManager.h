@@ -33,6 +33,8 @@ class UGameOverWidget;
 class UGameEndWidget;
 class UServerMessageWidget;
 class UDesktopWidget;
+class UTaskbarWidget;
+class ULCDesktopWindowManager;
 
 //-----------------
 // Enum
@@ -175,6 +177,8 @@ public:
 	FORCEINLINE USpectatorWidget* GetSpectatorWidget() const { return CachedSpectatorWidget; }
 	FORCEINLINE UGameOverWidget* GetGameOverWidget() const { return CachedGameOverWidget; }
 	FORCEINLINE UGameEndWidget* GetGameEndWidget() const { return CachedGameEndWidget; }
+	FORCEINLINE UTaskbarWidget* GetTaskbarWidget() const;
+	FORCEINLINE UDesktopWidget* GetDesktopWidget() const { return CachedDesktopWidget; }
 
 	//-----------------
 	// External Interactor Tracking
@@ -192,8 +196,15 @@ public:
 	UFUNCTION(BlueprintCallable)
 	USpectatorWidget* GetSpectatorWidgetBlueprint() const { return CachedSpectatorWidget; }
 
-
-
+	//-----------------
+	// 새로 추가된 Shop 관련 함수들
+	//-------------------
+	UFUNCTION(BlueprintCallable)
+	UShopWidget* ShowShopWidget(int32 Gold);
+	UPROPERTY()
+	ULCDesktopWindowManager* DesktopWindowManager;
+	TSubclassOf<UShopWidget> GetShopWidgetClass() const { return ShopWidgetClass; }
+	ULCDesktopWindowManager* GetDesktopWindowManager() const;
 private:
 	//-----------------
 	// References & Context
