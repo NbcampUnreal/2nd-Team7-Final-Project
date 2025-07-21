@@ -33,7 +33,9 @@ class LASTCANARY_API UCharacterAnimationComponent : public UCharacterBaseCompone
 	
 public:
 	UCharacterAnimationComponent();
-
+	// 헤더에 추가 필요
+	UPROPERTY(EditDefaultsOnly, Category = "Animation")
+	TMap<EAnimationMontageType, UAnimMontage*> MontageMap;
 protected:
 	virtual void BeginPlay() override;
 
@@ -43,13 +45,13 @@ public:
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "Animation")
-	void PlayMontageByType(UAnimMontage* MontageToPlay, EAnimationMontageType Animtype);
+	void PlayMontageByType(UAnimMontage* LocalMontage, UAnimMontage* MulticastMontage, EAnimationMontageType Type);
 
 	UFUNCTION(BlueprintCallable, Category = "Animation")
 	void PlayInteractMontage();
 
 	UFUNCTION(BlueprintCallable, Category = "Animation")
-	void PlayUseItemMontage();
+	void PlayUseItemMontage(UAnimMontage* LocalMontage, UAnimMontage* RemoteMontage);
 
 	UFUNCTION(BlueprintCallable, Category = "Animation")
 	void PlayGunReloadMontage();
@@ -61,18 +63,18 @@ public:
 	void PlayAttackMontage();
 private:
 	UFUNCTION(Server, Reliable)
-	void Server_PlayMontage(UAnimMontage* MontageToPlay, EAnimationMontageType Animtype);
-	void Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay, EAnimationMontageType Animtype);
+	void Server_PlayMontage(UAnimMontage* MontageToPlay, EAnimationMontageType Type);
+	void Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay, EAnimationMontageType Type);
 
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_PlayMontage(UAnimMontage* MontageToPlay, EAnimationMontageType Animtype);
-	void Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay, EAnimationMontageType Animtype);
+	void Multicast_PlayMontage(UAnimMontage* MontageToPlay, EAnimationMontageType Type);
+	void Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay, EAnimationMontageType Type);
 
 
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "Animation")
-	void CancelMontageByType(UAnimMontage* MontageToPlay, EAnimationMontageType Animtype);
+	void CancelMontageByType(UAnimMontage* MontageToPlay, EAnimationMontageType Type);
 
 	UFUNCTION(BlueprintCallable, Category = "Animation")
 	void CancelInteractModntage();
@@ -91,14 +93,24 @@ public:
 
 private:
 	UFUNCTION(Server, Reliable)
-	void Server_CancelMontage(UAnimMontage* MontageToPlay, EAnimationMontageType Animtype);
-	void Server_CancelMontage_Implementation(UAnimMontage* MontageToPlay, EAnimationMontageType Animtype);
+	void Server_CancelMontage(UAnimMontage* MontageToStop, EAnimationMontageType Type);
+	void Server_CancelMontage_Implementation(UAnimMontage* MontageToStop, EAnimationMontageType Type);
 
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_CancelMontage(UAnimMontage* MontageToPlay, EAnimationMontageType Animtype);
-	void Multicast_CancelMontage_Implementation(UAnimMontage* MontageToPlay, EAnimationMontageType Animtype);
+	void Multicast_CancelMontage(UAnimMontage* MontageToStop, EAnimationMontageType Type);
+	void Multicast_CancelMontage_Implementation(UAnimMontage* MontageToStop, EAnimationMontageType Type);
 
 
 public:
-	void HandleAnimNotify(EAnimationMontageType Animtype);
+	void HandleAnimNotify(EAnimationMontageType Type);
+	
+
+public:  // 각 몽타주 타입별 재생 상태 플래그
+	void SetPlayingMontageState(EAnimationMontageType Type, bool bIsPlaying);
+private:  	
+	bool bIsPlayingInteractionMontage = false;
+	bool bIsPlayingUseItemMontage = false;
+	bool bIsPlayingGunReloadMontage = false;
+	bool bIsPlayingEmoteMontage = false;
+	bool bIsPlayingAttackMontage = false;
 };
