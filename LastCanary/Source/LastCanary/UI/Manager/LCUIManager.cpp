@@ -354,9 +354,9 @@ void ULCUIManager::ShowShopPopup(int Gold)
 	{
 		return;
 	}
-	if (LastShopInteractor && LastShopInteractor->GetShopWidgetComponent())
+	if (LastShopInteractor && LastShopInteractor->GetDesktopWidgetComponent())
 	{
-		LastShopInteractor->GetShopWidgetComponent()->SetVisibility(false);
+		LastShopInteractor->GetDesktopWidgetComponent()->SetVisibility(false);
 	}
 
 	HideHUD();
@@ -618,9 +618,9 @@ void ULCUIManager::ShowDesktop()
 	{
 		return;
 	}
-	if (LastShopInteractor && LastShopInteractor->GetShopWidgetComponent())
+	if (LastShopInteractor && LastShopInteractor->GetDesktopWidgetComponent())
 	{
-		LastShopInteractor->GetShopWidgetComponent()->SetVisibility(false);
+		LastShopInteractor->GetDesktopWidgetComponent()->SetVisibility(false);
 	}
 
 	SwitchToWidget(CachedDesktopWidget);
@@ -643,9 +643,9 @@ void ULCUIManager::HideDesktop()
 	{
 		return;
 	}
-	if (LastShopInteractor && LastShopInteractor->GetShopWidgetComponent())
+	if (LastShopInteractor && LastShopInteractor->GetDesktopWidgetComponent())
 	{
-		LastShopInteractor->GetShopWidgetComponent()->SetVisibility(true);
+		LastShopInteractor->GetDesktopWidgetComponent()->SetVisibility(true);
 	}
 
 	SwitchToWidget(CachedInGameHUD);
@@ -661,7 +661,7 @@ void ULCUIManager::HideDesktop()
 
 			Pawn->EnableInput(OwningPlayer);
 		}
-		OwningPlayer->SetViewTargetWithBlend(OwningPlayer->GetPawn(), 1.0f);
+		OwningPlayer->SetViewTargetWithBlend(OwningPlayer->GetPawn(), 0.5f);
 	}
 	else
 	{
@@ -962,9 +962,9 @@ UShopWidget* ULCUIManager::ShowShopWidget(int32 Gold)
 	}
 
 	// F 키 위젯 끄기
-	if (LastShopInteractor && LastShopInteractor->GetShopWidgetComponent())
+	if (LastShopInteractor && LastShopInteractor->GetDesktopWidgetComponent())
 	{
-		LastShopInteractor->GetShopWidgetComponent()->SetVisibility(false);
+		LastShopInteractor->GetDesktopWidgetComponent()->SetVisibility(false);
 	}
 
 	// 위젯이 이미 존재하면 다시 열기
