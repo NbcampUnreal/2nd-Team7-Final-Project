@@ -11,7 +11,6 @@ class UTextBlock;
 class ULCUIManager;
 class UTaskbarWidget;
 class UCanvasPanel;
-class UOverlay;
 class ALCRoomPlayerController;
 class ULCDesktopWindowManager;
 
@@ -27,23 +26,25 @@ public:
     virtual void NativeConstruct() override;
     virtual FReply NativeOnMouseButtonDoubleClick(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 
-    FORCEINLINE UTaskbarWidget* GetTaskbarWidget() const { return TaskbarWidget; }
-
     FORCEINLINE void SetWindowManager(ULCDesktopWindowManager* InManager) { WindowManager = InManager; }
     FORCEINLINE ULCDesktopWindowManager* GetWindowManager() const { return WindowManager; }
 
-    UCanvasPanel* GetRootCanvas() const { return RootCanvas; }
+    FORCEINLINE UCanvasPanel* GetRootCanvas() const { return RootCanvas; }
+    FORCEINLINE UCanvasPanel* GetWindowContainer() const { return WindowContainer; }
+    FORCEINLINE UTaskbarWidget* GetTaskbarWidget() const { return TaskbarWidget; }
 
     void AddWindow(UUserWidget* NewWindow);
 
+    int32 GetNextZOrder();
+
 protected:
     UPROPERTY()
-    ULCDesktopWindowManager* WindowManager; // Init 시점에 할당 필요
+    ULCDesktopWindowManager* WindowManager;
     
     UPROPERTY(meta = (BindWidget))
     UCanvasPanel* RootCanvas;
     UPROPERTY(meta = (BindWidget))
-    UOverlay* WindowContainer;
+    UCanvasPanel* WindowContainer;
 
     // 위젯 바인딩
     UPROPERTY(meta = (BindWidget))

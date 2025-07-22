@@ -21,10 +21,14 @@ class LASTCANARY_API UDesktopWindowBaseWidget : public ULCUserWidgetBase
 public:
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	virtual FReply NativeOnMouseMove(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+
+	UFUNCTION()
+	UDesktopWidget* GetDesktopWidget() const;
 
 	/** 초기화 시 호출 (자식에서 Super::NativeConstruct 이후 호출) */
 	UFUNCTION(BlueprintCallable)
@@ -107,4 +111,6 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "App")
 	UTexture2D* AppIcon;
+
+	bool bWasMouseOutsideWindowContainer = false;
 };

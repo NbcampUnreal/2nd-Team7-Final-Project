@@ -1,7 +1,8 @@
 #include "UI/UIElement/DesktopWidget.h"
 #include "UI/UIObject/TaskbarWidget.h"
+#include "Components/CanvasPanel.h"
+#include "Components/CanvasPanelSlot.h"
 #include "Components/Button.h"
-#include "Components/Overlay.h"
 #include "UI/Manager/LCUIManager.h"
 #include "UI/Manager/LCDesktopWindowManager.h"
 #include "Framework/PlayerController/LCRoomPlayerController.h"
@@ -123,11 +124,27 @@ void UDesktopWidget::AddWindow(UUserWidget* NewWindow)
 		return;
 	}
 
-	if (WindowContainer == nullptr) // = [보더] 또는 그 아래 적절한 Panel
+	if (WindowContainer == nullptr)
 	{
 		LOG_Frame_WARNING(TEXT("AddWindow: WindowContainer is null"));
 		return;
 	}
 
-	WindowContainer->AddChild(NewWindow);
+	// CanvasPanel에 추가하고 Slot을 캐스팅
+	if (UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(WindowContainer->AddChild(NewWindow)))
+	{
+		CanvasSlot->SetAutoSize(true);  // 위젯 크기 자동 조절
+		CanvasSlot->SetPosition(FVector2D(200.0f, 120.0f)); // 적당한 위치로 시작
+		CanvasSlot->SetZOrder(GetNextZOrder());  // 아이콘 위로
+	}
+	else
+	{
+		LOG_Frame_WARNING(TEXT("AddWindow: Failed to cast to UCanvasPanelSlot"));
+	}
+}
+
+int32 UDesktopWidget::GetNextZOrder()
+{
+	static int32 CurrentZOrder = 10; // 아이콘보다 앞서게 높은 값으로 시작
+	return CurrentZOrder++;
 }
