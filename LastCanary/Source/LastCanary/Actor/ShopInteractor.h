@@ -20,12 +20,12 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* Mesh;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	UWidgetComponent* ShopWidgetComponent;
+	UWidgetComponent* DesktopWidgetComponent;
 
 	UPROPERTY(EditAnywhere)
-	ACameraActor* ShopCamera;
+	ACameraActor* DesktopCamera;
 	UPROPERTY(EditAnywhere)
-	TSubclassOf<UUserWidget> ShopWidgetClass;
+	TSubclassOf<UUserWidget> DesktopWidgetClass;
 
 	//UFUNCTION(Server, Reliable)
 	//void Server_ShowPopupShopWidget();
@@ -40,7 +40,7 @@ public:
 	virtual void Interact_Implementation(APlayerController* Interactor) override;
 	virtual FString GetInteractMessage_Implementation() const override;
 
-	UWidgetComponent* GetShopWidgetComponent() const;
+	UWidgetComponent* GetDesktopWidgetComponent() const;
 
 public:
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
