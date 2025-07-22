@@ -28,10 +28,6 @@ protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
 
-	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
-	virtual FReply NativeOnMouseMove(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
-	virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
-
 	virtual void ToggleMaximizeRestore() override;
 
 	UFUNCTION()
@@ -41,9 +37,6 @@ protected:
 	void OnPurchaseButtonClicked();
 
 	void PopulateShopItems();
-
-private:
-	bool IsInTitleBar(const FVector2D& ScreenPos) const;
 
 private:
 	UPROPERTY(meta = (BindWidget))

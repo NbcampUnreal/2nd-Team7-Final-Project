@@ -116,38 +116,6 @@ void UShopWidget::PopulateShopItems()
 	}
 }
 
-FReply UShopWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
-{
-	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton && IsInTitleBar(InMouseEvent.GetScreenSpacePosition()))
-	{
-		StartDragging(InMouseEvent.GetScreenSpacePosition());
-		return FReply::Handled();
-	}
-	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
-}
-
-FReply UShopWidget::NativeOnMouseMove(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
-{
-	if (bDragging && InMouseEvent.IsMouseButtonDown(EKeys::LeftMouseButton))
-	{
-		UpdateDrag(InMouseEvent.GetScreenSpacePosition());
-		return FReply::Handled();
-	}
-	return Super::NativeOnMouseMove(InGeometry, InMouseEvent);
-}
-
-FReply UShopWidget::NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
-{
-	StopDragging();
-	return Super::NativeOnMouseButtonUp(InGeometry, InMouseEvent);
-}
-
-bool UShopWidget::IsInTitleBar(const FVector2D& ScreenPos) const
-{
-	if (!TitleBar) return false;
-	return TitleBar->GetCachedGeometry().IsUnderLocation(ScreenPos);
-}
-
 void UShopWidget::ToggleMaximizeRestore()
 {
 	Super::ToggleMaximizeRestore();
