@@ -82,6 +82,58 @@ void UBackpackSlotWidget::NativeOnDragDetected(const FGeometry& InGeometry, cons
     OutOperation = DragOp;
 }
 
+FReply UBackpackSlotWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+    // 좌클릭이고 노트 아이템인 경우
+    if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+    {
+        // 노트 아이템인지 확인
+        if (IsNoteItem())
+        {
+            HandleNoteItemClick();
+            return FReply::Handled();
+        }
+    }
+
+    // 기본 드래그 앤 드롭 처리
+    return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
+}
+
+void UBackpackSlotWidget::HandleNoteItemClick()
+{
+    if (!InventoryComponent)
+    {
+        return;
+    }
+
+    // 서버에 노트 아이템 사용 요청
+    Server_UseNoteItem(BackpackSlotIndex);
+}
+
+void UBackpackSlotWidget::Server_UseNoteItem_Implementation(int32 BackpackSlotIndex)
+{
+    UToolbarInventoryComponent* ToolbarInventory = Cast<UToolbarInventoryComponent>(InventoryComponent);
+    if (!ToolbarInventory || !ToolbarInventory->BackpackManager)
+    {
+        return;
+    }
+
+    // 가방에서 노트 아이템 사용
+    ToolbarInventory->UseNoteItemFromBackpack(BackpackSlotIndex);
+}
+
+bool UBackpackSlotWidget::IsNoteItem() const
+{
+    if (!ItemDataTable || ItemData.ItemRowName.IsNone())
+    {
+        return false;
+    }
+
+    const FItemDataRow* ItemRowData = ItemDataTable->FindRow<FItemDataRow>(ItemData.ItemRowName, TEXT("IsNoteItem"));
+
+    return ItemRowData && ItemRowData->bIsNoteItem;
+}
+
 UInventoryMainWidget* UBackpackSlotWidget::GetInventoryMainWidget() const
 {
     // 1. 직접적인 부모에서 찾기

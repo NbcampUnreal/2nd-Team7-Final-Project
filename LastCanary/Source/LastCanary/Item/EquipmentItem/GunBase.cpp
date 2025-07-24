@@ -2,6 +2,7 @@
 #include "Item/ItemBase.h"
 #include "Item/ShellEjectionComponent.h"
 #include "Inventory/ToolbarInventoryComponent.h"
+#include "Inventory/InventoryUIController.h"
 #include "Perception/AISenseConfig_Hearing.h"
 #include "Character/BaseCharacter.h"
 #include "Actor/Gimmick/LCBaseGimmick.h"
@@ -210,36 +211,20 @@ void AGunBase::Server_Fire_Implementation()
 
 void AGunBase::HandleFire()
 {
-    LOG_Item_WARNING(TEXT("[HandleFire] 시작 - 현재 탄환: %.1f"), Durability);
+    LOG_Item_WARNING(TEXT("[HandleFire] 시작 - 장전된 탄환: %d, 보유 탄환: %.1f"), CurrentAmmo, Durability);
 
-    float OldDurability = Durability;
-    Durability = FMath::Max(0.0f, Durability - 1.0f);
-
-    LOG_Item_WARNING(TEXT("[HandleFire] 탄환 감소: %.1f → %.1f"), OldDurability, Durability);
-
-    if (APawn* OwnerPawn = Cast<APawn>(GetOwner()))
+    if (CurrentAmmo <= 0)
     {
-        if (UToolbarInventoryComponent* ToolbarComp = OwnerPawn->FindComponentByClass<UToolbarInventoryComponent>())
-        {
-            LOG_Item_WARNING(TEXT("[HandleFire] SyncGunStateToSlot 호출"));
-            ToolbarComp->SyncGunStateToSlot();
+        LOG_Item_WARNING(TEXT("[HandleFire] 장전된 탄환이 없음"));
+        return;
+    }
 
-            if (HasAuthority())
-            {
-                int32 CurrentAmmo = FMath::RoundToInt(Durability);
-                int32 MaxAmmo = FMath::RoundToInt(MaxDurability);
-                ToolbarComp->MulticastSetGunAmmoUIVisibility(true, CurrentAmmo, MaxAmmo, CurrentFireMode, AvailableFireModes);
-            }
-        }
-        else
-        {
-            LOG_Item_WARNING(TEXT("[HandleFire] ToolbarInventoryComponent를 찾을 수 없음"));
-        }
-    }
-    else
-    {
-        LOG_Item_WARNING(TEXT("[HandleFire] Owner Pawn을 찾을 수 없음"));
-    }
+    // 장전된 탄환에서 1발 소모
+    int32 OldCurrentAmmo = CurrentAmmo;
+    CurrentAmmo = FMath::Max(0, CurrentAmmo - 1);
+
+    UpdateGunUI();
+    LOG_Item_WARNING(TEXT("[HandleFire] 탄환 소모: %d → %d"), OldCurrentAmmo, CurrentAmmo);
 
     FVector SoundLocation = GetActorLocation();
 
@@ -689,6 +674,7 @@ void AGunBase::ApplyGunDataFromDataTable()
     AvailableFireModes = GunData.AvailableFireModes;
     VerticalRecoilAmount = GunData.VerticalRecoilAmount;
     HorizontalRecoilAmount = GunData.HorizontalRecoilAmount;
+    MagazineCapacity = GunData.MagazineCapacity;
 
     // 이펙트 및 사운드 설정
     MuzzleFlash = GunData.MuzzleFlash;
@@ -706,42 +692,58 @@ void AGunBase::ApplyGunDataFromDataTable()
         ShellEjectionComponent->RefreshSocketCache();
     }
 
+    // 초기 탄환 설정 (생성 시에만)
+    if (CurrentAmmo == -1 && !bIsEquipped)
+    {
+        // 처음 생성될 때는 탄창을 가득 채우고 시작
+        CurrentAmmo = MagazineCapacity;
+        // 나머지는 보유 탄환으로
+        Durability = FMath::Max(0.0f, MaxDurability - MagazineCapacity);
+    }
+
     ApplyAttachmentsFromDataTable();
 }
 
 bool AGunBase::Reload()
 {
-    AActor* OwnerActor = GetOwner();
-    if (!OwnerActor)
+    if (!HasAuthority())
     {
-        LOG_Item_WARNING(TEXT("[AGunBase::Reload] Owner is NULL"));
+        LOG_Item_WARNING(TEXT("[AGunBase::Reload] Authority가 없습니다."));
         return false;
     }
 
-    ABaseCharacter* OwnerCharacter = Cast<ABaseCharacter>(OwnerActor);
-    if (!OwnerCharacter)
+    // 이미 가득 차 있으면 재장전 불가
+    if (CurrentAmmo >= MagazineCapacity)
     {
-        LOG_Item_WARNING(TEXT("[AGunBase::Reload] Owner is NULL"));
+        LOG_Item_WARNING(TEXT("[Reload] 탄창이 이미 가득참: %d/%d"), CurrentAmmo, MagazineCapacity);
         return false;
     }
 
-    if (Durability >= MaxDurability)
+    // 보유 탄환이 없으면 재장전 불가
+    if (Durability <= 0)
+    {
+        LOG_Item_WARNING(TEXT("[Reload] 보유 탄환이 없음"));
+        return false;
+    }
+
+    // 필요한 탄환 수 계산
+    int32 NeededAmmo = MagazineCapacity - CurrentAmmo;
+
+    // 실제 장전할 수 있는 탄환 수 (보유량 제한)
+    int32 AmmoToLoad = FMath::Min(NeededAmmo, static_cast<int32>(Durability));
+
+    if (AmmoToLoad <= 0)
     {
         return false;
     }
 
-    // 약실에 탄이 남아있는지 확인
-    bool bHasChambered = (Durability > 0.0f);
+    // 탄환 이동: 보유량 → 장전량
+    Durability -= AmmoToLoad;
+    CurrentAmmo += AmmoToLoad;
 
-    if (bHasChambered)
-    {
-        Durability = MaxDurability + 1.0f;
-    }
-    else
-    {
-        Durability = MaxDurability;
-    }
+    LOG_Item_WARNING(TEXT("[Reload] 재장전 완료: 장전 %d발, 보유 %.1f발"), CurrentAmmo, Durability);
 
+    // UI 및 상태 동기화
     if (APawn* OwnerPawn = Cast<APawn>(GetOwner()))
     {
         if (UToolbarInventoryComponent* ToolbarComp = OwnerPawn->FindComponentByClass<UToolbarInventoryComponent>())
@@ -750,16 +752,12 @@ bool AGunBase::Reload()
 
             if (HasAuthority())
             {
-                int32 CurrentAmmo = FMath::RoundToInt(Durability);
-                int32 MaxAmmo = FMath::RoundToInt(MaxDurability);
-                int32 CurrentSlotIndex = ToolbarComp->GetCurrentEquippedSlotIndex();
-                ToolbarComp->MulticastSetGunAmmoUIVisibility(true, CurrentAmmo, MaxAmmo, CurrentFireMode, AvailableFireModes);
+                ToolbarComp->ClientSetGunAmmoUIVisibility();
             }
         }
     }
 
     OnItemStateChanged.Broadcast();
-
     return true;
 }
 
@@ -793,6 +791,21 @@ void AGunBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetime
     DOREPLIFETIME(AGunBase, RecentHits);
     DOREPLIFETIME(AGunBase, CurrentFireMode);
     DOREPLIFETIME(AGunBase, bIsSpotlightActive);
+    DOREPLIFETIME_CONDITION_NOTIFY(AGunBase, CurrentAmmo, COND_None, REPNOTIFY_Always);
+}
+
+void AGunBase::OnRepCurrentAmmo()
+{
+    // ✅ CurrentAmmo가 복제될 때마다 UI 업데이트
+    if (APawn* OwnerPawn = Cast<APawn>(GetOwner()))
+    {
+        if (UToolbarInventoryComponent* ToolbarComp = OwnerPawn->FindComponentByClass<UToolbarInventoryComponent>())
+        {
+            ToolbarComp->ClientSetGunAmmoUIVisibility();
+            LOG_Item_WARNING(TEXT("[OnRepCurrentAmmo] UI 업데이트 호출 - CurrentAmmo: %d"), CurrentAmmo);
+        }
+    }
+    OnItemStateChanged.Broadcast();
 }
 
 bool AGunBase::CanFire()
@@ -826,9 +839,9 @@ bool AGunBase::CanFire()
     }
 
     // 탄약 부족 체크
-    if (Durability <= 0.0f)
+    if (CurrentAmmo <= 0)
     {
-        LOG_Item_WARNING(TEXT("[AGunBase::CanFire] 탄약 부족"));
+        LOG_Item_WARNING(TEXT("[AGunBase::CanFire] 장전된 탄환 부족"));
 
         if (EmptySound)
         {
@@ -1103,11 +1116,13 @@ void AGunBase::UpdateGunUI()
     {
         if (UToolbarInventoryComponent* ToolbarComp = OwnerPawn->FindComponentByClass<UToolbarInventoryComponent>())
         {
-            if (HasAuthority())
+            if (OwnerPawn->IsLocallyControlled()) // 로컬 플레이어만 UI 업데이트
             {
-                int32 CurrentAmmo = FMath::RoundToInt(Durability);
-                int32 MaxAmmo = FMath::RoundToInt(MaxDurability);
-                ToolbarComp->MulticastSetGunAmmoUIVisibility(true, CurrentAmmo, MaxAmmo, CurrentFireMode, AvailableFireModes);
+                if (ToolbarComp->UIController)
+                {
+                    ToolbarComp->UIController->SetGunAmmoUIVisibility();
+                    LOG_Item_WARNING(TEXT("[UpdateGunUI] 클라이언트에서 UI 업데이트 완료"));
+                }
             }
         }
     }

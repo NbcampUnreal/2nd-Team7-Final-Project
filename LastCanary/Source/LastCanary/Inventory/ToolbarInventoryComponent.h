@@ -34,7 +34,7 @@ public:
     UChildActorComponent* EquippedItemComponent;
 
     /** 현재 장착된 슬롯 인덱스 */
-    UPROPERTY(Replicated)
+    UPROPERTY(ReplicatedUsing = OnRep_CurrentEquippedSlotIndex)
     int32 CurrentEquippedSlotIndex;
 
     /** 특정 메시에 아이템 설정 */
@@ -200,15 +200,18 @@ public:
     void MulticastUpdateItemText_Implementation(const FText& ItemName);
 
     /** 장착한 총기의 탄환 수를 UI로 전달하는 함수 */
-    UFUNCTION(NetMulticast, Reliable, Category = "Gun UI")
-    void MulticastSetGunAmmoUIVisibility(bool bVisible, int32 CurrentAmmo, int32 MaxAmmo, EFireMode CurrentFireMode, const TArray<EFireMode>& AvailableFireModes);
-    void MulticastSetGunAmmoUIVisibility_Implementation(bool bVisible, int32 CurrentAmmo, int32 MaxAmmo, EFireMode CurrentFireMode, const TArray<EFireMode>& AvailableFireModes);
+    UFUNCTION(Client, Reliable, Category = "Gun UI")
+    void ClientSetGunAmmoUIVisibility();
+    void ClientSetGunAmmoUIVisibility_Implementation();
 
 
 protected:
     /** 장착된 아이템 상태 변경 시 호출되는 핸들러 */
     UFUNCTION()
     void OnEquippedItemStateChanged();
+
+    UFUNCTION()
+    void OnRep_CurrentEquippedSlotIndex();
 
     //-----------------------------------------------------
     // 내부 구현 및 헬퍼

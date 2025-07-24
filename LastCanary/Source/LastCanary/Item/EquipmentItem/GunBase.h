@@ -79,6 +79,14 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Properties")
     float Spread;
 
+    // 현재 장전되어 있는 탄환 수
+    UPROPERTY(ReplicatedUsing = OnRepCurrentAmmo, EditAnywhere, BlueprintReadWrite, Category = "Gun|Ammo")
+    int32 CurrentAmmo = -1;
+
+    // 탄창 용량 (재장전 시 장전되는 탄환 수)
+    UPROPERTY(BlueprintReadOnly, Category = "Gun|Ammo")
+    int32 MagazineCapacity = 30;
+
     /** 한 번에 발사되는 탄환 수 */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Properties")
     int32 BulletsPerShot;
@@ -313,6 +321,9 @@ public:
 
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+    UFUNCTION()
+    void OnRepCurrentAmmo();
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Debug")
     bool bDrawDebugLine = false;
 
@@ -427,11 +438,27 @@ protected:
     // UI 탄피 표시를 위한 함수
     //-----------------------------------------------------
 public:
+    // 현재 장전된 탄환 수
     UFUNCTION(BlueprintPure, Category = "Gun|Ammo")
-    int32 GetCurrentAmmo() const { return static_cast<int32>(Durability); }
+    int32 GetCurrentAmmo() const { return CurrentAmmo; }
+
+    // 총 보유 탄환 수 (장전된 것 + 보유한 것)
+    UFUNCTION(BlueprintPure, Category = "Gun|Ammo")
+    int32 GetTotalAmmo() const { return CurrentAmmo + static_cast<int32>(Durability); }
+
+    // 탄창 용량
+    UFUNCTION(BlueprintPure, Category = "Gun|Ammo")
+    int32 GetMagazineCapacity() const { return MagazineCapacity; }
+
+    // 보유 탄환 수 (장전되지 않은 것)
+    UFUNCTION(BlueprintPure, Category = "Gun|Ammo")
+    int32 GetReserveAmmo() const { return static_cast<int32>(Durability); }
 
     UFUNCTION(BlueprintPure, Category = "Gun|Ammo")
-    int32 GetMaxAmmo() const { return static_cast<int32>(MaxDurability); }
+    EFireMode GetCurrentFireMode() const { return CurrentFireMode; }
+
+    UFUNCTION(BlueprintPure, Category = "Gun|Ammo")
+    TArray<EFireMode> GetAvailableFireModes() const { return AvailableFireModes; }
 
     UFUNCTION(BlueprintCallable, Category = "Gun|UI")
     void UpdateGunUI();

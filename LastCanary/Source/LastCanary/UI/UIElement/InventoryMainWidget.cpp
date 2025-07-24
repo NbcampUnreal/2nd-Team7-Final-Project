@@ -326,7 +326,7 @@ void UInventoryMainWidget::RefreshInventory()
 	}
 }
 
-void UInventoryMainWidget::SetGunAmmoUIVisibility(bool bVisible, int32 CurrentAmmo, int32 MaxAmmo, EFireMode CurrentFireMode, const TArray<EFireMode>& AvailableFireModes)
+void UInventoryMainWidget::SetGunAmmoUIVisibility()
 {
 	if (!GunAmmoWidget)
 	{
@@ -334,16 +334,7 @@ void UInventoryMainWidget::SetGunAmmoUIVisibility(bool bVisible, int32 CurrentAm
 		return;
 	}
 
-	if (bVisible && MaxAmmo > 0)
-	{
-		GunAmmoWidget->ShowAmmoUI(CurrentAmmo, MaxAmmo, CurrentFireMode, AvailableFireModes);
-		LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] 탄환 UI 표시: %d/%d, 발사모드: %d"), CurrentAmmo, MaxAmmo, (int32)CurrentFireMode);
-	}
-	else
-	{
-		GunAmmoWidget->HideAmmoUI();
-		LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] 탄환 UI 숨김"));
-	}
+	GunAmmoWidget->UpdateAmmoUI();
 }
 
 void UInventoryMainWidget::InitializeGunAmmoUI()
@@ -388,7 +379,7 @@ void UInventoryMainWidget::RestoreGunAmmoUIState()
 
 	if (GunAmmoWidget && MaxAmmo > 0)
 	{
-		GunAmmoWidget->ShowAmmoUI(CurrentAmmo, MaxAmmo, EquippedGun->CurrentFireMode, EquippedGun->AvailableFireModes);
+		GunAmmoWidget->ShowAmmoUI(CurrentAmmo, MaxAmmo, EquippedGun->MagazineCapacity, EquippedGun->CurrentFireMode, EquippedGun->AvailableFireModes);
 		LOG_Item_WARNING(TEXT("[RestoreGunAmmoUIState] 총기 UI 복원 완료: %d/%d"), CurrentAmmo, MaxAmmo);
 	}
 }

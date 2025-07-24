@@ -307,7 +307,7 @@ void UToolbarInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProp
 {
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
     DOREPLIFETIME(UToolbarInventoryComponent, ItemSlots);
-    DOREPLIFETIME(UToolbarInventoryComponent, CurrentEquippedSlotIndex);
+    DOREPLIFETIME_CONDITION_NOTIFY(UToolbarInventoryComponent, CurrentEquippedSlotIndex, COND_None, REPNOTIFY_Always);
 }
 
 void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
@@ -435,9 +435,7 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
 
         if (UIController)
         {
-            int32 CurrentAmmo = FMath::RoundToInt(Gun->Durability);
-            int32 MaxAmmo = FMath::RoundToInt(Gun->MaxDurability);
-            MulticastSetGunAmmoUIVisibility(true, CurrentAmmo, MaxAmmo, Gun->CurrentFireMode, Gun->AvailableFireModes);
+            ClientSetGunAmmoUIVisibility();
         }
     }
 
@@ -491,7 +489,7 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
             if (UIController)
             {
                 TArray<EFireMode> EmptyModes;
-                MulticastSetGunAmmoUIVisibility(false, 0, 0, EFireMode::None, EmptyModes);
+                ClientSetGunAmmoUIVisibility();
             }
         }
 
@@ -543,6 +541,11 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
     CurrentEquippedSlotIndex = -1;
     bool bHasOtherEquipment = HasOtherEquippedItems();
     if (CachedOwnerCharacter) CachedOwnerCharacter->SetEquipped(bHasOtherEquipment);
+    
+    if (UIController)
+    {
+        ClientSetGunAmmoUIVisibility();
+    }
 
     OnInventoryUpdated.Broadcast();
 }
@@ -630,6 +633,7 @@ void UToolbarInventoryComponent::SyncGunStateToSlot()
 
         // 내구도 동기화
         SlotData.Durability = Gun->Durability;
+        SlotData.CurrentAmmo = Gun->CurrentAmmo;
         // 총기 상태 동기화 
         SlotData.FireMode = static_cast<int32>(Gun->CurrentFireMode);
         SlotData.bWasAutoFiring = Gun->bIsAutoFiring;
@@ -647,6 +651,7 @@ void UToolbarInventoryComponent::RestoreGunStateFromSlot(AGunBase* Gun, const FB
 
     // 총기 상태 복원
     Gun->Durability = SlotData.Durability;
+    Gun->CurrentAmmo = SlotData.CurrentAmmo;
     Gun->CurrentFireMode = static_cast<EFireMode>(SlotData.FireMode);
 }
 
@@ -903,6 +908,8 @@ bool UToolbarInventoryComponent::TryStoreItem(AItemBase* ItemActor)
     // 총기 상태 저장
     if (AGunBase* Gun = Cast<AGunBase>(ItemActor))
     {
+        NewSlot.Durability = Gun->Durability;
+        NewSlot.CurrentAmmo = Gun->CurrentAmmo;
         NewSlot.FireMode = static_cast<int32>(Gun->CurrentFireMode);
         NewSlot.bWasAutoFiring = Gun->bIsAutoFiring;
     }
@@ -1398,21 +1405,49 @@ void UToolbarInventoryComponent::MulticastUpdateItemText_Implementation(const FT
     }
 }
 
-void UToolbarInventoryComponent::MulticastSetGunAmmoUIVisibility_Implementation(bool bVisible, int32 CurrentAmmo, int32 MaxAmmo, EFireMode CurrentFireMode, const TArray<EFireMode>& AvailableFireModes)
+void UToolbarInventoryComponent::ClientSetGunAmmoUIVisibility_Implementation()
 {
     if (UIController)
     {
-        UIController->SetGunAmmoUIVisibility(bVisible, CurrentAmmo, MaxAmmo, CurrentFireMode, AvailableFireModes);
+        UIController->SetGunAmmoUIVisibility();
+        LOG_Item_WARNING(TEXT("[ClientSetGunAmmoUIVisibility] UIController 호출 완료"));
     }
     else
     {
-        LOG_Item_WARNING(TEXT("[MulticastSetGunAmmoUIVisibility] 실패: UIController가 null"));
+        LOG_Item_WARNING(TEXT("[ClientSetGunAmmoUIVisibility] 실패: UIController가 null"));
     }
 }
 
 void UToolbarInventoryComponent::OnEquippedItemStateChanged()
 {
     SyncEquippedItemDurabilityToSlot();
+}
+
+void UToolbarInventoryComponent::OnRep_CurrentEquippedSlotIndex()
+{
+    // 장착 상태 변경 시 UI 업데이트
+    if (CurrentEquippedSlotIndex >= 0 && ItemSlots.IsValidIndex(CurrentEquippedSlotIndex))
+    {
+        AItemBase* EquippedItem = GetCurrentEquippedItem();
+        if (AGunBase* Gun = Cast<AGunBase>(EquippedItem))
+        {
+            // 총기가 장착되었을 때 UI 업데이트
+            if (UIController)
+            {
+                UIController->SetGunAmmoUIVisibility();
+                LOG_Item_WARNING(TEXT("[OnRep_CurrentEquippedSlotIndex] 총기 장착 감지 - UI 업데이트"));
+            }
+        }
+    }
+    else
+    {
+        // 장착 해제 시 UI 숨김
+        if (UIController)
+        {
+            UIController->SetGunAmmoUIVisibility();
+            LOG_Item_WARNING(TEXT("[OnRep_CurrentEquippedSlotIndex] 장착 해제 감지 - UI 숨김"));
+        }
+    }
 }
 
 bool UToolbarInventoryComponent::TrySwapBackpackSlots(int32 FromBackpackIndex, int32 ToBackpackIndex)

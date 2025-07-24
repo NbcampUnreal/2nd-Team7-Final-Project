@@ -105,7 +105,7 @@ public:
 	UGunAmmoWidget* GunAmmoWidget;
 
 	UFUNCTION(BlueprintCallable, Category = "UI|Gun")
-	void SetGunAmmoUIVisibility(bool bVisible, int32 CurrentAmmo, int32 MaxAmmo, EFireMode CurrentFireMode, const TArray<EFireMode>& AvailableFireModes);
+	void SetGunAmmoUIVisibility();
 
 private:
 	void InitializeGunAmmoUI();

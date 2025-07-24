@@ -23,6 +23,18 @@ protected:
     /** 드래그 시작 처리 오버라이드 */
     virtual void NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation) override;
 
+    /** 마우스 클릭 이벤트 오버라이드 */
+    virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+
+    /** 노트 아이템 사용 처리 */
+    UFUNCTION()
+    void HandleNoteItemClick();
+
+    /** 노트 아이템 사용 서버 RPC */
+    UFUNCTION(Server, Reliable)
+    void Server_UseNoteItem(int32 SlotIndex);
+    void Server_UseNoteItem_Implementation(int32 SlotIndex);
+
 private:
     /** InventoryMainWidget에 접근하기 위한 헬퍼 함수 */
     class UInventoryMainWidget* GetInventoryMainWidget() const;
