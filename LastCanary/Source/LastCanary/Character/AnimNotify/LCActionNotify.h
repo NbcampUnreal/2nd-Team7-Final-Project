@@ -13,5 +13,6 @@ UCLASS()
 class LASTCANARY_API ULCActionNotify : public ULCBaseNotify
 {
 	GENERATED_BODY()
-	
+public:
+	virtual void Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation) override;
 };

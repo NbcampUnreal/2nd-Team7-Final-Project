@@ -224,6 +224,9 @@ public:
 
 	virtual void Input_DroneExit(const FInputActionValue& ActionValue) override;
 
+	virtual void Input_Attack(const FInputActionValue& ActionValue) override;
+
+	virtual void Input_Emote(const FInputActionValue& ActionValue) override;
 public:
 	UFUNCTION(Server, Reliable)
 	void Server_DroneExit();
@@ -297,11 +300,6 @@ public:
 	void SetSprintingStateToPlayerState(bool flag);
 
 	void CameraSetOnScope();
-
-public:
-	//총기 발사 세팅(단발 or 점사 or 연사)
-	void SetShootingSetting();
-
 public:
 	void SpawnDrone();
 

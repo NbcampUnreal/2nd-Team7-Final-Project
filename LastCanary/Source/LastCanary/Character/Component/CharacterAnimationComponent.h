@@ -6,6 +6,13 @@
 #include "Character/Component/CharacterBaseComponent.h"
 #include "CharacterAnimationComponent.generated.h"
 
+class AItemBase;
+
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnReloadNotify);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInteractionNotify);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnUseItemNotify);
+
 UENUM(BlueprintType)
 enum class EAnimationMontageType : uint8
 {
@@ -48,10 +55,10 @@ public:
 	void PlayMontageByType(UAnimMontage* LocalMontage, UAnimMontage* MulticastMontage, EAnimationMontageType Type);
 
 	UFUNCTION(BlueprintCallable, Category = "Animation")
-	void PlayInteractMontage();
+	void PlayInteractMontage(AActor* TargetActor);
 
 	UFUNCTION(BlueprintCallable, Category = "Animation")
-	void PlayUseItemMontage(UAnimMontage* LocalMontage, UAnimMontage* RemoteMontage);
+	void PlayUseItemMontage(AItemBase* Item);
 
 	UFUNCTION(BlueprintCallable, Category = "Animation")
 	void PlayGunReloadMontage();
@@ -63,24 +70,27 @@ public:
 	void PlayAttackMontage();
 private:
 	UFUNCTION(Server, Reliable)
-	void Server_PlayMontage(UAnimMontage* MontageToPlay, EAnimationMontageType Type);
-	void Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay, EAnimationMontageType Type);
+	void Server_PlayMontage(UAnimMontage* LocalMontage, UAnimMontage* MulticastMontage, EAnimationMontageType Type);
+	void Server_PlayMontage_Implementation(UAnimMontage* LocalMontage, UAnimMontage* MulticastMontage, EAnimationMontageType Type);
 
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_PlayMontage(UAnimMontage* MontageToPlay, EAnimationMontageType Type);
-	void Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay, EAnimationMontageType Type);
+	void Multicast_PlayMontage(UAnimMontage* LocalMontage, UAnimMontage* MulticastMontage, EAnimationMontageType Type);
+	void Multicast_PlayMontage_Implementation(UAnimMontage* LocalMontage, UAnimMontage* MulticastMontage, EAnimationMontageType Type);
 
 
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "Animation")
-	void CancelMontageByType(UAnimMontage* MontageToPlay, EAnimationMontageType Type);
+	void CancelAllMontage();
+
+	UFUNCTION(BlueprintCallable, Category = "Animation")
+	void CancelMontageByType(UAnimMontage* LocalMontageToStop, UAnimMontage* RemoteMontageToStop, EAnimationMontageType Type);
 
 	UFUNCTION(BlueprintCallable, Category = "Animation")
 	void CancelInteractModntage();
 
 	UFUNCTION(BlueprintCallable, Category = "Animation")
-	void CancelUseItemMontage();
+	void CancelUseItemMontage(AItemBase* Item);
 
 	UFUNCTION(BlueprintCallable, Category = "Animation")
 	void CancelGunReloadMontage();
@@ -93,17 +103,25 @@ public:
 
 private:
 	UFUNCTION(Server, Reliable)
-	void Server_CancelMontage(UAnimMontage* MontageToStop, EAnimationMontageType Type);
-	void Server_CancelMontage_Implementation(UAnimMontage* MontageToStop, EAnimationMontageType Type);
+	void Server_CancelMontage(UAnimMontage* LocalMontageToStop, UAnimMontage* RemoteMontageToStop, EAnimationMontageType Type);
+	void Server_CancelMontage_Implementation(UAnimMontage* LocalMontageToStop, UAnimMontage* RemoteMontageToStop, EAnimationMontageType Type);
 
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_CancelMontage(UAnimMontage* MontageToStop, EAnimationMontageType Type);
-	void Multicast_CancelMontage_Implementation(UAnimMontage* MontageToStop, EAnimationMontageType Type);
+	void Multicast_CancelMontage(UAnimMontage* LocalMontageToStop, UAnimMontage* RemoteMontageToStop, EAnimationMontageType Type);
+	void Multicast_CancelMontage_Implementation(UAnimMontage* LocalMontageToStop, UAnimMontage* RemoteMontageToStop, EAnimationMontageType Type);
 
 
 public:
 	void HandleAnimNotify(EAnimationMontageType Type);
 	
+	UPROPERTY(BlueprintAssignable, Category="Notify Events")
+	FOnReloadNotify OnReloadNotify;
+
+	UPROPERTY(BlueprintAssignable, Category="Notify Events")
+	FOnInteractionNotify OnInteractionNotify;
+
+	UPROPERTY(BlueprintAssignable, Category="Notify Events")
+	FOnUseItemNotify OnUseItemNotify;
 
 public:  // 각 몽타주 타입별 재생 상태 플래그
 	void SetPlayingMontageState(EAnimationMontageType Type, bool bIsPlaying);

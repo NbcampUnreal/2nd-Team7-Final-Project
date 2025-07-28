@@ -54,6 +54,7 @@
 #include "Character/Component/CharacterCustomizationComponent.h"
 #include "Character/Component/CharacterInteractionComponent.h"
 #include "Character/Component/CharacterFootstepNoiseComponent.h"
+#include "Character/Component/CharacterCameraControlComponent.h"
 
 
 ABaseCharacter::ABaseCharacter()
@@ -180,6 +181,7 @@ ABaseCharacter::ABaseCharacter()
 	AnimationComponent = CreateDefaultSubobject<UCharacterAnimationComponent>(TEXT("AnimationComponent"));
 	CustomizationComponent = CreateDefaultSubobject<UCharacterCustomizationComponent>(TEXT("CustomizationComponent"));
 	FootstepNoiseComponent = CreateDefaultSubobject<UCharacterFootstepNoiseComponent>(TEXT("FootstepNoiseComponent"));
+	CameraControlComponent = CreateDefaultSubobject<UCharacterCameraControlComponent>(TEXT("CameraControlComponent"));
 }
 
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
@@ -296,6 +298,13 @@ void ABaseCharacter::BeginPlay()
 	if (StaminaComponent)
 	{
 		StaminaComponent->OnStaminaThresholdReached.AddDynamic(this, &ABaseCharacter::HandleStaminaThresholdReached);
+	}
+	
+	if (AnimationComponent)
+	{
+		AnimationComponent->OnReloadNotify.AddDynamic(this, &ABaseCharacter::OnReloadFromNotify);
+		AnimationComponent->OnInteractionNotify.AddDynamic(this, &ABaseCharacter::OnInteractionFromNotify);
+		AnimationComponent->OnUseItemNotify.AddDynamic(this, &ABaseCharacter::OnUseItemFromNotify);
 	}
 }
 
@@ -442,7 +451,7 @@ void ABaseCharacter::SetCustomizationData(const FCharacterCustomizationData& Cus
 	CharacterCustomizationData = CustomizingData;
 }
 
-void ABaseCharacter::Server_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData)
+void ABaseCharacter::Server_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData)  //이 부분의 안의 내용을 커스터마이징 컴포넌트의 함수로 변경하기
 {
 	LOG_Char_WARNING(TEXT("캐릭터 커스터마이징 데이터 서버에 전달됨"));
 	//1. 서버의 캐릭터에 커스터마이징 정보 저장 (혹시 모르니까)
@@ -1662,8 +1671,11 @@ void ABaseCharacter::RequestReload(AGunBase* Gun)
 void ABaseCharacter::StartReload()
 {
 	CancelInteraction();
+	/*
 	bIsReloading = true;
 	Server_PlayReload();
+	*/
+	AnimationComponent->PlayGunReloadMontage();
 }
 
 
@@ -1829,14 +1841,6 @@ void ABaseCharacter::SwapHeadMaterialTransparent(bool bUseTransparent)
 	// 7 10 11  13  14 15 
 }
 
-void ABaseCharacter::Handle_Strafe(const FInputActionValue& ActionValue)
-{
-	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
-	{
-		return;
-	}
-}
-
 void ABaseCharacter::Handle_Interact(const FInputActionValue& ActionValue)
 {
 	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
@@ -1870,6 +1874,7 @@ void ABaseCharacter::Handle_Interact(const FInputActionValue& ActionValue)
 			//IInteractableInterface::Execute_Interact(CurrentFocusedActor, PC);
 			LOG_Char_WARNING(TEXT("Handle_Interact: Called Interact on %s"), *actor->GetName());
 			InteractAfterPlayMontage(actor);
+			//AnimationComponent->PlayInteractMontage(actor);
 		}
 	}
 }
@@ -2133,6 +2138,44 @@ void ABaseCharacter::Multicast_CancelUseItem_Implementation()
 	bIsPlayingUseItemMontage = false;
 	bIsPlayingAnimation = false;
 	AnimInstance->Montage_Stop(0.2f, CurrentUseItemMontage); // 부드럽게 블렌드 아웃
+}
+
+void ABaseCharacter::OnReloadFromNotify()
+{
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!IsValid(PC))
+	{
+		return;
+	}
+	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
+	if (!IsValid(EquippedItem))
+	{
+		return;
+	}
+	AGunBase* Gun = Cast<AGunBase>(EquippedItem);
+	if (!IsValid(Gun))
+	{
+		return;
+	}
+	Gun->Reload();
+	bIsReloading = false;
+}
+
+void ABaseCharacter::OnInteractionFromNotify()
+{
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (IsValid(InteractTargetActor))
+	{
+		IInteractableInterface::Execute_Interact(InteractTargetActor, PC);
+	}
+}
+
+void ABaseCharacter::OnUseItemFromNotify()
+{
+	if (IsValid(CurrentUsingItem))
+	{
+		CurrentUsingItem->UseItem();
+	}
 }
 
 void ABaseCharacter::TraceInteractableActor()
@@ -3454,7 +3497,16 @@ void ABaseCharacter::UseItem(AItemBase* Item)
 		}
 	}
 
-	UseItemAfterPlayMontage(Item);
+	FItemDataRow Data = Item->ItemData;
+	if (Data.bPlayCharacterAnimation == true)
+	{
+		AnimationComponent->PlayUseItemMontage(Item); //애니메이션 컴포넌트로 먼저 실행 후, 노티파이로 아이템 사용
+	}
+	else
+	{
+		Item->UseItem();
+	}
+	//UseItemAfterPlayMontage(Item);
 }
 
 void ABaseCharacter::CancelUseItem(AItemBase* Item)

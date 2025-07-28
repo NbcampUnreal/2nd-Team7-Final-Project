@@ -33,6 +33,7 @@ class UCharacterAnimationComponent;
 class UCharacterCustomizationComponent;
 class UCharacterInteractionComponent;
 class UCharacterFootstepNoiseComponent;
+class UCharacterCameraControlComponent;
 
 UENUM(BlueprintType)
 enum class EAnimationType : uint8
@@ -108,7 +109,8 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UCharacterFootstepNoiseComponent* FootstepNoiseComponent;
 	
-
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UCharacterCameraControlComponent* CameraControlComponent;
 
 public:
 	UFUNCTION()
@@ -458,7 +460,6 @@ public:
 	virtual void Handle_Walk(const FInputActionValue& ActionValue);
 	virtual void Handle_Crouch(const FInputActionValue& ActionValue);
 	virtual void Handle_Jump(const FInputActionValue& ActionValue);
-	virtual void Handle_Strafe(const FInputActionValue& ActionValue);
 	virtual void Handle_Aim(const FInputActionValue& ActionValue);
 	virtual void Handle_Interact(const FInputActionValue& ActionValue);
 	virtual void Handle_ViewMode();
@@ -640,6 +641,15 @@ public:
 	UFUNCTION(NetMulticast, Unreliable)
 	void Multicast_CancelUseItem();
 	void Multicast_CancelUseItem_Implementation();
+
+	UFUNCTION()
+	void OnReloadFromNotify();
+
+	UFUNCTION()
+	void OnInteractionFromNotify();
+
+	UFUNCTION()
+	void OnUseItemFromNotify();
 
 	bool bIsPlayingUseItemMontage = false;
 	bool bIsMining = false;

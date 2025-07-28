@@ -1141,14 +1141,6 @@ void ABasePlayerController::Input_ChangeShootingSetting(const FInputActionValue&
 	}
 }
 
-void ABasePlayerController::SetShootingSetting()
-{
-	//TODO: 총기 클래스 들어오면 이게 눌렸을 때 총기의 Fire Setting 변화시키는 기능 추가
-	// 현재 들고 있는 아이템이 총기 클래스라면
-	// FireSetting 다음거로 변경
-	// 총기의 속성을 변화시키는 방향이 맞아보임
-}
-
 void ABasePlayerController::Input_ChangeQuickSlot(const FInputActionValue& ActionValue)
 {
 	// 휠의 Y 방향만 사용 (위: +1, 아래: -1)
@@ -1394,6 +1386,16 @@ void ABasePlayerController::Input_DroneExit(const FInputActionValue& ActionValue
 			//UIManager->ShowInGameHUD();
 		}
 	}
+}
+
+void ABasePlayerController::Input_Attack(const FInputActionValue& ActionValue)
+{
+
+}
+
+void ABasePlayerController::Input_Emote(const FInputActionValue& ActionValue)
+{
+
 }
 
 void ABasePlayerController::Server_DroneExit_Implementation()
