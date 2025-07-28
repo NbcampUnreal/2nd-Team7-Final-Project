@@ -154,6 +154,12 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Backpack")
     bool RemoveItemFromBackpack(int32 BackpackSlotIndex, int32 Quantity);
 
+    /** 가방에서 노트 아이템 사용 */
+    UFUNCTION(Server, Reliable, 
+        Category = "Backpack|Items")
+    void Server_UseNoteItemFromBackpack(int32 BackpackSlotIndex);
+    void Server_UseNoteItemFromBackpack_Implementation(int32 BackpackSlotIndex);
+
     //-----------------------------------------------------
     // 백팩 드래그 & 드롭
     //-----------------------------------------------------

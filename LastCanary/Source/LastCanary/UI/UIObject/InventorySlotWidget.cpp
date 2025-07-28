@@ -1,7 +1,6 @@
 #include "UI/UIObject/InventorySlotWidget.h"
 #include "UI/UIObject/InventoryWidgetBase.h"
 #include "UI/UIObject/BackpackSlotWidget.h"
-#include "Inventory/ToolbarInventoryComponent.h"
 #include "Inventory/InventoryUtility.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
@@ -32,7 +31,7 @@ void UInventorySlotWidget::SetItemData(const FBaseItemSlotData& InItemData, UDat
 	UpdateSlotUI();
 }
 
-void UInventorySlotWidget::SetInventoryComponent(UInventoryComponentBase* InInventoryComponent)
+void UInventorySlotWidget::SetInventoryComponent(UToolbarInventoryComponent* InInventoryComponent)
 {
 	if (!InInventoryComponent)
 	{

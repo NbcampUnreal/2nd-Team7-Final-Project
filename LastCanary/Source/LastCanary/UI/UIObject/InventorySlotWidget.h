@@ -4,7 +4,7 @@
 #include "UI/LCUserWidgetBase.h"
 #include "UI/UIObject/ItemTooltipWidget.h"
 #include "DataType/BaseItemSlotData.h"
-#include "Inventory/InventoryComponentBase.h"
+#include "Inventory/ToolbarInventoryComponent.h"
 #include "InventorySlotWidget.generated.h"
 
 /**
@@ -48,7 +48,7 @@ public:
 
     /** 연결된 인벤토리 컴포넌트 참조 */
     UPROPERTY(BlueprintReadOnly, Category = "Inventory|Data")
-    UInventoryComponentBase* InventoryComponent;
+    UToolbarInventoryComponent* InventoryComponent;
 
     UPROPERTY(EditDefaultsOnly, Category = "Inventory|Border")
     UTexture2D* EmptyBorderTexture;
@@ -85,7 +85,7 @@ public:
 
     /** 연결된 인벤토리 컴포넌트 설정 */
     UFUNCTION(BlueprintCallable, Category = "Inventory|Setup")
-    void SetInventoryComponent(UInventoryComponentBase* InInventoryComponent);
+    void SetInventoryComponent(UToolbarInventoryComponent* InInventoryComponent);
 
     //-----------------------------------------------------
     // UI 업데이트 및 상호작용

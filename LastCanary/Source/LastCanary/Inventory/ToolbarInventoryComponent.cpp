@@ -1191,6 +1191,23 @@ bool UToolbarInventoryComponent::RemoveItemFromBackpack(int32 BackpackSlotIndex,
     return false;
 }
 
+void UToolbarInventoryComponent::Server_UseNoteItemFromBackpack_Implementation(int32 BackpackSlotIndex)
+{
+    UE_LOG(LogTemp, Warning, TEXT("[ToolbarInventoryComponent] Server_UseNoteItemFromBackpack_Implementation 시작 - SlotIndex: %d, HasAuthority: %s"),
+        BackpackSlotIndex, GetOwner() && GetOwner()->HasAuthority() ? TEXT("True") : TEXT("False"));
+
+    if (!BackpackManager)
+    {
+        UE_LOG(LogTemp, Error, TEXT("[ToolbarInventoryComponent] BackpackManager가 null입니다"));
+        return;
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("[ToolbarInventoryComponent] BackpackManager에 노트 아이템 사용 요청"));
+    bool bSuccess = BackpackManager->UseNoteItem(BackpackSlotIndex);
+
+    UE_LOG(LogTemp, Warning, TEXT("[ToolbarInventoryComponent] 노트 아이템 사용 결과: %s"), bSuccess ? TEXT("Success") : TEXT("Failed"));
+}
+
 bool UToolbarInventoryComponent::HasBackpackEquipped() const
 {
     return BackpackManager ? BackpackManager->HasBackpackEquipped() : false;

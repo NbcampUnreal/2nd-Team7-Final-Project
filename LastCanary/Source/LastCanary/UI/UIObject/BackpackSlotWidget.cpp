@@ -84,12 +84,17 @@ void UBackpackSlotWidget::NativeOnDragDetected(const FGeometry& InGeometry, cons
 
 FReply UBackpackSlotWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
+    UE_LOG(LogTemp, Warning, TEXT("[BackpackSlotWidget] MouseButtonDown - Button: %s, HasAuthority: %s"),
+        *InMouseEvent.GetEffectingButton().ToString(),
+        GetOwningPlayer() && GetOwningPlayer()->HasAuthority() ? TEXT("True") : TEXT("False"));
+
     // 좌클릭이고 노트 아이템인 경우
     if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
     {
         // 노트 아이템인지 확인
         if (IsNoteItem())
         {
+            UE_LOG(LogTemp, Warning, TEXT("[BackpackSlotWidget] 노트 아이템 클릭 감지 - SlotIndex: %d"), BackpackSlotIndex);
             HandleNoteItemClick();
             return FReply::Handled();
         }
@@ -101,25 +106,16 @@ FReply UBackpackSlotWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry,
 
 void UBackpackSlotWidget::HandleNoteItemClick()
 {
+    UE_LOG(LogTemp, Warning, TEXT("[BackpackSlotWidget] HandleNoteItemClick 시작"));
+
     if (!InventoryComponent)
     {
+        UE_LOG(LogTemp, Error, TEXT("[BackpackSlotWidget] InventoryComponent가 null입니다"));
         return;
     }
 
-    // 서버에 노트 아이템 사용 요청
-    Server_UseNoteItem(BackpackSlotIndex);
-}
-
-void UBackpackSlotWidget::Server_UseNoteItem_Implementation(int32 BackpackSlotIndex)
-{
-    UToolbarInventoryComponent* ToolbarInventory = Cast<UToolbarInventoryComponent>(InventoryComponent);
-    if (!ToolbarInventory || !ToolbarInventory->BackpackManager)
-    {
-        return;
-    }
-
-    // 가방에서 노트 아이템 사용
-    ToolbarInventory->UseNoteItemFromBackpack(BackpackSlotIndex);
+    UE_LOG(LogTemp, Warning, TEXT("[BackpackSlotWidget] Server RPC 호출 시도 - SlotIndex: %d"), BackpackSlotIndex);
+    InventoryComponent->Server_UseNoteItemFromBackpack(BackpackSlotIndex);
 }
 
 bool UBackpackSlotWidget::IsNoteItem() const

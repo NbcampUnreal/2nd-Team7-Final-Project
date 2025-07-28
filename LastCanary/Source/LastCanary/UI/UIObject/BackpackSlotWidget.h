@@ -30,10 +30,7 @@ protected:
     UFUNCTION()
     void HandleNoteItemClick();
 
-    /** 노트 아이템 사용 서버 RPC */
-    UFUNCTION(Server, Reliable)
-    void Server_UseNoteItem(int32 SlotIndex);
-    void Server_UseNoteItem_Implementation(int32 SlotIndex);
+    bool IsNoteItem() const;
 
 private:
     /** InventoryMainWidget에 접근하기 위한 헬퍼 함수 */
