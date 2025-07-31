@@ -2,14 +2,12 @@
 #include "UI/UIObject/ShopItemEntry.h"
 #include "UI/UIObject/ShopItemInfoWidget.h"
 #include "UI/UIObject/ShoppingCartWidget.h"
-
 #include "Components/ScrollBox.h"
 #include "Components/Button.h"
-#include "Components/CanvasPanelSlot.h"
-#include "Components/Border.h"
-
+#include "Components/SizeBox.h"
 #include "Framework/PlayerController/LCRoomPlayerController.h"
 #include "Character/BasePlayerState.h"
+#include "UI/Manager/LCDesktopWindowManager.h"
 
 void UShopWidget::NativeConstruct()
 {
@@ -61,7 +59,10 @@ void UShopWidget::OpenShopWidget()
 
 void UShopWidget::OnShopItemClicked(UShopItemEntry* ClickedEntry)
 {
-	if (!ClickedEntry) return;
+	if (ClickedEntry == nullptr)
+	{
+		return;
+	}
 
 	if (CurrentlySelectedEntry)
 	{
@@ -80,27 +81,51 @@ void UShopWidget::OnShopItemClicked(UShopItemEntry* ClickedEntry)
 
 void UShopWidget::OnPurchaseButtonClicked()
 {
+	if (ShoppingCartWidget == nullptr)
+	{
+		return;
+	}
+
 	if (ALCRoomPlayerController* PC = Cast<ALCRoomPlayerController>(GetOwningPlayer()))
 	{
 		PC->Server_RequestPurchase(ShoppingCartWidget->GetItemDropList());
 	}
 
 	ShoppingCartWidget->ClearCart();
-	CloseWindow(); // 부모 기능 사용
+
+	if (WindowManager)
+	{
+		WindowManager->CloseWindow(this);
+	}
+	else
+	{
+		RemoveFromParent();
+	}
 }
 
 void UShopWidget::PopulateShopItems()
 {
-	if (!ItemListBox || !ItemDataTable || !ShopItemEntryClass) return;
+	if (ItemListBox == nullptr)
+	{
+		return;
+	}
+	if (ItemDataTable == nullptr)
+	{
+		return;
+	}
+	if (ShopItemEntryClass == nullptr)
+	{
+		return;
+	}
 
 	ItemListBox->ClearChildren();
-
 	TArray<FName> RowNames = ItemDataTable->GetRowNames();
+
 	for (const FName& RowName : RowNames)
 	{
 		if (const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(RowName, TEXT("Shop Load")))
 		{
-			if (!ItemData->bCanBuy)
+			if (ItemData->bCanBuy == false)
 			{
 				continue;
 			}
@@ -119,4 +144,30 @@ void UShopWidget::PopulateShopItems()
 void UShopWidget::ToggleMaximizeRestore()
 {
 	Super::ToggleMaximizeRestore();
+
+	//if (RootSizeBox)
+	//{
+	//	if (IsMaximized())
+	//	{
+	//		RootSizeBox->SetWidthOverride(1250.f);
+	//		RootSizeBox->SetHeightOverride(690.f);
+	//		SetMaximized(false);
+	//	}
+	//	else
+	//	{
+	//		RootSizeBox->SetWidthOverride(625.f);
+	//		RootSizeBox->SetHeightOverride(345.f);
+	//		SetMaximized(true);
+	//	}
+	//}
+}
+
+void UShopWidget::OnCloseClicked()
+{
+	if (ShoppingCartWidget)
+	{
+		ShoppingCartWidget->ClearCart(); // 이미 구현된 함수라고 가정
+	}
+
+	Super::OnCloseClicked();
 }

@@ -12,6 +12,7 @@ class UButton;
 class UDataTable;
 class UShopItemInfoWidget;
 class UShoppingCartWidget;
+class USizeBox;
 
 UCLASS()
 class LASTCANARY_API UShopWidget : public UDesktopWindowBaseWidget
@@ -27,8 +28,9 @@ public:
 protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
-
 	virtual void ToggleMaximizeRestore() override;
+
+	virtual void OnCloseClicked() override;
 
 	UFUNCTION()
 	void OnShopItemClicked(UShopItemEntry* ClickedEntry);
@@ -39,6 +41,9 @@ protected:
 	void PopulateShopItems();
 
 private:
+	UPROPERTY(meta = (BindWidget))
+	USizeBox* RootSizeBox;
+
 	UPROPERTY(meta = (BindWidget))
 	UScrollBox* ItemListBox;
 
