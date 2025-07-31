@@ -15,7 +15,7 @@ void UTaskbarWidget::RegisterApp(UUserWidget* AppWidget, const FName& AppID, con
 	UTaskbarAppButton* NewButton = CreateWidget<UTaskbarAppButton>(this, TaskbarAppButtonClass);
 	if (NewButton)
 	{
-		NewButton->InitializeAppButton(AppID, AppName, Icon, AppWidget);
+		NewButton->InitializeAppButton(Icon, AppWidget);
 		AppSlotBox->AddChildToHorizontalBox(NewButton);
 		ActiveAppButtons.Add(AppID, NewButton);
 	}
@@ -42,13 +42,16 @@ void UTaskbarWidget::SetTaskbarAppButtonClass(TSubclassOf<UTaskbarAppButton> InC
 
 void UTaskbarWidget::AddAppButtonFor(UDesktopWindowBaseWidget* Window)
 {
-	if (!Window) return;
+	if (Window == nullptr)
+	{
+		return;
+	}
 
 	FName AppID = Window->GetAppID();
 	FText AppName = Window->GetAppName();
 	UTexture2D* Icon = Window->GetAppIcon();
 
-	if (!IsAppRegistered(AppID))
+	if (IsAppRegistered(AppID) == false)
 	{
 		RegisterApp(Window, AppID, AppName, Icon);
 	}

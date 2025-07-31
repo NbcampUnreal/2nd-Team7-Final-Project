@@ -951,23 +951,13 @@ UShopWidget* ULCUIManager::ShowShopWidget(int32 Gold)
 {
 	if (!ShopWidgetClass)
 	{
-		LOG_Frame_WARNING(TEXT("ULCUIManager::ShowShopWidget - ShopWidgetClass is null."));
 		return nullptr;
 	}
-
 	if (OwningPlayer == nullptr || OwningPlayer->IsLocalPlayerController() == false)
 	{
-		LOG_Frame_WARNING(TEXT("ULCUIManager::ShowShopWidget - Invalid OwningPlayer."));
 		return nullptr;
 	}
 
-	// F 키 위젯 끄기
-	if (LastShopInteractor && LastShopInteractor->GetDesktopWidgetComponent())
-	{
-		LastShopInteractor->GetDesktopWidgetComponent()->SetVisibility(false);
-	}
-
-	// 위젯이 이미 존재하면 다시 열기
 	if (CachedShopWidget)
 	{
 		if (ULCDesktopWindowManager* WindowManager = GetDesktopWindowManager())
@@ -980,10 +970,8 @@ UShopWidget* ULCUIManager::ShowShopWidget(int32 Gold)
 		CachedShopWidget = CreateWidget<UShopWidget>(OwningPlayer, ShopWidgetClass);
 		if (!CachedShopWidget)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("ULCUIManager::ShowShopWidget - Failed to create ShopWidget."));
 			return nullptr;
 		}
-
 		if (ULCDesktopWindowManager* WindowManager = GetDesktopWindowManager())
 		{
 			WindowManager->OpenWindow(CachedShopWidget);
@@ -1006,8 +994,6 @@ UShopWidget* ULCUIManager::ShowShopWidget(int32 Gold)
 		Pawn->DisableInput(OwningPlayer);
 	}
 	SetInputModeUIOnly(CachedShopWidget);
-
-	LOG_Frame_WARNING(TEXT("ULCUIManager::return CachedShopWidget."));
 
 	return CachedShopWidget;
 }

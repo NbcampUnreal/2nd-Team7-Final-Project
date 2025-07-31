@@ -179,6 +179,7 @@ public:
 	FORCEINLINE UGameEndWidget* GetGameEndWidget() const { return CachedGameEndWidget; }
 	FORCEINLINE UTaskbarWidget* GetTaskbarWidget() const;
 	FORCEINLINE UDesktopWidget* GetDesktopWidget() const { return CachedDesktopWidget; }
+	FORCEINLINE UShopWidget* GetCachedShopWidget() const { return CachedShopWidget; }
 
 	//-----------------
 	// External Interactor Tracking
@@ -205,6 +206,7 @@ public:
 	ULCDesktopWindowManager* DesktopWindowManager;
 	TSubclassOf<UShopWidget> GetShopWidgetClass() const { return ShopWidgetClass; }
 	ULCDesktopWindowManager* GetDesktopWindowManager() const;
+
 private:
 	//-----------------
 	// References & Context

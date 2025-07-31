@@ -1,19 +1,15 @@
 #include "UI/UIObject/TaskbarAppButton.h"
 
 #include "Components/Image.h"
-#include "Components/TextBlock.h"
 #include "Components/Button.h"
-#include "Blueprint/WidgetBlueprintLibrary.h"
 
-void UTaskbarAppButton::InitializeAppButton(FName InAppID, const FText& InAppName, UTexture2D* InIcon, UUserWidget* InAppWidget)
+#include "UI/UIObject/DesktopWindowBaseWidget.h"
+#include "UI/Manager/LCDesktopWindowManager.h"
+
+void UTaskbarAppButton::InitializeAppButton(UTexture2D* InIcon, UUserWidget* InAppWidget)
 {
-	AppID = InAppID;
 	AppWidget = InAppWidget;
 
-	if (AppName)
-	{
-		AppName->SetText(InAppName);
-	}
 	if (AppIcon && InIcon)
 	{
 		AppIcon->SetBrushFromTexture(InIcon);
@@ -24,14 +20,10 @@ void UTaskbarAppButton::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	// 좌클릭 이벤트 바인딩
-	UWidgetBlueprintLibrary::SetInputMode_UIOnlyEx(GetOwningPlayer(), this);
-	SetKeyboardFocus();
-
 	if (AppButton)
 	{
 		AppButton->OnClicked.AddUniqueDynamic(this, &UTaskbarAppButton::OnAppButtonClicked);
-		// 향후 우클릭용 바인딩도 여기서 가능
+		AppButton->OnHovered.AddUniqueDynamic(this, &UTaskbarAppButton::OnAppButtonRightClicked);
 	}
 }
 
@@ -42,13 +34,47 @@ void UTaskbarAppButton::OnAppButtonClicked()
 		return;
 	}
 
-	if (AppWidget->IsInViewport())
+	if (UDesktopWindowBaseWidget* Window = Cast<UDesktopWindowBaseWidget>(AppWidget))
 	{
-		AppWidget->SetFocus();
-		return;
+		ULCDesktopWindowManager* WindowManager = ResolveUIManager()->GetDesktopWindowManager();
+		if (WindowManager == nullptr)
+		{
+			return;
+		}
+
+		// 최소화 상태면 복원
+		if (Window->IsMinimized())
+		{
+			Window->SetMinimized(false);
+			Window->PlayRestoreAnimation();
+
+			// 다시 데스크탑에 추가
+			WindowManager->OpenWindow(Window);
+			return;
+		}
+		else
+		{
+			// 이미 맨 위면 최소화
+			if (WindowManager->IsTopMost(Window))
+			{
+				Window->SetMinimized(true);
+				Window->PlayMinimizeAnimation();
+				return;
+			}
+
+			// 맨 위로 올리기
+			WindowManager->OpenWindow(Window);
+			Window->SetFocus();
+			return;
+		}
 	}
 
-	AppWidget->AddToViewport(); // Optional: 높은 ZOrder
+	// UDesktopWindowBaseWidget이 아니라면, 일단 Viewport에 추가 (호환성용)
+	if (AppWidget->IsInViewport() == false)
+	{
+		AppWidget->AddToViewport(ResolveUIManager()->GetDesktopWindowManager()->GetNextZOrder());
+	}
+	AppWidget->SetFocus();
 }
 
 void UTaskbarAppButton::OnAppButtonRightClicked()
