@@ -1,5 +1,7 @@
 #include "UI/UIElement/DesktopWidget.h"
+#include "UI/UIElement/ShopWidget.h"
 #include "UI/UIObject/TaskbarWidget.h"
+#include "UI/UIObject/DesktopWindowBaseWidget.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/Button.h"
@@ -15,7 +17,7 @@ void UDesktopWidget::NativeConstruct()
 	if (WindowManager == nullptr)
 	{
 		WindowManager = NewObject<ULCDesktopWindowManager>(this);
-		WindowManager->Init(this->GetRootCanvas()); 
+		WindowManager->Init(this->GetRootCanvas());
 	}
 	if (CloseDesktopButton)
 	{
@@ -90,7 +92,33 @@ void UDesktopWidget::HandleShopAppLaunch()
 	{
 		if (ALCRoomPlayerController* RoomPC = Cast<ALCRoomPlayerController>(PC))
 		{
-			RoomPC->Server_ShowShopWidget();
+			ULCUIManager* UIManager = RoomPC->GetUIManager();
+			if (UIManager == nullptr)
+			{
+				return;
+			}
+
+			if (UShopWidget* ShopWidget = UIManager->GetCachedShopWidget()) // 이미 생성된 경우
+			{
+				if (ULCDesktopWindowManager* LCDesktopWindowManager = UIManager->GetDesktopWindowManager())
+				{
+					if (ShopWidget->IsMinimized())
+					{
+						// 최소화되어 있으면 복원
+						ShopWidget->SetVisibility(ESlateVisibility::Visible);
+						ShopWidget->SetMinimized(false);
+						ShopWidget->PlayRestoreAnimation();
+
+					}
+
+					WindowManager->OpenWindow(ShopWidget);
+				}
+			}
+			else
+			{
+				// 없는 경우 서버에 위젯 요청 (Gold 정보 포함)
+				RoomPC->Server_ShowShopWidget();
+			}
 		}
 		else
 		{
@@ -118,33 +146,48 @@ ALCRoomPlayerController* UDesktopWidget::GetRoomPC() const
 
 void UDesktopWidget::AddWindow(UUserWidget* NewWindow)
 {
-	if (NewWindow == nullptr)
+	if (NewWindow == nullptr || WindowContainer == nullptr)
 	{
-		LOG_Frame_WARNING(TEXT("AddWindow: NewWindow is null"));
+		LOG_Frame_WARNING(TEXT("AddWindow: NewWindow or WindowContainer is null"));
 		return;
 	}
 
-	if (WindowContainer == nullptr)
+	if (NewWindow->GetParent() == WindowContainer)
 	{
-		LOG_Frame_WARNING(TEXT("AddWindow: WindowContainer is null"));
-		return;
+		LOG_Frame_WARNING(TEXT("AddWindow: Already added to WindowContainer, removing first"));
+		NewWindow->RemoveFromParent();
 	}
 
-	// CanvasPanel에 추가하고 Slot을 캐스팅
-	if (UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(WindowContainer->AddChild(NewWindow)))
+	// 아직 부모에 없는 경우에만 추가
+	if (NewWindow->GetParent() == nullptr)
 	{
-		CanvasSlot->SetAutoSize(true);  // 위젯 크기 자동 조절
-		CanvasSlot->SetPosition(FVector2D(200.0f, 120.0f)); // 적당한 위치로 시작
-		CanvasSlot->SetZOrder(GetNextZOrder());  // 아이콘 위로
+		if (UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(WindowContainer->AddChild(NewWindow)))
+		{
+			CanvasSlot->SetAutoSize(false);
+			CanvasSlot->SetAnchors(FAnchors(0.f, 0.f));      // 좌상단 기준
+			CanvasSlot->SetAlignment(FVector2D(0.f, 0.f));   // 좌상단 정렬
+			CanvasSlot->SetPosition(FVector2D(200.f, 200.f));
+			CanvasSlot->SetSize(FVector2D(625.f, 345.f));
+		}
+		else
+		{
+			LOG_Frame_WARNING(TEXT("AddWindow: Failed to cast to UCanvasPanelSlot"));
+		}
 	}
 	else
 	{
-		LOG_Frame_WARNING(TEXT("AddWindow: Failed to cast to UCanvasPanelSlot"));
+		LOG_Frame_WARNING(TEXT("AddWindow: Skipped AddChild - already has parent"));
 	}
-}
 
-int32 UDesktopWidget::GetNextZOrder()
-{
-	static int32 CurrentZOrder = 10; // 아이콘보다 앞서게 높은 값으로 시작
-	return CurrentZOrder++;
+	if (UDesktopWindowBaseWidget* DesktopWindow = Cast<UDesktopWindowBaseWidget>(NewWindow))
+	{
+		if (WindowManager)
+		{
+			DesktopWindow->SetWindowManager(WindowManager);
+		}
+		else
+		{
+			LOG_Frame_WARNING(TEXT("AddWindow: WindowManager is null"));
+		}
+	}
 }

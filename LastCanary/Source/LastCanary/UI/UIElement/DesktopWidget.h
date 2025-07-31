@@ -35,8 +35,6 @@ public:
 
     void AddWindow(UUserWidget* NewWindow);
 
-    int32 GetNextZOrder();
-
 protected:
     UPROPERTY()
     ULCDesktopWindowManager* WindowManager;
