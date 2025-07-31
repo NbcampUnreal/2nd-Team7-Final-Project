@@ -21,16 +21,11 @@ public:
 	/** 최상위 캔버스를 지정하고 데스크탑 생성 */
 	void Init(UCanvasPanel* InRootCanvas);
 
-	/** 윈도우 열기 (데스크탑 위젯 위에 추가) */
 	void OpenWindow(UUserWidget* Widget);
-
-	/** 윈도우 닫기 */
 	void CloseWindow(UUserWidget* Widget);
-
-	/** 최대화/복원 토글 */
+	void MinimizeWindow(UUserWidget* Widget);
 	void ToggleMaximizeRestore(UUserWidget* Widget);
 
-	/** 현재 데스크탑 위젯 가져오기 */
 	FORCEINLINE void SetDesktopWidget(UDesktopWidget* InDesktopWidget) { DesktopWidget = InDesktopWidget;  }
 	FORCEINLINE UDesktopWidget* GetDesktopWidget() const { return DesktopWidget; }
 
@@ -43,4 +38,12 @@ protected:
 
 	UPROPERTY()
 	TArray<TObjectPtr<UUserWidget>> OpenedWindows;
+
+private:
+	int CurrentZOrder = 100;
+
+public:
+	int GetNextZOrder();
+
+	bool IsTopMost(UUserWidget* Widget) const;
 };
