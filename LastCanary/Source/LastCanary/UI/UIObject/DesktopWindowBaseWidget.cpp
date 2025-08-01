@@ -1,17 +1,24 @@
 #include "UI/UIObject/DesktopWindowBaseWidget.h"
+
 #include "Components/Image.h"
 #include "Components/Button.h"
 #include "Components/HorizontalBox.h"
+#include "Components/HorizontalBoxSlot.h"
 #include "Components/SizeBox.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
+
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "Kismet/GameplayStatics.h"
+
 #include "UI/Manager/LCUIManager.h"
 #include "UI/UIObject/TaskbarWidget.h"
 #include "UI/UIElement/DesktopWidget.h"
 #include "UI/Manager/LCDesktopWindowManager.h"
 
+//-----------------
+// 시스템 참조 및 초기화
+//-----------------
 void UDesktopWindowBaseWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
@@ -84,7 +91,6 @@ void UDesktopWindowBaseWidget::NativeTick(const FGeometry& MyGeometry, float InD
 					const FGeometry WidgetGeometry = GetCachedGeometry();
 					const FVector2D WidgetScreenPos = WidgetGeometry.LocalToAbsolute(FVector2D::ZeroVector);
 					const FVector2D TargetScreenPos = MousePos - DragOffset;
-
 					const FVector2D NewLocalPos = Geometry.AbsoluteToLocal(TargetScreenPos);
 					CanvasSlot->SetPosition(NewLocalPos);
 				}
@@ -95,6 +101,9 @@ void UDesktopWindowBaseWidget::NativeTick(const FGeometry& MyGeometry, float InD
 	}
 }
 
+//-----------------
+// 윈도우 동작
+//-----------------
 void UDesktopWindowBaseWidget::InitDesktopWindow()
 {
 	if (ULCUIManager* UIManager = ResolveUIManager())
@@ -103,6 +112,12 @@ void UDesktopWindowBaseWidget::InitDesktopWindow()
 		{
 			Taskbar->RegisterApp(this, AppID, AppName, AppIcon);
 		}
+	}
+
+	if (UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(Slot))
+	{
+		SetOriginalPosition(CanvasSlot->GetPosition());
+		SetOriginalSize(CanvasSlot->GetSize());
 	}
 }
 
@@ -120,6 +135,11 @@ void UDesktopWindowBaseWidget::MinimizeWindow()
 
 void UDesktopWindowBaseWidget::CloseWindow()
 {
+	if (UHorizontalBoxSlot* TitleTextSlot = Cast<UHorizontalBoxSlot>(GetTitleTextContainer()->Slot))
+	{
+		TitleTextSlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
+	}
+
 	if (WindowManager)
 	{
 		WindowManager->CloseWindow(this);
@@ -138,45 +158,103 @@ void UDesktopWindowBaseWidget::ToggleMaximizeRestore()
 		UpdateMaximizeButtonIcon();
 		return;
 	}
-
-	//UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(Slot);
-	//if (!CanvasSlot) return;
-
-	//if (bIsMaximized)
-	//{
-	//	CanvasSlot->SetAnchors(FAnchors(0.5f));
-	//	CanvasSlot->SetAlignment(FVector2D(0.f));
-	//	CanvasSlot->SetOffsets(FMargin(OriginalPosition.X, OriginalPosition.Y, OriginalSize.X, OriginalSize.Y));
-	//	bIsMaximized = false;
-	//}
-	//else
-	//{
-	//	FMargin Offsets = CanvasSlot->GetOffsets();
-	//	OriginalPosition = FVector2D(Offsets.Left, Offsets.Top);
-	//	OriginalSize = FVector2D(Offsets.Right, Offsets.Bottom);
-
-	//	CanvasSlot->SetAnchors(FAnchors(0.f, 0.f, 1.f, 1.f));
-	//	CanvasSlot->SetAlignment(FVector2D(0.f));
-	//	CanvasSlot->SetOffsets(FMargin(0.f));
-	//	bIsMaximized = true;
-	//}
 }
 
-void UDesktopWindowBaseWidget::OnMinimizeClicked()
+void UDesktopWindowBaseWidget::SetWindowManager(ULCDesktopWindowManager* InManager)
 {
-	MinimizeWindow();
+	WindowManager = InManager;
 }
 
-void UDesktopWindowBaseWidget::OnMaximizeClicked()
+//-----------------
+// 앱 정보
+//-----------------
+void UDesktopWindowBaseWidget::SetAppInfo(const FName& InAppID, const FText& InAppName, UTexture2D* InIcon)
 {
-	ToggleMaximizeRestore();
+	AppID = InAppID;
+	AppName = InAppName;
+	AppIcon = InIcon;
 }
 
-void UDesktopWindowBaseWidget::OnCloseClicked()
+UHorizontalBox* UDesktopWindowBaseWidget::GetTitleTextContainer() const
 {
-	CloseWindow();
+	return TitleTextContainer;
 }
 
+FName UDesktopWindowBaseWidget::GetAppID() const
+{
+	return AppID;
+}
+
+FText UDesktopWindowBaseWidget::GetAppName() const
+{
+	return AppName;
+}
+
+UTexture2D* UDesktopWindowBaseWidget::GetAppIcon() const
+{
+	return AppIcon;
+}
+
+//-----------------
+// 레이아웃 저장 및 복원
+//-----------------
+void UDesktopWindowBaseWidget::SetOriginalPosition(const FVector2D& InPos)
+{
+	OriginalPosition = InPos;
+}
+
+void UDesktopWindowBaseWidget::SetOriginalSize(const FVector2D& InSize)
+{
+	OriginalSize = InSize;
+}
+
+void UDesktopWindowBaseWidget::SetOriginalAnchors(const FAnchors& InAnchors)
+{
+	OriginalAnchors = InAnchors;
+}
+
+void UDesktopWindowBaseWidget::SetOriginalAlignment(const FVector2D& InAlignment)
+{
+	OriginalAlignment = InAlignment;
+}
+
+const FVector2D UDesktopWindowBaseWidget::GetOriginalPosition() const
+{
+	return OriginalPosition;
+}
+
+const FVector2D UDesktopWindowBaseWidget::GetOriginalSize() const
+{
+	return OriginalSize;
+}
+
+//-----------------
+// 최대화 상태
+//-----------------
+bool UDesktopWindowBaseWidget::IsMinimized() const
+{
+	return bIsMinimized;
+}
+
+void UDesktopWindowBaseWidget::SetMinimized(bool bInIsMinimized)
+{
+	bIsMinimized = bInIsMinimized;
+}
+
+bool UDesktopWindowBaseWidget::IsMaximized() const
+{
+	return bIsMaximized;
+}
+
+void UDesktopWindowBaseWidget::SetMaximized(bool bInMaximized)
+{
+	bIsMaximized = bInMaximized;
+	UpdateMaximizeButtonIcon();
+}
+
+//-----------------
+// 드래그
+//-----------------
 FReply UDesktopWindowBaseWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
 	if (InMouseEvent.IsMouseButtonDown(EKeys::LeftMouseButton) && IsInTitleBar(InMouseEvent.GetScreenSpacePosition()))
@@ -193,22 +271,10 @@ FReply UDesktopWindowBaseWidget::NativeOnMouseButtonDown(const FGeometry& InGeom
 		const FDateTime CurrentTime = FDateTime::Now();
 		const float Elapsed = (CurrentTime - LastClickTime).GetTotalSeconds();
 
-		// 더블 클릭 → 최대화 / 복원 토글
-		/*if (Elapsed < DoubleClickThreshold && FVector2D::Distance(CurrentPos, LastClickPosition) < MaxClickDelta)
-		{
-			ToggleMaximizeRestore();
-			LastClickTime = FDateTime(0);
-			LastClickPosition = FVector2D::ZeroVector;
-			return FReply::Handled();
-		}
-		else
-		{*/
-			// 드래그 시작
-			StartDragging(CurrentPos);
-			LastClickTime = CurrentTime;
-			LastClickPosition = CurrentPos;
-			return FReply::Handled();
-		// }
+		StartDragging(CurrentPos);
+		LastClickTime = CurrentTime;
+		LastClickPosition = CurrentPos;
+		return FReply::Handled();
 	}
 
 	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
@@ -300,83 +366,9 @@ bool UDesktopWindowBaseWidget::IsInTitleBar(const FVector2D& ScreenPos) const
 	return TitleGeometry.IsUnderLocation(ScreenPos);
 }
 
-UDesktopWidget* UDesktopWindowBaseWidget::GetDesktopWidget() const
-{
-	if (ULCUIManager* UIManager = ResolveUIManager())
-	{
-		return UIManager->GetDesktopWidget();
-	}
-	return nullptr;
-}
-
-void UDesktopWindowBaseWidget::SetAppInfo(const FName& InAppID, const FText& InAppName, UTexture2D* InIcon)
-{
-	AppID = InAppID;
-	AppName = InAppName;
-	AppIcon = InIcon;
-}
-
-bool UDesktopWindowBaseWidget::IsMinimized() const
-{
-	return bIsMinimized;
-}
-
-void UDesktopWindowBaseWidget::SetMinimized(bool bInIsMinimized)
-{
-	bIsMinimized = bInIsMinimized;
-}
-
-bool UDesktopWindowBaseWidget::IsMaximized() const
-{
-	return bIsMaximized;
-}
-
-void UDesktopWindowBaseWidget::SetMaximized(bool bInMaximized)
-{
-	bIsMaximized = bInMaximized;
-	UpdateMaximizeButtonIcon(); 
-}
-
-void UDesktopWindowBaseWidget::SetOriginalPosition(const FVector2D& InPos)
-{
-	OriginalPosition = InPos;
-}
-
-void UDesktopWindowBaseWidget::SetOriginalSize(const FVector2D& InSize)
-{
-	OriginalSize = InSize;
-}
-
-const FVector2D UDesktopWindowBaseWidget::GetOriginalPosition() const
-{
-	return OriginalPosition;
-}
-
-const FVector2D UDesktopWindowBaseWidget::GetOriginalSize() const
-{
-	return OriginalSize;
-}
-
-FName UDesktopWindowBaseWidget::GetAppID() const
-{
-	return AppID;
-}
-
-FText UDesktopWindowBaseWidget::GetAppName() const
-{
-	return AppName;
-}
-
-UTexture2D* UDesktopWindowBaseWidget::GetAppIcon() const
-{
-	return AppIcon;
-}
-
-void UDesktopWindowBaseWidget::SetWindowManager(ULCDesktopWindowManager* InManager)
-{
-	WindowManager = InManager;
-}
-
+//-----------------
+// 애니메이션
+//-----------------
 void UDesktopWindowBaseWidget::PlayMinimizeAnimation()
 {
 	if (MinimizeAnim)
@@ -454,6 +446,49 @@ void UDesktopWindowBaseWidget::UpdateWindowTransformAnimation()
 			SetMaximized(false);
 		}
 	}
+}
+
+//-----------------
+// 버튼 콜백
+//-----------------
+void UDesktopWindowBaseWidget::OnMinimizeClicked()
+{
+	MinimizeWindow();
+}
+
+void UDesktopWindowBaseWidget::OnMaximizeClicked()
+{
+	ToggleMaximizeRestore();
+}
+
+void UDesktopWindowBaseWidget::OnCloseClicked()
+{
+	SetMaximized(false);
+
+	if (GetWorld())
+	{
+		GetWorld()->GetTimerManager().ClearTimer(WindowTransformAnimTimer);
+	}
+
+	if (UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(Slot))
+	{
+		CanvasSlot->SetPosition(OriginalPosition);
+		CanvasSlot->SetSize(OriginalSize);
+	}
+
+	CloseWindow();
+}
+
+//-----------------
+// 유틸리티
+//-----------------
+UDesktopWidget* UDesktopWindowBaseWidget::GetDesktopWidget() const
+{
+	if (ULCUIManager* UIManager = ResolveUIManager())
+	{
+		return UIManager->GetDesktopWidget();
+	}
+	return nullptr;
 }
 
 void UDesktopWindowBaseWidget::UpdateMaximizeButtonIcon()

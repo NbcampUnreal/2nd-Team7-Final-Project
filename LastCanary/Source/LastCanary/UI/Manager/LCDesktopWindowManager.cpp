@@ -34,14 +34,14 @@ void ULCDesktopWindowManager::OpenWindow(UUserWidget* Widget)
 			const FVector2D CanvasSize = DesktopWidget->GetCachedGeometry().GetLocalSize();
 			Window->AnimateWindowTransform(true, CanvasSize);
 
-			if (UHorizontalBoxSlot* TitleTextContainerSlot = Cast<UHorizontalBoxSlot>(Window->TitleTextContainer->Slot))
+			if (UHorizontalBoxSlot* TitleTextContainerSlot = Cast<UHorizontalBoxSlot>(Window->GetTitleTextContainer()->Slot))
 			{
 				TitleTextContainerSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
 			}
 		}
 	}
 
-	if (!OpenedWindows.Contains(Widget))
+	if (OpenedWindows.Contains(Widget) == false)
 	{
 		OpenedWindows.Add(Widget);
 	}
@@ -66,7 +66,6 @@ void ULCDesktopWindowManager::MinimizeWindow(UUserWidget* Widget)
 {
 	if (UDesktopWindowBaseWidget* Window = Cast<UDesktopWindowBaseWidget>(Widget))
 	{
-		// Window->SetVisibility(ESlateVisibility::Collapsed);
 		Window->SetMinimized(true);
 		Window->PlayMinimizeAnimation();
 	}
@@ -86,9 +85,9 @@ void ULCDesktopWindowManager::ToggleMaximizeRestore(UUserWidget* Widget)
 			if (Window->IsMaximized())
 			{
 				// 복원
-				Window->AnimateWindowTransform(false, FVector2D::ZeroVector); // TargetSize는 무시됨
+				Window->AnimateWindowTransform(false, FVector2D::ZeroVector); 
 
-				if (UHorizontalBoxSlot* TitleTextContainerSlot = Cast<UHorizontalBoxSlot>(Window->TitleTextContainer->Slot))
+				if (UHorizontalBoxSlot* TitleTextContainerSlot = Cast<UHorizontalBoxSlot>(Window->GetTitleTextContainer()->Slot))
 				{
 					TitleTextContainerSlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
 				}
@@ -107,7 +106,7 @@ void ULCDesktopWindowManager::ToggleMaximizeRestore(UUserWidget* Widget)
 				const FVector2D CanvasSize = DesktopWidget->GetCachedGeometry().GetLocalSize();
 				Window->AnimateWindowTransform(true, CanvasSize);
 
-				if (UHorizontalBoxSlot* TitleTextContainerSlot = Cast<UHorizontalBoxSlot>(Window->TitleTextContainer->Slot))
+				if (UHorizontalBoxSlot* TitleTextContainerSlot = Cast<UHorizontalBoxSlot>(Window->GetTitleTextContainer()->Slot))
 				{
 					TitleTextContainerSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
 				}
@@ -127,8 +126,6 @@ bool ULCDesktopWindowManager::IsTopMost(UUserWidget* Widget) const
 	{
 		return false;
 	}
-
-	// 가장 마지막에 추가된 위젯이 맨 위에 있음
 	if (OpenedWindows.Num() == 0)
 	{
 		return false;

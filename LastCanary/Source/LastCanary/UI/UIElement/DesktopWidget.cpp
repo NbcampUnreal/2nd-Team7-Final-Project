@@ -1,15 +1,22 @@
 #include "UI/UIElement/DesktopWidget.h"
 #include "UI/UIElement/ShopWidget.h"
+
 #include "UI/UIObject/TaskbarWidget.h"
 #include "UI/UIObject/DesktopWindowBaseWidget.h"
+
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/Button.h"
+
 #include "UI/Manager/LCUIManager.h"
 #include "UI/Manager/LCDesktopWindowManager.h"
+
 #include "Framework/PlayerController/LCRoomPlayerController.h"
 #include "Kismet/GameplayStatics.h"
 
+//-----------------
+// 초기화 및 구성
+//-----------------
 void UDesktopWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
@@ -33,6 +40,32 @@ void UDesktopWidget::NativeConstruct()
 	}
 
 	ClickCount = 0;
+	ResetAllAppButtonHighlights();
+}
+
+void UDesktopWidget::PowerOn()
+{
+	ResetAllAppButtonHighlights();
+
+	SetVisibility(ESlateVisibility::Visible);
+
+	if (PlayPowerOnAnim)
+	{
+		PlayAnimation(PlayPowerOnAnim);
+	}
+}
+
+//-----------------
+// 클릭 처리
+//-----------------
+FReply UDesktopWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+	{
+		ResetAllAppButtonHighlights();
+	}
+
+	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
 }
 
 FReply UDesktopWidget::NativeOnMouseButtonDoubleClick(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
@@ -50,33 +83,30 @@ FReply UDesktopWidget::NativeOnMouseButtonDoubleClick(const FGeometry& InGeometr
 	return Super::NativeOnMouseButtonDoubleClick(InGeometry, InMouseEvent);
 }
 
+//-----------------
+// 아이콘 클릭 이벤트
+//-----------------
 void UDesktopWidget::OnShopIconSingleClicked()
 {
 	ClickCount++;
 
-	// 첫 클릭 시 테두리 강조
 	if (ClickCount == 1)
 	{
 		LOG_Frame_WARNING(TEXT("ShopIcon First Click - Highlighting"));
-
-		const FLinearColor HighlightColor = FLinearColor::Yellow;
-
-		FButtonStyle ButtonStyle = ShopIconButton->WidgetStyle;
-		ButtonStyle.Normal.TintColor = FSlateColor(HighlightColor);
-		ButtonStyle.Hovered.TintColor = FSlateColor(HighlightColor);
-		ButtonStyle.Pressed.TintColor = FSlateColor(HighlightColor);
-
-		ShopIconButton->SetStyle(ButtonStyle);
-
-		// 일정 시간 후 클릭 수 초기화
-		GetWorld()->GetTimerManager().SetTimer(DoubleClickTimerHandle, this, &UDesktopWidget::ResetClickCount, 0.3f, false);
+		HighlightAppButton(ShopIconButton);
+		GetWorld()->GetTimerManager().SetTimer(
+			DoubleClickTimerHandle,
+			this,
+			&UDesktopWidget::ResetClickCount,
+			0.3f,
+			false
+		);
 	}
 	else if (ClickCount == 2)
 	{
 		LOG_Frame_WARNING(TEXT("ShopIcon Double Click - Opening Shop"));
-		GetWorld()->GetTimerManager().ClearTimer(DoubleClickTimerHandle); // 초기화 타이머 제거
+		GetWorld()->GetTimerManager().ClearTimer(DoubleClickTimerHandle);
 		ClickCount = 0;
-
 		HandleShopAppLaunch();
 	}
 }
@@ -86,8 +116,51 @@ void UDesktopWidget::ResetClickCount()
 	ClickCount = 0;
 }
 
+void UDesktopWidget::HighlightAppButton(UButton* TargetButton)
+{
+	if (CurrentlyHighlightedButton && CurrentlyHighlightedButton != TargetButton)
+	{
+		ResetAppButtonHighlight(CurrentlyHighlightedButton);
+	}
+
+	if (TargetButton)
+	{
+		FButtonStyle Style = TargetButton->WidgetStyle;
+		Style.Normal.TintColor = FSlateColor(FLinearColor::Yellow);
+		Style.Hovered.TintColor = FSlateColor(FLinearColor::Yellow);
+		Style.Pressed.TintColor = FSlateColor(FLinearColor::Yellow);
+		TargetButton->SetStyle(Style);
+		CurrentlyHighlightedButton = TargetButton;
+	}
+}
+
+void UDesktopWidget::ResetAppButtonHighlight(UButton* Button)
+{
+	if (Button == nullptr)
+	{
+		return;
+	}
+
+	FButtonStyle Style = Button->WidgetStyle;
+	Style.Normal.TintColor = FSlateColor::UseForeground();
+	Style.Hovered.TintColor = FSlateColor::UseForeground();
+	Style.Pressed.TintColor = FSlateColor::UseForeground();
+	Button->SetStyle(Style);
+}
+
+void UDesktopWidget::ResetAllAppButtonHighlights()
+{
+	ResetAppButtonHighlight(CurrentlyHighlightedButton);
+	CurrentlyHighlightedButton = nullptr;
+}
+
+//-----------------
+// 상점 실행 처리
+//-----------------
 void UDesktopWidget::HandleShopAppLaunch()
 {
+	ResetAllAppButtonHighlights();
+
 	if (APlayerController* PC = GetOwningPlayer())
 	{
 		if (ALCRoomPlayerController* RoomPC = Cast<ALCRoomPlayerController>(PC))
@@ -98,26 +171,21 @@ void UDesktopWidget::HandleShopAppLaunch()
 				return;
 			}
 
-			if (UShopWidget* ShopWidget = UIManager->GetCachedShopWidget()) // 이미 생성된 경우
+			RoomPC->Server_ShowShopWidget();
+			if (UShopWidget* ShopWidget = UIManager->GetCachedShopWidget())
 			{
+
 				if (ULCDesktopWindowManager* LCDesktopWindowManager = UIManager->GetDesktopWindowManager())
 				{
 					if (ShopWidget->IsMinimized())
 					{
-						// 최소화되어 있으면 복원
 						ShopWidget->SetVisibility(ESlateVisibility::Visible);
 						ShopWidget->SetMinimized(false);
 						ShopWidget->PlayRestoreAnimation();
 
 					}
-
 					WindowManager->OpenWindow(ShopWidget);
 				}
-			}
-			else
-			{
-				// 없는 경우 서버에 위젯 요청 (Gold 정보 포함)
-				RoomPC->Server_ShowShopWidget();
 			}
 		}
 		else
@@ -131,21 +199,34 @@ void UDesktopWidget::HandleShopAppLaunch()
 	}
 }
 
+//-----------------
+// 데스크탑 닫기 버튼
+//-----------------
 void UDesktopWidget::OnCloseDesktopClicked()
 {
+	ResetAllAppButtonHighlights();
+
 	if (ULCUIManager* UIManager = ResolveUIManager())
 	{
 		UIManager->HideDesktop();
 	}
 }
 
+//-----------------
+// RoomPC 접근
+//-----------------
 ALCRoomPlayerController* UDesktopWidget::GetRoomPC() const
 {
 	return Cast<ALCRoomPlayerController>(UGameplayStatics::GetPlayerController(this, 0));
 }
 
+//-----------------
+// 창 추가
+//-----------------
 void UDesktopWidget::AddWindow(UUserWidget* NewWindow)
 {
+	ResetAllAppButtonHighlights();
+
 	if (NewWindow == nullptr || WindowContainer == nullptr)
 	{
 		LOG_Frame_WARNING(TEXT("AddWindow: NewWindow or WindowContainer is null"));
@@ -158,14 +239,13 @@ void UDesktopWidget::AddWindow(UUserWidget* NewWindow)
 		NewWindow->RemoveFromParent();
 	}
 
-	// 아직 부모에 없는 경우에만 추가
 	if (NewWindow->GetParent() == nullptr)
 	{
 		if (UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(WindowContainer->AddChild(NewWindow)))
 		{
 			CanvasSlot->SetAutoSize(false);
-			CanvasSlot->SetAnchors(FAnchors(0.f, 0.f));      // 좌상단 기준
-			CanvasSlot->SetAlignment(FVector2D(0.f, 0.f));   // 좌상단 정렬
+			CanvasSlot->SetAnchors(FAnchors(0.f, 0.f));
+			CanvasSlot->SetAlignment(FVector2D(0.f, 0.f));
 			CanvasSlot->SetPosition(FVector2D(200.f, 200.f));
 			CanvasSlot->SetSize(FVector2D(625.f, 345.f));
 		}

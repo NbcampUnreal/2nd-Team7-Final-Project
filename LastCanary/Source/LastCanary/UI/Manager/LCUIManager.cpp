@@ -626,6 +626,11 @@ void ULCUIManager::ShowDesktop()
 	SwitchToWidget(CachedDesktopWidget);
 	HideInventoryMainWidget();
 
+	if (UDesktopWidget* Desktop = Cast<UDesktopWidget>(CachedDesktopWidget))
+	{
+		Desktop->PowerOn();  
+	}
+
 	if (APawn* Pawn = OwningPlayer->GetPawn())
 	{
 		Pawn->DisableInput(OwningPlayer);

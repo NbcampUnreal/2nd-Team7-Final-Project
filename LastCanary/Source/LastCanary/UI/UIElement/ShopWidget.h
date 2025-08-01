@@ -14,23 +14,33 @@ class UShopItemInfoWidget;
 class UShoppingCartWidget;
 class USizeBox;
 
+/**
+ * 상점 UI 위젯
+ */
 UCLASS()
 class LASTCANARY_API UShopWidget : public UDesktopWindowBaseWidget
 {
 	GENERATED_BODY()
 
+	//-----------------
+	// 상점 열기 / 닫기
+	//-----------------
 public:
 	void SetGold(int gold);
 	void OpenShopWidget();
 
-	UShoppingCartWidget* GetShoppingCartWidget() const { return ShoppingCartWidget; }
+	virtual void OnCloseClicked() override;
+	virtual void ToggleMaximizeRestore() override;
 
 protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
-	virtual void ToggleMaximizeRestore() override;
 
-	virtual void OnCloseClicked() override;
+	//-----------------
+	// 상점 아이템 관련
+	//-----------------
+protected:
+	void PopulateShopItems();
 
 	UFUNCTION()
 	void OnShopItemClicked(UShopItemEntry* ClickedEntry);
@@ -38,8 +48,15 @@ protected:
 	UFUNCTION()
 	void OnPurchaseButtonClicked();
 
-	void PopulateShopItems();
+	//-----------------
+	// 장바구니
+	//-----------------
+public:
+	UShoppingCartWidget* GetShoppingCartWidget() const;
 
+	//-----------------
+	// 바인딩된 위젯
+	//-----------------
 private:
 	UPROPERTY(meta = (BindWidget))
 	USizeBox* RootSizeBox;
@@ -56,6 +73,10 @@ private:
 	UPROPERTY(meta = (BindWidget))
 	UShoppingCartWidget* ShoppingCartWidget;
 
+	//-----------------
+	// 데이터 에셋
+	//-----------------
+private:
 	UPROPERTY(EditDefaultsOnly, Category = "Shop")
 	UDataTable* ItemDataTable;
 
@@ -65,5 +86,9 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Shop")
 	UTexture2D* ShopIconTexture;
 
+	//-----------------
+	// 내부 상태
+	//-----------------
+private:
 	UShopItemEntry* CurrentlySelectedEntry = nullptr;
 };

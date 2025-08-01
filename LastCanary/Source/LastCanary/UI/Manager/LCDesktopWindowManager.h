@@ -18,32 +18,52 @@ class LASTCANARY_API ULCDesktopWindowManager : public UObject
 	GENERATED_BODY()
 
 public:
-	/** 최상위 캔버스를 지정하고 데스크탑 생성 */
+	//-----------------
+	// 초기화 및 설정
+	//-----------------
+
 	void Init(UCanvasPanel* InRootCanvas);
+	FORCEINLINE void SetDesktopWidget(UDesktopWidget* InDesktopWidget) { DesktopWidget = InDesktopWidget; }
+	FORCEINLINE UDesktopWidget* GetDesktopWidget() const { return DesktopWidget; }
+
+	//-----------------
+	// 윈도우 열기 / 닫기 / 최소화 / 최대화
+	//-----------------
 
 	void OpenWindow(UUserWidget* Widget);
 	void CloseWindow(UUserWidget* Widget);
 	void MinimizeWindow(UUserWidget* Widget);
 	void ToggleMaximizeRestore(UUserWidget* Widget);
 
-	FORCEINLINE void SetDesktopWidget(UDesktopWidget* InDesktopWidget) { DesktopWidget = InDesktopWidget;  }
-	FORCEINLINE UDesktopWidget* GetDesktopWidget() const { return DesktopWidget; }
+	//-----------------
+	// 정렬 / 상태 확인
+	//-----------------
+
+	int GetNextZOrder();
+	bool IsTopMost(UUserWidget* Widget) const;
 
 protected:
+	//-----------------
+	// 위젯 및 캔버스 참조
+	//-----------------
+
 	UPROPERTY()
 	TObjectPtr<UCanvasPanel> RootCanvas;
 
 	UPROPERTY()
 	TObjectPtr<UDesktopWidget> DesktopWidget;
 
+	//-----------------
+	// 열린 윈도우 목록
+	//-----------------
+
 	UPROPERTY()
 	TArray<TObjectPtr<UUserWidget>> OpenedWindows;
 
 private:
+	//-----------------
+	// 내부 상태
+	//-----------------
+
 	int CurrentZOrder = 100;
-
-public:
-	int GetNextZOrder();
-
-	bool IsTopMost(UUserWidget* Widget) const;
 };
