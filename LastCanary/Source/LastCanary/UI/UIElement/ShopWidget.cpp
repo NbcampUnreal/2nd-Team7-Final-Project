@@ -1,32 +1,32 @@
 #include "UI/UIElement/ShopWidget.h"
 #include "UI/UIObject/ShopItemEntry.h"
+
 #include "UI/UIObject/ShopItemInfoWidget.h"
 #include "UI/UIObject/ShoppingCartWidget.h"
-#include "UI/Manager/LCUIManager.h"
 
 #include "Components/ScrollBox.h"
 #include "Components/Button.h"
-
-#include "Actor/LCDroneDelivery.h"
-#include "Actor/LCDronePath.h"
+#include "Components/SizeBox.h"
+#include "Components/CanvasPanelSlot.h"
 
 #include "Framework/PlayerController/LCRoomPlayerController.h"
 #include "Character/BasePlayerState.h"
 
-#include "LastCanary.h"
+#include "UI/Manager/LCDesktopWindowManager.h"
 
+//-----------------
+// 시스템 초기화
+//-----------------
 void UShopWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+
 	if (PurchaseButton)
 	{
 		PurchaseButton->OnClicked.AddUniqueDynamic(this, &UShopWidget::OnPurchaseButtonClicked);
-		PurchaseButton->SetIsEnabled(false); // 시작 시 비활성화
+		PurchaseButton->SetIsEnabled(false);
 	}
-	if (ExitButton)
-	{
-		ExitButton->OnClicked.AddUniqueDynamic(this, &UShopWidget::CloseShopWidget);
-	}
+
 	if (ItemInfoWidget && ShoppingCartWidget)
 	{
 		ItemInfoWidget->SetShoppingCartWidget(ShoppingCartWidget);
@@ -34,18 +34,6 @@ void UShopWidget::NativeConstruct()
 
 	if (ShoppingCartWidget)
 	{
-		// 골드 가져오기 
-		//int32 PlayerGold = 0;
-		//if (const APlayerState* PS = GetOwningPlayerState())
-		//{
-		//	if (const ABasePlayerState* MyPS = Cast<ABasePlayerState>(PS))
-		//	{
-		//		PlayerGold = MyPS->GetTotalGold();
-		//	}
-		//}
-		//ShoppingCartWidget->SetPlayerGold(PlayerGold);
-
-		// 델리게이트 바인딩
 		ShoppingCartWidget->OnCartValidityChanged.BindLambda([this](bool bCanAfford)
 			{
 				if (PurchaseButton)
@@ -56,61 +44,48 @@ void UShopWidget::NativeConstruct()
 	}
 
 	PopulateShopItems();
+	InitDesktopWindow();
 }
 
 void UShopWidget::NativeDestruct()
 {
 	Super::NativeDestruct();
-	if (PurchaseButton)
-	{
-		PurchaseButton->OnClicked.RemoveDynamic(this, &UShopWidget::OnPurchaseButtonClicked);
-	}
-	if (ExitButton)
-	{
-		ExitButton->OnClicked.RemoveDynamic(this, &UShopWidget::CloseShopWidget);
-	}
 }
 
-void UShopWidget::PopulateShopItems()
-{
-	if (!ItemListBox || !ItemDataTable || !ShopItemEntryClass)
-	{
-		return;
-	}
-
-	ItemListBox->ClearChildren();
-
-	TArray<FName> RowNames = ItemDataTable->GetRowNames();
-	for (const FName& RowName : RowNames)
-	{
-		if (const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(RowName, TEXT("Shop Load")))
-		{
-			if (ItemData->bCanBuy == false)
-			{
-				continue;
-			}
-
-			UShopItemEntry* ItemEntry = CreateWidget<UShopItemEntry>(this, ShopItemEntryClass);
-			if (ItemEntry)
-			{
-				ItemEntry->InitItem(*ItemData);
-				ItemEntry->OnItemClicked.BindUObject(this, &UShopWidget::OnShopItemClicked);
-				ItemListBox->AddChild(ItemEntry);
-
-				// LOG_Frame_WARNING(TEXT("Shop item bound: %s"), *ItemData->ItemName.ToString());
-			}
-		}
-	}
-}
-
+//-----------------
+// 외부 인터페이스
+//-----------------
 void UShopWidget::SetGold(int gold)
 {
-	ShoppingCartWidget->SetPlayerGold(gold);
+	if (ShoppingCartWidget)
+	{
+		ShoppingCartWidget->SetPlayerGold(gold);
+	}
 }
 
+void UShopWidget::OpenShopWidget()
+{
+	SetVisibility(ESlateVisibility::Visible);
+
+	SetMaximized(false);
+
+	if (UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(Slot))
+	{
+		CanvasSlot->SetPosition(GetOriginalPosition());
+		CanvasSlot->SetSize(GetOriginalSize());
+	}
+}
+
+UShoppingCartWidget* UShopWidget::GetShoppingCartWidget() const
+{
+	return ShoppingCartWidget;
+}
+
+//-----------------
+// 상점 아이템 처리
+//-----------------
 void UShopWidget::OnShopItemClicked(UShopItemEntry* ClickedEntry)
 {
-	LOG_Frame_WARNING(TEXT("OnShopItemClicked"));
 	if (ClickedEntry == nullptr)
 	{
 		return;
@@ -131,33 +106,82 @@ void UShopWidget::OnShopItemClicked(UShopItemEntry* ClickedEntry)
 	}
 }
 
+void UShopWidget::PopulateShopItems()
+{
+	if (ItemListBox == nullptr)
+	{
+		return;
+	}
+	if (ItemDataTable == nullptr)
+	{
+		return;
+	}
+	if (ShopItemEntryClass == nullptr)
+	{
+		return;
+	}
+
+	ItemListBox->ClearChildren();
+	TArray<FName> RowNames = ItemDataTable->GetRowNames();
+
+	for (const FName& RowName : RowNames)
+	{
+		if (const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(RowName, TEXT("Shop Load")))
+		{
+			if (ItemData->bCanBuy == false)
+			{
+				continue;
+			}
+
+			UShopItemEntry* ItemEntry = CreateWidget<UShopItemEntry>(this, ShopItemEntryClass);
+			if (ItemEntry)
+			{
+				ItemEntry->InitItem(*ItemData);
+				ItemEntry->OnItemClicked.BindUObject(this, &UShopWidget::OnShopItemClicked);
+				ItemListBox->AddChild(ItemEntry);
+			}
+		}
+	}
+}
+
+//-----------------
+// 버튼 콜백
+//-----------------
 void UShopWidget::OnPurchaseButtonClicked()
 {
-	/*TArray<FItemDropData> DropList = ShoppingCartWidget->GetItemDropList();
-
-	LOG_Frame_WARNING(TEXT("DropList Count: %d"), DropList.Num());
-
-	for (const auto& Drop : DropList)
+	if (ShoppingCartWidget == nullptr)
 	{
-		LOG_Frame_WARNING(TEXT("Drop Item: %s, Count: %d"),
-			Drop.ItemClass ? *Drop.ItemClass->GetName() : TEXT("nullptr"),
-			Drop.Count);
-	}*/
+		return;
+	}
 
-	ALCRoomPlayerController* PC = Cast<ALCRoomPlayerController>(GetOwningPlayer());
-	if (PC)
+	if (ALCRoomPlayerController* PC = Cast<ALCRoomPlayerController>(GetOwningPlayer()))
 	{
 		PC->Server_RequestPurchase(ShoppingCartWidget->GetItemDropList());
 	}
+
 	ShoppingCartWidget->ClearCart();
-	CloseShopWidget();
+
+	if (WindowManager)
+	{
+		WindowManager->CloseWindow(this);
+	}
+	else
+	{
+		RemoveFromParent();
+	}
 }
 
-void UShopWidget::CloseShopWidget()
+void UShopWidget::OnCloseClicked()
 {
-	ULCUIManager* UIManager = ResolveUIManager();
-	if (UIManager)
+	if (ShoppingCartWidget)
 	{
-		UIManager->HideShopPopup();
+		ShoppingCartWidget->ClearCart(); 
 	}
+
+	Super::OnCloseClicked();
+}
+
+void UShopWidget::ToggleMaximizeRestore()
+{
+	Super::ToggleMaximizeRestore();
 }
