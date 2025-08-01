@@ -32,6 +32,9 @@ class USpectatorWidget;
 class UGameOverWidget;
 class UGameEndWidget;
 class UServerMessageWidget;
+class UDesktopWidget;
+class UTaskbarWidget;
+class ULCDesktopWindowManager;
 
 //-----------------
 // Enum
@@ -115,6 +118,8 @@ public:
 	void ShowHideEndWidget();
 	UFUNCTION(BlueprintCallable)
 	void AddServerMessage(const FString& Message);
+	void ShowDesktop();
+	void HideDesktop();
 
 	//-----------------
 	// Special Popups
@@ -172,6 +177,9 @@ public:
 	FORCEINLINE USpectatorWidget* GetSpectatorWidget() const { return CachedSpectatorWidget; }
 	FORCEINLINE UGameOverWidget* GetGameOverWidget() const { return CachedGameOverWidget; }
 	FORCEINLINE UGameEndWidget* GetGameEndWidget() const { return CachedGameEndWidget; }
+	FORCEINLINE UTaskbarWidget* GetTaskbarWidget() const;
+	FORCEINLINE UDesktopWidget* GetDesktopWidget() const { return CachedDesktopWidget; }
+	FORCEINLINE UShopWidget* GetCachedShopWidget() const { return CachedShopWidget; }
 
 	//-----------------
 	// External Interactor Tracking
@@ -189,7 +197,15 @@ public:
 	UFUNCTION(BlueprintCallable)
 	USpectatorWidget* GetSpectatorWidgetBlueprint() const { return CachedSpectatorWidget; }
 
-
+	//-----------------
+	// 새로 추가된 Shop 관련 함수들
+	//-------------------
+	UFUNCTION(BlueprintCallable)
+	UShopWidget* ShowShopWidget(int32 Gold);
+	UPROPERTY()
+	ULCDesktopWindowManager* DesktopWindowManager;
+	TSubclassOf<UShopWidget> GetShopWidgetClass() const { return ShopWidgetClass; }
+	ULCDesktopWindowManager* GetDesktopWindowManager() const;
 
 private:
 	//-----------------
@@ -254,6 +270,9 @@ private:
 	TSubclassOf<UGameEndWidget> GameEndWidgetClass;
 	UPROPERTY()
 	TSubclassOf<UServerMessageWidget> ServerMessageWidgetClass;
+	UPROPERTY()
+	TSubclassOf<UDesktopWidget> DesktopWidgetClass;
+
 
 	//-----------------
 	// Widget Instances
@@ -300,6 +319,8 @@ private:
 	UGameEndWidget* CachedGameEndWidget;
 	UPROPERTY()
 	UServerMessageWidget* CachedServerMessageWidget;
+	UPROPERTY()
+	UDesktopWidget* CachedDesktopWidget;
 
 	//-----------------
 	// Session Error Info
