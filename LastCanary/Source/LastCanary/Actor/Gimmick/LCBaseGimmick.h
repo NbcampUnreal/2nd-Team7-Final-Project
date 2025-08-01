@@ -103,6 +103,17 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Gimmick|Activation")
 	bool bEnableBaseActivationType;
 
+protected:
+	/** ActivateOnStep 타입 처리 */
+	void HandleActivateOnStep();
+
+	/** ActivateWhileStepping 타입 처리 */
+	void HandleActivateWhileStepping();
+
+	/** ActivateAfterDelay 타입 처리 */
+	void HandleActivateAfterDelay();
+
+public:
 	/** ==== 오버랩 방식 ==== */
 
 	/** 오버랩 기반 기믹 작동용 트리거 */
@@ -142,24 +153,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Activation")
 	float ActivationDelay;
 
-	/** ==== 기타 특정 조건 방식 ==== */
-
-	/** 조건형 기믹 활성 여부 판단용 함수 */
-	UFUNCTION(BlueprintNativeEvent, Category = "Gimmick|Condition")
-	bool IsConditionMet() const;
-	virtual bool IsConditionMet_Implementation() const;
-
-	/** 조건 검사 후 조건 충족 시 Activate */
-	UFUNCTION()
-	void CheckConditionAndActivate();
-
-	/** 조건 체크 주기 */
-	UPROPERTY(EditDefaultsOnly, Category = "Gimmick|Condition")
-	float ConditionCheckInterval;
-
-	/** 조건 체크 타이머 */
-	FTimerHandle ConditionCheckTimer;
-
 	/** ===== 쿨타임 설정 ===== */
 
 	/** 현재 활성화된 상태 여부 */
@@ -188,7 +181,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Interaction")
 	bool bCallReturnToInitialStateInsteadOfActivate;
 
-	/** ===== 컷신 관련 Private 멤버 변수들 ===== */
+	/** 지정한 지연 시간 후 ReturnToInitialState 호출 */
+	//void ScheduleReturn(float Delay);
+
+	/** 상태 복귀 타이머 */
+	FTimerHandle ReturnTimerHandle;
+
 private:
 	/** 컷신 재생 중인지 여부 */
 	bool bIsPlayingCutscene;

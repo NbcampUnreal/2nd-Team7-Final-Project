@@ -58,6 +58,7 @@ void ALCTransformGimmick::BeginPlay()
 	Super::BeginPlay();
 
 	OriginalLocation = GetActorLocation();
+	LOG_Art(Log, TEXT("[BeginPlay] OriginalLocation: %s"), *OriginalLocation.ToCompactString());
 
 	OriginalRotation = VisualMesh->GetComponentRotation();
 	OriginalRotationQuat = VisualMesh->GetComponentQuat();
@@ -106,7 +107,10 @@ void ALCTransformGimmick::ActivateGimmick_Implementation()
 		bIsReturningServer = bIsMovingServer = bIsReturningRotationServer = bIsRotatingServer = false;
 	}
 
-	if (!ILCGimmickInterface::Execute_CanActivate(this)) return;
+	if (!ILCGimmickInterface::Execute_CanActivate(this))
+	{
+		return;
+	}
 
 	Super::ActivateGimmick_Implementation();
 
@@ -122,20 +126,40 @@ void ALCTransformGimmick::ActivateGimmick_Implementation()
 		const FQuat AltQuat = GetAlternateRotationQuat();
 		const FQuat ToQuat = CurQuat.Equals(OrigQuat, 0.01f) ? AltQuat : OrigQuat;
 
+		LOG_Art(Log, TEXT("[ActivateGimmick] AlternateToggle 진입!"));
+		LOG_Art(Log, TEXT(" 현재 위치: %s | 목표 위치: %s"), *CurLoc.ToCompactString(), *ToLoc.ToCompactString());
+		LOG_Art(Log, TEXT(" 현재 회전: %s | 원본 회전: %s | 대체 회전: %s | 목표 회전: %s"),
+			*CurQuat.Rotator().ToCompactString(),
+			*OrigQuat.Rotator().ToCompactString(),
+			*AltQuat.Rotator().ToCompactString(),
+			*ToQuat.Rotator().ToCompactString());
+
 		if (!CurLoc.Equals(ToLoc, 1.f))
 		{
+			LOG_Art(Log, TEXT(" [ActivateGimmick] 이동 시작 → %s → %s (Duration: %.2f)"), *CurLoc.ToCompactString(), *ToLoc.ToCompactString(), MoveDuration);
 			StartServerMovement(CurLoc, ToLoc, MoveDuration);
 			GetWorldTimerManager().SetTimer(MovementTimerHandle, this, &ALCTransformGimmick::CompleteMovement, MoveDuration, false);
 			Multicast_StartMovement(CurLoc, ToLoc, MoveDuration);
+		}
+		else
+		{
+			LOG_Art(Log, TEXT(" [ActivateGimmick] 이동 생략 (이미 목표 위치와 동일)"));
+
 		}
 
 		if (!CurQuat.Equals(ToQuat, 0.01f))
 		{
 			const bool bIsReturnRotation = ToQuat.Equals(OriginalRotationQuat, 0.01f); 
+			LOG_Art(Log, TEXT(" [ActivateGimmick] 회전 시작 → %s → %s (Duration: %.2f) [복귀: %d]"),
+				*CurQuat.Rotator().ToCompactString(), *ToQuat.Rotator().ToCompactString(), RotationDuration, (int)bIsReturnRotation);
 
 			StartServerRotation(CurQuat, ToQuat, RotationDuration);
 			GetWorldTimerManager().SetTimer(RotationTimerHandle, this, &ALCTransformGimmick::CompleteRotation, RotationDuration, false);
 			Multicast_StartRotation(CurQuat, ToQuat, RotationDuration, bIsReturnRotation);
+		}
+		else
+		{
+			LOG_Art(Log, TEXT(" [ActivateGimmick] 회전 생략 (이미 목표 회전과 동일)"));
 		}
 	}
 	else
@@ -159,7 +183,7 @@ void ALCTransformGimmick::ReturnToInitialState_Implementation()
 {
 	//LOG_Art(Log, TEXT("▶ ReturnToInitialState 진입"));
 
-	if (bIsReturningServer && bIsReturningRotationServer)
+	if (bIsReturningServer || bIsReturningRotationServer)
 	{
 		//LOG_Art(Log, TEXT(" 이미 복귀 중 - ReturnToInitialState 무시"));
 		return;
@@ -194,8 +218,8 @@ void ALCTransformGimmick::ReturnToInitialState_Implementation()
 		////LOG_Art(Log, TEXT("❌ 회전 복귀 조건 불충족 - bIsReturningRotationServer: %d | TotalRotationIndex: %d"),
 		//	bIsReturningRotationServer, TotalRotationIndex);
 	}
+	bActivated = false;
 }
-
 
 FVector ALCTransformGimmick::GetRotationAxisVector(EGimmickRotationAxis AxisEnum) const
 {
@@ -227,6 +251,11 @@ void ALCTransformGimmick::StartMovement()
 	const FVector Delta = MoveVector;
 	TargetLocation = InitialLocation + Delta;
 
+	LOG_Art(Log, TEXT("[StartMovement] InitialLocation: %s | MoveVector: %s | TargetLocation: %s"),
+		*InitialLocation.ToCompactString(),
+		*MoveVector.ToCompactString(),
+		*TargetLocation.ToCompactString());
+
 	bIsMovingServer = true;
 
 	StartServerMovement(InitialLocation, TargetLocation, MoveDuration);
@@ -251,14 +280,14 @@ void ALCTransformGimmick::CompleteMovement()
 {
 	bIsMovingServer = false;
 	SetActorLocation(TargetLocation);
+	LOG_Art(Log, TEXT("[CompleteMovement] TargetLocation: %s, 실제 위치: %s"),
+		*TargetLocation.ToCompactString(),
+		*GetActorLocation().ToCompactString());
 
 	if (!bToggleState && !bUseAlternateToggle)
 	{
-		//LOG_Art(Log, TEXT("▶ 상태 복귀 예약됨 - ReturnToInitialState %.1f초 후"), ReturnDelay);
-
 		GetWorldTimerManager().SetTimer(ReturnMoveTimerHandle, [this]()
 			{
-				//LOG_Art(Log, TEXT("▶ [이동] ReturnToInitialState 람다 호출됨"));
 				this->ReturnToInitialState_Implementation();
 			}, ReturnDelay, false);
 	}
@@ -319,6 +348,9 @@ void ALCTransformGimmick::StartMovementToTarget(const FVector& NewTarget)
 void ALCTransformGimmick::StartServerMovement(const FVector& From, const FVector& To, float Duration)
 {
 	SetActorLocation(From);
+
+	InitialLocation = From;
+	TargetLocation = To;
 
 	Multicast_StartMovement(From, To, Duration);
 
@@ -428,15 +460,15 @@ void ALCTransformGimmick::CompleteRotation()
 	{
 		VisualMesh->SetWorldRotation(TargetRotation);
 		CurrentRotationQuat = TargetRotation;
+		LOG_Art(Log, TEXT("[CompleteRotation] TargetRotation: %s, 실제 회전: %s"),
+			*TargetRotation.Rotator().ToCompactString(),
+			*VisualMesh->GetComponentRotation().ToCompactString());
 	}
 
 	if (!bToggleState && !bUseAlternateToggle)
 	{
-		//LOG_Art(Log, TEXT("▶ 회전 복귀 예약됨 - ReturnToInitialState %.1f초 후"), ReturnDelay);
-
 		GetWorldTimerManager().SetTimer(ReturnRotationTimerHandle, [this]()
 			{
-				//LOG_Art(Log, TEXT("▶ [회전] ReturnToInitialState 람다 호출됨"));
 				this->ReturnToInitialState_Implementation();
 			}, ReturnDelay, false);
 	}
@@ -461,6 +493,7 @@ void ALCTransformGimmick::StartReturnRotation()
 	//	*TargetRotation.Rotator().ToCompactString());
 
 	Multicast_StartRotation(InitialRotation, TargetRotation, ReturnRotationDuration, true);
+	GetWorldTimerManager().SetTimer(RotationTimerHandle, this, &ALCTransformGimmick::CompleteRotationReturn, ReturnRotationDuration, false);
 }
 
 void ALCTransformGimmick::CompleteRotationReturn()
@@ -482,6 +515,9 @@ void ALCTransformGimmick::CompleteRotationReturn()
 void ALCTransformGimmick::StartServerRotation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration)
 {
 	VisualMesh->SetWorldRotation(FromQuat);
+
+	InitialRotation = FromQuat;
+	TargetRotation = ToQuat;
 
     Multicast_StartRotation(FromQuat, ToQuat, Duration, false);
 
@@ -569,7 +605,12 @@ FQuat ALCTransformGimmick::GetAlternateRotationQuat() const
 {
 	const float TotalAngleRad = FMath::DegreesToRadians(RotationAngle * RotationCount);
 	const FVector Axis = GetRotationAxisVector(RotationAxisEnum);
-	return FQuat(Axis, TotalAngleRad) * OriginalRotationQuat;
+	const FQuat Result = FQuat(Axis, TotalAngleRad) * OriginalRotationQuat;
+
+	LOG_Art(Log, TEXT("[GetAlternateRotationQuat] Axis: %s, Angle: %.2f, 결과 쿼터니언: %s"),
+		*Axis.ToString(), RotationAngle * RotationCount, *Result.Rotator().ToCompactString());
+
+	return Result;
 }
 
 #pragma endregion

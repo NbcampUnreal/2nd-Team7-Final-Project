@@ -21,7 +21,6 @@ ALCBaseGimmick::ALCBaseGimmick()
 	, ActivationTrigger(nullptr)
 	, RequiredCount(1)
 	, ActivationDelay(1.5f)
-	, ConditionCheckInterval(0.5f)
 	, bActivated(false)
 	, LastActivatedTime(-999.f)
 	, CooldownTime(2.f)
@@ -84,6 +83,7 @@ void ALCBaseGimmick::BeginPlay()
 		ActivationTrigger->OnComponentBeginOverlap.AddUniqueDynamic(this, &ALCBaseGimmick::OnTriggerEnter);
 		ActivationTrigger->OnComponentEndOverlap.AddUniqueDynamic(this, &ALCBaseGimmick::OnTriggerExit);
 	}
+
 }
 
 #pragma region TriggerOverlap
@@ -99,7 +99,6 @@ void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor*
 
 	if (ActivationType != EGimmickActivationType::ActivateWhileStepping && Elapsed < CooldownTime)
 	{
-		//LOG_Art(Log, TEXT("[트리거] 쿨타임 진행 중 → 무시 (%.2f/%.2f)"), Elapsed, CooldownTime);
 		return;
 	}
 
@@ -111,94 +110,16 @@ void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor*
 	switch (ActivationType)
 	{
 	case EGimmickActivationType::ActivateOnStep:
-	{
-		if (bCallReturnToInitialStateInsteadOfActivate)
-		{
-			ILCGimmickInterface::Execute_ReturnToInitialState(this);
-			for (AActor* Target : LinkedTargets)
-			{
-				ILCGimmickInterface::Execute_ReturnToInitialState(Target);
-			}
-		}
-		else
-		{
-			ILCGimmickInterface::Execute_ActivateGimmick(this);
-			for (AActor* Target : LinkedTargets)
-			{
-				ILCGimmickInterface::Execute_ActivateGimmick(Target);
-			}
-		}
-		LastActivatedTime = CurrentTime;
-	}
-	break;
+		HandleActivateOnStep();
+		break;
 
 	case EGimmickActivationType::ActivateWhileStepping:
-	{
-		if (OverlappingActors.Num() >= RequiredCount)
-		{
-			if (bCallReturnToInitialStateInsteadOfActivate)
-			{
-				ILCGimmickInterface::Execute_ReturnToInitialState(this);
-
-				for (AActor* Target : LinkedTargets)
-				{
-					if (IsValid(Target))
-					{
-						ILCGimmickInterface::Execute_ReturnToInitialState(Target);
-					}
-				}
-			}
-			else
-			{
-				ILCGimmickInterface::Execute_ActivateGimmick(this);
-
-				for (AActor* Target : LinkedTargets)
-				{
-					if (IsValid(Target))
-					{
-						ILCGimmickInterface::Execute_ActivateGimmick(Target);
-					}
-				}
-			}
-		}
-	}
-	break;
+		HandleActivateWhileStepping();
+		break;
 
 	case EGimmickActivationType::ActivateAfterDelay:
-	{
-		if (OverlappingActors.Num() >= RequiredCount)
-		{
-			GetWorld()->GetTimerManager().SetTimer(
-				ActivationDelayHandle,
-				[this]()
-				{
-					if (OverlappingActors.Num() >= RequiredCount)
-					{
-						const float CurrentTime = GetWorld()->GetTimeSeconds();
-						const float Elapsed = CurrentTime - LastActivatedTime;
-
-						if (Elapsed >= CooldownTime)
-						{
-							if (bCallReturnToInitialStateInsteadOfActivate)
-							{
-								ILCGimmickInterface::Execute_ReturnToInitialState(this);
-							}
-							else
-							{
-								ILCGimmickInterface::Execute_ActivateGimmick(this);
-							}
-
-							LastActivatedTime = CurrentTime;
-						}
-						// else { LOG_Art(Log, TEXT("[딜레이] 쿨타임 중 → 작동 안함")); }
-					}
-				},
-				ActivationDelay,
-				false
-			);
-		}
-	}
-	break;
+		HandleActivateAfterDelay();
+		break;
 
 	default:
 		break;
@@ -261,6 +182,84 @@ void ALCBaseGimmick::OnTriggerExit(UPrimitiveComponent* OverlappedComp, AActor* 
 	}
 }
 
+void ALCBaseGimmick::HandleActivateOnStep()
+{
+	if (bCallReturnToInitialStateInsteadOfActivate)
+	{
+		ILCGimmickInterface::Execute_ReturnToInitialState(this);
+		for (AActor* Target : LinkedTargets)
+		{
+			ILCGimmickInterface::Execute_ReturnToInitialState(Target);
+		}
+	}
+	else
+	{
+		ILCGimmickInterface::Execute_ActivateGimmick(this);
+		for (AActor* Target : LinkedTargets)
+		{
+			ILCGimmickInterface::Execute_ActivateGimmick(Target);
+		}
+	}
+	LastActivatedTime = GetWorld()->GetTimeSeconds();
+}
+
+void ALCBaseGimmick::HandleActivateWhileStepping()
+{
+	if (OverlappingActors.Num() >= RequiredCount)
+	{
+		if (bCallReturnToInitialStateInsteadOfActivate)
+		{
+			ILCGimmickInterface::Execute_ReturnToInitialState(this);
+			for (AActor* Target : LinkedTargets)
+			{
+				ILCGimmickInterface::Execute_ReturnToInitialState(Target);
+			}
+		}
+		else
+		{
+			ILCGimmickInterface::Execute_ActivateGimmick(this);
+			for (AActor* Target : LinkedTargets)
+			{
+				ILCGimmickInterface::Execute_ActivateGimmick(Target);
+			}
+		}
+	}
+}
+
+void ALCBaseGimmick::HandleActivateAfterDelay()
+{
+	if (OverlappingActors.Num() >= RequiredCount)
+	{
+		GetWorld()->GetTimerManager().SetTimer(
+			ActivationDelayHandle,
+			[this]()
+			{
+				if (OverlappingActors.Num() >= RequiredCount)
+				{
+					const float CurrentTime = GetWorld()->GetTimeSeconds();
+					const float Elapsed = CurrentTime - LastActivatedTime;
+
+					if (Elapsed >= CooldownTime)
+					{
+						if (bCallReturnToInitialStateInsteadOfActivate)
+						{
+							ILCGimmickInterface::Execute_ReturnToInitialState(this);
+						}
+						else
+						{
+							ILCGimmickInterface::Execute_ActivateGimmick(this);
+						}
+
+						LastActivatedTime = CurrentTime;
+					}
+				}
+			},
+			ActivationDelay,
+			false
+		);
+	}
+}
+
 bool ALCBaseGimmick::IsValidActivator(AActor* OtherActor) const
 {
 	if (!IsValid(OtherActor)) return false;
@@ -279,6 +278,23 @@ bool ALCBaseGimmick::IsValidActivator(AActor* OtherActor) const
 }
 
 #pragma endregion
+
+//void ALCBaseGimmick::ScheduleReturn(float Delay)
+//{
+//	if (Delay <= 0.f)
+//	{
+//		ReturnToInitialState_Implementation();
+//		return;
+//	}
+//
+//	GetWorld()->GetTimerManager().SetTimer(
+//		ReturnTimerHandle,
+//		this,
+//		&ALCBaseGimmick::ReturnToInitialState_Implementation,
+//		Delay,
+//		false
+//	);
+//}
 
 #pragma region Interact
 
@@ -331,28 +347,6 @@ bool ALCBaseGimmick::IsGimmickBusy_Implementation()
 FString ALCBaseGimmick::GetInteractMessage_Implementation() const
 {
 	return InteractMessage;
-}
-
-#pragma endregion
-
-#pragma region Condition / Auto
-
-bool ALCBaseGimmick::IsConditionMet_Implementation() const
-{
-	return false;
-}
-
-void ALCBaseGimmick::CheckConditionAndActivate()
-{
-	if (!HasAuthority())
-	{
-		return;
-	}
-
-	if (IsConditionMet())
-	{
-		ILCGimmickInterface::Execute_ActivateGimmick(this);
-	}
 }
 
 #pragma endregion
