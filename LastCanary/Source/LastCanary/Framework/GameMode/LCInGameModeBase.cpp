@@ -156,7 +156,13 @@ void ALCInGameModeBase::ClearGame()
 				PlayerPawn->SetActorRotation(FRotator(0.f, 0.f, 0.f)); // 원하는 방향으로 회전
 			}
 
-			PC->Client_OnEscapeGate(CurrentBossMonsterData->CheckListTable);
+			if (CurrentBossMonsterData)
+			{
+				if (CurrentBossMonsterData->CheckListTable)
+				{
+					PC->Client_OnEscapeGate(CurrentBossMonsterData->CheckListTable);
+				}
+			}
 		}
 	}
 
@@ -199,7 +205,7 @@ void ALCInGameModeBase::EndGame()
 void ALCInGameModeBase::InitLCGameMode()
 {
 	InitBossSpawner();
-	//CreateBossMonster();
+	CreateBossMonster();
 }
 
 void ALCInGameModeBase::InitBossSpawner()

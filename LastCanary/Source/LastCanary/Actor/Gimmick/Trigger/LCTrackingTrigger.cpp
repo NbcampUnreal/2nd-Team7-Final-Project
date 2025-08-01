@@ -14,10 +14,10 @@ void ALCTrackingTrigger::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (DetectionArea)
+	if (ActivationTrigger)
 	{
-		DetectionArea->OnComponentBeginOverlap.AddDynamic(this, &ALCTrackingTrigger::OnTriggerEnter);
-		DetectionArea->OnComponentEndOverlap.AddDynamic(this, &ALCTrackingTrigger::OnTriggerExit);
+		ActivationTrigger->OnComponentBeginOverlap.AddDynamic(this, &ALCTrackingTrigger::OnTriggerEnter);
+		ActivationTrigger->OnComponentEndOverlap.AddDynamic(this, &ALCTrackingTrigger::OnTriggerExit);
 
 		//LOG_Art(Log, TEXT(" 감지 트리거 활성화됨 (%s)"), *GetName());
 
