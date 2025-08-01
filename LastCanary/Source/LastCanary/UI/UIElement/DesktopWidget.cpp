@@ -174,7 +174,6 @@ void UDesktopWidget::HandleShopAppLaunch()
 			RoomPC->Server_ShowShopWidget();
 			if (UShopWidget* ShopWidget = UIManager->GetCachedShopWidget())
 			{
-
 				if (ULCDesktopWindowManager* LCDesktopWindowManager = UIManager->GetDesktopWindowManager())
 				{
 					if (ShopWidget->IsMinimized())
