@@ -20,6 +20,13 @@
 #include "SaveGame/LCLocalPlayerSaveGame.h"
 #include "LastCanary.h"
 
+#include "Settings/Component/MouseSensitivityComponent.h"
+
+ABasePlayerController::ABasePlayerController()
+{
+	MouseSensitivityComponent = CreateDefaultSubobject<UMouseSensitivityComponent>(TEXT("MouseSensitivityComponent"));
+}
+
 void ABasePlayerController::BeginPlay()
 {
 	Super::BeginPlay();
@@ -33,57 +40,16 @@ void ABasePlayerController::BeginPlay()
 		}
 	}
 	
-	/*
-
-	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
-	{
-		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
-		{
-			// UIManager->InitUIManager(this);
-
-			if (GetPawn())
-			{
-				FTimerHandle HUDTimer;
-				GetWorld()->GetTimerManager().SetTimer(HUDTimer,
-					[this, UIManager]()
-					{
-						UIManager->ShowInGameHUD();
-					},
-					0.5f, false);
-			}
-		}
-	}
-	*/
 	LoadBrightness();
-	LoadMouseSensitivity();
-	LoadZoomSensitivity();
-	LoadDroneSensitivity();
 
 	PlayerCameraManager->ViewPitchMin = -80.0f; // 최소 Pitch 각도 (고개 숙이기)
 	PlayerCameraManager->ViewPitchMax = 80.0f;  // 최대 Pitch 각도 (고개 들기)
-}
 
-//void ABasePlayerController::RequestShowInGameHUD()
-//{
-//	LOG_Frame_WARNING(TEXT("=== RequestShowInGameHUD 호출됨 ==="));
-//
-//	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
-//	{
-//		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
-//		{
-//			LOG_Frame_WARNING(TEXT("UIManager 유효 → HUD 출력 시도"));
-//			UIManager->ShowInGameHUD();
-//		}
-//		else
-//		{
-//			LOG_Frame_WARNING(TEXT("UIManager가 유효하지 않음"));
-//		}
-//	}
-//	else
-//	{
-//		LOG_Frame_WARNING(TEXT("GameInstanceSubsystem이 유효하지 않음"));
-//	}
-//}
+	if (MouseSensitivityComponent)
+	{
+		//MouseSensitivityComponent->OnSensitivitySettingsChanged.AddDynamic(this, &ABasePlayerController::LoadSensitivity);
+	}
+}
 
 void ABasePlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
@@ -91,50 +57,31 @@ void ABasePlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	DOREPLIFETIME(ABasePlayerController, SpawnedPlayerDrone);
 }
 
-void ABasePlayerController::LoadMouseSensitivity()
+UMouseSensitivityComponent* ABasePlayerController::GetMouseSensitivityComponent()
 {
-	float LoadedSensitivity = ULCLocalPlayerSaveGame::LoadMouseSensitivity(GetWorld());
-
-	SetMouseSensitivity(LoadedSensitivity);
+	if (!IsValid(MouseSensitivityComponent))
+	{
+		return nullptr;
+	}
+	return MouseSensitivityComponent;
 }
 
 void ABasePlayerController::SetMouseSensitivity(float Sensitivity)
 {
+	GetMouseSensitivityComponent()->SetMouseSensivity(Sensitivity);
 	MouseSensivity = Sensitivity;
-}
-
-void ABasePlayerController::LoadDroneSensitivity()
-{
-	float LoadedSensitivity = ULCLocalPlayerSaveGame::LoadDroneSensitivity(GetWorld());
-
-	SetDroneSensitivity(LoadedSensitivity);
 }
 
 void ABasePlayerController::SetDroneSensitivity(float Sensitivity)
 {
+	GetMouseSensitivityComponent()->SetDroneSensivity(Sensitivity);
 	DroneSensivity = Sensitivity;
-}
-
-void ABasePlayerController::LoadZoomSensitivity()
-{
-	float LoadedSensitivity = ULCLocalPlayerSaveGame::LoadZoomSensitivity(GetWorld());
-
-	SetZoomSensitivity(LoadedSensitivity);
 }
 
 void ABasePlayerController::SetZoomSensitivity(float Sensitivity)
 {
 	ZoomSensivity = Sensitivity;
-	if (!IsValid(CurrentPossessedPawn))
-	{
-		return;
-	}
-	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-	if (!IsValid(PlayerCharacter))
-	{
-		return;
-	}
-	PlayerCharacter->SetZoomSensitivity(ZoomSensivity);
+	GetMouseSensitivityComponent()->SetZoomSensivity(Sensitivity);
 }
 
 void ABasePlayerController::LoadBrightness()
@@ -609,7 +556,7 @@ void ABasePlayerController::Input_OnLookMouse(const FInputActionValue& ActionVal
 		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
 		if (IsValid(PlayerCharacter))
 		{
-			PlayerCharacter->Handle_LookMouse(ActionValue, MouseSensivity, ZoomSensivity);  // ABaseCharacter에 맞는 LookMouse 호출
+			PlayerCharacter->Handle_LookMouse(ActionValue, MouseSensitivityComponent->GetMouseSensivity(), MouseSensitivityComponent->GetZoomSensivity());  // ABaseCharacter에 맞는 LookMouse 호출
 		}
 	}
 	if (CurrentPossessedPawn->IsA<ABaseDrone>())
@@ -617,7 +564,7 @@ void ABasePlayerController::Input_OnLookMouse(const FInputActionValue& ActionVal
 		ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn);
 		if (IsValid(Drone))
 		{
-			Drone->Input_Look(ActionValue, DroneSensivity);
+			Drone->Input_Look(ActionValue, MouseSensitivityComponent->GetDroneSensivity());
 		}
 	}
 	if (CurrentPossessedPawn->IsA<ABaseSpectatorPawn>())
@@ -625,28 +572,9 @@ void ABasePlayerController::Input_OnLookMouse(const FInputActionValue& ActionVal
 		ABaseSpectatorPawn* Spectator = Cast<ABaseSpectatorPawn>(CurrentPossessedPawn);
 		if (IsValid(Spectator))
 		{
-			Spectator->Handle_LookMouse(ActionValue, MouseSensivity);
+			Spectator->Handle_LookMouse(ActionValue, MouseSensitivityComponent->GetMouseSensivity());
 		}
 	}
-}
-
-void ABasePlayerController::Input_OnLook(const FInputActionValue& ActionValue)
-{
-	/*   필요가 없는 기능
-	if (!IsValid(CurrentPossessedPawn))
-	{
-		return;
-	}
-	// APawn 타입에 맞는 처리를 실행
-	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
-	{
-		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-		if (IsValid(PlayerCharacter))
-		{
-			PlayerCharacter->Handle_Look(ActionValue);
-		}
-	}
-	*/  
 }
 
 void ABasePlayerController::Input_OnMove(const FInputActionValue& ActionValue)
@@ -659,13 +587,11 @@ void ABasePlayerController::Input_OnMove(const FInputActionValue& ActionValue)
 
 	if (!IsValid(CurrentPossessedPawn))
 	{
-		//UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_OnMove"));
 		return;
 	}
 
 	if (MyPlayerState->InGameState != EPlayerInGameStatus::Alive)
 	{
-		//UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is Spectating"));
 		const auto Value{ ActionValue.Get<FVector2D>() };
 		if (Value.X != 0.0f)
 		{
@@ -1215,14 +1141,6 @@ void ABasePlayerController::Input_ChangeShootingSetting(const FInputActionValue&
 	}
 }
 
-void ABasePlayerController::SetShootingSetting()
-{
-	//TODO: 총기 클래스 들어오면 이게 눌렸을 때 총기의 Fire Setting 변화시키는 기능 추가
-	// 현재 들고 있는 아이템이 총기 클래스라면
-	// FireSetting 다음거로 변경
-	// 총기의 속성을 변화시키는 방향이 맞아보임
-}
-
 void ABasePlayerController::Input_ChangeQuickSlot(const FInputActionValue& ActionValue)
 {
 	// 휠의 Y 방향만 사용 (위: +1, 아래: -1)
@@ -1468,6 +1386,16 @@ void ABasePlayerController::Input_DroneExit(const FInputActionValue& ActionValue
 			//UIManager->ShowInGameHUD();
 		}
 	}
+}
+
+void ABasePlayerController::Input_Attack(const FInputActionValue& ActionValue)
+{
+
+}
+
+void ABasePlayerController::Input_Emote(const FInputActionValue& ActionValue)
+{
+
 }
 
 void ABasePlayerController::Server_DroneExit_Implementation()
