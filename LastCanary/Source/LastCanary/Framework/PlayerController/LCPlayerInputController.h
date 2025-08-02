@@ -91,6 +91,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "InputSettings|Character", Meta = (DisplayThumbnail = false))
 	TObjectPtr<UInputAction> ExitDroneAction;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "InputSettings|Character", Meta = (DisplayThumbnail = false))
+	TObjectPtr<UInputAction> AttackAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "InputSettings|Character", Meta = (DisplayThumbnail = false))
+	TObjectPtr<UInputAction> EmoteAction;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "InputSettings|RoomPC", Meta = (DisplayThumbnail = false))
 	TObjectPtr<UInputAction> RoomUIAction;
 
@@ -143,6 +149,10 @@ public:
 	virtual void Input_OpenPauseMenu(const FInputActionValue& ActionValue);
 
 	virtual void Input_DroneExit(const FInputActionValue& ActionValue);
+
+	virtual void Input_Attack(const FInputActionValue& ActionValue);
+
+	virtual void Input_Emote(const FInputActionValue& ActionValue);
 	
 	UFUNCTION()
 	virtual void ToggleShowRoomWidget();
@@ -152,6 +162,6 @@ public:
 	void ApplyInputMappingContext(UInputMappingContext* IMC);
 	
 
-	void OnUIClicked(); // 클릭 전달받는 함수
-	void OnUIReleased(); // 클릭 전달받는 함수
+	//void OnUIClicked(); // 클릭 전달받는 함수
+	//void OnUIReleased(); // 클릭 전달받는 함수
 };

@@ -86,6 +86,10 @@ void ALCPlayerInputController::InitInputComponent()
 
 		EnhancedInput->BindAction(ExitDroneAction, ETriggerEvent::Started, this, &ALCPlayerInputController::Input_DroneExit);
 
+		EnhancedInput->BindAction(AttackAction, ETriggerEvent::Started, this, &ALCPlayerInputController::Input_Attack);
+
+		EnhancedInput->BindAction(EmoteAction, ETriggerEvent::Started, this, &ALCPlayerInputController::Input_Emote);
+
 		EnhancedInput->BindAction(RoomUIAction, ETriggerEvent::Started, this, &ALCPlayerInputController::ToggleShowRoomWidget);
 	}
 
@@ -114,7 +118,9 @@ void ALCPlayerInputController::Input_SelectQuickSlot2(const FInputActionValue& A
 void ALCPlayerInputController::Input_SelectQuickSlot3(const FInputActionValue& ActionValue) { }
 void ALCPlayerInputController::Input_SelectQuickSlot4(const FInputActionValue& ActionValue) { }
 void ALCPlayerInputController::Input_OpenPauseMenu(const FInputActionValue& ActionValue) { }
-void ALCPlayerInputController::Input_DroneExit(const FInputActionValue& ActionValue){ }
+void ALCPlayerInputController::Input_DroneExit(const FInputActionValue& ActionValue) { }
+void ALCPlayerInputController::Input_Attack(const FInputActionValue& ActionValue) { }
+void ALCPlayerInputController::Input_Emote(const FInputActionValue& ActionValue) { }
 void ALCPlayerInputController::ToggleShowRoomWidget(){ }
 
 void ALCPlayerInputController::ApplyInputMappingContext(UInputMappingContext* IMC)
@@ -132,17 +138,17 @@ void ALCPlayerInputController::ApplyInputMappingContext(UInputMappingContext* IM
 		}
 	}
 }
-
-void ALCPlayerInputController::OnUIClicked()
-{
-	UE_LOG(LogTemp, Warning, TEXT("컨트롤러에서 좌클릭 로직 실행됨"));
-	// CurrentMouseCursor = EMouseCursor::Custom;
-	
-	// 여기서 게임 상태 변경, 사운드 재생 등 원하는 처리 가능
-}
-
-void ALCPlayerInputController::OnUIReleased()
-{
-	UE_LOG(LogTemp, Warning, TEXT("컨트롤러에서 좌클릭 떼는 로직 실행됨"));
-	// CurrentMouseCursor = EMouseCursor::Default;
-}
+//
+//void ALCPlayerInputController::OnUIClicked()
+//{
+//	UE_LOG(LogTemp, Warning, TEXT("컨트롤러에서 좌클릭 로직 실행됨"));
+//	// CurrentMouseCursor = EMouseCursor::Custom;
+//	
+//	// 여기서 게임 상태 변경, 사운드 재생 등 원하는 처리 가능
+//}
+//
+//void ALCPlayerInputController::OnUIReleased()
+//{
+//	UE_LOG(LogTemp, Warning, TEXT("컨트롤러에서 좌클릭 떼는 로직 실행됨"));
+//	// CurrentMouseCursor = EMouseCursor::Default;
+//}

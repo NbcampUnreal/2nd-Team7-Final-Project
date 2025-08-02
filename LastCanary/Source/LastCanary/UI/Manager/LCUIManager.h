@@ -32,6 +32,9 @@ class USpectatorWidget;
 class UGameOverWidget;
 class UGameEndWidget;
 class UServerMessageWidget;
+class UDesktopWidget;
+class UTaskbarWidget;
+class ULCDesktopWindowManager;
 
 //-----------------
 // Enum
@@ -43,6 +46,8 @@ enum class ELCUIContext : uint8
 	Title,
 	Room,
 	InGame,
+	Spectator,
+	DroneHUD
 };
 
 //-----------------
@@ -55,6 +60,19 @@ class LASTCANARY_API ULCUIManager : public UObject
 
 public:
 	//-----------------
+	// Cached Widgets
+	//-------------------
+	template<typename T>
+	T* CreateAndCacheWidget(T*& CachedWidget, TSubclassOf<UUserWidget> WidgetClass)
+	{
+		if (CachedWidget == nullptr && WidgetClass)
+		{
+			CachedWidget = CreateWidget<T>(OwningPlayer, WidgetClass);
+		}
+		return CachedWidget;
+	}
+
+	//-----------------
 	// Constructor & Init
 	//-------------------
 	ULCUIManager();
@@ -66,9 +84,12 @@ public:
 	//-------------------
 	void ShowTitleMenu();
 	void ShowLobbyMenu();
-	void ShowRoomListMenu();
-	void ShowInGameHUD();
-	void HideInGameHUD();
+	//void ShowRoomListMenu();
+	//void ShowHUD();
+	void HideHUD();
+	void ChangeHUD();
+	//void ShowInGameHUD();
+	//void HideInGameHUD();
 	void ShowInventoryMainWidget();
 	void HideInventoryMainWidget();
 	void ShowOptionWidget();
@@ -87,16 +108,18 @@ public:
 	UResultWidget* ShowResultWidget();
 	void ShowRoomWidget();
 	void HideRoomWidget();
-	void ShowDroneHUD();
-	void HideDroneHUD();
-	void ShowSpectatorWidget();
-	void HideSpectatorWidget();
+	//void ShowDroneHUD();
+	//void HideDroneHUD();
+	//void ShowSpectatorWidget();
+	//void HideSpectatorWidget();
 	void ShowGameOverWidget();
 	void HideGameOverWidget();
 	void ShowGameEndWidget();
 	void ShowHideEndWidget();
 	UFUNCTION(BlueprintCallable)
 	void AddServerMessage(const FString& Message);
+	void ShowDesktop();
+	void HideDesktop();
 
 	//-----------------
 	// Special Popups
@@ -154,6 +177,9 @@ public:
 	FORCEINLINE USpectatorWidget* GetSpectatorWidget() const { return CachedSpectatorWidget; }
 	FORCEINLINE UGameOverWidget* GetGameOverWidget() const { return CachedGameOverWidget; }
 	FORCEINLINE UGameEndWidget* GetGameEndWidget() const { return CachedGameEndWidget; }
+	FORCEINLINE UTaskbarWidget* GetTaskbarWidget() const;
+	FORCEINLINE UDesktopWidget* GetDesktopWidget() const { return CachedDesktopWidget; }
+	FORCEINLINE UShopWidget* GetCachedShopWidget() const { return CachedShopWidget; }
 
 	//-----------------
 	// External Interactor Tracking
@@ -171,7 +197,15 @@ public:
 	UFUNCTION(BlueprintCallable)
 	USpectatorWidget* GetSpectatorWidgetBlueprint() const { return CachedSpectatorWidget; }
 
-
+	//-----------------
+	// 새로 추가된 Shop 관련 함수들
+	//-------------------
+	UFUNCTION(BlueprintCallable)
+	UShopWidget* ShowShopWidget(int32 Gold);
+	UPROPERTY()
+	ULCDesktopWindowManager* DesktopWindowManager;
+	TSubclassOf<UShopWidget> GetShopWidgetClass() const { return ShopWidgetClass; }
+	ULCDesktopWindowManager* GetDesktopWindowManager() const;
 
 private:
 	//-----------------
@@ -236,6 +270,9 @@ private:
 	TSubclassOf<UGameEndWidget> GameEndWidgetClass;
 	UPROPERTY()
 	TSubclassOf<UServerMessageWidget> ServerMessageWidgetClass;
+	UPROPERTY()
+	TSubclassOf<UDesktopWidget> DesktopWidgetClass;
+
 
 	//-----------------
 	// Widget Instances
@@ -282,6 +319,8 @@ private:
 	UGameEndWidget* CachedGameEndWidget;
 	UPROPERTY()
 	UServerMessageWidget* CachedServerMessageWidget;
+	UPROPERTY()
+	UDesktopWidget* CachedDesktopWidget;
 
 	//-----------------
 	// Session Error Info

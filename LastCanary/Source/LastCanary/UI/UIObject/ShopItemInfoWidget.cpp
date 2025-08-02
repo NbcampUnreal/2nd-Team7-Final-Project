@@ -157,10 +157,10 @@ void UShopItemInfoWidget::SetItemInfo(UTexture2D* ItemIconImage, const FName& It
 	{
 		ItemIcon->SetBrushFromTexture(ItemIconImage);
 	}
-	if (ItemName)
-	{
-		ItemName->SetText(FText::FromName(ItemNameText));
-	}
+	//if (ItemName)
+	//{
+	//	ItemName->SetText(FText::FromName(ItemNameText));
+	//}
 	if (ItemDescription)
 	{
 		ItemDescription->SetText(ItemDescriptionText);
