@@ -15,6 +15,7 @@ class ABaseSpectatorPawn;
 class ABasePlayerState;
 class ALCBaseGimmick;
 class ABaseSpectatorPawn;
+class UMouseSensitivityComponent;
 
 UCLASS()
 class LASTCANARY_API ABasePlayerController : public ALCPlayerController
@@ -22,16 +23,13 @@ class LASTCANARY_API ABasePlayerController : public ALCPlayerController
 	GENERATED_BODY()
 
 public:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UMouseSensitivityComponent* MouseSensitivityComponent;
 
-	//void RequestShowInGameHUD();
-	
-	void LoadMouseSensitivity();
+	UMouseSensitivityComponent* GetMouseSensitivityComponent();
+
 	void SetMouseSensitivity(float Sensitivity);
-	
-	void LoadZoomSensitivity();
 	void SetZoomSensitivity(float Sensitivity);
-	
-	void LoadDroneSensitivity();
 	void SetDroneSensitivity(float Sensitivity);
 
 	void LoadBrightness();
@@ -46,6 +44,8 @@ public:
 	UPROPERTY()
 	float BrightnessSetting = 1.0f;
 
+protected:
+	ABasePlayerController();
 private:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
 private:
@@ -182,8 +182,6 @@ public:
 public:
 	virtual void Input_OnLookMouse(const FInputActionValue& ActionValue) override;
 
-	virtual void Input_OnLook(const FInputActionValue& ActionValue) override;
-
 	virtual void Input_OnMove(const FInputActionValue& ActionValue) override;
 
 	virtual void Input_OnSprint(const FInputActionValue& ActionValue) override;
@@ -226,6 +224,9 @@ public:
 
 	virtual void Input_DroneExit(const FInputActionValue& ActionValue) override;
 
+	virtual void Input_Attack(const FInputActionValue& ActionValue) override;
+
+	virtual void Input_Emote(const FInputActionValue& ActionValue) override;
 public:
 	UFUNCTION(Server, Reliable)
 	void Server_DroneExit();
@@ -299,11 +300,6 @@ public:
 	void SetSprintingStateToPlayerState(bool flag);
 
 	void CameraSetOnScope();
-
-public:
-	//총기 발사 세팅(단발 or 점사 or 연사)
-	void SetShootingSetting();
-
 public:
 	void SpawnDrone();
 
