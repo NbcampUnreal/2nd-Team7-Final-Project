@@ -23,7 +23,7 @@ void UCharacterInteractionComponent::TickComponent(float DeltaTime, ELevelTick T
 
 void UCharacterInteractionComponent::PerformTrace()
 {
-    
+  
     APawn* OwnerPawn = Cast<APawn>(GetOwner());
     if (!GetCharacter() || !GetCharacter()->IsLocallyControlled())
     {
@@ -61,7 +61,7 @@ void UCharacterInteractionComponent::PerformTrace()
     }
 
 #if WITH_EDITOR
-    DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 0.1f);
+    //DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 0.1f);
 #endif
 }
 

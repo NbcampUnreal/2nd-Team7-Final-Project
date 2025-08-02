@@ -25,34 +25,33 @@ void UCharacterNameWidgetComponent::TickComponent(float DeltaTime, ELevelTick Ti
 
 	if (!WidgetComponent) return;
 
-	if (WidgetComponent->GetWidget())
+	UWorld* World = GetWorld();
+	if (!World) return;
+
+	APlayerCameraManager* CamManager = UGameplayStatics::GetPlayerCameraManager(World, 0);
+	if (!CamManager) return;
+
+	FVector CameraLocation = CamManager->GetCameraLocation();
+	FVector WidgetLocation = WidgetComponent->GetComponentLocation();
+
+	float Distance = FVector::Dist(CameraLocation, WidgetLocation);
+	if (Distance < MaxVisibleDistance)
 	{
-		LOG_Char_WARNING(TEXT("WidgetComponent->GetWidget() is Active."));
+		FRotator LookAtRotation = UKismetMathLibrary::FindLookAtRotation(WidgetLocation, CameraLocation);
+		FRotator YawOnly = FRotator(0.f, LookAtRotation.Yaw, 0.f);
+		WidgetComponent->SetWorldRotation(YawOnly);
 	}
 
+	/*
 	TimeAccumulator += DeltaTime;
 
 	if (TimeAccumulator > 0.1f)
 	{
 		TimeAccumulator = 0.f;
 
-		UWorld* World = GetWorld();
-		if (!World) return;
 
-		APlayerCameraManager* CamManager = UGameplayStatics::GetPlayerCameraManager(World, 0);
-		if (!CamManager) return;
-
-		FVector CameraLocation = CamManager->GetCameraLocation();
-		FVector WidgetLocation = WidgetComponent->GetComponentLocation();
-
-		float Distance = FVector::Dist(CameraLocation, WidgetLocation);
-		if (Distance < MaxVisibleDistance)
-		{
-			FRotator LookAtRotation = UKismetMathLibrary::FindLookAtRotation(WidgetLocation, CameraLocation);
-			FRotator YawOnly = FRotator(0.f, LookAtRotation.Yaw, 0.f);
-			WidgetComponent->SetWorldRotation(YawOnly);
-		}
 	}
+	*/
 }
 
 void UCharacterNameWidgetComponent::InitializeWidget()
@@ -72,7 +71,7 @@ void UCharacterNameWidgetComponent::InitializeWidget()
 	// 필수 설정
 	WidgetComponent->RegisterComponent();
 	WidgetComponent->AttachToComponent(Mesh, FAttachmentTransformRules::KeepRelativeTransform);
-	WidgetComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 100.0f));
+	WidgetComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 200.0f));
 	WidgetComponent->SetWidgetSpace(EWidgetSpace::World);
 	WidgetComponent->SetDrawSize(FVector2D(200, 50));
 	WidgetComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -85,7 +84,6 @@ void UCharacterNameWidgetComponent::InitializeWidget()
 	// 커스텀 뎁스 설정
 	WidgetComponent->SetRenderCustomDepth(true);
 	WidgetComponent->SetCustomDepthStencilValue(1);
-	LOG_Char_WARNING(TEXT("위젯 컴포넌트 설정"));
 }
 
 void UCharacterNameWidgetComponent::UpdateRotation()
@@ -106,25 +104,22 @@ void UCharacterNameWidgetComponent::TurnOffWidget()
 
 UUserWidget* UCharacterNameWidgetComponent::GetWidget() const
 {
-	if (WidgetComponent->GetWidget())
-	{
-		LOG_Char_WARNING(TEXT("WidgetComponent->GetWidget() is Active."));
-	}
-	else
-	{
-		LOG_Char_WARNING(TEXT("WidgetComponent->GetWidget() is NOT Active."));
-	}
-
 	return WidgetComponent ? WidgetComponent->GetWidget() : nullptr;
 }
 
 void UCharacterNameWidgetComponent::SetPlayerName(const FString& PlayerName)
 {
 	if (!WidgetComponent) return;
-
+	// 로컬에서 설정
 	if (UPlayerNameWidget* NameWidget = Cast<UPlayerNameWidget>(WidgetComponent->GetWidget()))
 	{
 		NameWidget->SetPlayerName(PlayerName);
+	}
+
+	// 클라이언트라면 서버에 요청
+	if (GetOwner()->GetLocalRole() < ROLE_Authority)
+	{
+		Server_SetPlayerName(PlayerName);
 	}
 }
 
@@ -132,7 +127,7 @@ void UCharacterNameWidgetComponent::SetWidgetVisibility(bool bVisible)
 {
 	if (WidgetComponent)
 	{
-		//WidgetComponent->SetVisibility(bVisible, true);
+		WidgetComponent->SetVisibility(bVisible, true);
 	}
 }
 
@@ -147,7 +142,6 @@ void UCharacterNameWidgetComponent::SetCastShadowEnabled(bool bEnable)
 
 void UCharacterNameWidgetComponent::InitializeNameWidget()
 {
-	
 	if (!GetCharacter()) return;
 
 	APlayerController* PC = Cast<APlayerController>(GetCharacter()->GetInstigatorController());
@@ -159,13 +153,26 @@ void UCharacterNameWidgetComponent::InitializeNameWidget()
 	APlayerState* PS = GetCharacter()->GetPlayerState();
 	if (PS && WidgetComponent)
 	{
+		if (IsValid(GetWidget()))
+		{
+			SetPlayerName(PS->GetPlayerName());
+			
+
+			if (GetCharacter()->IsLocallyControlled())
+			{
+				SetWidgetVisibility(false);
+			}
+
+			SetCastShadowEnabled(false);
+		}
+
 		// UpdateNameWidget 역할: 위젯 업데이트 등 필요한 초기화 로직 호출
 		// 예) SetPlayerName(PS->GetPlayerName());
 
 		// 위젯 숨기기 등
 		LOG_Char_WARNING(TEXT("셋 비저빌리티"));
 
-		//WidgetComponent->SetVisibility(false, true);
+		WidgetComponent->SetVisibility(false, true);
 	}
 	else
 	{
@@ -207,7 +214,7 @@ void UCharacterNameWidgetComponent::HideNameWidget()
 {
 	if (IsValid(WidgetComponent))
 	{
-		//WidgetComponent->SetVisibility(false, true);
+		WidgetComponent->SetVisibility(false, true);
 	}
 }
 
@@ -218,8 +225,29 @@ void UCharacterNameWidgetComponent::TryInitializeOnPlayerState(APlayerState* PS,
 	// 로컬이면 위젯 비활성화
 	if (bIsLocallyControlled && IsValid(WidgetComponent))
 	{
-		//WidgetComponent->SetVisibility(false, true);
-		//WidgetComponent->SetCastShadow(false);
-		//WidgetComponent->CastShadow = false;
+		WidgetComponent->SetVisibility(false, true);
+		WidgetComponent->SetCastShadow(false);
+		WidgetComponent->CastShadow = false;
 	}
+}
+
+void UCharacterNameWidgetComponent::Multicast_SetPlayerName_Implementation(const FString& PlayerName)
+{
+	if (!WidgetComponent) return;
+
+	if (UPlayerNameWidget* NameWidget = Cast<UPlayerNameWidget>(WidgetComponent->GetWidget()))
+	{
+		NameWidget->SetPlayerName(PlayerName);
+	}
+}
+
+bool UCharacterNameWidgetComponent::Server_SetPlayerName_Validate(const FString& PlayerName)
+{
+	return true;
+}
+
+void UCharacterNameWidgetComponent::Server_SetPlayerName_Implementation(const FString& PlayerName)
+{
+	// 서버에서 멀티캐스트 호출
+	Multicast_SetPlayerName(PlayerName);
 }

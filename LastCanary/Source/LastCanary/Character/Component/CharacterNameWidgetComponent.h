@@ -67,4 +67,15 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UUserWidget> DefaultWidgetClass;
 
+
+
+public:
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_SetPlayerName(const FString& PlayerName);
+	void Multicast_SetPlayerName_Implementation(const FString& PlayerName);
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_SetPlayerName(const FString& PlayerName);
+	bool Server_SetPlayerName_Validate(const FString& PlayerName);
+	void Server_SetPlayerName_Implementation(const FString& PlayerName);
 };

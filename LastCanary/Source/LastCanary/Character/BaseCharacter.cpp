@@ -280,8 +280,6 @@ void ABaseCharacter::BeginPlay()
 		AnimationComponent->OnInteractionNotify.AddDynamic(this, &ABaseCharacter::OnInteractionFromNotify);
 		AnimationComponent->OnUseItemNotify.AddDynamic(this, &ABaseCharacter::OnUseItemFromNotify);
 	}
-
-
 }
 
 void ABaseCharacter::Server_ClientLogin_Implementation()
