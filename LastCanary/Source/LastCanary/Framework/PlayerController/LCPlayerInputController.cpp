@@ -86,6 +86,10 @@ void ALCPlayerInputController::InitInputComponent()
 
 		EnhancedInput->BindAction(ExitDroneAction, ETriggerEvent::Started, this, &ALCPlayerInputController::Input_DroneExit);
 
+		EnhancedInput->BindAction(AttackAction, ETriggerEvent::Started, this, &ALCPlayerInputController::Input_Attack);
+
+		EnhancedInput->BindAction(EmoteAction, ETriggerEvent::Started, this, &ALCPlayerInputController::Input_Emote);
+
 		EnhancedInput->BindAction(RoomUIAction, ETriggerEvent::Started, this, &ALCPlayerInputController::ToggleShowRoomWidget);
 	}
 
@@ -114,7 +118,9 @@ void ALCPlayerInputController::Input_SelectQuickSlot2(const FInputActionValue& A
 void ALCPlayerInputController::Input_SelectQuickSlot3(const FInputActionValue& ActionValue) { }
 void ALCPlayerInputController::Input_SelectQuickSlot4(const FInputActionValue& ActionValue) { }
 void ALCPlayerInputController::Input_OpenPauseMenu(const FInputActionValue& ActionValue) { }
-void ALCPlayerInputController::Input_DroneExit(const FInputActionValue& ActionValue){ }
+void ALCPlayerInputController::Input_DroneExit(const FInputActionValue& ActionValue) { }
+void ALCPlayerInputController::Input_Attack(const FInputActionValue& ActionValue) { }
+void ALCPlayerInputController::Input_Emote(const FInputActionValue& ActionValue) { }
 void ALCPlayerInputController::ToggleShowRoomWidget(){ }
 
 void ALCPlayerInputController::ApplyInputMappingContext(UInputMappingContext* IMC)
