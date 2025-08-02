@@ -37,14 +37,14 @@ void UDebuffDamageComponent::ApplyEffectToActor(AActor* OtherActor)
 	const IGameplayTagAssetInterface* TagInterface = Cast<IGameplayTagAssetInterface>(OtherActor);
 	if (!TagInterface)
 	{
-		LOG_Art_WARNING(TEXT("[DebuffComp]  Target does not implement GameplayTag interface: %s"), *GetNameSafe(OtherActor));
+		//LOG_Art_WARNING(TEXT("[DebuffComp]  Target does not implement GameplayTag interface: %s"), *GetNameSafe(OtherActor));
 		return;
 	}
 
 	FGameplayTagContainer ActorTags;
 	TagInterface->GetOwnedGameplayTags(ActorTags);
 
-	LOG_Art(Log, TEXT("[DebuffComp] Tags of %s → %s"), *OtherActor->GetName(), *ActorTags.ToStringSimple());
+	//LOG_Art(Log, TEXT("[DebuffComp] Tags of %s → %s"), *OtherActor->GetName(), *ActorTags.ToStringSimple());
 
 	if (DamageType != EGimmickDamageType::None && ActorTags.HasTagExact(RequiredDamageTag))
 	{
@@ -201,7 +201,7 @@ void UDebuffDamageComponent::OnOverlapBegin(UPrimitiveComponent* OverlappedCompo
 	if (!IsValid(OtherActor) || OtherActor == GetOwner())
 		return;
 
-	LOG_Art(Log, TEXT("[DebuffComp] OnOverlapBegin → %s"), *OtherActor->GetName());
+//	LOG_Art(Log, TEXT("[DebuffComp] OnOverlapBegin → %s"), *OtherActor->GetName());
 
 	OtherActor->OnDestroyed.AddUniqueDynamic(this, &UDebuffDamageComponent::OnTargetDestroyed);
 

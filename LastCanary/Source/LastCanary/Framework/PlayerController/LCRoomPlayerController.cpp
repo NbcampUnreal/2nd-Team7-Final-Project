@@ -35,7 +35,6 @@ void ALCRoomPlayerController::BeginPlay()
 	}
 }
 
-
 void ALCRoomPlayerController::Server_ShowShopWidget_Implementation()
 {
 	if (UGameInstance* GameInstance = GetGameInstance())
@@ -47,7 +46,7 @@ void ALCRoomPlayerController::Server_ShowShopWidget_Implementation()
 
 void ALCRoomPlayerController::Client_ShowShopWidget_Implementation(int Gold)
 {
-	LCUIManager->ShowShopPopup(Gold);
+	LCUIManager->ShowShopWidget(Gold);
 }
 
 void ALCRoomPlayerController::Server_RequestPurchase_Implementation(const TArray<FItemDropData>& DropList)

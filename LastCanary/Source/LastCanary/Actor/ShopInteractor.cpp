@@ -22,46 +22,41 @@ AShopInteractor::AShopInteractor()
 	Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
 	SetRootComponent(Mesh);
 
-	ShopWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("ShopWidgetComponent"));
-	ShopWidgetComponent->SetupAttachment(RootComponent);
-	ShopWidgetComponent->SetWidgetSpace(EWidgetSpace::World);
-	ShopWidgetComponent->SetDrawSize(FVector2D(800, 600));
-	ShopWidgetComponent->SetVisibility(true);
+	DesktopWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("DesktopWidgetComponent"));
+	DesktopWidgetComponent->SetupAttachment(RootComponent);
+	DesktopWidgetComponent->SetWidgetSpace(EWidgetSpace::World);
+	DesktopWidgetComponent->SetDrawSize(FVector2D(800, 600));
+	DesktopWidgetComponent->SetVisibility(true);
 }
 
 void AShopInteractor::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (ShopWidgetClass)
+	if (DesktopWidgetClass)
 	{
-		ShopWidgetComponent->SetWidgetClass(ShopWidgetClass);
+		DesktopWidgetComponent->SetWidgetClass(DesktopWidgetClass);
 	}
 }
 
 void AShopInteractor::Interact_Implementation(APlayerController* InteractingPlayerController)
 {
-	LOG_Frame_WARNING(TEXT("Interact_Implementation"));
-
 	if (InteractingPlayerController == nullptr)
 	{
-		LOG_Frame_WARNING(TEXT("Interactor is nullptr"));
 		return;
 	}
-	if (ShopCamera == nullptr)
+	if (DesktopCamera == nullptr)
 	{
-		LOG_Frame_WARNING(TEXT("ShopCamera is nullptr"));
 		return;
 	}
 
 	ALCRoomPlayerController* RoomPC = Cast<ALCRoomPlayerController>(InteractingPlayerController);
-	if (!IsValid(RoomPC))
+	if (IsValid(RoomPC) == false)
 	{
-		LOG_Frame_WARNING(TEXT("Fail To casting"));
 		return;
 	}
 
-	InteractingPlayerController->SetViewTargetWithBlend(ShopCamera, 0.5f);
+	InteractingPlayerController->SetViewTargetWithBlend(DesktopCamera, 0.5f);
 
 	FTimerHandle TimerHandle;
 	FTimerDelegate TimerDel;
@@ -78,10 +73,12 @@ void AShopInteractor::Interact_Implementation(APlayerController* InteractingPlay
 						UIManager->SetLastShopInteractor(this);
 						LOG_Frame_WARNING(TEXT("PC : %s"), *RoomPC->GetActorNameOrLabel());
 						//GM->GetGold();
-						RoomPC->Server_ShowShopWidget();
+						//RoomPC->Server_ShowShopWidget();
 						//UIManager->ShowShopPopup(GM->GetGold());
 
-						ShopWidgetComponent->SetVisibility(false);
+						UIManager->ShowDesktop();
+
+						DesktopWidgetComponent->SetVisibility(false);
 					}
 				}
 			}
@@ -103,25 +100,25 @@ FString AShopInteractor::GetInteractMessage_Implementation() const
 
 	FString InteractKeyName = GetCurrentKeyNameForAction(IA_Interact);
 
-	return FString::Printf(TEXT("Press [%s] to Visit Shop"), *InteractKeyName);
+	return FString::Printf(TEXT("Press [%s] to Use Desktop"), *InteractKeyName);
 }
 
 FString AShopInteractor::GetCurrentKeyNameForAction(UInputAction* InputAction) const
 {
 	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
-	if (!IsValid(PC))
+	if (IsValid(PC) == false)
 	{
 		return TEXT("Invalid");
 	}
 
 	ULocalPlayer* LocalPlayer = PC->GetLocalPlayer();
-	if (!IsValid(LocalPlayer))
+	if (IsValid(LocalPlayer) == false)
 	{
 		return TEXT("Invalid");
 	}
 
 	UEnhancedInputLocalPlayerSubsystem* Subsystem = LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
-	if (!IsValid(Subsystem))
+	if (IsValid(Subsystem) == false)
 	{
 		return TEXT("Invalid");
 	}
@@ -137,7 +134,7 @@ FString AShopInteractor::GetCurrentKeyNameForAction(UInputAction* InputAction) c
 	return TEXT("Unbound");
 }
 
-UWidgetComponent* AShopInteractor::GetShopWidgetComponent() const
+UWidgetComponent* AShopInteractor::GetDesktopWidgetComponent() const
 {
-	return ShopWidgetComponent;
+	return DesktopWidgetComponent;
 }

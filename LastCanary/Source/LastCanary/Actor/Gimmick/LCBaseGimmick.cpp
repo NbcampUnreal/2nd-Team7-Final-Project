@@ -3,45 +3,47 @@
 #include "Kismet/GameplayStatics.h"
 #include "Character/BasePlayerController.h"
 #include "Net/UnrealNetwork.h"
-#include "LastCanary.h"
 #include "Camera/CameraActor.h"
+#include "Components/BoxComponent.h"
+#include "Sound/SoundBase.h"
+#include "LastCanary.h"
 
 ALCBaseGimmick::ALCBaseGimmick()
-	: bActivated(false)
+	: VisualMesh(nullptr)
+	, InteractSound(nullptr)
+	, CutsceneCamera(nullptr)
+	, CameraBlendTime(0.0f)
+	, CutsceneDuration(3.0f)
+	, bEnableCutscene(false)
+	, bCutsceneForAllPlayers(true)
+	, ActivationType(EGimmickActivationType::ActivateOnPress)
+	, bEnableBaseActivationType(true)
+	, ActivationTrigger(nullptr)
+	, RequiredCount(1)
+	, ActivationDelay(1.5f)
+	, bActivated(false)
 	, LastActivatedTime(-999.f)
 	, CooldownTime(2.f)
 	, bToggleState(true)
 	, ReturnDelay(3.f)
+	, bCallReturnToInitialStateInsteadOfActivate(false)
+	, bIsPlayingCutscene(false)
+	, bPlayerInputDisabled(false)
+	, OriginalViewTarget(nullptr)
 	, bDestructibleByGun(false)
 	, DestructibleHealth(3.f)
 	, CurrentHealth(3.f)
-	, InteractMessage(TEXT(""))
-	, InteractSound(nullptr)
-	, RequiredCount(1.f)
-	, ActivationDelay(1.5f)
-	, ActivationType(EGimmickActivationType::ActivateOnPress) 
-	, bEnableCutscene(false)
-	, bCallReturnToInitialStateInsteadOfActivate(false)
-	, bCutsceneForAllPlayers(true)
+	, DestroySound(nullptr)
 {
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true;
 	bAlwaysRelevant = true;
 
-	VisualMesh = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
-	SetRootComponent(VisualMesh);
+	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 
 	VisualMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("VisualMesh"));
 	VisualMesh->SetupAttachment(RootComponent);
 	VisualMesh->SetMobility(EComponentMobility::Movable);
-
-	DetectionArea = CreateDefaultSubobject<UBoxComponent>(TEXT("DetectionArea"));
-	DetectionArea->SetupAttachment(RootComponent);
-	DetectionArea->SetBoxExtent(FVector(100.f));
-	DetectionArea->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	DetectionArea->SetCollisionResponseToAllChannels(ECR_Ignore);
-	DetectionArea->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
-	DetectionArea->SetHiddenInGame(false); 
 
 	ActivationTrigger = CreateDefaultSubobject<UBoxComponent>(TEXT("ActivationTrigger"));
 	ActivationTrigger->SetupAttachment(RootComponent);
@@ -50,9 +52,8 @@ ALCBaseGimmick::ALCBaseGimmick()
 	ActivationTrigger->SetCollisionResponseToAllChannels(ECR_Ignore);
 	ActivationTrigger->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 	ActivationTrigger->SetHiddenInGame(false);
-
-	bEnableActorDetection = false;
 }
+
 
 void ALCBaseGimmick::BeginPlay()
 {
@@ -77,166 +78,15 @@ void ALCBaseGimmick::BeginPlay()
 		CurrentHealth = DestructibleHealth;
 	}
 
-	if (bEnableActorDetection && IsValid(DetectionArea))
-	{
-		DetectionArea->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-		DetectionArea->OnComponentBeginOverlap.AddUniqueDynamic(this, &ALCBaseGimmick::OnActorEnter);
-		DetectionArea->OnComponentEndOverlap.AddUniqueDynamic(this, &ALCBaseGimmick::OnActorExit);
-	}
-
 	if (IsValid(ActivationTrigger))
 	{
 		ActivationTrigger->OnComponentBeginOverlap.AddUniqueDynamic(this, &ALCBaseGimmick::OnTriggerEnter);
 		ActivationTrigger->OnComponentEndOverlap.AddUniqueDynamic(this, &ALCBaseGimmick::OnTriggerExit);
 	}
 
-	if (ActivationType == EGimmickActivationType::ActivateOnConditionMet)
-	{
-		GetWorldTimerManager().SetTimer(
-			ConditionCheckTimer,
-			this,
-			&ALCBaseGimmick::CheckConditionAndActivate,
-			ConditionCheckInterval,
-			true
-		);
-		CheckConditionAndActivate();
-	}
-
 }
-
-#pragma region Overlap
-
-void ALCBaseGimmick::OnActorEnter(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{
-	if (!AttachedActors.Contains(OtherActor))
-	{
-		AttachedActors.Add(OtherActor);
-	}
-}
-
-void ALCBaseGimmick::OnActorExit(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-{
-	const bool bIsBusy = ILCGimmickInterface::Execute_IsGimmickBusy(this);
-
-	if (!bIsBusy)
-	{
-		AttachedActors.Remove(OtherActor);
-	}
-}
-#pragma endregion
 
 #pragma region TriggerOverlap
-
-//void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-//	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-//{
-//	if (!HasAuthority() || !IsValid(OtherActor)) return;
-//
-//	if (!OverlappingActors.Contains(OtherActor))
-//	{
-//		OverlappingActors.Add(OtherActor);
-//	}
-//
-//	switch (ActivationType)
-//	{
-//	case EGimmickActivationType::ActivateOnStep:
-//		if (bCallReturnToInitialStateInsteadOfActivate)
-//		{
-//			ILCGimmickInterface::Execute_ReturnToInitialState(this);
-//			for (AActor* Target : LinkedTargets)
-//			{
-//				ILCGimmickInterface::Execute_ReturnToInitialState(Target);
-//			}
-//		}
-//		else
-//		{
-//			ILCGimmickInterface::Execute_ActivateGimmick(this);
-//			for (AActor* Target : LinkedTargets)
-//			{
-//				ILCGimmickInterface::Execute_ActivateGimmick(Target);
-//			}
-//		}
-//		break;
-//
-//	case EGimmickActivationType::ActivateWhileStepping:
-//		if (!bActivated && OverlappingActors.Num() >= RequiredCount)
-//		{
-//			if (ILCGimmickInterface::Execute_CanActivate(this))
-//			{
-//				if (bCallReturnToInitialStateInsteadOfActivate)
-//				{
-//					ILCGimmickInterface::Execute_ReturnToInitialState(this);
-//				}
-//				else
-//				{
-//					ILCGimmickInterface::Execute_ActivateGimmick(this);
-//				}
-//			}
-//		}
-//		break;
-//
-//	case EGimmickActivationType::ActivateAfterDelay:
-//		if (!bActivated && OverlappingActors.Num() >= RequiredCount)
-//		{
-//			GetWorld()->GetTimerManager().SetTimer(
-//				ActivationDelayHandle,
-//				[this]()
-//				{
-//					if (!bActivated && OverlappingActors.Num() >= RequiredCount)
-//					{
-//						if (bCallReturnToInitialStateInsteadOfActivate)
-//						{
-//							ILCGimmickInterface::Execute_ReturnToInitialState(this);
-//						}
-//						else
-//						{
-//							ILCGimmickInterface::Execute_ActivateGimmick(this);
-//						}
-//					}
-//				},
-//				ActivationDelay,
-//				false
-//			);
-//		}
-//		break;
-//
-//	default:
-//		break;
-//	}
-//}
-//
-//void ALCBaseGimmick::OnTriggerExit(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-//	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-//{
-//	if (!HasAuthority() || !IsValid(OtherActor)) return;
-//
-//	OverlappingActors.Remove(OtherActor);
-//
-//	switch (ActivationType)
-//	{
-//	case EGimmickActivationType::ActivateWhileStepping:
-//		if (bActivated && OverlappingActors.Num() < RequiredCount)
-//		{
-//			ILCGimmickInterface::Execute_DeactivateGimmick(this);
-//
-//			if (!bToggleState)
-//			{
-//				ILCGimmickInterface::Execute_ReturnToInitialState(this);
-//			}
-//		}
-//		break;
-//
-//	case EGimmickActivationType::ActivateAfterDelay:
-//		GetWorld()->GetTimerManager().ClearTimer(ActivationDelayHandle);
-//		break;
-//
-//	default:
-//		break;
-//	}
-//
-//}
 
 void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -249,7 +99,6 @@ void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor*
 
 	if (ActivationType != EGimmickActivationType::ActivateWhileStepping && Elapsed < CooldownTime)
 	{
-		//LOG_Art(Log, TEXT("[트리거] 쿨타임 진행 중 → 무시 (%.2f/%.2f)"), Elapsed, CooldownTime);
 		return;
 	}
 
@@ -261,94 +110,16 @@ void ALCBaseGimmick::OnTriggerEnter(UPrimitiveComponent* OverlappedComp, AActor*
 	switch (ActivationType)
 	{
 	case EGimmickActivationType::ActivateOnStep:
-	{
-		if (bCallReturnToInitialStateInsteadOfActivate)
-		{
-			ILCGimmickInterface::Execute_ReturnToInitialState(this);
-			for (AActor* Target : LinkedTargets)
-			{
-				ILCGimmickInterface::Execute_ReturnToInitialState(Target);
-			}
-		}
-		else
-		{
-			ILCGimmickInterface::Execute_ActivateGimmick(this);
-			for (AActor* Target : LinkedTargets)
-			{
-				ILCGimmickInterface::Execute_ActivateGimmick(Target);
-			}
-		}
-		LastActivatedTime = CurrentTime;
-	}
-	break;
+		HandleActivateOnStep();
+		break;
 
 	case EGimmickActivationType::ActivateWhileStepping:
-	{
-		if (OverlappingActors.Num() >= RequiredCount)
-		{
-			if (bCallReturnToInitialStateInsteadOfActivate)
-			{
-				ILCGimmickInterface::Execute_ReturnToInitialState(this);
-
-				for (AActor* Target : LinkedTargets)
-				{
-					if (IsValid(Target))
-					{
-						ILCGimmickInterface::Execute_ReturnToInitialState(Target);
-					}
-				}
-			}
-			else
-			{
-				ILCGimmickInterface::Execute_ActivateGimmick(this);
-
-				for (AActor* Target : LinkedTargets)
-				{
-					if (IsValid(Target))
-					{
-						ILCGimmickInterface::Execute_ActivateGimmick(Target);
-					}
-				}
-			}
-		}
-	}
-	break;
+		HandleActivateWhileStepping();
+		break;
 
 	case EGimmickActivationType::ActivateAfterDelay:
-	{
-		if (OverlappingActors.Num() >= RequiredCount)
-		{
-			GetWorld()->GetTimerManager().SetTimer(
-				ActivationDelayHandle,
-				[this]()
-				{
-					if (OverlappingActors.Num() >= RequiredCount)
-					{
-						const float CurrentTime = GetWorld()->GetTimeSeconds();
-						const float Elapsed = CurrentTime - LastActivatedTime;
-
-						if (Elapsed >= CooldownTime)
-						{
-							if (bCallReturnToInitialStateInsteadOfActivate)
-							{
-								ILCGimmickInterface::Execute_ReturnToInitialState(this);
-							}
-							else
-							{
-								ILCGimmickInterface::Execute_ActivateGimmick(this);
-							}
-
-							LastActivatedTime = CurrentTime;
-						}
-						// else { LOG_Art(Log, TEXT("[딜레이] 쿨타임 중 → 작동 안함")); }
-					}
-				},
-				ActivationDelay,
-				false
-			);
-		}
-	}
-	break;
+		HandleActivateAfterDelay();
+		break;
 
 	default:
 		break;
@@ -411,6 +182,84 @@ void ALCBaseGimmick::OnTriggerExit(UPrimitiveComponent* OverlappedComp, AActor* 
 	}
 }
 
+void ALCBaseGimmick::HandleActivateOnStep()
+{
+	if (bCallReturnToInitialStateInsteadOfActivate)
+	{
+		ILCGimmickInterface::Execute_ReturnToInitialState(this);
+		for (AActor* Target : LinkedTargets)
+		{
+			ILCGimmickInterface::Execute_ReturnToInitialState(Target);
+		}
+	}
+	else
+	{
+		ILCGimmickInterface::Execute_ActivateGimmick(this);
+		for (AActor* Target : LinkedTargets)
+		{
+			ILCGimmickInterface::Execute_ActivateGimmick(Target);
+		}
+	}
+	LastActivatedTime = GetWorld()->GetTimeSeconds();
+}
+
+void ALCBaseGimmick::HandleActivateWhileStepping()
+{
+	if (OverlappingActors.Num() >= RequiredCount)
+	{
+		if (bCallReturnToInitialStateInsteadOfActivate)
+		{
+			ILCGimmickInterface::Execute_ReturnToInitialState(this);
+			for (AActor* Target : LinkedTargets)
+			{
+				ILCGimmickInterface::Execute_ReturnToInitialState(Target);
+			}
+		}
+		else
+		{
+			ILCGimmickInterface::Execute_ActivateGimmick(this);
+			for (AActor* Target : LinkedTargets)
+			{
+				ILCGimmickInterface::Execute_ActivateGimmick(Target);
+			}
+		}
+	}
+}
+
+void ALCBaseGimmick::HandleActivateAfterDelay()
+{
+	if (OverlappingActors.Num() >= RequiredCount)
+	{
+		GetWorld()->GetTimerManager().SetTimer(
+			ActivationDelayHandle,
+			[this]()
+			{
+				if (OverlappingActors.Num() >= RequiredCount)
+				{
+					const float CurrentTime = GetWorld()->GetTimeSeconds();
+					const float Elapsed = CurrentTime - LastActivatedTime;
+
+					if (Elapsed >= CooldownTime)
+					{
+						if (bCallReturnToInitialStateInsteadOfActivate)
+						{
+							ILCGimmickInterface::Execute_ReturnToInitialState(this);
+						}
+						else
+						{
+							ILCGimmickInterface::Execute_ActivateGimmick(this);
+						}
+
+						LastActivatedTime = CurrentTime;
+					}
+				}
+			},
+			ActivationDelay,
+			false
+		);
+	}
+}
+
 bool ALCBaseGimmick::IsValidActivator(AActor* OtherActor) const
 {
 	if (!IsValid(OtherActor)) return false;
@@ -429,6 +278,23 @@ bool ALCBaseGimmick::IsValidActivator(AActor* OtherActor) const
 }
 
 #pragma endregion
+
+//void ALCBaseGimmick::ScheduleReturn(float Delay)
+//{
+//	if (Delay <= 0.f)
+//	{
+//		ReturnToInitialState_Implementation();
+//		return;
+//	}
+//
+//	GetWorld()->GetTimerManager().SetTimer(
+//		ReturnTimerHandle,
+//		this,
+//		&ALCBaseGimmick::ReturnToInitialState_Implementation,
+//		Delay,
+//		false
+//	);
+//}
 
 #pragma region Interact
 
@@ -481,36 +347,6 @@ bool ALCBaseGimmick::IsGimmickBusy_Implementation()
 FString ALCBaseGimmick::GetInteractMessage_Implementation() const
 {
 	return InteractMessage;
-}
-
-#pragma endregion
-
-#pragma region Condition / Auto
-
-bool ALCBaseGimmick::IsConditionMet_Implementation() const
-{
-	return false;
-}
-
-void ALCBaseGimmick::CheckConditionAndActivate()
-{
-	if (!HasAuthority())
-	{
-		return;
-	}
-
-	if (IsConditionMet())
-	{
-		ILCGimmickInterface::Execute_ActivateGimmick(this);
-	}
-}
-
-void ALCBaseGimmick::ActivateLoopedGimmick()
-{
-	if (ILCGimmickInterface::Execute_CanActivate(this))
-	{
-		ILCGimmickInterface::Execute_ActivateGimmick(this);
-	}
 }
 
 #pragma endregion
@@ -603,8 +439,10 @@ void ALCBaseGimmick::ReturnToInitialState_Implementation()
 
 void ALCBaseGimmick::Multicast_StartCutscene_Implementation()
 {
-	if (!CutsceneCamera) return;
-
+	if (!CutsceneCamera) 
+	{
+		return;
+	}
 	// 모든 플레이어 컨트롤러에 대해 컷신 시작
 	if (UWorld* World = GetWorld())
 	{
@@ -620,20 +458,31 @@ void ALCBaseGimmick::Multicast_StartCutscene_Implementation()
 
 void ALCBaseGimmick::Multicast_StartCutsceneForSpecificPlayer_Implementation(APlayerController* PC)
 {
-	if (!CutsceneCamera || !PC) return;
-
+	if (!CutsceneCamera || !PC) 
+	{
+		return;
+	}
 	StartCutsceneForPlayer(PC);
 }
 
 void ALCBaseGimmick::StartCutsceneForPlayer(APlayerController* PC)
 {
-	if (!PC || !CutsceneCamera) return;
+	if (!PC || !CutsceneCamera)
+	{
+		return;
+	}
 
 	// 로컬 플레이어만 컷신 처리 (네트워크 환경에서 각자의 화면만 제어)
-	if (!PC->IsLocalController()) return;
+	if (!PC->IsLocalController())
+	{
+		return;
+	}
 
 	// 이미 컷신 중이면 무시
-	if (IsPlayingCutscene()) return;
+	if (IsPlayingCutscene())
+	{
+		return;
+	}
 
 	// 현재 카메라 저장 (복원용)
 	OriginalViewTarget = PC->GetViewTarget();
@@ -668,13 +517,22 @@ void ALCBaseGimmick::StartCutsceneForPlayer(APlayerController* PC)
 
 void ALCBaseGimmick::EndCutsceneForPlayer(APlayerController* PC)
 {
-	if (!PC) return;
+	if (!PC)
+	{
+		return;
+	}
 
 	// 로컬 플레이어만 처리
-	if (!PC->IsLocalController()) return;
+	if (!PC->IsLocalController())
+	{
+		return;
+	}
 
 	// 컷신 중이 아니면 무시
-	if (!IsPlayingCutscene()) return;
+	if (!IsPlayingCutscene())
+	{
+		return;
+	}
 
 	// 원래 카메라로 복원
 	if (OriginalViewTarget)
@@ -718,7 +576,10 @@ bool ALCBaseGimmick::IsPlayingCutscene() const
 
 void ALCBaseGimmick::StopCutscene()
 {
-	if (!IsPlayingCutscene()) return;
+	if (!IsPlayingCutscene())
+	{
+		return;
+	}
 
 	// 모든 플레이어에 대해 컷신 강제 종료
 	if (UWorld* World = GetWorld())
@@ -773,7 +634,9 @@ void ALCBaseGimmick::EndPlay(const EEndPlayReason::Type EndPlayReason)
 float ALCBaseGimmick::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
 	if (!HasAuthority() || !bDestructibleByGun)
+	{
 		return 0.f;
+	}
 
 	CurrentHealth -= DamageAmount;
 

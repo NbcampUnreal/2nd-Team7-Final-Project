@@ -68,10 +68,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Loop")
 	float BackwardRotationDuration;
 
-	/** 복귀 이동 완료 시 루프 재시작 처리 */
 	void CompleteReturn();
-
-	/** 복귀 회전 완료 시 루프 재시작 처리 */
 	void CompleteRotationReturn();
 
 protected:
@@ -79,7 +76,6 @@ protected:
 
 	UFUNCTION()
 	void HandleLoop();
-
 	void ScheduleNextLoop();
 
 public:
@@ -96,4 +92,5 @@ protected:
 
 	virtual void CompleteMovement() override;
 	virtual void CompleteRotation() override;
+
 };

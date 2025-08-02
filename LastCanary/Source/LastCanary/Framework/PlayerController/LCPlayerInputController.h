@@ -162,6 +162,6 @@ public:
 	void ApplyInputMappingContext(UInputMappingContext* IMC);
 	
 
-	void OnUIClicked(); // 클릭 전달받는 함수
-	void OnUIReleased(); // 클릭 전달받는 함수
+	//void OnUIClicked(); // 클릭 전달받는 함수
+	//void OnUIReleased(); // 클릭 전달받는 함수
 };

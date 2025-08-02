@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Actor/Gimmick/LCRotationGimmick.h"
+#include "Actor/Gimmick/LCTransformGimmick.h"
 #include "LCRotationLuxStatue.generated.h"
 
 class USoundBase;
@@ -14,7 +14,7 @@ class UAudioComponent;
  * 
  */
 UCLASS()
-class LASTCANARY_API ALCRotationLuxStatue : public ALCRotationGimmick
+class LASTCANARY_API ALCRotationLuxStatue : public ALCTransformGimmick
 {
 	GENERATED_BODY()
 
