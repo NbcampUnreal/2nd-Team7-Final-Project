@@ -108,8 +108,10 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UCharacterCameraControlComponent* CameraControlComponent;
 
+	/*
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UCharacterDisplayComponent* DisplayComponent;
+	*/
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UCharacterNameWidgetComponent* NameComponent;
