@@ -70,9 +70,6 @@ void UCharacterStaminaComponent::ConsumeStamina(float Amount)
 	}
 	float Stamina = FMath::Clamp(CurrentStamina - Amount, 0.f, MaxStamina);
 	SetStamina(Stamina);
-
-	UE_LOG(LogTemp, Log, TEXT("Consumed Stamina: %f | Current: %f / %f"),
-		Amount, CurrentStamina, MaxStamina);
 }
 
 void UCharacterStaminaComponent::ConsumeStaminaOnJump()
@@ -92,9 +89,6 @@ void UCharacterStaminaComponent::ConsumeStaminaOnJump()
 
 	float Stamina = FMath::Clamp(CurrentStamina - JumpStaminaCost, 0.f, MaxStamina);
 	SetStamina(Stamina);
-
-	UE_LOG(LogTemp, Log, TEXT("Consumed Stamina: %f | Current: %f / %f"),
-		JumpStaminaCost, CurrentStamina, MaxStamina);
 
 	StopStaminaRecovery();
 	StartStaminaRecoverAfterDelayOnJump();
@@ -152,8 +146,6 @@ void UCharacterStaminaComponent::TickStaminaRecovery()
 		return;
 	}
 	float Stamina = FMath::Clamp(CurrentStamina + StaminaRecoveryRate * 0.1f, 0.f, MaxStamina);
-	UE_LOG(LogTemp, Log, TEXT("Recovered Stamina: %f (Current: %f, Rate: %f, Max: %f)"),
-		Stamina, CurrentStamina, StaminaRecoveryRate, MaxStamina);
 	SetStamina(Stamina);
 	UpdateStaminaUI();
 }

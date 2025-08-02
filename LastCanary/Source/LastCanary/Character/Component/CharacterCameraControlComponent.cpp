@@ -4,6 +4,7 @@
 
 void UCharacterCameraControlComponent::BeginPlay()
 {
+	Super::BeginPlay();
 
 }
 

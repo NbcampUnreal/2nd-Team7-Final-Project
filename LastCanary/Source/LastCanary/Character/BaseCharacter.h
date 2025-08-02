@@ -34,6 +34,9 @@ class UCharacterCustomizationComponent;
 class UCharacterInteractionComponent;
 class UCharacterFootstepNoiseComponent;
 class UCharacterCameraControlComponent;
+class UCharacterDisplayComponent;
+class UCharacterNameWidgetComponent;
+class UCharacterAttackComponent;
 
 UENUM(BlueprintType)
 enum class EAnimationType : uint8
@@ -66,13 +69,6 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	UCameraComponent* Camera;
 
-	// SpringArm 컴포넌트 for ADS
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
-	USpringArmComponent* ADSSpringArm; //Aim Down Sight
-
-	// Camera 컴포넌트 for ADS
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
-	UCameraComponent* ADSCamera;
 	// 캐릭터 인벤토리 컴포넌트
 	UPROPERTY(VisibleAnywhere, Category = "Inventory")
 	UToolbarInventoryComponent* ToolbarInventoryComponent;
@@ -112,6 +108,14 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UCharacterCameraControlComponent* CameraControlComponent;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UCharacterDisplayComponent* DisplayComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UCharacterNameWidgetComponent* NameComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UCharacterAttackComponent* AttackComponent;
 public:
 	UFUNCTION()
 	virtual float GetCurrentNoiseLevel() const override;
@@ -1114,6 +1118,8 @@ public:
 	void Server_UpdateNameWidget_Implementation(); // 서버 위젯 업데이트용 함수
 
 	/** 머리 위에 표시할 3D 위젯 컴포넌트 */
+	/*
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
 	UWidgetComponent* NameWidgetComponent;
+	*/
 };

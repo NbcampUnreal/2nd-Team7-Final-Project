@@ -55,6 +55,9 @@
 #include "Character/Component/CharacterInteractionComponent.h"
 #include "Character/Component/CharacterFootstepNoiseComponent.h"
 #include "Character/Component/CharacterCameraControlComponent.h"
+#include "Character/Component/CharacterDisplayComponent.h"
+#include "Character/Component/CharacterNameWidgetComponent.h"
+#include "Character/Component/CharacterAttackComponent.h"
 
 
 ABaseCharacter::ABaseCharacter()
@@ -116,12 +119,6 @@ ABaseCharacter::ABaseCharacter()
 	ThirdPersonArrow = CreateDefaultSubobject<UArrowComponent>(TEXT("FirstPersonArrow"));
 	ThirdPersonArrow->SetupAttachment(SpringArm);
 
-	ADSSpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("ADSSpringArm"));
-	ADSSpringArm->SetupAttachment(GetMesh(), TEXT("FirstPersonCamera"));
-
-	ADSCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("ADSCamera"));
-	ADSCamera->SetupAttachment(ADSSpringArm);  // SpringArm에 카메라 부착
-
 	SpectatorSpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpectatorSpringArm"));
 	SpectatorSpringArm->SetupAttachment(GetMesh(), TEXT("SpectatorCamera"));
 
@@ -145,26 +142,6 @@ ABaseCharacter::ABaseCharacter()
 
 	ToolbarInventoryComponent = CreateDefaultSubobject<UToolbarInventoryComponent>(TEXT("ToolbarInventoryComponent"));
 
-	// 이름 3D 위젯
-	NameWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("NameWidget"));
-	NameWidgetComponent->SetupAttachment(GetMesh());
-	NameWidgetComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 100.0f)); 
-	NameWidgetComponent->SetWidgetSpace(EWidgetSpace::World);
-	NameWidgetComponent->SetDrawSize(FVector2D(200, 50));
-	NameWidgetComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	NameWidgetComponent->SetIsReplicated(false); 
-	NameWidgetComponent->SetWidgetSpace(EWidgetSpace::World);
-	NameWidgetComponent->SetTickWhenOffscreen(true);
-	NameWidgetComponent->SetTwoSided(true);
-	NameWidgetComponent->SetUsingAbsoluteRotation(false);
-	NameWidgetComponent->SetPivot(FVector2D(0.5f, 0.5f));
-
-	// CustomDepth 설정 (벽 판별에 중요)
-	NameWidgetComponent->SetRenderCustomDepth(true);
-	NameWidgetComponent->SetCustomDepthStencilValue(1); // 머티리얼에서 사용할 값
-
-
-	// .cpp - 생성자
 	KickHitBox = CreateDefaultSubobject<UBoxComponent>(TEXT("KickHitBox"));
 	KickHitBox->SetupAttachment(GetMesh(), TEXT("foot_l")); // or "foot_l"
 	KickHitBox->SetBoxExtent(FVector(20, 30, 30));
@@ -182,6 +159,9 @@ ABaseCharacter::ABaseCharacter()
 	CustomizationComponent = CreateDefaultSubobject<UCharacterCustomizationComponent>(TEXT("CustomizationComponent"));
 	FootstepNoiseComponent = CreateDefaultSubobject<UCharacterFootstepNoiseComponent>(TEXT("FootstepNoiseComponent"));
 	CameraControlComponent = CreateDefaultSubobject<UCharacterCameraControlComponent>(TEXT("CameraControlComponent"));
+	DisplayComponent = CreateDefaultSubobject<UCharacterDisplayComponent>(TEXT("DisplayComponent"));
+	NameComponent = CreateDefaultSubobject<UCharacterNameWidgetComponent>(TEXT("NameWidgetComponent"));
+	AttackComponent = CreateDefaultSubobject<UCharacterAttackComponent>(TEXT("AttackComponent"));
 }
 
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
@@ -237,32 +217,26 @@ void ABaseCharacter::BeginPlay()
 	}
 	SetMovementSetting();
 
-	if (NameWidgetComponent && IsValid(NameWidgetComponent->GetWidget()))
+	if (NameComponent)
 	{
-		UUserWidget* Widget = NameWidgetComponent->GetWidget();
-		if (Widget)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("Widget Class: %s"), *Widget->GetClass()->GetName());
-		}
+		NameComponent->InitializeWidget();
+	}
 
-		if (UPlayerNameWidget* NameWidget = Cast<UPlayerNameWidget>(NameWidgetComponent->GetWidget()))
+	if (NameComponent && IsValid(NameComponent->GetWidget()))
+	{
+		APlayerState* PS = GetPlayerState();
+		if (IsValid(PS))
 		{
-			// PlayerState에서 이름 가져오기
-			APlayerState* PS = GetPlayerState();
-			if (IsValid(PS))
-			{
-				NameWidget->SetPlayerName(PS->GetPlayerName());
-			}
+			NameComponent->SetPlayerName(PS->GetPlayerName());
 		}
 
 		if (IsLocallyControlled())
 		{
-			NameWidgetComponent->SetVisibility(false, true);
-		}	
-		NameWidgetComponent->SetCastShadow(false);
-		NameWidgetComponent->CastShadow = false;
-	}
+			NameComponent->SetWidgetVisibility(false);
+		}
 
+		NameComponent->SetCastShadowEnabled(false);
+	}
 
 	//ApplyCustomization(CharacterMeshMap);
 	SetCharacterPoseSynchronization();
@@ -306,6 +280,8 @@ void ABaseCharacter::BeginPlay()
 		AnimationComponent->OnInteractionNotify.AddDynamic(this, &ABaseCharacter::OnInteractionFromNotify);
 		AnimationComponent->OnUseItemNotify.AddDynamic(this, &ABaseCharacter::OnUseItemFromNotify);
 	}
+
+
 }
 
 void ABaseCharacter::Server_ClientLogin_Implementation()
@@ -361,31 +337,9 @@ void ABaseCharacter::InitializePlayerLocalSettings()
 
 void ABaseCharacter::InitializePlayerNameWidget()
 {
-	//로컬 환경에서만
-	if (!IsLocallyControlled())
+	if (NameComponent)
 	{
-		return;
-	}
-
-	APlayerState* PS = GetPlayerState();
-	if (IsValid(PS) && IsValid(NameWidgetComponent)) // 플레이어 스테이트가 존재하며, 네임 위젯에 접근할 수 있을 때만
-	{
-		UpdateNameWidget();
-		if (IsValid(NameWidgetComponent))
-		{
-			NameWidgetComponent->SetVisibility(false, true);
-		}
-	}
-	else //존재하지 않으면 몇초 뒤 다시 시도
-	{
-		// PlayerState가 아직 준비 안 됐으므로 타이머로 재시도
-		GetWorldTimerManager().SetTimer(
-			RetryInitializeNameWidgetHandle,
-			this,
-			&ABaseCharacter::InitializePlayerNameWidget,
-			0.2f,    // 0.2초 후에 재시도
-			false    // 반복 호출 아님 (한 번만 실행)
-		);
+		NameComponent->InitializeNameWidget();
 	}
 }
 
@@ -959,6 +913,8 @@ void ABaseCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
+
+	/*
 	if (NameWidgetComponent == nullptr)
 	{
 		return;
@@ -994,6 +950,7 @@ void ABaseCharacter::Tick(float DeltaSeconds)
 			NameWidgetComponent->SetWorldRotation(YawOnlyRotation);
 		}
 	}
+	*/
 }// 전환이 완료되었는지 확인하는 유틸리티 함수 (선택사항)
 
 
@@ -3948,16 +3905,25 @@ void ABaseCharacter::OnRep_PlayerState()
 	Super::OnRep_PlayerState();
 	LOG_Char_WARNING(TEXT("[OnRep_PlayerState] for %s"), *GetName());
 
+	/*
 	UpdateNameWidget(); // PlayerState가 복제될 때 UI 갱신
 		
 	if (IsLocallyControlled() && NameWidgetComponent)
 	{
 		NameWidgetComponent->SetVisibility(false, true);
 	}
+	*/
+	if (APlayerState* PS = GetPlayerState())
+	{
+		if (NameComponent)
+		{
+			NameComponent->TryInitializeOnPlayerState(PS, IsLocallyControlled(), HasAuthority());
+		}
+	}
 
 	if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
 	{
-		SetCustomizationData(PS->GetCustomizationData()); 
+		SetCustomizationData(PS->GetCustomizationData());
 		ApplyCustomization(CharacterCustomizationData);
 	}
 }
@@ -3980,12 +3946,12 @@ void ABaseCharacter::Server_UpdateNameWidget_Implementation()
 
 void ABaseCharacter::ApplyNameToWidget()
 {
-	if (!IsValid(NameWidgetComponent))
+	if (!IsValid(NameComponent))
 	{
 		return;
 	}
 
-	UUserWidget* Widget = NameWidgetComponent->GetWidget();
+	UUserWidget* Widget = NameComponent->GetWidget();
 	if (!IsValid(Widget))
 	{
 		return;
@@ -4020,11 +3986,15 @@ void ABaseCharacter::ApplyNameToWidget()
 
 void ABaseCharacter::TurnOffNameWidget()
 {
-	if (!IsValid(NameWidgetComponent))
+	if (!IsValid(NameComponent))
 	{
 		return;
 	}
-	NameWidgetComponent->SetVisibility(false, true);
+	if (NameComponent)
+	{
+		NameComponent->HideNameWidget();
+	}
+	//NameWidgetComponent->SetVisibility(false, true);
 }
 
 void ABaseCharacter::Client_TurnOffNameWidget_Implementation()
