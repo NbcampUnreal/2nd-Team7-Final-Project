@@ -58,6 +58,8 @@
 #include "Character/Component/CharacterDisplayComponent.h"
 #include "Character/Component/CharacterNameWidgetComponent.h"
 #include "Character/Component/CharacterAttackComponent.h"
+#include "Character/Component/CameraRecoilComponent.h"
+#include "Character/Component/CharacterInputComponent.h"
 
 
 ABaseCharacter::ABaseCharacter()
@@ -125,11 +127,6 @@ ABaseCharacter::ABaseCharacter()
 	SpectatorCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("SpectatorCamera"));
 	SpectatorCamera->SetupAttachment(SpectatorSpringArm);  // SpringArm에 카메라 부착
 
-	CustomPostProcessComponent = CreateDefaultSubobject<UPostProcessComponent>(TEXT("PostProcess"));
-	CustomPostProcessComponent->bUnbound = false; // 시야 내에서만 적용
-	CustomPostProcessComponent->SetupAttachment(Camera); // 카메라에 붙이기
-
-
 	// 캐릭터 클래스의 생성자 함수 내부 
 	FieldOfView = Camera->FieldOfView;
 
@@ -159,9 +156,11 @@ ABaseCharacter::ABaseCharacter()
 	CustomizationComponent = CreateDefaultSubobject<UCharacterCustomizationComponent>(TEXT("CustomizationComponent"));
 	FootstepNoiseComponent = CreateDefaultSubobject<UCharacterFootstepNoiseComponent>(TEXT("FootstepNoiseComponent"));
 	CameraControlComponent = CreateDefaultSubobject<UCharacterCameraControlComponent>(TEXT("CameraControlComponent"));
-	//DisplayComponent = CreateDefaultSubobject<UCharacterDisplayComponent>(TEXT("DisplayComponent"));
+	DisplayComponent = CreateDefaultSubobject<UCharacterDisplayComponent>(TEXT("DisplayComponent"));
 	NameComponent = CreateDefaultSubobject<UCharacterNameWidgetComponent>(TEXT("NameWidgetComponent"));
 	AttackComponent = CreateDefaultSubobject<UCharacterAttackComponent>(TEXT("AttackComponent"));
+	RecoilComponent = CreateDefaultSubobject<UCameraRecoilComponent>(TEXT("RecoilComponent"));
+	InputControlComponent = CreateDefaultSubobject<UCharacterInputComponent>(TEXT("InputControlComponent "));
 }
 
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
@@ -204,17 +203,6 @@ void ABaseCharacter::BeginPlay()
 
 	EnableStencilForAllMeshes(2);
 
-
-	if (IsLocallyControlled() && CustomPostProcessComponent)
-	{
-		CustomPostProcessComponent->Settings.AutoExposureMethod = EAutoExposureMethod::AEM_Histogram;
-		CustomPostProcessComponent->Settings.bOverride_AutoExposureMinBrightness = true;
-		CustomPostProcessComponent->Settings.bOverride_AutoExposureMaxBrightness = true;
-		CustomPostProcessComponent->Settings.bOverride_AutoExposureBias = true;
-		// 블렌드 웨이트 1.0으로 보정 적용 보장
-		CustomPostProcessComponent->BlendWeight = 1.0f;
-		CustomPostProcessComponent->Priority = 100.0f;
-	}
 	SetMovementSetting();
 
 	if (NameComponent)
@@ -343,35 +331,12 @@ void ABaseCharacter::InitializePlayerNameWidget()
 
 void ABaseCharacter::InitializePlayerCustomizing()
 {
-	//로컬 환경에서만
 	if (!IsLocallyControlled())
 	{
 		return;
 	}
 
-	APlayerState* PS = GetPlayerState();
-	if (IsValid(PS)) // 플레이어 스테이트가 존재하면
-	{
-		LOG_Char_WARNING(TEXT("커스터마이징 데이터 로드"));
-		CharacterCustomizationData = ULCLocalPlayerSaveGame::LoadCustomizationData(GetWorld());
-
-		//2. 로드한 커스터마이징 데이터를 적용
-		ApplyCustomization(CharacterCustomizationData);
-
-		//3. 서버로 커스터마이징 데이터 전송 (서버 RPC)
-		Server_SetCustomizationData(CharacterCustomizationData);
-	}
-	else //존재하지 않으면 몇초 뒤 다시 시도
-	{
-		// PlayerState가 아직 준비 안 됐으므로 타이머로 재시도
-		GetWorldTimerManager().SetTimer(
-			RetryInitializeCustomizingHandle,
-			this,
-			&ABaseCharacter::InitializePlayerCustomizing,
-			0.2f,    // 0.2초 후에 재시도
-			false    // 반복 호출 아님 (한 번만 실행)
-		);
-	}
+	CustomizationComponent->InitializeCustomization();
 }
 
 void ABaseCharacter::SetCharacterPoseSynchronization()
@@ -390,170 +355,34 @@ void ABaseCharacter::SetCharacterPoseSynchronization()
 
 float ABaseCharacter::GetCurrentNoiseLevel() const
 {
-	return FootstepNoiseComponent ? FootstepNoiseComponent->GetCurrentNoiseLevel() : 0.f;
+	return FootstepNoiseComponent ? FootstepNoiseComponent->GetCurrentFootstepNoiseLevel() : 0.f;
 }
 
 FCharacterCustomizationData ABaseCharacter::GetCustomizationData()
 {
-	return CharacterCustomizationData;
+	if (CustomizationComponent)
+	{
+		return CustomizationComponent->GetCustomizationData();
+	}
+	return FCharacterCustomizationData();
 }
 
 void ABaseCharacter::SetCustomizationData(const FCharacterCustomizationData& CustomizingData)
 {
-	CharacterCustomizationData = CustomizingData;
-}
-
-void ABaseCharacter::Server_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData)  //이 부분의 안의 내용을 커스터마이징 컴포넌트의 함수로 변경하기
-{
-	LOG_Char_WARNING(TEXT("캐릭터 커스터마이징 데이터 서버에 전달됨"));
-	//1. 서버의 캐릭터에 커스터마이징 정보 저장 (혹시 모르니까)
-	CharacterCustomizationData = CustomizingData;
-
-	//2. 서버 및 모든 클라이언트에 커스터마이징 데이터 저장 및 적용
-	Multicast_SetCustomizationData(CustomizingData);
-
-	//3. 플레이어 스테이트에 커스터마이징 값 저장
-	if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+	if (CustomizationComponent)
 	{
-		PS->SetCustomizationData(CustomizingData);
+		CustomizationComponent->SetCustomizationData(CustomizingData);
 	}
-
-	//4. 게이트 퇴장시를 위해 설정 완료되었음을 게임모드에 전파
-	CheckPlayerCharacterIsReadyToGameMode();
-}
-
-void ABaseCharacter::Multicast_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData)
-{
-	LOG_Char_WARNING(TEXT("멀티캐스트로 전파 "));
-
-	//1. 각 클라이언트 커스터마이징 정보 저장
-	CharacterCustomizationData = CustomizingData;
-
-	//2. 받은 커스터마이징 정보를 토대로 커스터마이징 적용
-	ApplyCustomization(CharacterCustomizationData);
-}
-
-void ABaseCharacter::Server_UpdateCustomizationData_Implementation()
-{
-	LOG_Char_WARNING(TEXT("서버에서 전체에게 전파 준비"));
-
-	Multicast_SetCustomizationData(CharacterCustomizationData);
 }
 
 void ABaseCharacter::ApplyCustomization(const FCharacterCustomizationData CustomizationData)
 {
 	LOG_Char_WARNING(TEXT("캐릭터 커스터마이징 어플라이"));
-	if (!CharacterMeshMap || !CharacterMeshMap->IsValidLowLevel())
+	if (CustomizationComponent)
 	{
-		return;
-	}
-
-	int BodyId = CustomizationData.DefaultBodyID;
-	int HeadId = CustomizationData.DefaultBodyID;
-	int HelmetId = CustomizationData.HelmetID;
-	int GloveId = CustomizationData.GloveID;
-	int JacketId = CustomizationData.JacketID;
-	int PantsId = CustomizationData.PantsID;
-	int BeltsId = CustomizationData.BeltsID;
-	int ArmorId = CustomizationData.ArmorID;
-	int BootsId = CustomizationData.BootsID;
-	// Body
-	USkeletalMesh* BodySkeletalMesh = CharacterMeshMap->GetMeshByID(CharacterMeshMap->DefaultBodyMeshes, BodyId);
-	USkeletalMesh* HeadSkeletalMesh = CharacterMeshMap->GetMeshByID(CharacterMeshMap->DefaultHeadMeshes, HeadId);
-	USkeletalMesh* HelmetSkeletalMesh = CharacterMeshMap->GetMeshByID(CharacterMeshMap->HelmetMeshes, HelmetId);
-	USkeletalMesh* GloveSkeletalMesh = CharacterMeshMap->GetMeshByID(CharacterMeshMap->GloveMeshes, GloveId);
-	USkeletalMesh* JacketSkeletalMesh = CharacterMeshMap->GetMeshByID(CharacterMeshMap->JacketMeshes_OwnerSee, JacketId);
-	USkeletalMesh* JacketSkeletalMesh_OwnerNosee = CharacterMeshMap->GetMeshByID(CharacterMeshMap->JacketMeshes, JacketId);
-	USkeletalMesh* PantsSkeletalMesh = CharacterMeshMap->GetMeshByID(CharacterMeshMap->PantsMeshes, PantsId);
-	USkeletalMesh* BeltsSkeletalMesh = CharacterMeshMap->GetMeshByID(CharacterMeshMap->BeltsMeshes, BeltsId);
-	USkeletalMesh* ArmorSkeletalMesh = CharacterMeshMap->GetMeshByID(CharacterMeshMap->ArmorMeshes, ArmorId);
-	USkeletalMesh* BootsSkeletalMesh = CharacterMeshMap->GetMeshByID(CharacterMeshMap->BootsMeshes, BootsId);
-
-	SetPartMesh(GetMesh(), BodySkeletalMesh);
-	SetPartMesh(CustomHeadMesh, HeadSkeletalMesh);
-	SetPartMesh(CustomHelmetMesh, HelmetSkeletalMesh);
-	SetPartMesh(CustomGloveMesh, GloveSkeletalMesh);
-	SetPartMesh(CustomJacketMesh_OwnerNoSee, JacketSkeletalMesh_OwnerNosee);
-	SetPartMesh(CustomJacketMesh_OwnerSee, JacketSkeletalMesh);
-	SetPartMesh(CustomPantsMesh, PantsSkeletalMesh);
-	SetPartMesh(CustomBeltsMesh, BeltsSkeletalMesh);
-	SetPartMesh(CustomArmorMesh, ArmorSkeletalMesh);
-	SetPartMesh(CustomBootsMesh, BootsSkeletalMesh);
-
-
-
-	// 전제: CustomizationData 안에 머티리얼 ID도 들어있음
-	int BodyMatId = CustomizationData.DefaultBodyMaterialID;
-	int HeadMatId = CustomizationData.DefaultBodyMaterialID;
-	int HelmetMatId = CustomizationData.HelmetMaterialID;
-	int GloveMatId = CustomizationData.GloveMaterialID;
-	int JacketMatId = CustomizationData.JacketMaterialID;
-	int PantsMatId = CustomizationData.PantsMaterialID;
-	int BeltsMatId = CustomizationData.BeltsMaterialID;
-	int ArmorMatId = CustomizationData.ArmorMaterialID;
-	int BootsMatId = CustomizationData.BootsMaterialID;
-	int FlagMatId = CustomizationData.FlagMaterialID;
-
-	// 머티리얼도 매핑용 에셋에서 가져옴 (이미 블루프린트에서 세팅되어 있다고 가정)
-	UMaterialInterface* BodyMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->DefaultBodyMaterials, BodyMatId);
-	UMaterialInterface* HeadMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->DefaultBodyMaterials, HeadMatId);
-	UMaterialInterface* HelmetMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->HelmetMaterials, HelmetMatId);
-	UMaterialInterface* GloveMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->GloveMaterials, GloveMatId);
-	UMaterialInterface* JacketMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->JacketMaterials, JacketMatId);
-	UMaterialInterface* PantsMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->PantsMaterials, PantsMatId);
-	UMaterialInterface* BeltsMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->BeltsMaterials, BeltsMatId);
-	UMaterialInterface* ArmorMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->ArmorMaterials, ArmorMatId);
-	UMaterialInterface* BootsMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->BootsMaterials, BootsMatId);
-	UMaterialInterface* FlagMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->FlagMaterials, FlagMatId);
-
-	// 머티리얼 적용 함수 호출 (보통 0번 슬롯만 적용한다고 가정)
-	SetPartMaterial(GetMesh(), 0, BodyMat);
-	SetPartMaterial(CustomHeadMesh, 0, HeadMat);
-	SetPartMaterial(CustomHelmetMesh, 0, HelmetMat);
-	SetPartMaterial(CustomGloveMesh, 0, GloveMat);
-	SetPartMaterial(CustomJacketMesh_OwnerNoSee, 0, JacketMat);
-	SetPartMaterial(CustomJacketMesh_OwnerSee, 0, JacketMat);
-	SetPartMaterial(CustomPantsMesh, 0, PantsMat);
-	SetPartMaterial(CustomBeltsMesh, 0, BeltsMat);
-	SetPartMaterial(CustomArmorMesh, 1, ArmorMat);
-	SetPartMaterial(CustomBootsMesh, 0, BootsMat);
-	
-	//플래그
-	SetPartMaterial(CustomHelmetMesh, 1, FlagMat);
-	SetPartMaterial(CustomArmorMesh, 0, FlagMat);
-
-	SetCharacterPoseSynchronization();
-}
-
-void ABaseCharacter::SetPartMesh(USkeletalMeshComponent* Component, USkeletalMesh* LoadedMesh)
-{
-	if (!Component) return;
-
-	if (LoadedMesh)
-	{
-		Component->SetVisibility(true);
-		Component->EmptyOverrideMaterials();
-		Component->SetSkeletalMesh(LoadedMesh);
-	}
-	else
-	{
-		Component->SetLeaderPoseComponent(nullptr); // 메시 해제할 땐 잠시 끊기
-		Component->SetVisibility(false);
-		Component->SetSkeletalMesh(nullptr);
+		CustomizationComponent->ApplyCustomization(CustomizationData);
 	}
 }
-
-void ABaseCharacter::SetPartMaterial(USkeletalMeshComponent* Component, int32 MaterialIndex, UMaterialInterface* Material)
-{
-	if (!Component || !Material) return;
-
-	// 메시가 존재하고, 표시 상태일 경우에만 적용
-	if (Component && Component->IsRegistered() && Component->IsVisible() && Component->SkeletalMesh)
-	{
-		Component->SetMaterial(MaterialIndex, Material);
-	}
-}
-
 
 void ABaseCharacter::OnKickHitBoxOverlap(UPrimitiveComponent* OverlappedComp,
 	AActor* OtherActor,
@@ -622,40 +451,14 @@ void ABaseCharacter::EndKickHit()
 	KickHitBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
-float ABaseCharacter::GetBrightness()
-{
-	if (!IsValid(GetController()))
-	{
-		return 0.0f;
-	}
-	ABasePlayerController* PC = Cast<ABasePlayerController>(GetController());
-	if (!IsValid(PC))
-	{
-		return 1.0f;
-	}
-
-	return PC->BrightnessSetting;
-}
-
 void ABaseCharacter::SetBrightness(float Value)
 {
-	/*
-	float baseBrightness = FMath::Lerp(-10.0f, 10.0f, Value); // 0~1 값을 0.5~2.0 범위로 매핑
-	CustomPostProcessComponent->Settings.AutoExposureMinBrightness = baseBrightness - 0.1f;
-	CustomPostProcessComponent->Settings.AutoExposureMaxBrightness = baseBrightness + 0.1f;
-	CustomPostProcessComponent->Settings.AutoExposureBias = baseBrightness; // 유저 설정값 반영
-	*/
-	// UI 슬라이더 값: 0 ~ 100 → 0.0 ~ 1.0
 	float Normalized = FMath::Clamp(Value, 0.0f, 1.0f);
 
 	// 로그 스케일 매핑 (예: log10 스케일)
 	float BrightnessValue = MinBrightness * FMath::Pow((MaxBrightness / MinBrightness), Normalized);
 
-	CustomPostProcessComponent->Settings.AutoExposureBias = BrightnessValue;
-
-	// 옵션: Min/MaxBrightness로 clamp
-	CustomPostProcessComponent->Settings.AutoExposureMinBrightness = BrightnessValue; -0.01f;
-	CustomPostProcessComponent->Settings.AutoExposureMaxBrightness = BrightnessValue; + 0.01f;
+	DisplayComponent->ApplyBrightness(Normalized);
 }
 
 void ABaseCharacter::NotifyControllerChanged()
@@ -911,47 +714,7 @@ void ABaseCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
-
-	/*
-	if (NameWidgetComponent == nullptr)
-	{
-		return;
-	}
-
-	// 누적 시간 계산
-	
-	TimeAccumulator += DeltaSeconds;
-
-	// 0.1초마다 갱신
-	if (TimeAccumulator > 0.1f)
-	{
-		TimeAccumulator = 0.f;
-
-		// 카메라 참조
-		APlayerCameraManager* CamManager = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0);
-		if (!CamManager) return;
-
-		FVector CameraLocation = CamManager->GetCameraLocation();
-		FVector WidgetLocation = NameWidgetComponent->GetComponentLocation();
-
-		// 거리 측정
-		const float Distance = FVector::Dist(CameraLocation, WidgetLocation);
-		const float MaxVisibleDistance = 2500.f; // 25m 안일 때만 회전 처리
-
-		if (Distance < MaxVisibleDistance)
-		{
-			FRotator LookAtRotation = UKismetMathLibrary::FindLookAtRotation(WidgetLocation, CameraLocation);
-			// Pitch와 Roll 제거 → Yaw만 남김
-			FRotator YawOnlyRotation = FRotator(0.f, LookAtRotation.Yaw, 0.f);
-
-			// 적용
-			NameWidgetComponent->SetWorldRotation(YawOnlyRotation);
-		}
-	}
-	*/
 }// 전환이 완료되었는지 확인하는 유틸리티 함수 (선택사항)
-
-
 
 void ABaseCharacter::NotifyNoiseToAI(FVector Velocity)
 {
@@ -1036,32 +799,10 @@ void ABaseCharacter::MakeNoiseSoundToBoss(float Force)
 
 void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue, float Sensivity, float ZoomSensivity)
 {
-	if (bIsPlayingInteractionMontage)
+	if (InputControlComponent)
 	{
-		return;
+		InputControlComponent->Handle_LookMouse(ActionValue, Sensivity, ZoomSensivity, bIsAiming, MouseSensitivityMultiplier, MouseInvertMultiplier);
 	}
-	if (LocomotionAction == AlsLocomotionActionTags::Mantling)
-	{
-		return;
-	}
-	const FVector2f Value{ ActionValue.Get<FVector2D>() };
-
-	if (!Controller) 
-	{ 
-		return;
-	}
-	//ReduceRecoil(0.3f);
-	if (bIsAiming)
-	{
-		AddControllerYawInput(Value.X * ZoomSensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
-		AddControllerPitchInput(Value.Y * ZoomSensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
-	}
-	else
-	{
-		AddControllerYawInput(Value.X * Sensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
-		AddControllerPitchInput(Value.Y * Sensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
-	}
-	
 }
 
 
@@ -1104,127 +845,11 @@ void ABaseCharacter::UpdateRotationToDrone()
 // 스무스하게 반동주기
 void ABaseCharacter::ApplySmoothRecoil(float Vertical, float Horizontal)
 {
-	if (!Controller) return;
-
-	// 목표 반동량 설정
-	float ShotMultiplier = FMath::Min(1.0f + (CurrentShotCount * 0.15f), 2.5f);
-	TargetRecoil.X += Vertical * ShotMultiplier;
-	TargetRecoil.Y += FMath::RandRange(-Horizontal, Horizontal) * ShotMultiplier;
-
-	CurrentShotCount++;
-
-	// 스무딩된 반동 적용 시작
-	if (!GetWorld()->GetTimerManager().IsTimerActive(RecoilRecoveryTimer))
+	if (RecoilComponent)
 	{
-		GetWorld()->GetTimerManager().SetTimer(RecoilRecoveryTimer, this,
-			&ABaseCharacter::ApplySmoothRecoilStep, 0.016f, true);
-	}
-
-	// 연사 리셋 타이머
-	GetWorld()->GetTimerManager().ClearTimer(ShotResetTimer);
-	GetWorld()->GetTimerManager().SetTimer(ShotResetTimer, this,
-		&ABaseCharacter::ResetShotCounter, 0.25f, false);
-}
-
-void ABaseCharacter::ApplySmoothRecoilStep()
-{
-	if (!Controller)
-	{
-		GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
+		RecoilComponent->ApplySmoothRecoil(Vertical, Horizontal);
 		return;
 	}
-
-	float DeltaTime = GetWorld()->GetDeltaSeconds();
-
-	// 목표 반동량으로 보간
-	FVector2D RecoilDelta = (TargetRecoil - AccumulatedRecoil) * (5.0f * DeltaTime);
-
-	if (!RecoilDelta.IsNearlyZero(0.01f))
-	{
-		AddControllerPitchInput(RecoilDelta.X);
-		AddControllerYawInput(RecoilDelta.Y);
-		AccumulatedRecoil += RecoilDelta;
-	}
-
-	// 자동 복구 (사격이 멈춘 후)
-	if (GetWorld()->GetTimerManager().GetTimerRemaining(ShotResetTimer) <= 0.0f)
-	{
-		FVector2D RecoveryDelta = AccumulatedRecoil * (RecoilRecoverySpeed * DeltaTime);
-
-		if (RecoveryDelta.Size() >= AccumulatedRecoil.Size())
-		{
-			// 완전 복구
-			AddControllerPitchInput(-AccumulatedRecoil.X * RecoilRecoveryAmount);
-			AddControllerYawInput(-AccumulatedRecoil.Y * RecoilRecoveryAmount);
-			AccumulatedRecoil = FVector2D::ZeroVector;
-			TargetRecoil = FVector2D::ZeroVector;
-			GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
-		}
-		else
-		{
-			AddControllerPitchInput(-RecoveryDelta.X * RecoilRecoveryAmount);
-			AddControllerYawInput(-RecoveryDelta.Y * RecoilRecoveryAmount);
-			AccumulatedRecoil -= RecoveryDelta * (1 / RecoilRecoveryAmount);
-			TargetRecoil -= RecoveryDelta * (1 / RecoilRecoveryAmount);
-		}
-	}
-}
-
-void ABaseCharacter::ResetShotCounter()
-{
-	CurrentShotCount = 0;
-}
-
-// ===== 이 부분이 핵심! 직접 반동 초기화 함수들 =====
-
-// 반동 완전 리셋
-void ABaseCharacter::ResetRecoil()
-{
-	AccumulatedRecoil = FVector2D::ZeroVector;
-	TargetRecoil = FVector2D::ZeroVector;
-	GetWorld()->GetTimerManager().ClearTimer(RecoilRecoveryTimer);
-}
-
-// 반동 부분 리셋 (특정 축만)
-void ABaseCharacter::ResetRecoilPitch()
-{
-	AccumulatedRecoil.X = 0.0f;
-	TargetRecoil.X = 0.0f;
-}
-
-void ABaseCharacter::ResetRecoilYaw()
-{
-	AccumulatedRecoil.Y = 0.0f;
-	TargetRecoil.Y = 0.0f;
-}
-
-// 반동 감소 (완전 리셋이 아닌 부분 감소)
-void ABaseCharacter::ReduceRecoil(float ReductionFactor)
-{
-	AccumulatedRecoil *= (1.0f - FMath::Clamp(ReductionFactor, 0.0f, 1.0f));
-	TargetRecoil *= (1.0f - FMath::Clamp(ReductionFactor, 0.0f, 1.0f));
-
-	// 거의 0에 가까우면 완전 리셋
-	if (AccumulatedRecoil.Size() < 0.1f)
-	{
-		ResetRecoil();
-	}
-}
-
-// 현재 반동 상태 확인용
-FVector2D ABaseCharacter::GetCurrentRecoil() const
-{
-	return AccumulatedRecoil;
-}
-
-bool ABaseCharacter::HasActiveRecoil() const
-{
-	return !AccumulatedRecoil.IsNearlyZero(0.01f);
-}
-
-void ABaseCharacter::Handle_Look(const FInputActionValue& ActionValue)
-{
-
 }
 
 void ABaseCharacter::Handle_VoiceChatting(const FInputActionValue& ActionValue)
@@ -1243,256 +868,41 @@ void ABaseCharacter::Handle_VoiceChatting(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::Handle_Move(const FInputActionValue& ActionValue)
 {
-	const auto Value{ UAlsVector::ClampMagnitude012D(ActionValue.Get<FVector2D>()) };
-	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
+	if (InputControlComponent)
 	{
-		return;
+		InputControlComponent->Handle_Move(ActionValue);
 	}
-	CancelInteraction();
-	FrontInput = Value.Y;
-	const auto ForwardDirection{ UAlsVector::AngleToDirectionXY(UE_REAL_TO_FLOAT(GetViewState().Rotation.Yaw)) };
-	const auto RightDirection{ UAlsVector::PerpendicularCounterClockwiseXY(ForwardDirection) };
-	if (CheckHardLandState())
-	{
-		return;
-	}
-	AddMovementInput(ForwardDirection * Value.Y + RightDirection * Value.X);
 }
 
 void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 {
-	const float Value = ActionValue.Get<float>();
-	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
+	if (InputControlComponent)
 	{
-		return;
-	}
-
-	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
-	if (!IsValid(MyPlayerState))
-	{
-		return;
-	}
-	if (CheckHardLandState())
-	{
-		bIsSprinting = false;
-		FootSoundModifier = MyPlayerState->RunningFootSoundModifier;
-		SetDesiredGait(AlsGaitTags::Running);
-		StaminaComponent->StopStaminaDrain();
-		StaminaComponent->StartStaminaRecoverAfterDelay();
-		return;
-	}
-	if (StaminaComponent->bIsExhausted) //만약 지친 상태라면 불가
-	{
-		return;
-	}
-
-	StopGunAutoFire();
-
-	if (MyPlayerState->SprintInputMode == EInputMode::Hold)
-	{
-		if (Value < 0.5f) //입력이 떼지는 거면 어차피 뛰는 거 아님..
-		{
-			bIsSprinting = false;
-			FootSoundModifier = MyPlayerState->RunningFootSoundModifier;
-			SetDesiredGait(AlsGaitTags::Running);
-			StaminaComponent->StopStaminaDrain();
-			StaminaComponent->StartStaminaRecoverAfterDelay();
-			return;
-		}
-		FootSoundModifier = MyPlayerState->SprintingFootSoundModifier;
-		
-		//달리기 시작하면서 스테미나 소모 시작
-		StaminaComponent->StartStaminaDrain();
-		StaminaComponent->StopStaminaRecovery();
-		StaminaComponent->StopStaminaRecoverAfterDelay();
-	}
-	else if (MyPlayerState->SprintInputMode == EInputMode::Toggle)
-	{
-		if (Value > 0.5f)
-		{
-			if (GetDesiredGait() == AlsGaitTags::Sprinting)
-			{
-				bIsSprinting = false;
-				FootSoundModifier = MyPlayerState->RunningFootSoundModifier;
-				SetDesiredGait(AlsGaitTags::Running);
-				StaminaComponent->StopStaminaDrain();
-				StaminaComponent->StartStaminaRecoverAfterDelay();
-			}
-			else if (GetDesiredGait() == AlsGaitTags::Running)
-			{
-				//bIsSprinting = true;
-				FootSoundModifier = MyPlayerState->SprintingFootSoundModifier;
-				//SetDesiredAiming(false);
-				Camera->AttachToComponent(SpringArm, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
-				Camera->SetRelativeLocation(FVector::ZeroVector);
-				Camera->SetRelativeRotation(FRotator::ZeroRotator); // 필요 시 원래 회전 복구
-				StaminaComponent->StopStaminaRecovery();
-				StaminaComponent->StopStaminaRecoverAfterDelay();
-				StaminaComponent->StartStaminaDrain();
-				//SetDesiredGait(AlsGaitTags::Sprinting);
-			}
-			else
-			{
-				//bIsSprinting = true;
-				FootSoundModifier = MyPlayerState->SprintingFootSoundModifier;
-				//SetDesiredAiming(false);
-				Camera->AttachToComponent(SpringArm, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
-				Camera->SetRelativeLocation(FVector::ZeroVector);
-				Camera->SetRelativeRotation(FRotator::ZeroRotator); // 필요 시 원래 회전 복구
-				StaminaComponent->StopStaminaRecovery();
-				StaminaComponent->StopStaminaRecoverAfterDelay();
-				StaminaComponent->StartStaminaDrain();
-				//SetDesiredGait(AlsGaitTags::Sprinting);
-			}
-		}
+		InputControlComponent->Handle_Sprint(ActionValue);
 	}
 }
 
-
-
 void ABaseCharacter::Handle_Walk(const FInputActionValue& ActionValue)
 {
-	const float Value = ActionValue.Get<float>();
-	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
+	if (InputControlComponent)
 	{
-		return;
-	}
-	if (CheckHardLandState())
-	{
-		return;
-	}
-	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
-	if (!IsValid(MyPlayerState))
-	{
-		return;
-	}
-
-	if (MyPlayerState->WalkInputMode == EInputMode::Hold)
-	{
-		if (Value > 0.5f)
-		{
-			FootSoundModifier = MyPlayerState->WalkingFootSoundModifier;
-			SetDesiredGait(AlsGaitTags::Walking);
-		}
-		else
-		{
-			FootSoundModifier = MyPlayerState->RunningFootSoundModifier;
-			SetDesiredGait(AlsGaitTags::Running);
-		}
-	}
-	else if (MyPlayerState->WalkInputMode == EInputMode::Toggle)
-	{
-		if (Value > 0.5f)
-		{
-			if (GetDesiredGait() == AlsGaitTags::Walking)
-			{
-				FootSoundModifier = MyPlayerState->RunningFootSoundModifier;
-				SetDesiredGait(AlsGaitTags::Running);
-			}
-			else if (GetDesiredGait() == AlsGaitTags::Running)
-			{
-				FootSoundModifier = MyPlayerState->WalkingFootSoundModifier;
-				SetDesiredGait(AlsGaitTags::Walking);
-			}
-			else
-			{
-				FootSoundModifier = MyPlayerState->WalkingFootSoundModifier;
-				SetDesiredGait(AlsGaitTags::Running);
-			}
-		}
+		InputControlComponent->Handle_Walk(ActionValue);
 	}
 }
 
 void ABaseCharacter::Handle_Crouch(const FInputActionValue& ActionValue)
 {
-	CancelInteraction();
-	const float Value = ActionValue.Get<float>();
-	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
+	if (InputControlComponent)
 	{
-		return;
-	}
-	if (CheckHardLandState())
-	{
-		return;
-	}
-
-	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
-	if (!IsValid(MyPlayerState))
-	{
-		return;
-	}
-	if (MyPlayerState->CrouchInputMode == EInputMode::Hold)
-	{
-		if (Value > 0.5f)
-		{
-			FootSoundModifier = MyPlayerState->CrouchingFootSoundModifier;
-			SetDesiredStance(AlsStanceTags::Crouching);
-		}
-		else
-		{
-			FootSoundModifier = MyPlayerState->RunningFootSoundModifier;
-			SetDesiredStance(AlsStanceTags::Standing);
-		}
-	}
-	else if (MyPlayerState->CrouchInputMode == EInputMode::Toggle)
-	{
-		if (Value > 0.5f)
-		{
-			if (GetDesiredStance() == AlsStanceTags::Standing)
-			{
-				FootSoundModifier = MyPlayerState->CrouchingFootSoundModifier;
-				SetDesiredStance(AlsStanceTags::Crouching);
-			}
-			else if (GetDesiredStance() == AlsStanceTags::Crouching)
-			{
-				FootSoundModifier = MyPlayerState->RunningFootSoundModifier;
-				SetDesiredStance(AlsStanceTags::Standing);
-			}
-		}
+		InputControlComponent->Handle_Crouch(ActionValue);
 	}
 }
 
 void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
 {
-	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
+	if (InputControlComponent)
 	{
-		return;
-	}
-	if (CheckHardLandState())
-	{
-		return;
-	}
-	CancelInteraction();
-	if (ActionValue.Get<bool>())
-	{
-		if (StopRagdolling())
-		{
-			return;
-		}
-		if (StartMantlingGrounded())
-		{
-			SetDesiredAiming(false);
-			SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
-			return;
-		}
-		if (GetStance() == AlsStanceTags::Crouching)
-		{
-			SetDesiredStance(AlsStanceTags::Standing);
-			return;
-		}
-		if (StaminaComponent->CanJump())
-		{
-			Jump();
-			if (!CanJump())
-			{
-				return;
-			}
-			StaminaComponent->ConsumeStaminaOnJump();
-		}
-	}
-	else
-	{
-		StopJumping();
+		InputControlComponent->Handle_Jump(ActionValue);
 	}
 }
 
@@ -1715,12 +1125,10 @@ void ABaseCharacter::Multicast_StopReload_Implementation()
 
 void ABaseCharacter::Handle_ViewMode()
 {
-	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
+	if (InputControlComponent)
 	{
-		return;
+		InputControlComponent->Handle_ViewMode();
 	}
-	bIsFPSCamera = !bIsFPSCamera;
-	SetCameraMode(bIsFPSCamera);
 }
 
 void ABaseCharacter::SetCameraMode(bool bIsFirstPersonView)
@@ -1798,6 +1206,7 @@ void ABaseCharacter::SwapHeadMaterialTransparent(bool bUseTransparent)
 
 void ABaseCharacter::Handle_Interact(const FInputActionValue& ActionValue)
 {
+	/*
 	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
@@ -1831,6 +1240,11 @@ void ABaseCharacter::Handle_Interact(const FInputActionValue& ActionValue)
 			InteractAfterPlayMontage(actor);
 			//AnimationComponent->PlayInteractMontage(actor);
 		}
+	}
+	*/
+	if (InputControlComponent)
+	{
+		InputControlComponent->Handle_Interact(ActionValue);
 	}
 }
 
@@ -3921,8 +3335,11 @@ void ABaseCharacter::OnRep_PlayerState()
 
 	if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
 	{
-		SetCustomizationData(PS->GetCustomizationData());
-		ApplyCustomization(CharacterCustomizationData);
+		if (CustomizationComponent)
+		{
+			CustomizationComponent->SetCustomizationData(PS->GetCustomizationData());
+			CustomizationComponent->ApplyCustomization(PS->GetCustomizationData());
+		}
 	}
 }
 

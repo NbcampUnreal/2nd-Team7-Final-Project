@@ -68,4 +68,7 @@ public:
 	void Multicast_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData);
 
 	FCharacterCustomizationData CharacterCustomizationData;
+
+	FTimerHandle RetryCustomizationHandle;
+	void InitializeCustomization();
 };

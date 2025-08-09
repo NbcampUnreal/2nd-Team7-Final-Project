@@ -1,8 +1,12 @@
 #include "Character/Component/CameraRecoilComponent.h"
 #include "Character/BaseCharacter.h"
 
+#include "LastCanary.h"
+
 void UCameraRecoilComponent::BeginPlay()
 {
+	Super::BeginPlay();
+
 	if (GetCharacter())
 	{
 		CachedController = Cast<APlayerController>(GetCharacter()->GetController());
@@ -18,6 +22,7 @@ void UCameraRecoilComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 void UCameraRecoilComponent::ApplySmoothRecoil(float Vertical, float Horizontal)
 {
 	if (!GetPlayerController()) return;
+	LOG_Char_WARNING(TEXT("반동주기"));
 
 	// 목표 반동량 설정
 	float ShotMultiplier = FMath::Min(1.0f + (CurrentShotCount * 0.15f), 2.5f);

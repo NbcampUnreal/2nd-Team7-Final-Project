@@ -59,7 +59,7 @@ void UCharacterFootstepNoiseComponent::UpdateFootstepState()
     }
 }
 
-float UCharacterFootstepNoiseComponent::GetCurrentNoiseLevel() const
+float UCharacterFootstepNoiseComponent::GetCurrentFootstepNoiseLevel() const
 {
     return NoiseLevel;
 }

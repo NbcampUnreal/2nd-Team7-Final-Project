@@ -1,6 +1,7 @@
 #include "Character/Component/CharacterCustomizationComponent.h"
 #include "Character/BaseCharacter.h"
 #include "Character/CustomizationMeshMap.h"
+#include "Character/BasePlayerState.h"
 
 #include "LastCanary.h"
 
@@ -214,15 +215,16 @@ void UCharacterCustomizationComponent::Server_SetCustomizationData_Implementatio
 	Multicast_SetCustomizationData(CustomizingData);
 
 	//3. 플레이어 스테이트에 커스터마이징 값 저장
-	/*
-	if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
+	APlayerState* PS = GetCharacter()->GetPlayerState();
+
+	if (ABasePlayerState* BPS = Cast<ABasePlayerState>(PS))
 	{
-		PS->SetCustomizationData(CustomizingData);
+		BPS->SetCustomizationData(CustomizingData);
 	}
 
 	//4. 게이트 퇴장시를 위해 설정 완료되었음을 게임모드에 전파
-	CheckPlayerCharacterIsReadyToGameMode();
-	*/
+	GetCharacter()->CheckPlayerCharacterIsReadyToGameMode();
+	
 }
 
 void UCharacterCustomizationComponent::Multicast_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData)
@@ -234,4 +236,38 @@ void UCharacterCustomizationComponent::Multicast_SetCustomizationData_Implementa
 
 	//2. 받은 커스터마이징 정보를 토대로 커스터마이징 적용
 	ApplyCustomization(CharacterCustomizationData);
+}
+
+void UCharacterCustomizationComponent::InitializeCustomization()
+{
+	if (!IsValid(GetCharacter()) || !GetCharacter()->IsLocallyControlled())
+	{
+		return;
+	}
+
+	APlayerState* PS = GetCharacter()->GetPlayerState();
+	if (PS)
+	{
+		LOG_Char_WARNING(TEXT("커스터마이징 데이터 로드"));
+
+		// 1. 데이터 로드
+		CharacterCustomizationData = ULCLocalPlayerSaveGame::LoadCustomizationData(GetWorld());
+
+		// 2. 적용
+		ApplyCustomization(CharacterCustomizationData);
+
+		// 3. 서버로 전송
+		Server_SetCustomizationData(CharacterCustomizationData);
+	}
+	else
+	{
+		// 타이머로 재시도
+		GetWorld()->GetTimerManager().SetTimer(
+			RetryCustomizationHandle,
+			this,
+			&UCharacterCustomizationComponent::InitializeCustomization,
+			0.2f,
+			false
+		);
+	}
 }

@@ -25,7 +25,7 @@ public:
 
 private:
 	UPROPERTY(EditDefaultsOnly, Category = "Brightness")
-	float MinBrightness = -10.0f;
+	float MinBrightness = 8.0f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Brightness")
 	float MaxBrightness = 10.0f;
@@ -34,4 +34,6 @@ private:
 	UPostProcessComponent* PostProcessComponent;
 
 	void InitializePostProcess();
+
+	void LoadBrightnessSetting();
 };

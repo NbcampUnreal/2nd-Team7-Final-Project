@@ -41,17 +41,6 @@ void UCharacterNameWidgetComponent::TickComponent(float DeltaTime, ELevelTick Ti
 		FRotator YawOnly = FRotator(0.f, LookAtRotation.Yaw, 0.f);
 		WidgetComponent->SetWorldRotation(YawOnly);
 	}
-
-	/*
-	TimeAccumulator += DeltaTime;
-
-	if (TimeAccumulator > 0.1f)
-	{
-		TimeAccumulator = 0.f;
-
-
-	}
-	*/
 }
 
 void UCharacterNameWidgetComponent::InitializeWidget()

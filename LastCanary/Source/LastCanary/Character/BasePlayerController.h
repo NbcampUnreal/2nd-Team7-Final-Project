@@ -32,10 +32,6 @@ public:
 	void SetZoomSensitivity(float Sensitivity);
 	void SetDroneSensitivity(float Sensitivity);
 
-	void LoadBrightness();
-
-	void SetBrightness(float Brightness);
-
 	/*감도 Settings*/
 	float MouseSensivity = 1.0f;
 	float ZoomSensivity = 1.0f;

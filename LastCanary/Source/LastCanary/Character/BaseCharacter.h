@@ -37,6 +37,8 @@ class UCharacterCameraControlComponent;
 class UCharacterDisplayComponent;
 class UCharacterNameWidgetComponent;
 class UCharacterAttackComponent;
+class UCameraRecoilComponent;
+class UCharacterInputComponent;
 
 UENUM(BlueprintType)
 enum class EAnimationType : uint8
@@ -108,22 +110,25 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UCharacterCameraControlComponent* CameraControlComponent;
 
-	/*
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UCharacterDisplayComponent* DisplayComponent;
-	*/
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UCharacterNameWidgetComponent* NameComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UCharacterAttackComponent* AttackComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UCameraRecoilComponent* RecoilComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UCharacterInputComponent* InputControlComponent;
+
+
 public:
 	UFUNCTION()
 	virtual float GetCurrentNoiseLevel() const override;
-
-	UPROPERTY(VisibleAnywhere)
-	UPostProcessComponent* CustomPostProcessComponent;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Customization")
 	UCustomizationMeshMap* CharacterMeshMap;
@@ -165,24 +170,8 @@ public:
 
 	void ApplyCustomization(const FCharacterCustomizationData CustomizationData);
 
-	void SetPartMesh(USkeletalMeshComponent* Component, USkeletalMesh* LoadedMesh);
-
-	void SetPartMaterial(USkeletalMeshComponent* Component, int32 MaterialIndex, UMaterialInterface* Material);
-
 	FCharacterCustomizationData GetCustomizationData();
 	void SetCustomizationData(const FCharacterCustomizationData& CustomizingData);
-
-	UFUNCTION(Server, Reliable)
-	void Server_UpdateCustomizationData();
-	void Server_UpdateCustomizationData_Implementation();
-
-	UFUNCTION(Server, Reliable)
-	void Server_SetCustomizationData(const FCharacterCustomizationData& CustomizingData);
-	void Server_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData);
-
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_SetCustomizationData(const FCharacterCustomizationData& CustomizingData);
-	void Multicast_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData);
 
 	FCharacterCustomizationData CharacterCustomizationData;
 
@@ -233,7 +222,6 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Sensitivity ")
 	float ZoomSensitivity = 1.0f;
 
-	float GetBrightness();
 	void SetBrightness(float Value);
 
 	virtual void Tick(float DeltaSeconds);
@@ -304,6 +292,7 @@ protected:
 	void Server_ClientLogin();
 	void Server_ClientLogin_Implementation();
 
+public:
 	void CheckPlayerCharacterIsReadyToGameMode();
 	// Camera Settings
 protected:
@@ -328,7 +317,7 @@ protected:
 	FName TargetSocketName = FName("");
 	float InterpSpeed = 15.0f;
 	float SnapTolerance = 1.0f;
-
+public:
 	bool bIsFPSCamera = true;
 	bool bDesiredADS = false;
 
@@ -345,6 +334,7 @@ protected:
 
 	bool bADS = false; // 현재 정조준 상태인가?
 
+public:
 	bool bIsCloseToWall = false;
 	bool bIsSprinting = false;
 	// ABaseCharacter.h
@@ -415,52 +405,14 @@ public:
 	bool EmoteMode = false;
 
 	void SwapHeadMaterialTransparent(bool bUseTransparent);
-public:
 
-	// Header 파일에 추가할 변수들
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
-	float BaseRecoilPitch = 1.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
-	float BaseRecoilYaw = 0.5f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
-	float RecoilMultiplier = 1.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
-	float RecoilRecoverySpeed = 2.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil", meta = (ClampMin = "0.01"))
-	float RecoilRecoveryAmount = 0.4f;
-
-
-	// 현재 연사 상태
-	int32 CurrentShotCount = 0;
-	FVector2D AccumulatedRecoil = FVector2D::ZeroVector;
-	FVector2D TargetRecoil = FVector2D::ZeroVector;
-	FTimerHandle RecoilRecoveryTimer;
-	FTimerHandle ShotResetTimer;
-
-	// 반동 패턴 (선택사항 - CS:GO 스타일)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
-	TArray<FVector2D> RecoilPattern;
-
-	// 반동
 	void ApplySmoothRecoil(float Vertical, float Horizontal);
-	void ApplySmoothRecoilStep();
-	void ResetShotCounter();
-	bool HasActiveRecoil() const;
-	void ReduceRecoil(float ReductionFactor = 0.5f);
-	void ResetRecoilYaw();
-	void ResetRecoilPitch();
-	void ResetRecoil();
-	FVector2D GetCurrentRecoil() const;
+
 	// Character Input Handle Function
 
 public:
 	/*Function called by the controller*/
 	virtual void Handle_LookMouse(const FInputActionValue& ActionValue, float Sensivity, float ZoomSensivity);
-	virtual void Handle_Look(const FInputActionValue& ActionValue);
 	virtual void Handle_Move(const FInputActionValue& ActionValue);
 	virtual void Handle_Sprint(const FInputActionValue& ActionValue);
 	virtual void Handle_Walk(const FInputActionValue& ActionValue);

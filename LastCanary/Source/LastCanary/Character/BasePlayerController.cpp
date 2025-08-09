@@ -39,8 +39,6 @@ void ABasePlayerController::BeginPlay()
 			UIManager->ChangeHUD();
 		}
 	}
-	
-	LoadBrightness();
 
 	PlayerCameraManager->ViewPitchMin = -80.0f; // 최소 Pitch 각도 (고개 숙이기)
 	PlayerCameraManager->ViewPitchMax = 80.0f;  // 최대 Pitch 각도 (고개 들기)
@@ -83,29 +81,6 @@ void ABasePlayerController::SetZoomSensitivity(float Sensitivity)
 	ZoomSensivity = Sensitivity;
 	GetMouseSensitivityComponent()->SetZoomSensivity(Sensitivity);
 }
-
-void ABasePlayerController::LoadBrightness()
-{
-	float Brightness = ULCLocalPlayerSaveGame::LoadBrightness(GetWorld());
-
-	SetBrightness(Brightness);
-}
-
-void ABasePlayerController::SetBrightness(float Brightness)
-{
-	BrightnessSetting = Brightness;
-	if (!IsValid(CurrentPossessedPawn))
-	{
-		return;
-	}
-	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-	if (!IsValid(PlayerCharacter))
-	{
-		return;
-	}
-	PlayerCharacter->SetBrightness(Brightness);
-}
-
 
 void ABasePlayerController::SetupInputComponent()
 {
