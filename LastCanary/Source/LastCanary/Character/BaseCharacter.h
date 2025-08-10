@@ -190,25 +190,6 @@ public:
 
 	void SetCharacterPoseSynchronization();
 
-	UPROPERTY(VisibleAnywhere, Category = "Kick")
-	UBoxComponent* KickHitBox;
-	
-	UFUNCTION()
-	void OnKickHitBoxOverlap(UPrimitiveComponent* OverlappedComp,
-		AActor* OtherActor,
-		UPrimitiveComponent* OtherComp,
-		int32 OtherBodyIndex,
-		bool bFromSweep,
-		const FHitResult& SweepResult);
-
-	void StartKickHit();
-	void EndKickHit();
-	
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation|Attack")
-	UAnimMontage* KickOtherPlayer;
-
-
 	UPROPERTY(EditAnywhere, Category = "Brightness")
 	float MinBrightness = 8.0f;
 
