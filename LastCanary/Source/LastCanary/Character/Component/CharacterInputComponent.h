@@ -10,13 +10,15 @@ UCLASS()
 class LASTCANARY_API UCharacterInputComponent : public UCharacterBaseComponent
 {
 	GENERATED_BODY()
-protected:
 
+private:
+	bool bEnableInput = true;
+public:
+	bool IsInputEnabled() const { return bEnableInput; }
+	void SetInputEnabled(bool bEnabled) { bEnableInput = bEnabled; }
+protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
-
-	UPROPERTY()
-	APlayerController* CachedController;
 
 public:
 	void Handle_LookMouse(const FInputActionValue& ActionValue, float Sensivity, float ZoomSensivity, bool _bIsAiming, float MouseSensitivityMultiplier, float MouseInvertMultiplier);
@@ -46,7 +48,7 @@ public:
 
 	bool Check_PlayerController();
 	bool Check_PlayerState();
+	bool Check_InputEnabled();
 
-public:
-	APlayerController* GetPlayerController() const { return CachedController; }
+	bool Check_DefaultCondition();
 };

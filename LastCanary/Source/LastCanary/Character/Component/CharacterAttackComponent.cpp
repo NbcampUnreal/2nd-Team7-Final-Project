@@ -1,8 +1,13 @@
 #include "Character/Component/CharacterAttackComponent.h"
+#include "Character/BaseCharacter.h"
 #include "Item/ItemBase.h"
 #include "Components/BoxComponent.h"
 #include "GameFramework/Character.h"
 #include "Kismet/GameplayStatics.h"
+#include "Character/Component/CharacterAnimationComponent.h"
+#include "AI/BaseBossMonsterCharacter.h"
+
+#include "LastCanary.h"
 
 UCharacterAttackComponent::UCharacterAttackComponent()
 {
@@ -34,6 +39,27 @@ void UCharacterAttackComponent::BeginPlay()
 void UCharacterAttackComponent::SetEquippedWeapon(AItemBase* Weapon)
 {
 	EquippedWeapon = Weapon;
+}
+
+void UCharacterAttackComponent::Handle_Attack(EAttackType _AttackType)
+{
+	switch (_AttackType)
+	{
+	case EAttackType::Kick:
+		Handle_Kick();
+		break;
+	case EAttackType::Punch:
+		break;
+	case EAttackType::ItemAttack:
+		break;
+	default:
+		break;
+	}
+}
+
+void UCharacterAttackComponent::Handle_Kick()
+{
+	GetCharacter()->AnimationComponent->PlayAttackMontage(KickMontage);
 }
 
 void UCharacterAttackComponent::SetupHandHitBox()
@@ -155,6 +181,7 @@ void UCharacterAttackComponent::EnableKickHitBox()
 {
 	if (KickHitBox)
 	{
+		LOG_Char_WARNING(TEXT("충돌 시작"));
 		KickHitBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	}
 }
@@ -163,6 +190,8 @@ void UCharacterAttackComponent::DisableKickHitBox()
 {
 	if (KickHitBox)
 	{
+		LOG_Char_WARNING(TEXT("충돌 해제"));
+
 		KickHitBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
 }
@@ -186,12 +215,59 @@ void UCharacterAttackComponent::OnKickHitBoxOverlap(UPrimitiveComponent* Overlap
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
 	bool bFromSweep, const FHitResult& SweepResult)
 {
+	
+	// 서버에서만 처리
+	if (!GetCharacter()->HasAuthority())
+	{
+		return;
+	}
+	const FVector Start = GetCharacter()->GetActorLocation() + GetCharacter()->GetActorForwardVector() * 50.f + FVector(0, 0, 50.f);
+	const FVector End = Start; // 박스는 이동하지 않음
+
+	const FVector BoxExtent = FVector(100.f, 100.f, 100.f); // 크기 조절 가능
+	const FRotator Rotation = GetCharacter()->GetActorRotation();
+
+	TArray<FHitResult> HitResults;
+
+	UKismetSystemLibrary::BoxTraceMultiForObjects(
+		GetWorld(),
+		Start,
+		End,
+		BoxExtent,
+		Rotation,
+		{ UEngineTypes::ConvertToObjectType(ECC_Pawn) },
+		false,
+		{ GetCharacter()},
+		EDrawDebugTrace::None,
+		HitResults,
+		true // ignore self
+	);
+
+	for (const FHitResult& Hit : HitResults)
+	{
+		ACharacter* TargetCharacter = Cast<ACharacter>(Hit.GetActor());
+		if (!TargetCharacter || TargetCharacter == GetCharacter()) continue;
+		if (TargetCharacter->IsA<ABaseBossMonsterCharacter>())
+		{
+			continue;
+		}
+
+		// 넉백 처리
+		FVector KnockbackDir = GetCharacter()->GetActorForwardVector();
+		KnockbackDir.Z = 0;
+		KnockbackDir.Normalize();
+
+		TargetCharacter->LaunchCharacter(KnockbackDir * KnockbackStrength + FVector(0, 0, UpwardKnockback), true, true);
+	}
+
+	/*
 	if (!OwnerCharacter || !OwnerCharacter->HasAuthority()) return;
 
 	ACharacter* TargetCharacter = Cast<ACharacter>(OtherActor);
 	if (!TargetCharacter || TargetCharacter == OwnerCharacter) return;
 
 	HandleHit(TargetCharacter);
+	*/
 }
 
 void UCharacterAttackComponent::HandleHit(ACharacter* TargetCharacter)

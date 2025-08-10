@@ -17,12 +17,7 @@ class LASTCANARY_API UCharacterInteractionComponent : public UCharacterBaseCompo
 protected:
     virtual void BeginPlay() override;
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-protected:
-    UPROPERTY()
-    APlayerController* CachedController;
 
-public:
-    APlayerController* GetPlayerController() const { return CachedController; }
 public:
     UPROPERTY(EditAnywhere)
     float TraceDistance = 500.f;

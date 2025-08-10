@@ -89,6 +89,8 @@ void UCharacterNameWidgetComponent::UpdateWidget()
 
 void UCharacterNameWidgetComponent::TurnOffWidget()
 {
+	HideNameWidget();
+	//SetVisibility(false, true);
 }
 
 UUserWidget* UCharacterNameWidgetComponent::GetWidget() const

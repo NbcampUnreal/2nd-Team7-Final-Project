@@ -9,6 +9,11 @@ UCharacterAnimationComponent::UCharacterAnimationComponent()
 	PrimaryComponentTick.bCanEverTick = false;
 }
 
+USkeletalMeshComponent* UCharacterAnimationComponent::CharacterMesh()
+{
+	return CachedCharacter->GetMesh();
+}
+
 void UCharacterAnimationComponent::BeginPlay()
 {
 	Super::BeginPlay();
@@ -89,11 +94,9 @@ void UCharacterAnimationComponent::PlayEmoteMontage()
 	PlayMontageByType(Local, Remote, EAnimationMontageType::Emote);
 }
 
-void UCharacterAnimationComponent::PlayAttackMontage()
+void UCharacterAnimationComponent::PlayAttackMontage(UAnimMontage* _AttackMontage)
 {
-	UAnimMontage* Local = MontageMap.FindRef(EAnimationMontageType::Attack);
-	UAnimMontage* Remote = MontageMap.FindRef(EAnimationMontageType::Attack);
-	PlayMontageByType(Local, Remote, EAnimationMontageType::Attack);
+	PlayMontageByType(_AttackMontage, _AttackMontage, EAnimationMontageType::Attack);
 }
 
 
@@ -251,5 +254,70 @@ void UCharacterAnimationComponent::SetPlayingMontageState(EAnimationMontageType 
 		break;
 	default:
 		break;
+	}
+}
+
+
+
+
+
+
+
+void UCharacterAnimationComponent::RefreshOverlayLinkedAnimationLayer(FGameplayTag ItemTag)
+{
+	TSubclassOf<UAnimInstance> OverlayAnimationInstanceClass;
+	if (GetCharacter()->bIsSpawnDrone)  // 태그에 컨트롤러 들 때 사용할 태그 추가해야됨...
+	{
+		OverlayAnimationInstanceClass = BinocularsAnimationClass;
+		if (IsValid(OverlayAnimationInstanceClass))
+		{
+			CharacterMesh()->LinkAnimClassLayers(OverlayAnimationInstanceClass);
+		}
+		else
+		{
+			CharacterMesh()->LinkAnimClassLayers(DefaultAnimationClass);
+		}
+		return;
+	}
+	if (!ItemTag.IsValid())
+	{
+		OverlayAnimationInstanceClass = DefaultAnimationClass;
+	}
+	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
+	{
+		OverlayAnimationInstanceClass = RifleAnimationClass;
+	}
+	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.FlashLight")))
+	{
+		OverlayAnimationInstanceClass = TorchAnimationClass;
+	}
+	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol")))
+	{
+		OverlayAnimationInstanceClass = PistolTwoHandedAnimationClass;
+	}
+	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Shotgun")))
+	{
+		OverlayAnimationInstanceClass = RifleAnimationClass;
+	}
+	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))
+	{
+		OverlayAnimationInstanceClass = PistolOneHandedAnimationClass;
+	}
+	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Tool.Pickaxe")))
+	{
+		OverlayAnimationInstanceClass = PickaxeAnimationClass;
+	}
+	else
+	{
+		OverlayAnimationInstanceClass = DefaultAnimationClass;
+	}
+
+	if (IsValid(OverlayAnimationInstanceClass))
+	{
+		CharacterMesh()->LinkAnimClassLayers(OverlayAnimationInstanceClass);
+	}
+	else
+	{
+		CharacterMesh()->LinkAnimClassLayers(DefaultAnimationClass);
 	}
 }

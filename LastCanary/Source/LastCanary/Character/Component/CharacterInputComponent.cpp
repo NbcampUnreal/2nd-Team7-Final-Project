@@ -5,6 +5,7 @@
 #include "Camera/CameraComponent.h"
 #include "Character/Component/CharacterStaminaComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Character/Component/CharacterInteractionComponent.h"
 
 #include "../Plugins/ALS-Refactored-4.15/Source/ALS/Public/Utility/AlsVector.h"
 
@@ -13,11 +14,6 @@
 void UCharacterInputComponent::BeginPlay()
 {
 	Super::BeginPlay();
-
-	if (GetCharacter())
-	{
-		CachedController = Cast<APlayerController>(GetCharacter()->GetController());
-	}
 }
 
 void UCharacterInputComponent::Handle_LookMouse(const FInputActionValue& ActionValue, float Sensivity, float ZoomSensivity, bool _bIsAiming, float MouseSensitivityMultiplier, float MouseInvertMultiplier)
@@ -365,9 +361,9 @@ void UCharacterInputComponent::Handle_Interact(const FInputActionValue& ActionVa
 		return;
 	}
 
-	if (GetCharacter()->CurrentFocusedActor->Implements<UInteractableInterface>())
+	if (GetCharacter()->InteractionComponent->CurrentFocusedActor->Implements<UInteractableInterface>())
 	{
-		AActor* actor = GetCharacter()->CurrentFocusedActor;
+		AActor* actor = GetCharacter()->InteractionComponent->CurrentFocusedActor;
 		if (!IsValid(actor))
 		{
 			return;
@@ -424,15 +420,10 @@ void UCharacterInputComponent::Handle_VoiceChatting(const FInputActionValue& Act
 
 bool UCharacterInputComponent::CheckCondition_LookMouse()
 {
-	if (!Check_PlayerController())
+	if (!Check_DefaultCondition())
 	{
 		return false;
 	}
-	if (!Check_PlayerState())
-	{
-		return false;
-	}
-
 	if (GetCharacter()->bIsPlayingInteractionMontage)
 	{
 		return false;
@@ -447,11 +438,7 @@ bool UCharacterInputComponent::CheckCondition_LookMouse()
 
 bool UCharacterInputComponent::CheckCondition_Move()
 {
-	if (!Check_PlayerController())
-	{
-		return false;
-	}
-	if (!Check_PlayerState())
+	if (!Check_DefaultCondition())
 	{
 		return false;
 	}
@@ -464,11 +451,7 @@ bool UCharacterInputComponent::CheckCondition_Move()
 
 bool UCharacterInputComponent::CheckCondition_Sprint()
 {
-	if (!Check_PlayerController())
-	{
-		return false;
-	}
-	if (!Check_PlayerState())
+	if (!Check_DefaultCondition())
 	{
 		return false;
 	}
@@ -477,11 +460,7 @@ bool UCharacterInputComponent::CheckCondition_Sprint()
 
 bool UCharacterInputComponent::CheckCondition_Walk()
 {
-	if (!Check_PlayerController())
-	{
-		return false;
-	}
-	if (!Check_PlayerState())
+	if (!Check_DefaultCondition())
 	{
 		return false;
 	}
@@ -494,11 +473,7 @@ bool UCharacterInputComponent::CheckCondition_Walk()
 
 bool UCharacterInputComponent::CheckCondition_Crouch()
 {
-	if (!Check_PlayerController())
-	{
-		return false;
-	}
-	if (!Check_PlayerState())
+	if (!Check_DefaultCondition())
 	{
 		return false;
 	}
@@ -513,11 +488,7 @@ bool UCharacterInputComponent::CheckCondition_Crouch()
 
 bool UCharacterInputComponent::CheckCondition_Jump()
 {
-	if (!Check_PlayerController())
-	{
-		return false;
-	}
-	if (!Check_PlayerState())
+	if (!Check_DefaultCondition())
 	{
 		return false;
 	}
@@ -530,11 +501,7 @@ bool UCharacterInputComponent::CheckCondition_Jump()
 
 bool UCharacterInputComponent::CheckCondition_Aim()
 {
-	if (!Check_PlayerController())
-	{
-		return false;
-	}
-	if (!Check_PlayerState())
+	if (!Check_DefaultCondition())
 	{
 		return false;
 	}
@@ -547,20 +514,16 @@ bool UCharacterInputComponent::CheckCondition_Aim()
 
 bool UCharacterInputComponent::CheckCondition_Interact()
 {
-	if (!Check_PlayerController())
+	if (!Check_DefaultCondition())
 	{
 		return false;
 	}
-	if (!Check_PlayerState())
-	{
-		return false;
-	}
-	if (!GetCharacter()->CurrentFocusedActor)
+	if (!GetCharacter()->InteractionComponent->CurrentFocusedActor)
 	{
 		return false;
 	}
 
-	LOG_Char_WARNING(TEXT("Interacted with: %s"), *GetCharacter()->CurrentFocusedActor->GetName());
+	LOG_Char_WARNING(TEXT("Interacted with: %s"), *GetCharacter()->InteractionComponent->CurrentFocusedActor->GetName());
 
 	if (GetCharacter()->bIsPlayingInteractionMontage)
 	{
@@ -572,11 +535,7 @@ bool UCharacterInputComponent::CheckCondition_Interact()
 
 bool UCharacterInputComponent::CheckCondition_ViewMode()
 {
-	if (!Check_PlayerController())
-	{
-		return false;
-	}
-	if (!Check_PlayerState())
+	if (!Check_DefaultCondition())
 	{
 		return false;
 	}
@@ -586,11 +545,7 @@ bool UCharacterInputComponent::CheckCondition_ViewMode()
 
 bool UCharacterInputComponent::CheckCondition_Reload()
 {
-	if (!Check_PlayerController())
-	{
-		return false;
-	}
-	if (!Check_PlayerState())
+	if (!Check_DefaultCondition())
 	{
 		return false;
 	}
@@ -607,15 +562,11 @@ bool UCharacterInputComponent::CheckCondition_Reload()
 
 bool UCharacterInputComponent::CheckCondition_VoiceChatting()
 {
-	if (!Check_PlayerController())
+	if (!Check_DefaultCondition())
 	{
 		return false;
 	}
-	if (!Check_PlayerState())
-	{
-		return false;
-	}
-	return false;
+	return true;
 }
 
 bool UCharacterInputComponent::Check_PlayerController()
@@ -630,6 +581,32 @@ bool UCharacterInputComponent::Check_PlayerController()
 bool UCharacterInputComponent::Check_PlayerState()
 {
 	if (GetCharacter()->CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
+	{
+		return false;
+	}
+	return true;
+}
+
+bool UCharacterInputComponent::Check_InputEnabled()
+{
+	if (!IsInputEnabled())
+	{
+		return false;
+	}
+	return true;
+}
+
+bool UCharacterInputComponent::Check_DefaultCondition()
+{
+	if (!Check_PlayerController())
+	{
+		return false;
+	}
+	if (!Check_PlayerState())
+	{
+		return false;
+	}
+	if (!Check_InputEnabled())
 	{
 		return false;
 	}

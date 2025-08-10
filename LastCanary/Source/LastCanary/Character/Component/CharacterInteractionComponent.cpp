@@ -7,11 +7,6 @@ void UCharacterInteractionComponent::BeginPlay()
     Super::BeginPlay();
 
     SetComponentTickEnabled(true);
-
-    if (GetCharacter())
-    {
-        CachedController = Cast<APlayerController>(GetCharacter()->GetController());
-    }
 }
 
 void UCharacterInteractionComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -23,46 +18,38 @@ void UCharacterInteractionComponent::TickComponent(float DeltaTime, ELevelTick T
 
 void UCharacterInteractionComponent::PerformTrace()
 {
-  
-    APawn* OwnerPawn = Cast<APawn>(GetOwner());
     if (!GetCharacter() || !GetCharacter()->IsLocallyControlled())
     {
         UpdateFocus(nullptr);
         return;
     }
 
-    // 카메라 위치와 방향 얻기
-    FVector Start;
-    FRotator ViewRot;
-
+    // 카메라 위치
+    FVector ViewLocation;
+    FRotator ViewRotation;
     if (!GetPlayerController())
     {
         UpdateFocus(nullptr);
         return;
     }
+    GetPlayerController()->GetPlayerViewPoint(ViewLocation, ViewRotation);
 
-    GetPlayerController()->GetPlayerViewPoint(Start, ViewRot);
+    // 거리 계산 (FPS/3인칭에 따른 변경은 캐릭터에서 설정 가능)
+    float Distance = GetCharacter()->bIsFPSCamera? TraceDistance : TraceDistance * 3.f;
+    FVector End = ViewLocation + ViewRotation.Vector() * Distance;
 
-    FVector End = Start + (ViewRot.Vector() * TraceDistance);
-
+    // 라인트레이스
     FHitResult Hit;
     FCollisionQueryParams Params;
-    Params.AddIgnoredActor(OwnerPawn);
+    Params.AddIgnoredActor(GetOwner());
 
-    bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params);
+    bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, ViewLocation, End, ECC_Visibility, Params);
 
-    if (bHit)
-    {
-        UpdateFocus(Hit.GetActor());
-    }
-    else
-    {
-        UpdateFocus(nullptr);
-    }
+    // 벽 가까움 체크
+    GetCharacter()->bIsCloseToWall = bHit && Hit.Distance < 100.f;
 
-#if WITH_EDITOR
-    //DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 0.1f);
-#endif
+    UpdateFocus(bHit ? Hit.GetActor() : nullptr);
+    DrawDebugLine(GetWorld(), ViewLocation, End, FColor::Green, false, 0.1f);
 }
 
 void UCharacterInteractionComponent::UpdateFocus(AActor* NewActor)

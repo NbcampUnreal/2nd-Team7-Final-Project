@@ -1365,12 +1365,28 @@ void ABasePlayerController::Input_DroneExit(const FInputActionValue& ActionValue
 
 void ABasePlayerController::Input_Attack(const FInputActionValue& ActionValue)
 {
+	if (!IsValid(CurrentPossessedPawn))
+	{
+		return;
+	}
 
+	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
+	{
+		PlayerCharacter->Handle_Attack(ActionValue);
+	}
 }
 
 void ABasePlayerController::Input_Emote(const FInputActionValue& ActionValue)
 {
+	if (!IsValid(CurrentPossessedPawn))
+	{
+		return;
+	}
 
+	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
+	{
+		PlayerCharacter->Handle_Emote(ActionValue);
+	}
 }
 
 void ABasePlayerController::Server_DroneExit_Implementation()

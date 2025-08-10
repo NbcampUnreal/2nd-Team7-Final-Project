@@ -7,12 +7,27 @@
 class AItemBase;
 class UBoxComponent;
 
+
+UENUM(BlueprintType)
+enum class EAttackType : uint8
+{
+	None		UMETA(DisplayName = "None"),
+	ItemAttack		UMETA(DisplayName = "아이템을 사용한 공격"),
+	Kick		UMETA(DisplayName = "발차기"),
+	Punch		UMETA(DisplayName = "주먹질"),
+	Etc			UMETA(DisplayName = "기타등등")
+	// 필요한 상태 더 추가
+};
+
 UCLASS()
 class LASTCANARY_API UCharacterAttackComponent : public UCharacterBaseComponent
 {
 	GENERATED_BODY()
 public:
 	UCharacterAttackComponent();
+
+	void Handle_Attack(EAttackType _AttackType);
+	void Handle_Kick();
 
 protected:
 	virtual void BeginPlay() override;
@@ -87,4 +102,12 @@ private:
 		bool bFromSweep, const FHitResult& SweepResult);
 
 	void HandleHit(ACharacter* TargetCharacter);
+
+
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UAnimMontage* PunchMontage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UAnimMontage* KickMontage;
 };

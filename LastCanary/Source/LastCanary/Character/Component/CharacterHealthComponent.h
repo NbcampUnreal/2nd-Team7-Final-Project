@@ -19,6 +19,17 @@ protected:
 	virtual void BeginPlay() override;
 
 public:
+	// 체력 회복 관련 함수
+	FTimerHandle HealingTimerHandle;
+	int32 HealingTicksRemaining = 0;
+	float HealingPerTick = 0.f;
+	void StartHealing(float TotalHealAmount, float Duration);
+
+	void HealStep();
+
+	void StopHealing();
+
+public:
 	// 체력 관련
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stat")
 	float MaxHealth = 100.f;

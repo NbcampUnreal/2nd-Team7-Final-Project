@@ -16,6 +16,49 @@ void UCharacterHealthComponent::BeginPlay()
 	bIsDead = false;
 }
 
+void UCharacterHealthComponent::StartHealing(float TotalHealAmount, float Duration)
+{
+	if (!GetCharacter()->HasAuthority())
+	{
+		return;
+	}
+
+	if (GetWorld()->GetTimerManager().IsTimerActive(HealingTimerHandle))
+	{
+		return;
+	}
+
+	const float Interval = 1.0f;
+	HealingTicksRemaining = FMath::CeilToInt(Duration / Interval);
+	HealingPerTick = TotalHealAmount / HealingTicksRemaining;
+
+	GetWorld()->GetTimerManager().SetTimer(HealingTimerHandle, this, &UCharacterHealthComponent::HealStep, Interval, true);
+}
+
+void UCharacterHealthComponent::HealStep()
+{
+	if (!GetCharacter()->HasAuthority())
+	{
+		return;
+	}
+
+	const float NewHP = FMath::Clamp(CurrentHealth + HealingPerTick, 0.0f, MaxHealth);
+	CurrentHealth = NewHP;
+
+	HealingTicksRemaining--;
+
+	if (HealingTicksRemaining <= 0)
+	{
+		StopHealing();
+	}
+}
+
+void UCharacterHealthComponent::StopHealing()
+{
+	GetWorld()->GetTimerManager().ClearTimer(HealingTimerHandle);
+	HealingTicksRemaining = 0;
+}
+
 void UCharacterHealthComponent::TakeDamage(float DamageAmount)
 {
 	float CalculatedHP = CalculateDamage(DamageAmount);
@@ -100,10 +143,10 @@ void UCharacterHealthComponent::Client_UpdateHealth_Implementation()
 void UCharacterHealthComponent::UpdateHealthUI()
 {
 	// 컴포넌트가 붙은 캐릭터 얻기
-	if (CachedCharacter)
+	if (GetCharacter())
 	{
 		// 그 캐릭터를 소유한 컨트롤러 얻기
-		if (APlayerController* PC = Cast<APlayerController>(CachedCharacter->GetController()))
+		if (APlayerController* PC = Cast<APlayerController>(GetCharacter()->GetController()))
 		{
 			if (ULCGameInstanceSubsystem* Subsystem = GetWorld()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 			{

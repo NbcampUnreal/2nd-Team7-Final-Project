@@ -273,6 +273,10 @@ public:
 protected:
 	/*Character Default Settings*/
 	ABaseCharacter();
+	void ApplyNetworkSmoothSettings(float InNetUpdateFrequency, float InMinNetUpdateFrequency, float InNetCullDistance, ENetworkSmoothingMode InSmoothingMode);
+
+	void SetMaxMoveDeltaTime(float InDeltaTime);
+
 	void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const;
 	virtual void NotifyControllerChanged() override;
 	virtual void BeginPlay() override;
@@ -423,6 +427,8 @@ public:
 	virtual void Handle_ViewMode();
 	virtual void Handle_Reload();
 	virtual void Handle_VoiceChatting(const FInputActionValue& ActionValue);
+	virtual void Handle_Attack(const FInputActionValue& ActionValue);
+	virtual void Handle_Emote(const FInputActionValue& ActionValue);
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Voice")
 	void UpdateVoiceChannelBySoectateState();
@@ -609,6 +615,9 @@ public:
 	UFUNCTION()
 	void OnUseItemFromNotify();
 
+	UFUNCTION()
+	void HandleFocusChanged(AActor* NewFocus);
+
 	bool bIsPlayingUseItemMontage = false;
 	bool bIsMining = false;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
@@ -628,8 +637,6 @@ public:
 	// 현재 바라보고 있는 상호작용 가능한 액터
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interact")
 	AActor* CurrentFocusedActor;
-
-	void TraceInteractableActor();
 
 
 
@@ -989,19 +996,8 @@ public:
 	void Server_InteractWithResourceNode(AResourceNode* TargetNode);
 	void Server_InteractWithResourceNode_Implementation(AResourceNode* TargetNode);
 
-	// 체력 회복 관련 함수
-	FTimerHandle HealingTimerHandle;
-	int32 HealingTicksRemaining = 0;
-	float HealingPerTick = 0.f;
-
 	UFUNCTION()
 	void StartHealing(float TotalHealAmount, float Duration);
-
-	UFUNCTION()
-	void HealStep();
-
-	UFUNCTION()
-	void StopHealing();
 
 	// 디버프 인터페이스 
 	virtual void ApplyMovementDebuff_Implementation(float SlowRate, float Duration) override;

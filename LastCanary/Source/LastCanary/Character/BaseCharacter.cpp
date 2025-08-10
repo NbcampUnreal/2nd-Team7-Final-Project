@@ -61,6 +61,7 @@
 #include "Character/Component/CameraRecoilComponent.h"
 #include "Character/Component/CharacterInputComponent.h"
 
+#include "GameFramework/CharacterMovementComponent.h"
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -163,6 +164,46 @@ ABaseCharacter::ABaseCharacter()
 	InputControlComponent = CreateDefaultSubobject<UCharacterInputComponent>(TEXT("InputControlComponent "));
 }
 
+void ABaseCharacter::ApplyNetworkSmoothSettings(
+	float InNetUpdateFrequency,
+	float InMinNetUpdateFrequency,
+	float InNetCullDistance,
+	ENetworkSmoothingMode InSmoothingMode)
+{
+	// 네트워크 업데이트 주기
+	NetUpdateFrequency = InNetUpdateFrequency;
+	MinNetUpdateFrequency = InMinNetUpdateFrequency;
+
+	// 전송 거리
+	NetCullDistanceSquared = FMath::Square(InNetCullDistance);
+
+	// 무브먼트 컴포넌트 설정
+	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+	{
+		MoveComp->NetworkSmoothingMode = InSmoothingMode;
+	}
+}
+
+void ABaseCharacter::SetMaxMoveDeltaTime(float InDeltaTime)
+{
+	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+	{
+		// 클라이언트 쪽 예측 데이터
+		if (FNetworkPredictionData_Client_Character* ClientData = MoveComp->GetPredictionData_Client_Character())
+		{
+			ClientData->MaxMoveDeltaTime = InDeltaTime;
+		}
+
+		// 서버 쪽 예측 데이터
+		if (FNetworkPredictionData_Server_Character* ServerData = MoveComp->GetPredictionData_Server_Character())
+		{
+			ServerData->MaxMoveDeltaTime = InDeltaTime;
+		}
+	}
+}
+
+
+
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -185,15 +226,6 @@ void ABaseCharacter::BeginPlay()
 	}
 	//애니메이션 오버레이 활성화.
 	RefreshOverlayObject();
-
-
-	GetWorld()->GetTimerManager().SetTimer(
-		InteractionTraceTimerHandle,
-		this,
-		&ABaseCharacter::TraceInteractableActor,
-		0.1f,
-		true
-	);
 
 	if (IsValid(ToolbarInventoryComponent))
 	{
@@ -268,6 +300,22 @@ void ABaseCharacter::BeginPlay()
 		AnimationComponent->OnInteractionNotify.AddDynamic(this, &ABaseCharacter::OnInteractionFromNotify);
 		AnimationComponent->OnUseItemNotify.AddDynamic(this, &ABaseCharacter::OnUseItemFromNotify);
 	}
+
+	if (InteractionComponent)
+	{
+		InteractionComponent->OnFocusChanged.AddDynamic(this, &ABaseCharacter::HandleFocusChanged);
+	}
+
+
+	//네트워크 지연에 따른 캐릭터 이동 끊김 방지를 위한 설정
+	ApplyNetworkSmoothSettings(
+		120.f,    // NetUpdateFrequency
+		60.f,     // MinNetUpdateFrequency
+		15000.f,  // NetCullDistance
+		ENetworkSmoothingMode::Exponential
+	);
+
+	SetMaxMoveDeltaTime(0.05f); // 50ms
 }
 
 void ABaseCharacter::Server_ClientLogin_Implementation()
@@ -866,6 +914,22 @@ void ABaseCharacter::Handle_VoiceChatting(const FInputActionValue& ActionValue)
 	}
 }
 
+void ABaseCharacter::Handle_Attack(const FInputActionValue& ActionValue)
+{
+	if (AttackComponent)
+	{
+		AttackComponent->Handle_Attack(EAttackType::Kick);
+	}
+}
+
+void ABaseCharacter::Handle_Emote(const FInputActionValue& ActionValue)
+{
+	const float Value = ActionValue.Get<float>();
+	//if Value > 0.5f -> Emote UI 오픈 & 입력 차단(정확히는 캐릭터의 행동 차단)
+
+	//Value < 0.5 -> Emote UI 해제 및 선택된 춤 재생 // 춤 재생 동안에는 다른 행동 금지 or 이동이나 다른 조작 시에 끊기게끔...
+}
+
 void ABaseCharacter::Handle_Move(const FInputActionValue& ActionValue)
 {
 	if (InputControlComponent)
@@ -1206,42 +1270,6 @@ void ABaseCharacter::SwapHeadMaterialTransparent(bool bUseTransparent)
 
 void ABaseCharacter::Handle_Interact(const FInputActionValue& ActionValue)
 {
-	/*
-	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
-	{
-		return;
-	}
-
-	if (!CurrentFocusedActor)
-	{
-		return;
-	}
-
-	LOG_Char_WARNING(TEXT("Interacted with: %s"), *CurrentFocusedActor->GetName());
-
-	if (bIsPlayingInteractionMontage)
-	{
-		return;
-	}
-
-	if (CurrentFocusedActor->Implements<UInteractableInterface>())
-	{
-		AActor* actor = CurrentFocusedActor;
-		if (!IsValid(actor))
-		{
-			return;
-		}
-		APlayerController* PC = Cast<APlayerController>(GetController());
-		if (PC)
-		{
-			//CancelInteraction();
-			//IInteractableInterface::Execute_Interact(CurrentFocusedActor, PC);
-			LOG_Char_WARNING(TEXT("Handle_Interact: Called Interact on %s"), *actor->GetName());
-			InteractAfterPlayMontage(actor);
-			//AnimationComponent->PlayInteractMontage(actor);
-		}
-	}
-	*/
 	if (InputControlComponent)
 	{
 		InputControlComponent->Handle_Interact(ActionValue);
@@ -1547,138 +1575,50 @@ void ABaseCharacter::OnUseItemFromNotify()
 	}
 }
 
-void ABaseCharacter::TraceInteractableActor()
+void ABaseCharacter::HandleFocusChanged(AActor* NewFocus)
 {
-	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
-	{
-		return;
-	}
-	if (bIsSpawnDrone)
-	{
-		return;
-	}
-	if (!bIsSprinting)
-	{
-		SetDesiredAiming(true);
-	}
-	
-	SetRotationMode(AlsRotationModeTags::Aiming);
-	if (!IsLocallyControlled())
+	// 상태 필터링
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating || bIsSpawnDrone)
 	{
 		return;
 	}
 
-	FVector ViewLocation;
-	FRotator ViewRotation;
-
-	if (Controller)
+	// HUD 업데이트
+	if (NewFocus && NewFocus->Implements<UInteractableInterface>())
 	{
-		Controller->GetPlayerViewPoint(ViewLocation, ViewRotation);
-	}
-	else
-	{
-		return;
-	}
-	FVector Start;
-	FVector End;
-	if (bIsFPSCamera)
-	{
-		Start = ViewLocation;
-		End = Start + (ViewRotation.Vector() * TraceDistance);
-	}
-	else
-	{
-		Start = ViewLocation;
-		End = Start + (ViewRotation.Vector() * TraceDistance * 3);
-	}
-
-	FHitResult Hit;
-	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(this);
-
-	bool bHit = GetWorld()->LineTraceSingleByChannel(
-		Hit, Start, End, ECC_Visibility, Params);
-
-	if (bHit)
-	{
-		float DistanceToHit = Hit.Distance;
-		if (Hit.Distance < 100.0f)
+		FString Message = IInteractableInterface::Execute_GetInteractMessage(NewFocus);
+		if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 		{
-			bIsCloseToWall = true;
-		}
-		else
-		{
-			bIsCloseToWall = false;
-		}
-	}
-	else
-	{
-		bIsCloseToWall = false;
-	}
-
-#if WITH_EDITOR
-	//DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 0.1f);
-#endif
-	//여기가 로그가 안찍힘 수정해야됨
-
-	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
-	if (EquippedItem)
-	{
-		AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem);
-		if (IsValid(EquipmentItem))
-		{
-			if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
+			if (ULCUIManager* UIManager = Subsystem->GetUIManager())
 			{
-				AGunBase* RifleItem = Cast<AGunBase>(EquippedItem);
-
-				if (bHit)  // 레이가 맞으면서 맞은 대상이 벽인 경우를 추가하거나, 캐릭터의 캡슐 콜라이더가 닿았을 때로 조건을 변경하는 것도...
+				if (UInGameHUD* HUD = Cast<UInGameHUD>(UIManager->GetInGameHUD()))
 				{
-				}
-			}
-		}
-	}
-
-
-
-	if (bHit && Hit.GetActor() && Hit.GetActor()->Implements<UInteractableInterface>())
-	{
-		if (CurrentFocusedActor != Hit.GetActor())
-		{
-			CurrentFocusedActor = Hit.GetActor();
-
-			FString Message = IInteractableInterface::Execute_GetInteractMessage(CurrentFocusedActor);
-
-			if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
-			{
-				if (ULCUIManager* UIManager = Subsystem->GetUIManager())
-				{
-					if (UInGameHUD* HUD = Cast<UInGameHUD>(UIManager->GetInGameHUD()))
-					{
-						UE_LOG(LogTemp, Warning, TEXT("SetInteractMessage to %s"), *Message);
-						HUD->SetInteractMessage(Message);
-						HUD->SetInteractMessageVisible(true);
-					}
+					HUD->SetInteractMessage(Message);
+					HUD->SetInteractMessageVisible(true);
+					LOG_Char_WARNING(TEXT("SetInteractMessage to %s"), *Message);
 				}
 			}
 		}
 	}
 	else
 	{
+		LOG_Char_WARNING(TEXT("변경"));
 		if (CurrentFocusedActor)
 		{
 			CurrentFocusedActor = nullptr;
-
-			if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+		}
+		if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+		{
+			if (ULCUIManager* UIManager = Subsystem->GetUIManager())
 			{
-				if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+				if (UInGameHUD* HUD = Cast<UInGameHUD>(UIManager->GetInGameHUD()))
 				{
-					if (UInGameHUD* HUD = Cast<UInGameHUD>(UIManager->GetInGameHUD()))
-					{
-						HUD->SetInteractMessageVisible(false);
-					}
+
+					HUD->SetInteractMessageVisible(false);
 				}
 			}
 		}
+		
 	}
 }
 
@@ -2644,6 +2584,11 @@ void ABaseCharacter::AttachOverlayObject(UStaticMesh* NewStaticMesh, USkeletalMe
 
 void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(FGameplayTag ItemTag)
 {
+	if (AnimationComponent)
+	{
+		AnimationComponent->RefreshOverlayLinkedAnimationLayer(ItemTag);
+	}
+	/*
 	TSubclassOf<UAnimInstance> OverlayAnimationInstanceClass;
 	if (bIsSpawnDrone)  // 태그에 컨트롤러 들 때 사용할 태그 추가해야됨...
 	{
@@ -2699,6 +2644,7 @@ void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(FGameplayTag ItemTag)
 	{
 		GetMesh()->LinkAnimClassLayers(DefaultAnimationClass);
 	}
+	*/
 }
 
 
@@ -3142,48 +3088,10 @@ void ABaseCharacter::Server_InteractWithResourceNode_Implementation(AResourceNod
 
 void ABaseCharacter::StartHealing(float TotalHealAmount, float Duration)
 {
-	if (!HasAuthority())
+	if (HealthComponent)
 	{
-		return;
+		HealthComponent->StartHealing(TotalHealAmount, Duration);
 	}
-
-	if (GetWorldTimerManager().IsTimerActive(HealingTimerHandle))
-	{
-		return;
-	}
-
-	const float Interval = 1.0f;
-	HealingTicksRemaining = FMath::CeilToInt(Duration / Interval);
-	HealingPerTick = TotalHealAmount / HealingTicksRemaining;
-
-	GetWorldTimerManager().SetTimer(HealingTimerHandle, this, &ABaseCharacter::HealStep, Interval, true);
-}
-
-void ABaseCharacter::HealStep()
-{
-	if (!HasAuthority())
-	{
-		return;
-	}
-	ABasePlayerState* PS = GetPlayerState<ABasePlayerState>();
-	if (!IsValid(PS))
-	{
-		return;
-	}
-	const float NewHP = FMath::Clamp(PS->GetHP() + HealingPerTick, 0.0f, PS->MaxHP);
-	PS->SetHP(NewHP);
-	HealingTicksRemaining--;
-
-	if (HealingTicksRemaining <= 0)
-	{
-		StopHealing();
-	}
-}
-
-void ABaseCharacter::StopHealing()
-{
-	GetWorldTimerManager().ClearTimer(HealingTimerHandle);
-	HealingTicksRemaining = 0;
 }
 
 void ABaseCharacter::ApplyMovementDebuff_Implementation(float SlowRate, float Duration)

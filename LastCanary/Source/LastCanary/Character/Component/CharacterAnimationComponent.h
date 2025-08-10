@@ -7,6 +7,7 @@
 #include "CharacterAnimationComponent.generated.h"
 
 class AItemBase;
+struct FGameplayTag;
 
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnReloadNotify);
@@ -40,9 +41,11 @@ class LASTCANARY_API UCharacterAnimationComponent : public UCharacterBaseCompone
 	
 public:
 	UCharacterAnimationComponent();
-	// 헤더에 추가 필요
+	
 	UPROPERTY(EditDefaultsOnly, Category = "Animation")
 	TMap<EAnimationMontageType, UAnimMontage*> MontageMap;
+
+	USkeletalMeshComponent* CharacterMesh();
 protected:
 	virtual void BeginPlay() override;
 
@@ -67,7 +70,7 @@ public:
 	void PlayEmoteMontage();
 
 	UFUNCTION(BlueprintCallable, Category = "Animation")
-	void PlayAttackMontage();
+	void PlayAttackMontage(UAnimMontage* _AttackMontage);
 private:
 	UFUNCTION(Server, Reliable)
 	void Server_PlayMontage(UAnimMontage* LocalMontage, UAnimMontage* MulticastMontage, EAnimationMontageType Type);
@@ -131,4 +134,50 @@ private:
 	bool bIsPlayingGunReloadMontage = false;
 	bool bIsPlayingEmoteMontage = false;
 	bool bIsPlayingAttackMontage = false;
+
+
+
+
+
+
+
+
+
+
+
+public:
+	void RefreshOverlayLinkedAnimationLayer(FGameplayTag ItemTag);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	TSubclassOf<UAnimInstance> DefaultAnimationClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	TSubclassOf<UAnimInstance> RifleAnimationClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	TSubclassOf<UAnimInstance> PistolOneHandedAnimationClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	TSubclassOf<UAnimInstance> PistolTwoHandedAnimationClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	TSubclassOf<UAnimInstance> TorchAnimationClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	TSubclassOf<UAnimInstance> BinocularsAnimationClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	TSubclassOf<UAnimInstance> PickaxeAnimationClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	USkeletalMesh* SKM_Rifle;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	USkeletalMesh* SKM_Pistol;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	UStaticMesh* SM_Torch;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	UStaticMesh* RCController;
 };

@@ -11,17 +11,12 @@ class LASTCANARY_API UCameraRecoilComponent : public UCharacterBaseComponent
 	
 
 protected:
-	UPROPERTY()
-	APlayerController* CachedController;
 	
 	// Called when the game starts
 	virtual void BeginPlay() override;
 public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-
-public:
-	APlayerController* GetPlayerController() const { return CachedController; }
 
 public:
 	// Header 파일에 추가할 변수들

@@ -16,9 +16,13 @@ UCharacterBaseComponent::UCharacterBaseComponent()
 void UCharacterBaseComponent::BeginPlay()
 {
 	Super::BeginPlay();
-	CachedCharacter = Cast<ABaseCharacter>(GetOwner());
-	// ...
 	
+	CachedCharacter = Cast<ABaseCharacter>(GetOwner());
+	
+	if (GetCharacter())
+	{
+		CachedController = Cast<APlayerController>(GetCharacter()->GetController());
+	}
 }
 
 
