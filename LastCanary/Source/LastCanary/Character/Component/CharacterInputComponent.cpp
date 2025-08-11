@@ -6,6 +6,7 @@
 #include "Character/Component/CharacterStaminaComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Character/Component/CharacterInteractionComponent.h"
+#include "Character/Component/CharacterAnimationComponent.h"
 
 #include "../Plugins/ALS-Refactored-4.15/Source/ALS/Public/Utility/AlsVector.h"
 
@@ -71,12 +72,8 @@ void UCharacterInputComponent::Handle_Sprint(const FInputActionValue& ActionValu
 		GetCharacter()->StaminaComponent->StartStaminaRecoverAfterDelay();
 		return;
 	}
-	if (GetCharacter()->StaminaComponent->bIsExhausted) //만약 지친 상태라면 불가
-	{
-		return;
-	}
 
-	GetCharacter()->StopGunAutoFire();
+	GetCharacter()->StopGunAutoFire(); // 총 연사상태면 해제하기
 
 	if (Value < 0.5f) //입력이 떼지는 거면 어차피 뛰는 거 아님..
 	{
@@ -87,6 +84,10 @@ void UCharacterInputComponent::Handle_Sprint(const FInputActionValue& ActionValu
 		return;
 	}
 
+	if (GetCharacter()->StaminaComponent->bIsExhausted) //만약 지친 상태라면 불가
+	{
+		return;
+	}
 	//달리기 시작하면서 스테미나 소모 시작
 	GetCharacter()->StaminaComponent->StartStaminaDrain();
 	GetCharacter()->StaminaComponent->StopStaminaRecovery();
@@ -266,9 +267,11 @@ void UCharacterInputComponent::Handle_Jump(const FInputActionValue& ActionValue)
 		return;
 	}
 
-	GetCharacter()->CancelInteraction();
+	const float Value = ActionValue.Get<float>();
 	
-	if (ActionValue.Get<bool>())
+	GetCharacter()->CancelInteraction();
+
+	if (Value > 0.5f)
 	{
 		if (GetCharacter()->StopRagdolling())
 		{
@@ -374,8 +377,10 @@ void UCharacterInputComponent::Handle_Interact(const FInputActionValue& ActionVa
 			//CancelInteraction();
 			//IInteractableInterface::Execute_Interact(CurrentFocusedActor, PC);
 			LOG_Char_WARNING(TEXT("Handle_Interact: Called Interact on %s"), *actor->GetName());
-			GetCharacter()->InteractAfterPlayMontage(actor);
-			//AnimationComponent->PlayInteractMontage(actor);
+			//GetCharacter()->InteractAfterPlayMontage(actor);
+			//GetCharacter()->AnimationComponent->PlayInteractMontage(actor);
+
+			GetCharacter()->InteractionComponent->Handle_Interact();
 		}
 	}
 }

@@ -27,9 +27,23 @@ public:
 
     UPROPERTY(BlueprintReadOnly)
     AActor* CurrentFocusedActor = nullptr;
+    
+    UFUNCTION()
+    AActor* GetRecentInteractedActor() { return RecentInteractedActor; }
+
+    UFUNCTION()
+    void SetRecentInteractedActor(AActor* actor) { RecentInteractedActor = actor; }
 
     FOnFocusChanged OnFocusChanged;
 
+    void Handle_Interact();
+    
+    void Interact();
+    void Interact(AActor* Actor);
 private:
     void UpdateFocus(AActor* NewActor);
+    bool CanInteract();
+    bool CheckInteractDirectly();
+
+    AActor* RecentInteractedActor = nullptr;
 };

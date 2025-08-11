@@ -60,6 +60,7 @@
 #include "Character/Component/CharacterAttackComponent.h"
 #include "Character/Component/CameraRecoilComponent.h"
 #include "Character/Component/CharacterInputComponent.h"
+#include "Character/Component/CharacterSpeedControlComponent.h"
 
 #include "GameFramework/CharacterMovementComponent.h"
 
@@ -69,7 +70,6 @@ ABaseCharacter::ABaseCharacter()
 	bReplicates = true;
 	UseGunBoneforOverlayObjects = true;
 	bAlwaysRelevant = true;
-	NetCullDistanceSquared = FMath::Square(20000.f); // 최대 동기화 거리 증가
 
 	CustomHeadMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomHeadMesh"));
 	CustomHeadMesh->SetupAttachment(GetMesh());
@@ -101,8 +101,6 @@ ABaseCharacter::ABaseCharacter()
 	////* 가방 메시 *////
 	BackpackMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("BackpackMesh"));
 	BackpackMesh->SetupAttachment(GetMesh());
-
-	SetCharacterPoseSynchronization();
 
 	OverlayStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("OverlayStaticMesh"));
 	OverlayStaticMesh->SetupAttachment(GetMesh());
@@ -152,48 +150,53 @@ ABaseCharacter::ABaseCharacter()
 	NameComponent = CreateDefaultSubobject<UCharacterNameWidgetComponent>(TEXT("NameWidgetComponent"));
 	AttackComponent = CreateDefaultSubobject<UCharacterAttackComponent>(TEXT("AttackComponent"));
 	RecoilComponent = CreateDefaultSubobject<UCameraRecoilComponent>(TEXT("RecoilComponent"));
-	InputControlComponent = CreateDefaultSubobject<UCharacterInputComponent>(TEXT("InputControlComponent "));
+	InputControlComponent = CreateDefaultSubobject<UCharacterInputComponent>(TEXT("InputControlComponent"));
+	SpeedControlComponent = CreateDefaultSubobject<UCharacterSpeedControlComponent >(TEXT("SpeedControlComponent "));
 }
 
 void ABaseCharacter::ApplyNetworkSmoothSettings(
-	float InNetUpdateFrequency,
-	float InMinNetUpdateFrequency,
-	float InNetCullDistance,
-	ENetworkSmoothingMode InSmoothingMode)
+	float InNetUpdateFrequency,       // 네트워크에서 위치/움직임 업데이트를 몇 Hz로 할지 (초당 전송 빈도)
+	float InMinNetUpdateFrequency,    // 최소 보장 업데이트 빈도 (낮은 주기로도 업데이트 보장)
+	float InNetCullDistance,          // 네트워크 업데이트를 전송할 최대 거리 (유닛 단위)
+	ENetworkSmoothingMode InSmoothingMode, // 네트워크 보간/스무딩 방식 (Exponential, Linear 등)
+	float InDeltaTime                 // 움직임 예측 시 보정 최대 시간 (MaxMoveDeltaTime)
+)
 {
-	// 네트워크 업데이트 주기
+	// 캐릭터 자체의 네트워크 업데이트 빈도 설정
 	NetUpdateFrequency = InNetUpdateFrequency;
+
+	// 최소 네트워크 업데이트 빈도 설정 (NetUpdateFrequency보다 낮게는 내려가지 않음)
 	MinNetUpdateFrequency = InMinNetUpdateFrequency;
 
-	// 전송 거리
+	// 캐릭터가 네트워크상에서 업데이트되는 거리 범위를 제어
+	// 이 범위를 벗어나면 위치 업데이트를 보내지 않음으로 네트워크 부하 절감
 	NetCullDistanceSquared = FMath::Square(InNetCullDistance);
 
-	// 무브먼트 컴포넌트 설정
+	// 캐릭터 무브먼트 컴포넌트 참조
 	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
 	{
+		// 네트워크 보간 방식 설정
+		// Exponential: 움직임을 부드럽게 보정, Linear: 직선 보간
 		MoveComp->NetworkSmoothingMode = InSmoothingMode;
-	}
-}
 
-void ABaseCharacter::SetMaxMoveDeltaTime(float InDeltaTime)
-{
-	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
-	{
-		// 클라이언트 쪽 예측 데이터
+		// 클라이언트 예측 데이터 객체 가져오기
+		// 클라이언트에서 서버 움직임 예측 및 보정 관련 데이터 관리
 		if (FNetworkPredictionData_Client_Character* ClientData = MoveComp->GetPredictionData_Client_Character())
 		{
+			// 클라이언트에서 움직임 예측 최대 허용 델타 시간 설정
+			// 이 시간보다 오래 누락된 움직임은 보정 처리됨
 			ClientData->MaxMoveDeltaTime = InDeltaTime;
 		}
 
-		// 서버 쪽 예측 데이터
+		// 서버 예측 데이터 객체 가져오기
+		// 서버 측에서도 움직임 예측을 비슷하게 처리하여 동기화 안정성 확보
 		if (FNetworkPredictionData_Server_Character* ServerData = MoveComp->GetPredictionData_Server_Character())
 		{
+			// 서버에서 움직임 예측 최대 허용 델타 시간 설정
 			ServerData->MaxMoveDeltaTime = InDeltaTime;
 		}
 	}
 }
-
-
 
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
 {
@@ -228,6 +231,11 @@ void ABaseCharacter::BeginPlay()
 
 	SetMovementSetting();
 
+	if (SpeedControlComponent)
+	{
+		SpeedControlComponent->SetCharacterMovementSpeed();
+	}
+
 	if (NameComponent)
 	{
 		NameComponent->InitializeWidget();
@@ -250,7 +258,11 @@ void ABaseCharacter::BeginPlay()
 	}
 
 	//ApplyCustomization(CharacterMeshMap);
-	SetCharacterPoseSynchronization();
+	if (CustomizationComponent)
+	{
+		CustomizationComponent->SetCharacterPoseSynchronization();
+	}
+	
 
 	//백팩은 커스터마이징과는 다르게 처리 // 기본은 투명
 	SetBackpackMesh(false);
@@ -270,22 +282,13 @@ void ABaseCharacter::BeginPlay()
 	if (StaminaComponent)
 	{
 		StaminaComponent->OnStaminaChanged.AddDynamic(this, &ABaseCharacter::HandleStaminaConsumed);
-	}
-
-	if (StaminaComponent)
-	{
 		StaminaComponent->OnStaminaExhausted.AddDynamic(this, &ABaseCharacter::HandleStaminaExhausted);
-	}
-
-	if (StaminaComponent)
-	{
 		StaminaComponent->OnStaminaThresholdReached.AddDynamic(this, &ABaseCharacter::HandleStaminaThresholdReached);
 	}
 	
 	if (AnimationComponent)
 	{
 		AnimationComponent->OnReloadNotify.AddDynamic(this, &ABaseCharacter::OnReloadFromNotify);
-		AnimationComponent->OnInteractionNotify.AddDynamic(this, &ABaseCharacter::OnInteractionFromNotify);
 		AnimationComponent->OnUseItemNotify.AddDynamic(this, &ABaseCharacter::OnUseItemFromNotify);
 	}
 
@@ -294,16 +297,14 @@ void ABaseCharacter::BeginPlay()
 		InteractionComponent->OnFocusChanged.AddDynamic(this, &ABaseCharacter::HandleFocusChanged);
 	}
 
-
 	//네트워크 지연에 따른 캐릭터 이동 끊김 방지를 위한 설정
 	ApplyNetworkSmoothSettings(
 		120.f,    // NetUpdateFrequency
 		60.f,     // MinNetUpdateFrequency
 		15000.f,  // NetCullDistance
-		ENetworkSmoothingMode::Exponential
+		ENetworkSmoothingMode::Exponential,
+		0.05f
 	);
-
-	SetMaxMoveDeltaTime(0.05f); // 50ms
 }
 
 void ABaseCharacter::Server_ClientLogin_Implementation()
@@ -373,20 +374,6 @@ void ABaseCharacter::InitializePlayerCustomizing()
 	}
 
 	CustomizationComponent->InitializeCustomization();
-}
-
-void ABaseCharacter::SetCharacterPoseSynchronization()
-{
-	CustomHeadMesh->SetLeaderPoseComponent(GetMesh());
-	CustomGloveMesh->SetLeaderPoseComponent(GetMesh());
-	CustomJacketMesh_OwnerNoSee->SetLeaderPoseComponent(GetMesh());
-	CustomJacketMesh_OwnerSee->SetLeaderPoseComponent(GetMesh());
-	CustomPantsMesh->SetLeaderPoseComponent(GetMesh());
-	CustomBeltsMesh->SetLeaderPoseComponent(GetMesh());
-	CustomHelmetMesh->SetLeaderPoseComponent(GetMesh());
-	CustomArmorMesh->SetLeaderPoseComponent(GetMesh());
-	CustomBootsMesh->SetLeaderPoseComponent(GetMesh());
-	BackpackMesh->SetLeaderPoseComponent(GetMesh());
 }
 
 float ABaseCharacter::GetCurrentNoiseLevel() const
@@ -774,7 +761,6 @@ void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue, floa
 	}
 }
 
-
 void ABaseCharacter::StartTrackingDrone()
 {
 	GetWorld()->GetTimerManager().SetTimer(DroneTrackingTimerHandle, this, &ABaseCharacter::UpdateRotationToDrone, 0.02f, true);
@@ -817,7 +803,6 @@ void ABaseCharacter::ApplySmoothRecoil(float Vertical, float Horizontal)
 	if (RecoilComponent)
 	{
 		RecoilComponent->ApplySmoothRecoil(Vertical, Horizontal);
-		return;
 	}
 }
 
@@ -930,44 +915,10 @@ void ABaseCharacter::HandleStaminaExhausted()
 		return;
 	}
 	MyPlayerState->SetPlayerMovementState(ECharacterMovementState::Exhausted);
-	bIsSprinting = false;
-	SetDesiredAiming(true);
-	SetDesiredGait(AlsGaitTags::Running);
-	StaminaComponent->StopStaminaDrain();
-	StaminaComponent->StartStaminaRecoverAfterDelay();
 }
 
 void ABaseCharacter::HandleStaminaThresholdReached()
 {
-
-}
-
-void ABaseCharacter::PlayerIsSprint()
-{
-	float CurrentPlayerSpeed = GetPlayerMovementSpeed();
-	if (FrontInput < 0.1f)
-	{
-		bIsSprinting = false;
-		SetDesiredGait(AlsGaitTags::Running);
-		//일단 회복 시키기는 해
-		StaminaComponent->StartStaminaRecoverAfterDelay();
-		LOG_Char_WARNING(TEXT("속도가 모자라서 스태미나 회복"));
-		return;
-	}
-	bIsSprinting = true;
-	SetDesiredAiming(false);
-	SetDesiredGait(AlsGaitTags::Sprinting);
-	Camera->AttachToComponent(SpringArm, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
-	Camera->SetRelativeLocation(FVector::ZeroVector);
-	Camera->SetRelativeRotation(FRotator::ZeroRotator); // 필요 시 원래 회전 복구
-	StaminaComponent->StopStaminaRecovery();
-	StaminaComponent->StopStaminaRecoverAfterDelay();
-	StaminaComponent->StartStaminaRecoverAfterDelayOnJump();
-
-	StaminaComponent->StartStaminaDrain();
-
-
-	//진짜 달리기 중인지 판단하는 로직이 필요
 
 }
 
@@ -1197,80 +1148,6 @@ void ABaseCharacter::Handle_Interact(const FInputActionValue& ActionValue)
 	}
 }
 
-void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
-{
-	UAnimMontage* MontageToPlay = nullptr;
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	InteractTargetActor = TargetActor;
-	if (!IsValid(AnimInstance))
-	{
-		return;
-	}
-	if (InteractTargetActor->IsA<AItemBase>())
-	{
-		AItemBase* Item = Cast<AItemBase>(InteractTargetActor);
-
-		if (!IsValid(Item))
-		{
-			return;
-		}
-		
-		if (!ToolbarInventoryComponent->CanAddItem(Item))
-		{
-			if (!Item->IsCollectible())
-			{
-				return;
-			}
-			
-			if (!bBackpackMeshActive)
-			{
-				return;
-			}
-		}
-		
-		MontageToPlay = InteractMontageOnUnderObject;
-	}
-	else
-	{
-		if (InteractTargetActor->Tags.Contains("Roll"))
-		{
-			MontageToPlay = OpeningValveMontage;
-		}
-		else if (InteractTargetActor->Tags.Contains("Kick"))
-		{
-			MontageToPlay = KickMontage;
-		}
-		else if (InteractTargetActor->Tags.Contains("Press"))
-		{
-			MontageToPlay = PressButtonMontage;
-		}
-		else
-		{
-			//게이트 등 애니메이션 필요 없는 인터랙트 개체들을 위해...
-			APlayerController* PC = Cast<APlayerController>(GetController());
-			if (!IsValid(PC))
-			{
-				return;
-			}
-			if (!IsValid(InteractTargetActor))
-			{
-				return;
-			}
-			IInteractableInterface::Execute_Interact(InteractTargetActor, PC);
-			return;
-		}
-	}
-	
-	if (!IsValid(MontageToPlay))
-	{
-		return;
-	}
-	CurrentInteractMontage = MontageToPlay;
-	bIsPlayingInteractionMontage = true;
-	bIsPlayingAnimation = true;
-	Server_PlayMontage(MontageToPlay, EAnimationType::Interaction);
-}
-
 void ABaseCharacter::CancelInteraction()
 {
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
@@ -1310,113 +1187,9 @@ void ABaseCharacter::Multicast_CancelInteraction_Implementation()
 	AnimInstance->Montage_Stop(0.2f, CurrentInteractMontage); // 부드럽게 블렌드 아웃
 }
 
-
-void ABaseCharacter::OnInteractAnimationNotified()
-{
-	//재생 후 notify로
-	APlayerController* PC = Cast<APlayerController>(GetController());
-	if (!IsValid(PC))
-	{
-		return;
-	}
-	if (!IsValid(InteractTargetActor))
-	{
-		return;
-	}
-	bIsPlayingInteractionMontage = false;
-	bIsPlayingAnimation = false;
-	IInteractableInterface::Execute_Interact(InteractTargetActor, PC);
-}
-
-void ABaseCharacter::Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay, EAnimationType Animtype)
-{
-	Multicast_PlayMontage(MontageToPlay, Animtype);
-}
-
-void ABaseCharacter::Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay, EAnimationType Animtype)
-{
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if (!IsValid(AnimInstance))
-	{
-		return;
-	}
-	AnimInstance->Montage_Play(MontageToPlay);
-	CurrentInteractMontage = MontageToPlay;
-	bIsPlayingAnimation = true;
-	switch (Animtype)
-	{
-	case EAnimationType::Interaction:
-	{
-		bIsPlayingInteractionMontage = true;
-		break;
-	}
-	case EAnimationType::UseItem:
-	{
-		bIsPlayingUseItemMontage = true;
-		break;
-	}
-	default:
-	{
-		break;
-	}
-	}
-}
-
-void ABaseCharacter::UseItemAfterPlayMontage(AItemBase* EquippedItem)
-{
-	UAnimMontage* MontageToPlay;
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if (!IsValid(AnimInstance))
-	{
-		return;
-	}
-	CurrentUsingItem = EquippedItem;
-	if (CurrentUsingItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Consumable")))
-	{
-		MontageToPlay = UsingBandageMontage;
-	}
-	else if (CurrentUsingItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Tool.Pickaxe")))
-	{
-		MontageToPlay = PickAxeMontage;
-		bIsMining = true;
-		Client_SetMiningState(bIsMining);
-	}
-	else
-	{
-		//태그가 없으면 바로 실행
-		EquippedItem->UseItem();
-		return;
-	}
-	if (!IsValid(MontageToPlay))
-	{
-		return;
-	}
-	CurrentUseItemMontage = MontageToPlay;	
-	bIsPlayingUseItemMontage = true;
-	bIsPlayingAnimation = true;
-	Server_PlayMontage(MontageToPlay, EAnimationType::UseItem);
-}
-
 void ABaseCharacter::Client_SetMiningState_Implementation(bool NewValue)
 {
 	bIsMining = NewValue;
-}
-
-void ABaseCharacter::UseItemAnimationNotified()
-{
-	//재생 후 notify로
-	APlayerController* PC = Cast<APlayerController>(GetController());
-	if (!IsValid(PC))
-	{
-		return;
-	}
-	if (!IsValid(CurrentUsingItem))
-	{
-		return;
-	}
-	bIsPlayingUseItemMontage = false;
-	bIsPlayingAnimation = false;
-	CurrentUsingItem->UseItem();
 }
 
 void ABaseCharacter::CancelUseItem()
@@ -1479,15 +1252,6 @@ void ABaseCharacter::OnReloadFromNotify()
 	bIsReloading = false;
 }
 
-void ABaseCharacter::OnInteractionFromNotify()
-{
-	APlayerController* PC = Cast<APlayerController>(GetController());
-	if (IsValid(InteractTargetActor))
-	{
-		IInteractableInterface::Execute_Interact(InteractTargetActor, PC);
-	}
-}
-
 void ABaseCharacter::OnUseItemFromNotify()
 {
 	if (IsValid(CurrentUsingItem))
@@ -1534,7 +1298,6 @@ void ABaseCharacter::HandleFocusChanged(AActor* NewFocus)
 			{
 				if (UInGameHUD* HUD = Cast<UInGameHUD>(UIManager->GetInGameHUD()))
 				{
-
 					HUD->SetInteractMessageVisible(false);
 				}
 			}
@@ -2509,63 +2272,6 @@ void ABaseCharacter::RefreshOverlayLinkedAnimationLayer(FGameplayTag ItemTag)
 	{
 		AnimationComponent->RefreshOverlayLinkedAnimationLayer(ItemTag);
 	}
-	/*
-	TSubclassOf<UAnimInstance> OverlayAnimationInstanceClass;
-	if (bIsSpawnDrone)  // 태그에 컨트롤러 들 때 사용할 태그 추가해야됨...
-	{
-		OverlayAnimationInstanceClass = BinocularsAnimationClass;
-		if (IsValid(OverlayAnimationInstanceClass))
-		{
-			GetMesh()->LinkAnimClassLayers(OverlayAnimationInstanceClass);
-		}
-		else
-		{
-			GetMesh()->LinkAnimClassLayers(DefaultAnimationClass);
-		}
-		return;
-	}
-	if (!ItemTag.IsValid())
-	{
-		OverlayAnimationInstanceClass = DefaultAnimationClass;
-	}
-	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
-	{
-		OverlayAnimationInstanceClass = RifleAnimationClass;
-	}
-	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.FlashLight")))
-	{
-		OverlayAnimationInstanceClass = TorchAnimationClass;
-	}
-	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol")))
-	{
-		OverlayAnimationInstanceClass = PistolTwoHandedAnimationClass;
-	}
-	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Shotgun")))
-	{
-		OverlayAnimationInstanceClass = RifleAnimationClass;
-	}
-	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))
-	{
-		OverlayAnimationInstanceClass = PistolOneHandedAnimationClass;
-	}
-	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Tool.Pickaxe")))
-	{
-		OverlayAnimationInstanceClass = PickaxeAnimationClass;
-	}
-	else
-	{
-		OverlayAnimationInstanceClass = DefaultAnimationClass;
-	}
-
-	if (IsValid(OverlayAnimationInstanceClass))
-	{
-		GetMesh()->LinkAnimClassLayers(OverlayAnimationInstanceClass);
-	}
-	else
-	{
-		GetMesh()->LinkAnimClassLayers(DefaultAnimationClass);
-	}
-	*/
 }
 
 
@@ -2742,7 +2448,6 @@ void ABaseCharacter::UseItem(AItemBase* Item)
 	{
 		Item->UseItem();
 	}
-	//UseItemAfterPlayMontage(Item);
 }
 
 void ABaseCharacter::CancelUseItem(AItemBase* Item)
@@ -3244,7 +2949,11 @@ void ABaseCharacter::TurnOffNameWidget()
 void ABaseCharacter::Client_TurnOffNameWidget_Implementation()
 {
 	LOG_Char_WARNING(TEXT("관전시 위젯 해제"));
-
+	if (NameComponent)
+	{
+		NameComponent->TurnOffWidget();
+	}
+	/*
 	AGameStateBase* GameState = GetWorld()->GetGameState<AGameStateBase>();
 	if (!IsValid(GameState))
 	{
@@ -3273,4 +2982,5 @@ void ABaseCharacter::Client_TurnOffNameWidget_Implementation()
 
 		Char->TurnOffNameWidget();
 	}
+	*/
 }

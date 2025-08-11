@@ -5,6 +5,8 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/GameplayStatics.h"
 #include "Character/BasePlayerState.h"
+#include "GameFramework/GameStateBase.h"
+
 #include "LastCanary.h"
 
 UCharacterNameWidgetComponent::UCharacterNameWidgetComponent()
@@ -89,8 +91,33 @@ void UCharacterNameWidgetComponent::UpdateWidget()
 
 void UCharacterNameWidgetComponent::TurnOffWidget()
 {
-	HideNameWidget();
-	//SetVisibility(false, true);
+	AGameStateBase* GameState = GetWorld()->GetGameState<AGameStateBase>();
+	if (!GameState)
+	{
+		LOG_Char_WARNING(TEXT("GameState Is Invalid"));
+		return;
+	}
+
+	if (GameState->PlayerArray.Num() <= 0)
+	{
+		return;
+	}
+
+	for (APlayerState* PS : GameState->PlayerArray)
+	{
+		ABasePlayerState* BasePS = Cast<ABasePlayerState>(PS);
+		if (!IsValid(BasePS))
+		{
+			continue;
+		}
+
+		ABaseCharacter* Char = Cast<ABaseCharacter>(BasePS->GetPawn());
+		if (!IsValid(Char))
+		{
+			continue;
+		}
+		Char->NameComponent->HideNameWidget();
+	}
 }
 
 UUserWidget* UCharacterNameWidgetComponent::GetWidget() const

@@ -39,6 +39,7 @@ class UCharacterNameWidgetComponent;
 class UCharacterAttackComponent;
 class UCameraRecoilComponent;
 class UCharacterInputComponent;
+class UCharacterSpeedControlComponent;
 
 UENUM(BlueprintType)
 enum class EAnimationType : uint8
@@ -125,7 +126,8 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UCharacterInputComponent* InputControlComponent;
 
-
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UCharacterSpeedControlComponent* SpeedControlComponent;
 public:
 	UFUNCTION()
 	virtual float GetCurrentNoiseLevel() const override;
@@ -187,8 +189,6 @@ public:
 	void Multicast_SetBackpackMesh(bool bIsEquipBackpack);
 	void Multicast_SetBackpackMesh_Implementation(bool bIsEquipBackpack);
 	bool Updated = false;
-
-	void SetCharacterPoseSynchronization();
 
 	UPROPERTY(EditAnywhere, Category = "Brightness")
 	float MinBrightness = 8.0f;
@@ -254,9 +254,7 @@ public:
 protected:
 	/*Character Default Settings*/
 	ABaseCharacter();
-	void ApplyNetworkSmoothSettings(float InNetUpdateFrequency, float InMinNetUpdateFrequency, float InNetCullDistance, ENetworkSmoothingMode InSmoothingMode);
-
-	void SetMaxMoveDeltaTime(float InDeltaTime);
+	void ApplyNetworkSmoothSettings(float InNetUpdateFrequency, float InMinNetUpdateFrequency, float InNetCullDistance, ENetworkSmoothingMode InSmoothingMode, float InDeltaTime);
 
 	void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const;
 	virtual void NotifyControllerChanged() override;
@@ -535,17 +533,6 @@ public:
 
 	bool bIsPlayingAnimation = false;
 
-	void InteractAfterPlayMontage(AActor* TargetActor);
-	void OnInteractAnimationNotified();
-
-	UFUNCTION(Server, Unreliable)
-	void Server_PlayMontage(UAnimMontage* MontageToPlay, EAnimationType Animtype);
-	void Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay, EAnimationType Animtype);
-
-	UFUNCTION(NetMulticast, Unreliable)
-	void Multicast_PlayMontage(UAnimMontage* MontageToPlay, EAnimationType Animtype);
-	void Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay, EAnimationType Animtype);
-
 	UFUNCTION(Client, Reliable)
 	void Client_SetMiningState(bool NewValue);
 	void Client_SetMiningState_Implementation(bool NewValue);
@@ -566,11 +553,6 @@ public:
 
 	bool bIsPlayingInteractionMontage = false;
 
-
-
-	void UseItemAfterPlayMontage(AItemBase* EquippedItem);
-	void UseItemAnimationNotified();
-
 	UPROPERTY()
 	UAnimMontage* CurrentUseItemMontage;
 
@@ -589,9 +571,6 @@ public:
 
 	UFUNCTION()
 	void OnReloadFromNotify();
-
-	UFUNCTION()
-	void OnInteractionFromNotify();
 
 	UFUNCTION()
 	void OnUseItemFromNotify();
@@ -834,25 +813,6 @@ public:
 	UFUNCTION()
 	void HandleStaminaThresholdReached();
 
-	void PlayerIsSprint();
-	/*
-	void ConsumeStamina();
-	void TickStaminaDrain();
-	void StartStaminaDrain();
-	void StopStaminaDrain();
-	void StartStaminaRecovery();
-	void StopStaminaRecovery();
-	void StartStaminaRecoverAfterDelay();
-	void StartStaminaRecoverAfterDelayOnJump();
-	void StopStaminaRecoverAfterDelay();
-	void TickStaminaRecovery();
-	bool HasStamina() const;
-	bool IsStaminaFull() const;
-private:
-	FTimerHandle StaminaDrainHandle;
-	FTimerHandle StaminaRecoveryHandle;
-	FTimerHandle StaminaRecoveryDelayHandle;
-	*/
 	// 인벤토리 아이템 관련 변수 및 함수
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tags")
@@ -938,7 +898,7 @@ public:
 	// 가방 관리 (간소화)
 	//-----------------------------------------------------
 
-private:
+public:
 	/** 현재 가방 메시 활성화 상태 추적 */
 	UPROPERTY(Replicated)
 	bool bBackpackMeshActive = false;

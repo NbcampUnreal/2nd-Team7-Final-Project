@@ -1,6 +1,8 @@
 #include "Character/Component/CharacterAnimationComponent.h"
 #include "Character/BaseCharacter.h"
 #include "Item/ItemBase.h"
+#include "Actor/Gimmick/LCBaseGimmick.h"
+#include "Character/Component/CharacterInteractionComponent.h"
 
 #include "LastCanary.h"
 
@@ -55,10 +57,28 @@ void UCharacterAnimationComponent::PlayInteractMontage(AActor* TargetActor)
 {
 	LOG_Char_WARNING(TEXT("애니메이션 컴포넌트에서 애니메이션 재생"));
 	if (!IsValid(TargetActor)) return;
-	UAnimMontage* Local = MontageMap.FindRef(EAnimationMontageType::Interaction); //인터랙트 할 물체에서 애니메이션 가져오기
-	UAnimMontage* Remote = MontageMap.FindRef(EAnimationMontageType::Interaction); //인터랙트 할 물체에서 애니메이션 가져오기
 
-	
+	UAnimMontage* Local = MontageMap.FindRef(EAnimationMontageType::Interaction); //기본으로 이 애니메이션을 사용
+	UAnimMontage* Remote = MontageMap.FindRef(EAnimationMontageType::Interaction); //기본으로 이 애니메이션을 사용
+
+	if (TargetActor->IsA<AItemBase>())
+	{
+		AItemBase* Item = Cast<AItemBase>(TargetActor);
+
+		if (!IsValid(Item))
+		{
+			return;
+		}
+		
+		//MontageToPlay = GetCharacter()->InteractMontageOnUnderObject;
+	}
+	else if (TargetActor->IsA<ALCBaseGimmick>())
+	{
+		ALCBaseGimmick* Gimmick = Cast<ALCBaseGimmick>(TargetActor);
+		Local = Gimmick->LocalAnimation;
+		Remote = Gimmick->RemoteAnimation;
+	}
+
 	PlayMontageByType(Local, Remote, EAnimationMontageType::Interaction);
 }
 
@@ -208,8 +228,7 @@ void UCharacterAnimationComponent::Multicast_CancelMontage_Implementation(UAnimM
 
 void UCharacterAnimationComponent::HandleAnimNotify(EAnimationMontageType Type)
 {
-	APlayerController* PC = Cast<APlayerController>(CachedCharacter->GetController());
-	if (!IsValid(PC)) return;
+	if (!IsValid(GetPlayerController())) return;
 
 	switch (Type)
 	{
@@ -219,7 +238,10 @@ void UCharacterAnimationComponent::HandleAnimNotify(EAnimationMontageType Type)
 		break;
 
 	case EAnimationMontageType::Interaction:
-		OnInteractionNotify.Broadcast();
+		if (GetCharacter()->InteractionComponent)
+		{
+			GetCharacter()->InteractionComponent->Interact();
+		}
 		SetPlayingMontageState(Type, false);
 		break;
 

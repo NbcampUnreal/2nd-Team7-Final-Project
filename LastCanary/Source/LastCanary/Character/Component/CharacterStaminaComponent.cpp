@@ -16,11 +16,6 @@ void UCharacterStaminaComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (GetCharacter())
-	{
-		//GetCharacter()->OnJumpStarted.AddDynamic(this, &UCharacterStaminaComponent::HandleJumpStart);
-	}
-
 	bInfiniteStamina = false;
 	bIsExhausted = false;
 	bCanCharacterSprint = true;
@@ -58,9 +53,18 @@ void UCharacterStaminaComponent::ConsumeStamina(float Amount)
 {
 	if (CurrentStamina <= 0.0f)
 	{
+		GetCharacter()->StaminaComponent->StopStaminaDrain();
+		GetCharacter()->StaminaComponent->StartStaminaRecoverAfterDelay();
+
 		bIsExhausted = true;
-		StopStaminaRecoverAfterDelay();
+		StopStaminaDrain();
+		StartStaminaRecoverAfterDelay();
+		bCanCharacterSprint = false;
+		GetCharacter()->bIsSprinting = false;
+		GetCharacter()->SetDesiredAiming(true);
+		GetCharacter()->SetDesiredGait(AlsGaitTags::Running);
 		OnStaminaExhausted.Broadcast();
+		return;
 	}
 
 	OnStaminaChanged.Broadcast();
@@ -80,12 +84,19 @@ void UCharacterStaminaComponent::ConsumeStaminaOnJump()
 	}
 	if (CurrentStamina <= 0.0f)
 	{
-		bIsExhausted = true;
-		StopStaminaRecoverAfterDelay();
-		OnStaminaExhausted.Broadcast();
-	}
+		GetCharacter()->StaminaComponent->StopStaminaDrain();
+		GetCharacter()->StaminaComponent->StartStaminaRecoverAfterDelay();
 
-	OnStaminaChanged.Broadcast();
+		bIsExhausted = true;
+		StartStaminaRecoverAfterDelay();
+		bCanCharacterSprint = false;
+		GetCharacter()->bIsSprinting = false;
+		GetCharacter()->SetDesiredAiming(true);
+		GetCharacter()->SetDesiredGait(AlsGaitTags::Running);	
+		StopStaminaDrain();
+		OnStaminaExhausted.Broadcast();
+		return;
+	}
 
 	float Stamina = FMath::Clamp(CurrentStamina - JumpStaminaCost, 0.f, MaxStamina);
 	SetStamina(Stamina);
@@ -161,7 +172,6 @@ void UCharacterStaminaComponent::StartStaminaRecoverAfterDelay()
 	{
 		return;
 	}
-
 	GetWorld()->GetTimerManager().SetTimer(StaminaRecoveryDelayHandle, this, &UCharacterStaminaComponent::StartStaminaRecovery, RecoverDelayTime, false);
 }
 
