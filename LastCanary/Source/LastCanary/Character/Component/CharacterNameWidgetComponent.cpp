@@ -116,7 +116,7 @@ void UCharacterNameWidgetComponent::TurnOffWidget()
 		{
 			continue;
 		}
-		Char->NameComponent->HideNameWidget();
+		//Char->NameComponent->HideNameWidget();
 	}
 }
 

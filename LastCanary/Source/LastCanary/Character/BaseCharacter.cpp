@@ -61,6 +61,8 @@
 #include "Character/Component/CameraRecoilComponent.h"
 #include "Character/Component/CharacterInputComponent.h"
 #include "Character/Component/CharacterSpeedControlComponent.h"
+#include "Character/Component/CharacterSoundComponent.h"
+#include "Character/Component/CharacterSanityComponent.h"
 
 #include "GameFramework/CharacterMovementComponent.h"
 
@@ -147,11 +149,12 @@ ABaseCharacter::ABaseCharacter()
 	FootstepNoiseComponent = CreateDefaultSubobject<UCharacterFootstepNoiseComponent>(TEXT("FootstepNoiseComponent"));
 	CameraControlComponent = CreateDefaultSubobject<UCharacterCameraControlComponent>(TEXT("CameraControlComponent"));
 	DisplayComponent = CreateDefaultSubobject<UCharacterDisplayComponent>(TEXT("DisplayComponent"));
-	NameComponent = CreateDefaultSubobject<UCharacterNameWidgetComponent>(TEXT("NameWidgetComponent"));
 	AttackComponent = CreateDefaultSubobject<UCharacterAttackComponent>(TEXT("AttackComponent"));
 	RecoilComponent = CreateDefaultSubobject<UCameraRecoilComponent>(TEXT("RecoilComponent"));
 	InputControlComponent = CreateDefaultSubobject<UCharacterInputComponent>(TEXT("InputControlComponent"));
-	SpeedControlComponent = CreateDefaultSubobject<UCharacterSpeedControlComponent >(TEXT("SpeedControlComponent "));
+	SpeedControlComponent = CreateDefaultSubobject<UCharacterSpeedControlComponent>(TEXT("SpeedControlComponent"));
+	SoundPlayComponent = CreateDefaultSubobject<UCharacterSoundComponent>(TEXT("SoundPlayComponent"));
+	SanityComponent = CreateDefaultSubobject<UCharacterSanityComponent>(TEXT("SanityComponent"));
 }
 
 void ABaseCharacter::ApplyNetworkSmoothSettings(
@@ -234,27 +237,6 @@ void ABaseCharacter::BeginPlay()
 	if (SpeedControlComponent)
 	{
 		SpeedControlComponent->SetCharacterMovementSpeed();
-	}
-
-	if (NameComponent)
-	{
-		NameComponent->InitializeWidget();
-	}
-
-	if (NameComponent && IsValid(NameComponent->GetWidget()))
-	{
-		APlayerState* PS = GetPlayerState();
-		if (IsValid(PS))
-		{
-			NameComponent->SetPlayerName(PS->GetPlayerName());
-		}
-
-		if (IsLocallyControlled())
-		{
-			NameComponent->SetWidgetVisibility(false);
-		}
-
-		NameComponent->SetCastShadowEnabled(false);
 	}
 
 	//ApplyCustomization(CharacterMeshMap);
@@ -353,17 +335,6 @@ void ABaseCharacter::InitializePlayerLocalSettings()
 {
 	//1. 커스터마이징 데이터 로드 (로컬 환경)
 	InitializePlayerCustomizing();
-
-	//2. 플레이어 네임 위젯 초기화
-	InitializePlayerNameWidget();
-}
-
-void ABaseCharacter::InitializePlayerNameWidget()
-{
-	if (NameComponent)
-	{
-		NameComponent->InitializeNameWidget();
-	}
 }
 
 void ABaseCharacter::InitializePlayerCustomizing()
@@ -1527,271 +1498,12 @@ float ABaseCharacter::TakeSpiritDamage(float DamageAmount, FDamageEvent const& D
 	{
 		return 0;
 	}
-	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
-	if (!IsValid(MyPlayerState))
+	if (SanityComponent)
 	{
-		return 0;
-	}
-	if (MyPlayerState->bInfiniteSpirit == true)
-	{
-		return 0;
-	}
-	float FinalDamage = CalculateTakeSpiritDamage(DamageAmount);
-	float CurrentSpirit = MyPlayerState->GetSpirit();
-	float MaxSpirit = MyPlayerState->MaxSpirit;
-	float CalCulatedSpirit = FMath::Clamp(CurrentSpirit - FinalDamage, 0.0f, MaxSpirit);
-	MyPlayerState->SetSpirit(CalCulatedSpirit);
-	LOG_Char_WARNING(TEXT("Current Spirit : %f"), CalCulatedSpirit);
-	if (CalCulatedSpirit <= MyPlayerState->PanicTriggerThreshold)
-	{
-		//: 정신력 낮음 처리
-		EnterPanicState();
+		SanityComponent->TakeSpiritDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 	}
 	return DamageAmount;
 }
-
-void ABaseCharacter::TriggerSpiritTickDamage()
-{
-	GetWorld()->GetTimerManager().SetTimer(
-		SpiritTickDamageHandle,
-		this,
-		&ABaseCharacter::TakeSpiritTickDamage,
-		SpiritDamageTickInterval,
-		true,           // 반복
-		0.01f    // 처음 실행까지의 지연 시간
-	);
-}
-
-void ABaseCharacter::TakeSpiritTickDamage()
-{
-	FDamageEvent DamageEvent;
-	float DamageAmount = SpiritTickDamage;
-	AController* InstigatorController = GetController(); // 또는 nullptr
-	AActor* DamageCauser = this; // 또는 원하는 액터
-
-	TakeSpiritDamage(DamageAmount, DamageEvent, GetController(), DamageCauser);
-}
-
-
-float ABaseCharacter::RestoreSpirit(float Amount)
-{
-	LOG_Char_WARNING(TEXT("캐릭터가 정신력을 회복함"));
-	if (!HasAuthority())
-	{
-		return 0;
-	}
-	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
-	if (!IsValid(MyPlayerState))
-	{
-		return 0;
-	}
-	float CurrentSpirit = MyPlayerState->GetSpirit();
-	float MaxSpirit = MyPlayerState->MaxSpirit;
-	float CalCulatedSpirit = FMath::Clamp(CurrentSpirit + Amount, 0.0f, MaxSpirit);
-	MyPlayerState->SetSpirit(CalCulatedSpirit);
-	LOG_Char_WARNING(TEXT("Current Spirit : %f"), CalCulatedSpirit);
-	if (CalCulatedSpirit > MyPlayerState->PanicTriggerThreshold)
-	{
-		//: 정신력 높아짐 처리
-		ExitPanicState();
-	}
-	return Amount;
-}
-
-float ABaseCharacter::CalculateTakeSpiritDamage(float DamageAmount)
-{
-	//TODO: 여기에다가 추가로 뭔가 장비나 방어력이 추가 되면 여기서 계산하고 넘겨도 됨.
-	return DamageAmount;
-}
-
-void ABaseCharacter::EnterPanicState()
-{
-	//TODO: 서버에서의 처리
-	LOG_Char_WARNING(TEXT("패닉 상태 진입"));
-
-	//클라이언트에서의 처리
-	Client_EnterPanicState();
-}
-
-void ABaseCharacter::ExitPanicState()
-{
-	Client_ExitPanicState();
-}
-
-
-void ABaseCharacter::Client_EnterPanicState_Implementation()
-{
-	StartPanicBehaviorLoop();
-}
-
-void ABaseCharacter::Client_ExitPanicState_Implementation()
-{
-	GetWorld()->GetTimerManager().ClearTimer(PanicActionTimerHandle);
-
-}
-
-void ABaseCharacter::StartPanicBehaviorLoop()
-{
-	GetWorld()->GetTimerManager().SetTimer(
-		PanicActionTimerHandle,
-		this,
-		&ABaseCharacter::PerformRandomPanicAction,
-		RepeatRate,
-		true,           // 반복
-		InitialDelay    // 처음 실행까지의 지연 시간
-	);
-}
-
-void ABaseCharacter::StopPanicBehaviorLoop()
-{
-	GetWorld()->GetTimerManager().ClearTimer(PanicActionTimerHandle);
-}
-
-void ABaseCharacter::PerformRandomPanicAction()
-{
-	LOG_Char_WARNING(TEXT("패닉 행동 실행"));
-
-	TArray<TFunction<void()>> PanicActions;
-
-	PanicActions.Add([this]() { PlayScreamSound_Local(); });
-	PanicActions.Add([this]() { TriggerPanicVoice(PanicDuration); });
-	PanicActions.Add([this]() { UseItemUnexpectedly(); });
-	PanicActions.Add([this]() { PlaySighSoundForAll(); });
-	PanicActions.Add([this]() { ForceSetMouseSensitivity(PanicSensitivity, PanicDuration); });
-	PanicActions.Add([this]() { ForceInvertMouseTemporary(true, PanicDuration); });
-
-	// 랜덤 선택해서 실행
-	if (PanicActions.Num() > 0)
-	{
-		int32 RandomIndex = FMath::RandRange(0, PanicActions.Num() - 1);
-		PanicActions[RandomIndex]();
-	}
-	
-  //TODO: 정신력 0 처리
-
-}
-
-void ABaseCharacter::PlayScreamSound_Local()
-{
-	if (IsLocallyControlled())
-	{
-		UGameplayStatics::PlaySoundAtLocation(this, ScreamSound, GetActorLocation());
-	}
-}
-
-void ABaseCharacter::UseItemUnexpectedly()
-{
-	LOG_Char_WARNING(TEXT("갑자기 아이템 사용"));
-
-	UseEquippedItem(1.0f);
-	UseEquippedItem(0.0f);
-}
-
-void ABaseCharacter::PlaySighSoundForAll()
-{
-	if (IsLocallyControlled())
-	{
-		Server_PlaySighSound();
-	}
-}
-
-void ABaseCharacter::Server_PlaySighSound_Implementation()
-{
-	if (HasAuthority()) // 서버에서만 멀티캐스트 호출
-	{
-		Multicast_PlaySighSound();
-	}
-}
-
-
-void ABaseCharacter::Multicast_PlaySighSound_Implementation()
-{
-	if (SighSound)
-	{
-		UGameplayStatics::SpawnSoundAttached(
-			SighSound,
-			GetRootComponent(),         // 또는 GetMesh() 등 캐릭터에 붙일 컴포넌트
-			NAME_None,
-			FVector::ZeroVector,
-			EAttachLocation::KeepRelativeOffset,
-			true                        // bStopWhenAttachedToDestroyed
-		);
-
-	}
-}
-
-void ABaseCharacter::ForceSetMouseSensitivity(float NewSensitivity, float Duration)
-{
-	LOG_Char_WARNING(TEXT("마우스 반전"));
-
-	MouseSensitivityMultiplier = 10.0f;
-	// 기존 타이머 제거 후 새 타이머 시작
-	GetWorld()->GetTimerManager().ClearTimer(MouseSensitivityRestoreHandle);
-	GetWorld()->GetTimerManager().SetTimer(
-		MouseSensitivityRestoreHandle,
-		this,
-		&ABaseCharacter::RestoreOriginalMouseSensitivity,
-		Duration,
-		false
-	);
-}
-
-void ABaseCharacter::RestoreOriginalMouseSensitivity()
-{
-	MouseSensitivityMultiplier = 1.0f; // 초기화
-}
-
-void ABaseCharacter::ForceInvertMouse(bool bInvert)
-{
-	MouseInvertMultiplier = bInvert ? -1.0f : 1.0f;
-}
-
-void ABaseCharacter::ForceInvertMouseTemporary(bool bInvert, float Duration)
-{
-	// 반전 적용
-	ForceInvertMouse(true);
-
-	// 기존 타이머 제거 후 새로 시작
-	GetWorld()->GetTimerManager().ClearTimer(MouseInvertResetTimerHandle);
-	GetWorld()->GetTimerManager().SetTimer(
-		MouseInvertResetTimerHandle,
-		this,
-		&ABaseCharacter::RestoreMouseInvert,
-		Duration,
-		false
-	);
-}
-
-void ABaseCharacter::RestoreMouseInvert()
-{
-	ForceInvertMouse(false);
-}
-
-void ABaseCharacter::TriggerPanicVoice(float Duration)
-{
-	LOG_Char_WARNING(TEXT("보이스 변경"));
-
-	EnterPanicVoice();
-	GetWorld()->GetTimerManager().ClearTimer(PanicVoiceDurationHandle);
-	GetWorld()->GetTimerManager().SetTimer(
-		PanicVoiceDurationHandle,
-		this,
-		&ABaseCharacter::ExitPanicVoice,
-		Duration,
-		false
-	);
-}
-
-
-
-void ABaseCharacter::Client_PlayHitSound_Implementation()
-{
-	if (IsLocallyControlled())
-	{
-		UGameplayStatics::PlaySoundAtLocation(this, OnHitSound, GetActorLocation());
-	}
-}
-
 
 float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
@@ -1851,8 +1563,6 @@ void ABaseCharacter::HandlePlayerDeath()
 		return;
 	}
 
-	TurnOffNameWidget();
-
 	//if 캐릭터가 죽으면
 	//장착 아이템 제거
 	//캐릭터 래그돌
@@ -1869,7 +1579,6 @@ void ABaseCharacter::HandlePlayerDeath()
 	// State 변경
 	MyPlayerState->CurrentState = EPlayerState::Dead;
 	MyPlayerState->SetInGameStatus(EPlayerInGameStatus::Spectating);
-	Client_TurnOffNameWidget();
 	Client_HandlePlayerVoiceChattingState();
 	Multicast_SetPlayerInGameStateOnDie();
 	PC->PlayerExitActivePlayOnDeath();
@@ -1915,7 +1624,6 @@ void ABaseCharacter::Multicast_SetPlayerInGameStateOnDie_Implementation()
 	MyPlayerState->CurrentState = EPlayerState::Dead;
 	MyPlayerState->SetInGameStatus(EPlayerInGameStatus::Spectating);
 	SwapHeadMaterialTransparent(false);
-	TurnOffNameWidget();
 }
 
 float ABaseCharacter::CalculateTakeDamage(float DamageAmount)
@@ -1958,8 +1666,6 @@ void ABaseCharacter::EscapeThroughGate()
 	{
 		return;
 	}
-	Client_TurnOffNameWidget();
-	TurnOffNameWidget();
 	MyPlayerState->CurrentState = EPlayerState::Escape;
 	MyPlayerState->SetInGameStatus(EPlayerInGameStatus::Spectating);	
 	Multicast_SetPlayerInGameStateOnEscapeGate();
@@ -1974,7 +1680,6 @@ void ABaseCharacter::Multicast_SetPlayerInGameStateOnEscapeGate_Implementation()
 		LOG_Char_WARNING(TEXT("PlayerState Isn`t Valid"));
 		return;
 	}
-	TurnOffNameWidget();
 	MyPlayerState->CurrentState = EPlayerState::Escape;
 	MyPlayerState->InGameState = EPlayerInGameStatus::Spectating; // 관전 상태 돌입
 }
@@ -2851,22 +2556,6 @@ void ABaseCharacter::OnRep_PlayerState()
 	Super::OnRep_PlayerState();
 	LOG_Char_WARNING(TEXT("[OnRep_PlayerState] for %s"), *GetName());
 
-	/*
-	UpdateNameWidget(); // PlayerState가 복제될 때 UI 갱신
-		
-	if (IsLocallyControlled() && NameWidgetComponent)
-	{
-		NameWidgetComponent->SetVisibility(false, true);
-	}
-	*/
-	if (APlayerState* PS = GetPlayerState())
-	{
-		if (NameComponent)
-		{
-			NameComponent->TryInitializeOnPlayerState(PS, IsLocallyControlled(), HasAuthority());
-		}
-	}
-
 	if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
 	{
 		if (CustomizationComponent)
@@ -2875,112 +2564,4 @@ void ABaseCharacter::OnRep_PlayerState()
 			CustomizationComponent->ApplyCustomization(PS->GetCustomizationData());
 		}
 	}
-}
-
-void ABaseCharacter::UpdateNameWidget()
-{
-	//1. 위젯에 내 이름 적용
-	ApplyNameToWidget();
-
-	if (IsLocallyControlled())
-	{
-		Server_UpdateNameWidget();
-	}
-}
-
-void ABaseCharacter::Server_UpdateNameWidget_Implementation()
-{
-	ApplyNameToWidget();
-}
-
-void ABaseCharacter::ApplyNameToWidget()
-{
-	if (!IsValid(NameComponent))
-	{
-		return;
-	}
-
-	UUserWidget* Widget = NameComponent->GetWidget();
-	if (!IsValid(Widget))
-	{
-		return;
-	}
-
-	UPlayerNameWidget* NameWidget = Cast<UPlayerNameWidget>(Widget);
-	if (!IsValid(NameWidget))
-	{
-		return;
-	}
-	
-	APlayerState* PS = GetPlayerState();
-	if (!IsValid(PS))
-	{
-		return;
-	}
-
-	const FString Name = PS->GetPlayerName();
-	NameWidget->SetPlayerName(Name);
-
-	if (!HasAuthority())
-	{
-		return;
-	}
-
-	ABasePlayerState* BPS = Cast<ABasePlayerState>(PS);
-	if (!IsValid(BPS))
-	{
-		BPS->SetPlayerInGameName(Name);
-	}
-}
-
-void ABaseCharacter::TurnOffNameWidget()
-{
-	if (!IsValid(NameComponent))
-	{
-		return;
-	}
-	if (NameComponent)
-	{
-		NameComponent->HideNameWidget();
-	}
-	//NameWidgetComponent->SetVisibility(false, true);
-}
-
-void ABaseCharacter::Client_TurnOffNameWidget_Implementation()
-{
-	LOG_Char_WARNING(TEXT("관전시 위젯 해제"));
-	if (NameComponent)
-	{
-		NameComponent->TurnOffWidget();
-	}
-	/*
-	AGameStateBase* GameState = GetWorld()->GetGameState<AGameStateBase>();
-	if (!IsValid(GameState))
-	{
-		LOG_Char_WARNING(TEXT("GameState Is Invalid"));
-		return;
-	}
-
-	if (GameState->PlayerArray.Num() <= 0)
-	{
-		return;
-	}
-
-	for (APlayerState* PS : GameState->PlayerArray)
-	{
-		ABasePlayerState* BasePS = Cast<ABasePlayerState>(PS);
-		if (!IsValid(BasePS))
-		{
-			continue;
-		}
-
-		ABaseCharacter* Char = Cast<ABaseCharacter>(BasePS->GetPawn());
-		if (!IsValid(Char))
-		{
-			continue;
-		}
-
-		Char->TurnOffNameWidget();
-	}
-	*/
 }

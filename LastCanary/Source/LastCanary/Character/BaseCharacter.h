@@ -35,11 +35,12 @@ class UCharacterInteractionComponent;
 class UCharacterFootstepNoiseComponent;
 class UCharacterCameraControlComponent;
 class UCharacterDisplayComponent;
-class UCharacterNameWidgetComponent;
 class UCharacterAttackComponent;
 class UCameraRecoilComponent;
 class UCharacterInputComponent;
 class UCharacterSpeedControlComponent;
+class UCharacterSoundComponent;
+class UCharacterSanityComponent;
 
 UENUM(BlueprintType)
 enum class EAnimationType : uint8
@@ -115,9 +116,6 @@ public:
 	UCharacterDisplayComponent* DisplayComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	UCharacterNameWidgetComponent* NameComponent;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UCharacterAttackComponent* AttackComponent;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
@@ -128,6 +126,12 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UCharacterSpeedControlComponent* SpeedControlComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UCharacterSoundComponent* SoundPlayComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UCharacterSanityComponent* SanityComponent;
 public:
 	UFUNCTION()
 	virtual float GetCurrentNoiseLevel() const override;
@@ -263,10 +267,6 @@ protected:
 	virtual void PossessedBy(AController* NewController) override;
 	
 	void InitializePlayerLocalSettings();
-
-
-	FTimerHandle RetryInitializeNameWidgetHandle;
-	void InitializePlayerNameWidget();
 
 	FTimerHandle RetryInitializeCustomizingHandle;
 	void InitializePlayerCustomizing();
@@ -604,108 +604,14 @@ public:
 	AActor* InteractTargetActor;
 	//Player Take Damage
 public:
-	FTimerHandle PanicActionTimerHandle;
-	void StartPanicBehaviorLoop();
-	void StopPanicBehaviorLoop();
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PanicState")
-	float InitialDelay = 5.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PanicState")
-	float RepeatRate = 10.0f; // 2초마다 실행 (조절 가능)
 
 	/*Player Damage, Death*/
 	UFUNCTION(BlueprintCallable)
 	float TakeSpiritDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser);
 	
-
-	FTimerHandle SpiritTickDamageHandle;
-
-	UFUNCTION(BlueprintCallable)
-	void TriggerSpiritTickDamage();
-	float SpiritTickDamage = 1.0f;
-	float SpiritDamageTickInterval = 1.0f;
-	void TakeSpiritTickDamage();
-
-	float CalculateTakeSpiritDamage(float DamageAmount);
-	
-	UFUNCTION(BlueprintCallable)
-	float RestoreSpirit(float Amount);
-
-	void EnterPanicState();
-	void ExitPanicState();
-
-
-	UFUNCTION(Client, Reliable)
-	void Client_EnterPanicState();
-	void Client_EnterPanicState_Implementation();
-	
-	UFUNCTION(Client, Reliable)
-	void Client_ExitPanicState();
-	void Client_ExitPanicState_Implementation();
-
-	void PerformRandomPanicAction();
-	FTimerHandle PanicVoiceDurationHandle;
-	void TriggerPanicVoice(float Duration);
-
-	UFUNCTION(BlueprintImplementableEvent)
-	void EnterPanicVoice();
-
-	UFUNCTION(BlueprintImplementableEvent)
-	void ExitPanicVoice();
-
-	UPROPERTY(EditAnywhere,BlueprintReadWrite, Category = "PanicState")
-	USoundBase* ScreamSound;
-	
-	void PlayScreamSound_Local();
-
-	void UseItemUnexpectedly();
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PanicState")
-	USoundBase* SighSound;
-
-	UFUNCTION(BlueprintCallable)
-	void PlaySighSoundForAll(); // 호출 진입점
-
-	UFUNCTION(Server, Reliable)
-	void Server_PlaySighSound();
-	void Server_PlaySighSound_Implementation();
-
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_PlaySighSound();
-	void Multicast_PlaySighSound_Implementation();
-
-
 	// 감도 저장용
 	float MouseSensitivityMultiplier = 1.0f;
-
-	FTimerHandle MouseSensitivityRestoreHandle;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PanicState")
-	float PanicSensitivity = 10.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PanicState")
-	float PanicDuration = 5.0f;
-	
-	void ForceSetMouseSensitivity(float NewSensitivity, float Duration);
-	void RestoreOriginalMouseSensitivity();
-
-
-	FTimerHandle MouseInvertResetTimerHandle;
-
 	float MouseInvertMultiplier = 1.0f;
-	void ForceInvertMouse(bool bEnable);
-	
-	void ForceInvertMouseTemporary(bool bInvert, float Duration);
-	void RestoreMouseInvert();
-
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Damage")
-	USoundBase* OnHitSound;
-
-	UFUNCTION(Client, Reliable)
-	void Client_PlayHitSound();
-	void Client_PlayHitSound_Implementation();
 
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	
@@ -996,21 +902,4 @@ public:
 	void Client_SetWalkieTalkieChannelStatus_Implementation(bool bActive);
 
 	virtual void OnRep_PlayerState() override;
-	void UpdateNameWidget(); // 위젯 업데이트용 함수
-	void ApplyNameToWidget();
-	void TurnOffNameWidget(); // 사망 시 네임 위젯 가리는 함수
-	
-	UFUNCTION(Client, Reliable)
-	void Client_TurnOffNameWidget(); // 관전할 때 가리는 함수.
-	void Client_TurnOffNameWidget_Implementation(); 
-
-	UFUNCTION(Server, Reliable)
-	void Server_UpdateNameWidget(); // 서버 위젯 업데이트용 함수
-	void Server_UpdateNameWidget_Implementation(); // 서버 위젯 업데이트용 함수
-
-	/** 머리 위에 표시할 3D 위젯 컴포넌트 */
-	/*
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
-	UWidgetComponent* NameWidgetComponent;
-	*/
 };

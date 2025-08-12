@@ -51,10 +51,6 @@ void ABasePlayerState::BeginPlay()
 
 void ABasePlayerState::OnRep_PlayerGameName()
 {
-	if (ABaseCharacter* MyCharacter = Cast<ABaseCharacter>(GetPawn()))
-	{
-		MyCharacter->UpdateNameWidget();
-	}
 
 }
 
