@@ -58,7 +58,7 @@ void ALCTransformGimmick::BeginPlay()
 	Super::BeginPlay();
 
 	OriginalLocation = GetActorLocation();
-	LOG_Art(Log, TEXT("[BeginPlay] OriginalLocation: %s"), *OriginalLocation.ToCompactString());
+	//LOG_Art(Log, TEXT("[BeginPlay] OriginalLocation: %s"), *OriginalLocation.ToCompactString());
 
 	OriginalRotation = VisualMesh->GetComponentRotation();
 	OriginalRotationQuat = VisualMesh->GetComponentQuat();
