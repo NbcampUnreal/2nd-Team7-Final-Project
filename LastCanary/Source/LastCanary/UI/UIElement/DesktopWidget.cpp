@@ -1,5 +1,6 @@
 #include "UI/UIElement/DesktopWidget.h"
 #include "UI/UIElement/ShopWidget.h"
+#include "UI/UIElement/CharacterCustomizationWidget.h"
 
 #include "UI/UIObject/TaskbarWidget.h"
 #include "UI/UIObject/DesktopWindowBaseWidget.h"
@@ -37,6 +38,10 @@ void UDesktopWidget::NativeConstruct()
 	if (ShopIconButton)
 	{
 		ShopIconButton->OnClicked.AddUniqueDynamic(this, &UDesktopWidget::OnShopIconSingleClicked);
+	}
+	if (CharacterCustomizationIconButton)
+	{
+		CharacterCustomizationIconButton->OnClicked.AddUniqueDynamic(this, &UDesktopWidget::OnCharacterCustomizationIconSingleClicked);
 	}
 
 	ClickCount = 0;
@@ -92,7 +97,6 @@ void UDesktopWidget::OnShopIconSingleClicked()
 
 	if (ClickCount == 1)
 	{
-		LOG_Frame_WARNING(TEXT("ShopIcon First Click - Highlighting"));
 		HighlightAppButton(ShopIconButton);
 		GetWorld()->GetTimerManager().SetTimer(
 			DoubleClickTimerHandle,
@@ -104,9 +108,8 @@ void UDesktopWidget::OnShopIconSingleClicked()
 	}
 	else if (ClickCount == 2)
 	{
-		LOG_Frame_WARNING(TEXT("ShopIcon Double Click - Opening Shop"));
 		GetWorld()->GetTimerManager().ClearTimer(DoubleClickTimerHandle);
-		ClickCount = 0;
+		ResetClickCount();
 		HandleShopAppLaunch();
 	}
 }
@@ -195,6 +198,50 @@ void UDesktopWidget::HandleShopAppLaunch()
 	else
 	{
 		LOG_Frame_WARNING(TEXT("HandleShopAppLaunch failed: No OwningPlayer."));
+	}
+}
+
+void UDesktopWidget::OnCharacterCustomizationIconSingleClicked()
+{
+	ClickCount++;
+
+	if (ClickCount == 1)
+	{
+		HighlightAppButton(CharacterCustomizationIconButton);
+		GetWorld()->GetTimerManager().SetTimer(
+			DoubleClickTimerHandle,
+			this,
+			&UDesktopWidget::ResetClickCount,
+			0.3f,
+			false
+		);
+	}
+	else if (ClickCount == 2)
+	{
+		GetWorld()->GetTimerManager().ClearTimer(DoubleClickTimerHandle);
+		ResetClickCount();
+		HandleCharacterCustomizationLaunch();
+	}
+}
+
+void UDesktopWidget::HandleCharacterCustomizationLaunch()
+{
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		if (ALCRoomPlayerController* RoomPC = Cast<ALCRoomPlayerController>(PC))
+		{
+			if (ULCUIManager* UIManager = RoomPC->GetUIManager())
+			{
+				UCharacterCustomizationWidget* Widget = UIManager->ShowCharacterCustomizationWidget();
+
+				if (Widget->IsMinimized())
+				{
+					Widget->SetVisibility(ESlateVisibility::Visible);
+					Widget->SetMinimized(false);
+					Widget->PlayRestoreAnimation();
+				}
+			}
+		}
 	}
 }
 
