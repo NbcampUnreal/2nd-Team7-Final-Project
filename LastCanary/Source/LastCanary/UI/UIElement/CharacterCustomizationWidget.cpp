@@ -3,257 +3,344 @@
 
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
+#include "Components/Image.h"
+#include "Components/SceneCaptureComponent2D.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Components/SpotLightComponent.h"
+#include "Engine/TextureRenderTarget2D.h"
 
 #include "Framework/GameInstance/LCOptionManager.h"
+#include "Framework/PlayerController/LCRoomPlayerController.h"
 #include "Character/CustomizationMeshMap.h"
 #include "Character/BaseCharacter.h"
-#include "Kismet/GameplayStatics.h"
 #include "Character/CustomizationCharacter.h"
+#include "SaveGame/LCLocalPlayerSaveGame.h"
 
+#include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetMathLibrary.h"
 #include "LastCanary.h"
 
+#define BIND_BUTTON(BUTTON_NAME, FUNC) \
+	if (BUTTON_NAME) BUTTON_NAME->OnClicked.AddUniqueDynamic(this, &UCharacterCustomizationWidget::FUNC);
+
+#define UNBIND_BUTTON(BUTTON_NAME, FUNC) \
+	if (BUTTON_NAME) BUTTON_NAME->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::FUNC);
 
 void UCharacterCustomizationWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+
+	bIsFocusable = true;
+	SetVisibility(ESlateVisibility::Visible);
+
 	// 스켈레탈 메시 //
-	if (ViewNextFullBodyButton)
-	{
-		ViewNextFullBodyButton->OnClicked.AddUniqueDynamic(this, &UCharacterCustomizationWidget::OnSelectFullBody);
-	}
+	BIND_BUTTON(ViewNextFullBodyButton, OnSelectFullBody);
+	BIND_BUTTON(ViewNextGloveButton, OnSelectGlove);
+	BIND_BUTTON(ViewNextJacketButton, OnSelectJacket);
+	BIND_BUTTON(ViewNextPantsButton, OnSelectPants);
+	BIND_BUTTON(ViewNextBeltsButton, OnSelectBelts);
+	BIND_BUTTON(ViewNextHelmetsButton, OnSelectHelmets);
+	BIND_BUTTON(ViewNextArmorButton, OnSelectArmor);
+	BIND_BUTTON(ViewNextBootsButton, OnSelectBoots);
 
-	if (ViewNextGloveButton)
-	{
-		ViewNextGloveButton->OnClicked.AddUniqueDynamic(this, &UCharacterCustomizationWidget::OnSelectGlove);
-	}
+	// 머티리얼 //
+	BIND_BUTTON(ViewNextGloveMaterialButton, OnSelectGloveMaterial);
+	BIND_BUTTON(ViewNextJacketMaterialButton, OnSelectJacketMaterial);
+	BIND_BUTTON(ViewNextPantsMaterialButton, OnSelectPantsMaterial);
+	BIND_BUTTON(ViewNextBeltsMaterialButton, OnSelectBeltsMaterial);
+	BIND_BUTTON(ViewNextHelmetsMaterialButton, OnSelectHelmetsMaterial);
+	BIND_BUTTON(ViewNextBootsMaterialButton, OnSelectBootsMaterial);
+	BIND_BUTTON(ViewNextArmorMaterialButton, OnSelectArmorMaterial);
+	BIND_BUTTON(ViewNextFlagMaterialButton, OnSelectFlagMaterial);
 
-	if (ViewNextJacketButton)
-	{
-		ViewNextJacketButton->OnClicked.AddUniqueDynamic(this, &UCharacterCustomizationWidget::OnSelectJacket);
-	}
+	BIND_BUTTON(ApplyButton, ApplySetting);
 
-	if (ViewNextPantsButton)
-	{
-		ViewNextPantsButton->OnClicked.AddUniqueDynamic(this, &UCharacterCustomizationWidget::OnSelectPants);
-	}
-
-	if (ViewNextBeltsButton)
-	{
-		ViewNextBeltsButton->OnClicked.AddUniqueDynamic(this, &UCharacterCustomizationWidget::OnSelectBelts);
-	}
-
-	if (ViewNextHelmetsButton)
-	{
-		ViewNextHelmetsButton->OnClicked.AddUniqueDynamic(this, &UCharacterCustomizationWidget::OnSelectHelmets);
-	}
-
-	if (ViewNextArmorButton)
-	{
-		ViewNextArmorButton->OnClicked.AddUniqueDynamic(this, &UCharacterCustomizationWidget::OnSelectArmor);
-	}
-
-	if (ViewNextBootsButton)
-	{
-		ViewNextBootsButton->OnClicked.AddUniqueDynamic(this, &UCharacterCustomizationWidget::OnSelectBoots);
-	}
-
-	// 머티리얼 // 
-	if (ViewNextGloveMaterialButton)
-	{
-		ViewNextGloveMaterialButton->OnClicked.AddUniqueDynamic(this, &UCharacterCustomizationWidget::OnSelectGloveMaterial);
-	}
-
-	if (ViewNextJacketMaterialButton)
-	{
-		ViewNextJacketMaterialButton->OnClicked.AddUniqueDynamic(this, &UCharacterCustomizationWidget::OnSelectJacketMaterial);
-	}
-
-	if (ViewNextPantsMaterialButton)
-	{
-		ViewNextPantsMaterialButton->OnClicked.AddUniqueDynamic(this, &UCharacterCustomizationWidget::OnSelectPantsMaterial);
-	}
-
-	if (ViewNextBeltsMaterialButton)
-	{
-		ViewNextBeltsMaterialButton->OnClicked.AddUniqueDynamic(this, &UCharacterCustomizationWidget::OnSelectBeltsMaterial);
-	}
-
-	if (ViewNextHelmetsMaterialButton)
-	{
-		ViewNextHelmetsMaterialButton->OnClicked.AddUniqueDynamic(this, &UCharacterCustomizationWidget::OnSelectHelmetsMaterial);
-	}
-
-	if (ViewNextBootsMaterialButton)
-	{
-		ViewNextBootsMaterialButton->OnClicked.AddUniqueDynamic(this, &UCharacterCustomizationWidget::OnSelectBootsMaterial);
-	}
-
-	if (ViewNextArmorMaterialButton)
-	{
-		ViewNextArmorMaterialButton->OnClicked.AddUniqueDynamic(this, &UCharacterCustomizationWidget::OnSelectArmorMaterial);
-	}
-
-	if (ViewNextFlagMaterialButton)
-	{
-		ViewNextFlagMaterialButton->OnClicked.AddUniqueDynamic(this, &UCharacterCustomizationWidget::OnSelectFlagMaterial);
-	}
-
-	// UI 관련 // 
-
-	if (CloseButton)
-	{
-		CloseButton->OnClicked.AddUniqueDynamic(this, &UCharacterCustomizationWidget::CloseCustomizationWidget);
-	}
-
-	if (ApplyButton)
-	{
-		ApplyButton->OnClicked.AddUniqueDynamic(this, &UCharacterCustomizationWidget::ApplySetting);
-	}
 	InitWidget();
 }
 
 void UCharacterCustomizationWidget::NativeDestruct()
 {
 	Super::NativeDestruct();
+
 	// 스켈레탈 메시 //
-	if (ViewNextFullBodyButton)
-	{
-		ViewNextFullBodyButton->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::OnSelectFullBody);
-	}
-
-	if (ViewNextGloveButton)
-	{
-		ViewNextGloveButton->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::OnSelectGlove);
-	}
-
-	if (ViewNextJacketButton)
-	{
-		ViewNextJacketButton->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::OnSelectJacket);
-	}
-
-	if (ViewNextPantsButton)
-	{
-		ViewNextPantsButton->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::OnSelectPants);
-	}
-
-	if (ViewNextBeltsButton)
-	{
-		ViewNextBeltsButton->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::OnSelectBelts);
-	}
-
-	if (ViewNextHelmetsButton)
-	{
-		ViewNextHelmetsButton->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::OnSelectHelmets);
-	}
-
-	if (ViewNextArmorButton)
-	{
-		ViewNextArmorButton->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::OnSelectArmor);
-	}
-
-	if (ViewNextBootsButton)
-	{
-		ViewNextBootsButton->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::OnSelectBoots);
-	}
+	UNBIND_BUTTON(ViewNextFullBodyButton, OnSelectFullBody);
+	UNBIND_BUTTON(ViewNextGloveButton, OnSelectGlove);
+	UNBIND_BUTTON(ViewNextJacketButton, OnSelectJacket);
+	UNBIND_BUTTON(ViewNextPantsButton, OnSelectPants);
+	UNBIND_BUTTON(ViewNextBeltsButton, OnSelectBelts);
+	UNBIND_BUTTON(ViewNextHelmetsButton, OnSelectHelmets);
+	UNBIND_BUTTON(ViewNextArmorButton, OnSelectArmor);
+	UNBIND_BUTTON(ViewNextBootsButton, OnSelectBoots);
 
 	// 머티리얼 //
-	if (ViewNextGloveMaterialButton)
-	{
-		ViewNextGloveMaterialButton->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::OnSelectGloveMaterial);
-	}
-
-	if (ViewNextJacketMaterialButton)
-	{
-		ViewNextJacketMaterialButton->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::OnSelectJacketMaterial);
-	}
-
-	if (ViewNextPantsMaterialButton)
-	{
-		ViewNextPantsMaterialButton->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::OnSelectPantsMaterial);
-	}
-
-	if (ViewNextBeltsMaterialButton)
-	{
-		ViewNextBeltsMaterialButton->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::OnSelectBeltsMaterial);
-	}
-
-	if (ViewNextHelmetsMaterialButton)
-	{
-		ViewNextHelmetsMaterialButton->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::OnSelectHelmetsMaterial);
-	}
-
-	if (ViewNextBootsMaterialButton)
-	{
-		ViewNextBootsMaterialButton->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::OnSelectBootsMaterial);
-	}
-
-	if (ViewNextArmorMaterialButton)
-	{
-		ViewNextArmorMaterialButton->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::OnSelectArmorMaterial);
-	}
-
-	if (ViewNextFlagMaterialButton)
-	{
-		ViewNextFlagMaterialButton->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::OnSelectFlagMaterial);
-	}
-
+	UNBIND_BUTTON(ViewNextGloveMaterialButton, OnSelectGloveMaterial);
+	UNBIND_BUTTON(ViewNextJacketMaterialButton, OnSelectJacketMaterial);
+	UNBIND_BUTTON(ViewNextPantsMaterialButton, OnSelectPantsMaterial);
+	UNBIND_BUTTON(ViewNextBeltsMaterialButton, OnSelectBeltsMaterial);
+	UNBIND_BUTTON(ViewNextHelmetsMaterialButton, OnSelectHelmetsMaterial);
+	UNBIND_BUTTON(ViewNextBootsMaterialButton, OnSelectBootsMaterial);
+	UNBIND_BUTTON(ViewNextArmorMaterialButton, OnSelectArmorMaterial);
+	UNBIND_BUTTON(ViewNextFlagMaterialButton, OnSelectFlagMaterial);
 
 	// UI 관련 //
-	if (CloseButton)
+	UNBIND_BUTTON(ApplyButton, ApplySetting);
+
+	CancelCameraLerp();
+}
+
+FReply UCharacterCustomizationWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
 	{
-		CloseButton->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::CloseCustomizationWidget);
+		bIsDragging = true;
+		LastMousePosition = InMouseEvent.GetScreenSpacePosition();
+		return FReply::Handled().CaptureMouse(TakeWidget());
+	}
+	return FReply::Unhandled();
+}
+
+FReply UCharacterCustomizationWidget::NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+	{
+		bIsDragging = false;
+		return FReply::Handled().ReleaseMouseCapture();
+	}
+	return FReply::Unhandled();
+}
+
+FReply UCharacterCustomizationWidget::NativeOnMouseMove(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	const FVector2D MousePos = InMouseEvent.GetScreenSpacePosition();
+
+	if (UDesktopWindowBaseWidget* ParentWindow = Cast<UDesktopWindowBaseWidget>(GetParent()))
+	{
+		if (ParentWindow->IsInTitleBar(MousePos))
+		{
+			return FReply::Unhandled();
+		}
 	}
 
-	if (ApplyButton)
+	if (bIsDragging && PreviewCharacter)
 	{
-		ApplyButton->OnClicked.RemoveDynamic(this, &UCharacterCustomizationWidget::ApplySetting);
+		constexpr float RotationSensitivity = 0.5f;
+
+		const FVector2D CurrentMousePosition = InMouseEvent.GetScreenSpacePosition();
+		const float DeltaX = CurrentMousePosition.X - LastMousePosition.X;
+		LastMousePosition = CurrentMousePosition;
+
+		// 회전값 변경
+		FRotator NewRotation = PreviewCharacter->GetActorRotation();
+		NewRotation.Yaw -= DeltaX * RotationSensitivity;
+		PreviewCharacter->SetActorRotation(NewRotation);
 	}
+	return FReply::Unhandled();
+}
+
+FReply UCharacterCustomizationWidget::NativeOnMouseWheel(const FGeometry& G, const FPointerEvent& E)
+{
+	constexpr float ZoomStep = 12.f;
+	PreviewCamDistance = FMath::Clamp(PreviewCamDistance - E.GetWheelDelta() * ZoomStep, 60.f, 260.f);
+	UpdatePreviewCameraTransform();
+
+	return FReply::Handled();
 }
 
 void UCharacterCustomizationWidget::InitWidget()
 {
-	//키, 버튼 바인딩
-	UpdateTargetCharacter();
+	//UpdateTargetCharacter();
+	InitCharacterPreview();
 }
 
-void UCharacterCustomizationWidget::CloseCustomizationWidget()
+void UCharacterCustomizationWidget::SetTargetCharacter(ABaseCharacter* InCharacter)
 {
-	RemoveFromParent();
-}
+	TargetCharacter = InCharacter;
 
-void UCharacterCustomizationWidget::UpdateTargetCharacter()
-{
-	//캐릭터 할당해주기
-		// 캐릭터 찾기 (한 번만 해도 됨)
-	if (!TargetCharacter)
+	if (CharacterMeshData)
 	{
-		TArray<AActor*> FoundActors;
-		UGameplayStatics::GetAllActorsOfClass(GetWorld(), ACustomizationCharacter::StaticClass(), FoundActors);
+		OnLoadCustomization();
+	}
+}
 
-		for (AActor* Actor : FoundActors)
+void UCharacterCustomizationWidget::InitCharacterPreview()
+{
+	if (PreviewRenderTarget == nullptr || CharacterMeshData == nullptr)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return;
+	}
+
+	// 기존 프리뷰 캐릭터 제거
+	if (PreviewCharacter)
+	{
+		if (SceneCaptureComponent)
 		{
-			if (Actor->ActorHasTag("PreviewCharacter"))
-			{
-				TargetCharacter = Cast<ACustomizationCharacter>(Actor);
-				break;
-			}
+			SceneCaptureComponent->DestroyComponent();
+			SceneCaptureComponent = nullptr;
 		}
+		PreviewCharacter->Destroy();
+		PreviewCharacter = nullptr;
 	}
 
-	// 데이터 있으면 적용
-	if (TargetCharacter && CharacterMeshData)
+	// 캐릭터 생성
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	const FVector PreviewOrigin = FVector(0.f, 0.f, 0.f);
+	const FRotator PreviewRot = FRotator(0.f, 0.f, 0.f);
+	PreviewCharacter = World->SpawnActor<ACustomizationCharacter>(
+		ACustomizationCharacter::StaticClass(),
+		PreviewOrigin,
+		PreviewRot,
+		SpawnParams
+	);
+
+	constexpr float MeshYawOffset = -90.f;
+	if (PreviewCharacter && PreviewCharacter->GetMesh())
 	{
-		TargetCharacter->ApplyCustomization(CharacterMeshData);
+		PreviewCharacter->GetMesh()->SetRelativeRotation(FRotator(0.f, MeshYawOffset, 0.f));
+		PreviewCharacter->GetMesh()->SetRenderCustomDepth(true);
+		PreviewCharacter->GetMesh()->SetCustomDepthStencilValue(1);
 	}
 
+	// SceneCapture 생성
+	SceneCaptureComponent = NewObject<USceneCaptureComponent2D>(this);
+	SceneCaptureComponent->RegisterComponentWithWorld(World);
+	SceneCaptureComponent->TextureTarget = PreviewRenderTarget;
 
-	if (!IsValid(TargetCharacter)) return;
-	OnLoadCustomization();
+	// 카메라 위치/회전 세팅
+	const float CamDistance = 150.f;
+	const float CamHeight = 180.f;
+	const FVector CamLoc = PreviewOrigin + FVector(CamDistance, 0.f, CamHeight);
+	SceneCaptureComponent->SetWorldLocation(CamLoc);
+
+	const FVector LookTarget = PreviewOrigin + FVector(0.f, 0.f, CamHeight - 30.f);
+	const FRotator CamRot = UKismetMathLibrary::FindLookAtRotation(CamLoc, LookTarget);
+	SceneCaptureComponent->SetWorldRotation(CamRot);
+
+	SceneCaptureComponent->FOVAngle = PreviewCamFOV;
+	SceneCaptureComponent->bCaptureEveryFrame = true;
+	SceneCaptureComponent->CaptureSource = ESceneCaptureSource::SCS_FinalColorLDR;
+
+	USpotLightComponent* PreviewLight = NewObject<USpotLightComponent>(this);
+	PreviewLight->RegisterComponentWithWorld(World);
+	PreviewLight->SetWorldLocation(CamLoc + FVector(-30.f, 0.f, 60.f));
+	PreviewLight->SetWorldRotation(CamRot);
+	PreviewLight->Intensity = 15000.f;
+	PreviewLight->AttenuationRadius = 1000.f;
+	PreviewLight->InnerConeAngle = 20.f;
+	PreviewLight->OuterConeAngle = 45.f;
+	PreviewLight->bUseInverseSquaredFalloff = false;
+	PreviewLight->LightColor = FColor::White;
+	PreviewLight->AttachToComponent(SceneCaptureComponent, FAttachmentTransformRules::KeepWorldTransform);
+
+	const TCHAR* MaterialPath = TEXT("/Game/_LastCanary/Art/Metal/M_PP_CustomDepthOnly.M_PP_CustomDepthOnly");
+	UMaterialInterface* PPAsset = Cast<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), nullptr, MaterialPath));
+	if (PPAsset)
+	{
+		SceneCaptureComponent->PostProcessSettings.WeightedBlendables.Array.Add(
+			FWeightedBlendable(1.0f, PPAsset)
+		);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("❌ PostProcess 머티리얼 로드 실패: %s"), MaterialPath);
+	}
+
+	// 환경 효과 제거
+	SceneCaptureComponent->ShowFlags.SetSkyLighting(false);
+	SceneCaptureComponent->ShowFlags.SetFog(false);
+	SceneCaptureComponent->ShowFlags.SetAtmosphere(false);
+	SceneCaptureComponent->ShowFlags.SetMotionBlur(false);
+	SceneCaptureComponent->CaptureSource = ESceneCaptureSource::SCS_SceneColorHDR; // 조명 포함
+	SceneCaptureComponent->ShowFlags.SetGame(true); // 게임 조명 등 포함
+	SceneCaptureComponent->ShowFlags.SetLighting(true); // 조명 계산 허용
+
+
+	// 미리보기 머티리얼 적용
+	if (UMaterialInterface* BaseMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/_LastCanary/Art/Metal/M_UIRTPreviewDisplay.M_UIRTPreviewDisplay")))
+	{
+		UMaterialInstanceDynamic* DynMat = UMaterialInstanceDynamic::Create(BaseMat, this);
+		DynMat->SetTextureParameterValue("PreviewTexture", PreviewRenderTarget);
+		CharacterPreviewImage->SetBrushFromMaterial(DynMat);
+	}
+
+	UpdatePreviewCharacter();
+	FacePreviewToCamera();
+	UpdatePreviewCameraTransform();
+}
+
+void UCharacterCustomizationWidget::UpdatePreviewCharacter()
+{
+	if (PreviewRenderTarget == nullptr)
+	{
+		return;
+	}
+	if (CharacterMeshData == nullptr)
+	{
+		return;
+	}
+
+	// Body
+	SetPartMesh(PreviewCharacter->GetMesh(), CharacterMeshData->GetMeshByID(CharacterMeshData->DefaultBodyMeshes, CurrentFullBodyIndex));
+	SetPartMaterial(PreviewCharacter->GetMesh(), 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->DefaultBodyMaterials, CurrentFullBodyMaterialIndex));
+
+	// Head
+	SetPartMesh(PreviewCharacter->CustomHeadMesh, CharacterMeshData->GetMeshByID(CharacterMeshData->DefaultHeadMeshes, CurrentFullBodyIndex));
+	SetPartMaterial(PreviewCharacter->CustomHeadMesh, 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->DefaultHeadMaterials, CurrentFullBodyMaterialIndex));
+
+	// Helmet
+	SetPartMesh(PreviewCharacter->CustomHelmetMesh, CharacterMeshData->GetMeshByID(CharacterMeshData->HelmetMeshes, CurrentHelmetsIndex));
+	SetPartMaterial(PreviewCharacter->CustomHelmetMesh, 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->HelmetMaterials, CurrentHelmetMaterialIndex));
+	SetPartMaterial(PreviewCharacter->CustomHelmetMesh, 1, CharacterMeshData->GetMaterialByID(CharacterMeshData->FlagMaterials, CurrentFlagMaterialIndex));
+
+	// Glove
+	SetPartMesh(PreviewCharacter->CustomGloveMesh, CharacterMeshData->GetMeshByID(CharacterMeshData->GloveMeshes, CurrentGloveIndex));
+	SetPartMaterial(PreviewCharacter->CustomGloveMesh, 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->GloveMaterials, CurrentGloveMaterialIndex));
+
+	// Jacket
+	SetPartMesh(PreviewCharacter->CustomJacketMesh, CharacterMeshData->GetMeshByID(CharacterMeshData->JacketMeshes, CurrentJacketIndex));
+	SetPartMaterial(PreviewCharacter->CustomJacketMesh, 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->JacketMaterials, CurrentJacketMaterialIndex));
+
+	// Pants
+	SetPartMesh(PreviewCharacter->CustomPantsMesh, CharacterMeshData->GetMeshByID(CharacterMeshData->PantsMeshes, CurrentPantsIndex));
+	SetPartMaterial(PreviewCharacter->CustomPantsMesh, 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->PantsMaterials, CurrentPantsMaterialIndex));
+
+	// Belts
+	SetPartMesh(PreviewCharacter->CustomBeltsMesh, CharacterMeshData->GetMeshByID(CharacterMeshData->BeltsMeshes, CurrentBeltsIndex));
+	SetPartMaterial(PreviewCharacter->CustomBeltsMesh, 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->BeltsMaterials, CurrentBeltsMaterialIndex));
+
+	// Armor
+	SetPartMesh(PreviewCharacter->CustomArmorMesh, CharacterMeshData->GetMeshByID(CharacterMeshData->ArmorMeshes, CurrentArmorIndex));
+	SetPartMaterial(PreviewCharacter->CustomArmorMesh, 1, CharacterMeshData->GetMaterialByID(CharacterMeshData->ArmorMaterials, CurrentArmorMaterialIndex));
+	SetPartMaterial(PreviewCharacter->CustomArmorMesh, 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->FlagMaterials, CurrentFlagMaterialIndex));
+
+	// Boots
+	SetPartMesh(PreviewCharacter->CustomBootsMesh, CharacterMeshData->GetMeshByID(CharacterMeshData->BootsMeshes, CurrentBootsIndex));
+	SetPartMaterial(PreviewCharacter->CustomBootsMesh, 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->BootsMaterials, CurrentBootsMaterialIndex));
+}
+
+void UCharacterCustomizationWidget::UpdateCustomization()
+{
+	if (CharacterMeshData->IsValidLowLevel() == false)
+	{
+		LOG_Char_WARNING(TEXT("캐릭터 메시 데이터 invalid"));
+		return;
+	}
+
+	if (IsValid(PreviewCharacter))
+	{
+		ApplyCustomizationToCharacter(PreviewCharacter);
+	}
 }
 
 void UCharacterCustomizationWidget::OnSelectFullBody()
 {
-	if (!IsValid(TargetCharacter)) return;
 	int32 Maxindex = CharacterMeshData->DefaultBodyMeshes.Num() - 1;
 	CurrentFullBodyIndex++;
 	if (CurrentFullBodyIndex > Maxindex)
@@ -261,16 +348,17 @@ void UCharacterCustomizationWidget::OnSelectFullBody()
 		CurrentFullBodyIndex = 0;
 	}
 	CurrentSelection.DefaultBodyID = CurrentFullBodyIndex;
-	LOG_Char_WARNING(TEXT("캐릭터 의상 풀바디 : CurrentFullBodyIndex : %f"), CurrentFullBodyIndex);
 
-	// 즉시 적용
 	UpdateCustomization();
+	RequestFocus(EPreviewFocusGroup::FullBody);
 }
 
 void UCharacterCustomizationWidget::OnSelectGlove()
 {
-	if (!IsValid(TargetCharacter)) return;
-	if (!CharacterMeshData) return;
+	if (CharacterMeshData == nullptr)
+	{
+		return;
+	}
 	int32 Maxindex = CharacterMeshData->GloveMeshes.Num() - 1;
 	CurrentGloveIndex++;
 	if (CurrentGloveIndex > Maxindex)
@@ -279,13 +367,15 @@ void UCharacterCustomizationWidget::OnSelectGlove()
 	}
 	CurrentSelection.GloveID = CurrentGloveIndex;
 
-	// 즉시 적용
 	UpdateCustomization();
+	RequestFocus(EPreviewFocusGroup::Gloves);
 }
 void UCharacterCustomizationWidget::OnSelectJacket()
 {
-	if (!IsValid(TargetCharacter)) return;
-	if (!CharacterMeshData) return;
+	if (CharacterMeshData == nullptr)
+	{
+		return;
+	}
 	int32 Maxindex = CharacterMeshData->JacketMeshes.Num() - 1;
 	CurrentJacketIndex++;
 	if (CurrentJacketIndex > Maxindex)
@@ -294,15 +384,16 @@ void UCharacterCustomizationWidget::OnSelectJacket()
 	}
 	CurrentSelection.JacketID = CurrentJacketIndex;
 
-	// 즉시 적용
 	UpdateCustomization();
+	RequestFocus(EPreviewFocusGroup::Chest);
 }
-
 
 void UCharacterCustomizationWidget::OnSelectPants()
 {
-	if (!IsValid(TargetCharacter)) return;
-	if (!CharacterMeshData) return;
+	if (CharacterMeshData == nullptr)
+	{
+		return;
+	}
 	int32 Maxindex = CharacterMeshData->PantsMeshes.Num() - 1;
 	CurrentPantsIndex++;
 	if (CurrentPantsIndex > Maxindex)
@@ -311,13 +402,15 @@ void UCharacterCustomizationWidget::OnSelectPants()
 	}
 	CurrentSelection.PantsID = CurrentPantsIndex;
 
-	// 즉시 적용
 	UpdateCustomization();
+	RequestFocus(EPreviewFocusGroup::Pants);
 }
 void UCharacterCustomizationWidget::OnSelectBelts()
 {
-	if (!IsValid(TargetCharacter)) return;
-	if (!CharacterMeshData) return;
+	if (CharacterMeshData == nullptr)
+	{
+		return;
+	}
 	int32 Maxindex = CharacterMeshData->BeltsMeshes.Num() - 1;
 	CurrentBeltsIndex++;
 	if (CurrentBeltsIndex > Maxindex)
@@ -326,14 +419,16 @@ void UCharacterCustomizationWidget::OnSelectBelts()
 	}
 	CurrentSelection.BeltsID = CurrentBeltsIndex;
 
-	// 즉시 적용
 	UpdateCustomization();
+	RequestFocus(EPreviewFocusGroup::Pants);
 }
 
 void UCharacterCustomizationWidget::OnSelectHelmets()
 {
-	if (!IsValid(TargetCharacter)) return;
-	if (!CharacterMeshData) return;
+	if (CharacterMeshData == nullptr)
+	{
+		return;
+	}
 	int32 Maxindex = CharacterMeshData->HelmetMeshes.Num() - 1;
 	CurrentHelmetsIndex++;
 	if (CurrentHelmetsIndex > Maxindex)
@@ -342,14 +437,16 @@ void UCharacterCustomizationWidget::OnSelectHelmets()
 	}
 	CurrentSelection.HelmetID = CurrentHelmetsIndex;
 
-	// 즉시 적용
 	UpdateCustomization();
+	RequestFocus(EPreviewFocusGroup::Head);
 }
 
 void UCharacterCustomizationWidget::OnSelectArmor()
 {
-	if (!IsValid(TargetCharacter)) return;
-	if (!CharacterMeshData) return;
+	if (CharacterMeshData == nullptr)
+	{
+		return;
+	}
 	int32 Maxindex = CharacterMeshData->ArmorMeshes.Num() - 1;
 	CurrentArmorIndex++;
 	if (CurrentArmorIndex > Maxindex)
@@ -358,14 +455,16 @@ void UCharacterCustomizationWidget::OnSelectArmor()
 	}
 	CurrentSelection.ArmorID = CurrentArmorIndex;
 
-	// 즉시 적용
 	UpdateCustomization();
+	RequestFocus(EPreviewFocusGroup::Chest);
 }
 
 void UCharacterCustomizationWidget::OnSelectBoots()
 {
-	if (!IsValid(TargetCharacter)) return;
-	if (!CharacterMeshData) return;
+	if (CharacterMeshData == nullptr)
+	{
+		return;
+	}
 	int32 Maxindex = CharacterMeshData->BootsMeshes.Num() - 1;
 	CurrentBootsIndex++;
 	if (CurrentBootsIndex > Maxindex)
@@ -374,14 +473,16 @@ void UCharacterCustomizationWidget::OnSelectBoots()
 	}
 	CurrentSelection.BootsID = CurrentBootsIndex;
 
-	// 즉시 적용
 	UpdateCustomization();
+	RequestFocus(EPreviewFocusGroup::Boots);
 }
 
 void UCharacterCustomizationWidget::OnSelectGloveMaterial()
 {
-	if (!IsValid(TargetCharacter)) return;
-	if (!CharacterMeshData) return;
+	if (CharacterMeshData == nullptr)
+	{
+		return;
+	}
 	int32 Maxindex = CharacterMeshData->GloveMaterials.Num() - 1;
 	CurrentGloveMaterialIndex++;
 	if (CurrentGloveMaterialIndex > Maxindex)
@@ -390,14 +491,16 @@ void UCharacterCustomizationWidget::OnSelectGloveMaterial()
 	}
 	CurrentSelection.GloveMaterialID = CurrentGloveMaterialIndex;
 
-	// 즉시 적용
 	UpdateCustomization();
+	RequestFocus(EPreviewFocusGroup::Gloves);
 }
 
 void UCharacterCustomizationWidget::OnSelectJacketMaterial()
 {
-	if (!IsValid(TargetCharacter)) return;
-	if (!CharacterMeshData) return;
+	if (CharacterMeshData == nullptr)
+	{
+		return;
+	}
 	int32 Maxindex = CharacterMeshData->JacketMaterials.Num() - 1;
 	CurrentJacketMaterialIndex++;
 	if (CurrentJacketMaterialIndex > Maxindex)
@@ -406,14 +509,16 @@ void UCharacterCustomizationWidget::OnSelectJacketMaterial()
 	}
 	CurrentSelection.JacketMaterialID = CurrentJacketMaterialIndex;
 
-	// 즉시 적용
 	UpdateCustomization();
+	RequestFocus(EPreviewFocusGroup::Chest);
 }
 
 void UCharacterCustomizationWidget::OnSelectPantsMaterial()
 {
-	if (!IsValid(TargetCharacter)) return;
-	if (!CharacterMeshData) return;
+	if (CharacterMeshData == nullptr)
+	{
+		return;
+	}
 	int32 Maxindex = CharacterMeshData->PantsMaterials.Num() - 1;
 	CurrentPantsMaterialIndex++;
 	if (CurrentPantsMaterialIndex > Maxindex)
@@ -422,15 +527,16 @@ void UCharacterCustomizationWidget::OnSelectPantsMaterial()
 	}
 	CurrentSelection.PantsMaterialID = CurrentPantsMaterialIndex;
 
-	// 즉시 적용
 	UpdateCustomization();
-
+	RequestFocus(EPreviewFocusGroup::Pants);
 }
 
 void UCharacterCustomizationWidget::OnSelectBeltsMaterial()
 {
-	if (!IsValid(TargetCharacter)) return;
-	if (!CharacterMeshData) return;
+	if (CharacterMeshData == nullptr)
+	{
+		return;
+	}
 	int32 Maxindex = CharacterMeshData->BeltsMaterials.Num() - 1;
 	CurrentBeltsMaterialIndex++;
 	if (CurrentBeltsMaterialIndex > Maxindex)
@@ -439,15 +545,16 @@ void UCharacterCustomizationWidget::OnSelectBeltsMaterial()
 	}
 	CurrentSelection.BeltsMaterialID = CurrentBeltsMaterialIndex;
 
-	// 즉시 적용
 	UpdateCustomization();
-
+	RequestFocus(EPreviewFocusGroup::Pants);
 }
 
 void UCharacterCustomizationWidget::OnSelectHelmetsMaterial()
 {
-	if (!IsValid(TargetCharacter)) return;
-	if (!CharacterMeshData) return;
+	if (CharacterMeshData == nullptr)
+	{
+		return;
+	}
 	int32 Maxindex = CharacterMeshData->HelmetMaterials.Num() - 1;
 	CurrentHelmetMaterialIndex++;
 	if (CurrentHelmetMaterialIndex > Maxindex)
@@ -456,14 +563,16 @@ void UCharacterCustomizationWidget::OnSelectHelmetsMaterial()
 	}
 	CurrentSelection.HelmetMaterialID = CurrentHelmetMaterialIndex;
 
-	// 즉시 적용
 	UpdateCustomization();
+	RequestFocus(EPreviewFocusGroup::Head);
 }
 
 void UCharacterCustomizationWidget::OnSelectBootsMaterial()
 {
-	if (!IsValid(TargetCharacter)) return;
-	if (!CharacterMeshData) return;
+	if (CharacterMeshData == nullptr)
+	{
+		return;
+	}
 	int32 Maxindex = CharacterMeshData->BootsMaterials.Num() - 1;
 	CurrentBootsMaterialIndex++;
 	if (CurrentBootsMaterialIndex > Maxindex)
@@ -472,14 +581,16 @@ void UCharacterCustomizationWidget::OnSelectBootsMaterial()
 	}
 	CurrentSelection.BootsMaterialID = CurrentBootsMaterialIndex;
 
-	// 즉시 적용
 	UpdateCustomization();
+	RequestFocus(EPreviewFocusGroup::Boots);
 }
 
 void UCharacterCustomizationWidget::OnSelectArmorMaterial()
 {
-	if (!IsValid(TargetCharacter)) return;
-	if (!CharacterMeshData) return;
+	if (CharacterMeshData == nullptr)
+	{
+		return;
+	}
 	int32 Maxindex = CharacterMeshData->ArmorMaterials.Num() - 1;
 	CurrentArmorMaterialIndex++;
 	if (CurrentArmorMaterialIndex > Maxindex)
@@ -488,14 +599,16 @@ void UCharacterCustomizationWidget::OnSelectArmorMaterial()
 	}
 	CurrentSelection.ArmorMaterialID = CurrentArmorMaterialIndex;
 
-	// 즉시 적용
 	UpdateCustomization();
+	RequestFocus(EPreviewFocusGroup::Chest);
 }
 
 void UCharacterCustomizationWidget::OnSelectFlagMaterial()
 {
-	if (!IsValid(TargetCharacter)) return;
-	if (!CharacterMeshData) return;
+	if (CharacterMeshData == nullptr)
+	{
+		return;
+	}
 	int32 Maxindex = CharacterMeshData->FlagMaterials.Num() - 1;
 	CurrentFlagMaterialIndex++;
 	if (CurrentFlagMaterialIndex > Maxindex)
@@ -504,8 +617,8 @@ void UCharacterCustomizationWidget::OnSelectFlagMaterial()
 	}
 	CurrentSelection.FlagMaterialID = CurrentFlagMaterialIndex;
 
-	// 즉시 적용
 	UpdateCustomization();
+	RequestFocus(EPreviewFocusGroup::Flag);
 }
 
 void UCharacterCustomizationWidget::OnResetCustomization()
@@ -526,14 +639,30 @@ void UCharacterCustomizationWidget::OnLoadCustomization()
 	if (UWorld* World = GetWorld())
 	{
 		FCharacterCustomizationData SavedCustomizationData = ULCLocalPlayerSaveGame::LoadCustomizationData(World);
-		//여기서 캐릭터에 적용
 		InitCustomizationIndex(SavedCustomizationData);
+	}
+
+	ACharacter* MyChar = nullptr;
+	if (IsValid(TargetCharacter))
+	{
+		MyChar = TargetCharacter;
+	}
+	else if (APlayerController* PC = GetOwningPlayer())
+	{
+		MyChar = Cast<ACharacter>(PC->GetPawn());
+	}
+	if (IsValid(MyChar))
+	{
+		ApplyCustomizationToCharacter(MyChar);
 	}
 }
 
 void UCharacterCustomizationWidget::SetPartMesh(USkeletalMeshComponent* Component, USkeletalMesh* LoadedMesh)
 {
-	if (!Component) return;
+	if (Component == nullptr)
+	{
+		return;
+	}
 
 	if (LoadedMesh)
 	{
@@ -559,7 +688,6 @@ void UCharacterCustomizationWidget::SetPartMaterial(USkeletalMeshComponent* Comp
 		Component->SetMaterial(MaterialIndex, Material);
 	}
 }
-
 
 void UCharacterCustomizationWidget::InitCustomizationIndex(FCharacterCustomizationData SavedCustomizationData)
 {
@@ -593,52 +721,58 @@ void UCharacterCustomizationWidget::InitCustomizationIndex(FCharacterCustomizati
 	UpdateCustomization();
 }
 
-void UCharacterCustomizationWidget::UpdateCustomization()
+void UCharacterCustomizationWidget::ApplyCustomizationToCharacter(ACharacter* Character)
 {
-	if (!CharacterMeshData->IsValidLowLevel())
+	if (!Character || !CharacterMeshData)
 	{
-		LOG_Char_WARNING(TEXT("캐릭터 메시 데이터 invalid"));
 		return;
 	}
 
 	// Body
 	USkeletalMesh* BodySkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->DefaultBodyMeshes, CurrentFullBodyIndex);
-	SetPartMesh(TargetCharacter->GetMesh(), BodySkeletalMesh);
-	SetPartMaterial(TargetCharacter->GetMesh(), 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->DefaultBodyMaterials, CurrentFullBodyMaterialIndex));
+	SetPartMesh(Character->GetMesh(), BodySkeletalMesh);
+	SetPartMaterial(Character->GetMesh(), 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->DefaultBodyMaterials, CurrentFullBodyMaterialIndex));
 
-	USkeletalMesh* HeadSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->DefaultHeadMeshes, CurrentFullBodyIndex);
-	SetPartMesh(TargetCharacter->CustomHeadMesh, HeadSkeletalMesh);
-	SetPartMaterial(TargetCharacter->CustomHeadMesh, 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->DefaultHeadMaterials, CurrentFullBodyMaterialIndex));
+	// PreviewCharacter나 TargetCharacter 모두 지원하게 캐스팅 시도
+	if (ACustomizationCharacter* CustomChar = Cast<ACustomizationCharacter>(Character))
+	{
+		// Head
+		USkeletalMesh* HeadMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->DefaultHeadMeshes, CurrentFullBodyIndex);
+		SetPartMesh(CustomChar->CustomHeadMesh, HeadMesh);
+		SetPartMaterial(CustomChar->CustomHeadMesh, 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->DefaultHeadMaterials, CurrentFullBodyMaterialIndex));
 
-	USkeletalMesh* HelmetSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->HelmetMeshes, CurrentHelmetsIndex);
-	SetPartMesh(TargetCharacter->CustomHelmetMesh, HelmetSkeletalMesh);
-	SetPartMaterial(TargetCharacter->CustomHelmetMesh, 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->HelmetMaterials, CurrentHelmetMaterialIndex));
-	SetPartMaterial(TargetCharacter->CustomHelmetMesh, 1, CharacterMeshData->GetMaterialByID(CharacterMeshData->FlagMaterials, CurrentFlagMaterialIndex));
+		// Helmet
+		USkeletalMesh* HelmetMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->HelmetMeshes, CurrentHelmetsIndex);
+		SetPartMesh(CustomChar->CustomHelmetMesh, HelmetMesh);
+		SetPartMaterial(CustomChar->CustomHelmetMesh, 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->HelmetMaterials, CurrentHelmetMaterialIndex));
+		SetPartMaterial(CustomChar->CustomHelmetMesh, 1, CharacterMeshData->GetMaterialByID(CharacterMeshData->FlagMaterials, CurrentFlagMaterialIndex));
 
-	USkeletalMesh* GloveSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->GloveMeshes, CurrentGloveIndex);
-	SetPartMesh(TargetCharacter->CustomGloveMesh, GloveSkeletalMesh);
-	SetPartMaterial(TargetCharacter->CustomGloveMesh, 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->GloveMaterials, CurrentGloveMaterialIndex));
+		// Glove
+		USkeletalMesh* GloveMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->GloveMeshes, CurrentGloveIndex);
+		SetPartMesh(CustomChar->CustomGloveMesh, GloveMesh);
+		SetPartMaterial(CustomChar->CustomGloveMesh, 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->GloveMaterials, CurrentGloveMaterialIndex));
 
-	USkeletalMesh* JacketSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->JacketMeshes, CurrentJacketIndex);
-	SetPartMesh(TargetCharacter->CustomJacketMesh, JacketSkeletalMesh);
-	SetPartMaterial(TargetCharacter->CustomJacketMesh, 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->JacketMaterials, CurrentJacketMaterialIndex));
+		// Pants
+		USkeletalMesh* PantsMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->PantsMeshes, CurrentPantsIndex);
+		SetPartMesh(CustomChar->CustomPantsMesh, PantsMesh);
+		SetPartMaterial(CustomChar->CustomPantsMesh, 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->PantsMaterials, CurrentPantsMaterialIndex));
 
-	USkeletalMesh* PantsSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->PantsMeshes, CurrentPantsIndex);
-	SetPartMesh(TargetCharacter->CustomPantsMesh, PantsSkeletalMesh);
-	SetPartMaterial(TargetCharacter->CustomPantsMesh, 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->PantsMaterials, CurrentPantsMaterialIndex));
+		// Belts
+		USkeletalMesh* BeltsMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->BeltsMeshes, CurrentBeltsIndex);
+		SetPartMesh(CustomChar->CustomBeltsMesh, BeltsMesh);
+		SetPartMaterial(CustomChar->CustomBeltsMesh, 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->BeltsMaterials, CurrentBeltsMaterialIndex));
 
-	USkeletalMesh* BeltsSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->BeltsMeshes, CurrentBeltsIndex);
-	SetPartMesh(TargetCharacter->CustomBeltsMesh, BeltsSkeletalMesh);
-	SetPartMaterial(TargetCharacter->CustomBeltsMesh, 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->BeltsMaterials, CurrentBeltsMaterialIndex));
+		// Armor
+		USkeletalMesh* ArmorMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->ArmorMeshes, CurrentArmorIndex);
+		SetPartMesh(CustomChar->CustomArmorMesh, ArmorMesh);
+		SetPartMaterial(CustomChar->CustomArmorMesh, 1, CharacterMeshData->GetMaterialByID(CharacterMeshData->ArmorMaterials, CurrentArmorMaterialIndex));
+		SetPartMaterial(CustomChar->CustomArmorMesh, 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->FlagMaterials, CurrentFlagMaterialIndex));
 
-	USkeletalMesh* ArmorSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->ArmorMeshes, CurrentArmorIndex);
-	SetPartMesh(TargetCharacter->CustomArmorMesh, ArmorSkeletalMesh);
-	SetPartMaterial(TargetCharacter->CustomArmorMesh, 1, CharacterMeshData->GetMaterialByID(CharacterMeshData->ArmorMaterials, CurrentArmorMaterialIndex));
-	SetPartMaterial(TargetCharacter->CustomArmorMesh, 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->FlagMaterials, CurrentFlagMaterialIndex));
-
-	USkeletalMesh* BootsSkeletalMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->BootsMeshes, CurrentBootsIndex);
-	SetPartMesh(TargetCharacter->CustomBootsMesh, BootsSkeletalMesh);
-	SetPartMaterial(TargetCharacter->CustomBootsMesh, 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->BootsMaterials, CurrentBootsMaterialIndex));
+		// Boots
+		USkeletalMesh* BootsMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->BootsMeshes, CurrentBootsIndex);
+		SetPartMesh(CustomChar->CustomBootsMesh, BootsMesh);
+		SetPartMaterial(CustomChar->CustomBootsMesh, 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->BootsMaterials, CurrentBootsMaterialIndex));
+	}
 }
 
 void UCharacterCustomizationWidget::ApplySetting()
@@ -663,4 +797,255 @@ void UCharacterCustomizationWidget::ApplySetting()
 	CurrentSelection.FlagMaterialID = CurrentFlagMaterialIndex;
 
 	ULCLocalPlayerSaveGame::SaveCustomizationData(GetWorld(), CurrentSelection);
+
+	ACharacter* MyChar = nullptr;
+	if (IsValid(TargetCharacter))
+	{
+		MyChar = TargetCharacter;
+	}
+	else if (APlayerController* PC = GetOwningPlayer())
+	{
+		MyChar = Cast<ACharacter>(PC->GetPawn());
+	}
+
+	if (IsValid(MyChar))
+	{
+		ApplyCustomizationToCharacter(MyChar);
+	}
+	else
+	{
+		LOG_Char_WARNING(TEXT("ApplySetting: 적용할 대상 캐릭터를 찾지 못했습니다 (TargetCharacter/소유 Pawn 모두 없음)."));
+	}
+
+	if (IsValid(PreviewCharacter))
+	{
+		ApplyCustomizationToCharacter(PreviewCharacter);
+	}
+
+	//if (APlayerController* PC = GetOwningPlayer())
+	//{
+	//	if (ALCRoomPlayerController* RoomPC = Cast<ALCRoomPlayerController>(PC))
+	//	{
+	//		RoomPC->Server_ApplyCustomization(CurrentSelection);
+	//	}
+	//}
+
+	//LOG_Char_WARNING(TEXT("세팅 저장 + 타겟/프리뷰 적용 + 서버 요청 완료"));
+}
+
+void UCharacterCustomizationWidget::FacePreviewToCamera()
+{
+	if (PreviewCharacter == nullptr || SceneCaptureComponent == nullptr)
+	{
+		return;
+	}
+
+	const FVector CharLoc = PreviewCharacter->GetActorLocation();
+	const FVector CamLoc = SceneCaptureComponent->GetComponentLocation();
+
+	const FRotator LookAt = UKismetMathLibrary::FindLookAtRotation(CharLoc, CamLoc);
+	const FRotator YawOnly(0.f, LookAt.Yaw, 0.f);
+
+	PreviewCharacter->SetActorRotation(YawOnly);
+}
+
+void UCharacterCustomizationWidget::UpdatePreviewCameraTransform()
+{
+	if (PreviewCharacter == nullptr || SceneCaptureComponent == nullptr)
+	{
+		return;
+	}
+
+	const FVector CharLoc = PreviewCharacter->GetActorLocation();
+	FVector Target = CharLoc;
+
+	switch (LastFocusedGroup)
+	{
+	case EPreviewFocusGroup::Head:
+	{
+		Target.Z += 170.f;
+		break;
+	}
+	case EPreviewFocusGroup::Chest:
+	{
+		Target.Z += 140.f;
+		break;
+	}
+	case EPreviewFocusGroup::Flag:
+	{
+		Target.Z += 140.f;
+		break;
+	}
+	case EPreviewFocusGroup::Pants:
+	{
+		Target.Z += 110.f;
+		break;
+	}
+	case EPreviewFocusGroup::Boots:
+	{
+		Target.Z += 55.f;
+		break;
+	}
+	default:
+	{
+		Target.Z += 140.f;
+		break;
+	}
+	}
+
+	const FRotator CurrentRot = SceneCaptureComponent->GetComponentRotation();
+	const FVector CamDir = CurrentRot.Vector();
+	const FVector NewCamLoc = Target - CamDir * PreviewCamDistance;
+
+	SceneCaptureComponent->SetWorldLocationAndRotation(NewCamLoc, CurrentRot);
+}
+
+void UCharacterCustomizationWidget::RequestFocus(EPreviewFocusGroup Group)
+{
+	if (PreviewCharacter == nullptr || SceneCaptureComponent == nullptr)
+	{
+		return;
+	}
+
+	const FVector CharLoc = PreviewCharacter->GetActorLocation();
+	FVector Target = CharLoc;
+
+	float CamDist = PreviewCamDistance;
+	FRotator NewCamRot = SceneCaptureComponent->GetComponentRotation();
+
+	switch (Group)
+	{
+	case EPreviewFocusGroup::FullBody:
+	{
+		Target.Z += 100.f;
+		CamDist = 180.f;
+		NewCamRot = FRotator(-15.f, 180.f, 0.f);
+		break;
+	}
+	case EPreviewFocusGroup::Head:
+	{
+		Target.Z += 170.f;
+		CamDist *= 0.6f;
+		break;
+	}
+	case EPreviewFocusGroup::Chest:
+	{
+		Target.Z += 140.f;
+		break;
+	}
+	case EPreviewFocusGroup::Flag:
+	{
+		Target.Z += 140.f;
+		CamDist *= 0.4f;
+		break;
+	}
+	case EPreviewFocusGroup::Gloves:
+	{
+		Target.Z += 140.f;
+		CamDist *= 1.2f;
+		break;
+	}
+	case EPreviewFocusGroup::Pants:
+	{
+		Target.Z += 110.f;
+		break;
+	}
+	case EPreviewFocusGroup::Boots:
+	{
+		Target.Z += 55.f;
+		break;
+	}
+	default:
+	{
+		Target.Z += 140.f;
+		break;
+	}
+	}
+
+	const FVector CamDir = NewCamRot.Vector();
+	const FVector NewCamLoc = Target - CamDir * CamDist;
+
+	StartCameraLerp(NewCamLoc, NewCamRot, 0.25f);
+	LastFocusedGroup = Group;
+}
+
+void UCharacterCustomizationWidget::RecenterPreview()
+{
+	if (SceneCaptureComponent == nullptr || PreviewCharacter == nullptr)
+	{
+		return;
+	}
+
+	const FVector CharLoc = PreviewCharacter->GetActorLocation();
+	const FVector Target = CharLoc + FVector(0, 0, 140.f);
+	const FVector NewLoc = Target + FVector(PreviewCamDistance, 0, PreviewCamHeight);
+	const FRotator NewRot = UKismetMathLibrary::FindLookAtRotation(NewLoc, Target);
+
+	StartCameraLerp(NewLoc, NewRot, 0.25f);
+}
+
+void UCharacterCustomizationWidget::StartCameraLerp(const FVector& TargetLoc, const FRotator& TargetRot, float Duration)
+{
+	if (SceneCaptureComponent == nullptr)
+	{
+		return;
+	}
+
+	CancelCameraLerp();
+
+	CamLerpStartLoc = SceneCaptureComponent->GetComponentLocation();
+	CamLerpStartRot = SceneCaptureComponent->GetComponentRotation();
+
+	CamLerpTargetLoc = TargetLoc;
+	CamLerpTargetRot = TargetRot;
+
+	CamLerpDuration = FMath::Max(0.01f, Duration);
+	CamLerpElapsed = 0.f;
+	LastLerpTickTime = GetWorld() ? GetWorld()->GetRealTimeSeconds() : 0.0;
+
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().SetTimer(
+			PreviewCamLerpHandle,
+			this, &UCharacterCustomizationWidget::TickCameraLerp,
+			0.01f, true
+		);
+	}
+}
+
+void UCharacterCustomizationWidget::TickCameraLerp()
+{
+	if (SceneCaptureComponent == nullptr)
+	{
+		CancelCameraLerp();
+		return;
+	}
+
+	const double Now = GetWorld() ? GetWorld()->GetRealTimeSeconds() : 0.0;
+	const float  DT = static_cast<float>(Now - LastLerpTickTime);
+	LastLerpTickTime = Now;
+
+	CamLerpElapsed += DT;
+	const float Alpha = FMath::Clamp(CamLerpElapsed / CamLerpDuration, 0.f, 1.f);
+
+	const FVector  NewLoc = FMath::Lerp(CamLerpStartLoc, CamLerpTargetLoc, Alpha);
+	const FQuat    SR = CamLerpStartRot.Quaternion();
+	const FQuat    TR = CamLerpTargetRot.Quaternion();
+	const FRotator NewRot = FQuat::Slerp(SR, TR, Alpha).Rotator();
+
+	SceneCaptureComponent->SetWorldLocation(NewLoc);
+	SceneCaptureComponent->SetWorldRotation(NewRot);
+
+	if (Alpha >= 1.f)
+	{
+		CancelCameraLerp();
+	}
+}
+
+void UCharacterCustomizationWidget::CancelCameraLerp()
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(PreviewCamLerpHandle);
+	}
 }
