@@ -50,10 +50,6 @@ protected:
 	virtual void BeginPlay() override;
 
 public:
-	UPROPERTY()
-	UAnimInstance* CachedAnimInstance;
-
-public:
 	UFUNCTION(BlueprintCallable, Category = "Animation")
 	void PlayMontageByType(UAnimMontage* LocalMontage, UAnimMontage* MulticastMontage, EAnimationMontageType Type);
 
@@ -135,14 +131,13 @@ private:
 	bool bIsPlayingEmoteMontage = false;
 	bool bIsPlayingAttackMontage = false;
 
-
-
-
-
-
-
-
-
+public:
+	bool GetIsPlayingInteractionMontage() { return bIsPlayingInteractionMontage; }
+	bool GetIsPlayingUseItemMontage() { return bIsPlayingUseItemMontage; }
+	bool GetIsPlayingGunReloadMontage() { return bIsPlayingGunReloadMontage; }
+	bool GetIsPlayingEmoteMontage() { return bIsPlayingEmoteMontage; }
+	bool GetIsPlayingAttackMontage() { return bIsPlayingAttackMontage; }
+	
 
 
 public:

@@ -7,8 +7,12 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Character/Component/CharacterInteractionComponent.h"
 #include "Character/Component/CharacterAnimationComponent.h"
+#include "Character/Component/CharacterCameraControlComponent.h"
+#include "Character/Component/CharacterAttackComponent.h"
+#include "Character/Component/CharacterADSComponent.h"
 
 #include "../Plugins/ALS-Refactored-4.15/Source/ALS/Public/Utility/AlsVector.h"
+#include "Inventory/ToolbarInventoryComponent.h"
 
 #include "LastCanary.h"
 
@@ -280,7 +284,7 @@ void UCharacterInputComponent::Handle_Jump(const FInputActionValue& ActionValue)
 		if (GetCharacter()->StartMantlingGrounded())
 		{
 			GetCharacter()->SetDesiredAiming(false);
-			GetCharacter()->SpringArm->AttachToComponent(GetCharacter()->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+			//GetCharacter()->SpringArm->AttachToComponent(GetCharacter()->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 			return;
 		}
 		if (GetCharacter()->GetStance() == AlsStanceTags::Crouching)
@@ -310,51 +314,78 @@ void UCharacterInputComponent::Handle_Aim(const FInputActionValue& ActionValue)
 	{
 		return;
 	}
-	/*
-	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
+	
+	AItemBase* EquippedItem = GetCharacter()->ToolbarInventoryComponent->GetCurrentEquippedItem();
 	if (!EquippedItem)
 	{
 		return;
 	}
-	*/
-	if (GetCharacter()->bIsSprinting || GetCharacter()->bIsReloading || GetCharacter()->bIsClose || GetCharacter()->bIsMantling)
+	
+	AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem);
+	if (!EquipmentItem)
 	{
-		GetCharacter()->StopAiming();
 		return;
 	}
-	/*
-	if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem))
+	if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Tool.Pickaxe")))
 	{
-		if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle"))
-			|| EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol"))
-			|| EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Shotgun")))
+		//곡괭이를 들면 근접공격
+		if (GetCharacter()->AttackComponent)
 		{
-			AGunBase* RifleItem = Cast<AGunBase>(EquippedItem);
-			if (RifleItem)
+			if (ActionValue.Get<float>() > 0.5f)
 			{
-				USkeletalMeshComponent* RifleMesh = RifleItem->GetSkeletalMeshComponent();
-				GetCharacter()->CurrentRifleMesh = RifleMesh;
-				if (!RifleMesh)
-				{
-					return;
-				}
-
-				if (ActionValue.Get<float>() > 0.5f && GetCharacter()->bIsCloseToWall == false)
-				{
-					GetCharacter()->StartAiming();
-					return;
-				}
-				else
-				{
-					GetCharacter()->SpringArm->bUsePawnControlRotation = true;
-					GetCharacter()->StopAiming();
-					return;
-				}
+				GetCharacter()->AttackComponent->Handle_Attack(EAttackType::ItemAttack);
 			}
+			return;
 		}
 	}
+	
+		
+
+	//총을 들면 우클릭
+	
+	
+	if (GetCharacter()->bIsSprinting || GetCharacter()->bIsReloading || GetCharacter()->bIsClose || GetCharacter()->bIsMantling)
+	{
+		GetCharacter()->CameraControlComponent->StopAiming();
+		return;
+	}
+	AGunBase* Gun = Cast<AGunBase>(EquipmentItem);
+	if (!IsValid(Gun))
+	{
+		return;
+	}
+	if (Gun)
+	{
+		USkeletalMeshComponent* RifleMesh = Gun->GetSkeletalMeshComponent();
+		GetCharacter()->CurrentRifleMesh = RifleMesh;
+		
+		
+		if (ActionValue.Get<float>() > 0.5f && GetCharacter()->bIsCloseToWall == false)
+		{
+			if (GetCharacter()->ADSComponent)
+			{
+				GetCharacter()->ADSComponent->SwitchADS(true);
+			}
+		}
+		else
+		{
+			if (GetCharacter()->ADSComponent)
+			{
+				GetCharacter()->ADSComponent->SwitchADS(false);
+			}
+		}
+		
+	}
+	/*
+	if(EquipmentItem)
+	if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle"))
+		|| EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol"))
+		|| EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Shotgun")))
+	{
+		AGunBase* RifleItem = Cast<AGunBase>(EquippedItem);
+		
+	}
 	*/
-	GetCharacter()->SetDesiredAiming(ActionValue.Get<bool>());
 }
 
 void UCharacterInputComponent::Handle_Interact(const FInputActionValue& ActionValue)

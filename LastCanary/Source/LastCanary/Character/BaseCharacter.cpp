@@ -63,6 +63,8 @@
 #include "Character/Component/CharacterSpeedControlComponent.h"
 #include "Character/Component/CharacterSoundComponent.h"
 #include "Character/Component/CharacterSanityComponent.h"
+#include "Character/Component/CharacterADSComponent.h"
+
 
 #include "GameFramework/CharacterMovementComponent.h"
 
@@ -108,10 +110,10 @@ ABaseCharacter::ABaseCharacter()
 	OverlayStaticMesh->SetupAttachment(GetMesh());
 
 	OverlaySkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("OverlaySkeletalMesh"));
-	OverlaySkeletalMesh->SetupAttachment(GetMesh());
+	OverlaySkeletalMesh->SetupAttachment(GetMesh(), TEXT("Rifle"));
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
-	SpringArm->SetupAttachment(GetMesh(), TEXT("FirstPersonCamera"));
+	SpringArm->SetupAttachment(RootComponent);
 
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(SpringArm);  // SpringArm에 카메라 부착
@@ -121,12 +123,6 @@ ABaseCharacter::ABaseCharacter()
 
 	ThirdPersonArrow = CreateDefaultSubobject<UArrowComponent>(TEXT("FirstPersonArrow"));
 	ThirdPersonArrow->SetupAttachment(SpringArm);
-
-	SpectatorSpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpectatorSpringArm"));
-	SpectatorSpringArm->SetupAttachment(GetMesh(), TEXT("SpectatorCamera"));
-
-	SpectatorCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("SpectatorCamera"));
-	SpectatorCamera->SetupAttachment(SpectatorSpringArm);  // SpringArm에 카메라 부착
 
 	// 캐릭터 클래스의 생성자 함수 내부 
 	FieldOfView = Camera->FieldOfView;
@@ -155,6 +151,7 @@ ABaseCharacter::ABaseCharacter()
 	SpeedControlComponent = CreateDefaultSubobject<UCharacterSpeedControlComponent>(TEXT("SpeedControlComponent"));
 	SoundPlayComponent = CreateDefaultSubobject<UCharacterSoundComponent>(TEXT("SoundPlayComponent"));
 	SanityComponent = CreateDefaultSubobject<UCharacterSanityComponent>(TEXT("SanityComponent"));
+	ADSComponent = CreateDefaultSubobject<UCharacterADSComponent>(TEXT("ADSComponent"));
 }
 
 void ABaseCharacter::ApplyNetworkSmoothSettings(
@@ -432,13 +429,15 @@ void ABaseCharacter::NotifyControllerChanged()
 void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo)
 {
 	Super::CalcCamera(DeltaTime, ViewInfo);
-	if (!IsLocallyControlled()) return; 
+	if (!IsLocallyControlled()) return;
+	SpringArm->SetWorldLocation(GetMesh()->GetSocketLocation("head"));
+	//	ViewInfo.Location = GetMesh()->GetSocketLocation(("head"));
 	UpdateGunWallClipOffset(DeltaTime);
 	if (bIsMantling)
 	{
 		bIsAiming = false;
 		bIsTransitioning = false;
-		SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+		//SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 		Controller->SetControlRotation(GetActorRotation());
 		SpringArm->bUsePawnControlRotation = true;
 		FVector TargetLoc = GetActorLocation();
@@ -487,7 +486,7 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 
 		// 부드럽게 이동
 		FVector NewLocation = FMath::VInterpTo(CurrentLocation, TargetLocation, DeltaTime, CameraTransitionSpeed);
-		SpringArm->SetWorldLocation(NewLocation);
+		//SpringArm->SetWorldLocation(NewLocation);
 
 		// 목표 지점에 가까워지면 Attach
 		float Distance = FVector::Dist(NewLocation, TargetLocation);
@@ -512,7 +511,6 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 		}
 	}
 	ViewInfo.Rotation.Roll = 0.0f;
-	
 }
 
 void ABaseCharacter::ResetCameraLocationToDefault()
@@ -535,11 +533,11 @@ void ABaseCharacter::AttachCameraToRifle()
 			{
 				if (Gun->HasScopeAttached())
 				{
-					SpringArm->AttachToComponent(OverlaySkeletalMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("RifleScope"));
+					//SpringArm->AttachToComponent(OverlaySkeletalMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("RifleScope"));
 					return;
 				}
 			}
-			SpringArm->AttachToComponent(OverlaySkeletalMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
+			//SpringArm->AttachToComponent(OverlaySkeletalMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
 			//SpringArm->AttachToComponent(CurrentRifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
 		}
 	}
@@ -551,89 +549,43 @@ void ABaseCharacter::AttachCameraToCharacter()
 	{
 		if (IsLocallyControlled())
 		{
-			SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+			//SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 		}
 	}
+}
+
+AItemBase* ABaseCharacter::GetCurrentItem()
+{
+	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
+	return EquippedItem;
+}
+
+AGunBase* ABaseCharacter::GetCurrentGunItem()
+{
+	if (IsValid(GetCurrentItem()))
+	{
+		AGunBase* Gun = Cast<AGunBase>(GetCurrentItem());
+		return Gun;
+	}		
+	return nullptr;
+}
+
+USkeletalMeshComponent* ABaseCharacter::GetCurrentGunItemSkeletalMesh()
+{
+	if (IsValid(GetCurrentGunItem()))
+	{
+		USkeletalMeshComponent* RifleMesh = GetCurrentGunItem()->GetSkeletalMeshComponent();
+		return RifleMesh;
+	}
+	return nullptr;
 }
 
 
 void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 {
-	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
+	if (InputControlComponent)
 	{
-		return;
-	}
-	if (CheckHardLandState())
-	{
-		return;
-	}
-	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
-	if (!EquippedItem)
-	{
-		return;
-	}
-	if (bIsSprinting || bIsReloading || bIsClose || bIsMantling)
-	{
-		StopAiming();
-		return;
-	}
-	if (AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem))
-	{
-		if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")) 
-			|| EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol")) 
-			|| EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Shotgun")))
-		{
-			AGunBase* RifleItem = Cast<AGunBase>(EquippedItem);
-			if (RifleItem)
-			{
-				USkeletalMeshComponent* RifleMesh = RifleItem->GetSkeletalMeshComponent();
-				CurrentRifleMesh = RifleMesh;
-				if (!RifleMesh)
-				{
-					return;
-				}
-
-				if (ActionValue.Get<float>() > 0.5f && bIsCloseToWall == false)
-				{
-					StartAiming();
-					return;
-				}
-				else
-				{
-					SpringArm->bUsePawnControlRotation = true;
-					StopAiming();
-					return;
-				}
-			}
-		}
-	}
-
-	SetDesiredAiming(ActionValue.Get<bool>());
-}
-
-void ABaseCharacter::StartAiming()
-{
-	if (!bIsAiming)
-	{
-		bIsAiming = true;
-		bIsTransitioning = true;
-
-		// 스프링암을 RootComponent에 붙여서 자유롭게 움직일 수 있게 함
-		SpringArm->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepWorldTransform);
-
-		CancelInteraction();
-	}
-}
-
-void ABaseCharacter::StopAiming()
-{
-	if (bIsAiming)
-	{
-		bIsAiming = false;
-		bIsTransitioning = true;
-
-		// 스프링암을 RootComponent에 붙여서 자유롭게 움직일 수 있게 함
-		SpringArm->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepWorldTransform);
+		InputControlComponent->Handle_Aim(ActionValue);
 	}
 }
 
@@ -641,6 +593,7 @@ void ABaseCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
+	SetDesiredAiming(true);
 }// 전환이 완료되었는지 확인하는 유틸리티 함수 (선택사항)
 
 void ABaseCharacter::NotifyNoiseToAI(FVector Velocity)
@@ -868,9 +821,9 @@ void ABaseCharacter::HandleStaminaConsumed()
 	bIsSprinting = true;
 	SetDesiredAiming(false);
 	SetDesiredGait(AlsGaitTags::Sprinting);
-	Camera->AttachToComponent(SpringArm, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
-	Camera->SetRelativeLocation(FVector::ZeroVector);
-	Camera->SetRelativeRotation(FRotator::ZeroRotator); // 필요 시 원래 회전 복구
+	//Camera->AttachToComponent(SpringArm, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+	//Camera->SetRelativeLocation(FVector::ZeroVector);
+	//Camera->SetRelativeRotation(FRotator::ZeroRotator); // 필요 시 원래 회전 복구
 	StaminaComponent->StopStaminaRecovery();
 	StaminaComponent->StopStaminaRecoverAfterDelay();
 	StaminaComponent->StartStaminaRecoverAfterDelayOnJump();
@@ -1045,7 +998,7 @@ void ABaseCharacter::SetCameraMode(bool bIsFirstPersonView)
 		EmoteMode = false;
 		CustomHeadMesh->SetOwnerNoSee(true);
 		SwapHeadMaterialTransparent(true);
-		SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+		//SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 		SpringArm->TargetArmLength = 0.0f;
 	}
 	else
@@ -1067,7 +1020,7 @@ void ABaseCharacter::SetCameraEmoteMode(bool bIsFirstPersonView)
 		SpringArm->ProbeSize = 3.0f;
 		CustomHeadMesh->SetOwnerNoSee(true);
 		SwapHeadMaterialTransparent(true);
-		SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+		//SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 		SpringArm->TargetArmLength = 0.0f;
 	}
 	else
@@ -1491,7 +1444,7 @@ void ABaseCharacter::Server_UnequipCurrentItem_Implementation()
 	UnequipCurrentItem();
 }
 
-float ABaseCharacter::TakeSpiritDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+float ABaseCharacter::TakeSanityDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
 	LOG_Char_WARNING(TEXT("캐릭터가 정신력에 타격을 받음"));
 	if (!HasAuthority())	
@@ -1500,7 +1453,7 @@ float ABaseCharacter::TakeSpiritDamage(float DamageAmount, FDamageEvent const& D
 	}
 	if (SanityComponent)
 	{
-		SanityComponent->TakeSpiritDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+		SanityComponent->TakeSanityDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 	}
 	return DamageAmount;
 }
@@ -1672,6 +1625,23 @@ void ABaseCharacter::EscapeThroughGate()
 	PC->PlayerExitActivePlayOnEscapeGate();
 }
 
+void ABaseCharacter::SetDamageEnabled(bool bEnabled)
+{
+	if (!IsValid(HealthComponent))
+	{
+		return;
+	}
+
+	if (bEnabled)
+	{
+		HealthComponent->bInfiniteHP = false;
+	}
+	else
+	{
+		HealthComponent->bInfiniteHP = true;
+	}
+}
+
 void ABaseCharacter::Multicast_SetPlayerInGameStateOnEscapeGate_Implementation()
 {
 	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
@@ -1831,7 +1801,7 @@ void ABaseCharacter::RefreshOverlayObject()
 	FGameplayTag ItemTag;
 	FGameplayTag Overlay = AlsOverlayModeTags::Default;
 	bool bIsDesireAiming = false;
-	FName Socketname = "Rifle";
+	FName Socketname = "ik_hand_gun";
 	bool bUseLeftGunBone = true;
 	UStaticMesh* AttachMesh = NULL;
 	USkeletalMesh* AttachSkeletalMesh = NULL;
@@ -1872,6 +1842,9 @@ void ABaseCharacter::RefreshOverlayObject()
 		OverlaySkeletalMesh->SetOnlyOwnerSee(true);
 		Overlay = AlsOverlayModeTags::Rifle;
 		bIsDesireAiming = true;
+		Socketname = "ik_hand_gun";
+
+		SetHasGunOnHand(true);
 	}
 	if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol")))  // 또는 HasTag 등 비교 방식에 따라
 	{
@@ -1887,6 +1860,7 @@ void ABaseCharacter::RefreshOverlayObject()
 		OverlaySkeletalMesh->SetOnlyOwnerSee(true);
 		Overlay = AlsOverlayModeTags::PistolTwoHanded;
 		bIsDesireAiming = true;
+		SetHasGunOnHand(true);
 	}
 	if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Shotgun")))  // 또는 HasTag 등 비교 방식에 따라
 	{
@@ -1902,6 +1876,7 @@ void ABaseCharacter::RefreshOverlayObject()
 		OverlaySkeletalMesh->SetOnlyOwnerSee(true);
 		Overlay = AlsOverlayModeTags::Rifle;
 		bIsDesireAiming = true;
+		SetHasGunOnHand(true);
 	}
 	if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.FlashLight")))
 	{
@@ -2216,7 +2191,7 @@ void ABaseCharacter::DropCurrentItem()
 	CheckAndStopWalkieTalkie();
 	CancelUseItem();
 	CancelInteraction();
-	StopAiming();
+	CameraControlComponent->StopAiming();
 	StopReload();
 	if (!ToolbarInventoryComponent)
 	{

@@ -4,6 +4,8 @@
 #include "UI/Manager/LCUIManager.h"
 #include "UI/UIElement/InGameHUD.h"
 
+#include "LastCanary.h"
+
 UCharacterHealthComponent::UCharacterHealthComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
@@ -62,13 +64,19 @@ void UCharacterHealthComponent::StopHealing()
 void UCharacterHealthComponent::TakeDamage(float DamageAmount)
 {
 	float CalculatedHP = CalculateDamage(DamageAmount);
+	if (bInfiniteHP == true)
+	{
+		return;
+	}
 
+	CurrentHealth = FMath::Clamp(CurrentHealth - CalculatedHP, 0.f, MaxHealth);
+	
 	if (CalculatedHP > 0.f)
 	{
 		ActivateDamageCooldown(InvincibilityTime); // 0.5초간 무적
 		UpdateHealth();
+		Client_PlayDamageUI();
 	}
-	CurrentHealth = FMath::Clamp(CurrentHealth - CalculatedHP, 0.f, MaxHealth);
 
 	if (CurrentHealth <= 0.f && !bIsDead)
 	{
@@ -82,12 +90,13 @@ void UCharacterHealthComponent::TakeFallDamage(float Velocity)
 {
 	float CalculatedHP = CalculateFallDamage(Velocity);
 
+	CurrentHealth = FMath::Clamp(CurrentHealth - CalculatedHP, 0.f, MaxHealth);
 	if (CalculatedHP > 0.f)
 	{
 		ActivateDamageCooldown(InvincibilityTime); // 0.5초간 무적
 		UpdateHealth();
+		Client_PlayDamageUI();
 	}
-	CurrentHealth = FMath::Clamp(CurrentHealth - CalculatedHP, 0.f, MaxHealth);
 
 	if (CurrentHealth <= 0.f && !bIsDead)
 	{
@@ -156,6 +165,28 @@ void UCharacterHealthComponent::UpdateHealthUI()
 					{
 						float Percent = FMath::Clamp(CurrentHealth / MaxHealth, 0.0f, 1.0f);
 						HUD->UpdateHPBar(Percent);
+					}
+				}
+			}
+		}
+	}
+}
+
+void UCharacterHealthComponent::Client_PlayDamageUI_Implementation()
+{
+	if (GetCharacter())
+	{
+		LOG_Char_WARNING(TEXT("캐릭터 피해 받는 애니메이션 재생"));
+		if (APlayerController* PC = Cast<APlayerController>(GetCharacter()->GetController()))
+		{
+			if (ULCGameInstanceSubsystem* Subsystem = GetWorld()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+			{
+				if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+				{
+					if (UInGameHUD* HUD = UIManager->GetInGameHUD())
+					{
+						LOG_Char_WARNING(TEXT("캐릭터 피해 받는 애니메이션 재생"));
+						HUD->PlayTakeDamageAnim();
 					}
 				}
 			}

@@ -28,6 +28,7 @@ public:
 
 	void Handle_Attack(EAttackType _AttackType);
 	void Handle_Kick();
+	void Handle_Pickaxe_Attack();
 
 protected:
 	virtual void BeginPlay() override;
@@ -82,6 +83,11 @@ public:
 	void EnableKickHitBox();
 	void DisableKickHitBox();
 
+
+	void StartItemAttack();
+
+	void EndItemAttack();
+
 	// 무기 설정
 	void SetWeaponHitBox(UPrimitiveComponent* WeaponHitBox);
 
@@ -110,4 +116,7 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
 	UAnimMontage* KickMontage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UAnimMontage* PickAxeMontage;
 };

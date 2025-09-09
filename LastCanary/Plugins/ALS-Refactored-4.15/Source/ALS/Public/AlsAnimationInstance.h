@@ -58,6 +58,51 @@ public:
 	UPROPERTY(BlueprintReadWrite, Category = "IK")
 	float AimAlpha = 0.0f;
 
+	UPROPERTY(BlueprintReadWrite, Category = "IK")
+	FVector LeftHandVBLocation;
+
+	UPROPERTY(BlueprintReadWrite, Category = "IK")
+	FVector RightHandVBLocation;
+
+	UFUNCTION(BlueprintCallable)
+	void SetLeftHandVBLocation(FVector _location) { LeftHandVBLocation = _location; }
+
+	UFUNCTION(BlueprintCallable)
+	void SetRightHandVBLocation(FVector _location) { RightHandVBLocation = _location; }
+
+	UPROPERTY(BlueprintReadWrite, Category = "IK")
+	FVector RightHandLocation;
+
+	UPROPERTY(BlueprintReadWrite, Category = "IK")
+	FVector RightHandLocationToScope;
+
+	UPROPERTY(BlueprintReadWrite, Category = "IK")
+	FRotator RightHandRotationToScope;
+
+	UPROPERTY(BlueprintReadWrite, Category = "IK")
+	FTransform GunItemSocket;
+
+	void UpdateADSHandIK(float DeltaTime);
+
+	// MyAnimInstance.h
+	UPROPERTY(BlueprintReadWrite, Category = "IK")
+	FVector AimPoint;
+
+	UPROPERTY(BlueprintReadWrite, Category = "IK")
+	FVector RightHandIKTargetLocation;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "IK")
+	FVector RightHandIKTargetLocationOffset;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "IK")
+	FRotator RightHandIKTargetRotationOffset;
+
+	UPROPERTY(BlueprintReadWrite, Category = "IK")
+	FVector LeftHandIKTargetLocation;
+
+	UFUNCTION(BlueprintCallable)
+	void SetAimPoint(FVector InAimPoint) { AimPoint = InAimPoint; }
+
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
 	TObjectPtr<UAlsAnimationInstanceSettings> Settings;

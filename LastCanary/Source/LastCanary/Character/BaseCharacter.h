@@ -41,6 +41,7 @@ class UCharacterInputComponent;
 class UCharacterSpeedControlComponent;
 class UCharacterSoundComponent;
 class UCharacterSanityComponent;
+class UCharacterADSComponent;
 
 UENUM(BlueprintType)
 enum class EAnimationType : uint8
@@ -80,16 +81,6 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	TObjectPtr<UArrowComponent> ThirdPersonArrow;
-
-	// 관전용 스프링암
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
-	USpringArmComponent* SpectatorSpringArm;
-
-	// 관전용 카메라
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
-	UCameraComponent* SpectatorCamera;
-
-
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
 	UCharacterHealthComponent* HealthComponent;
@@ -132,6 +123,9 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UCharacterSanityComponent* SanityComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UCharacterADSComponent* ADSComponent;
 public:
 	UFUNCTION()
 	virtual float GetCurrentNoiseLevel() const override;
@@ -240,10 +234,6 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	bool bShouldLerpCamera = false;
 
-	void StartAiming();
-
-	void StopAiming();
-
 	UPROPERTY()
 	bool bIsSmoothTransitioning = false;
 	UPROPERTY()
@@ -291,8 +281,6 @@ protected:
 	void AttachCameraToRifle();
 	void AttachCameraToCharacter();
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* CurrentRifleMesh;
 
 	FTimerHandle MoveTimerHandle;
 	FVector StartLocation;
@@ -301,6 +289,24 @@ protected:
 	float InterpSpeed = 15.0f;
 	float SnapTolerance = 1.0f;
 public:
+	AItemBase* GetCurrentItem();
+
+	UFUNCTION(BlueprintCallable)
+	AGunBase* GetCurrentGunItem();
+
+	UFUNCTION(BlueprintCallable)
+	USkeletalMeshComponent* GetCurrentGunItemSkeletalMesh();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bHasGunOnHand = false;
+	UFUNCTION(BlueprintCallable)
+	void SetHasGunOnHand(bool _bhasgun) {bHasGunOnHand = _bhasgun;}
+	UFUNCTION(BlueprintCallable)
+	bool GetHasGunOnHand() {return bHasGunOnHand;}
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CurrentRifleMesh;
+
 	bool bIsFPSCamera = true;
 	bool bDesiredADS = false;
 
@@ -424,6 +430,9 @@ public:
 	void EscapeThroughGate();
 
 	//Character State
+
+public:
+	void SetDamageEnabled(bool bEnabled);
 
 public:
 
@@ -607,7 +616,7 @@ public:
 
 	/*Player Damage, Death*/
 	UFUNCTION(BlueprintCallable)
-	float TakeSpiritDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser);
+	float TakeSanityDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser);
 	
 	// 감도 저장용
 	float MouseSensitivityMultiplier = 1.0f;

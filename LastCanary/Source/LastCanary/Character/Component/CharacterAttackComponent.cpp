@@ -6,6 +6,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "Character/Component/CharacterAnimationComponent.h"
 #include "AI/BaseBossMonsterCharacter.h"
+#include "Item/EquipmentItem/EquipmentItemBase.h"
+#include "Item/EquipmentItem/Pickaxe.h"
 
 #include "LastCanary.h"
 
@@ -51,6 +53,7 @@ void UCharacterAttackComponent::Handle_Attack(EAttackType _AttackType)
 	case EAttackType::Punch:
 		break;
 	case EAttackType::ItemAttack:
+		Handle_Pickaxe_Attack();
 		break;
 	default:
 		break;
@@ -60,6 +63,14 @@ void UCharacterAttackComponent::Handle_Attack(EAttackType _AttackType)
 void UCharacterAttackComponent::Handle_Kick()
 {
 	GetCharacter()->AnimationComponent->PlayAttackMontage(KickMontage);
+}
+
+void UCharacterAttackComponent::Handle_Pickaxe_Attack()
+{
+	if (GetCharacter()->AnimationComponent->GetIsPlayingAttackMontage() == false)
+	{
+		GetCharacter()->AnimationComponent->PlayAttackMontage(PickAxeMontage);
+	}
 }
 
 void UCharacterAttackComponent::SetupHandHitBox()
@@ -195,6 +206,56 @@ void UCharacterAttackComponent::DisableKickHitBox()
 		KickHitBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
 }
+
+void UCharacterAttackComponent::StartItemAttack()
+{
+	if (GetCharacter()->AnimationComponent)
+	{
+		AItemBase* Item = GetCharacter()->GetCurrentItem();
+		
+		if (!IsValid(Item))
+		{
+			return;
+		}
+
+		AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(Item);
+		if (!EquipmentItem)
+		{
+			return;
+		}
+		if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Tool.Pickaxe")))
+		{
+			APickaxe* axe = Cast<APickaxe>(EquipmentItem);
+			axe->SetAttackCollisionEnabled(true);
+		}
+	}
+}
+
+void UCharacterAttackComponent::EndItemAttack()
+{
+	if (GetCharacter()->AnimationComponent)
+	{
+		GetCharacter()->AnimationComponent->HandleAnimNotify(EAnimationMontageType::Attack);
+		AItemBase* Item = GetCharacter()->GetCurrentItem();
+
+		if (!IsValid(Item))
+		{
+			return;
+		}
+
+		AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(Item);
+		if (!EquipmentItem)
+		{
+			return;
+		}
+		if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Tool.Pickaxe")))
+		{
+			APickaxe* axe = Cast<APickaxe>(EquipmentItem);
+			axe->SetAttackCollisionEnabled(false);
+		}
+	}
+}
+
 
 void UCharacterAttackComponent::SetWeaponHitBox(UPrimitiveComponent* WeaponHitBox)
 {

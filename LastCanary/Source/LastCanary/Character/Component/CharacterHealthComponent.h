@@ -64,6 +64,10 @@ public:
 	UFUNCTION(Client, Reliable, BlueprintCallable, Category = "Stat")
 	void Client_UpdateHealth();
 	void Client_UpdateHealth_Implementation();
+
+	UFUNCTION(Client, Reliable)
+	void Client_PlayDamageUI();
+	void Client_PlayDamageUI_Implementation();
 private:
 	float CalculateDamage(float ActualDamage);
 	float CalculateFallDamage(float Velocity);

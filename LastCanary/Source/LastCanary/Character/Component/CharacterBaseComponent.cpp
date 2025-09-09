@@ -19,9 +19,18 @@ void UCharacterBaseComponent::BeginPlay()
 	
 	CachedCharacter = Cast<ABaseCharacter>(GetOwner());
 	
-	if (GetCharacter())
+	if (IsValid(GetCharacter()))
 	{
 		CachedController = Cast<APlayerController>(GetCharacter()->GetController());
+	}
+
+	if (IsValid(GetCharacter()))
+	{
+		USkeletalMeshComponent* Mesh = CachedCharacter->GetMesh();
+		if (IsValid(Mesh))
+		{
+			CachedAnimInstance = Mesh->GetAnimInstance(); // 필요 시 폴링 기법 사용 ( 지속적인 테스트 필요 )
+		}
 	}
 }
 

@@ -3,17 +3,49 @@
 #include "Engine/DamageEvents.h"
 #include "Character/BasePlayerState.h"
 #include "Kismet/GameplayStatics.h"
+#include "Character/Component/CharacterStaminaComponent.h"
 
 #include "LastCanary.h"
 
 UCharacterSanityComponent::UCharacterSanityComponent()
 {
-	CurrentSpirit = MaxSpirit;
+	CurrentSanity = MaxSanity;
 }
 
 void UCharacterSanityComponent::BeginPlay()
 {
 	Super::BeginPlay();
+	
+	InitializePanicActions();
+	
+	// 패시브 자연 감소 시작
+	StartPassiveSanityDecay();
+}
+
+void UCharacterSanityComponent::InitializePanicActions()
+{
+	if (PanicActions.Num() > 0) return; // 이미 초기화 됐으면 스킵
+
+	PanicActions.Add([this]() { PlayScreamSound_Local(); });
+	PanicActions.Add([this]() { TriggerPanicVoice(PanicDuration); });
+	PanicActions.Add([this]() { UseItemUnexpectedly(); });
+	PanicActions.Add([this]() { PlaySighSoundForAll(); });
+	PanicActions.Add([this]() { ForceSetMouseSensitivity(PanicSensitivity, PanicDuration); });
+	PanicActions.Add([this]() { ForceInvertMouseTemporary(true, PanicDuration); });
+	PanicActions.Add([this]() { PlayHallucinationSound(); });
+}
+
+int32 UCharacterSanityComponent::GetMaxPanicActionForStage(int32 Stage) const
+{
+	if (PanicActions.Num() == 0)
+		return 0;
+
+	// Stage 0~4를 0~MaxIndex 범위로 매핑
+	int32 ClampedStage = FMath::Clamp(Stage, 0, 4);
+	int32 MaxIndex = FMath::RoundToInt((PanicActions.Num() / 4.f) * ClampedStage);
+
+	// 최소 1개 이상은 선택 가능하도록
+	return FMath::Clamp(MaxIndex, 0, PanicActions.Num());
 }
 
 void UCharacterSanityComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -21,95 +53,183 @@ void UCharacterSanityComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }
 
-
-
-float UCharacterSanityComponent::TakeSpiritDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+float UCharacterSanityComponent::TakeSanityDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
-	LOG_Char_WARNING(TEXT("캐릭터가 정신력에 타격을 받음"));
 	if (!GetCharacter()->HasAuthority())
-	{
 		return 0;
-	}
-	ABasePlayerState* MyPlayerState = GetCharacter()->GetPlayerState<ABasePlayerState>();
-	if (!IsValid(MyPlayerState))
+
+	float FinalDamage = CalculateTakeSanityDamage(DamageAmount);
+	CurrentSanity = FMath::Clamp(CurrentSanity - FinalDamage, 0.0f, MaxSanity);
+
+	// ----- 단계 계산 -----
+	int32 NewStage = 0;
+
+	if (CurrentSanity >= 80.f)        NewStage = 0; // 정상
+	else if (CurrentSanity >= 60.f)   NewStage = 1;
+	else if (CurrentSanity >= 40.f)   NewStage = 2;
+	else if (CurrentSanity >= 20.f)   NewStage = 3;
+	else                               NewStage = 4; // 0~19
+
+	// ----- 단계 변경 감지 -----
+	if (NewStage != CurrentSanityStage)
 	{
-		return 0;
+		CurrentSanityStage = NewStage;
+		ApplySanityStageEffects(CurrentSanityStage);
 	}
-	if (MyPlayerState->bInfiniteSpirit == true)
+
+	// ----- 0 이하 특수 효과 -----
+	if (CurrentSanity <= 0.f && !bZeroSanityEffectsApplied)
 	{
-		return 0;
+		bZeroSanityEffectsApplied = true;
+		StartHPDecayAtZeroSanity();
+		if (bReduceStaminaAtZero)
+			ApplyHalfStamina();
 	}
-	float FinalDamage = CalculateTakeSpiritDamage(DamageAmount);
-	CurrentSpirit = FMath::Clamp(CurrentSpirit - FinalDamage, 0.0f, MaxSpirit);
-	LOG_Char_WARNING(TEXT("Current Spirit : %f"), CurrentSpirit);
-	if (CurrentSpirit <= PanicTriggerThreshold)
-	{
-		//: 정신력 낮음 처리
-		EnterPanicState();
-	}
+
 	return DamageAmount;
 }
 
-void UCharacterSanityComponent::TriggerSpiritTickDamage()
+float UCharacterSanityComponent::RestoreSanity(float Amount)
 {
-	GetWorld()->GetTimerManager().SetTimer(
-		SpiritTickDamageHandle,
-		this,
-		&UCharacterSanityComponent::TakeSpiritTickDamage,
-		SpiritDamageTickInterval,
-		true,           // 반복
-		0.01f    // 처음 실행까지의 지연 시간
-	);
-}
-
-void UCharacterSanityComponent::TakeSpiritTickDamage()
-{
-	FDamageEvent DamageEvent;
-	float DamageAmount = SpiritTickDamage;
-	AController* InstigatorController = GetPlayerController(); // 또는 nullptr
-	AActor* DamageCauser = GetCharacter(); // 또는 원하는 액터
-
-	TakeSpiritDamage(DamageAmount, DamageEvent, GetPlayerController(), DamageCauser);
-}
-
-
-float UCharacterSanityComponent::RestoreSpirit(float Amount)
-{
-	LOG_Char_WARNING(TEXT("캐릭터가 정신력을 회복함"));
 	if (!GetCharacter()->HasAuthority())
 	{
 		return 0;
 	}
-	ABasePlayerState* MyPlayerState = GetCharacter()->GetPlayerState<ABasePlayerState>();
-	if (!IsValid(MyPlayerState))
+
+	CurrentSanity = FMath::Clamp(CurrentSanity + Amount, 0.0f, MaxSanity);
+
+	if (CurrentSanity > 0.f && bZeroSanityEffectsApplied)
 	{
-		return 0;
+		StopHPDecay();
+		RestoreHalfStamina();
+		bZeroSanityEffectsApplied = false;
 	}
-	
-	
-	CurrentSpirit = FMath::Clamp(CurrentSpirit + Amount, 0.0f, MaxSpirit);
-	
-	LOG_Char_WARNING(TEXT("Current Spirit : %f"), CurrentSpirit);
-	if (CurrentSpirit > MyPlayerState->PanicTriggerThreshold)
+
+	if (CurrentSanity > PanicTriggerThreshold)
 	{
-		//: 정신력 높아짐 처리
 		ExitPanicState();
 	}
+
 	return Amount;
 }
 
-float UCharacterSanityComponent::CalculateTakeSpiritDamage(float DamageAmount)
+void UCharacterSanityComponent::ApplySanityStageEffects(int32 Stage)
 {
-	//TODO: 여기에다가 추가로 뭔가 장비나 방어력이 추가 되면 여기서 계산하고 넘겨도 됨.
+	StopPanicBehaviorLoop(); // 이전 단계 효과 정리
+
+	CurrentSanityStage = Stage;
+
+	// 반복 간격은 단계별로 조절
+	switch (Stage)
+	{
+	case 0: RepeatRate = 0.f; break;
+	case 1: RepeatRate = 10.f; break;
+	case 2: RepeatRate = 7.f; break;
+	case 3: RepeatRate = 5.f; break;
+	case 4: RepeatRate = 3.f; break;
+	}
+
+	// 단계별 PanicBehavior 시작
+	if (RepeatRate > 0.f)
+	{
+		StartPanicBehaviorLoop();
+	}
+}
+
+void UCharacterSanityComponent::TriggerSanityTickDamage()
+{
+	GetWorld()->GetTimerManager().SetTimer(
+		SanityTickDamageHandle,
+		this,
+		&UCharacterSanityComponent::TakeSanityTickDamage,
+		SanityDamageTickInterval,
+		true,
+		0.01f
+	);
+}
+
+void UCharacterSanityComponent::TakeSanityTickDamage()
+{
+	FDamageEvent Dmg;
+	TakeSanityDamage(SanityTickDamage, Dmg, nullptr, nullptr);
+}
+
+float UCharacterSanityComponent::CalculateTakeSanityDamage(float DamageAmount)
+{
 	return DamageAmount;
 }
 
+//------------------ Sanity Passive Decay ------------------------
+
+void UCharacterSanityComponent::StartPassiveSanityDecay()
+{
+	GetWorld()->GetTimerManager().SetTimer(
+		PassiveSanityDecayHandle,
+		this,
+		&UCharacterSanityComponent::PassiveSanityDecayTick,
+		PassiveSanityDecayInterval,
+		true
+	);
+}
+
+void UCharacterSanityComponent::StopPassiveSanityDecay()
+{
+	GetWorld()->GetTimerManager().ClearTimer(PassiveSanityDecayHandle);
+}
+
+void UCharacterSanityComponent::PassiveSanityDecayTick()
+{
+	FDamageEvent Dmg;
+	TakeSanityDamage(PassiveSanityDecayAmount, Dmg, nullptr, nullptr);
+}
+
+//------------------ HP Decay at Zero Sanity ----------------------
+
+void UCharacterSanityComponent::StartHPDecayAtZeroSanity()
+{
+	GetWorld()->GetTimerManager().SetTimer(
+		HPDecayHandle,
+		this,
+		&UCharacterSanityComponent::HPDecayTick,
+		HPDecayInterval,
+		true
+	);
+}
+
+void UCharacterSanityComponent::StopHPDecay()
+{
+	GetWorld()->GetTimerManager().ClearTimer(HPDecayHandle);
+}
+
+void UCharacterSanityComponent::HPDecayTick()
+{
+	FDamageEvent Dmg;
+	GetCharacter()->TakeDamage(HPDecayAmountPerTick, Dmg, nullptr, GetCharacter());
+}
+
+//------------------ Stamina Half at Zero -------------------------------
+
+void UCharacterSanityComponent::ApplyHalfStamina()
+{
+	if (IsValid(GetCharacter()))
+	{
+		OriginalStaminaMax = GetCharacter()->StaminaComponent->GetMaxStamina();
+		GetCharacter()->StaminaComponent->SetMaxStamina(OriginalStaminaMax * 0.5f);
+	}
+}
+
+void UCharacterSanityComponent::RestoreHalfStamina()
+{
+	if (IsValid(GetCharacter()) && OriginalStaminaMax > 0.f)
+	{
+		GetCharacter()->StaminaComponent->SetMaxStamina(OriginalStaminaMax);
+	}
+}
+
+//------------------ Panic State Existing -------------------------------
+
 void UCharacterSanityComponent::EnterPanicState()
 {
-	//TODO: 서버에서의 처리
-	LOG_Char_WARNING(TEXT("패닉 상태 진입"));
-
-	//클라이언트에서의 처리
 	Client_EnterPanicState();
 }
 
@@ -118,7 +238,6 @@ void UCharacterSanityComponent::ExitPanicState()
 	Client_ExitPanicState();
 }
 
-
 void UCharacterSanityComponent::Client_EnterPanicState_Implementation()
 {
 	StartPanicBehaviorLoop();
@@ -126,8 +245,7 @@ void UCharacterSanityComponent::Client_EnterPanicState_Implementation()
 
 void UCharacterSanityComponent::Client_ExitPanicState_Implementation()
 {
-	GetWorld()->GetTimerManager().ClearTimer(PanicActionTimerHandle);
-
+	StopPanicBehaviorLoop();
 }
 
 void UCharacterSanityComponent::StartPanicBehaviorLoop()
@@ -137,8 +255,8 @@ void UCharacterSanityComponent::StartPanicBehaviorLoop()
 		this,
 		&UCharacterSanityComponent::PerformRandomPanicAction,
 		RepeatRate,
-		true,           // 반복
-		InitialDelay    // 처음 실행까지의 지연 시간
+		true,
+		InitialDelay
 	);
 }
 
@@ -149,31 +267,22 @@ void UCharacterSanityComponent::StopPanicBehaviorLoop()
 
 void UCharacterSanityComponent::PerformRandomPanicAction()
 {
-	LOG_Char_WARNING(TEXT("패닉 행동 실행"));
+	int32 MaxActions = GetMaxPanicActionForStage(CurrentSanityStage);
+	if (MaxActions <= 0) return;
 
-	TArray<TFunction<void()>> PanicActions;
-
-	PanicActions.Add([this]() { PlayScreamSound_Local(); });
-	PanicActions.Add([this]() { TriggerPanicVoice(PanicDuration); });
-	PanicActions.Add([this]() { UseItemUnexpectedly(); });
-	PanicActions.Add([this]() { PlaySighSoundForAll(); });
-	PanicActions.Add([this]() { ForceSetMouseSensitivity(PanicSensitivity, PanicDuration); });
-	PanicActions.Add([this]() { ForceInvertMouseTemporary(true, PanicDuration); });
-
-	// 랜덤 선택해서 실행
-	if (PanicActions.Num() > 0)
+	int32 RandomIndex = FMath::RandRange(0, MaxActions - 1);
+	if (PanicActions.IsValidIndex(RandomIndex))
 	{
-		int32 RandomIndex = FMath::RandRange(0, PanicActions.Num() - 1);
 		PanicActions[RandomIndex]();
 	}
-
-	//TODO: 정신력 0 처리
-
 }
+
+
+//------------------- Existing Local/Network Methods --------------------
 
 void UCharacterSanityComponent::PlayScreamSound_Local()
 {
-	if (GetCharacter()->IsLocallyControlled())
+	if (GetCharacter()->IsLocallyControlled() && ScreamSound)
 	{
 		UGameplayStatics::PlaySoundAtLocation(this, ScreamSound, GetCharacter()->GetActorLocation());
 	}
@@ -181,8 +290,6 @@ void UCharacterSanityComponent::PlayScreamSound_Local()
 
 void UCharacterSanityComponent::UseItemUnexpectedly()
 {
-	LOG_Char_WARNING(TEXT("갑자기 아이템 사용"));
-
 	GetCharacter()->UseEquippedItem(1.0f);
 	GetCharacter()->UseEquippedItem(0.0f);
 }
@@ -197,12 +304,11 @@ void UCharacterSanityComponent::PlaySighSoundForAll()
 
 void UCharacterSanityComponent::Server_PlaySighSound_Implementation()
 {
-	if (GetCharacter()->HasAuthority()) // 서버에서만 멀티캐스트 호출
+	if (GetCharacter()->HasAuthority())
 	{
 		Multicast_PlaySighSound();
 	}
 }
-
 
 void UCharacterSanityComponent::Multicast_PlaySighSound_Implementation()
 {
@@ -210,22 +316,41 @@ void UCharacterSanityComponent::Multicast_PlaySighSound_Implementation()
 	{
 		UGameplayStatics::SpawnSoundAttached(
 			SighSound,
-			GetCharacter()->GetRootComponent(),         // 또는 GetMesh() 등 캐릭터에 붙일 컴포넌트
+			GetCharacter()->GetRootComponent(),
 			NAME_None,
 			FVector::ZeroVector,
 			EAttachLocation::KeepRelativeOffset,
-			true                        // bStopWhenAttachedToDestroyed
+			true
 		);
-
 	}
 }
 
+//------------------- Hallucination / Vision ----------------------------
+
+void UCharacterSanityComponent::PlayHallucinationSound()
+{
+	if (GetCharacter()->IsLocallyControlled() && HallucinationSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, HallucinationSound, GetCharacter()->GetActorLocation());
+	}
+}
+
+void UCharacterSanityComponent::ApplyVisionNoiseEffect()
+{
+	// PostProcess 비주얼 노이즈 적용 자리 (추후 구현)
+}
+
+void UCharacterSanityComponent::RemoveVisionNoiseEffect()
+{
+	// PostProcess 노이즈 제거 (추후 구현)
+}
+
+//------------------- Mouse / Input Disturbance -------------------------
+
 void UCharacterSanityComponent::ForceSetMouseSensitivity(float NewSensitivity, float Duration)
 {
-	LOG_Char_WARNING(TEXT("마우스 반전"));
+	GetCharacter()->MouseSensitivityMultiplier = NewSensitivity;
 
-	GetCharacter()->MouseSensitivityMultiplier = 10.0f;
-	// 기존 타이머 제거 후 새 타이머 시작
 	GetWorld()->GetTimerManager().ClearTimer(MouseSensitivityRestoreHandle);
 	GetWorld()->GetTimerManager().SetTimer(
 		MouseSensitivityRestoreHandle,
@@ -238,7 +363,7 @@ void UCharacterSanityComponent::ForceSetMouseSensitivity(float NewSensitivity, f
 
 void UCharacterSanityComponent::RestoreOriginalMouseSensitivity()
 {
-	GetCharacter()->MouseSensitivityMultiplier = 1.0f; // 초기화
+	GetCharacter()->MouseSensitivityMultiplier = 1.0f;
 }
 
 void UCharacterSanityComponent::ForceInvertMouse(bool bInvert)
@@ -248,10 +373,8 @@ void UCharacterSanityComponent::ForceInvertMouse(bool bInvert)
 
 void UCharacterSanityComponent::ForceInvertMouseTemporary(bool bInvert, float Duration)
 {
-	// 반전 적용
-	ForceInvertMouse(true);
+	ForceInvertMouse(bInvert);
 
-	// 기존 타이머 제거 후 새로 시작
 	GetWorld()->GetTimerManager().ClearTimer(MouseInvertResetTimerHandle);
 	GetWorld()->GetTimerManager().SetTimer(
 		MouseInvertResetTimerHandle,
@@ -267,10 +390,10 @@ void UCharacterSanityComponent::RestoreMouseInvert()
 	ForceInvertMouse(false);
 }
 
+//------------------- Panic Voice --------------------------------------
+
 void UCharacterSanityComponent::TriggerPanicVoice(float Duration)
 {
-	LOG_Char_WARNING(TEXT("보이스 변경"));
-
 	EnterPanicVoice();
 	GetWorld()->GetTimerManager().ClearTimer(PanicVoiceDurationHandle);
 	GetWorld()->GetTimerManager().SetTimer(

@@ -34,6 +34,12 @@ public:
 	float ConsumedStaminaAmount = 1.f;
 
 	UFUNCTION(BlueprintCallable, Category = "Stat")
+	void SetMaxStamina(float _Stamina);
+
+	UFUNCTION(BlueprintCallable, Category = "Stat")
+	float GetMaxStamina();
+
+	UFUNCTION(BlueprintCallable, Category = "Stat")
 	void SetStamina(float _Stamina);
 
 	UFUNCTION(BlueprintCallable, Category = "Stat")

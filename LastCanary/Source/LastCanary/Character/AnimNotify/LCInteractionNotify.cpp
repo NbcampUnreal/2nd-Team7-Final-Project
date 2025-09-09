@@ -14,7 +14,7 @@ void ULCInteractionNotify::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenc
 	if (!IsValid(AnimComp)) return;
 
 		
-	if (!Character->HasAuthority()) return;	// 서버에서만 실행하기
+	if (!Character->IsLocallyControlled()) return;
 	
 	// 인터랙션 트리거
 	AnimComp->HandleAnimNotify(EAnimationMontageType::Interaction); // 아래에 구현할 함수

@@ -283,7 +283,7 @@ void ABasePlayerController::OnRep_SpawnedSpectatorPawn()
 void ABasePlayerController::Client_StartSpectation_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Spectate Start On Client"));
-	GetWorldTimerManager().SetTimer(SpectatorCheckHandle, this, &ABasePlayerController::CheckCurrentSpectatedCharacterStatus, 3.0f, true);
+	GetWorldTimerManager().SetTimer(SpectatorCheckHandle, this, &ABasePlayerController::CheckCurrentSpectatedCharacterStatus, 3.0f, true, 3.0f);
 	if (ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 	{
 		if (ULCUIManager* UIManager = GISubsystem->GetUIManager())

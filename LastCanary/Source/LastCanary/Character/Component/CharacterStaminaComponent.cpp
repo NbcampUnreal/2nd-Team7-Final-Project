@@ -22,6 +22,16 @@ void UCharacterStaminaComponent::BeginPlay()
 	CurrentStamina = MaxStamina;
 }
 
+void UCharacterStaminaComponent::SetMaxStamina(float _Stamina)
+{
+	MaxStamina = _Stamina;
+}
+
+float UCharacterStaminaComponent::GetMaxStamina()
+{
+	return MaxStamina;
+}
+
 void UCharacterStaminaComponent::SetStamina(float _Stamina)
 {
 	CurrentStamina = _Stamina;

@@ -28,10 +28,14 @@ protected:
 
 	UPROPERTY()
 	APlayerController* CachedController; 
+
+	UPROPERTY()
+	UAnimInstance* CachedAnimInstance;
 public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 	ABaseCharacter* GetCharacter() const { return CachedCharacter; }
 	APlayerController* GetPlayerController() const { return CachedController; }
+	UAnimInstance* GetCharacterAnimInstance() const { return CachedAnimInstance; }
 };

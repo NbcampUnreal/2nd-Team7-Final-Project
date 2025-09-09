@@ -3,6 +3,7 @@
 #include "Item/ItemBase.h"
 #include "Actor/Gimmick/LCBaseGimmick.h"
 #include "Character/Component/CharacterInteractionComponent.h"
+#include "Net/UnrealNetwork.h"
 
 #include "LastCanary.h"
 
@@ -20,14 +21,6 @@ void UCharacterAnimationComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (IsValid(CachedCharacter))
-	{
-		USkeletalMeshComponent* Mesh = CachedCharacter->GetMesh();
-		if (IsValid(Mesh))
-		{
-			CachedAnimInstance = Mesh->GetAnimInstance(); // 필요 시 폴링 기법 사용 ( 지속적인 테스트 필요 )
-		}
-	}
 }
 
 void UCharacterAnimationComponent::PlayMontageByType(UAnimMontage* LocalMontage, UAnimMontage* MulticastMontage, EAnimationMontageType Type)
@@ -250,6 +243,11 @@ void UCharacterAnimationComponent::HandleAnimNotify(EAnimationMontageType Type)
 		SetPlayingMontageState(Type, false);
 		break;
 
+	case EAnimationMontageType::Attack:
+		LOG_Char_WARNING(TEXT("애니메이션 컴포넌트에서 어택 가능 변수 변경"));
+		SetPlayingMontageState(Type, false);
+		break;
+
 	default:
 		break;
 	}
@@ -273,6 +271,8 @@ void UCharacterAnimationComponent::SetPlayingMontageState(EAnimationMontageType 
 		break;
 	case EAnimationMontageType::Attack:
 		bIsPlayingAttackMontage = bIsPlaying;
+		LOG_Char_WARNING(TEXT("애니메이션 컴포넌트에서 어택 가능 변수 변경"));
+
 		break;
 	default:
 		break;
@@ -284,7 +284,7 @@ void UCharacterAnimationComponent::SetPlayingMontageState(EAnimationMontageType 
 
 
 
-
+//이것도 아이템에다가 애니메이션 등록해놓고 받아오기
 void UCharacterAnimationComponent::RefreshOverlayLinkedAnimationLayer(FGameplayTag ItemTag)
 {
 	TSubclassOf<UAnimInstance> OverlayAnimationInstanceClass;

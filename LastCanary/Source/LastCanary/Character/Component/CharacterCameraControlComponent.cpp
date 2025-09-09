@@ -25,13 +25,13 @@ USkeletalMeshComponent* UCharacterCameraControlComponent::CharacterMesh()
 
 void UCharacterCameraControlComponent::SwitchToFirstPerson()
 {
-	GetCharacterSpringArm()->AttachToComponent(CharacterMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+	//GetCharacterSpringArm()->AttachToComponent(CharacterMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 	SetSpringArmTargetLength(0.0f);
 }
 
 void UCharacterCameraControlComponent::SwitchToThirdPerson()
 {
-	GetCharacterSpringArm()->AttachToComponent(CharacterMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+	//GetCharacterSpringArm()->AttachToComponent(CharacterMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 	SetSpringArmTargetLength(200.0f);
 }
 
@@ -105,4 +105,30 @@ void UCharacterCameraControlComponent::SetSpringArmTargetLength(float Distance)
 void UCharacterCameraControlComponent::SetTransparentHeadMesh(bool bIsTransparent)
 {
 	GetCharacter()->CustomHeadMesh->SetOwnerNoSee(bIsTransparent);
+}
+
+void UCharacterCameraControlComponent::StartAiming()
+{
+	if (!GetCharacter()->bIsAiming)
+	{
+		GetCharacter()->bIsAiming = true;
+		GetCharacter()->bIsTransitioning = true;
+
+		// 스프링암을 RootComponent에 붙여서 자유롭게 움직일 수 있게 함
+		//GetCharacterSpringArm()->AttachToComponent(GetCharacter()->GetRootComponent(), FAttachmentTransformRules::KeepWorldTransform);
+
+		GetCharacter()->CancelInteraction();
+	}
+}
+
+void UCharacterCameraControlComponent::StopAiming()
+{
+	if (GetCharacter()->bIsAiming)
+	{
+		GetCharacter()->bIsAiming = false;
+		GetCharacter()->bIsTransitioning = true;
+
+		// 스프링암을 RootComponent에 붙여서 자유롭게 움직일 수 있게 함
+		//GetCharacterSpringArm()->AttachToComponent(GetCharacter()->GetRootComponent(), FAttachmentTransformRules::KeepWorldTransform);
+	}
 }

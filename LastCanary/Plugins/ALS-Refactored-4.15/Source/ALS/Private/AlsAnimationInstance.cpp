@@ -22,6 +22,25 @@
 ALS_DEFINE_PRIVATE_MEMBER_ACCESSOR(AlsGetAnimationCurvesAccessor, &FAnimInstanceProxy::GetAnimationCurves,
                                    const TMap<FName, float>& (FAnimInstanceProxy::*)(EAnimCurveType) const)
 
+void UAlsAnimationInstance::UpdateADSHandIK(float DeltaTime)
+{
+	if (!IsAiming) return;
+
+	if (!TryGetPawnOwner()) return;
+
+	USkeletalMeshComponent* MeshComp = GetSkelMeshComponent();
+	if (!MeshComp) return;
+
+	// hand_r 현재 위치 (Attach 기준)
+	FVector HandRLocation = MeshComp->GetSocketLocation("Rifle");
+
+	// hand_r IK Target 계산 (AimPoint 기준 오프셋)
+	RightHandIKTargetLocation = AimPoint + RightHandIKTargetLocationOffset; // 필요하면 Grip Offset 곱하기
+	LeftHandIKTargetLocation = AimPoint;  // 라이플이면 LeftGrip 적용
+
+	// Alpha 보정 가능
+}
+
 void UAlsAnimationInstance::NativeInitializeAnimation()
 {
 	Super::NativeInitializeAnimation();
@@ -154,6 +173,13 @@ void UAlsAnimationInstance::NativeUpdateAnimation(const float DeltaTime)
 	{
 		MarkTeleported();
 	}
+
+
+	// Pawn 소유 확인
+	if (!TryGetPawnOwner()) return;
+
+	// ADS Hand IK 업데이트
+	UpdateADSHandIK(DeltaTime);
 }
 
 void UAlsAnimationInstance::NativeThreadSafeUpdateAnimation(const float DeltaTime)

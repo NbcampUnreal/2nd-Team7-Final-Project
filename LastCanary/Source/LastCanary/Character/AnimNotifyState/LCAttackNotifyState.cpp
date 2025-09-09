@@ -21,29 +21,35 @@ void ULCAttackNotifyState::HandleStartAttackByType(USkeletalMeshComponent* MeshC
 	{
 		return;
 	}
-	if (!(Owner->HasAuthority()))
-	{
-		return;
-	}
-
+	
 	AttackComponent = Owner->FindComponentByClass<UCharacterAttackComponent>();
 	if (!IsValid(AttackComponent))
 	{
 		return;
 	}
-	
-	switch (AttackType)
+
+	if (Owner->HasAuthority())
 	{
-	case EAttackType::Punch:
-		break;
-	case EAttackType::Kick:
-		AttackComponent->EnableKickHitBox();
-		break;
-	case EAttackType::ItemAttack:
-		break;
-	default:
-		break;
+		switch (AttackType)
+		{
+		case EAttackType::Punch:
+			break;
+		case EAttackType::Kick:
+			AttackComponent->EnableKickHitBox();
+			break;
+		case EAttackType::ItemAttack:
+			AttackComponent->StartItemAttack();
+			break;
+		default:
+			break;
+		}
+		return;
 	}
+	else
+	{
+
+	}
+
 }
 
 void ULCAttackNotifyState::HandleEndAttackByType(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation)
@@ -56,26 +62,46 @@ void ULCAttackNotifyState::HandleEndAttackByType(USkeletalMeshComponent* MeshCom
 	{
 		return;
 	}
-	if (!(Owner->HasAuthority()))
-	{
-		return;
-	}
+	
 	AttackComponent = Owner->FindComponentByClass<UCharacterAttackComponent>();
 	if (!IsValid(AttackComponent))
 	{
 		return;
 	}
 
-	switch (AttackType)
+	if (Owner->HasAuthority())
 	{
-	case EAttackType::Punch:
-		break;
-	case EAttackType::Kick:
-		AttackComponent->DisableKickHitBox();
-		break;
-	case EAttackType::ItemAttack:
-		break;
-	default:
-		break;
+		switch (AttackType)
+		{
+		case EAttackType::Punch:
+			break;
+		case EAttackType::Kick:
+			AttackComponent->DisableKickHitBox();
+			break;
+		case EAttackType::ItemAttack:
+			AttackComponent->EndItemAttack();
+			break;
+		default:
+			break;
+		}
+		return;
 	}
+	else
+	{
+		switch (AttackType)
+		{
+		case EAttackType::Punch:
+			break;
+		case EAttackType::Kick:
+			AttackComponent->DisableKickHitBox();
+			break;
+		case EAttackType::ItemAttack:
+			AttackComponent->EndItemAttack();
+			break;
+		default:
+			break;
+		}
+		return;
+	}
+	
 }
