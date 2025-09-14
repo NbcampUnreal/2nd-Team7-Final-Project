@@ -272,6 +272,10 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Gun|Impact")
     USoundBase* GetImpactSoundForTarget(AActor* HitActor);
 
+    /** DamageReceiverComponent의 피격 사운드 확인 */
+    UFUNCTION(BlueprintCallable, Category = "Gun|Impact")
+    USoundBase* GetImpactSoundForComponent(class UDamageReceiverComponent* DamageComp);
+
     /** 태그별 피격 사운드 재생 */
     UFUNCTION(NetMulticast, Unreliable)
     void Multicast_PlayImpactSoundAtLocation(USoundBase* Sound, FVector Location);

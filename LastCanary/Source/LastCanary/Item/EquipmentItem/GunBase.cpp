@@ -1,6 +1,7 @@
 #include "Item/EquipmentItem/GunBase.h"
 #include "Item/ItemBase.h"
 #include "Item/ShellEjectionComponent.h"
+#include "Item/Component/DamageReceiverComponent.h"
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "Inventory/InventoryUIController.h"
 #include "Perception/AISenseConfig_Hearing.h"
@@ -329,6 +330,22 @@ void AGunBase::ProcessHit(const FHitResult& HitResult, const FVector& StartLocat
         }
     }
 
+    if (UDamageReceiverComponent* DamageReceiver = HitActor->FindComponentByClass<UDamageReceiverComponent>())
+    {
+        float AppliedDamage = BaseDamage;
+        LOG_Item_WARNING(TEXT("ProcessHit: DamageReceiverComponent 발견 - %.1f 데미지 적용: %s"),
+            AppliedDamage, *HitActor->GetName());
+
+        FPointDamageEvent DamageEvent(AppliedDamage, HitResult, (HitResult.ImpactPoint - StartLocation).GetSafeNormal(), nullptr);
+        float ActualDamage = DamageReceiver->HandleDamage(AppliedDamage, DamageEvent, GetInstigatorController(), this);
+        LOG_Item_WARNING(TEXT("ProcessHit: HandleDamage 직접 호출 → 실제 데미지: %.1f"), ActualDamage);
+
+        // 피격 사운드는 컴포넌트에서 처리
+        USoundBase* ImpactSoundToPlay = GetImpactSoundForComponent(DamageReceiver);
+        Multicast_PlayImpactSoundAtLocation(ImpactSoundToPlay, HitResult.ImpactPoint);
+        return;
+    }
+
     //  적 공격 로직
     static const FGameplayTag EnemyTag = FGameplayTag::RequestGameplayTag(TEXT("Character.Enemy"));
     IGameplayTagAssetInterface* TagInterface = Cast<IGameplayTagAssetInterface>(HitActor);
@@ -537,6 +554,36 @@ USoundBase* AGunBase::GetImpactSoundForTarget(AActor* HitActor)
 
     // 매칭되는 태그가 없으면 기본 사운드 사용
     LOG_Item_WARNING(TEXT("[GetImpactSoundForTarget] 매칭되는 태그 없음 - 기본 사운드 사용"));
+    return GunData.DefaultImpactSound;
+}
+
+USoundBase* AGunBase::GetImpactSoundForComponent(UDamageReceiverComponent* DamageComp)
+{
+    if (!DamageComp)
+    {
+        return GunData.DefaultImpactSound;
+    }
+
+    // DamageReceiverComponent의 MaterialTag 확인
+    FGameplayTag MaterialTag = DamageComp->MaterialTag;
+    if (!MaterialTag.IsValid())
+    {
+        return GunData.DefaultImpactSound;
+    }
+
+    // 피격 사운드 매핑에서 일치하는 태그 찾기
+    for (const FImpactSoundMapping& Mapping : GunData.ImpactSoundMappings)
+    {
+        if (MaterialTag.MatchesTag(Mapping.TargetTag))
+        {
+            LOG_Item_WARNING(TEXT("[GetImpactSoundForDamageComponent] 태그 매칭: %s -> %s"),
+                *Mapping.TargetTag.ToString(),
+                Mapping.ImpactSound ? *Mapping.ImpactSound->GetName() : TEXT("None"));
+            return Mapping.ImpactSound;
+        }
+    }
+
+    LOG_Item_WARNING(TEXT("[GetImpactSoundForDamageComponent] 매칭되는 태그 없음 - 기본 사운드 사용"));
     return GunData.DefaultImpactSound;
 }
 
@@ -1023,7 +1070,6 @@ void AGunBase::EnsureGunDataLoaded()
     // 이미 로드되었다면 스킵
     if (IsGunDataLoaded())
     {
-        LOG_Item_WARNING(TEXT("[EnsureGunDataLoaded] 데이터가 이미 로드됨 - 스킵"));
         return;
     }
 
