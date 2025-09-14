@@ -17,6 +17,7 @@ class USpringArmComponent;
 class UCameraComponent;
 class AItemBase;
 class UToolbarInventoryComponent;
+class UContainerInteractionComponent;
 struct FBaseItemSlotData;
 struct FBackpackSlotData;
 class UItemSpawnerComponent;
@@ -887,6 +888,9 @@ protected:
 public:
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	UToolbarInventoryComponent* GetToolbarInventoryComponent() const;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UContainerInteractionComponent* ContainerInteractionComponent;
 
 private:
 	UPROPERTY(Replicated)

@@ -1,6 +1,8 @@
 #include "UI/UIObject/InventorySlotWidget.h"
 #include "UI/UIObject/InventoryWidgetBase.h"
 #include "UI/UIObject/BackpackSlotWidget.h"
+#include "UI/UIElement/ItemContainerWidget.h"
+#include "UI/UIObject/ItemContainerSlotWidget.h"
 #include "Inventory/InventoryUtility.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
@@ -178,6 +180,23 @@ bool UInventorySlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FDrag
 	{
 		LOG_Item_WARNING(TEXT("[InventorySlotWidget::NativeOnDrop] InventoryComponent is null"));
 		return false;
+	}
+
+	if (UItemContainerSlotWidget* ContainerSlotWidget = Cast<UItemContainerSlotWidget>(SourceWidget))
+	{
+		// 컨테이너→툴바 이동 처리
+		if (ContainerSlotWidget->ContainerWidget)
+		{
+			ContainerSlotWidget->ContainerWidget->HandleItemMoveToPlayer(ContainerSlotWidget, this->SlotIndex);
+			LOG_Item_WARNING(TEXT("[InventorySlotWidget::NativeOnDrop] 컨테이너→툴바 이동 처리: 컨테이너 슬롯 %d → 툴바 슬롯 %d"),
+				ContainerSlotWidget->ContainerSlotIndex, this->SlotIndex);
+			return true;
+		}
+		else
+		{
+			LOG_Item_WARNING(TEXT("[InventorySlotWidget::NativeOnDrop] 컨테이너 슬롯의 ContainerWidget이 null"));
+			return false;
+		}
 	}
 
 	// ⭐ 소스가 가방 슬롯인지 확인

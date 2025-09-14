@@ -100,35 +100,23 @@ bool UToolbarInventoryComponent::TryAddItemSlot(FName ItemRowName, int32 Amount)
 
     for (FBaseItemSlotData& Slot : ItemSlots)
     {
-        if (UInventoryUtility::CanStackItems(Slot, ItemRowName, ItemData))
+        if (UInventoryUtility::IsDefaultItem(Slot.ItemRowName) && RemainAmount > 0)
         {
-            int32 Addable = UInventoryUtility::AddToStack(Slot, RemainAmount, ItemData->MaxStack);
+            int32 Addable = FMath::Min(RemainAmount, ItemData->MaxStack);
+
+            Slot.ItemRowName = ItemRowName;
+            Slot.Quantity = Addable;
+            Slot.Durability = 100.0f;  // TODO : 임시용으로 100으로 설정해둠 반드시 고쳐야함
+            Slot.bIsValid = true;
+            Slot.bIsEquipped = false;
+
             RemainAmount -= Addable;
 
             if (RemainAmount <= 0)
             {
-                UpdateWeight();
-                UpdateWalkieTalkieChannelStatus();
-                UpdateBackpackMeshStatus();
-                OnInventoryUpdated.Broadcast();
-                return true;
+                break;
             }
         }
-    }
-
-    while (RemainAmount > 0 && ItemSlots.Num() < MaxSlots)
-    {
-        int32 Addable = FMath::Min(RemainAmount, ItemData->MaxStack);
-
-        FBaseItemSlotData NewSlot;
-        NewSlot.ItemRowName = ItemRowName;
-        NewSlot.Quantity = Addable;
-        NewSlot.Durability = 0.0f; 
-        NewSlot.bIsValid = true;
-        NewSlot.bIsEquipped = false;
-
-        ItemSlots.Add(NewSlot);
-        RemainAmount -= Addable;
     }
 
     if (RemainAmount == 0)
@@ -141,7 +129,7 @@ bool UToolbarInventoryComponent::TryAddItemSlot(FName ItemRowName, int32 Amount)
     }
     else
     {
-        LOG_Item_WARNING(TEXT("[TryAddItemSlot] 인벤토리 공간이 부족합니다."));
+        LOG_Item_WARNING(TEXT("[TryAddItemSlot] 인벤토리 공간이 부족합니다. (남은 수량: %d)"), RemainAmount);
         return false;
     }
 }
@@ -427,6 +415,13 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
     // 공통 마무리
     ItemSlots[SlotIndex].bIsEquipped = true;
     CurrentEquippedSlotIndex = SlotIndex;
+
+    if (AItemBase* EquippedItem = GetCurrentEquippedItem())
+    {
+        EquippedItem->bIsEquipped = true;
+        EquippedItem->SetCustomDepth(false);
+    }
+
     if (CachedOwnerCharacter) CachedOwnerCharacter->SetEquipped(true);
 
     if (AGunBase* Gun = Cast<AGunBase>(EquippedItemComponent->GetChildActor()))
@@ -700,6 +695,8 @@ void UToolbarInventoryComponent::SetupEquippedItem(UChildActorComponent* ItemCom
     EquippedItem->Durability = SlotData->Durability;
     // 상위 콜리전 설정이라서 개별 설정을 하더라도 해당 설정을 우선함
     // EquippedItem->SetActorEnableCollision(false);
+
+    EquippedItem->SetCustomDepth(false);
 
     if (UStaticMeshComponent* StaticMesh = EquippedItem->FindComponentByClass<UStaticMeshComponent>())
     {

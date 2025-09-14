@@ -18,6 +18,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Inventory/ToolbarInventoryComponent.h"
+#include "Item/Component/ContainerInteractionComponent.h"
 #include "Item/ItemBase.h"
 #include "Item/ItemSpawnerComponent.h"
 #include "Item/ResourceNode.h"
@@ -147,6 +148,7 @@ ABaseCharacter::ABaseCharacter()
 	BackpackMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	ToolbarInventoryComponent = CreateDefaultSubobject<UToolbarInventoryComponent>(TEXT("ToolbarInventoryComponent"));
+	ContainerInteractionComponent = CreateDefaultSubobject<UContainerInteractionComponent>(TEXT("ContainerInteractionComponent"));
 
 	// 이름 3D 위젯
 	NameWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("NameWidget"));
@@ -2101,6 +2103,16 @@ void ABaseCharacter::Handle_Interact(const FInputActionValue& ActionValue)
 			LOG_Char_WARNING(TEXT("Handle_Interact: Called Interact on %s"), *actor->GetName());
 			InteractAfterPlayMontage(actor);
 		}
+	}
+
+	// 테스트를 위한 임시 코드
+	if (AItemContainer* Container = Cast<AItemContainer>(CurrentFocusedActor))
+	{
+		if (ContainerInteractionComponent)
+		{
+			ContainerInteractionComponent->Server_InteractWithContainer(Container);
+		}
+		return;
 	}
 }
 
