@@ -44,7 +44,6 @@ void UShopWidget::NativeConstruct()
 	}
 
 	PopulateShopItems();
-	InitDesktopWindow();
 }
 
 void UShopWidget::NativeDestruct()
