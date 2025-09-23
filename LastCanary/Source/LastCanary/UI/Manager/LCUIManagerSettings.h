@@ -33,6 +33,7 @@ class UGameOverWidget;
 class UGameEndWidget;
 class UServerMessageWidget;
 class UDesktopWidget;
+class UCharacterCustomizationWidget;
 
 UCLASS(BlueprintType)
 class LASTCANARY_API ULCUIManagerSettings : public UDataAsset
@@ -88,5 +89,7 @@ public:
 	TSubclassOf<UServerMessageWidget> FromBPServerMessageWidgetClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UDesktopWidget> FromBPDesktopWidgetClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UCharacterCustomizationWidget> FromBPCharacterCustomizationWidgetClass;
 };
 

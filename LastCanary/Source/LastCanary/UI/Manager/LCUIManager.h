@@ -35,6 +35,7 @@ class UServerMessageWidget;
 class UDesktopWidget;
 class UTaskbarWidget;
 class ULCDesktopWindowManager;
+class UCharacterCustomizationWidget;
 
 //-----------------
 // Enum
@@ -98,7 +99,7 @@ public:
 	void HidePauseMenu();
 	bool IsPauseMenuOpen() const;
 	void ShowConfirmPopup(TFunction<void()> OnConfirm, const FText& Message);
-	void ShowShopPopup(int Gold);
+	//void ShowShopPopup(int Gold);
 	void HideShopPopup();
 	//void ShowCreateSession();
 	void ToggleInventory();
@@ -120,6 +121,7 @@ public:
 	void AddServerMessage(const FString& Message);
 	void ShowDesktop();
 	void HideDesktop();
+	UCharacterCustomizationWidget* ShowCharacterCustomizationWidget();
 
 	//-----------------
 	// Special Popups
@@ -180,6 +182,7 @@ public:
 	FORCEINLINE UTaskbarWidget* GetTaskbarWidget() const;
 	FORCEINLINE UDesktopWidget* GetDesktopWidget() const { return CachedDesktopWidget; }
 	FORCEINLINE UShopWidget* GetCachedShopWidget() const { return CachedShopWidget; }
+	FORCEINLINE UCharacterCustomizationWidget* GetCharacterCustomizationWidget() const { return CachedCharacterCustomizationWidget; }
 
 	//-----------------
 	// External Interactor Tracking
@@ -206,6 +209,7 @@ public:
 	ULCDesktopWindowManager* DesktopWindowManager;
 	TSubclassOf<UShopWidget> GetShopWidgetClass() const { return ShopWidgetClass; }
 	ULCDesktopWindowManager* GetDesktopWindowManager() const;
+
 
 private:
 	//-----------------
@@ -272,7 +276,8 @@ private:
 	TSubclassOf<UServerMessageWidget> ServerMessageWidgetClass;
 	UPROPERTY()
 	TSubclassOf<UDesktopWidget> DesktopWidgetClass;
-
+	UPROPERTY()
+	TSubclassOf<UCharacterCustomizationWidget> CharacterCustomizationWidgetClass;
 
 	//-----------------
 	// Widget Instances
@@ -321,6 +326,8 @@ private:
 	UServerMessageWidget* CachedServerMessageWidget;
 	UPROPERTY()
 	UDesktopWidget* CachedDesktopWidget;
+	UPROPERTY()
+	UCharacterCustomizationWidget* CachedCharacterCustomizationWidget;
 
 	//-----------------
 	// Session Error Info

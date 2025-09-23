@@ -19,13 +19,14 @@
 #include "UI/UIElement/GameEndWidget.h"
 #include "UI/UIElement/ServerMessageWidget.h"
 #include "UI/UIElement/DesktopWidget.h"
-#include "UI/UIObject/TaskbarWidget.h"
+#include "UI/UIElement/CharacterCustomizationWidget.h"
 
 #include "UI/Popup/PopupCreateSession.h"
 #include "UI/Popup/PopupNotice.h"
 #include "UI/Popup/PopupLoading.h"
 #include "UI/Popup/NotePopupWidget.h"
 
+#include "UI/UIObject/TaskbarWidget.h"
 #include "UI/UIObject/ConfirmPopup.h"
 
 #include "UI/Manager/LCDesktopWindowManager.h"
@@ -36,6 +37,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "Components/WidgetComponent.h"
 #include "Character/BaseSpectatorPawn.h"
+#include "Character/BaseCharacter.h"
+
 #include "LastCanary.h"
 
 ULCUIManager::ULCUIManager()
@@ -83,6 +86,7 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			GameEndWidgetClass = Settings->FromBPGameEndWidgetClass;
 			ServerMessageWidgetClass = Settings->FromBPServerMessageWidgetClass;
 			DesktopWidgetClass = Settings->FromBPDesktopWidgetClass;
+			CharacterCustomizationWidgetClass = Settings->FromBPCharacterCustomizationWidgetClass;
 
 			CreateAndCacheWidget(CachedTitleMenu, TitleMenuClass);
 			CreateAndCacheWidget(CachedLobbyMenu, LobbyMenuClass);
@@ -103,6 +107,7 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			CreateAndCacheWidget(CachedGameOverWidget, GameOverWidgetClass);
 			CreateAndCacheWidget(CachedGameEndWidget, GameEndWidgetClass);
 			CreateAndCacheWidget(CachedServerMessageWidget, ServerMessageWidgetClass);
+			CreateAndCacheWidget(CachedCharacterCustomizationWidget, CharacterCustomizationWidgetClass);
 
 			if (CachedRoomWidget)
 			{
@@ -342,33 +347,6 @@ void ULCUIManager::ShowConfirmPopup(TFunction<void()> OnConfirm, const FText& Me
 		ConfirmPopup->Init(MoveTemp(OnConfirm), Message);
 		ConfirmPopup->AddToViewport(10);
 	}
-}
-
-void ULCUIManager::ShowShopPopup(int Gold)
-{
-	if (OwningPlayer == nullptr)
-	{
-		return;
-	}
-	if (OwningPlayer->IsLocalPlayerController() == false)
-	{
-		return;
-	}
-	if (LastShopInteractor && LastShopInteractor->GetDesktopWidgetComponent())
-	{
-		LastShopInteractor->GetDesktopWidgetComponent()->SetVisibility(false);
-	}
-
-	HideHUD();
-	SwitchToWidget(CachedShopWidget);
-	CachedShopWidget->SetGold(Gold);
-	//HideInventoryMainWidget();
-
-	if (APawn* Pawn = OwningPlayer->GetPawn())
-	{
-		Pawn->DisableInput(OwningPlayer);
-	}
-	SetInputModeUIOnly(CachedShopWidget);
 }
 
 void ULCUIManager::HideShopPopup()
@@ -628,7 +606,7 @@ void ULCUIManager::ShowDesktop()
 
 	if (UDesktopWidget* Desktop = Cast<UDesktopWidget>(CachedDesktopWidget))
 	{
-		Desktop->PowerOn();  
+		Desktop->PowerOn();
 	}
 
 	if (APawn* Pawn = OwningPlayer->GetPawn())
@@ -672,6 +650,39 @@ void ULCUIManager::HideDesktop()
 	{
 		LOG_Frame_WARNING(TEXT("OwningPlayer is nullptr"));
 	}
+}
+
+UCharacterCustomizationWidget* ULCUIManager::ShowCharacterCustomizationWidget()
+{
+	UCharacterCustomizationWidget* Widget = GetCharacterCustomizationWidget();
+	if (Widget == nullptr)
+	{
+		return nullptr;
+	}
+
+	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+	if (PC && PC->IsValidLowLevel())
+	{
+		ABaseCharacter* MyCharacter = Cast<ABaseCharacter>(PC->GetPawn());
+		if (MyCharacter && MyCharacter->IsValidLowLevel())
+		{
+			Widget->SetTargetCharacter(MyCharacter);
+		}
+		else
+		{
+			LOG_Frame_WARNING(TEXT("ShowCharacterCustomizationWidget: Invalid MyCharacter"));
+		}
+	}
+
+	if (ULCDesktopWindowManager* WM = GetDesktopWindowManager())
+	{
+		WM->OpenWindow(Widget);
+	}
+	else
+	{
+		LOG_Frame_WARNING(TEXT("ShowCharacterCustomizationWidget: No WindowManager"));
+	}
+	return Widget;
 }
 
 void ULCUIManager::ShowPopUpLoading()
