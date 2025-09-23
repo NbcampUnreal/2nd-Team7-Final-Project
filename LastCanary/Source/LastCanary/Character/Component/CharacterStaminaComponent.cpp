@@ -63,16 +63,16 @@ void UCharacterStaminaComponent::ConsumeStamina(float Amount)
 {
 	if (CurrentStamina <= 0.0f)
 	{
-		GetCharacter()->StaminaComponent->StopStaminaDrain();
-		GetCharacter()->StaminaComponent->StartStaminaRecoverAfterDelay();
+		GetBaseCharacter()->StaminaComponent->StopStaminaDrain();
+		GetBaseCharacter()->StaminaComponent->StartStaminaRecoverAfterDelay();
 
 		bIsExhausted = true;
 		StopStaminaDrain();
 		StartStaminaRecoverAfterDelay();
 		bCanCharacterSprint = false;
-		GetCharacter()->bIsSprinting = false;
-		GetCharacter()->SetDesiredAiming(true);
-		GetCharacter()->SetDesiredGait(AlsGaitTags::Running);
+		GetBaseCharacter()->bIsSprinting = false;
+		GetBaseCharacter()->SetDesiredAiming(true);
+		GetBaseCharacter()->SetDesiredGait(AlsGaitTags::Running);
 		OnStaminaExhausted.Broadcast();
 		return;
 	}
@@ -94,15 +94,15 @@ void UCharacterStaminaComponent::ConsumeStaminaOnJump()
 	}
 	if (CurrentStamina <= 0.0f)
 	{
-		GetCharacter()->StaminaComponent->StopStaminaDrain();
-		GetCharacter()->StaminaComponent->StartStaminaRecoverAfterDelay();
+		GetBaseCharacter()->StaminaComponent->StopStaminaDrain();
+		GetBaseCharacter()->StaminaComponent->StartStaminaRecoverAfterDelay();
 
 		bIsExhausted = true;
 		StartStaminaRecoverAfterDelay();
 		bCanCharacterSprint = false;
-		GetCharacter()->bIsSprinting = false;
-		GetCharacter()->SetDesiredAiming(true);
-		GetCharacter()->SetDesiredGait(AlsGaitTags::Running);	
+		GetBaseCharacter()->bIsSprinting = false;
+		GetBaseCharacter()->SetDesiredAiming(true);
+		GetBaseCharacter()->SetDesiredGait(AlsGaitTags::Running);	
 		StopStaminaDrain();
 		OnStaminaExhausted.Broadcast();
 		return;
@@ -207,23 +207,6 @@ bool UCharacterStaminaComponent::IsStaminaFull() const
 
 void UCharacterStaminaComponent::UpdateStaminaUI()
 {
-	// 컴포넌트가 붙은 캐릭터 얻기
-	if (CachedCharacter)
-	{
-		// 그 캐릭터를 소유한 컨트롤러 얻기
-		if (APlayerController* PC = Cast<APlayerController>(CachedCharacter->GetController()))
-		{
-			if (ULCGameInstanceSubsystem* Subsystem = GetWorld()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
-			{
-				if (ULCUIManager* UIManager = Subsystem->GetUIManager())
-				{
-					if (UInGameHUD* HUD = UIManager->GetInGameHUD())
-					{
-						float Percent = FMath::Clamp(CurrentStamina / MaxStamina, 0.0f, 1.0f);
-						HUD->UpdateStaminaBar(Percent);
-					}
-				}
-			}
-		}
-	}
+	float Percent = FMath::Clamp(CurrentStamina / MaxStamina, 0.0f, 1.0f);
+	GetInGameHUD()->UpdateStaminaBar(Percent);
 }

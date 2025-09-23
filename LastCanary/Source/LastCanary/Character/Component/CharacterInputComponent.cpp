@@ -32,13 +32,13 @@ void UCharacterInputComponent::Handle_LookMouse(const FInputActionValue& ActionV
 	
 	if (_bIsAiming)
 	{
-		GetCharacter()->AddControllerYawInput(Value.X * ZoomSensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
-		GetCharacter()->AddControllerPitchInput(Value.Y * ZoomSensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
+		GetBaseCharacter()->AddControllerYawInput(Value.X * ZoomSensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
+		GetBaseCharacter()->AddControllerPitchInput(Value.Y * ZoomSensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
 	}
 	else
 	{
-		GetCharacter()->AddControllerYawInput(Value.X * Sensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
-		GetCharacter()->AddControllerPitchInput(Value.Y * Sensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
+		GetBaseCharacter()->AddControllerYawInput(Value.X * Sensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
+		GetBaseCharacter()->AddControllerPitchInput(Value.Y * Sensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
 	}
 
 }
@@ -52,12 +52,12 @@ void UCharacterInputComponent::Handle_Move(const FInputActionValue& ActionValue)
 
 	const auto Value{ UAlsVector::ClampMagnitude012D(ActionValue.Get<FVector2D>()) };
 	
-	GetCharacter()->CancelInteraction();
-	GetCharacter()->FrontInput = Value.Y;
-	const auto ForwardDirection{ UAlsVector::AngleToDirectionXY(UE_REAL_TO_FLOAT(GetCharacter()->GetViewState().Rotation.Yaw)) };
+	GetBaseCharacter()->CancelInteraction();
+	GetBaseCharacter()->FrontInput = Value.Y;
+	const auto ForwardDirection{ UAlsVector::AngleToDirectionXY(UE_REAL_TO_FLOAT(GetBaseCharacter()->GetViewState().Rotation.Yaw)) };
 	const auto RightDirection{ UAlsVector::PerpendicularCounterClockwiseXY(ForwardDirection) };
 	
-	GetCharacter()->AddMovementInput(ForwardDirection * Value.Y + RightDirection * Value.X);
+	GetBaseCharacter()->AddMovementInput(ForwardDirection * Value.Y + RightDirection * Value.X);
 }
 
 void UCharacterInputComponent::Handle_Sprint(const FInputActionValue& ActionValue)
@@ -66,36 +66,41 @@ void UCharacterInputComponent::Handle_Sprint(const FInputActionValue& ActionValu
 	{
 		return;
 	}
-	const float Value = ActionValue.Get<float>();
-
-	if (GetCharacter()->CheckHardLandState())
+	if (!IsValid(GetBaseCharacter()->StaminaComponent))
 	{
-		GetCharacter()->bIsSprinting = false;
-		GetCharacter()->SetDesiredGait(AlsGaitTags::Running);
-		GetCharacter()->StaminaComponent->StopStaminaDrain();
-		GetCharacter()->StaminaComponent->StartStaminaRecoverAfterDelay();
 		return;
 	}
 
-	GetCharacter()->StopGunAutoFire(); // 총 연사상태면 해제하기
+	const float Value = ActionValue.Get<float>();
+
+	if (GetBaseCharacter()->CheckHardLandState())
+	{
+		GetBaseCharacter()->bIsSprinting = false;
+		GetBaseCharacter()->SetDesiredGait(AlsGaitTags::Running);
+		GetBaseCharacter()->StaminaComponent->StopStaminaDrain();
+		GetBaseCharacter()->StaminaComponent->StartStaminaRecoverAfterDelay();
+		return;
+	}
+
+	GetBaseCharacter()->StopGunAutoFire(); // 총 연사상태면 해제하기
 
 	if (Value < 0.5f) //입력이 떼지는 거면 어차피 뛰는 거 아님..
 	{
-		GetCharacter()->bIsSprinting = false;
-		GetCharacter()->SetDesiredGait(AlsGaitTags::Running);
-		GetCharacter()->StaminaComponent->StopStaminaDrain();
-		GetCharacter()->StaminaComponent->StartStaminaRecoverAfterDelay();
+		GetBaseCharacter()->bIsSprinting = false;
+		GetBaseCharacter()->SetDesiredGait(AlsGaitTags::Running);
+		GetBaseCharacter()->StaminaComponent->StopStaminaDrain();
+		GetBaseCharacter()->StaminaComponent->StartStaminaRecoverAfterDelay();
 		return;
 	}
 
-	if (GetCharacter()->StaminaComponent->bIsExhausted) //만약 지친 상태라면 불가
+	if (GetBaseCharacter()->StaminaComponent->bIsExhausted) //만약 지친 상태라면 불가
 	{
 		return;
 	}
 	//달리기 시작하면서 스테미나 소모 시작
-	GetCharacter()->StaminaComponent->StartStaminaDrain();
-	GetCharacter()->StaminaComponent->StopStaminaRecovery();
-	GetCharacter()->StaminaComponent->StopStaminaRecoverAfterDelay();
+	GetBaseCharacter()->StaminaComponent->StartStaminaDrain();
+	GetBaseCharacter()->StaminaComponent->StopStaminaRecovery();
+	GetBaseCharacter()->StaminaComponent->StopStaminaRecoverAfterDelay();
 
 
 	//**당장은 홀드 방식에 대해서만으로 개발 진행.... 추후에 기능 분리 **//
@@ -167,11 +172,11 @@ void UCharacterInputComponent::Handle_Walk(const FInputActionValue& ActionValue)
 
 	if (Value > 0.5f)
 	{
-		GetCharacter()->SetDesiredGait(AlsGaitTags::Walking);
+		GetBaseCharacter()->SetDesiredGait(AlsGaitTags::Walking);
 	}
 	else
 	{
-		GetCharacter()->SetDesiredGait(AlsGaitTags::Running);
+		GetBaseCharacter()->SetDesiredGait(AlsGaitTags::Running);
 	}
 
 	/*
@@ -219,16 +224,16 @@ void UCharacterInputComponent::Handle_Crouch(const FInputActionValue& ActionValu
 		return;
 	}
 
-	GetCharacter()->CancelInteraction();
+	GetBaseCharacter()->CancelInteraction();
 	
 	const float Value = ActionValue.Get<float>();
 	if (Value > 0.5f)
 	{
-		GetCharacter()->SetDesiredStance(AlsStanceTags::Crouching);
+		GetBaseCharacter()->SetDesiredStance(AlsStanceTags::Crouching);
 	}
 	else
 	{
-		GetCharacter()->SetDesiredStance(AlsStanceTags::Standing);
+		GetBaseCharacter()->SetDesiredStance(AlsStanceTags::Standing);
 	}
 
 	/*  당장은 홀드 방식만 채용
@@ -273,38 +278,38 @@ void UCharacterInputComponent::Handle_Jump(const FInputActionValue& ActionValue)
 
 	const float Value = ActionValue.Get<float>();
 	
-	GetCharacter()->CancelInteraction();
+	GetBaseCharacter()->CancelInteraction();
 
 	if (Value > 0.5f)
 	{
-		if (GetCharacter()->StopRagdolling())
+		if (GetBaseCharacter()->StopRagdolling())
 		{
 			return;
 		}
-		if (GetCharacter()->StartMantlingGrounded())
+		if (GetBaseCharacter()->StartMantlingGrounded())
 		{
-			GetCharacter()->SetDesiredAiming(false);
+			GetBaseCharacter()->SetDesiredAiming(false);
 			//GetCharacter()->SpringArm->AttachToComponent(GetCharacter()->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 			return;
 		}
-		if (GetCharacter()->GetStance() == AlsStanceTags::Crouching)
+		if (GetBaseCharacter()->GetStance() == AlsStanceTags::Crouching)
 		{
-			GetCharacter()->SetDesiredStance(AlsStanceTags::Standing);
+			GetBaseCharacter()->SetDesiredStance(AlsStanceTags::Standing);
 			return;
 		}
-		if (GetCharacter()->StaminaComponent->CanJump())
+		if (GetBaseCharacter()->StaminaComponent->CanJump())
 		{
-			GetCharacter()->Jump();
-			if (!GetCharacter()->CanJump())
+			GetBaseCharacter()->Jump();
+			if (!GetBaseCharacter()->CanJump())
 			{
 				return;
 			}
-			GetCharacter()->StaminaComponent->ConsumeStaminaOnJump();
+			GetBaseCharacter()->StaminaComponent->ConsumeStaminaOnJump();
 		}
 	}
 	else
 	{
-		GetCharacter()->StopJumping();
+		GetBaseCharacter()->StopJumping();
 	}
 }
 
@@ -315,7 +320,7 @@ void UCharacterInputComponent::Handle_Aim(const FInputActionValue& ActionValue)
 		return;
 	}
 	
-	AItemBase* EquippedItem = GetCharacter()->ToolbarInventoryComponent->GetCurrentEquippedItem();
+	AItemBase* EquippedItem = GetBaseCharacter()->ToolbarInventoryComponent->GetCurrentEquippedItem();
 	if (!EquippedItem)
 	{
 		return;
@@ -329,11 +334,11 @@ void UCharacterInputComponent::Handle_Aim(const FInputActionValue& ActionValue)
 	if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Tool.Pickaxe")))
 	{
 		//곡괭이를 들면 근접공격
-		if (GetCharacter()->AttackComponent)
+		if (GetBaseCharacter()->AttackComponent)
 		{
 			if (ActionValue.Get<float>() > 0.5f)
 			{
-				GetCharacter()->AttackComponent->Handle_Attack(EAttackType::ItemAttack);
+				GetBaseCharacter()->AttackComponent->Handle_Attack(EAttackType::ItemAttack);
 			}
 			return;
 		}
@@ -344,9 +349,9 @@ void UCharacterInputComponent::Handle_Aim(const FInputActionValue& ActionValue)
 	//총을 들면 우클릭
 	
 	
-	if (GetCharacter()->bIsSprinting || GetCharacter()->bIsReloading || GetCharacter()->bIsClose || GetCharacter()->bIsMantling)
+	if (GetBaseCharacter()->bIsSprinting || GetBaseCharacter()->bIsReloading || GetBaseCharacter()->bIsClose || GetBaseCharacter()->bIsMantling)
 	{
-		GetCharacter()->CameraControlComponent->StopAiming();
+		GetBaseCharacter()->CameraControlComponent->StopAiming();
 		return;
 	}
 	AGunBase* Gun = Cast<AGunBase>(EquipmentItem);
@@ -357,21 +362,21 @@ void UCharacterInputComponent::Handle_Aim(const FInputActionValue& ActionValue)
 	if (Gun)
 	{
 		USkeletalMeshComponent* RifleMesh = Gun->GetSkeletalMeshComponent();
-		GetCharacter()->CurrentRifleMesh = RifleMesh;
+		GetBaseCharacter()->CurrentRifleMesh = RifleMesh;
 		
 		
-		if (ActionValue.Get<float>() > 0.5f && GetCharacter()->bIsCloseToWall == false)
+		if (ActionValue.Get<float>() > 0.5f && GetBaseCharacter()->bIsCloseToWall == false)
 		{
-			if (GetCharacter()->ADSComponent)
+			if (GetBaseCharacter()->ADSComponent)
 			{
-				GetCharacter()->ADSComponent->SwitchADS(true);
+				GetBaseCharacter()->ADSComponent->SwitchADS(true);
 			}
 		}
 		else
 		{
-			if (GetCharacter()->ADSComponent)
+			if (GetBaseCharacter()->ADSComponent)
 			{
-				GetCharacter()->ADSComponent->SwitchADS(false);
+				GetBaseCharacter()->ADSComponent->SwitchADS(false);
 			}
 		}
 		
@@ -395,9 +400,9 @@ void UCharacterInputComponent::Handle_Interact(const FInputActionValue& ActionVa
 		return;
 	}
 
-	if (GetCharacter()->InteractionComponent->CurrentFocusedActor->Implements<UInteractableInterface>())
+	if (GetBaseCharacter()->InteractionComponent->CurrentFocusedActor->Implements<UInteractableInterface>())
 	{
-		AActor* actor = GetCharacter()->InteractionComponent->CurrentFocusedActor;
+		AActor* actor = GetBaseCharacter()->InteractionComponent->CurrentFocusedActor;
 		if (!IsValid(actor))
 		{
 			return;
@@ -411,7 +416,7 @@ void UCharacterInputComponent::Handle_Interact(const FInputActionValue& ActionVa
 			//GetCharacter()->InteractAfterPlayMontage(actor);
 			//GetCharacter()->AnimationComponent->PlayInteractMontage(actor);
 
-			GetCharacter()->InteractionComponent->Handle_Interact();
+			GetBaseCharacter()->InteractionComponent->Handle_Interact();
 		}
 	}
 }
@@ -423,8 +428,8 @@ void UCharacterInputComponent::Handle_ViewMode()
 		return;
 	}
 	//아래 코드 카메라 컴포넌트 함수로 변경
-	GetCharacter()->bIsFPSCamera = !(GetCharacter()->bIsFPSCamera);
-	GetCharacter()->SetCameraMode(GetCharacter()->bIsFPSCamera);
+	GetBaseCharacter()->bIsFPSCamera = !(GetBaseCharacter()->bIsFPSCamera);
+	GetBaseCharacter()->SetCameraMode(GetBaseCharacter()->bIsFPSCamera);
 }
 
 void UCharacterInputComponent::Handle_Reload()
@@ -460,11 +465,11 @@ bool UCharacterInputComponent::CheckCondition_LookMouse()
 	{
 		return false;
 	}
-	if (GetCharacter()->bIsPlayingInteractionMontage)
+	if (GetBaseCharacter()->bIsPlayingInteractionMontage)
 	{
 		return false;
 	}
-	if (GetCharacter()->GetLocomotionAction() == AlsLocomotionActionTags::Mantling)
+	if (GetBaseCharacter()->GetLocomotionAction() == AlsLocomotionActionTags::Mantling)
 	{
 		return false;
 	}
@@ -478,7 +483,7 @@ bool UCharacterInputComponent::CheckCondition_Move()
 	{
 		return false;
 	}
-	if (GetCharacter()->CheckHardLandState())
+	if (GetBaseCharacter()->CheckHardLandState())
 	{
 		return false;
 	}
@@ -500,7 +505,7 @@ bool UCharacterInputComponent::CheckCondition_Walk()
 	{
 		return false;
 	}
-	if (GetCharacter()->CheckHardLandState())
+	if (GetBaseCharacter()->CheckHardLandState())
 	{
 		return false;
 	}
@@ -514,7 +519,7 @@ bool UCharacterInputComponent::CheckCondition_Crouch()
 		return false;
 	}
 	
-	if (GetCharacter()->CheckHardLandState())
+	if (GetBaseCharacter()->CheckHardLandState())
 	{
 		return false;
 	}
@@ -528,7 +533,7 @@ bool UCharacterInputComponent::CheckCondition_Jump()
 	{
 		return false;
 	}
-	if (GetCharacter()->CheckHardLandState())
+	if (GetBaseCharacter()->CheckHardLandState())
 	{
 		return false;
 	}
@@ -541,7 +546,7 @@ bool UCharacterInputComponent::CheckCondition_Aim()
 	{
 		return false;
 	}
-	if (GetCharacter()->CheckHardLandState())
+	if (GetBaseCharacter()->CheckHardLandState())
 	{
 		return false;
 	}
@@ -554,14 +559,14 @@ bool UCharacterInputComponent::CheckCondition_Interact()
 	{
 		return false;
 	}
-	if (!GetCharacter()->InteractionComponent->CurrentFocusedActor)
+	if (!GetBaseCharacter()->InteractionComponent->CurrentFocusedActor)
 	{
 		return false;
 	}
 
-	LOG_Char_WARNING(TEXT("Interacted with: %s"), *GetCharacter()->InteractionComponent->CurrentFocusedActor->GetName());
+	LOG_Char_WARNING(TEXT("Interacted with: %s"), *GetBaseCharacter()->InteractionComponent->CurrentFocusedActor->GetName());
 
-	if (GetCharacter()->bIsPlayingInteractionMontage)
+	if (GetBaseCharacter()->bIsPlayingInteractionMontage)
 	{
 		return false;
 	}
@@ -585,11 +590,11 @@ bool UCharacterInputComponent::CheckCondition_Reload()
 	{
 		return false;
 	}
-	if (GetCharacter()->bIsReloading)
+	if (GetBaseCharacter()->bIsReloading)
 	{
 		return false;
 	}
-	if (GetCharacter()->bIsUsingItem)
+	if (GetBaseCharacter()->bIsUsingItem)
 	{
 		return false;
 	}
@@ -616,7 +621,7 @@ bool UCharacterInputComponent::Check_PlayerController()
 
 bool UCharacterInputComponent::Check_PlayerState()
 {
-	if (GetCharacter()->CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
+	if (GetBaseCharacter()->CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return false;
 	}

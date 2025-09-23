@@ -5,59 +5,69 @@
 
 #include "LastCanary.h"
 
+void UCharacterCustomizationComponent::BeginPlay()
+{
+	Super::BeginPlay();
+}
+
+void UCharacterCustomizationComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+}
+
 USkeletalMeshComponent* UCharacterCustomizationComponent::CharacterMesh()
 {
-	return CachedCharacter->GetMesh();
+	return GetBaseCharacter()->GetMesh();
 }
 
 USkeletalMeshComponent* UCharacterCustomizationComponent::GetHeadMesh()
 {
-	return CachedCharacter->CustomHeadMesh;
+	return GetBaseCharacter()->CustomHeadMesh;
 }
 
 USkeletalMeshComponent* UCharacterCustomizationComponent::GetGloveMesh()
 {
-	return CachedCharacter->CustomGloveMesh;
+	return GetBaseCharacter()->CustomGloveMesh;
 }
 
 USkeletalMeshComponent* UCharacterCustomizationComponent::GetJacketMesh_OwnerNoSee()
 {
-	return CachedCharacter->CustomJacketMesh_OwnerNoSee;
+	return GetBaseCharacter()->CustomJacketMesh_OwnerNoSee;
 }
 
 USkeletalMeshComponent* UCharacterCustomizationComponent::GetJacketMesh_OwnerSee()
 {
-	return CachedCharacter->CustomJacketMesh_OwnerSee;
+	return GetBaseCharacter()->CustomJacketMesh_OwnerSee;
 }
 
 USkeletalMeshComponent* UCharacterCustomizationComponent::GetPantsMesh()
 {
-	return CachedCharacter->CustomPantsMesh;
+	return GetBaseCharacter()->CustomPantsMesh;
 }
 
 USkeletalMeshComponent* UCharacterCustomizationComponent::GetBeltsMesh()
 {
-	return CachedCharacter->CustomBeltsMesh;
+	return GetBaseCharacter()->CustomBeltsMesh;
 }
 
 USkeletalMeshComponent* UCharacterCustomizationComponent::GetHelmetMesh()
 {
-	return CachedCharacter->CustomHelmetMesh;
+	return GetBaseCharacter()->CustomHelmetMesh;
 }
 
 USkeletalMeshComponent* UCharacterCustomizationComponent::GetArmorMesh()
 {
-	return CachedCharacter->CustomArmorMesh;
+	return GetBaseCharacter()->CustomArmorMesh;
 }
 
 USkeletalMeshComponent* UCharacterCustomizationComponent::GetBootsMesh()
 {
-	return CachedCharacter->CustomBootsMesh;
+	return GetBaseCharacter()->CustomBootsMesh;
 }
 
 USkeletalMeshComponent* UCharacterCustomizationComponent::GetBackpackMesh()
 {
-	return CachedCharacter->BackpackMesh;
+	return GetBaseCharacter()->BackpackMesh;
 }
 
 void UCharacterCustomizationComponent::SetCharacterPoseSynchronization()
@@ -215,7 +225,7 @@ void UCharacterCustomizationComponent::Server_SetCustomizationData_Implementatio
 	Multicast_SetCustomizationData(CustomizingData);
 
 	//3. 플레이어 스테이트에 커스터마이징 값 저장
-	APlayerState* PS = GetCharacter()->GetPlayerState();
+	APlayerState* PS = GetBaseCharacter()->GetPlayerState();
 
 	if (ABasePlayerState* BPS = Cast<ABasePlayerState>(PS))
 	{
@@ -223,7 +233,7 @@ void UCharacterCustomizationComponent::Server_SetCustomizationData_Implementatio
 	}
 
 	//4. 게이트 퇴장시를 위해 설정 완료되었음을 게임모드에 전파
-	GetCharacter()->CheckPlayerCharacterIsReadyToGameMode();
+	GetBaseCharacter()->CheckPlayerCharacterIsReadyToGameMode();
 	
 }
 
@@ -240,13 +250,13 @@ void UCharacterCustomizationComponent::Multicast_SetCustomizationData_Implementa
 
 void UCharacterCustomizationComponent::InitializeCustomization()
 {
-	if (!IsValid(GetCharacter()) || !GetCharacter()->IsLocallyControlled())
+	if (!IsValid(GetBaseCharacter()) || !GetBaseCharacter()->IsLocallyControlled())
 	{
 		return;
 	}
 
-	APlayerState* PS = GetCharacter()->GetPlayerState();
-	if (PS)
+	APlayerState* PS = GetBaseCharacter()->GetPlayerState();
+	if (IsValid(PS))
 	{
 		LOG_Char_WARNING(TEXT("커스터마이징 데이터 로드"));
 

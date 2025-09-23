@@ -21,10 +21,11 @@ void UCharacterFootstepNoiseComponent::TickComponent(float DeltaTime, ELevelTick
 
 void UCharacterFootstepNoiseComponent::UpdateFootstepState()
 {
-    ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
-    if (!OwnerCharacter) return;
-
-    UCharacterMovementComponent* MoveComp = OwnerCharacter->GetCharacterMovement();
+    if (!IsValid(GetCharacter()))
+    {
+        return;
+    }
+    UCharacterMovementComponent* MoveComp = GetCharacter()->GetCharacterMovement();
     if (!MoveComp) return;
 
     if (MoveComp->IsFalling())
@@ -33,7 +34,6 @@ void UCharacterFootstepNoiseComponent::UpdateFootstepState()
         NoiseLevel = 0.f;
         return;
     }
-
     if (MoveComp->IsCrouching())
     {
         CurrentFootstepState = EFootstepState::Crouch;

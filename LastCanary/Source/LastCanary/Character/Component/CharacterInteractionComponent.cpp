@@ -23,7 +23,7 @@ void UCharacterInteractionComponent::TickComponent(float DeltaTime, ELevelTick T
 
 void UCharacterInteractionComponent::PerformTrace()
 {
-    if (!GetCharacter() || !GetCharacter()->IsLocallyControlled())
+    if (!IsValid(GetBaseCharacter()) || !GetBaseCharacter()->IsLocallyControlled() || !IsValid(GetPlayerController()))
     {
         UpdateFocus(nullptr);
         return;
@@ -32,15 +32,11 @@ void UCharacterInteractionComponent::PerformTrace()
     // 카메라 위치
     FVector ViewLocation;
     FRotator ViewRotation;
-    if (!GetPlayerController())
-    {
-        UpdateFocus(nullptr);
-        return;
-    }
+    
     GetPlayerController()->GetPlayerViewPoint(ViewLocation, ViewRotation);
 
-    // 거리 계산 (FPS/3인칭에 따른 변경은 캐릭터에서 설정 가능)
-    float Distance = GetCharacter()->bIsFPSCamera? TraceDistance : TraceDistance * 3.f;
+    // 거리 계산 (FPS/3인칭에 따른 변경은 캐릭터에서 설정 가능하게)
+    float Distance = GetBaseCharacter()->bIsFPSCamera? TraceDistance : TraceDistance * 3.f;
     FVector End = ViewLocation + ViewRotation.Vector() * Distance;
 
     // 라인트레이스
@@ -51,7 +47,7 @@ void UCharacterInteractionComponent::PerformTrace()
     bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, ViewLocation, End, ECC_Visibility, Params);
 
     // 벽 가까움 체크
-    GetCharacter()->bIsCloseToWall = bHit && Hit.Distance < 100.f;
+    GetBaseCharacter()->bIsCloseToWall = bHit && Hit.Distance < 100.f;
 
     UpdateFocus(bHit ? Hit.GetActor() : nullptr);
     //DrawDebugLine(GetWorld(), ViewLocation, End, FColor::Green, false, 0.1f);
@@ -73,7 +69,6 @@ void UCharacterInteractionComponent::Handle_Interact()
         return;
     }
 
-    LOG_Char_WARNING(TEXT("Interact on %s"), *CurrentFocusedActor->GetName());
     if (!CanInteract())
     {
         return;
@@ -89,7 +84,7 @@ void UCharacterInteractionComponent::Handle_Interact()
         }
         return;
     }
-    GetCharacter()->AnimationComponent->PlayInteractMontage(GetRecentInteractedActor());
+    GetBaseCharacter()->AnimationComponent->PlayInteractMontage(GetRecentInteractedActor());
 }
 
 bool UCharacterInteractionComponent::CanInteract()
@@ -107,14 +102,14 @@ bool UCharacterInteractionComponent::CanInteract()
 			return false;
 		}
 
-		if (!GetCharacter()->ToolbarInventoryComponent->CanAddItem(Item))
+		if (!GetBaseCharacter()->ToolbarInventoryComponent->CanAddItem(Item))
 		{
 			if (!Item->IsCollectible())
 			{
 				return false;
 			}
 
-			if (!GetCharacter()->bBackpackMeshActive)
+			if (!GetBaseCharacter()->bBackpackMeshActive)
 			{
 				return false;
 			}

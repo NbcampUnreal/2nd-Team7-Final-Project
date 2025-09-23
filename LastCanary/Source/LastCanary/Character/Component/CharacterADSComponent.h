@@ -5,6 +5,7 @@
 #include "CharacterADSComponent.generated.h"
 
 class AGunBase;
+class UAlsAnimationInstance;
 
 UCLASS()
 class LASTCANARY_API UCharacterADSComponent : public UCharacterBaseComponent
@@ -19,6 +20,8 @@ protected:
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 public:
+    UAlsAnimationInstance* GetALSAnimInstance();
+
     bool bIsADS = false;
     void SwitchADS(bool _bIsADS);
 
@@ -31,6 +34,7 @@ public:
     USkeletalMeshComponent* GetGunSkeletalMesh();
     FName GetADSSocketName(AGunBase* gun);
     float GetADS_Distance(AGunBase* gun);
+    float GetADS_CameraFieldOfView(AGunBase* gun);
 
     float ADS_InterpSpeed = 3.0f;
     float ADS_Distance = 5.0f;

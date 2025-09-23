@@ -47,9 +47,9 @@ void UCharacterNameWidgetComponent::TickComponent(float DeltaTime, ELevelTick Ti
 
 void UCharacterNameWidgetComponent::InitializeWidget()
 {
-	if (!GetCharacter()) return;
+	if (!GetBaseCharacter()) return;
 	
-	USkeletalMeshComponent* Mesh = GetCharacter()->GetMesh();
+	USkeletalMeshComponent* Mesh = GetBaseCharacter()->GetMesh();
 	if (!Mesh) return;
 
 	if (!WidgetComponent) return;
@@ -160,15 +160,15 @@ void UCharacterNameWidgetComponent::SetCastShadowEnabled(bool bEnable)
 
 void UCharacterNameWidgetComponent::InitializeNameWidget()
 {
-	if (!GetCharacter()) return;
+	if (!GetBaseCharacter()) return;
 
-	APlayerController* PC = Cast<APlayerController>(GetCharacter()->GetInstigatorController());
+	APlayerController* PC = Cast<APlayerController>(GetBaseCharacter()->GetInstigatorController());
 	if (!PC || !PC->IsLocalController())
 	{
 		return;
 	}
 
-	APlayerState* PS = GetCharacter()->GetPlayerState();
+	APlayerState* PS = GetBaseCharacter()->GetPlayerState();
 	if (PS && WidgetComponent)
 	{
 		if (IsValid(GetWidget()))
@@ -176,7 +176,7 @@ void UCharacterNameWidgetComponent::InitializeNameWidget()
 			SetPlayerName(PS->GetPlayerName());
 			
 
-			if (GetCharacter()->IsLocallyControlled())
+			if (GetBaseCharacter()->IsLocallyControlled())
 			{
 				SetWidgetVisibility(false);
 			}
@@ -197,7 +197,7 @@ void UCharacterNameWidgetComponent::InitializeNameWidget()
 		LOG_Char_WARNING(TEXT("타이머 재시도"));
 
 		// 준비 안 된 경우 타이머 재시도
-		if (UWorld* World = GetCharacter()->GetWorld())
+		if (UWorld* World = GetBaseCharacter()->GetWorld())
 		{
 			World->GetTimerManager().SetTimer(
 				RetryInitializeHandle,

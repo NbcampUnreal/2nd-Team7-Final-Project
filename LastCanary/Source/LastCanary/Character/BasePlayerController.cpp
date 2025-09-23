@@ -107,13 +107,11 @@ void ABasePlayerController::OnExitGate()
 
 void ABasePlayerController::Server_OnExitGate_Implementation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Server_OnExitGate_Implementation"));
 	HandleExitGate(); // 서버에서 실행
 }
 
 void ABasePlayerController::HandleExitGate()
 {
-	UE_LOG(LogTemp, Warning, TEXT("HandleExitGate"));
 	if (!IsValid(CurrentPossessedPawn))
 	{
 		return;
@@ -148,7 +146,6 @@ void ABasePlayerController::PlayerExitActivePlayOnDeath()
 
 void ABasePlayerController::PlayerExitActivePlayOnEscapeGate()
 {
-	LOG_Char_WARNING(TEXT("PlayerExitActivePlayOnEscapeGate"));
 	Client_OnPlayerExitActivePlay();
 	APawn* MyPawn = GetPawn();
 	if (IsValid(MyPawn))
@@ -193,7 +190,6 @@ void ABasePlayerController::NotifyAtGameState()
 
 void ABasePlayerController::Client_OnPlayerExitActivePlay_Implementation()
 {
-	LOG_Char_WARNING(TEXT("Client_OnPlayerExitActivePlay_Implementation"));
 	if (!IsValid(CurrentPossessedPawn))
 	{
 		return;
@@ -222,11 +218,8 @@ void ABasePlayerController::Client_OnPlayerExitActivePlay_Implementation()
 
 void ABasePlayerController::SpawnSpectatablePawn()
 {
-	LOG_Char_WARNING(TEXT("SpawnSpectatablePawn"));
-
 	if (HasAuthority()) // 서버만 스폰 가능
 	{
-		LOG_Char_WARNING(TEXT("SpawnSpectatablePawn"));
 		FActorSpawnParameters Params;
 		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn; //반드시 생성 무조건 생성
 		Params.Owner = this;
@@ -272,17 +265,14 @@ void ABasePlayerController::OnRep_SpawnedSpectatorPawn()
 {
 	if (!IsValid(SpawnedSpectatorPawn))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("SpawnedSpectatorPawn is invalid on client!"));
 		return;
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("Client received replicated SpawnedSpectatorPawn: %s"), *SpawnedSpectatorPawn->GetName());
 	CurrentPossessedPawn = SpawnedSpectatorPawn;	
 }
 
 void ABasePlayerController::Client_StartSpectation_Implementation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Spectate Start On Client"));
 	GetWorldTimerManager().SetTimer(SpectatorCheckHandle, this, &ABasePlayerController::CheckCurrentSpectatedCharacterStatus, 3.0f, true, 3.0f);
 	if (ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 	{
@@ -425,12 +415,8 @@ void ABasePlayerController::ClientRestart(APawn* NewPawn)
 {
 	Super::ClientRestart(NewPawn);
 
-	LOG_Frame_WARNING(TEXT("✅ ClientRestart 호출됨: %s"), *GetName());
-
 	if (IsLocalController())
 	{
-		LOG_Frame_WARNING(TEXT("✅ IsLocalController TRUE — 타이머 설정 중"));
-
 		FTimerDelegate TimerDel;
 		FTimerHandle HUDTimerHandle;
 		TimerDel.BindUFunction(this, FName("RequestShowInGameHUD"));
@@ -444,78 +430,14 @@ void ABasePlayerController::ClientRestart(APawn* NewPawn)
 	}
 	else
 	{
-		LOG_Frame_WARNING(TEXT("❌ IsLocalController가 FALSE임"));
+		LOG_Frame_WARNING(TEXT("IsLocalController가 FALSE임"));
 	}
 }
 
 void ABasePlayerController::InitInputComponent()
 {
 	Super::InitInputComponent();
-	/*
-	EnhancedInput = Cast<UEnhancedInputComponent>(InputComponent);
 
-	if (!IsValid(EnhancedInput))
-	{
-		return;
-	}
-
-	if (IsValid(EnhancedInput))
-	{
-		EnhancedInput->BindAction(LookMouseAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnLookMouse);
-		EnhancedInput->BindAction(LookMouseAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnLookMouse);
-
-		EnhancedInput->BindAction(LookAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnLook);
-		EnhancedInput->BindAction(LookAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnLook);
-
-		EnhancedInput->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnMove);
-		EnhancedInput->BindAction(MoveAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnMove);
-
-		EnhancedInput->BindAction(SprintAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnSprint);
-		EnhancedInput->BindAction(SprintAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnSprint);
-
-		EnhancedInput->BindAction(WalkAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnWalk);
-		EnhancedInput->BindAction(WalkAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnWalk);
-
-		EnhancedInput->BindAction(CrouchAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnCrouch);
-		EnhancedInput->BindAction(CrouchAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnCrouch);
-
-		EnhancedInput->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnJump);
-		EnhancedInput->BindAction(JumpAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnJump);
-
-		EnhancedInput->BindAction(AimAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnAim);
-		EnhancedInput->BindAction(AimAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnAim);
-
-		EnhancedInput->BindAction(ViewModeAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnViewMode);
-
-		EnhancedInput->BindAction(InteractAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnInteract);
-		EnhancedInput->BindAction(InteractAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnInteract);
-
-		EnhancedInput->BindAction(StrafeAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnStrafe);
-
-		EnhancedInput->BindAction(ItemUseAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnItemUse);
-		EnhancedInput->BindAction(ItemUseAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnItemUse);
-
-		EnhancedInput->BindAction(ThrowItemAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_OnItemThrow);
-
-		EnhancedInput->BindAction(RifleReloadAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_Reload);
-
-		EnhancedInput->BindAction(VoiceAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_VoiceChat);
-		EnhancedInput->BindAction(VoiceAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_VoiceChat);
-
-		EnhancedInput->BindAction(ChangeShootingSettingAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_ChangeShootingSetting);
-		
-		EnhancedInput->BindAction(ChangeQuickSlotAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_ChangeQuickSlot);
-
-		EnhancedInput->BindAction(SelectQuickSlot1Action, ETriggerEvent::Started, this, &ABasePlayerController::Input_SelectQuickSlot1);
-		EnhancedInput->BindAction(SelectQuickSlot2Action, ETriggerEvent::Started, this, &ABasePlayerController::Input_SelectQuickSlot2);
-		EnhancedInput->BindAction(SelectQuickSlot3Action, ETriggerEvent::Started, this, &ABasePlayerController::Input_SelectQuickSlot3);
-		EnhancedInput->BindAction(SelectQuickSlot4Action, ETriggerEvent::Started, this, &ABasePlayerController::Input_SelectQuickSlot4);
-
-		EnhancedInput->BindAction(OpenPauseMenuAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OpenPauseMenu);
-		
-		EnhancedInput->BindAction(ExitDroneAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_DroneExit);
-	}
-	*/
 	//ApplyInputMappingContext(InputMappingContext);
 }
 
@@ -592,8 +514,6 @@ void ABasePlayerController::Input_OnMove(const FInputActionValue& ActionValue)
 	}
 
 
-	
-
 	// APawn 타입에 맞는 처리를 실행
 	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
@@ -628,10 +548,6 @@ void ABasePlayerController::Input_OnMove(const FInputActionValue& ActionValue)
 			bIsSpectatingButtonClicked = false;
 		}
 		return;
-	}
-	else
-	{
-		//UE_LOG(LogTemp, Warning, TEXT("Unknown pawn type in Input_OnMove: %s"), *CurrentPossessedPawn->GetName());
 	}
 }
 
@@ -694,7 +610,6 @@ void ABasePlayerController::Input_OnJump(const FInputActionValue& ActionValue)
 {
 	if (!IsValid(CurrentPossessedPawn))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_OnJump"));
 		return;
 	}
 	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
@@ -740,11 +655,6 @@ void ABasePlayerController::Input_OnViewMode(const FInputActionValue& ActionValu
 	{
 		PlayerCharacter->Handle_ViewMode();
 	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is not an ABaseCharacter: %s"), *CurrentPossessedPawn->GetName());
-	}
-
 }
 
 
@@ -754,39 +664,6 @@ void ABasePlayerController::Input_OnInteract(const FInputActionValue& ActionValu
 	{
 		return;
 	}
-
-	if (CurrentPossessedPawn->IsA<ABaseDrone>())
-	{
-		ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn);
-		if (!IsValid(Drone))
-		{
-			return;
-		}
-
-		// 이미 아이템을 들고 있으면 상호작용 무시
-		if (Drone->HasItem())
-		{
-			return;
-		}
-
-		// 드론 주변의 아이템 검색
-		AActor* HitActor = TraceInteractable(1000.0f);
-		if (AItemBase* Item = Cast<AItemBase>(HitActor))
-		{
-			// 아이템 픽업
-			Drone->Server_PickupItem(Item);
-		}
-
-		return;
-	}
-
-	AActor* HitActor = TraceInteractable(1000.0f);
-	if (!HitActor)
-	{
-		LOG_Char_WARNING(TEXT("No interactable actor found in trace."));
-		return;
-	}
-
 	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
 	{
 		if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
@@ -805,6 +682,7 @@ void ABasePlayerController::Input_OnInteract(const FInputActionValue& ActionValu
 	{
 		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is not an ABaseCharacter: %s"), *CurrentPossessedPawn->GetName());
 	}
+	
 }
 
 
@@ -812,19 +690,12 @@ void ABasePlayerController::Input_Reload(const FInputActionValue& ActionValue)
 {
 	if (!IsValid(CurrentPossessedPawn))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_Reload"));
 		return;
 	}
 
 	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
 		PlayerCharacter->Handle_Reload();
-	}
-	else
-	{
-#if WITH_EDITOR
-		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is not an ABaseCharacter: %s"), *CurrentPossessedPawn->GetName());
-#endif
 	}
 }
 
@@ -1240,33 +1111,6 @@ void ABasePlayerController::Input_OpenPauseMenu(const FInputActionValue& ActionV
 			}
 		}
 	}
-}
-
-//To DO...
-/*
-	시점에 따른 Line Trace 시점 - 종점 컨트롤
-*/
-AActor* ABasePlayerController::TraceInteractable(float TraceDistance)
-{
-	FVector ViewLocation;
-	FRotator ViewRotation;
-	GetPlayerViewPoint(ViewLocation, ViewRotation);
-
-	FVector Start = ViewLocation;
-	FVector End = Start + (ViewRotation.Vector() * TraceDistance);
-
-	FHitResult Hit;
-	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(GetPawn());
-
-	bool bHit = GetWorld()->LineTraceSingleByChannel(
-		Hit, Start, End, ECC_GameTraceChannel1, Params);
-
-	// 디버그용
-#if WITH_EDITOR
-	//DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 1.0f);
-#endif
-	return bHit ? Hit.GetActor() : nullptr;
 }
 
 bool ABasePlayerController::IsPossessingBaseCharacter() const

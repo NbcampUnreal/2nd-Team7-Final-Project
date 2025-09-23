@@ -42,6 +42,7 @@ class UCharacterSpeedControlComponent;
 class UCharacterSoundComponent;
 class UCharacterSanityComponent;
 class UCharacterADSComponent;
+class UCharacterWeaponClippingComponent;
 
 UENUM(BlueprintType)
 enum class EAnimationType : uint8
@@ -126,6 +127,9 @@ public:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UCharacterADSComponent* ADSComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UCharacterWeaponClippingComponent* WeaponClippingComponent;
 public:
 	UFUNCTION()
 	virtual float GetCurrentNoiseLevel() const override;
@@ -210,7 +214,6 @@ public:
 	float WallClipAimOffsetPitch;
 	float MaxWallClipPitch = 90.0f;
 	float CapsuleWallRatio = 0.0f;
-	void UpdateGunWallClipOffset(float DeltaTime);
 	
 	UPROPERTY()
 	float SmoothedWallRatio = 0.0f;
@@ -278,8 +281,6 @@ protected:
 
 
 	void ResetCameraLocationToDefault();
-	void AttachCameraToRifle();
-	void AttachCameraToCharacter();
 
 
 	FTimerHandle MoveTimerHandle;
@@ -325,6 +326,9 @@ public:
 
 public:
 	bool bIsCloseToWall = false;
+	void SetIsCloseToWall(bool _bIsCloseToWall);
+	bool GetIsCloseToWall();
+
 	bool bIsSprinting = false;
 	// ABaseCharacter.h
 

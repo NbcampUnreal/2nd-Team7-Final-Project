@@ -26,19 +26,19 @@ void UCharacterSpeedControlComponent::BeginPlay()
 
 void UCharacterSpeedControlComponent::Client_SetMovementSetting_Implementation()
 {
-	ABasePlayerState* MyPlayerState = GetCharacter()->GetPlayerState<ABasePlayerState>();
+	ABasePlayerState* MyPlayerState = GetBaseCharacter()->GetPlayerState<ABasePlayerState>();
 	if (!IsValid(MyPlayerState))
 	{
 		return;
 	}
-	GetCharacter()->SpeedMultiplier = GetCharacter()->CalculateMovementSpeedMultiplier();
+	GetBaseCharacter()->SpeedMultiplier = GetBaseCharacter()->CalculateMovementSpeedMultiplier();
 
 	//스테이트에 바뀐 값 저장
-	CrouchSpeed = MyPlayerState->DefaultCrouchSpeed * GetCharacter()->SpeedMultiplier;
-	WalkSpeed = MyPlayerState->DefaultWalkSpeed * GetCharacter()->SpeedMultiplier;
-	RunSpeed = MyPlayerState->DefaultRunSpeed * GetCharacter()->SpeedMultiplier;
-	SprintSpeed = MyPlayerState->DefaultSprintSpeed * GetCharacter()->SpeedMultiplier;
-	JumpZVelocity = MyPlayerState->DefaultJumpZVelocity * GetCharacter()->SpeedMultiplier;
+	CrouchSpeed = MyPlayerState->DefaultCrouchSpeed * GetBaseCharacter()->SpeedMultiplier;
+	WalkSpeed = MyPlayerState->DefaultWalkSpeed * GetBaseCharacter()->SpeedMultiplier;
+	RunSpeed = MyPlayerState->DefaultRunSpeed * GetBaseCharacter()->SpeedMultiplier;
+	SprintSpeed = MyPlayerState->DefaultSprintSpeed * GetBaseCharacter()->SpeedMultiplier;
+	JumpZVelocity = MyPlayerState->DefaultJumpZVelocity * GetBaseCharacter()->SpeedMultiplier;
 
 	MyPlayerState->CrouchSpeed = CrouchSpeed;
 	MyPlayerState->WalkSpeed = WalkSpeed;
@@ -47,7 +47,8 @@ void UCharacterSpeedControlComponent::Client_SetMovementSetting_Implementation()
 	MyPlayerState->JumpZVelocity = JumpZVelocity;
 
 	/*
-	GetCharacter()->AlsCharacterMovement->SetPlayerMovementSpeed(CrouchSpeed, WalkSpeed, RunSpeed, SprintSpeed);
+	
+	->AlsCharacterMovement->SetPlayerMovementSpeed(CrouchSpeed, WalkSpeed, RunSpeed, SprintSpeed);
 	GetCharacter()->AlsCharacterMovement->JumpZVelocity = JumpZVelocity;
 	*/
 }

@@ -7,6 +7,7 @@
 #include "CharacterBaseComponent.generated.h"
 
 class ABaseCharacter;
+class UInGameHUD;
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class LASTCANARY_API UCharacterBaseComponent : public UActorComponent
@@ -17,17 +18,22 @@ public:
 	// Sets default values for this component's properties
 	UCharacterBaseComponent();
 	
-
-
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
 	UPROPERTY()
-	ABaseCharacter* CachedCharacter;
+	APawn* CachedPawn;
 
 	UPROPERTY()
 	APlayerController* CachedController; 
+
+	UPROPERTY()
+	ACharacter* CachedCharacter;
+
+	UPROPERTY()
+	ABaseCharacter* CachedBaseCharacter;
+
 
 	UPROPERTY()
 	UAnimInstance* CachedAnimInstance;
@@ -35,7 +41,13 @@ public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-	ABaseCharacter* GetCharacter() const { return CachedCharacter; }
+	APawn* GetPawn() const { return CachedPawn; }
+	ACharacter* GetCharacter() const { return CachedCharacter; }
+	ABaseCharacter* GetBaseCharacter() const { return CachedBaseCharacter; }
+	
 	APlayerController* GetPlayerController() const { return CachedController; }
+	
 	UAnimInstance* GetCharacterAnimInstance() const { return CachedAnimInstance; }
+	
+	UInGameHUD* GetInGameHUD();
 };

@@ -20,8 +20,8 @@ void UCharacterSoundComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
 
 void UCharacterSoundComponent::Client_PlayHitSound_Implementation()
 {
-	if (GetCharacter()->IsLocallyControlled())
+	if (GetBaseCharacter()->IsLocallyControlled())
 	{
-		UGameplayStatics::PlaySoundAtLocation(this, OnHitSound, GetCharacter()->GetActorLocation());
+		UGameplayStatics::PlaySoundAtLocation(this, OnHitSound, GetBaseCharacter()->GetActorLocation());
 	}
 }

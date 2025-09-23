@@ -47,7 +47,7 @@ public:
 	float FallDamageThreshold = 1000.0f;
 public:
 	UFUNCTION(BlueprintCallable, Category = "Stat")
-	void TakeDamage(float DamageAmount);
+	void TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser);
 
 	UFUNCTION(BlueprintCallable, Category = "Stat")
 	void TakeFallDamage(float Velocity);

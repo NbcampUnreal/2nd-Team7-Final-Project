@@ -10,12 +10,12 @@ void UCharacterCameraControlComponent::BeginPlay()
 
 void UCharacterCameraControlComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
-
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }
 
 USpringArmComponent* UCharacterCameraControlComponent::GetCharacterSpringArm()
 {
-	return GetCharacter()->SpringArm;
+	return GetBaseCharacter()->SpringArm;
 }
 
 USkeletalMeshComponent* UCharacterCameraControlComponent::CharacterMesh()
@@ -81,7 +81,7 @@ void UCharacterCameraControlComponent::SetCameraEmoteMode(bool bIsFirstPersonVie
 
 void UCharacterCameraControlComponent::Handle_ViewMode()
 {
-	if (GetCharacter()->CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
+	if (GetBaseCharacter()->CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating)
 	{
 		return;
 	}
@@ -93,8 +93,8 @@ void UCharacterCameraControlComponent::ResetCameraLocationToDefault()
 {
 	SwitchToFirstPerson();
 	GetCharacterSpringArm()->bUsePawnControlRotation = true;
-	GetCharacter()->bIsAiming = false;
-	GetCharacter()->bIsTransitioning = false;
+	GetBaseCharacter()->bIsAiming = false;
+	GetBaseCharacter()->bIsTransitioning = false;
 }
 
 void UCharacterCameraControlComponent::SetSpringArmTargetLength(float Distance)
@@ -104,29 +104,29 @@ void UCharacterCameraControlComponent::SetSpringArmTargetLength(float Distance)
 
 void UCharacterCameraControlComponent::SetTransparentHeadMesh(bool bIsTransparent)
 {
-	GetCharacter()->CustomHeadMesh->SetOwnerNoSee(bIsTransparent);
+	GetBaseCharacter()->CustomHeadMesh->SetOwnerNoSee(bIsTransparent);
 }
 
 void UCharacterCameraControlComponent::StartAiming()
 {
-	if (!GetCharacter()->bIsAiming)
+	if (!GetBaseCharacter()->bIsAiming)
 	{
-		GetCharacter()->bIsAiming = true;
-		GetCharacter()->bIsTransitioning = true;
+		GetBaseCharacter()->bIsAiming = true;
+		GetBaseCharacter()->bIsTransitioning = true;
 
 		// 스프링암을 RootComponent에 붙여서 자유롭게 움직일 수 있게 함
 		//GetCharacterSpringArm()->AttachToComponent(GetCharacter()->GetRootComponent(), FAttachmentTransformRules::KeepWorldTransform);
 
-		GetCharacter()->CancelInteraction();
+		GetBaseCharacter()->CancelInteraction();
 	}
 }
 
 void UCharacterCameraControlComponent::StopAiming()
 {
-	if (GetCharacter()->bIsAiming)
+	if (GetBaseCharacter()->bIsAiming)
 	{
-		GetCharacter()->bIsAiming = false;
-		GetCharacter()->bIsTransitioning = true;
+		GetBaseCharacter()->bIsAiming = false;
+		GetBaseCharacter()->bIsTransitioning = true;
 
 		// 스프링암을 RootComponent에 붙여서 자유롭게 움직일 수 있게 함
 		//GetCharacterSpringArm()->AttachToComponent(GetCharacter()->GetRootComponent(), FAttachmentTransformRules::KeepWorldTransform);

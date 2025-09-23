@@ -33,24 +33,25 @@ void UCharacterDisplayComponent::ApplyBrightness(float NormalizedValue)
 void UCharacterDisplayComponent::InitializePostProcess()
 {
 	PostProcessComponent = NewObject<UPostProcessComponent>(GetOwner());
-	if (PostProcessComponent)
+	if (!IsValid(PostProcessComponent))
 	{
-		PostProcessComponent->RegisterComponent();
-		PostProcessComponent->AttachToComponent(GetOwner()->GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
-
-		// 기본 세팅
-		PostProcessComponent->bUnbound = true;
-		
-		PostProcessComponent->Settings.AutoExposureMethod = EAutoExposureMethod::AEM_Histogram;
-		PostProcessComponent->Settings.bOverride_AutoExposureBias = true;
-		PostProcessComponent->Settings.AutoExposureBias = 0.0f;
-		PostProcessComponent->Settings.bOverride_AutoExposureMinBrightness = true;
-		PostProcessComponent->Settings.bOverride_AutoExposureMaxBrightness = true;
-
-		// 블렌드 웨이트 1.0으로 보정 적용 보장
-		PostProcessComponent->BlendWeight = 1.0f;
-		PostProcessComponent->Priority = 100.0f;
+		return;
 	}
+	PostProcessComponent->RegisterComponent();
+	PostProcessComponent->AttachToComponent(GetOwner()->GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
+
+	// 기본 세팅
+	PostProcessComponent->bUnbound = true;
+
+	PostProcessComponent->Settings.AutoExposureMethod = EAutoExposureMethod::AEM_Histogram;
+	PostProcessComponent->Settings.bOverride_AutoExposureBias = true;
+	PostProcessComponent->Settings.AutoExposureBias = 0.0f;
+	PostProcessComponent->Settings.bOverride_AutoExposureMinBrightness = true;
+	PostProcessComponent->Settings.bOverride_AutoExposureMaxBrightness = true;
+
+	// 블렌드 웨이트 1.0으로 보정 적용 보장
+	PostProcessComponent->BlendWeight = 1.0f;
+	PostProcessComponent->Priority = 100.0f;
 }
 
 void UCharacterDisplayComponent::LoadBrightnessSetting()

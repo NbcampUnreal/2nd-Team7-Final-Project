@@ -43,6 +43,12 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 	float WallClipAimOffsetPitch = 0.0f;
 
+	UPROPERTY(BlueprintReadOnly)
+	FVector WallClipAimOffsetLocation = FVector();
+
+	UPROPERTY(BlueprintReadOnly)
+	FRotator WallClipAimOffsetRotation = FRotator();
+
 	UPROPERTY(BlueprintReadWrite, Category = "IK")
 	FVector AimSocketLocation;
 
@@ -102,6 +108,9 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void SetAimPoint(FVector InAimPoint) { AimPoint = InAimPoint; }
+
+
+
 
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")

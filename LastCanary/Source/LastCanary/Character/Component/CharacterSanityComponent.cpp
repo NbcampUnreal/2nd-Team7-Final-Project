@@ -55,9 +55,11 @@ void UCharacterSanityComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 
 float UCharacterSanityComponent::TakeSanityDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
-	if (!GetCharacter()->HasAuthority())
-		return 0;
-
+	if (!IsValid(GetBaseCharacter()) || !GetBaseCharacter()->HasAuthority())
+	{
+		return 0.0f;
+	}
+		
 	float FinalDamage = CalculateTakeSanityDamage(DamageAmount);
 	CurrentSanity = FMath::Clamp(CurrentSanity - FinalDamage, 0.0f, MaxSanity);
 
@@ -68,7 +70,7 @@ float UCharacterSanityComponent::TakeSanityDamage(float DamageAmount, FDamageEve
 	else if (CurrentSanity >= 60.f)   NewStage = 1;
 	else if (CurrentSanity >= 40.f)   NewStage = 2;
 	else if (CurrentSanity >= 20.f)   NewStage = 3;
-	else                               NewStage = 4; // 0~19
+	else                              NewStage = 4; // 0~19
 
 	// ----- 단계 변경 감지 -----
 	if (NewStage != CurrentSanityStage)
@@ -78,12 +80,14 @@ float UCharacterSanityComponent::TakeSanityDamage(float DamageAmount, FDamageEve
 	}
 
 	// ----- 0 이하 특수 효과 -----
-	if (CurrentSanity <= 0.f && !bZeroSanityEffectsApplied)
+	if (CurrentSanity <= 0.0f && !bZeroSanityEffectsApplied)
 	{
 		bZeroSanityEffectsApplied = true;
 		StartHPDecayAtZeroSanity();
-		if (bReduceStaminaAtZero)
+		if (bReduceStaminaAtZero) 
+		{
 			ApplyHalfStamina();
+		}
 	}
 
 	return DamageAmount;
@@ -91,7 +95,7 @@ float UCharacterSanityComponent::TakeSanityDamage(float DamageAmount, FDamageEve
 
 float UCharacterSanityComponent::RestoreSanity(float Amount)
 {
-	if (!GetCharacter()->HasAuthority())
+	if (!GetBaseCharacter()->HasAuthority())
 	{
 		return 0;
 	}
@@ -204,25 +208,25 @@ void UCharacterSanityComponent::StopHPDecay()
 void UCharacterSanityComponent::HPDecayTick()
 {
 	FDamageEvent Dmg;
-	GetCharacter()->TakeDamage(HPDecayAmountPerTick, Dmg, nullptr, GetCharacter());
+	GetBaseCharacter()->TakeDamage(HPDecayAmountPerTick, Dmg, nullptr, GetBaseCharacter());
 }
 
 //------------------ Stamina Half at Zero -------------------------------
 
 void UCharacterSanityComponent::ApplyHalfStamina()
 {
-	if (IsValid(GetCharacter()))
+	if (IsValid(GetBaseCharacter()))
 	{
-		OriginalStaminaMax = GetCharacter()->StaminaComponent->GetMaxStamina();
-		GetCharacter()->StaminaComponent->SetMaxStamina(OriginalStaminaMax * 0.5f);
+		OriginalStaminaMax = GetBaseCharacter()->StaminaComponent->GetMaxStamina();
+		GetBaseCharacter()->StaminaComponent->SetMaxStamina(OriginalStaminaMax * 0.5f);
 	}
 }
 
 void UCharacterSanityComponent::RestoreHalfStamina()
 {
-	if (IsValid(GetCharacter()) && OriginalStaminaMax > 0.f)
+	if (IsValid(GetBaseCharacter()) && OriginalStaminaMax > 0.f)
 	{
-		GetCharacter()->StaminaComponent->SetMaxStamina(OriginalStaminaMax);
+		GetBaseCharacter()->StaminaComponent->SetMaxStamina(OriginalStaminaMax);
 	}
 }
 
@@ -282,21 +286,21 @@ void UCharacterSanityComponent::PerformRandomPanicAction()
 
 void UCharacterSanityComponent::PlayScreamSound_Local()
 {
-	if (GetCharacter()->IsLocallyControlled() && ScreamSound)
+	if (GetBaseCharacter()->IsLocallyControlled() && ScreamSound)
 	{
-		UGameplayStatics::PlaySoundAtLocation(this, ScreamSound, GetCharacter()->GetActorLocation());
+		UGameplayStatics::PlaySoundAtLocation(this, ScreamSound, GetBaseCharacter()->GetActorLocation());
 	}
 }
 
 void UCharacterSanityComponent::UseItemUnexpectedly()
 {
-	GetCharacter()->UseEquippedItem(1.0f);
-	GetCharacter()->UseEquippedItem(0.0f);
+	GetBaseCharacter()->UseEquippedItem(1.0f);
+	GetBaseCharacter()->UseEquippedItem(0.0f);
 }
 
 void UCharacterSanityComponent::PlaySighSoundForAll()
 {
-	if (GetCharacter()->IsLocallyControlled())
+	if (GetBaseCharacter()->IsLocallyControlled())
 	{
 		Server_PlaySighSound();
 	}
@@ -304,7 +308,7 @@ void UCharacterSanityComponent::PlaySighSoundForAll()
 
 void UCharacterSanityComponent::Server_PlaySighSound_Implementation()
 {
-	if (GetCharacter()->HasAuthority())
+	if (GetBaseCharacter()->HasAuthority())
 	{
 		Multicast_PlaySighSound();
 	}
@@ -316,7 +320,7 @@ void UCharacterSanityComponent::Multicast_PlaySighSound_Implementation()
 	{
 		UGameplayStatics::SpawnSoundAttached(
 			SighSound,
-			GetCharacter()->GetRootComponent(),
+			GetBaseCharacter()->GetRootComponent(),
 			NAME_None,
 			FVector::ZeroVector,
 			EAttachLocation::KeepRelativeOffset,
@@ -329,9 +333,9 @@ void UCharacterSanityComponent::Multicast_PlaySighSound_Implementation()
 
 void UCharacterSanityComponent::PlayHallucinationSound()
 {
-	if (GetCharacter()->IsLocallyControlled() && HallucinationSound)
+	if (GetBaseCharacter()->IsLocallyControlled() && HallucinationSound)
 	{
-		UGameplayStatics::PlaySoundAtLocation(this, HallucinationSound, GetCharacter()->GetActorLocation());
+		UGameplayStatics::PlaySoundAtLocation(this, HallucinationSound, GetBaseCharacter()->GetActorLocation());
 	}
 }
 
@@ -349,7 +353,7 @@ void UCharacterSanityComponent::RemoveVisionNoiseEffect()
 
 void UCharacterSanityComponent::ForceSetMouseSensitivity(float NewSensitivity, float Duration)
 {
-	GetCharacter()->MouseSensitivityMultiplier = NewSensitivity;
+	GetBaseCharacter()->MouseSensitivityMultiplier = NewSensitivity;
 
 	GetWorld()->GetTimerManager().ClearTimer(MouseSensitivityRestoreHandle);
 	GetWorld()->GetTimerManager().SetTimer(
@@ -363,12 +367,12 @@ void UCharacterSanityComponent::ForceSetMouseSensitivity(float NewSensitivity, f
 
 void UCharacterSanityComponent::RestoreOriginalMouseSensitivity()
 {
-	GetCharacter()->MouseSensitivityMultiplier = 1.0f;
+	GetBaseCharacter()->MouseSensitivityMultiplier = 1.0f;
 }
 
 void UCharacterSanityComponent::ForceInvertMouse(bool bInvert)
 {
-	GetCharacter()->MouseInvertMultiplier = bInvert ? -1.0f : 1.0f;
+	GetBaseCharacter()->MouseInvertMultiplier = bInvert ? -1.0f : 1.0f;
 }
 
 void UCharacterSanityComponent::ForceInvertMouseTemporary(bool bInvert, float Duration)

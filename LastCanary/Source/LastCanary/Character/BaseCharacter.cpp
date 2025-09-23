@@ -64,6 +64,7 @@
 #include "Character/Component/CharacterSoundComponent.h"
 #include "Character/Component/CharacterSanityComponent.h"
 #include "Character/Component/CharacterADSComponent.h"
+#include "Character/Component/CharacterWeaponClippingComponent.h"
 
 
 #include "GameFramework/CharacterMovementComponent.h"
@@ -152,6 +153,7 @@ ABaseCharacter::ABaseCharacter()
 	SoundPlayComponent = CreateDefaultSubobject<UCharacterSoundComponent>(TEXT("SoundPlayComponent"));
 	SanityComponent = CreateDefaultSubobject<UCharacterSanityComponent>(TEXT("SanityComponent"));
 	ADSComponent = CreateDefaultSubobject<UCharacterADSComponent>(TEXT("ADSComponent"));
+	WeaponClippingComponent = CreateDefaultSubobject<UCharacterWeaponClippingComponent>(TEXT("WeaponClippingComponent"));
 }
 
 void ABaseCharacter::ApplyNetworkSmoothSettings(
@@ -432,7 +434,6 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 	if (!IsLocallyControlled()) return;
 	SpringArm->SetWorldLocation(GetMesh()->GetSocketLocation("head"));
 	//	ViewInfo.Location = GetMesh()->GetSocketLocation(("head"));
-	UpdateGunWallClipOffset(DeltaTime);
 	if (bIsMantling)
 	{
 		bIsAiming = false;
@@ -467,91 +468,14 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 		}
 
 	}
-	// 전환 중일 때만 부드러운 이동 처리
-	if (bIsTransitioning)
-	{
-		FVector CurrentLocation = SpringArm->GetComponentLocation();
-		FVector TargetLocation;
-
-		// 목표 위치 결정
-		if (bIsAiming && IsValid(CurrentRifleMesh) && !bIsReloading)
-		{
-			TargetLocation = OverlaySkeletalMesh->GetSocketLocation(FName("Scope"));
-			//TargetLocation = CurrentRifleMesh->GetSocketLocation(FName("Scope"));
-		}
-		else
-		{
-			TargetLocation = GetMesh()->GetSocketLocation(FName("FirstPersonCamera"));
-		}
-
-		// 부드럽게 이동
-		FVector NewLocation = FMath::VInterpTo(CurrentLocation, TargetLocation, DeltaTime, CameraTransitionSpeed);
-		//SpringArm->SetWorldLocation(NewLocation);
-
-		// 목표 지점에 가까워지면 Attach
-		float Distance = FVector::Dist(NewLocation, TargetLocation);
-		if (Distance < 2.0f) // 2.0f 단위 이내로 가까워지면
-		{
-			bIsTransitioning = false;
-			SpringArm->bEnableCameraLag = false;
-			SpringArm->bEnableCameraRotationLag = false;
-			if (bIsAiming && IsValid(CurrentRifleMesh) && !bIsReloading)
-			{
-				// Scope에 붙이기
-				AttachCameraToRifle();
-				SpringArm->bUsePawnControlRotation = false;
-			}
-			else
-			{
-				// FirstPersonCamera에 붙이기
-				AttachCameraToCharacter();
-				SpringArm->TargetArmLength = bIsFPSCamera ? 0.0f : 200.0f;
-				SpringArm->bUsePawnControlRotation = true;
-			}
-		}
-	}
 	ViewInfo.Rotation.Roll = 0.0f;
 }
 
 void ABaseCharacter::ResetCameraLocationToDefault()
 {
-	AttachCameraToCharacter();
 	SpringArm->bUsePawnControlRotation = true;
 	bIsAiming = false;
 	bIsTransitioning = false;
-}
-
-void ABaseCharacter::AttachCameraToRifle()
-{
-	if (IsValid(CurrentRifleMesh))
-	{
-		if (IsLocallyControlled())
-		{
-
-			AGunBase* Gun = Cast<AGunBase>(GetToolbarInventoryComponent()->GetCurrentEquippedItem());
-			if (IsValid(Gun))
-			{
-				if (Gun->HasScopeAttached())
-				{
-					//SpringArm->AttachToComponent(OverlaySkeletalMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("RifleScope"));
-					return;
-				}
-			}
-			//SpringArm->AttachToComponent(OverlaySkeletalMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
-			//SpringArm->AttachToComponent(CurrentRifleMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("Scope"));
-		}
-	}
-}
-
-void ABaseCharacter::AttachCameraToCharacter()
-{
-	if (IsValid(GetMesh()))
-	{
-		if (IsLocallyControlled())
-		{
-			//SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
-		}
-	}
 }
 
 AItemBase* ABaseCharacter::GetCurrentItem()
@@ -595,6 +519,16 @@ void ABaseCharacter::Tick(float DeltaSeconds)
 
 	SetDesiredAiming(true);
 }// 전환이 완료되었는지 확인하는 유틸리티 함수 (선택사항)
+
+void ABaseCharacter::SetIsCloseToWall(bool _bIsCloseToWall)
+{
+	bIsCloseToWall = _bIsCloseToWall;
+}
+
+bool ABaseCharacter::GetIsCloseToWall()
+{
+	return bIsCloseToWall;
+}
 
 void ABaseCharacter::NotifyNoiseToAI(FVector Velocity)
 {
@@ -726,7 +660,7 @@ void ABaseCharacter::ApplySmoothRecoil(float Vertical, float Horizontal)
 {
 	if (RecoilComponent)
 	{
-		RecoilComponent->ApplySmoothRecoil(Vertical, Horizontal);
+		RecoilComponent->ApplyRecoil(Vertical);
 	}
 }
 
@@ -802,11 +736,6 @@ void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::HandleStaminaConsumed()
 {
-	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
-	if (!IsValid(MyPlayerState))
-	{
-		return;
-	}
 	float CurrentPlayerSpeed = GetPlayerMovementSpeed();
 	if (FrontInput < 0.1f)
 	{
@@ -821,9 +750,6 @@ void ABaseCharacter::HandleStaminaConsumed()
 	bIsSprinting = true;
 	SetDesiredAiming(false);
 	SetDesiredGait(AlsGaitTags::Sprinting);
-	//Camera->AttachToComponent(SpringArm, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
-	//Camera->SetRelativeLocation(FVector::ZeroVector);
-	//Camera->SetRelativeRotation(FRotator::ZeroRotator); // 필요 시 원래 회전 복구
 	StaminaComponent->StopStaminaRecovery();
 	StaminaComponent->StopStaminaRecoverAfterDelay();
 	StaminaComponent->StartStaminaRecoverAfterDelayOnJump();
@@ -1226,111 +1152,8 @@ void ABaseCharacter::HandleFocusChanged(AActor* NewFocus)
 				}
 			}
 		}
-		
 	}
 }
-
-void ABaseCharacter::UpdateGunWallClipOffset(float DeltaTime)
-{
-	// 1. 총을 들고 있는 상태인지 확인
-	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
-	if (!IsValid(EquippedItem))
-	{
-		WallClipAimOffsetPitch = FMath::FInterpTo(WallClipAimOffsetPitch, 0.0f, DeltaTime, 5.0f);
-		return;
-	}
-
-	AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem);
-	if (!IsValid(EquipmentItem))
-	{
-		WallClipAimOffsetPitch = FMath::FInterpTo(WallClipAimOffsetPitch, 0.0f, DeltaTime, 5.0f);
-		return;
-	}
-
-	if (EquipmentItem->ItemData.ItemType != FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle"))
-		&& EquipmentItem->ItemData.ItemType != FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Shotgun"))
-		&& EquipmentItem->ItemData.ItemType != FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol")))
-	{
-		WallClipAimOffsetPitch = FMath::FInterpTo(WallClipAimOffsetPitch, 0.0f, DeltaTime, 5.0f);
-		return;
-	}
-
-	AGunBase* RifleItem = Cast<AGunBase>(EquippedItem);
-	if (!IsValid(RifleItem))
-	{
-		WallClipAimOffsetPitch = FMath::FInterpTo(WallClipAimOffsetPitch, 0.0f, DeltaTime, 5.0f);
-		return;
-	}
-
-	USkeletalMeshComponent* RifleMesh = RifleItem->GetSkeletalMeshComponent();
-	if (!IsValid(RifleMesh))
-	{
-		WallClipAimOffsetPitch = FMath::FInterpTo(WallClipAimOffsetPitch, 0.0f, DeltaTime, 5.0f);
-		return;
-	}
-
-	FVector MuzzleLoc = RifleMesh->GetSocketLocation("Muzzle");
-	FTransform MuzzleTransform = RifleMesh->GetSocketTransform("Muzzle", RTS_World);
-
-	// 머즐의 앞 방향과 Pitch 각도 얻기
-	FVector MuzzleForward = MuzzleTransform.GetUnitAxis(EAxis::Z);
-	FRotator MuzzleRot = MuzzleForward.Rotation();
-	float MuzzlePitch = MuzzleRot.Pitch;
-
-	FHitResult Hit;
-	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(this);
-	Params.AddIgnoredActor(RifleItem); // 총 자체도 무시
-
-	// 더 안정적인 트레이스 설정
-	static constexpr float GunWallTraceDistance = 1.0f;
-	FVector TraceStart = MuzzleLoc - MuzzleForward * 150.0f;
-	FVector TraceEnd = MuzzleLoc + MuzzleForward * GunWallTraceDistance;
-
-	bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Visibility, Params);
-
-	// 벽과의 거리 비율 계산 (데드존 추가)
-	static constexpr float WallClipTriggerDistance = 100.0f;
-	static constexpr float DeadZone = 10.0f; // 10cm 데드존
-
-	float TargetWallRatio = 0.0f;
-	if (bHit)
-	{
-		float Dist = (Hit.Location - MuzzleLoc).Size();
-		if (Dist < WallClipTriggerDistance)
-		{
-			// 데드존 적용
-			float AdjustedDist = FMath::Max(Dist - DeadZone, 0.0f);
-			float AdjustedMaxDist = WallClipTriggerDistance - DeadZone;
-			TargetWallRatio = 1.0f - (AdjustedDist / AdjustedMaxDist);
-			TargetWallRatio = FMath::Clamp(TargetWallRatio, 0.0f, 1.0f);
-		}
-	}
-
-	// 인스턴스 변수로 변경 (헤더 파일에 추가 필요)
-	SmoothedWallRatio = FMath::FInterpTo(SmoothedWallRatio, TargetWallRatio, DeltaTime, 10.0f); // 보간 속도 감소
-
-	// Pitch 보정값 계산
-	float DirectionSign = MuzzlePitch >= 0 ? 1.0f : -1.0f;
-	float TargetOffset = FMath::Lerp(0.0f, MaxWallClipPitch, SmoothedWallRatio) * DirectionSign;
-
-	// 더 부드러운 보간
-	WallClipAimOffsetPitch = FMath::FInterpTo(WallClipAimOffsetPitch, TargetOffset, DeltaTime, 4.0f);
-	if (abs(WallClipAimOffsetPitch) > 10.0f)
-	{
-		bIsCloseToWall = true;
-	}
-	else
-	{
-		bIsCloseToWall = false;
-	}
-	// 애님 인스턴스에 전달
-	if (UAlsAnimationInstance* AlsAnim = Cast<UAlsAnimationInstance>(GetMesh()->GetAnimInstance()))
-	{
-		AlsAnim->WallClipAimOffsetPitch = WallClipAimOffsetPitch;
-	}
-}
-
 
 void ABaseCharacter::SetPossess(bool IsPossessed)
 {
@@ -1446,35 +1269,30 @@ void ABaseCharacter::Server_UnequipCurrentItem_Implementation()
 
 float ABaseCharacter::TakeSanityDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
-	LOG_Char_WARNING(TEXT("캐릭터가 정신력에 타격을 받음"));
 	if (!HasAuthority())	
 	{
-		return 0;
+		return 0.0f;
 	}
-	if (SanityComponent)
+	if (!IsValid(SanityComponent))
 	{
-		SanityComponent->TakeSanityDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+		return 0.0f;
 	}
+
+	SanityComponent->TakeSanityDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 	return DamageAmount;
 }
 
 float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
-	LOG_Char_WARNING(TEXT("Character Take Damage"));
 	if (!HasAuthority())
 	{
-		return 0;
+		return 0.0f;
 	}	
-	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
-	if (!IsValid(MyPlayerState))
+	if (IsValid(HealthComponent))
 	{
-		return 0;
+		HealthComponent->TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 	}
-	if (MyPlayerState->bInfiniteHP == true) // 삭제하고 싶은데, 삭제하면 치트매니저에 문제가 생길 것 같은 느낌
-	{
-		return 0;
-	}
-	HealthComponent->TakeDamage(DamageAmount);
+	
 	return DamageAmount;
 }
 

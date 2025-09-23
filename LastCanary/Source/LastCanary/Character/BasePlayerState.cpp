@@ -37,16 +37,6 @@ void ABasePlayerState::BeginPlay()
 	}
 
 	SetInGameStatus(EPlayerInGameStatus::Alive);
-
-	/*
-	if (AController* Ctrl = GetOwner<AController>())
-	{
-		if (Ctrl->IsLocalController())
-		{
-			SetCustomizationData();
-		}
-	}
-	*/
 }
 
 void ABasePlayerState::OnRep_PlayerGameName()

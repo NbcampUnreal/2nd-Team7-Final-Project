@@ -25,7 +25,7 @@ void UCharacterAnimationComponent::BeginPlay()
 
 void UCharacterAnimationComponent::PlayMontageByType(UAnimMontage* LocalMontage, UAnimMontage* MulticastMontage, EAnimationMontageType Type)
 {
-	if (!IsValid(GetCharacter())) return;
+	if (!IsValid(GetBaseCharacter())) return;
 	if (!IsValid(CachedAnimInstance)) return;
 
 	if (GetOwnerRole() < ROLE_Authority) // 로컬에서만 재생하는 버전
@@ -207,7 +207,7 @@ void UCharacterAnimationComponent::Multicast_CancelMontage_Implementation(UAnimM
 {
 	if (!IsValid(CachedAnimInstance)) return;
 
-	if (!GetCharacter()->IsLocallyControlled())
+	if (!GetBaseCharacter()->IsLocallyControlled())
 	{
 		CachedAnimInstance->Montage_Stop(0.1f, RemoteMontageToStop); // 다른 사람에게 보이는 애니메이션만 중단
 	}
@@ -231,9 +231,9 @@ void UCharacterAnimationComponent::HandleAnimNotify(EAnimationMontageType Type)
 		break;
 
 	case EAnimationMontageType::Interaction:
-		if (GetCharacter()->InteractionComponent)
+		if (GetBaseCharacter()->InteractionComponent)
 		{
-			GetCharacter()->InteractionComponent->Interact();
+			GetBaseCharacter()->InteractionComponent->Interact();
 		}
 		SetPlayingMontageState(Type, false);
 		break;
@@ -288,7 +288,7 @@ void UCharacterAnimationComponent::SetPlayingMontageState(EAnimationMontageType 
 void UCharacterAnimationComponent::RefreshOverlayLinkedAnimationLayer(FGameplayTag ItemTag)
 {
 	TSubclassOf<UAnimInstance> OverlayAnimationInstanceClass;
-	if (GetCharacter()->bIsSpawnDrone)  // 태그에 컨트롤러 들 때 사용할 태그 추가해야됨...
+	if (GetBaseCharacter()->bIsSpawnDrone)  // 태그에 컨트롤러 들 때 사용할 태그 추가해야됨...
 	{
 		OverlayAnimationInstanceClass = BinocularsAnimationClass;
 		if (IsValid(OverlayAnimationInstanceClass))

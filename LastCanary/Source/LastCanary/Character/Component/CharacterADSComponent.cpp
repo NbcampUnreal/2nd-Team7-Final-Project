@@ -24,6 +24,7 @@ void UCharacterADSComponent::TickComponent(float DeltaTime, ELevelTick TickType,
     
 
     float TargetWeight = bIsADS ? 1.0f : 0.0f;
+
     float NewWeight = FMath::FInterpTo(Get_ADS_Weight(), TargetWeight, DeltaTime, ADS_InterpSpeed);
     Set_ADS_Weight(NewWeight);
     GetAimTargetLocation(GetADS_Distance(GetGun()));
@@ -43,6 +44,25 @@ void UCharacterADSComponent::TickComponent(float DeltaTime, ELevelTick TickType,
     }
 }
 
+UAlsAnimationInstance* UCharacterADSComponent::GetALSAnimInstance()
+{
+    if(!IsValid(GetBaseCharacter()))
+    {
+        return nullptr;
+    }
+
+    if (!IsValid(GetCharacterAnimInstance()))
+    {
+        return nullptr;
+    }
+    UAlsAnimationInstance* ALSAnimInstance = Cast<UAlsAnimationInstance>(GetCharacterAnimInstance());
+    if (!IsValid(ALSAnimInstance))
+    {
+        return nullptr;
+    }
+    return ALSAnimInstance;
+}
+
 void UCharacterADSComponent::SwitchADS(bool _bIsADS)
 {
     bIsADS = _bIsADS;
@@ -52,19 +72,23 @@ void UCharacterADSComponent::SwitchADS(bool _bIsADS)
 
 void UCharacterADSComponent::Set_ADS_Weight(float _ADS_Weight)
 {
-    ADS_Weight = FMath::Clamp(_ADS_Weight, 0.0f, 1.0f);
-
-    //GetCharacter()->Camera->FieldOfView = 90.0f - ADS_Weight * 50.0f;
     UAlsAnimationInstance* ALSAnimInstance = Cast<UAlsAnimationInstance>(GetCharacterAnimInstance());
-    ALSAnimInstance->AimAlpha = ADS_Weight;
+    if (!IsValid(ALSAnimInstance))
+    {
+        return;
+    }
 
+    ADS_Weight = FMath::Clamp(_ADS_Weight, 0.0f, 1.0f);
+    ALSAnimInstance->AimAlpha = ADS_Weight;
+    
+    GetBaseCharacter()->Camera->FieldOfView = 90.0f - ADS_Weight * GetADS_CameraFieldOfView(GetGun());
 }
 
 AGunBase* UCharacterADSComponent::GetGun()
 {
-    if (IsValid(GetCharacter()))
+    if (IsValid(GetBaseCharacter()))
     {
-        return GetCharacter()->GetCurrentGunItem();
+        return GetBaseCharacter()->GetCurrentGunItem();
     }
     return nullptr;
 }
@@ -129,6 +153,29 @@ float UCharacterADSComponent::GetADS_Distance(AGunBase* gun)
     return 10.0f;
 }
 
+float UCharacterADSComponent::GetADS_CameraFieldOfView(AGunBase* gun)
+{
+    if (!IsValid(gun))
+    {
+        return 30.0f;
+    }
+
+    if (gun->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
+    {
+        return 50.0f;
+    }
+    else if (gun->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol")))
+    {
+        return 30.0f;
+    }
+    else if (gun->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Shotgun")))
+    {
+        return 40.0f;
+    }
+
+    return 10.0f;
+}
+
 void UCharacterADSComponent::SetADSMode(float _ADS_Weight)
 {
     if (!IsValid(GetGun()) || !IsValid(GetGunSkeletalMesh()))
@@ -137,14 +184,14 @@ void UCharacterADSComponent::SetADSMode(float _ADS_Weight)
     USkeletalMeshComponent* GunMesh = GetGunSkeletalMesh();
 
     // --- 기준 Transform (손 소켓) ---
-    FTransform RifleTransform = GetCharacter()->GetMesh()->GetSocketTransform(GetADSSocketName(GetGun()), RTS_World);
+    FTransform RifleTransform = GetBaseCharacter()->GetMesh()->GetSocketTransform(GetADSSocketName(GetGun()), RTS_World);
 
     // --- 총기 ADS Transform ---
     FTransform ScopeTransform = GunMesh->GetSocketTransform("ADS", RTS_World);
 
     // --- 위치 보간 ---
-    FVector CameraLocation = GetCharacter()->Camera->GetComponentLocation();
-    FVector CameraForward = GetCharacter()->Camera->GetForwardVector();
+    FVector CameraLocation = GetBaseCharacter()->Camera->GetComponentLocation();
+    FVector CameraForward = GetBaseCharacter()->Camera->GetForwardVector();
 
     FVector ADSLocation = CameraLocation + CameraForward * GetADS_Distance(GetGun())
         - (ScopeTransform.GetLocation() - GunMesh->GetComponentLocation());
@@ -168,7 +215,7 @@ void UCharacterADSComponent::SetADSMode(float _ADS_Weight)
     // --- 최종 적용 ---
     GunMesh->SetWorldLocationAndRotation(TargetLocation, TargetQuat);
     
-    GetCharacter()->GetMesh()->RefreshBoneTransforms();
+    GetBaseCharacter()->GetMesh()->RefreshBoneTransforms();
 
     /*
     // 최종 위치 적용 (Rifle 소켓 기준)
@@ -227,14 +274,14 @@ void UCharacterADSComponent::SetRightHandIK()
 void UCharacterADSComponent::SetikHandgunLocation()
 {
     UAlsAnimationInstance* ALSAnimInstance = Cast<UAlsAnimationInstance>(GetCharacterAnimInstance());
-    GetCharacter()->GetMesh()->GetSocketTransform("hand_r",RTS_World);
+    GetBaseCharacter()->GetMesh()->GetSocketTransform("hand_r",RTS_World);
 
 }
 
 void UCharacterADSComponent::CalculateAimSocket()
 {
     FTransform GunScope_Transform = GetGunSkeletalMesh()->GetSocketTransform(TEXT("ADS"), ERelativeTransformSpace::RTS_World);
-    FTransform ik_hand_gun_Transform = GetCharacter()->GetMesh()->GetSocketTransform(TEXT("ik_hand_gun"), ERelativeTransformSpace::RTS_World);
+    FTransform ik_hand_gun_Transform = GetBaseCharacter()->GetMesh()->GetSocketTransform(TEXT("ik_hand_gun"), ERelativeTransformSpace::RTS_World);
     //FTransform t = GunScope_Transform.GetRelativeTransform(ik_hand_gun_Transform);
     FTransform t = ik_hand_gun_Transform.GetRelativeTransform(GunScope_Transform);
 
@@ -247,8 +294,8 @@ void UCharacterADSComponent::CalculateAimSocket()
 
 void UCharacterADSComponent::CalculateAimPoint()
 {
-    FTransform Camera_Transform = GetCharacter()->Camera->GetComponentTransform();
-    FTransform ik_hand_root_Transform = GetCharacter()->GetMesh()->GetSocketTransform(TEXT("ik_hand_root"), ERelativeTransformSpace::RTS_World);
+    FTransform Camera_Transform = GetBaseCharacter()->Camera->GetComponentTransform();
+    FTransform ik_hand_root_Transform = GetBaseCharacter()->GetMesh()->GetSocketTransform(TEXT("ik_hand_root"), ERelativeTransformSpace::RTS_World);
     FTransform t = Camera_Transform.GetRelativeTransform(ik_hand_root_Transform);
 
     FVector CameraForwardVector = t.GetRotation().GetForwardVector();
@@ -264,29 +311,35 @@ void UCharacterADSComponent::CalculateAimPoint()
 void UCharacterADSComponent::SetGunItemSocketTransform()
 {
     UAlsAnimationInstance* ALSAnimInstance = Cast<UAlsAnimationInstance>(GetCharacterAnimInstance());
-    FTransform GunItemSocket = GetCharacter()->GetMesh()->GetSocketTransform(TEXT("Rifle"), ERelativeTransformSpace::RTS_World);
+    FTransform GunItemSocket = GetBaseCharacter()->GetMesh()->GetSocketTransform(TEXT("Rifle"), ERelativeTransformSpace::RTS_World);
     ALSAnimInstance->GunItemSocket = GunItemSocket;
 }
 
 
 FVector UCharacterADSComponent::GetAimTargetLocation(float Distance)
 {
-    if (!GetCharacter()->Camera) return FVector::ZeroVector;
+    if (!IsValid(GetBaseCharacter()->Camera))
+    {
+        return FVector::ZeroVector;
+    }
+    
+    UAlsAnimationInstance* ALSAnimInstance = Cast<UAlsAnimationInstance>(GetCharacterAnimInstance());
+    if (!IsValid(ALSAnimInstance))
+    {
+        return FVector::ZeroVector;
+    }
 
-    FVector CameraLocation = GetCharacter()->Camera->GetComponentLocation();
-    FVector CameraForward = GetCharacter()->Camera->GetForwardVector();
+    FVector CameraLocation = GetBaseCharacter()->Camera->GetComponentLocation();
+    FVector CameraForward = GetBaseCharacter()->Camera->GetForwardVector();
 
     FVector AimPoint = CameraLocation + CameraForward * Distance;
-    UAlsAnimationInstance* ALSAnimInstance = Cast<UAlsAnimationInstance>(GetCharacterAnimInstance());
     ALSAnimInstance->SetAimPoint(AimPoint);
 
-    if (GetGun())
+    if (IsValid(GetGun()))
     {
         USkeletalMeshComponent* GunMesh = GetGunSkeletalMesh();
         
         FTransform RightHandGrip = GunMesh->GetSocketTransform("RightGrip", RTS_World);
-        //FTransform RightHandGrip = GunMesh->GetSocketTransform("RightGrip", RTS_Component);
-        //FTransform RightHandGrip = GetCharacter()->GetMesh()->GetSocketTransform("Rifle", RTS_World);
         FTransform GunScope = GunMesh->GetSocketTransform("ADS", RTS_World);
 
         FVector OffsetLocation = RightHandGrip.GetLocation() - GunScope.GetLocation();
@@ -295,8 +348,6 @@ FVector UCharacterADSComponent::GetAimTargetLocation(float Distance)
         ALSAnimInstance->RightHandIKTargetLocationOffset = OffsetLocation;
         ALSAnimInstance->RightHandIKTargetRotationOffset = OffsetRotation;
     }
-    
-
     
     return AimPoint;
 }

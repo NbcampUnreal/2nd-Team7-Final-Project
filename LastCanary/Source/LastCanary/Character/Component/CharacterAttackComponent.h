@@ -93,9 +93,6 @@ public:
 
 private:
 	UPROPERTY()
-	class ACharacter* OwnerCharacter;
-
-	UPROPERTY()
 	UBoxComponent* KickHitBox;
 
 	UPROPERTY()

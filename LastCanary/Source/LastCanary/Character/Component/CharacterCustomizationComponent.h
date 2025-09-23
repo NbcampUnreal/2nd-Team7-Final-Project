@@ -14,6 +14,11 @@ class LASTCANARY_API UCharacterCustomizationComponent : public UCharacterBaseCom
 {
 	GENERATED_BODY()
 
+protected:
+	virtual void BeginPlay() override;
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
+
 public:
 	USkeletalMeshComponent* CharacterMesh();
 

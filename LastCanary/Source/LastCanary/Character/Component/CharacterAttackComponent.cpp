@@ -21,12 +21,10 @@ void UCharacterAttackComponent::BeginPlay()
 	Super::BeginPlay();
 	SetupHandHitBox();
 
-	OwnerCharacter = Cast<ACharacter>(GetOwner());
-
-	if (OwnerCharacter)
+	if (GetCharacter())
 	{
-		KickHitBox = NewObject<UBoxComponent>(OwnerCharacter, TEXT("KickHitBox"));
-		KickHitBox->AttachToComponent(OwnerCharacter->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("foot_l"));
+		KickHitBox = NewObject<UBoxComponent>(GetCharacter(), TEXT("KickHitBox"));
+		KickHitBox->AttachToComponent(GetCharacter()->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("foot_l"));
 		KickHitBox->SetBoxExtent(FVector(20, 30, 30));
 		KickHitBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		KickHitBox->SetCollisionObjectType(ECC_WorldDynamic);
@@ -62,25 +60,27 @@ void UCharacterAttackComponent::Handle_Attack(EAttackType _AttackType)
 
 void UCharacterAttackComponent::Handle_Kick()
 {
-	GetCharacter()->AnimationComponent->PlayAttackMontage(KickMontage);
+	GetBaseCharacter()->AnimationComponent->PlayAttackMontage(KickMontage);
 }
 
 void UCharacterAttackComponent::Handle_Pickaxe_Attack()
 {
-	if (GetCharacter()->AnimationComponent->GetIsPlayingAttackMontage() == false)
+	if (GetBaseCharacter()->AnimationComponent->GetIsPlayingAttackMontage() == false)
 	{
-		GetCharacter()->AnimationComponent->PlayAttackMontage(PickAxeMontage);
+		GetBaseCharacter()->AnimationComponent->PlayAttackMontage(PickAxeMontage);
 	}
 }
 
 void UCharacterAttackComponent::SetupHandHitBox()
 {
-	ACharacter* OwnerChar = Cast<ACharacter>(GetOwner());
-	if (!OwnerChar) return;
+	if (!IsValid(GetCharacter()))
+	{
+		return; 
+	}
 
-	HandHitBox = NewObject<UBoxComponent>(OwnerChar, TEXT("HandHitBox"));
+	HandHitBox = NewObject<UBoxComponent>(GetCharacter(), TEXT("HandHitBox"));
 	HandHitBox->RegisterComponent();
-	HandHitBox->AttachToComponent(OwnerChar->GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("Hand_RSocket"));
+	HandHitBox->AttachToComponent(GetCharacter()->GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("Hand_RSocket"));
 	HandHitBox->SetBoxExtent(FVector(10.f, 10.f, 10.f));
 	HandHitBox->SetCollisionProfileName(TEXT("OverlapAll"));
 	HandHitBox->SetGenerateOverlapEvents(true);
@@ -126,27 +126,27 @@ void UCharacterAttackComponent::OnHandHitBoxOverlap(UPrimitiveComponent* Overlap
 
 void UCharacterAttackComponent::PerformKickAttack()
 {
-	if (!GetOwner()->HasAuthority()) return;
+	if (!GetCharacter()->HasAuthority()) return;
 
-	if (!OwnerCharacter) return;
+	if (!GetCharacter()) return;
 
-	const FVector Start = OwnerCharacter->GetActorLocation() + OwnerCharacter->GetActorForwardVector() * 50.f + FVector(0, 0, 50.f);
+	const FVector Start = GetCharacter()->GetActorLocation() + GetCharacter()->GetActorForwardVector() * 50.f + FVector(0, 0, 50.f);
 	const FVector End = Start;
 	const FVector Extent(KickBoxExtent, KickBoxExtent, KickBoxExtent);
 
 	TArray<FHitResult> HitResults;
 	UKismetSystemLibrary::BoxTraceMultiForObjects(
-		GetWorld(), Start, End, Extent, OwnerCharacter->GetActorRotation(),
+		GetWorld(), Start, End, Extent, GetCharacter()->GetActorRotation(),
 		{ UEngineTypes::ConvertToObjectType(ECC_Pawn) },
-		false, { OwnerCharacter },
+		false, { GetCharacter() },
 		EDrawDebugTrace::None, HitResults, true);
 
 	for (const FHitResult& Hit : HitResults)
 	{
 		AActor* Target = Hit.GetActor();
-		if (Target && Target != OwnerCharacter)
+		if (Target && Target != GetCharacter())
 		{
-			FVector Dir = OwnerCharacter->GetActorForwardVector();
+			FVector Dir = GetCharacter()->GetActorForwardVector();
 			Dir.Z = 0.f;
 			Dir.Normalize();
 			ApplyDamageAndEffects(Target, Dir);
@@ -156,16 +156,16 @@ void UCharacterAttackComponent::PerformKickAttack()
 
 void UCharacterAttackComponent::PerformWeaponAttack(UPrimitiveComponent* WeaponCollider)
 {
-	if (!GetOwner()->HasAuthority()) return;
+	if (!GetCharacter()->HasAuthority()) return;
 
 	TArray<AActor*> OverlappingActors;
 	WeaponCollider->GetOverlappingActors(OverlappingActors, ACharacter::StaticClass());
 
 	for (AActor* Target : OverlappingActors)
 	{
-		if (Target && Target != GetOwner())
+		if (Target && Target != GetCharacter())
 		{
-			FVector Dir = GetOwner()->GetActorForwardVector();
+			FVector Dir = GetCharacter()->GetActorForwardVector();
 			Dir.Z = 0.f;
 			Dir.Normalize();
 			ApplyDamageAndEffects(Target, Dir);
@@ -209,9 +209,9 @@ void UCharacterAttackComponent::DisableKickHitBox()
 
 void UCharacterAttackComponent::StartItemAttack()
 {
-	if (GetCharacter()->AnimationComponent)
+	if (GetBaseCharacter()->AnimationComponent)
 	{
-		AItemBase* Item = GetCharacter()->GetCurrentItem();
+		AItemBase* Item = GetBaseCharacter()->GetCurrentItem();
 		
 		if (!IsValid(Item))
 		{
@@ -233,10 +233,10 @@ void UCharacterAttackComponent::StartItemAttack()
 
 void UCharacterAttackComponent::EndItemAttack()
 {
-	if (GetCharacter()->AnimationComponent)
+	if (GetBaseCharacter()->AnimationComponent)
 	{
-		GetCharacter()->AnimationComponent->HandleAnimNotify(EAnimationMontageType::Attack);
-		AItemBase* Item = GetCharacter()->GetCurrentItem();
+		GetBaseCharacter()->AnimationComponent->HandleAnimNotify(EAnimationMontageType::Attack);
+		AItemBase* Item = GetBaseCharacter()->GetCurrentItem();
 
 		if (!IsValid(Item))
 		{
@@ -278,15 +278,15 @@ void UCharacterAttackComponent::OnKickHitBoxOverlap(UPrimitiveComponent* Overlap
 {
 	
 	// 서버에서만 처리
-	if (!GetCharacter()->HasAuthority())
+	if (!GetBaseCharacter()->HasAuthority())
 	{
 		return;
 	}
-	const FVector Start = GetCharacter()->GetActorLocation() + GetCharacter()->GetActorForwardVector() * 50.f + FVector(0, 0, 50.f);
+	const FVector Start = GetBaseCharacter()->GetActorLocation() + GetBaseCharacter()->GetActorForwardVector() * 50.f + FVector(0, 0, 50.f);
 	const FVector End = Start; // 박스는 이동하지 않음
 
 	const FVector BoxExtent = FVector(100.f, 100.f, 100.f); // 크기 조절 가능
-	const FRotator Rotation = GetCharacter()->GetActorRotation();
+	const FRotator Rotation = GetBaseCharacter()->GetActorRotation();
 
 	TArray<FHitResult> HitResults;
 
@@ -298,7 +298,7 @@ void UCharacterAttackComponent::OnKickHitBoxOverlap(UPrimitiveComponent* Overlap
 		Rotation,
 		{ UEngineTypes::ConvertToObjectType(ECC_Pawn) },
 		false,
-		{ GetCharacter()},
+		{ GetBaseCharacter()},
 		EDrawDebugTrace::None,
 		HitResults,
 		true // ignore self
@@ -307,14 +307,14 @@ void UCharacterAttackComponent::OnKickHitBoxOverlap(UPrimitiveComponent* Overlap
 	for (const FHitResult& Hit : HitResults)
 	{
 		ACharacter* TargetCharacter = Cast<ACharacter>(Hit.GetActor());
-		if (!TargetCharacter || TargetCharacter == GetCharacter()) continue;
+		if (!TargetCharacter || TargetCharacter == GetBaseCharacter()) continue;
 		if (TargetCharacter->IsA<ABaseBossMonsterCharacter>())
 		{
 			continue;
 		}
 
 		// 넉백 처리
-		FVector KnockbackDir = GetCharacter()->GetActorForwardVector();
+		FVector KnockbackDir = GetBaseCharacter()->GetActorForwardVector();
 		KnockbackDir.Z = 0;
 		KnockbackDir.Normalize();
 
@@ -336,7 +336,7 @@ void UCharacterAttackComponent::HandleHit(ACharacter* TargetCharacter)
 	if (!TargetCharacter) return;
 
 	// 넉백 처리
-	FVector KnockbackDir = OwnerCharacter->GetActorForwardVector();
+	FVector KnockbackDir = GetCharacter()->GetActorForwardVector();
 	KnockbackDir.Z = 0.f;
 	KnockbackDir.Normalize();
 

@@ -20,7 +20,7 @@ void UCharacterHealthComponent::BeginPlay()
 
 void UCharacterHealthComponent::StartHealing(float TotalHealAmount, float Duration)
 {
-	if (!GetCharacter()->HasAuthority())
+	if (!GetBaseCharacter()->HasAuthority())
 	{
 		return;
 	}
@@ -39,7 +39,7 @@ void UCharacterHealthComponent::StartHealing(float TotalHealAmount, float Durati
 
 void UCharacterHealthComponent::HealStep()
 {
-	if (!GetCharacter()->HasAuthority())
+	if (!GetBaseCharacter()->HasAuthority())
 	{
 		return;
 	}
@@ -61,7 +61,7 @@ void UCharacterHealthComponent::StopHealing()
 	HealingTicksRemaining = 0;
 }
 
-void UCharacterHealthComponent::TakeDamage(float DamageAmount)
+void UCharacterHealthComponent::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
 	float CalculatedHP = CalculateDamage(DamageAmount);
 	if (bInfiniteHP == true)
@@ -146,50 +146,15 @@ MyPlayerState->Client_PlayDamageUI();
 void UCharacterHealthComponent::Client_UpdateHealth_Implementation()
 {
 	UpdateHealthUI();
-
 }
 
 void UCharacterHealthComponent::UpdateHealthUI()
 {
-	// 컴포넌트가 붙은 캐릭터 얻기
-	if (GetCharacter())
-	{
-		// 그 캐릭터를 소유한 컨트롤러 얻기
-		if (APlayerController* PC = Cast<APlayerController>(GetCharacter()->GetController()))
-		{
-			if (ULCGameInstanceSubsystem* Subsystem = GetWorld()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
-			{
-				if (ULCUIManager* UIManager = Subsystem->GetUIManager())
-				{
-					if (UInGameHUD* HUD = UIManager->GetInGameHUD())
-					{
-						float Percent = FMath::Clamp(CurrentHealth / MaxHealth, 0.0f, 1.0f);
-						HUD->UpdateHPBar(Percent);
-					}
-				}
-			}
-		}
-	}
+	float Percent = FMath::Clamp(CurrentHealth / MaxHealth, 0.0f, 1.0f);
+	GetInGameHUD()->UpdateHPBar(Percent);
 }
 
 void UCharacterHealthComponent::Client_PlayDamageUI_Implementation()
 {
-	if (GetCharacter())
-	{
-		LOG_Char_WARNING(TEXT("캐릭터 피해 받는 애니메이션 재생"));
-		if (APlayerController* PC = Cast<APlayerController>(GetCharacter()->GetController()))
-		{
-			if (ULCGameInstanceSubsystem* Subsystem = GetWorld()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
-			{
-				if (ULCUIManager* UIManager = Subsystem->GetUIManager())
-				{
-					if (UInGameHUD* HUD = UIManager->GetInGameHUD())
-					{
-						LOG_Char_WARNING(TEXT("캐릭터 피해 받는 애니메이션 재생"));
-						HUD->PlayTakeDamageAnim();
-					}
-				}
-			}
-		}
-	}
+	GetInGameHUD()->PlayTakeDamageAnim();
 }
