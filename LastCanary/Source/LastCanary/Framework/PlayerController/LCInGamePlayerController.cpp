@@ -29,26 +29,29 @@ void ALCInGamePlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
-	{
-		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
-		{
-			UIManager->SetUIContext(ELCUIContext::InGame);
-		}
-	}
+	
 
 	if (IsLocalController())
 	{
+		if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+		{
+			if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+			{
+				UIManager->SetUIContext(ELCUIContext::InGame);
+			}
+		}
+
 		if (PopupLevelInfoClass)
 		{
 			PopupLevelInfoInstance = CreateWidget<UPopupLevelInfo>(this, PopupLevelInfoClass);
 		}
+		if (LCUIManager)
+		{
+			LCUIManager->ShowLoadingLevel();
+		}
 	}
 
-	if (LCUIManager)
-	{
-		LCUIManager->ShowLoadingLevel();
-	}
+	
 
 }
 

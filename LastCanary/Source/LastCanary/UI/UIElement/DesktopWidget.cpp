@@ -50,6 +50,8 @@ void UDesktopWidget::NativeConstruct()
 
 void UDesktopWidget::PowerOn()
 {
+	LOG_Frame_WARNING(TEXT("PC위젯 시작"));
+
 	ResetAllAppButtonHighlights();
 
 	SetVisibility(ESlateVisibility::Visible);

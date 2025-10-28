@@ -32,14 +32,14 @@ void UBaseCharacterAnimNotify::Notify(USkeletalMeshComponent* MeshComp, UAnimSeq
         {
             if (Player->IsLocallyControlled())
             {
-                Player->OnInteractAnimationNotified();
+                //Player->OnInteractAnimationNotified();
             }
         }
         break;
     case ECharacterNotifyType::ItemUse:
         if (Player->HasAuthority())
         {
-            Player->UseItemAnimationNotified();
+            //Player->UseItemAnimationNotified();
         }
         break;
     case ECharacterNotifyType::Reload:

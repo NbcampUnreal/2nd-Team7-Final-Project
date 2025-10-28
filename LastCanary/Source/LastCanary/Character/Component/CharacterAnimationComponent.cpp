@@ -1,6 +1,9 @@
 #include "Character/Component/CharacterAnimationComponent.h"
 #include "Character/BaseCharacter.h"
 #include "Item/ItemBase.h"
+#include "Actor/Gimmick/LCBaseGimmick.h"
+#include "Character/Component/CharacterInteractionComponent.h"
+#include "Net/UnrealNetwork.h"
 
 #include "LastCanary.h"
 
@@ -9,23 +12,20 @@ UCharacterAnimationComponent::UCharacterAnimationComponent()
 	PrimaryComponentTick.bCanEverTick = false;
 }
 
+USkeletalMeshComponent* UCharacterAnimationComponent::CharacterMesh()
+{
+	return CachedCharacter->GetMesh();
+}
+
 void UCharacterAnimationComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (IsValid(CachedCharacter))
-	{
-		USkeletalMeshComponent* Mesh = CachedCharacter->GetMesh();
-		if (IsValid(Mesh))
-		{
-			CachedAnimInstance = Mesh->GetAnimInstance(); // 필요 시 폴링 기법 사용 ( 지속적인 테스트 필요 )
-		}
-	}
 }
 
 void UCharacterAnimationComponent::PlayMontageByType(UAnimMontage* LocalMontage, UAnimMontage* MulticastMontage, EAnimationMontageType Type)
 {
-	if (!IsValid(GetCharacter())) return;
+	if (!IsValid(GetBaseCharacter())) return;
 	if (!IsValid(CachedAnimInstance)) return;
 
 	if (GetOwnerRole() < ROLE_Authority) // 로컬에서만 재생하는 버전
@@ -50,10 +50,28 @@ void UCharacterAnimationComponent::PlayInteractMontage(AActor* TargetActor)
 {
 	LOG_Char_WARNING(TEXT("애니메이션 컴포넌트에서 애니메이션 재생"));
 	if (!IsValid(TargetActor)) return;
-	UAnimMontage* Local = MontageMap.FindRef(EAnimationMontageType::Interaction); //인터랙트 할 물체에서 애니메이션 가져오기
-	UAnimMontage* Remote = MontageMap.FindRef(EAnimationMontageType::Interaction); //인터랙트 할 물체에서 애니메이션 가져오기
 
-	
+	UAnimMontage* Local = MontageMap.FindRef(EAnimationMontageType::Interaction); //기본으로 이 애니메이션을 사용
+	UAnimMontage* Remote = MontageMap.FindRef(EAnimationMontageType::Interaction); //기본으로 이 애니메이션을 사용
+
+	if (TargetActor->IsA<AItemBase>())
+	{
+		AItemBase* Item = Cast<AItemBase>(TargetActor);
+
+		if (!IsValid(Item))
+		{
+			return;
+		}
+		
+		//MontageToPlay = GetCharacter()->InteractMontageOnUnderObject;
+	}
+	else if (TargetActor->IsA<ALCBaseGimmick>())
+	{
+		ALCBaseGimmick* Gimmick = Cast<ALCBaseGimmick>(TargetActor);
+		Local = Gimmick->LocalAnimation;
+		Remote = Gimmick->RemoteAnimation;
+	}
+
 	PlayMontageByType(Local, Remote, EAnimationMontageType::Interaction);
 }
 
@@ -89,11 +107,9 @@ void UCharacterAnimationComponent::PlayEmoteMontage()
 	PlayMontageByType(Local, Remote, EAnimationMontageType::Emote);
 }
 
-void UCharacterAnimationComponent::PlayAttackMontage()
+void UCharacterAnimationComponent::PlayAttackMontage(UAnimMontage* _AttackMontage)
 {
-	UAnimMontage* Local = MontageMap.FindRef(EAnimationMontageType::Attack);
-	UAnimMontage* Remote = MontageMap.FindRef(EAnimationMontageType::Attack);
-	PlayMontageByType(Local, Remote, EAnimationMontageType::Attack);
+	PlayMontageByType(_AttackMontage, _AttackMontage, EAnimationMontageType::Attack);
 }
 
 
@@ -191,7 +207,7 @@ void UCharacterAnimationComponent::Multicast_CancelMontage_Implementation(UAnimM
 {
 	if (!IsValid(CachedAnimInstance)) return;
 
-	if (!GetCharacter()->IsLocallyControlled())
+	if (!GetBaseCharacter()->IsLocallyControlled())
 	{
 		CachedAnimInstance->Montage_Stop(0.1f, RemoteMontageToStop); // 다른 사람에게 보이는 애니메이션만 중단
 	}
@@ -205,8 +221,7 @@ void UCharacterAnimationComponent::Multicast_CancelMontage_Implementation(UAnimM
 
 void UCharacterAnimationComponent::HandleAnimNotify(EAnimationMontageType Type)
 {
-	APlayerController* PC = Cast<APlayerController>(CachedCharacter->GetController());
-	if (!IsValid(PC)) return;
+	if (!IsValid(GetPlayerController())) return;
 
 	switch (Type)
 	{
@@ -216,12 +231,20 @@ void UCharacterAnimationComponent::HandleAnimNotify(EAnimationMontageType Type)
 		break;
 
 	case EAnimationMontageType::Interaction:
-		OnInteractionNotify.Broadcast();
+		if (GetBaseCharacter()->InteractionComponent)
+		{
+			GetBaseCharacter()->InteractionComponent->Interact();
+		}
 		SetPlayingMontageState(Type, false);
 		break;
 
 	case EAnimationMontageType::UseItem:
 		OnUseItemNotify.Broadcast();
+		SetPlayingMontageState(Type, false);
+		break;
+
+	case EAnimationMontageType::Attack:
+		LOG_Char_WARNING(TEXT("애니메이션 컴포넌트에서 어택 가능 변수 변경"));
 		SetPlayingMontageState(Type, false);
 		break;
 
@@ -248,8 +271,75 @@ void UCharacterAnimationComponent::SetPlayingMontageState(EAnimationMontageType 
 		break;
 	case EAnimationMontageType::Attack:
 		bIsPlayingAttackMontage = bIsPlaying;
+		LOG_Char_WARNING(TEXT("애니메이션 컴포넌트에서 어택 가능 변수 변경"));
+
 		break;
 	default:
 		break;
+	}
+}
+
+
+
+
+
+
+//이것도 아이템에다가 애니메이션 등록해놓고 받아오기
+void UCharacterAnimationComponent::RefreshOverlayLinkedAnimationLayer(FGameplayTag ItemTag)
+{
+	TSubclassOf<UAnimInstance> OverlayAnimationInstanceClass;
+	if (GetBaseCharacter()->bIsSpawnDrone)  // 태그에 컨트롤러 들 때 사용할 태그 추가해야됨...
+	{
+		OverlayAnimationInstanceClass = BinocularsAnimationClass;
+		if (IsValid(OverlayAnimationInstanceClass))
+		{
+			CharacterMesh()->LinkAnimClassLayers(OverlayAnimationInstanceClass);
+		}
+		else
+		{
+			CharacterMesh()->LinkAnimClassLayers(DefaultAnimationClass);
+		}
+		return;
+	}
+	if (!ItemTag.IsValid())
+	{
+		OverlayAnimationInstanceClass = DefaultAnimationClass;
+	}
+	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
+	{
+		OverlayAnimationInstanceClass = RifleAnimationClass;
+	}
+	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.FlashLight")))
+	{
+		OverlayAnimationInstanceClass = TorchAnimationClass;
+	}
+	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol")))
+	{
+		OverlayAnimationInstanceClass = PistolTwoHandedAnimationClass;
+	}
+	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Shotgun")))
+	{
+		OverlayAnimationInstanceClass = RifleAnimationClass;
+	}
+	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Spawnable.Drone")))
+	{
+		OverlayAnimationInstanceClass = PistolOneHandedAnimationClass;
+	}
+	else if (ItemTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Tool.Pickaxe")))
+	{
+		OverlayAnimationInstanceClass = PickaxeAnimationClass;
+	}
+	else
+	{
+		OverlayAnimationInstanceClass = DefaultAnimationClass;
+	}
+
+	if (IsValid(OverlayAnimationInstanceClass))
+	{
+		CharacterMesh()->LinkAnimClassLayers(OverlayAnimationInstanceClass);
+	}
+	else
+	{
+		CharacterMesh()->LinkAnimClassLayers(DefaultAnimationClass);
 	}
 }

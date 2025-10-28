@@ -92,6 +92,20 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Target")
 	TArray<AActor*> LinkedTargets;
 
+	/** ===== 캐릭터 상호작용 애니메이션 설정 ===== */
+
+	/** 기믹에 상호작용 하는 캐릭터의 애니메이션 제어 여부 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick|CharacterAnimation")
+	bool bPlayCharacterAnimation = false;
+
+	/** 기믹에 상호작용 하는 캐릭터가 취할 애니메이션 (자신에게만) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|CharacterAnimation")
+	UAnimMontage* LocalAnimation;
+
+	/** 기믹에 상호작용 하는 캐릭터가 취할 애니메이션 (타인에게만) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|CharacterAnimation")
+	UAnimMontage* RemoteAnimation;
+
 	/** ===== 작동 방식 설정 ===== */
 
 	/** 기믹 작동 방식 (자식 클래스가 고유 조건 처리 시 이 옵션은 비활성화됩니다) */

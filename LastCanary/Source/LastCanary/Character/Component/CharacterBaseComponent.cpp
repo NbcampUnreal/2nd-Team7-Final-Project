@@ -1,5 +1,8 @@
 #include "Character/Component/CharacterBaseComponent.h"
 #include "Character/BaseCharacter.h"
+#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "UI/Manager/LCUIManager.h"
+#include "UI/UIElement/InGameHUD.h"
 
 // Sets default values for this component's properties
 UCharacterBaseComponent::UCharacterBaseComponent()
@@ -16,9 +19,32 @@ UCharacterBaseComponent::UCharacterBaseComponent()
 void UCharacterBaseComponent::BeginPlay()
 {
 	Super::BeginPlay();
-	CachedCharacter = Cast<ABaseCharacter>(GetOwner());
-	// ...
+	CachedPawn = Cast<APawn>(GetOwner());
 	
+	if (IsValid(CachedPawn))
+	{
+		CachedController = Cast<APlayerController>(CachedPawn->GetController());
+	}
+
+
+	CachedCharacter = Cast<ACharacter>(CachedPawn);
+
+	CachedBaseCharacter = Cast<ABaseCharacter>(CachedCharacter);
+
+	if (IsValid(GetBaseCharacter()))
+	{
+		USkeletalMeshComponent* Mesh = CachedCharacter->GetMesh();
+		if (IsValid(Mesh))
+		{
+			CachedAnimInstance = Mesh->GetAnimInstance();
+		}
+	}
+
+		
+	if (!bIsReady && IsValid(CachedBaseCharacter))
+	{
+		CachedBaseCharacter->NotifyComponentReady(this);
+	}
 }
 
 
@@ -30,3 +56,27 @@ void UCharacterBaseComponent::TickComponent(float DeltaTime, ELevelTick TickType
 	// ...
 }
 
+UInGameHUD* UCharacterBaseComponent::GetInGameHUD()
+{
+	if (!IsValid(GetBaseCharacter()) || !IsValid(GetPlayerController()))
+	{
+		return nullptr;
+	}
+	ULCGameInstanceSubsystem* Subsystem = GetWorld()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>();
+	if (!IsValid(Subsystem))
+	{
+		return nullptr;
+	}
+	ULCUIManager* UIManager = Subsystem->GetUIManager();
+	if (!IsValid(UIManager))
+	{
+		return nullptr;
+	}
+	UInGameHUD* HUD = UIManager->GetInGameHUD();
+	if (!IsValid(HUD))
+	{
+		return nullptr;
+	}
+
+	return HUD;
+}
