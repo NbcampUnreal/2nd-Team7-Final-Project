@@ -76,54 +76,7 @@ ABaseCharacter::ABaseCharacter()
 	UseGunBoneforOverlayObjects = true;
 	bAlwaysRelevant = true;
 
-	CustomHeadMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomHeadMesh"));
-	CustomHeadMesh->SetupAttachment(GetMesh());
-
-	CustomGloveMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomGloveMesh"));
-	CustomGloveMesh->SetupAttachment(GetMesh());
-
-	CustomJacketMesh_OwnerNoSee = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomJacketMesh_OwnerNoSee"));
-	CustomJacketMesh_OwnerNoSee->SetupAttachment(GetMesh());
-
-	CustomJacketMesh_OwnerSee = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomJacketMesh_OwnerSee"));
-	CustomJacketMesh_OwnerSee->SetupAttachment(GetMesh());
-
-	CustomPantsMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomPantsMesh"));
-	CustomPantsMesh->SetupAttachment(GetMesh());
-
-	CustomBeltsMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomBeltsMesh"));
-	CustomBeltsMesh->SetupAttachment(GetMesh());
-
-	CustomHelmetMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomHelmetMesh"));
-	CustomHelmetMesh->SetupAttachment(GetMesh());
-	
-	CustomArmorMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomArmorMesh"));
-	CustomArmorMesh->SetupAttachment(GetMesh());
-
-	CustomBootsMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomBootsMesh"));
-	CustomBootsMesh->SetupAttachment(GetMesh());
-
-	////* 가방 메시 *////
-	BackpackMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("BackpackMesh"));
-	BackpackMesh->SetupAttachment(GetMesh());
-
-	OverlayStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("OverlayStaticMesh"));
-	OverlayStaticMesh->SetupAttachment(GetMesh());
-
-	OverlaySkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("OverlaySkeletalMesh"));
-	OverlaySkeletalMesh->SetupAttachment(GetMesh(), TEXT("Rifle"));
-
-	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
-	SpringArm->SetupAttachment(RootComponent);
-
-	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
-	Camera->SetupAttachment(SpringArm);  // SpringArm에 카메라 부착
-
-	// 초기 방향 설정S
-	Camera->SetRelativeRotation(FRotator::ZeroRotator);  // 필요시만 설정	
-
-	ThirdPersonArrow = CreateDefaultSubobject<UArrowComponent>(TEXT("FirstPersonArrow"));
-	ThirdPersonArrow->SetupAttachment(SpringArm);
+	InitializeComponents();
 
 	// 캐릭터 클래스의 생성자 함수 내부 
 	FieldOfView = Camera->FieldOfView;
@@ -136,25 +89,65 @@ ABaseCharacter::ABaseCharacter()
 	BackpackMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	ToolbarInventoryComponent = CreateDefaultSubobject<UToolbarInventoryComponent>(TEXT("ToolbarInventoryComponent"));
-
-	//캐릭터 컴포넌트
-	HealthComponent = CreateDefaultSubobject<UCharacterHealthComponent>(TEXT("HealthComponent"));
-	StaminaComponent = CreateDefaultSubobject<UCharacterStaminaComponent>(TEXT("StaminaComponent"));
-	InteractionComponent = CreateDefaultSubobject<UCharacterInteractionComponent>(TEXT("InteractionComponent"));
-	AnimationComponent = CreateDefaultSubobject<UCharacterAnimationComponent>(TEXT("AnimationComponent"));
-	CustomizationComponent = CreateDefaultSubobject<UCharacterCustomizationComponent>(TEXT("CustomizationComponent"));
-	FootstepNoiseComponent = CreateDefaultSubobject<UCharacterFootstepNoiseComponent>(TEXT("FootstepNoiseComponent"));
-	CameraControlComponent = CreateDefaultSubobject<UCharacterCameraControlComponent>(TEXT("CameraControlComponent"));
-	DisplayComponent = CreateDefaultSubobject<UCharacterDisplayComponent>(TEXT("DisplayComponent"));
-	AttackComponent = CreateDefaultSubobject<UCharacterAttackComponent>(TEXT("AttackComponent"));
-	RecoilComponent = CreateDefaultSubobject<UCameraRecoilComponent>(TEXT("RecoilComponent"));
-	InputControlComponent = CreateDefaultSubobject<UCharacterInputComponent>(TEXT("InputControlComponent"));
-	SpeedControlComponent = CreateDefaultSubobject<UCharacterSpeedControlComponent>(TEXT("SpeedControlComponent"));
-	SoundPlayComponent = CreateDefaultSubobject<UCharacterSoundComponent>(TEXT("SoundPlayComponent"));
-	SanityComponent = CreateDefaultSubobject<UCharacterSanityComponent>(TEXT("SanityComponent"));
-	ADSComponent = CreateDefaultSubobject<UCharacterADSComponent>(TEXT("ADSComponent"));
-	WeaponClippingComponent = CreateDefaultSubobject<UCharacterWeaponClippingComponent>(TEXT("WeaponClippingComponent"));
 }
+
+void ABaseCharacter::InitializeComponents()
+{
+	InitializeDefaultComponents();
+	InitializeExtraComponents();
+}
+
+void ABaseCharacter::InitializeDefaultComponents()
+{
+	CustomHeadMesh = UCommonUtility::CreateAndAttachComponent<USkeletalMeshComponent>(this, GetMesh(), TEXT("CustomHeadMesh"));
+	CustomGloveMesh = UCommonUtility::CreateAndAttachComponent<USkeletalMeshComponent>(this, GetMesh(), TEXT("CustomGloveMesh"));
+	CustomJacketMesh_OwnerNoSee = UCommonUtility::CreateAndAttachComponent<USkeletalMeshComponent>(this, GetMesh(), TEXT("CustomJacketMesh_OwnerNoSee"));
+	CustomJacketMesh_OwnerSee = UCommonUtility::CreateAndAttachComponent<USkeletalMeshComponent>(this, GetMesh(), TEXT("CustomJacketMesh_OwnerSee"));
+	CustomPantsMesh = UCommonUtility::CreateAndAttachComponent<USkeletalMeshComponent>(this, GetMesh(), TEXT("CustomPantsMesh"));
+	CustomBeltsMesh = UCommonUtility::CreateAndAttachComponent<USkeletalMeshComponent>(this, GetMesh(), TEXT("CustomBeltsMesh"));
+	CustomHelmetMesh = UCommonUtility::CreateAndAttachComponent<USkeletalMeshComponent>(this, GetMesh(), TEXT("CustomHelmetMesh"));
+	CustomArmorMesh = UCommonUtility::CreateAndAttachComponent<USkeletalMeshComponent>(this, GetMesh(), TEXT("CustomArmorMesh"));
+	CustomBootsMesh = UCommonUtility::CreateAndAttachComponent<USkeletalMeshComponent>(this, GetMesh(), TEXT("CustomBootsMesh"));
+
+	// Backpack
+	BackpackMesh = UCommonUtility::CreateAndAttachComponent<USkeletalMeshComponent>(this, GetMesh(), TEXT("BackpackMesh"));
+
+	// Overlay
+	OverlayStaticMesh = UCommonUtility::CreateAndAttachComponent<UStaticMeshComponent>(this, GetMesh(), TEXT("OverlayStaticMesh"));
+	OverlaySkeletalMesh = UCommonUtility::CreateAndAttachComponent<USkeletalMeshComponent>(this, GetMesh(), TEXT("OverlaySkeletalMesh"));
+	OverlaySkeletalMesh->SetupAttachment(GetMesh(), TEXT("Rifle")); // 특수 경우 따로
+
+	// Camera, SpringArm
+	SpringArm = UCommonUtility::CreateAndAttachComponent<USpringArmComponent>(this, GetMesh(), TEXT("SpringArm"));
+	Camera = UCommonUtility::CreateAndAttachComponent<UCameraComponent>(this, SpringArm, TEXT("Camera"));
+	// Arrow
+	ThirdPersonArrow = UCommonUtility::CreateAndAttachComponent<UArrowComponent>(this, SpringArm, TEXT("FirstPersonArrow"));
+
+	Camera->SetRelativeRotation(FRotator::ZeroRotator);
+}
+
+
+void ABaseCharacter::InitializeExtraComponents()
+{
+	HealthComponent = UCommonUtility::CreateAndRegisterComponent<UCharacterHealthComponent>(this, TEXT("HealthComponent"), ManagedComponents);
+	StaminaComponent = UCommonUtility::CreateAndRegisterComponent<UCharacterStaminaComponent>(this, TEXT("StaminaComponent"), ManagedComponents);
+	InteractionComponent = UCommonUtility::CreateAndRegisterComponent<UCharacterInteractionComponent>(this, TEXT("InteractionComponent"), ManagedComponents);
+	AnimationComponent = UCommonUtility::CreateAndRegisterComponent<UCharacterAnimationComponent>(this, TEXT("AnimationComponent"), ManagedComponents);
+	FootstepNoiseComponent = UCommonUtility::CreateAndRegisterComponent<UCharacterFootstepNoiseComponent>(this, TEXT("FootstepNoiseComponent"), ManagedComponents);
+	CameraControlComponent = UCommonUtility::CreateAndRegisterComponent<UCharacterCameraControlComponent>(this, TEXT("CameraControlComponent"), ManagedComponents);
+	DisplayComponent = UCommonUtility::CreateAndRegisterComponent<UCharacterDisplayComponent>(this, TEXT("DisplayComponent"), ManagedComponents);
+	AttackComponent = UCommonUtility::CreateAndRegisterComponent<UCharacterAttackComponent>(this, TEXT("AttackComponent"), ManagedComponents);
+	RecoilComponent = UCommonUtility::CreateAndRegisterComponent<UCameraRecoilComponent>(this, TEXT("RecoilComponent"), ManagedComponents);
+	InputControlComponent = UCommonUtility::CreateAndRegisterComponent<UCharacterInputComponent>(this, TEXT("InputControlComponent"), ManagedComponents);
+	SpeedControlComponent = UCommonUtility::CreateAndRegisterComponent<UCharacterSpeedControlComponent>(this, TEXT("SpeedControlComponent"), ManagedComponents);
+	SoundPlayComponent = UCommonUtility::CreateAndRegisterComponent<UCharacterSoundComponent>(this, TEXT("SoundPlayComponent"), ManagedComponents);
+	SanityComponent = UCommonUtility::CreateAndRegisterComponent<UCharacterSanityComponent>(this, TEXT("SanityComponent"), ManagedComponents);
+	ADSComponent = UCommonUtility::CreateAndRegisterComponent<UCharacterADSComponent>(this, TEXT("ADSComponent"), ManagedComponents);
+	WeaponClippingComponent = UCommonUtility::CreateAndRegisterComponent<UCharacterWeaponClippingComponent>(this, TEXT("WeaponClippingComponent"), ManagedComponents);
+
+	TotalComponentCount = ManagedComponents.Num();
+}
+
 
 void ABaseCharacter::ApplyNetworkSmoothSettings(
 	float InNetUpdateFrequency,       // 네트워크에서 위치/움직임 업데이트를 몇 Hz로 할지 (초당 전송 빈도)
@@ -213,71 +206,6 @@ void ABaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	if (IsLocallyControlled())
-	{
-		// "head"는 스켈레탈 메시의 머리 본에 해당하는 이름
-
-		//GetMesh()->HideBoneByName(TEXT("head"), EPhysBodyOp::PBO_None);
-		SwapHeadMaterialTransparent(true); 
-	}
-	//애니메이션 오버레이 활성화.
-	RefreshOverlayObject();
-
-	if (IsValid(ToolbarInventoryComponent))
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Inventory Ready"));
-		ToolbarInventoryComponent->OnInventoryUpdated.AddUniqueDynamic(this, &ABaseCharacter::HandleInventoryUpdated);
-	}
-
-	EnableStencilForAllMeshes(2);
-
-	SetMovementSetting();
-
-	if (SpeedControlComponent)
-	{
-		SpeedControlComponent->SetCharacterMovementSpeed();
-	}
-
-	//ApplyCustomization(CharacterMeshMap);
-	if (CustomizationComponent)
-	{
-		CustomizationComponent->SetCharacterPoseSynchronization();
-	}
-	
-
-	//백팩은 커스터마이징과는 다르게 처리 // 기본은 투명
-	SetBackpackMesh(false);
-
-	if (IsLocallyControlled())
-	{
-		Server_ClientLogin();
-		InitializePlayerLocalSettings();
-	}
-
-	//컴포넌트 델리게이트 연결
-	if (HealthComponent)
-	{
-		HealthComponent->OnDied.AddDynamic(this, &ABaseCharacter::HandlePlayerDeath);
-	}
-
-	if (StaminaComponent)
-	{
-		StaminaComponent->OnStaminaChanged.AddDynamic(this, &ABaseCharacter::HandleStaminaConsumed);
-		StaminaComponent->OnStaminaExhausted.AddDynamic(this, &ABaseCharacter::HandleStaminaExhausted);
-		StaminaComponent->OnStaminaThresholdReached.AddDynamic(this, &ABaseCharacter::HandleStaminaThresholdReached);
-	}
-	
-	if (AnimationComponent)
-	{
-		AnimationComponent->OnReloadNotify.AddDynamic(this, &ABaseCharacter::OnReloadFromNotify);
-		AnimationComponent->OnUseItemNotify.AddDynamic(this, &ABaseCharacter::OnUseItemFromNotify);
-	}
-
-	if (InteractionComponent)
-	{
-		InteractionComponent->OnFocusChanged.AddDynamic(this, &ABaseCharacter::HandleFocusChanged);
-	}
-
 	//네트워크 지연에 따른 캐릭터 이동 끊김 방지를 위한 설정
 	ApplyNetworkSmoothSettings(
 		120.f,    // NetUpdateFrequency
@@ -286,6 +214,104 @@ void ABaseCharacter::BeginPlay()
 		ENetworkSmoothingMode::Exponential,
 		0.05f
 	);
+
+	if (IsValid(ToolbarInventoryComponent))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Inventory Ready"));
+		ToolbarInventoryComponent->OnInventoryUpdated.AddUniqueDynamic(this, &ABaseCharacter::HandleInventoryUpdated);
+	}
+
+
+	EnableStencilForAllMeshes(2);
+	
+	if (IsLocallyControlled())
+	{
+		Server_ClientLogin();
+	}
+
+	SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+}
+
+void ABaseCharacter::NotifyComponentReady(UCharacterBaseComponent* Component)
+{
+	if (!Component || Component->bIsReady)
+		return;
+
+	Component->bIsReady = true;
+	ComponentsReadyCount++;
+
+	LOG_Char_WARNING(TEXT("컴포넌트 준비 완료: %s (%s) | %d/%d"),
+		*Component->GetName(), *Component->GetClass()->GetName(), ComponentsReadyCount, TotalComponentCount);
+
+	if (ComponentsReadyCount >= TotalComponentCount && !bAllComponentsReady)
+	{
+		bAllComponentsReady = true;
+		LOG_Char_WARNING(TEXT("모든 컴포넌트 준비 완료. 캐릭터 초기화 시작"));
+
+		UCommonUtility::RetryUntilValid(
+			GetWorld(),
+			[this]() { return bAllComponentsReady; },
+			[this]() { InitializeCharacter(); },
+			0.1f
+		);
+	}
+}
+
+void ABaseCharacter::InitializeCharacter()
+{
+	// 캐릭터 자체 초기화 로직
+	LOG_Char_WARNING(TEXT("캐릭터 초기화 코드"));
+
+	if (IsLocallyControlled())
+	{
+		//GetMesh()->HideBoneByName(TEXT("head"), EPhysBodyOp::PBO_None);
+		SwapHeadMaterialTransparent(true);
+	}
+	
+	RefreshOverlayObject();
+	
+	SetMovementSetting();
+
+	if (IsValid(SpeedControlComponent))
+	{
+		SpeedControlComponent->SetCharacterMovementSpeed();
+	}
+
+	//ApplyCustomization(CharacterMeshMap);
+	SetCharacterPoseSynchronization();
+
+	//백팩은 커스터마이징과는 다르게 처리 // 기본은 투명
+	SetBackpackMesh(false);
+
+	if (IsLocallyControlled())
+	{
+		//1. 커스터마이징 데이터 로드 (로컬 환경)
+		InitializePlayerCustomizing();
+	}
+
+	//컴포넌트 델리게이트 연결
+	if (IsValid(HealthComponent))
+	{
+		HealthComponent->OnDied.AddDynamic(this, &ABaseCharacter::HandlePlayerDeath);
+	}
+
+	if (IsValid(StaminaComponent))
+	{
+		StaminaComponent->OnStaminaChanged.AddDynamic(this, &ABaseCharacter::HandleStaminaConsumed);
+		StaminaComponent->OnStaminaExhausted.AddDynamic(this, &ABaseCharacter::HandleStaminaExhausted);
+		StaminaComponent->OnStaminaThresholdReached.AddDynamic(this, &ABaseCharacter::HandleStaminaThresholdReached);
+	}
+
+	if (IsValid(AnimationComponent))
+	{
+		AnimationComponent->OnReloadNotify.AddDynamic(this, &ABaseCharacter::OnReloadFromNotify);
+		AnimationComponent->OnUseItemNotify.AddDynamic(this, &ABaseCharacter::OnUseItemFromNotify);
+	}
+
+	if (IsValid(InteractionComponent))
+	{
+		InteractionComponent->OnFocusChanged.AddDynamic(this, &ABaseCharacter::HandleFocusChanged);
+	}
 }
 
 void ABaseCharacter::Server_ClientLogin_Implementation()
@@ -342,8 +368,67 @@ void ABaseCharacter::InitializePlayerCustomizing()
 	{
 		return;
 	}
+	InitializeCustomization();
+}
 
-	CustomizationComponent->InitializeCustomization();
+void ABaseCharacter::InitializeCustomization()
+{
+	UCommonUtility::RetryUntilValid(
+		GetWorld(),
+		[this]() -> bool
+		{
+			return bIsPlayerStateReady();
+		},
+		[this]()
+		{
+			LoadAndApplyCustomization();
+		},
+		0.2f
+	);
+}
+
+bool ABaseCharacter::bIsPlayerStateReady() const
+{
+	APlayerState* PS = GetPlayerState();
+	if (!IsValid(PS))
+	{
+		return false;
+	}
+	return true;
+}
+
+void ABaseCharacter::LoadAndApplyCustomization()
+{
+	LOG_Char_WARNING(TEXT("커스터마이징 데이터 로드"));
+
+	// 1. 데이터 로드
+	LoadCustomizationSettings();
+
+	// 2. 적용
+	ApplyCustomization(CharacterCustomizationData);
+
+	// 3. 서버로 전송
+	Server_SetCustomizationData(CharacterCustomizationData);
+}
+
+void ABaseCharacter::LoadCustomizationSettings()
+{
+	CharacterCustomizationData = ULCLocalPlayerSaveGame::LoadCustomizationData(GetWorld());
+}
+
+void ABaseCharacter::SaveCustomizationDataToPlayerState(const FCharacterCustomizationData& CustomizingData)
+{
+	if (!bIsPlayerStateReady())
+	{
+		return;
+	}
+
+	APlayerState* PS = GetPlayerState();
+	
+	if (ABasePlayerState* BPS = Cast<ABasePlayerState>(PS))
+	{
+		BPS->SetCustomizationData(CustomizingData);
+	}
 }
 
 float ABaseCharacter::GetCurrentNoiseLevel() const
@@ -351,30 +436,186 @@ float ABaseCharacter::GetCurrentNoiseLevel() const
 	return FootstepNoiseComponent ? FootstepNoiseComponent->GetCurrentFootstepNoiseLevel() : 0.f;
 }
 
-FCharacterCustomizationData ABaseCharacter::GetCustomizationData()
+void ABaseCharacter::Server_UpdateCustomizationData_Implementation()
 {
-	if (CustomizationComponent)
-	{
-		return CustomizationComponent->GetCustomizationData();
-	}
-	return FCharacterCustomizationData();
+	LOG_Char_WARNING(TEXT("서버에서 전체에게 전파 준비"));
+
+	Multicast_SetCustomizationData(CharacterCustomizationData);
 }
 
-void ABaseCharacter::SetCustomizationData(const FCharacterCustomizationData& CustomizingData)
+void ABaseCharacter::Server_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData)
 {
-	if (CustomizationComponent)
+	LOG_Char_WARNING(TEXT("캐릭터 커스터마이징 데이터 서버에 전달됨"));
+	CharacterCustomizationData = CustomizingData;
+	Multicast_SetCustomizationData(CustomizingData);
+	APlayerState* PS = GetPlayerState();
+
+	if (ABasePlayerState* BPS = Cast<ABasePlayerState>(PS))
 	{
-		CustomizationComponent->SetCustomizationData(CustomizingData);
+		BPS->SetCustomizationData(CustomizingData);
 	}
+
+	//게이트 퇴장시를 위해 설정 완료되었음을 게임모드에 전파
+	CheckPlayerCharacterIsReadyToGameMode();
+
+}
+
+void ABaseCharacter::Multicast_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData)
+{
+	CharacterCustomizationData = CustomizingData;
+	ApplyCustomization(CharacterCustomizationData);
+}
+
+void ABaseCharacter::Server_ApplyCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData)
+{
+	LOG_Char_WARNING(TEXT("캐릭터 커스터마이징 데이터 서버에 전달됨"));
+	//1. 서버의 캐릭터에 커스터마이징 정보 저장 (혹시 모르니까)
+	CharacterCustomizationData = CustomizingData;
+
+	//2. 서버 및 모든 클라이언트에 커스터마이징 데이터 저장 및 적용
+	Multicast_SetCustomizationData(CustomizingData);
+
+	//3. 플레이어 스테이트에 커스터마이징 값 저장
+	APlayerState* PS = GetPlayerState();
+
+	if (ABasePlayerState* BPS = Cast<ABasePlayerState>(PS))
+	{
+		BPS->SetCustomizationData(CustomizingData);
+	}
+}
+
+void ABaseCharacter::SetCharacterPoseSynchronization()
+{
+	GetHeadMesh()->SetLeaderPoseComponent(GetMesh());
+	GetGloveMesh()->SetLeaderPoseComponent(GetMesh());
+	GetJacketMesh_OwnerNoSee()->SetLeaderPoseComponent(GetMesh());
+	GetJacketMesh_OwnerSee()->SetLeaderPoseComponent(GetMesh());
+	GetPantsMesh()->SetLeaderPoseComponent(GetMesh());
+	GetBeltsMesh()->SetLeaderPoseComponent(GetMesh());
+	GetHelmetMesh()->SetLeaderPoseComponent(GetMesh());
+	GetArmorMesh()->SetLeaderPoseComponent(GetMesh());
+	GetBootsMesh()->SetLeaderPoseComponent(GetMesh());
+	GetBackpackMesh()->SetLeaderPoseComponent(GetMesh());
+}
+
+void ABaseCharacter::SetPartMesh(USkeletalMeshComponent* Component, USkeletalMesh* LoadedMesh)
+{
+	if (!Component) return;
+
+	if (LoadedMesh)
+	{
+		Component->SetVisibility(true);
+		Component->EmptyOverrideMaterials();
+		Component->SetSkeletalMesh(LoadedMesh);
+	}
+	else
+	{
+		Component->SetLeaderPoseComponent(nullptr); // 메시 해제할 땐 잠시 끊기
+		Component->SetVisibility(false);
+		Component->SetSkeletalMesh(nullptr);
+	}
+}
+
+void ABaseCharacter::SetPartMaterial(USkeletalMeshComponent* Component, int32 MaterialIndex, UMaterialInterface* Material)
+{
+	if (!Component || !Material) return;
+
+	// 메시가 존재하고, 표시 상태일 경우에만 적용
+	if (Component && Component->IsRegistered() && Component->IsVisible() && Component->SkeletalMesh)
+	{
+		Component->SetMaterial(MaterialIndex, Material);
+	}
+}
+
+void ABaseCharacter::ApplyCustomizationToAllPlayers(const FCharacterCustomizationData CustomizationData)
+{
+	ApplyCustomization(CustomizationData);
+	Server_ApplyCustomizationData(CustomizationData);
 }
 
 void ABaseCharacter::ApplyCustomization(const FCharacterCustomizationData CustomizationData)
 {
 	LOG_Char_WARNING(TEXT("캐릭터 커스터마이징 어플라이"));
-	if (CustomizationComponent)
+	if (!CharacterMeshMap || !CharacterMeshMap->IsValidLowLevel())
 	{
-		CustomizationComponent->ApplyCustomization(CustomizationData);
+		return;
 	}
+
+	int BodyId = CustomizationData.DefaultBodyID;
+	int HeadId = CustomizationData.DefaultBodyID;
+	int HelmetId = CustomizationData.HelmetID;
+	int GloveId = CustomizationData.GloveID;
+	int JacketId = CustomizationData.JacketID;
+	int PantsId = CustomizationData.PantsID;
+	int BeltsId = CustomizationData.BeltsID;
+	int ArmorId = CustomizationData.ArmorID;
+	int BootsId = CustomizationData.BootsID;
+	// Body
+	USkeletalMesh* BodySkeletalMesh = CharacterMeshMap->GetMeshByID(CharacterMeshMap->DefaultBodyMeshes, BodyId);
+	USkeletalMesh* HeadSkeletalMesh = CharacterMeshMap->GetMeshByID(CharacterMeshMap->DefaultHeadMeshes, HeadId);
+	USkeletalMesh* HelmetSkeletalMesh = CharacterMeshMap->GetMeshByID(CharacterMeshMap->HelmetMeshes, HelmetId);
+	USkeletalMesh* GloveSkeletalMesh = CharacterMeshMap->GetMeshByID(CharacterMeshMap->GloveMeshes, GloveId);
+	USkeletalMesh* JacketSkeletalMesh = CharacterMeshMap->GetMeshByID(CharacterMeshMap->JacketMeshes_OwnerSee, JacketId);
+	USkeletalMesh* JacketSkeletalMesh_OwnerNosee = CharacterMeshMap->GetMeshByID(CharacterMeshMap->JacketMeshes, JacketId);
+	USkeletalMesh* PantsSkeletalMesh = CharacterMeshMap->GetMeshByID(CharacterMeshMap->PantsMeshes, PantsId);
+	USkeletalMesh* BeltsSkeletalMesh = CharacterMeshMap->GetMeshByID(CharacterMeshMap->BeltsMeshes, BeltsId);
+	USkeletalMesh* ArmorSkeletalMesh = CharacterMeshMap->GetMeshByID(CharacterMeshMap->ArmorMeshes, ArmorId);
+	USkeletalMesh* BootsSkeletalMesh = CharacterMeshMap->GetMeshByID(CharacterMeshMap->BootsMeshes, BootsId);
+
+	SetPartMesh(GetMesh(), BodySkeletalMesh);
+	SetPartMesh(GetHeadMesh(), HeadSkeletalMesh);
+	SetPartMesh(GetHelmetMesh(), HelmetSkeletalMesh);
+	SetPartMesh(GetGloveMesh(), GloveSkeletalMesh);
+	SetPartMesh(GetJacketMesh_OwnerNoSee(), JacketSkeletalMesh_OwnerNosee);
+	SetPartMesh(GetJacketMesh_OwnerSee(), JacketSkeletalMesh);
+	SetPartMesh(GetPantsMesh(), PantsSkeletalMesh);
+	SetPartMesh(GetBeltsMesh(), BeltsSkeletalMesh);
+	SetPartMesh(GetArmorMesh(), ArmorSkeletalMesh);
+	SetPartMesh(GetBootsMesh(), BootsSkeletalMesh);
+
+
+
+	// 전제: CustomizationData 안에 머티리얼 ID도 들어있음
+	int BodyMatId = CustomizationData.DefaultBodyMaterialID;
+	int HeadMatId = CustomizationData.DefaultBodyMaterialID;
+	int HelmetMatId = CustomizationData.HelmetMaterialID;
+	int GloveMatId = CustomizationData.GloveMaterialID;
+	int JacketMatId = CustomizationData.JacketMaterialID;
+	int PantsMatId = CustomizationData.PantsMaterialID;
+	int BeltsMatId = CustomizationData.BeltsMaterialID;
+	int ArmorMatId = CustomizationData.ArmorMaterialID;
+	int BootsMatId = CustomizationData.BootsMaterialID;
+	int FlagMatId = CustomizationData.FlagMaterialID;
+
+	// 머티리얼도 매핑용 에셋에서 가져옴 (이미 블루프린트에서 세팅되어 있다고 가정)
+	UMaterialInterface* BodyMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->DefaultBodyMaterials, BodyMatId);
+	UMaterialInterface* HeadMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->DefaultBodyMaterials, HeadMatId);
+	UMaterialInterface* HelmetMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->HelmetMaterials, HelmetMatId);
+	UMaterialInterface* GloveMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->GloveMaterials, GloveMatId);
+	UMaterialInterface* JacketMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->JacketMaterials, JacketMatId);
+	UMaterialInterface* PantsMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->PantsMaterials, PantsMatId);
+	UMaterialInterface* BeltsMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->BeltsMaterials, BeltsMatId);
+	UMaterialInterface* ArmorMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->ArmorMaterials, ArmorMatId);
+	UMaterialInterface* BootsMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->BootsMaterials, BootsMatId);
+	UMaterialInterface* FlagMat = CharacterMeshMap->GetMaterialByID(CharacterMeshMap->FlagMaterials, FlagMatId);
+
+	// 머티리얼 적용 함수 호출 (보통 0번 슬롯만 적용한다고 가정)
+	SetPartMaterial(GetMesh(), 0, BodyMat);
+	SetPartMaterial(GetHeadMesh(), 0, HeadMat);
+	SetPartMaterial(GetHelmetMesh(), 0, HelmetMat);
+	SetPartMaterial(GetGloveMesh(), 0, GloveMat);
+	SetPartMaterial(GetJacketMesh_OwnerNoSee(), 0, JacketMat);
+	SetPartMaterial(GetJacketMesh_OwnerSee(), 0, JacketMat);
+	SetPartMaterial(GetPantsMesh(), 0, PantsMat);
+	SetPartMaterial(GetBeltsMesh(), 0, BeltsMat);
+	SetPartMaterial(GetArmorMesh(), 1, ArmorMat);
+	SetPartMaterial(GetBootsMesh(), 0, BootsMat);
+
+	//플래그
+	SetPartMaterial(GetHelmetMesh(), 1, FlagMat);
+	SetPartMaterial(GetArmorMesh(), 0, FlagMat);
+
+	SetCharacterPoseSynchronization();
 }
 
 void ABaseCharacter::SetBrightness(float Value)
@@ -384,7 +625,10 @@ void ABaseCharacter::SetBrightness(float Value)
 	// 로그 스케일 매핑 (예: log10 스케일)
 	float BrightnessValue = MinBrightness * FMath::Pow((MaxBrightness / MinBrightness), Normalized);
 
-	DisplayComponent->ApplyBrightness(Normalized);
+	if (IsValid(DisplayComponent))
+	{
+		DisplayComponent->ApplyBrightness(Normalized);
+	}
 }
 
 void ABaseCharacter::NotifyControllerChanged()
@@ -432,13 +676,11 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 {
 	Super::CalcCamera(DeltaTime, ViewInfo);
 	if (!IsLocallyControlled()) return;
-	SpringArm->SetWorldLocation(GetMesh()->GetSocketLocation("head"));
-	//	ViewInfo.Location = GetMesh()->GetSocketLocation(("head"));
+	
 	if (bIsMantling)
 	{
 		bIsAiming = false;
 		bIsTransitioning = false;
-		//SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
 		Controller->SetControlRotation(GetActorRotation());
 		SpringArm->bUsePawnControlRotation = true;
 		FVector TargetLoc = GetActorLocation();
@@ -2351,10 +2593,8 @@ void ABaseCharacter::OnRep_PlayerState()
 
 	if (ABasePlayerState* PS = GetPlayerState<ABasePlayerState>())
 	{
-		if (CustomizationComponent)
-		{
-			CustomizationComponent->SetCustomizationData(PS->GetCustomizationData());
-			CustomizationComponent->ApplyCustomization(PS->GetCustomizationData());
-		}
+		SetCustomizationData(PS->GetCustomizationData());
+		ApplyCustomization(PS->GetCustomizationData());
+		
 	}
 }

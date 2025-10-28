@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Utility/CommonUtility.h"
 #include "CharacterBaseComponent.generated.h"
 
 class ABaseCharacter;
@@ -18,9 +19,14 @@ public:
 	// Sets default values for this component's properties
 	UCharacterBaseComponent();
 	
+	UPROPERTY()
+	bool bIsReady = false;
+
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
+
+	
 
 	UPROPERTY()
 	APawn* CachedPawn;
@@ -33,7 +39,6 @@ protected:
 
 	UPROPERTY()
 	ABaseCharacter* CachedBaseCharacter;
-
 
 	UPROPERTY()
 	UAnimInstance* CachedAnimInstance;

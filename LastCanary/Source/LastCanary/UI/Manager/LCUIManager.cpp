@@ -55,7 +55,7 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 
 	if (!PlayerController || !PlayerController->IsLocalPlayerController())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[InitUIManager] %s 는 로컬 컨트롤러가 아님"), *GetNameSafe(PlayerController));
+		LOG_Frame_WARNING(TEXT("[InitUIManager] %s 는 로컬 컨트롤러가 아님"), *GetNameSafe(PlayerController));
 		return;
 	}
 
@@ -618,6 +618,8 @@ void ULCUIManager::ShowDesktop()
 
 void ULCUIManager::HideDesktop()
 {
+	LOG_Frame_ERROR(TEXT("PC 가리기"));
+
 	if (OwningPlayer == nullptr)
 	{
 		return;

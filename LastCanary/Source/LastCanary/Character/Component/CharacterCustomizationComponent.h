@@ -70,8 +70,15 @@ public:
 	void Multicast_SetCustomizationData(const FCharacterCustomizationData& CustomizingData);
 	void Multicast_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData);
 
+	UFUNCTION(Server, Reliable)
+	void Server_ApplyCustomizationData(const FCharacterCustomizationData& CustomizingData);
+	void Server_ApplyCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData);
+
 	FCharacterCustomizationData CharacterCustomizationData;
 
 	FTimerHandle RetryCustomizationHandle;
 	void InitializeCustomization();
+
+	bool bIsCharacterClassReady() const;
+	void LoadAndApplyCustomization();
 };

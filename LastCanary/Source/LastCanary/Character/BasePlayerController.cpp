@@ -31,14 +31,18 @@ void ABasePlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+	if (IsLocalController())
 	{
-		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+		if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 		{
-			UIManager->SetUIContext(ELCUIContext::InGame);
-			UIManager->ChangeHUD();
+			if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+			{
+				UIManager->SetUIContext(ELCUIContext::InGame);
+				UIManager->ChangeHUD();
+			}
 		}
 	}
+	
 
 	PlayerCameraManager->ViewPitchMin = -80.0f; // 최소 Pitch 각도 (고개 숙이기)
 	PlayerCameraManager->ViewPitchMax = 80.0f;  // 최대 Pitch 각도 (고개 들기)
@@ -55,7 +59,7 @@ void ABasePlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	DOREPLIFETIME(ABasePlayerController, SpawnedPlayerDrone);
 }
 
-UMouseSensitivityComponent* ABasePlayerController::GetMouseSensitivityComponent()
+TObjectPtr<UMouseSensitivityComponent> ABasePlayerController::GetMouseSensitivityComponent()
 {
 	if (!IsValid(MouseSensitivityComponent))
 	{
@@ -273,6 +277,15 @@ void ABasePlayerController::OnRep_SpawnedSpectatorPawn()
 
 void ABasePlayerController::Client_StartSpectation_Implementation()
 {
+	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
+	if (!IsValid(MyPlayerState))
+	{
+		return;
+	}
+	if (MyPlayerState->CurrentState == EPlayerState::Dead)
+	{
+		//SpawnedSpectatorPawn->SpectateOtherUser(SpanwedPlayerCharacter);
+	}
 	GetWorldTimerManager().SetTimer(SpectatorCheckHandle, this, &ABasePlayerController::CheckCurrentSpectatedCharacterStatus, 3.0f, true, 3.0f);
 	if (ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 	{

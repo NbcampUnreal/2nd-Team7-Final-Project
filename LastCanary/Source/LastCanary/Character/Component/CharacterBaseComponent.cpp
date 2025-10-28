@@ -39,6 +39,12 @@ void UCharacterBaseComponent::BeginPlay()
 			CachedAnimInstance = Mesh->GetAnimInstance();
 		}
 	}
+
+		
+	if (!bIsReady && IsValid(CachedBaseCharacter))
+	{
+		CachedBaseCharacter->NotifyComponentReady(this);
+	}
 }
 
 

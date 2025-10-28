@@ -17,56 +17,100 @@ void UCharacterCustomizationComponent::TickComponent(float DeltaTime, ELevelTick
 
 USkeletalMeshComponent* UCharacterCustomizationComponent::CharacterMesh()
 {
+	if (!IsValid(GetBaseCharacter()))
+	{
+		return nullptr;
+	}
 	return GetBaseCharacter()->GetMesh();
 }
 
 USkeletalMeshComponent* UCharacterCustomizationComponent::GetHeadMesh()
 {
+	if (!IsValid(GetBaseCharacter()))
+	{
+		return nullptr;
+	}
 	return GetBaseCharacter()->CustomHeadMesh;
 }
 
 USkeletalMeshComponent* UCharacterCustomizationComponent::GetGloveMesh()
 {
+	if (!IsValid(GetBaseCharacter()))
+	{
+		return nullptr;
+	}
 	return GetBaseCharacter()->CustomGloveMesh;
 }
 
 USkeletalMeshComponent* UCharacterCustomizationComponent::GetJacketMesh_OwnerNoSee()
 {
+	if (!IsValid(GetBaseCharacter()))
+	{
+		return nullptr;
+	}
 	return GetBaseCharacter()->CustomJacketMesh_OwnerNoSee;
 }
 
 USkeletalMeshComponent* UCharacterCustomizationComponent::GetJacketMesh_OwnerSee()
 {
+	if (!IsValid(GetBaseCharacter()))
+	{
+		return nullptr;
+	}
 	return GetBaseCharacter()->CustomJacketMesh_OwnerSee;
 }
 
 USkeletalMeshComponent* UCharacterCustomizationComponent::GetPantsMesh()
 {
+	if (!IsValid(GetBaseCharacter()))
+	{
+		return nullptr;
+	}
 	return GetBaseCharacter()->CustomPantsMesh;
 }
 
 USkeletalMeshComponent* UCharacterCustomizationComponent::GetBeltsMesh()
 {
+	if (!IsValid(GetBaseCharacter()))
+	{
+		return nullptr;
+	}
 	return GetBaseCharacter()->CustomBeltsMesh;
 }
 
 USkeletalMeshComponent* UCharacterCustomizationComponent::GetHelmetMesh()
 {
+	if (!IsValid(GetBaseCharacter()))
+	{
+		return nullptr;
+	}
 	return GetBaseCharacter()->CustomHelmetMesh;
 }
 
 USkeletalMeshComponent* UCharacterCustomizationComponent::GetArmorMesh()
 {
+	if (!IsValid(GetBaseCharacter()))
+	{
+		return nullptr;
+	}
 	return GetBaseCharacter()->CustomArmorMesh;
 }
 
 USkeletalMeshComponent* UCharacterCustomizationComponent::GetBootsMesh()
 {
+	if (!IsValid(GetBaseCharacter()))
+	{
+		return nullptr;
+	}
 	return GetBaseCharacter()->CustomBootsMesh;
 }
 
 USkeletalMeshComponent* UCharacterCustomizationComponent::GetBackpackMesh()
 {
+	if (!IsValid(GetBaseCharacter()))
+	{
+		return nullptr;
+	}
 	return GetBaseCharacter()->BackpackMesh;
 }
 
@@ -250,34 +294,61 @@ void UCharacterCustomizationComponent::Multicast_SetCustomizationData_Implementa
 
 void UCharacterCustomizationComponent::InitializeCustomization()
 {
-	if (!IsValid(GetBaseCharacter()) || !GetBaseCharacter()->IsLocallyControlled())
-	{
-		return;
-	}
+	UCommonUtility::RetryUntilValid(
+		GetWorld(),
+		[this]() -> bool
+		{
+			return bIsCharacterClassReady();
+		},
+		[this]()
+		{
+			LoadAndApplyCustomization();
+		},
+		0.2f
+	);
+}
 
+bool UCharacterCustomizationComponent::bIsCharacterClassReady() const
+{
+	ACharacter* BaseChar = GetBaseCharacter();
+	if (!IsValid(BaseChar) || !BaseChar->IsLocallyControlled())
+	{
+		return false;
+	}
+	APlayerState* PS = BaseChar->GetPlayerState();
+	return IsValid(PS);
+}
+
+
+void UCharacterCustomizationComponent::LoadAndApplyCustomization()
+{
+	LOG_Char_WARNING(TEXT("커스터마이징 데이터 로드"));
+		
+	// 1. 데이터 로드
+	CharacterCustomizationData = ULCLocalPlayerSaveGame::LoadCustomizationData(GetWorld());
+
+	// 2. 적용
+	ApplyCustomization(CharacterCustomizationData);
+
+	// 3. 서버로 전송
+	Server_SetCustomizationData(CharacterCustomizationData);
+}
+
+
+void UCharacterCustomizationComponent::Server_ApplyCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData)
+{
+	LOG_Char_WARNING(TEXT("캐릭터 커스터마이징 데이터 서버에 전달됨"));
+	//1. 서버의 캐릭터에 커스터마이징 정보 저장 (혹시 모르니까)
+	CharacterCustomizationData = CustomizingData;
+
+	//2. 서버 및 모든 클라이언트에 커스터마이징 데이터 저장 및 적용
+	Multicast_SetCustomizationData(CustomizingData);
+
+	//3. 플레이어 스테이트에 커스터마이징 값 저장
 	APlayerState* PS = GetBaseCharacter()->GetPlayerState();
-	if (IsValid(PS))
+
+	if (ABasePlayerState* BPS = Cast<ABasePlayerState>(PS))
 	{
-		LOG_Char_WARNING(TEXT("커스터마이징 데이터 로드"));
-
-		// 1. 데이터 로드
-		CharacterCustomizationData = ULCLocalPlayerSaveGame::LoadCustomizationData(GetWorld());
-
-		// 2. 적용
-		ApplyCustomization(CharacterCustomizationData);
-
-		// 3. 서버로 전송
-		Server_SetCustomizationData(CharacterCustomizationData);
-	}
-	else
-	{
-		// 타이머로 재시도
-		GetWorld()->GetTimerManager().SetTimer(
-			RetryCustomizationHandle,
-			this,
-			&UCharacterCustomizationComponent::InitializeCustomization,
-			0.2f,
-			false
-		);
+		BPS->SetCustomizationData(CustomizingData);
 	}
 }

@@ -27,10 +27,10 @@ class UWidgetComponent;
 class UPlayerNameWidget;
 class UCustomizationMeshMap;
 struct FCharacterCustomizationData;
+class UCharacterBaseComponent;
 class UCharacterHealthComponent;
 class UCharacterStaminaComponent;
 class UCharacterAnimationComponent;
-class UCharacterCustomizationComponent;
 class UCharacterInteractionComponent;
 class UCharacterFootstepNoiseComponent;
 class UCharacterCameraControlComponent;
@@ -58,131 +58,209 @@ class LASTCANARY_API ABaseCharacter : public AAlsCharacter, public IGimmickDebuf
 {
 	GENERATED_BODY()
 
+protected:
+	/*Character Default Settings*/
+	ABaseCharacter();
+	void InitializeComponents();
+	void InitializeDefaultComponents();
+	void InitializeExtraComponents();
+	void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const;
+	virtual void NotifyControllerChanged() override;
+	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	virtual void PossessedBy(AController* NewController) override;
+	
+	void ApplyNetworkSmoothSettings(float InNetUpdateFrequency, float InMinNetUpdateFrequency, float InNetCullDistance, ENetworkSmoothingMode InSmoothingMode, float InDeltaTime);
+public:
+	//* Character State Flag *//
+	//bool bCanMove = false;
+
 	//Character Mesh and Component
 public:
-	/*1인칭 전용 메시 (자신만 보이는)*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	UStaticMeshComponent* OverlayStaticMesh;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* OverlaySkeletalMesh;
-
-	// SpringArm 컴포넌트 (카메라 거리와 회전 보정용)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
-	USpringArmComponent* SpringArm;
+	TObjectPtr<USpringArmComponent> SpringArm;
 
-	// Camera 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
-	UCameraComponent* Camera;
+	TObjectPtr<UCameraComponent> Camera;
 
-	// 캐릭터 인벤토리 컴포넌트
-	UPROPERTY(VisibleAnywhere, Category = "Inventory")
-	UToolbarInventoryComponent* ToolbarInventoryComponent;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	TObjectPtr<UStaticMeshComponent> OverlayStaticMesh;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	TObjectPtr<USkeletalMeshComponent> OverlaySkeletalMesh;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	TObjectPtr<UArrowComponent> ThirdPersonArrow;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
-	UCharacterHealthComponent* HealthComponent;
+	// 캐릭터 인벤토리 컴포넌트
+	UPROPERTY(VisibleAnywhere, Category = "Inventory")
+	TObjectPtr<UToolbarInventoryComponent> ToolbarInventoryComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
-	UCharacterStaminaComponent* StaminaComponent;
+	TObjectPtr<UCharacterHealthComponent> HealthComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
-	UCharacterAnimationComponent* AnimationComponent;
+	TObjectPtr<UCharacterStaminaComponent> StaminaComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
+	TObjectPtr<UCharacterAnimationComponent> AnimationComponent;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
-	UCharacterCustomizationComponent* CustomizationComponent;
-	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
-	UCharacterInteractionComponent* InteractionComponent;
+	TObjectPtr<UCharacterInteractionComponent> InteractionComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	UCharacterFootstepNoiseComponent* FootstepNoiseComponent;
+	TObjectPtr<UCharacterFootstepNoiseComponent> FootstepNoiseComponent;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	UCharacterCameraControlComponent* CameraControlComponent;
+	TObjectPtr<UCharacterCameraControlComponent> CameraControlComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	UCharacterDisplayComponent* DisplayComponent;
+	TObjectPtr<UCharacterDisplayComponent> DisplayComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	UCharacterAttackComponent* AttackComponent;
+	TObjectPtr<UCharacterAttackComponent> AttackComponent;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	UCameraRecoilComponent* RecoilComponent;
+	TObjectPtr<UCameraRecoilComponent> RecoilComponent;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	UCharacterInputComponent* InputControlComponent;
+	TObjectPtr<UCharacterInputComponent> InputControlComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	UCharacterSpeedControlComponent* SpeedControlComponent;
+	TObjectPtr<UCharacterSpeedControlComponent> SpeedControlComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	UCharacterSoundComponent* SoundPlayComponent;
+	TObjectPtr<UCharacterSoundComponent> SoundPlayComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	UCharacterSanityComponent* SanityComponent;
+	TObjectPtr<UCharacterSanityComponent> SanityComponent;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	UCharacterADSComponent* ADSComponent;
+	TObjectPtr<UCharacterADSComponent> ADSComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	UCharacterWeaponClippingComponent* WeaponClippingComponent;
+	TObjectPtr<UCharacterWeaponClippingComponent> WeaponClippingComponent;
+
+	UPROPERTY()
+	TArray<UCharacterBaseComponent*> ManagedComponents;
+
+	// 컴포넌트 준비 완료 신호
+	void NotifyComponentReady(UCharacterBaseComponent* Component);
+private:
+	UPROPERTY()
+	int32 ComponentsReadyCount = 0;
+
+	UPROPERTY()
+	int32 TotalComponentCount = 0;
+
+	UPROPERTY()
+	bool bAllComponentsReady = false;
+
+	// 준비 완료 후 실행
+	void InitializeCharacter();
+
+
 public:
 	UFUNCTION()
 	virtual float GetCurrentNoiseLevel() const override;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	TObjectPtr<USkeletalMeshComponent> CustomHeadMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	TObjectPtr<USkeletalMeshComponent> CustomGloveMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	TObjectPtr<USkeletalMeshComponent> CustomJacketMesh_OwnerNoSee;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	TObjectPtr<USkeletalMeshComponent> CustomJacketMesh_OwnerSee;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	TObjectPtr<USkeletalMeshComponent> CustomPantsMesh;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	TObjectPtr<USkeletalMeshComponent> CustomBeltsMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	TObjectPtr<USkeletalMeshComponent> CustomHelmetMesh;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	TObjectPtr<USkeletalMeshComponent> CustomArmorMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	TObjectPtr<USkeletalMeshComponent> CustomBootsMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	TObjectPtr<USkeletalMeshComponent> BackpackMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	TObjectPtr<USkeletalMesh> BackpackSkeletalMesh;
+
+public:
+	TObjectPtr<USkeletalMeshComponent> GetHeadMesh() const { return CustomHeadMesh; }
+	TObjectPtr<USkeletalMeshComponent> GetGloveMesh() const { return CustomGloveMesh; }
+	TObjectPtr<USkeletalMeshComponent> GetJacketMesh_OwnerNoSee() const { return CustomJacketMesh_OwnerNoSee; }
+	TObjectPtr<USkeletalMeshComponent> GetJacketMesh_OwnerSee() const { return CustomJacketMesh_OwnerSee; }
+	TObjectPtr<USkeletalMeshComponent> GetPantsMesh() const { return CustomPantsMesh; }
+	TObjectPtr<USkeletalMeshComponent> GetBeltsMesh() const { return CustomBeltsMesh; }
+	TObjectPtr<USkeletalMeshComponent> GetHelmetMesh() const { return CustomHelmetMesh; }
+	TObjectPtr<USkeletalMeshComponent> GetArmorMesh() const { return CustomArmorMesh; }
+	TObjectPtr<USkeletalMeshComponent> GetBootsMesh() const { return CustomBootsMesh; }
+	TObjectPtr<USkeletalMeshComponent> GetBackpackMesh() const { return BackpackMesh; }
+
+	TObjectPtr<USkeletalMesh> GetBackpackSkeletalMesh() const { return BackpackSkeletalMesh; }
+	
+	void SetCharacterPoseSynchronization();
+	
+public:
+	//* Character Customizing *//
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Customization")
-	UCustomizationMeshMap* CharacterMeshMap;
+	TObjectPtr<UCustomizationMeshMap> CharacterMeshMap;
+
+	FCharacterCustomizationData CharacterCustomizationData;
+	FCharacterCustomizationData GetCustomizationData() const { return CharacterCustomizationData; }
+	void SetCustomizationData(FCharacterCustomizationData data) { CharacterCustomizationData = data; }
+
+	void SetPartMesh(USkeletalMeshComponent* Component, USkeletalMesh* LoadedMesh);
+	void SetPartMaterial(USkeletalMeshComponent* Component, int32 MaterialIndex, UMaterialInterface* Material);
+
+	UFUNCTION(Server, Reliable)
+	void Server_UpdateCustomizationData();  // 이건 안쓰는듯?
+	void Server_UpdateCustomizationData_Implementation();
+
+	UFUNCTION(Server, Reliable)
+	void Server_SetCustomizationData(const FCharacterCustomizationData& CustomizingData);
+	void Server_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_SetCustomizationData(const FCharacterCustomizationData& CustomizingData);
+	void Multicast_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData);
+
+	UFUNCTION(Server, Reliable)
+	void Server_ApplyCustomizationData(const FCharacterCustomizationData& CustomizingData);
+	void Server_ApplyCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData);
 
 
 
+	void ApplyCustomizationToAllPlayers(const FCharacterCustomizationData CustomizationData);
 
-	// DefaultBody => GetMesh()
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* CustomHeadMesh;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* CustomGloveMesh;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* CustomJacketMesh_OwnerNoSee;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* CustomJacketMesh_OwnerSee;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* CustomPantsMesh;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* CustomBeltsMesh;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* CustomHelmetMesh;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* CustomArmorMesh;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* CustomBootsMesh;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* BackpackMesh;
 
 	void ApplyCustomization(const FCharacterCustomizationData CustomizationData);
 
-	FCharacterCustomizationData GetCustomizationData();
-	void SetCustomizationData(const FCharacterCustomizationData& CustomizingData);
+	void InitializeCustomization();
+	void LoadAndApplyCustomization();
+	void LoadCustomizationSettings();
+	void SaveCustomizationDataToPlayerState(const FCharacterCustomizationData& CustomizingData);
+	bool bIsPlayerStateReady() const;
 
-	FCharacterCustomizationData CharacterCustomizationData;
+
+
+public:
+
 
 	bool bPossessedCheck = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMesh* BackpackSkeletalMesh;
 	
 	/** 가방 메시 설정 */
 	void SetBackpackMesh(bool bIsEquipBackpack);
@@ -247,18 +325,6 @@ public:
 	UPROPERTY()
 	float CameraTransitionSpeed = 25.0f;
 
-	//Character Default Settings
-protected:
-	/*Character Default Settings*/
-	ABaseCharacter();
-	void ApplyNetworkSmoothSettings(float InNetUpdateFrequency, float InMinNetUpdateFrequency, float InNetCullDistance, ENetworkSmoothingMode InSmoothingMode, float InDeltaTime);
-
-	void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const;
-	virtual void NotifyControllerChanged() override;
-	virtual void BeginPlay() override;
-	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-	virtual void PossessedBy(AController* NewController) override;
-	
 	void InitializePlayerLocalSettings();
 
 	FTimerHandle RetryInitializeCustomizingHandle;
