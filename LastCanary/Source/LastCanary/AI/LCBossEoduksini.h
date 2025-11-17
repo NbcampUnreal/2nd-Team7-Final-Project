@@ -1,0 +1,281 @@
+﻿#pragma once
+
+#include "CoreMinimal.h"
+#include "AI/BaseBossMonsterCharacter.h"
+#include "Components/SphereComponent.h"
+#include "Camera/CameraShakeBase.h"
+#include "NiagaraSystem.h"
+#include "Sound/SoundBase.h"
+#include "Components/AudioComponent.h"
+#include "Materials/MaterialInterface.h"
+#include "LCBossEoduksini.generated.h"
+
+UCLASS()
+class LASTCANARY_API ALCBossEoduksini : public ABaseBossMonsterCharacter
+{
+	GENERATED_BODY()
+
+    friend class ALCBaseBossAIController;
+
+public:
+    ALCBossEoduksini();
+
+protected:
+    virtual void BeginPlay() override;
+    virtual void Tick(float DeltaSeconds) override;
+
+    virtual void EnterBerserkState() override;
+    virtual void StartBerserk() override;
+    virtual void StartBerserk(float Duration) override;
+    virtual void EndBerserk() override;
+    virtual void UpdateBlackboardValues() override;
+
+    UPROPERTY(EditAnywhere, Category = "Audio")
+    USoundAttenuation* AttackSoundAttenuation;
+
+    // --- Darkness FX & Sound ---
+    UPROPERTY(EditAnywhere, Category = "Eoduksini|Darkness")
+    UNiagaraSystem* DarknessEnterFX;
+    UPROPERTY(EditAnywhere, Category = "Eoduksini|Darkness")
+    USoundBase* DarknessEnterSound;
+
+    UPROPERTY(EditAnywhere, Category = "Eoduksini|Darkness")
+    UNiagaraSystem* DarknessExitFX;
+    UPROPERTY(EditAnywhere, Category = "Eoduksini|Darkness")
+    USoundBase* DarknessExitSound;
+
+    // --- Shadow Echo FX & Sound ---
+    UPROPERTY(EditAnywhere, Category = "Eoduksini|ShadowEcho")
+    UNiagaraSystem* EchoExplosionFX;
+    UPROPERTY(EditAnywhere, Category = "Eoduksini|ShadowEcho")
+    USoundBase* EchoExplosionSound;
+
+    // --- Nightmare Grasp FX & Sound ---
+    UPROPERTY(EditAnywhere, Category = "Eoduksini|NightmareGrasp")
+    UNiagaraSystem* GraspFX;
+    UPROPERTY(EditAnywhere, Category = "Eoduksini|NightmareGrasp")
+    USoundBase* GraspSound;
+
+    // --- Night Terror FX & Sound ---
+    UPROPERTY(EditAnywhere, Category = "Eoduksini|NightTerror")
+    UNiagaraSystem* TerrorFX;
+    UPROPERTY(EditAnywhere, Category = "Eoduksini|NightTerror")
+    USoundBase* TerrorSound;
+
+    // --- Shadow Swipe FX & Sound ---
+    UPROPERTY(EditAnywhere, Category = "Eoduksini|ShadowSwipe")
+    UNiagaraSystem* SwipeFX;
+    UPROPERTY(EditAnywhere, Category = "Eoduksini|ShadowSwipe")
+    USoundBase* SwipeSound;
+
+    // --- Void Grasp FX & Sound ---
+    UPROPERTY(EditAnywhere, Category = "Eoduksini|VoidGrasp")
+    UNiagaraSystem* VoidGraspFX;
+    UPROPERTY(EditAnywhere, Category = "Eoduksini|VoidGrasp")
+    USoundBase* VoidGraspSound;
+    
+    /** ── Darkness ── */
+    UPROPERTY(VisibleAnywhere, Category = "Darkness")
+    USphereComponent* DarknessSphere;
+
+    UPROPERTY(EditAnywhere, Category = "Boss|Darkness")
+    float DarknessRadius = 1000.f;
+
+    UPROPERTY(EditAnywhere, Category = "Boss|Darkness")
+    float DarknessFadeAlpha = 0.8f;
+
+    UPROPERTY(EditAnywhere, Category = "Boss|Darkness")
+    float FadeDuration = 0.5f;
+
+    UPROPERTY()
+    TSet<APlayerController*> DarkenedPlayers;
+
+    UFUNCTION()
+    void OnDarknessSphereBeginOverlap(
+        UPrimitiveComponent* OverlappedComp,
+        AActor* OtherActor,
+        UPrimitiveComponent* OtherComp,
+        int32 OtherBodyIndex,
+        bool bFromSweep,
+        const FHitResult& SweepResult);
+
+    UFUNCTION()
+    void OnDarknessSphereEndOverlap(
+        UPrimitiveComponent* OverlappedComp,
+        AActor* OtherActor,
+        UPrimitiveComponent* OtherComp,
+        int32 OtherBodyIndex);
+
+    /** ── Sight Check ── */
+    bool IsLookedAtByAnyPlayer() const;
+    bool IsPlayerLooking(APlayerController* PC) const;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Sight", meta = (ClampMin = "0", ClampMax = "180"))
+    float LookAngleDeg = 9.f;
+
+    /** ── Rage ── */
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Rage")
+    float RageGainPerSec = 0.42f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Rage")
+    float RageLossPerSec = 0.10f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Rage")
+    float DarknessRageThreshold = 60.f;
+
+    /** ── Berserk Modifiers ── */
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Berserk")
+    float BerserkRageGainMultiplier = 2.0f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Berserk")
+    float BerserkCooldownMultiplier = 0.8f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Berserk")
+    float StrongAttackCooldown_Berserk = 3.0f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Berserk")
+    float BerserkPlayRateMultiplier = 1.3f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Berserk")
+    float BerserkMovementMultiplier = 1.5f;
+
+    // 원복용 저장 변수
+    float PrevMaxWalkSpeed = 0.f;
+    float PrevNormalAttackCooldown = 0.f;
+    float PrevStrongAttackCooldown = 0.f;
+
+    /** ── Abilities ── */
+
+    // Shadow Echo
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Ability")
+    float ShadowEchoInterval = 15.f;
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Ability")
+    float ShadowEchoDelay = 6.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Boss|Ability")
+	float ShadowEchoRange = 400.f; // 범위 내 모든 플레이어에게 데미지 적용
+    float LastShadowEchoTime = -FLT_MAX;
+    void ShadowEcho();
+    void ExecuteShadowEchoDamage(FVector Location);
+    UPROPERTY(EditAnywhere, Category = "Eoduksini|Damage")
+    float EchoDamage = 20.f;
+    // ShadowEcho FX/Sound 재생용 RPC
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_OnShadowEcho(const FVector& Location);
+
+    // Nightmare Grasp
+    float NightmareGraspInterval = 12.f;
+    float LastNightmareGraspTime = -FLT_MAX;
+	UPROPERTY(EditDefaultsOnly, Category = "Boss|Ability")
+	float NightmareGraspRange = 800.f; // 범위 내 모든 플레이어에게 견인
+    void NightmareGrasp();
+
+    // NightmreGrasp 클라이언트 재생용 RPC
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_OnNightmareGrasp(const FVector& ImpactPoint);
+
+    // Night Terror
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Ability")
+    float NightTerrorRageThreshold = 80.f;
+    bool bHasUsedNightTerror = false;
+    void NightTerror();
+    UPROPERTY(EditAnywhere, Category = "Eoduksini|Damage")
+    float TerrorDamage = 40.f;
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_NightTerrorEffects();
+
+    /** 공격확률 추가 */
+    UPROPERTY(EditAnywhere, Category = "Boss|Ability")
+    float PhaseShiftWeight = 1.f;
+    UPROPERTY(EditAnywhere, Category = "Boss|Ability")
+    float ShadowEchoWeight = 2.f;
+    UPROPERTY(EditAnywhere, Category = "Boss|Ability")
+    float NightmareGraspWeight = 3.f;
+    UPROPERTY(EditAnywhere, Category = "Boss|Ability")
+    float ShadowSwipeWeight = 5.f;
+    UPROPERTY(EditAnywhere, Category = "Boss|Ability")
+    float VoidGraspWeight = 4.f;
+    /** 풀스크린 테러용 포스트프로세스 머티리얼 */
+    UPROPERTY(EditAnywhere, Category = "Eoduksini|NightTerror")
+    UMaterialInterface* TerrorPostProcessMaterial;
+
+    /** 포스트프로세스 머티리얼 블렌드 강도 */
+    UPROPERTY(EditAnywhere, Category = "Eoduksini|NightTerror", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+    float TerrorPostProcessWeight = 1.0f;
+
+    /** 포스트프로세스 지속 시간 */
+    UPROPERTY(EditAnywhere, Category = "Eoduksini|NightTerror", meta = (ClampMin = "0.1"))
+    float TerrorPostProcessDuration = 2.0f;
+
+
+    /** ── Camera Shake ── */
+    // 에디터에서 블루프린트 셰이크 클래스를 할당하세요
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Effects")
+    TSubclassOf<UCameraShakeBase> TerrorCameraShakeClass;
+
+	// ShadowSwipe
+	UPROPERTY(EditDefaultsOnly, Category = "Boss|Attack")
+	float ShadowSwipeRange = 200.f; // 근접 공격 범위
+    void ShadowSwipe();
+    UPROPERTY(EditAnywhere, Category = "Eoduksini|Damage")
+    float SwipeDamage = 15.f;
+
+    // ShadowSwipe 클라이언트 재생용 RPC
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_OnShadowSwipe();
+
+	// Void Grasp
+	UPROPERTY(EditDefaultsOnly, Category = "Boss|Attack")
+	float VoidGraspRange = 600.f; // 견인 범위
+    void VoidGrasp();
+    UPROPERTY(EditAnywhere, Category = "Eoduksini|Damage")
+    float GraspDamage = 10.f;
+
+    // VoidGrasp 클라이언트 재생용 RPC
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_OnVoidGrasp();
+    
+    /** ── 공격 ── */
+    virtual bool RequestAttack(float TargetDistance) override;
+
+    /** ── Darkness State ── */
+    UPROPERTY(ReplicatedUsing = OnRep_DarknessActive, BlueprintReadOnly, Category = "Boss|Darkness")
+    bool bDarknessActive = false;
+
+    UFUNCTION()
+    void OnRep_DarknessActive();
+
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_StartDarkness();
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_EndDarkness();
+
+    UFUNCTION(BlueprintNativeEvent, Category = "Boss|Darkness")
+    void BP_StartDarknessEffect();
+    virtual void BP_StartDarknessEffect_Implementation();
+
+    UFUNCTION(BlueprintNativeEvent, Category = "Boss|Darkness")
+    void BP_EndDarknessEffect();
+    virtual void BP_EndDarknessEffect_Implementation();
+
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Darkness")
+    float DarknessDuration = 10.f;
+    
+
+private:
+    void UpdateRageAndScale(float DeltaSeconds);
+    /** 월드에서 플레이어 중 보스를 보고 있는 수를 반환 */
+    int32 CountPlayersLooking() const;
+    /** DeltaSeconds 동안 변화할 Rage 양을 계산 */
+    float ComputeRageDelta(float DeltaSeconds, int32 LookCount) const;
+    /** 계산된 DeltaRage를 Rage에 적용하고 Berserk 진입 검사 */
+    void ApplyRageDelta(float DeltaRage);
+    void TryTriggerDarkness();
+    void EndDarkness();
+    // Shadow Echo 폭발 딜레이용 핸들
+    FTimerHandle ShadowEchoDamageHandle;
+	// Darkness 종료 타이머 핸들
+    FTimerHandle DarknessTimerHandle;
+
+    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	
+};

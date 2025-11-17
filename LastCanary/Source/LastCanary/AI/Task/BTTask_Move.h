@@ -1,0 +1,32 @@
+#pragma once
+
+#include "CoreMinimal.h"
+#include "BehaviorTree/Tasks/BTTask_MoveTo.h"
+#include "BTTask_Move.generated.h"
+
+UCLASS()
+class LASTCANARY_API UBTTask_Move : public UBTTask_MoveTo
+{
+    GENERATED_BODY()
+
+public:
+    UBTTask_Move();
+
+    virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
+
+    virtual void OnTaskFinished(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, EBTNodeResult::Type TaskResult) override;
+protected:
+    UPROPERTY(EditAnywhere, Category = "Movement")
+    float MyAcceptableRadius;
+
+    UFUNCTION()
+    void CheckMoveStatus(UBehaviorTreeComponent* OwnerComp);
+
+    void CleanupTimer(UBehaviorTreeComponent* OwnerComp);
+private:
+    UPROPERTY(EditAnywhere)
+    float SoundTimer = 2.5f;
+
+    TMap<TWeakObjectPtr<UBehaviorTreeComponent>, FTimerHandle> MoveTimerMap;
+    TMap<TWeakObjectPtr<UBehaviorTreeComponent>, float> LastSoundTimeMap;
+};

@@ -1,0 +1,875 @@
+#include "Item/ItemBase.h"
+#include "Inventory/ToolbarInventoryComponent.h"
+
+#include "Character/BaseCharacter.h"
+#include "Components/SphereComponent.h"
+#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "Net/UnrealNetwork.h"
+
+#include "Kismet/GameplayStatics.h"
+#include "EnhancedInputSubsystems.h"
+#include "EnhancedActionKeyMapping.h"
+
+#include "LastCanary.h"
+
+AItemBase::AItemBase()
+{
+	PrimaryActorTick.bCanEverTick = false;
+
+	StaticMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMeshComponent"));
+	RootComponent = StaticMeshComponent;
+
+	SkeletalMeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("SkeletalMeshComponent"));
+	SkeletalMeshComponent->SetupAttachment(StaticMeshComponent);
+
+	SkeletalMeshComponent->SetVisibility(false);
+	SkeletalMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	InteractionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("InteractionSphere"));
+	InteractionSphere->SetupAttachment(StaticMeshComponent);
+	InteractionSphere->SetSphereRadius(HighlightRadius);
+	InteractionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	InteractionSphere->SetCollisionObjectType(ECollisionChannel::ECC_WorldStatic);
+	InteractionSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+	InteractionSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
+
+	bReplicates = true;
+	bNetUseOwnerRelevancy = false;
+
+	SetReplicatingMovement(true);
+
+	bIsEquipped = false;
+	bUsingSkeletalMesh = false;
+	Quantity = 1;
+	Durability = MaxDurability;;
+	bIsHighlighted = false;
+}
+
+void AItemBase::BeginPlay()
+{
+	Super::BeginPlay();
+
+	if (HasAuthority())
+	{
+		UWorld* World = GetWorld();
+		if (!World)
+		{
+			LOG_Item_WARNING(TEXT("[AItemBase::BeginPlay] World is null!"));
+			return;
+		}
+
+		UGameInstance* GI = World->GetGameInstance();
+		if (!GI)
+		{
+			LOG_Item_WARNING(TEXT("[AItemBase::BeginPlay] GameInstance is null!"));
+			return;
+		}
+
+		ULCGameInstanceSubsystem* GISubsystem = GI->GetSubsystem<ULCGameInstanceSubsystem>();
+		if (!GISubsystem)
+		{
+			LOG_Item_WARNING(TEXT("[AItemBase::BeginPlay] LCGameInstanceSubsystem is null"));
+			return;
+		}
+
+		ItemDataTable = GISubsystem->ItemDataTable;
+		if (!ItemDataTable)
+		{
+			LOG_Item_WARNING(TEXT("[AItemBase::BeginPlay] ItemDataTable is null"));
+			return;
+		}
+
+		if (!ItemRowName.IsNone() && GetOwner() != GetAttachParentActor())
+		{
+			ApplyItemDataFromTable();
+		}
+	}
+
+	if (HasAuthority())
+	{
+		GetWorld()->GetTimerManager().SetTimer(PhysicsLocationSyncTimer,
+			this, &AItemBase::SyncPhysicsLocationToActor, 0.1f, true);
+	}
+
+	SetupHighlightSystem();
+	EnableStencilForAllMeshes(3);
+}
+
+void AItemBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	CleanupHighlightSystem();
+
+	if (PhysicsLocationSyncTimer.IsValid())
+	{
+		GetWorld()->GetTimerManager().ClearTimer(PhysicsLocationSyncTimer);
+	}
+
+	Super::EndPlay(EndPlayReason);
+}
+
+void AItemBase::OnRepDurability()
+{
+	if (FMath::IsNearlyZero(Durability) || Durability <= 0.0f)
+	{
+		Durability = 0.0f;
+	}
+	else if (Durability > MaxDurability)
+	{
+		Durability = MaxDurability;
+	}
+
+	OnItemStateChanged.Broadcast();
+}
+
+void AItemBase::SetUsing(bool bNewUsing)
+{
+	bIsUsing = bNewUsing;
+}
+
+FGameplayTag AItemBase::GetItemType() const
+{
+	return ItemData.ItemType;
+}
+
+void AItemBase::ApplyItemDataFromTable()
+{
+	if (ItemRowName.IsNone())
+	{
+		LOG_Item_WARNING(TEXT("[AItemBase::ApplyItemDataFromTable] ItemRowName이 설정되지 않았습니다!"));
+		return;
+	}
+
+	if (!ItemDataTable)
+	{
+		if (UGameInstance* GI = GetGameInstance())
+		{
+			if (ULCGameInstanceSubsystem* GISubsystem = GI->GetSubsystem<ULCGameInstanceSubsystem>())
+			{
+				ItemDataTable = GISubsystem->ItemDataTable;
+			}
+		}
+	}
+
+	if (!ItemDataTable)
+	{
+		LOG_Item_WARNING(TEXT("[AItemBase::ApplyItemDataFromTable] ItemDataTable is null!"));
+		return;
+	}
+
+	FItemDataRow* Found = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("ApplyItemDataFromTable"));
+	if (!Found)
+	{
+		LOG_Item_WARNING(TEXT("[AItemBase::ApplyItemDataFromTable] ItemData not found for: %s"), *ItemRowName.ToString());
+		return;
+	}
+
+	ItemData = *Found;
+	MaxDurability = ItemData.MaxDurability;
+	Durability = FMath::Clamp(Durability, 0.0f, MaxDurability);
+	bIgnoreCharacterCollision = ItemData.bIgnoreCharacterCollision;
+
+	SetupMeshComponents();
+
+	/*if (ItemData.bIsResourceItem)
+	{
+		LOG_Frame_WARNING(TEXT("이 아이템은 자원입니다. 카테고리: %d, 점수: %d"),
+			static_cast<int32>(ItemData.Category), ItemData.BaseScore);
+	}*/
+
+	ApplyCollisionSettings();
+
+	OnItemStateChanged.Broadcast();
+}
+
+bool AItemBase::TryRemoveFromInventory()
+{
+	if (!HasAuthority())
+	{
+		LOG_Item_WARNING(TEXT("[TryRemoveFromInventory] Authority가 없습니다."));
+		return false;
+	}
+
+	AActor* OwnerActor = GetOwner();
+	if (!OwnerActor)
+	{
+		LOG_Item_WARNING(TEXT("[TryRemoveFromInventory] Owner가 없습니다."));
+		return false;
+	}
+
+	ABaseCharacter* OwnerCharacter = Cast<ABaseCharacter>(OwnerActor);
+	if (!OwnerCharacter)
+	{
+		LOG_Item_WARNING(TEXT("[TryRemoveFromInventory] Owner가 BaseCharacter가 아닙니다."));
+		return false;
+	}
+
+	UToolbarInventoryComponent* ToolbarInventory = OwnerCharacter->GetToolbarInventoryComponent();
+	if (!ToolbarInventory)
+	{
+		LOG_Item_WARNING(TEXT("[TryRemoveFromInventory] ToolbarInventoryComponent를 찾을 수 없습니다."));
+		return false;
+	}
+
+	// 현재 장착된 아이템인지 확인
+	int32 EquippedSlotIndex = ToolbarInventory->GetCurrentEquippedSlotIndex();
+	if (EquippedSlotIndex >= 0)
+	{
+		FBaseItemSlotData* EquippedSlotData = ToolbarInventory->GetItemDataAtSlot(EquippedSlotIndex);
+		if (EquippedSlotData && EquippedSlotData->ItemRowName == ItemRowName)
+		{
+			// 장착된 아이템이면 먼저 장착 해제
+			ToolbarInventory->UnequipCurrentItem();
+
+			// 해당 슬롯을 Default로 설정
+			ToolbarInventory->SetSlotToDefault(EquippedSlotIndex);
+
+			LOG_Item_WARNING(TEXT("[TryRemoveFromInventory] ✅ 장착된 아이템 제거 완료: 슬롯 %d"), EquippedSlotIndex);
+			return true;
+		}
+	}
+
+	// 장착되지 않은 아이템의 경우, 모든 슬롯 탐색
+	for (int32 i = 0; i < ToolbarInventory->ItemSlots.Num(); ++i)
+	{
+		const FBaseItemSlotData& SlotData = ToolbarInventory->ItemSlots[i];
+		if (SlotData.ItemRowName == ItemRowName && SlotData.Quantity > 0)
+		{
+			ToolbarInventory->SetSlotToDefault(i);
+			LOG_Item_WARNING(TEXT("[TryRemoveFromInventory] ✅ 일반 아이템 제거 완료: 슬롯 %d"), i);
+			return true;
+		}
+	}
+
+	LOG_Item_WARNING(TEXT("[TryRemoveFromInventory] 제거할 아이템을 찾을 수 없습니다: %s"), *ItemRowName.ToString());
+	return false;
+}
+
+void AItemBase::SetupMeshComponents()
+{
+	bool bWasHighlighted = bIsHighlighted;
+	if (bWasHighlighted)
+	{
+		RemoveHighlight();
+	}
+
+	if (ItemData.SkeletalMesh)
+	{
+		bUsingSkeletalMesh = true;
+		SkeletalMeshComponent->SetSkeletalMesh(ItemData.SkeletalMesh);
+
+		SetMeshComponentActive(SkeletalMeshComponent, StaticMeshComponent);
+	}
+	else if (ItemData.StaticMesh)
+	{
+		bUsingSkeletalMesh = false;
+		StaticMeshComponent->SetStaticMesh(ItemData.StaticMesh);
+
+		// ItemData 적용 후, 메시가 세팅된 다음 머티리얼 적용
+		if (ItemData.OverrideMaterial)
+		{
+			if (StaticMeshComponent && StaticMeshComponent->GetStaticMesh())
+			{
+				StaticMeshComponent->SetMaterial(0, ItemData.OverrideMaterial);
+			}
+		}
+
+		SetMeshComponentActive(StaticMeshComponent, SkeletalMeshComponent);
+	}
+	else
+	{
+		LOG_Item_WARNING(TEXT("[SetupMeshComponents] 메시가 설정되지 않음: %s"), *ItemRowName.ToString());
+	}
+
+	if (bWasHighlighted && HighlightMaterial)
+	{
+		ApplyHighlight();
+	}
+}
+
+void AItemBase::SetMeshComponentActive(UPrimitiveComponent* ActiveComponent, UPrimitiveComponent* InactiveComponent)
+{
+	if (ActiveComponent)
+	{
+		ActiveComponent->SetVisibility(true);
+		ActiveComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	}
+	else
+	{
+		LOG_Item_WARNING(TEXT("[AItemBase::SetMeshComponentActive] 활성화할 컴포넌트가 유효하지 않음"));
+	}
+
+	if (InactiveComponent)
+	{
+		InactiveComponent->SetVisibility(false);
+		InactiveComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+	else
+	{
+		LOG_Item_WARNING(TEXT("[SetMeshComponentActive] 비활성화할 컴포넌트가 유효하지 않음"));
+	}
+}
+
+UPrimitiveComponent* AItemBase::GetActiveMeshComponent() const
+{
+	if (bUsingSkeletalMesh && SkeletalMeshComponent)
+	{
+		return SkeletalMeshComponent;
+	}
+	else if (StaticMeshComponent)
+	{
+		return StaticMeshComponent;
+	}
+	return nullptr;
+}
+
+UStaticMeshComponent* AItemBase::GetMeshComponent() const
+{
+	if (bUsingSkeletalMesh)
+	{
+		return nullptr;
+	}
+	return StaticMeshComponent;
+}
+
+USkeletalMeshComponent* AItemBase::GetSkeletalMeshComponent() const
+{
+	return SkeletalMeshComponent;
+}
+
+//void AItemBase::UseItem()
+//{
+//	// TODO : 조건에 따라 아이템 타입에 따른 사용함수를 구현하거나 혹은 상속받은 곳에서 구현이 필요할 것으로 예상
+//	OnItemStateChanged.Broadcast();
+//}
+
+bool AItemBase::IsCollectible() const
+{
+	FGameplayTag CollectibleTag = FGameplayTag::RequestGameplayTag(TEXT("ItemType.Collectible"));
+	return ItemData.ItemType.MatchesTag(CollectibleTag) || ItemData.ItemType == CollectibleTag;
+}
+
+#if WITH_EDITOR
+void AItemBase::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+
+	static const FName RowNamePropName = GET_MEMBER_NAME_CHECKED(AItemBase, ItemRowName);
+
+	if (PropertyChangedEvent.Property && PropertyChangedEvent.Property->GetFName() == RowNamePropName)
+	{
+		if (ItemDataTable)
+		{
+			FItemDataRow* Found = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("Editor Item Lookup"));
+			if (Found)
+			{
+				ItemData = *Found;
+
+				if (ItemData.StaticMesh && StaticMeshComponent)
+				{
+					StaticMeshComponent->SetStaticMesh(ItemData.StaticMesh);
+				}
+			}
+			else
+			{
+				LOG_Item_WARNING(TEXT("[ItemBase::PostEditChangeProperty] 아이템 데이터 할당 실패 : %s"), *ItemData.ItemName.ToString());
+			}
+		}
+	}
+}
+#endif
+
+void AItemBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME_CONDITION_NOTIFY(AItemBase, ItemRowName, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME(AItemBase, Quantity);
+	DOREPLIFETIME(AItemBase, bIsEquipped);
+	DOREPLIFETIME_CONDITION_NOTIFY(AItemBase, Durability, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME(AItemBase, bIgnoreCharacterCollision);
+	DOREPLIFETIME(AItemBase, bIsSoundActive);
+	DOREPLIFETIME(AItemBase, bIsUsing);
+}
+
+void AItemBase::OnRepItemRowName()
+{
+	if (!ItemRowName.IsNone())
+	{
+		ApplyItemDataFromTable();
+
+		if (bIsEquipped)
+		{
+			SetActorEnableCollision(false);
+		}
+	}
+}
+
+void AItemBase::Interact_Implementation(APlayerController* Interactor)
+{
+	if (!Interactor)
+	{
+		LOG_Item_WARNING(TEXT("[AItemBase::Interact_Implementation] Interactor가 nullptr입니다."));
+		return;
+	}
+
+	if (ABaseCharacter* Character = Cast<ABaseCharacter>(Interactor->GetPawn()))
+	{
+		Character->TryPickupItem(this);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[AItemBase::Interact_Implementation] BaseCharacter를 찾을 수 없음"));
+	}
+}
+
+FString AItemBase::GetInteractMessage_Implementation() const
+{
+	if (IA_Interact == nullptr)
+	{
+		return TEXT("No Interact Key Assigned");
+	}
+
+	FString InteractKeyName = GetCurrentKeyNameForAction(IA_Interact);
+
+	if (ItemRowName.IsNone())
+	{
+		return FString::Printf(TEXT("Press [%s] to Pick Up Item"), *InteractKeyName);
+	}
+
+	if (ItemDataTable)
+	{
+		if (const FItemDataRow* Found = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("GetInteractMessage")))
+		{
+			return FString::Printf(TEXT("Press [%s] Pick Up %s (x%d)"), *InteractKeyName, *Found->ItemName.ToString(), Quantity);
+		}
+	}
+
+	return FString::Printf(TEXT("Press [%s] Pick Up %s (x%d)"), *InteractKeyName, *ItemRowName.ToString(), Quantity);
+}
+
+void AItemBase::Server_TryPickupByPlayer_Implementation(APlayerController* PlayerController)
+{
+	if (!PlayerController)
+	{
+		LOG_Item_WARNING(TEXT("[AItemBase::Server_TryPickupByPlayer] PlayerController가 nullptr입니다."));
+		return;
+	}
+
+	Internal_TryPickupByPlayer(PlayerController);
+}
+
+bool AItemBase::Internal_TryPickupByPlayer(APlayerController* PlayerController)
+{
+	if (!HasAuthority())
+	{
+		LOG_Item_WARNING(TEXT("[AItemBase::Internal_TryPickupByPlayer] Authority가 없습니다."));
+		return false;
+	}
+
+	if (!PlayerController)
+	{
+		LOG_Item_WARNING(TEXT("[AItemBase::Internal_TryPickupByPlayer] PlayerController가 nullptr입니다."));
+		return false;
+	}
+
+	ABaseCharacter* Character = Cast<ABaseCharacter>(PlayerController->GetPawn());
+	if (!Character)
+	{
+		LOG_Item_WARNING(TEXT("[AItemBase::Internal_TryPickupByPlayer] BaseCharacter를 찾을 수 없습니다."));
+		return false;
+	}
+
+	if (UToolbarInventoryComponent* ToolbarInventory = Character->GetToolbarInventoryComponent())
+	{
+		if (ToolbarInventory->TryAddItem(this))
+		{
+			return true;
+		}
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[AItemBase::Internal_TryPickupByPlayer] 인벤토리가 가득참: %s"), *ItemRowName.ToString());
+	return false;
+}
+
+void AItemBase::ApplyCollisionSettings()
+{
+	UPrimitiveComponent* ActiveMeshComp = GetActiveMeshComponent();
+	if (!ActiveMeshComp)
+	{
+		LOG_Item_WARNING(TEXT("[ApplyCollisionSettings] 활성화된 메시 컴포넌트가 없음: %s"), *GetName());
+		return;
+	}
+
+	ActiveMeshComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	ActiveMeshComp->SetCollisionObjectType(ECC_WorldDynamic);
+	ActiveMeshComp->SetCollisionResponseToAllChannels(ECR_Block);
+
+	if (bIgnoreCharacterCollision)
+	{
+		ActiveMeshComp->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+	}
+	else
+	{
+		ActiveMeshComp->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
+	}
+
+	// 기타 채널 설정
+	ActiveMeshComp->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
+	ActiveMeshComp->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);
+	ActiveMeshComp->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+	ActiveMeshComp->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+}
+
+void AItemBase::SyncPhysicsLocationToActor()
+{
+	if (!HasAuthority())
+		return;
+
+	if (UPrimitiveComponent* ActiveMeshComp = GetActiveMeshComponent())
+	{
+		if (ActiveMeshComp->IsSimulatingPhysics())
+		{
+			// 물리 컴포넌트의 위치를 액터 위치로 동기화
+			FVector PhysicsLocation = ActiveMeshComp->GetComponentLocation();
+			FVector ActorLocation = GetActorLocation();
+
+			float Distance = FVector::Dist(PhysicsLocation, ActorLocation);
+			if (Distance > 5.0f)
+			{
+				SetActorLocation(PhysicsLocation);
+				ForceNetUpdate();
+			}
+		}
+		else
+		{
+			if (PhysicsLocationSyncTimer.IsValid())
+			{
+				GetWorld()->GetTimerManager().ClearTimer(PhysicsLocationSyncTimer);
+			}
+		}
+	}
+}
+
+void AItemBase::EnableStencilForAllMeshes(int32 StencilValue)
+{
+	TArray<UMeshComponent*> MeshComponents;
+	GetComponents<UMeshComponent>(MeshComponents);
+
+	for (UMeshComponent* MeshComp : MeshComponents)
+	{
+		MeshComp->SetRenderCustomDepth(true);
+		MeshComp->SetCustomDepthStencilValue(StencilValue);
+	}
+}
+
+void AItemBase::PlayItemUseSound(bool bIsStart)
+{
+	// 서버에서만 멀티캐스트 호출
+	if (HasAuthority())
+	{
+		MulticastPlayItemUseSound(bIsStart);
+	}
+	// 단일 플레이(싱글) 환경에서는 바로 재생
+	else
+	{
+		USoundBase* SoundToPlay = nullptr;
+		if (bIsStart)
+		{
+			SoundToPlay = ItemData.UseStartSound;
+		}
+		else
+		{
+			SoundToPlay = ItemData.UseEndSound;
+		}
+
+		Internal_PlaySound(SoundToPlay);
+	}
+}
+
+void AItemBase::Internal_PlaySound(USoundBase* SoundToPlay)
+{
+	if (!SoundToPlay)
+	{
+		return;
+	}
+
+	UGameplayStatics::PlaySoundAtLocation(this, SoundToPlay, GetActorLocation());
+}
+
+void AItemBase::MulticastPlayItemUseSound_Implementation(bool bIsStart)
+{
+	USoundBase* SoundToPlay = nullptr;
+	if (bIsStart)
+	{
+		SoundToPlay = ItemData.UseStartSound;
+	}
+	else
+	{
+		SoundToPlay = ItemData.UseEndSound;
+	}
+
+	Internal_PlaySound(SoundToPlay);
+}
+
+FString AItemBase::GetCurrentKeyNameForAction(UInputAction* InputAction) const
+{
+	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+	if (IsValid(PC) == false)
+	{
+		return TEXT("Invalid");
+	}
+
+	ULocalPlayer* LocalPlayer = PC->GetLocalPlayer();
+	if (IsValid(LocalPlayer) == false)
+	{
+		return TEXT("Invalid");
+	}
+
+	UEnhancedInputLocalPlayerSubsystem* Subsystem = LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
+	if (IsValid(Subsystem) == false)
+	{
+		return TEXT("Invalid");
+	}
+	const TArray<FEnhancedActionKeyMapping> Mappings = Subsystem->GetAllPlayerMappableActionKeyMappings();
+
+	for (const FEnhancedActionKeyMapping& Mapping : Mappings)
+	{
+		if (Mapping.Action == InputAction)
+		{
+			return Mapping.Key.GetDisplayName().ToString();
+		}
+	}
+	return TEXT("Unbound");
+}
+
+void AItemBase::PlaySoundByType()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	switch (ItemData.SoundType)
+	{
+	case EItemSoundType::Click:
+		HandleClickSound();
+		break;
+
+	case EItemSoundType::Toggle:
+		HandleToggleSound();
+		break;
+
+	case EItemSoundType::Hold:
+		HandleHoldSoundStart();
+		break;
+
+	default:
+		break;
+	}
+}
+
+void AItemBase::HandleClickSound()
+{
+	// 클릭: 항상 시작 사운드만 재생
+	PlayItemUseSound(true);
+
+	LOG_Item_WARNING(TEXT("[%s] Click Sound: %s"), *GetName(), *ItemRowName.ToString());
+}
+
+void AItemBase::HandleToggleSound()
+{
+	// 토글: 상태에 따라 시작/종료 사운드 전환
+	bIsSoundActive = !bIsSoundActive;
+	PlayItemUseSound(bIsSoundActive);
+
+	LOG_Item_WARNING(TEXT("[%s] Toggle Sound: %s (%s)"),
+		*GetName(), *ItemRowName.ToString(),
+		bIsSoundActive ? TEXT("ON") : TEXT("OFF"));
+}
+
+void AItemBase::HandleHoldSoundStart()
+{
+	// 홀드: 시작 사운드 재생 및 상태 변경
+	if (!bIsSoundActive)
+	{
+		bIsSoundActive = true;
+		PlayItemUseSound(true);
+
+		LOG_Item_WARNING(TEXT("[%s] Hold Sound Start: %s"), *GetName(), *ItemRowName.ToString());
+	}
+}
+
+void AItemBase::StopHoldSound()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	// 홀드 타입에서만 종료 사운드 처리
+	if (ItemData.SoundType == EItemSoundType::Hold && bIsSoundActive)
+	{
+		bIsSoundActive = false;
+		PlayItemUseSound(false);
+
+		LOG_Item_WARNING(TEXT("[%s] Hold Sound Stop: %s"), *GetName(), *ItemRowName.ToString());
+	}
+}
+
+void AItemBase::SetupHighlightSystem()
+{
+	if (!bEnableHighlight || !InteractionSphere)
+	{
+		return;
+	}
+
+	// 하이라이트 범위 설정
+	InteractionSphere->SetSphereRadius(HighlightRadius);
+
+	// 오버랩 이벤트 바인딩
+	InteractionSphere->OnComponentBeginOverlap.AddUniqueDynamic(this, &AItemBase::OnHighlightSphereBeginOverlap);
+	InteractionSphere->OnComponentEndOverlap.AddUniqueDynamic(this, &AItemBase::OnHighlightSphereEndOverlap);
+}
+
+void AItemBase::CleanupHighlightSystem()
+{
+	if (!InteractionSphere)
+	{
+		return;
+	}
+
+	if (bIsHighlighted)
+	{
+		RemoveHighlight();
+	}
+
+	InteractionSphere->OnComponentBeginOverlap.RemoveDynamic(this, &AItemBase::OnHighlightSphereBeginOverlap);
+	InteractionSphere->OnComponentEndOverlap.RemoveDynamic(this, &AItemBase::OnHighlightSphereEndOverlap);
+}
+
+void AItemBase::OnHighlightSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (!bEnableHighlight || !OtherActor)
+	{
+		return;
+	}
+
+	// 캐릭터인지 확인
+	ACharacter* Character = Cast<ACharacter>(OtherActor);
+	if (!Character)
+	{
+		return;
+	}
+
+	// 로컬 플레이어인지 확인
+	APlayerController* PC = Cast<APlayerController>(Character->GetController());
+	if (!PC || !PC->IsLocalPlayerController())
+	{
+		return;
+	}
+
+	// 장착된 아이템은 하이라이트하지 않음
+	if (bIsEquipped)
+	{
+		return;
+	}
+
+	ApplyHighlight();
+}
+
+void AItemBase::OnHighlightSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	if (!bEnableHighlight || !OtherActor)
+	{
+		return;
+	}
+
+	// 캐릭터인지 확인
+	ACharacter* Character = Cast<ACharacter>(OtherActor);
+	if (!Character)
+	{
+		return;
+	}
+
+	// 로컬 플레이어인지 확인
+	APlayerController* PC = Cast<APlayerController>(Character->GetController());
+	if (!PC || !PC->IsLocalPlayerController())
+	{
+		return;
+	}
+
+	RemoveHighlight();
+}
+
+void AItemBase::ApplyHighlight()
+{
+	if (bIsHighlighted)
+	{
+		return;
+	}
+
+	UMaterialInterface* MaterialToUse = HighlightMaterial ? HighlightMaterial : GetDefaultHighlightMaterial();
+	if (!MaterialToUse)
+	{
+		return;
+	}
+
+	if (bUsingSkeletalMesh && SkeletalMeshComponent)
+	{
+		SkeletalMeshComponent->SetOverlayMaterial(MaterialToUse);
+		bIsHighlighted = true;
+	}
+	else if (StaticMeshComponent)
+	{
+		StaticMeshComponent->SetOverlayMaterial(MaterialToUse);
+		bIsHighlighted = true;
+	}
+
+	if (bIsHighlighted)
+	{
+		LOG_Item_WARNING(TEXT("[%s] Highlight applied to item: %s"), *GetName(), *ItemRowName.ToString());
+	}
+}
+
+void AItemBase::RemoveHighlight()
+{
+	if (!bIsHighlighted)
+	{
+		return;
+	}
+
+	if (bUsingSkeletalMesh && SkeletalMeshComponent)
+	{
+		SkeletalMeshComponent->SetOverlayMaterial(nullptr);
+	}
+	else if (StaticMeshComponent)
+	{
+		StaticMeshComponent->SetOverlayMaterial(nullptr);
+	}
+
+	bIsHighlighted = false;
+	LOG_Item_WARNING(TEXT("[%s] Highlight removed from item: %s"), *GetName(), *ItemRowName.ToString());
+}
+
+UMaterialInterface* AItemBase::GetDefaultHighlightMaterial() const
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return nullptr;
+	}
+
+	UGameInstance* GI = World->GetGameInstance();
+	if (!GI)
+	{
+		return nullptr;
+	}
+
+	ULCGameInstanceSubsystem* GISubsystem = GI->GetSubsystem<ULCGameInstanceSubsystem>();
+	if (!GISubsystem)
+	{
+		return nullptr;
+	}
+
+	return GISubsystem->DefaultHighlightMaterial;
+}

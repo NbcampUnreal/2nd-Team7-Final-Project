@@ -1,0 +1,411 @@
+#include "Inventory/InventoryUIController.h"
+#include "Inventory/InventoryComponentBase.h"
+#include "Inventory/ToolbarInventoryComponent.h"
+#include "UI/UIElement/InventoryMainWidget.h"
+#include "UI/UIElement/BackpackInventoryWidget.h"
+#include "UI/UIElement/ToolbarInventoryWidget.h"
+#include "UI/Manager/LCUIManager.h"
+#include "Character/BaseCharacter.h"
+#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "Engine/World.h"
+#include "Engine/GameInstance.h"
+#include "GameFramework/PlayerController.h"
+#include "GameFramework/Pawn.h"
+#include "LastCanary.h"
+
+UInventoryUIController::UInventoryUIController()
+{
+    OwnerInventory = nullptr;
+    CachedUIManager = nullptr;
+    CachedInventoryWidget = nullptr;
+}
+
+void UInventoryUIController::Initialize(UInventoryComponentBase* InOwnerInventory)
+{
+    OwnerInventory = InOwnerInventory;
+    CachedUIManager = nullptr;
+    CachedInventoryWidget = nullptr;
+
+    if (OwnerInventory)
+    {
+        LOG_Item_WARNING(TEXT("[InventoryUIController::Initialize] UI 컨트롤러 초기화 완료"));
+    }
+}
+
+void UInventoryUIController::RefreshInventoryUI()
+{
+    if (!IsLocalPlayer())
+    {
+        return;
+    }
+
+    UInventoryMainWidget* InventoryWidget = GetInventoryWidget();
+    if (InventoryWidget)
+    {
+        InventoryWidget->RefreshInventory();
+        LOG_Item_WARNING(TEXT("[InventoryUIController::RefreshInventoryUI] 인벤토리 UI 새로고침 완료"));
+    }
+}
+
+void UInventoryUIController::UpdateSlotUI(int32 SlotIndex)
+{
+    if (!IsLocalPlayer())
+    {
+        return;
+    }
+
+    // 개별 슬롯 업데이트는 전체 새로고침으로 처리
+    // 필요시 향후 최적화 가능
+    RefreshInventoryUI();
+
+    LOG_Item_WARNING(TEXT("[InventoryUIController::UpdateSlotUI] 슬롯 %d UI 업데이트"), SlotIndex);
+}
+
+void UInventoryUIController::UpdateEquippedItemText(const FText& ItemName)
+{
+    if (!IsLocalPlayer())
+    {
+        return;
+    }
+
+    UInventoryMainWidget* InventoryWidget = GetInventoryWidget();
+    if (InventoryWidget)
+    {
+        InventoryWidget->ShowToolbarSlotItemText(ItemName);
+        LOG_Item_WARNING(TEXT("[InventoryUIController::UpdateEquippedItemText] 장착 아이템 텍스트 업데이트: %s"),
+            *ItemName.ToString());
+    }
+}
+
+void UInventoryUIController::UpdateWeightUI(float CurrentWeight)
+{
+    if (!IsLocalPlayer())
+    {
+        return;
+    }
+
+    // UI에서는 현재 무게만 표시
+    LOG_Item_WARNING(TEXT("[InventoryUIController::UpdateWeightUI] 현재 무게: %.1fkg"), CurrentWeight);
+
+    // 실제 UI 위젯이 있다면:
+    // WeightDisplayWidget->SetText(FText::FromString(FString::Printf(TEXT("%.1fkg"), CurrentWeight)));
+}
+
+void UInventoryUIController::ShowItemTooltip(const FBaseItemSlotData& ItemData, UWidget* TargetWidget)
+{
+    if (!IsLocalPlayer() || !TargetWidget)
+    {
+        return;
+    }
+
+    // 현재 시스템에서는 각 슬롯 위젯이 개별적으로 툴팁을 관리하므로
+    // 이 함수는 로깅용으로만 사용
+    LOG_Item_WARNING(TEXT("[InventoryUIController::ShowItemTooltip] 툴팁 표시: %s"),
+        *ItemData.ItemRowName.ToString());
+}
+
+void UInventoryUIController::HideTooltip()
+{
+    if (!IsLocalPlayer())
+    {
+        return;
+    }
+
+    // 현재 시스템에서는 각 슬롯 위젯이 개별적으로 툴팁을 관리하므로
+    // 이 함수는 로깅용으로만 사용
+    LOG_Item_WARNING(TEXT("[InventoryUIController::HideTooltip] 툴팁 숨김"));
+}
+
+void UInventoryUIController::HideAllTooltips()
+{
+    if (!IsLocalPlayer())
+    {
+        return;
+    }
+
+    if (ULCUIManager* UIManager = GetUIManager())
+    {
+        if (UInventoryMainWidget* InventoryWidget = UIManager->GetInventoryMainWidget())
+        {
+            InventoryWidget->CancelCurrentDragOperation();
+
+            if (InventoryWidget->GetToolbarWidget())
+            {
+                InventoryWidget->GetToolbarWidget()->HideTooltip();
+            }
+
+            if (InventoryWidget->GetBackpackWidget())
+            {
+                InventoryWidget->GetBackpackWidget()->HideTooltip();
+            }
+        }
+    }
+}
+
+void UInventoryUIController::ShowBackpackUI(const TArray<FBackpackSlotData>& BackpackSlots)
+{
+    if (!IsLocalPlayer())
+    {
+        return;
+    }
+
+    ULCUIManager* UIManager = GetUIManager();
+    if (UIManager)
+    {
+        // 인벤토리가 열려있지 않으면 자동으로 열기
+        UInventoryMainWidget* InventoryWidget = GetInventoryWidget();
+        if (InventoryWidget)
+        {
+            // 가방 인벤토리 부분만 토글 (이미 열려있으면 새로고침)
+            if (!InventoryWidget->IsBackpackInventoryOpen())
+            {
+                InventoryWidget->ToggleBackpackInventory();
+            }
+            else
+            {
+                InventoryWidget->RefreshInventory();
+            }
+        }
+
+        SetInputModeGameAndUI();
+
+        LOG_Item_WARNING(TEXT("[InventoryUIController::ShowBackpackUI] 가방 UI 활성화 (슬롯 수: %d)"),
+            BackpackSlots.Num());
+    }
+}
+
+void UInventoryUIController::HideBackpackUI()
+{
+    if (!IsLocalPlayer())
+    {
+        return;
+    }
+
+    UInventoryMainWidget* InventoryWidget = GetInventoryWidget();
+    if (InventoryWidget && InventoryWidget->IsBackpackInventoryOpen())
+    {
+        InventoryWidget->HideItemDropQuantityWidget();
+        InventoryWidget->ToggleBackpackInventory();
+        SetInputModeGameOnly();
+        LOG_Item_WARNING(TEXT("[InventoryUIController::HideBackpackUI] 가방 UI 비활성화"));
+    }
+}
+
+APlayerController* UInventoryUIController::GetOwnerPlayerController() const
+{
+    if (!OwnerInventory)
+    {
+        LOG_Item_WARNING(TEXT("[GetOwnerPlayerController] OwnerInventory가 null"));
+        return nullptr;
+    }
+
+    // InventoryComponent의 소유자(Character) 가져오기
+    AActor* OwnerActor = OwnerInventory->GetOwner();
+    if (!OwnerActor)
+    {
+        LOG_Item_WARNING(TEXT("[GetOwnerPlayerController] OwnerActor가 null"));
+        return nullptr;
+    }
+
+    // Character가 Pawn인지 확인
+    APawn* OwnerPawn = Cast<APawn>(OwnerActor);
+    if (!OwnerPawn)
+    {
+        LOG_Item_WARNING(TEXT("[GetOwnerPlayerController] OwnerActor가 Pawn이 아님"));
+        return nullptr;
+    }
+
+    // Pawn의 Controller가 PlayerController인지 확인
+    APlayerController* PC = Cast<APlayerController>(OwnerPawn->GetController());
+    if (!PC)
+    {
+        LOG_Item_WARNING(TEXT("[GetOwnerPlayerController] PlayerController를 찾을 수 없음"));
+        return nullptr;
+    }
+
+    return PC;
+}
+
+void UInventoryUIController::SetInputModeGameAndUI()
+{
+    APlayerController* PC = GetOwnerPlayerController();
+    if (!PC)
+    {
+        LOG_Item_WARNING(TEXT("[SetInputModeGameAndUI] PlayerController를 찾을 수 없음"));
+        return;
+    }
+
+    FInputModeGameAndUI InputMode;
+    InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+    InputMode.SetHideCursorDuringCapture(false);
+    PC->SetInputMode(InputMode);
+    PC->SetShowMouseCursor(true);
+
+    LOG_Item_WARNING(TEXT("[SetInputModeGameAndUI] 가방 UI 열림 - 입력모드: GameAndUI"));
+}
+
+void UInventoryUIController::SetInputModeGameOnly()
+{
+    APlayerController* PC = GetOwnerPlayerController();
+    if (!PC)
+    {
+        LOG_Item_WARNING(TEXT("[SetInputModeGameOnly] PlayerController를 찾을 수 없음"));
+        return;
+    }
+
+    FInputModeGameOnly InputMode;
+    PC->SetInputMode(InputMode);
+    PC->SetShowMouseCursor(false);
+
+    LOG_Item_WARNING(TEXT("[SetInputModeGameOnly] 가방 UI 닫힘 - 입력모드: GameOnly"));
+}
+
+void UInventoryUIController::SetGunAmmoUIVisibility(bool bVisible, int32 CurrentAmmo, int32 MaxAmmo, EFireMode CurrentFireMode, const TArray<EFireMode>& AvailableFireModes)
+{
+    if (!IsLocalPlayer())
+    {
+        LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] IsLocalPlayer() false"));
+        return;
+    }
+
+    if (!OwnerInventory || !OwnerInventory->GetOwner())
+    {
+        LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] OwnerInventory 또는 Owner가 null"));
+        return;
+    }
+
+    UWorld* World = OwnerInventory->GetOwner()->GetWorld();
+    if (!World)
+    {
+        LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] World가 null"));
+        return;
+    }
+
+    UGameInstance* GI = World->GetGameInstance();
+    if (!GI)
+    {
+        LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] GameInstance가 null"));
+        return;
+    }
+
+    ULCGameInstanceSubsystem* GISubsystem = GI->GetSubsystem<ULCGameInstanceSubsystem>();
+    if (!GISubsystem)
+    {
+        LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] GameInstanceSubsystem이 null"));
+        return;
+    }
+
+    ULCUIManager* UIManager = GISubsystem->GetUIManager();
+    if (!UIManager)
+    {
+        LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] UIManager가 null"));
+        return;
+    }
+
+    UInventoryMainWidget* InventoryWidget = UIManager->GetInventoryMainWidget();
+    if (!InventoryWidget)
+    {
+        LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] InventoryMainWidget이 null"));
+        return;
+    }
+
+    if (bVisible && MaxAmmo > 0)
+    {
+        InventoryWidget->SetGunAmmoUIVisibility(true, CurrentAmmo, MaxAmmo, CurrentFireMode, AvailableFireModes);
+        LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] ✅ 탄환 UI 표시: %d/%d"), CurrentAmmo, MaxAmmo);
+    }
+    else
+    {
+        InventoryWidget->SetGunAmmoUIVisibility(false, 0, 0, CurrentFireMode, AvailableFireModes);
+        LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] 탄환 UI 숨김"));
+    }
+}
+
+void UInventoryUIController::Multicast_UpdateItemText_Implementation(const FText& ItemName)
+{
+    UpdateEquippedItemText(ItemName);
+}
+
+void UInventoryUIController::Client_RefreshUI_Implementation()
+{
+    RefreshInventoryUI();
+}
+
+ULCUIManager* UInventoryUIController::GetUIManager()
+{
+    if (CachedUIManager)
+    {
+        return CachedUIManager;
+    }
+
+    if (!OwnerInventory)
+    {
+        return nullptr;
+    }
+
+    UWorld* World = OwnerInventory->GetWorld();
+    if (!World)
+    {
+        return nullptr;
+    }
+
+    UGameInstance* GameInstance = World->GetGameInstance();
+    if (!GameInstance)
+    {
+        return nullptr;
+    }
+
+    ULCGameInstanceSubsystem* GameSubsystem = GameInstance->GetSubsystem<ULCGameInstanceSubsystem>();
+    if (!GameSubsystem)
+    {
+        return nullptr;
+    }
+
+    CachedUIManager = GameSubsystem->GetUIManager();
+    return CachedUIManager;
+}
+
+UInventoryMainWidget* UInventoryUIController::GetInventoryWidget()
+{
+    if (CachedInventoryWidget)
+    {
+        return CachedInventoryWidget;
+    }
+
+    ULCUIManager* UIManager = GetUIManager();
+    if (!UIManager)
+    {
+        return nullptr;
+    }
+
+    CachedInventoryWidget = UIManager->GetInventoryMainWidget();
+    return CachedInventoryWidget;
+}
+
+bool UInventoryUIController::IsLocalPlayer() const
+{
+    if (!OwnerInventory)
+    {
+        return false;
+    }
+
+    AActor* Owner = OwnerInventory->GetOwner();
+    if (!Owner)
+    {
+        return false;
+    }
+
+    // Pawn인 경우 로컬 컨트롤러 확인
+    if (APawn* OwnerPawn = Cast<APawn>(Owner))
+    {
+        return OwnerPawn->IsLocallyControlled();
+    }
+
+    // PlayerController인 경우 로컬 플레이어 확인
+    if (APlayerController* PC = Cast<APlayerController>(Owner))
+    {
+        return PC->IsLocalPlayerController();
+    }
+
+    return false;
+}

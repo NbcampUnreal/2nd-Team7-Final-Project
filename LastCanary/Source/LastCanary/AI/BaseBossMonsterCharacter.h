@@ -1,0 +1,197 @@
+﻿#pragma once
+
+#include "CoreMinimal.h"
+#include "GameFramework/Character.h"
+#include "NiagaraComponent.h"
+#include "BaseBossMonsterCharacter.generated.h"
+
+UCLASS()
+class LASTCANARY_API ABaseBossMonsterCharacter : public ACharacter
+{
+    GENERATED_BODY()
+
+public:
+    ABaseBossMonsterCharacter();
+    virtual void BeginPlay() override;
+
+    /** 공격 범위(반경)를 읽어오는 Getter */
+    UFUNCTION(BlueprintCallable, Category = "Attack")
+    float GetNextAttackRange() const;
+
+    /** 다음에 실행할 공격 액션 */
+    TFunction<void()> NextAttackAction;
+
+    /** RequestNextAttack() 로 선택된 스킬을 실행합니다. */
+    void ExecuteSelectedAttack();
+
+    /** Berserk FX 컴포넌트 (미리 생성해 두고 Activate/Deactivate) */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Effects|Berserk")
+    UNiagaraComponent* AuraFX;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Effects|Berserk")
+    UNiagaraComponent* BerserkFX1;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Effects|Berserk")
+    UNiagaraComponent* BerserkFX2;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Attack", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+    float StrongAttackChance = 0.3f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Attack")
+    float NormalAttackCooldown = 1.2f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Attack")
+    float StrongAttackCooldown = 6.0f;
+
+    /** 일반 공격 대미지 */
+    UPROPERTY(EditAnywhere, Category = "Attack")
+    float NormalAttackDamage = 20.f;
+
+    /** 강공격 대미지 */
+    UPROPERTY(EditAnywhere, Category = "Attack")
+    float StrongAttackDamage = 50.f;
+
+    UPROPERTY(VisibleAnywhere, Category = "AI")
+    float NextAttackRange;
+
+    /** ── Rage ── */
+    UPROPERTY(EditAnywhere, Category = "Boss|Rage")
+    float MaxRage = 100.f;
+
+    /** 현재 보유한 Rage 값 (복제) */
+    UPROPERTY(Replicated, BlueprintReadOnly, Category = "Boss|Attack")
+    float Rage = 0.f;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Nav")
+    float NavGenerationradius;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Nav")
+    float NavRemovalradius;
+
+    /** 공격 요청 진입 함수 (성공 시 true 반환) */
+    UFUNCTION(BlueprintCallable, Category = "Boss|Attack")
+    virtual bool RequestAttack(float TargetDistance);
+
+    /** 외부(예: 게임 모드, 코어 Actor 등)에서 호출해 보스를 Berserk 상태로 전환 */
+    UFUNCTION(BlueprintCallable, Category = "Boss|Berserk")
+    virtual void EnterBerserkState();
+
+    virtual void UpdateBlackboardValues();
+
+protected:
+    float LastNormalTime = -FLT_MAX;
+    float LastStrongTime = -FLT_MAX;
+
+    /** 스폰 시점 위치를 저장해 두는 변수 */
+    FVector InitialSpawnLocation;
+
+    /** 텔레포트할 때 최대 반경(근처 이내) */
+    UPROPERTY(EditAnywhere, Category = "Berserk|Teleport")
+    float TeleportRadius = 500.f;
+
+    /** 공격 범위 (반경) */
+    UPROPERTY(EditAnywhere, Category = "Attack")
+    float AttackRange = 200.f;
+
+    /** ── 광폭화(Berserk) 상태 ── */
+
+    /** 현재 Berserk 활성 여부 (Replicated) */
+    UPROPERTY(ReplicatedUsing = OnRep_IsBerserk, BlueprintReadWrite, EditAnywhere, Category = "Boss|Berserk") // 임시로 ReadWrite
+        bool bIsBerserk = false;
+
+    /** 클라이언트에서 Berserk 진입/종료 시 호출되는 함수 */
+    UFUNCTION()
+    virtual void OnRep_IsBerserk();
+
+    /** 재생할 사운드 에셋 */
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Effects")
+    USoundBase* BerserkSound;
+
+    /** 재생할 사운드 에셋 */
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Effects")
+    USoundBase* EnterBerserkSound;
+
+    /** 활성화된 AudioComponent 저장용 */
+    UPROPERTY()
+    UAudioComponent* ActiveBerserkAudio;
+
+    /** Berserk 상태에서 Rage 증가 속도 배수 */
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Berserk")
+    float RageGainMultiplier_Berserk = 2.0f;
+
+    /** Berserk 상태에서 데미지 배수 (공격 로직에서 참조) */
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Berserk")
+    float DamageMultiplier_Berserk = 1.5f;
+
+    // 광폭화 지속 시간과 타이머 핸들
+    UPROPERTY(EditAnywhere, Category = "Boss|Berserk")
+    float BerserkDuration = 30.f;
+
+    FTimerHandle BerserkDurationHandle;
+
+    /** Berserk 시작을 클라이언트 전체에 알리는 멀티캐스트 RPC */
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_StartBerserk();
+
+    /** Berserk 종료를 클라이언트 전체에 알리는 멀티캐스트 RPC */
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_EndBerserk();
+
+    /** 실제 Berserk 상태 진입 로직 */
+    virtual void StartBerserk();                       // 무제한
+    virtual void StartBerserk(float Duration);         // 제한 시간
+
+    /** Berserk 종료 처리 로직 */
+    virtual void EndBerserk();
+
+    /** Rage 업데이트 시 Berserk 배수를 적용하고 싶으면 이 함수를 오버라이드하여 사용 */
+    virtual void UpdateRage(float DeltaSeconds);
+
+    /** ── 단서(Clue) 관련 멤버들 ── */
+
+/** 단서를 남길 최소/최대 간격 (초) */
+    UPROPERTY(EditAnywhere, Category = "Clue", meta = (ClampMin = "1.0", ClampMax = "60.0"))
+    float ClueSpawnIntervalMin = 120.0f;
+
+    UPROPERTY(EditAnywhere, Category = "Clue", meta = (ClampMin = "1.0", ClampMax = "300.0"))
+    float ClueSpawnIntervalMax = 180.0f;
+
+    /** ── Evidence Decals ── */
+    /** 공통으로 사용할 데칼 클래스들 (Boss 전용) */
+    UPROPERTY(EditAnywhere, Category = "Clue|Decal", meta = (EditFixedOrder))
+    TArray<TSubclassOf<AActor>> CommonDecalClasses;
+
+    /** 보스별 고유 데칼 클래스들 */
+    UPROPERTY(EditAnywhere, Category = "Clue|Decal", meta = (EditFixedOrder))
+    TArray<TSubclassOf<AActor>> UniqueDecalClasses;
+
+    // 데칼 풀 복사용 임시 배열
+    TArray<TSubclassOf<AActor>> RemainingCommonDecals;
+    TArray<TSubclassOf<AActor>> RemainingUniqueDecals;
+
+    /** 클루 스폰 타이머 핸들 */
+    FTimerHandle ClueTimerHandle;
+
+    /** 실제 단서를 스폰하는 함수 */
+    void SpawnRandomClue();
+
+    /** 범위 내 플레이어에게 대미지 적용 */
+    void DealDamageInRange(float DamageAmount);
+
+    /** 스캐너를 위한 스텐실 설정 */
+    void EnableStencilForAllMeshes(int32 StencilValue);
+
+    // 애니메이션 초기화용 타이머 핸들
+    FTimerHandle ResetAnimTimerHandle;
+
+    // 애니메이션 초기화 함수
+    UFUNCTION()
+    void ResetAnimationState();
+
+    // 반복 호출 간격 (초)
+    UPROPERTY(EditAnywhere, Category = "Animation")
+    float ResetAnimInterval = 10.f;
+
+    // Replication 설정
+    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+};

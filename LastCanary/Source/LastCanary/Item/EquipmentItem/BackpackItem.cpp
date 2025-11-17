@@ -1,0 +1,79 @@
+#include "Item/EquipmentItem/BackpackItem.h"
+#include "Character/BaseCharacter.h"
+#include "Inventory/ToolbarInventoryComponent.h"
+#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "Net/UnrealNetwork.h"
+#include "LastCanary.h"
+
+ABackpackItem::ABackpackItem()
+{
+}
+
+void ABackpackItem::BeginPlay()
+{
+    Super::BeginPlay();
+
+    InitializeBackpackSlots(BackpackData, BackpackSlots);
+}
+
+void ABackpackItem::UseItem()
+{
+    LOG_Item_ERROR(TEXT("아무튼 사용됨"));
+    if (ABaseCharacter* OwnerCharacter = Cast<ABaseCharacter>(GetOwner()))
+    {
+        if (OwnerCharacter->HasAuthority())
+        {
+            Client_ToggleInventory();
+        }
+        else
+        {
+            OwnerCharacter->ToggleInventory();
+        }
+    }
+
+    Super::UseItem();
+}
+
+TArray<FBackpackSlotData> ABackpackItem::GetBackpackData() const
+{
+    return BackpackData;
+}
+
+void ABackpackItem::SetBackpackData(const TArray<FBackpackSlotData>& InData)
+{
+    BackpackData = InData;
+}
+
+void ABackpackItem::InitializeBackpackSlots(TArray<FBackpackSlotData>& SlotsArray, int32 NumSlots)
+{
+    SlotsArray.Empty();
+    for (int32 i = 0; i < NumSlots; ++i)
+    {
+        FBackpackSlotData DefaultSlot;
+        DefaultSlot.ItemRowName = FName("Default");
+        DefaultSlot.Quantity = 0;
+        SlotsArray.Add(DefaultSlot);
+    }
+}
+
+void ABackpackItem::Client_ToggleInventory_Implementation()
+{
+    if (ABaseCharacter* OwnerCharacter = Cast<ABaseCharacter>(GetOwner()))
+    {
+        OwnerCharacter->ToggleInventory();
+    }
+}
+
+void ABackpackItem::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+    DOREPLIFETIME(ABackpackItem, bMeshVisible);
+}
+
+void ABackpackItem::OnRep_MeshVisibility()
+{
+    if (UMeshComponent* MeshComp = GetMeshComponent())
+    {
+        MeshComp->SetVisibility(bMeshVisible);
+    }
+}

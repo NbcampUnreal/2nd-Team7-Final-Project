@@ -1,0 +1,421 @@
+#include "UI/UIObject/InventoryWidgetBase.h"
+#include "Inventory/InventoryComponentBase.h"
+#include "Inventory/ToolbarInventoryComponent.h"
+#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "LastCanary.h"
+
+void UInventoryWidgetBase::NativeConstruct()
+{
+	Super::NativeConstruct();
+
+	if (!SlotWidgetClass)
+	{
+		LOG_Item_WARNING(TEXT("[InventoryWidgetBase::NativeConstruct] SlotWidgetClass가 설정되지 않음. 블루프린트에서 설정하세요."));
+	}
+
+	CreateSharedTooltipWidget();
+
+	if (UWorld* World = GetWorld())
+	{
+		if (UGameInstance* GI = World->GetGameInstance())
+		{
+			if (ULCGameInstanceSubsystem* GISubsystem = GI->GetSubsystem<ULCGameInstanceSubsystem>())
+			{
+				ItemDataTable = GISubsystem->GetItemDataTable();
+				if (!ItemDataTable)
+				{
+					LOG_Item_WARNING(TEXT("[InventoryWidgetBase::NativeConstruct] ItemDataTable이 서브시스템에서 로드되지 않음"));
+				}
+			}
+		}
+	}
+}
+
+void UInventoryWidgetBase::CreateSharedTooltipWidget()
+{
+	if (!TooltipWidgetClass)
+	{
+		LOG_Item_WARNING(TEXT("[InventoryWidgetBase::CreateSharedTooltipWidget] TooltipWidgetClass가 설정되지 않음"));
+		return;
+	}
+
+	if (!SharedTooltipWidget)
+	{
+		SharedTooltipWidget = CreateWidget<UItemTooltipWidget>(this, TooltipWidgetClass);
+		if (!SharedTooltipWidget)
+		{
+			LOG_Item_WARNING(TEXT("[InventoryWidgetBase::CreateSharedTooltipWidget] 공유 툴팁 위젯 생성 실패"));
+		}
+		else
+		{
+			LOG_Item_WARNING(TEXT("[InventoryWidgetBase::CreateSharedTooltipWidget] 공유 툴팁 위젯 생성 성공"));
+		}
+	}
+}
+
+void UInventoryWidgetBase::OnInventoryChanged()
+{
+	UpdateCurrentTooltip();
+	RefreshInventoryUI();
+}
+
+
+void UInventoryWidgetBase::SetInventoryComponent(UInventoryComponentBase* NewInventoryComponent)
+{
+	if (InventoryComponent)
+	{
+		InventoryComponent->OnInventoryUpdated.RemoveDynamic(this, &UInventoryWidgetBase::OnInventoryChanged);
+	}
+
+	InventoryComponent = NewInventoryComponent;
+
+	if (InventoryComponent)
+	{
+		InventoryComponent->OnInventoryUpdated.AddUniqueDynamic(this, &UInventoryWidgetBase::OnInventoryChanged);
+		RefreshInventoryUI();
+	}
+	else
+	{
+		LOG_Item_WARNING(TEXT("[InventoryWidgetBase::SetInventoryComponent] NewInventoryComponent is null!"));
+	}
+}
+
+UInventoryComponentBase* UInventoryWidgetBase::GetInventoryComponent() const
+{
+	return InventoryComponent;
+}
+
+void UInventoryWidgetBase::ShowTooltipForSlot(const FBaseItemSlotData& ItemData, UWidget* SourceWidget)
+{
+	// 빈 슬롯이거나 Default 아이템이면 툴팁 표시하지 않음
+	if (ItemData.ItemRowName.IsNone() || ItemData.ItemRowName == FName("Default"))
+	{
+		HideTooltip();
+		return;
+	}
+
+	if (!SharedTooltipWidget)
+	{
+		CreateSharedTooltipWidget();
+		if (!SharedTooltipWidget)
+		{
+			LOG_Item_WARNING(TEXT("[ShowTooltipForSlot] 공유 툴팁 위젯이 없음"));
+			return;
+		}
+	}
+
+	if (!ItemDataTable)
+	{
+		LOG_Item_WARNING(TEXT("[ShowTooltipForSlot] ItemDataTable이 NULL"));
+		return;
+	}
+
+	FItemDataRow* ItemRowData = ItemDataTable->FindRow<FItemDataRow>(ItemData.ItemRowName, TEXT("ShowTooltipForSlot"));
+	if (!ItemRowData)
+	{
+		LOG_Item_WARNING(TEXT("[ShowTooltipForSlot] 아이템 데이터를 찾을 수 없음: %s"), *ItemData.ItemRowName.ToString());
+		return;
+	}
+
+	// 현재 툴팁 정보 저장
+	CurrentTooltipSourceWidget = SourceWidget;
+	CurrentTooltipItemData = ItemData;
+
+	// 툴팁 데이터 설정 및 표시
+	SharedTooltipWidget->SetTooltipData(*ItemRowData, ItemData);
+
+	if (!SharedTooltipWidget->IsInViewport())
+	{
+		SharedTooltipWidget->AddToViewport(10);
+	}
+
+	// 툴팁 위치 업데이트 시작
+	UpdateTooltipPosition();
+	GetWorld()->GetTimerManager().SetTimer(TooltipUpdateTimer,
+		this, &UInventoryWidgetBase::UpdateTooltipPosition,
+		0.016f, true);
+
+	LOG_Item_WARNING(TEXT("[ShowTooltipForSlot] 툴팁 표시: %s"), *ItemData.ItemRowName.ToString());
+}
+
+void UInventoryWidgetBase::HideTooltip()
+{
+	// 타이머 정리
+	if (TooltipUpdateTimer.IsValid())
+	{
+		GetWorld()->GetTimerManager().ClearTimer(TooltipUpdateTimer);
+	}
+
+	// 현재 툴팁 정보 초기화
+	CurrentTooltipSourceWidget = nullptr;
+	CurrentTooltipItemData = FBaseItemSlotData();
+
+	// 툴팁 숨김
+	if (SharedTooltipWidget && SharedTooltipWidget->IsInViewport())
+	{
+		SharedTooltipWidget->RemoveFromParent();
+		LOG_Item_WARNING(TEXT("[HideTooltip] 툴팁 숨김"));
+	}
+}
+
+bool UInventoryWidgetBase::IsTooltipVisible() const
+{
+	return SharedTooltipWidget && SharedTooltipWidget->IsInViewport();
+}
+
+void UInventoryWidgetBase::UpdateTooltipPosition()
+{
+	if (!SharedTooltipWidget || !SharedTooltipWidget->IsInViewport())
+	{
+		return;
+	}
+
+	FVector2D FinalPosition = CalculateTooltipScreenPosition();
+	SharedTooltipWidget->SetPositionInViewport(FinalPosition);
+
+	//FVector2D MousePosition;
+	//if (APlayerController* PC = GetOwningPlayer())
+	//{
+	//	PC->GetMousePosition(MousePosition.X, MousePosition.Y);
+
+	//	FVector2D TooltipPosition = MousePosition + FVector2D(15.0f, -50.0f);
+
+	//	// 화면 경계 처리
+	//	float MinY = 100.0f;
+	//	TooltipPosition.Y = FMath::Max(TooltipPosition.Y, MinY);
+
+	//	float MinX = 50.0f;
+	//	TooltipPosition.X = FMath::Max(TooltipPosition.X, MinX);
+
+	//	FVector2D ViewportSize;
+	//	if (GEngine && GEngine->GameViewport)
+	//	{
+	//		GEngine->GameViewport->GetViewportSize(ViewportSize);
+
+	//		FVector2D EstimatedTooltipSize(230.0f, 230.0f);
+
+	//		float MaxX = ViewportSize.X - EstimatedTooltipSize.X - 10.0f;
+	//		float MaxY = ViewportSize.Y - EstimatedTooltipSize.Y - 10.0f;
+
+	//		TooltipPosition.X = FMath::Clamp(TooltipPosition.X, MinX, MaxX);
+	//		TooltipPosition.Y = FMath::Clamp(TooltipPosition.Y, MinY, MaxY);
+	//	}
+
+	//	SharedTooltipWidget->SetPositionInViewport(TooltipPosition);
+	//}
+}
+
+FVector2D UInventoryWidgetBase::CalculateTooltipScreenPosition() const
+{
+	FVector2D MousePosition(0.f, 0.f);
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		PC->GetMousePosition(MousePosition.X, MousePosition.Y);
+	}
+
+	FVector2D ViewportSize(1920.f, 1080.f);
+	if (GEngine && GEngine->GameViewport)
+	{
+		GEngine->GameViewport->GetViewportSize(ViewportSize);
+	}
+
+	FVector2D TooltipSize = FVector2D(0.f, 0.f);
+	if (SharedTooltipWidget)
+	{
+		TooltipSize = SharedTooltipWidget->GetDesiredSize();
+	}
+
+	const float PaddingOffset = 10.f;
+
+	// 방향 결정
+	bool bShowLeft = (MousePosition.X + TooltipSize.X + PaddingOffset > ViewportSize.X);
+	bool bShowAbove = (MousePosition.Y + TooltipSize.Y + PaddingOffset > ViewportSize.Y);
+
+	FVector2D Offset;
+	Offset.X = bShowLeft ? -TooltipSize.X - 15.f : 15.f;
+	Offset.Y = bShowAbove ? -TooltipSize.Y - 15.f : 15.f;
+
+	FVector2D DesiredPosition = MousePosition + Offset;
+
+	// Clamp 처리
+	float MinX = PaddingOffset;
+	float MinY = PaddingOffset;
+	float MaxX = ViewportSize.X - TooltipSize.X - PaddingOffset;
+	float MaxY = ViewportSize.Y - TooltipSize.Y - PaddingOffset;
+
+	DesiredPosition.X = FMath::Clamp(DesiredPosition.X, MinX, MaxX);
+	DesiredPosition.Y = FMath::Clamp(DesiredPosition.Y, MinY, MaxY);
+
+	return DesiredPosition;
+}
+
+UInventorySlotWidget* UInventoryWidgetBase::CreateSlotWidget(int32 SlotIndex, const FBaseItemSlotData& SlotData)
+{
+	if (!SlotWidgetClass)
+	{
+		LOG_Item_WARNING(TEXT("[InventoryWidgetBase::CreateSlotWidget] SlotWidgetClass가 설정되지 않음"));
+		return nullptr;
+	}
+
+	UInventorySlotWidget* SlotWidget = CreateWidget<UInventorySlotWidget>(this, SlotWidgetClass);
+	if (!SlotWidget)
+	{
+		LOG_Item_WARNING(TEXT("[InventoryWidgetBase::CreateSlotWidget] 슬롯 위젯 생성 실패: %d"), SlotIndex);
+		return nullptr;
+	}
+
+	// 슬롯 데이터 설정
+	SlotWidget->SetItemData(SlotData, ItemDataTable);
+	SlotWidget->SetInventoryComponent(InventoryComponent);
+	SlotWidget->SlotIndex = SlotIndex;
+
+	// ⭐ 부모 인벤토리 위젯 참조 설정
+	SlotWidget->SetParentInventoryWidget(this);
+
+	return SlotWidget;
+}
+
+FBaseItemSlotData UInventoryWidgetBase::ConvertBackpackSlotToBaseSlot(const FBackpackSlotData& BackpackSlot)
+{
+	FBaseItemSlotData Result;
+	Result.ItemRowName = BackpackSlot.ItemRowName;
+	Result.Quantity = BackpackSlot.Quantity;
+	Result.Durability = 0.0f;
+	Result.bIsValid = BackpackSlot.IsValid();
+	Result.bIsEquipped = false;
+	// 기타 필드는 기본값 또는 무시
+	return Result;
+}
+
+void UInventoryWidgetBase::UpdateCurrentTooltip()
+{
+	// 현재 툴팁이 표시되고 있지 않으면 리턴
+	if (!IsTooltipVisible() || !CurrentTooltipSourceWidget)
+	{
+		return;
+	}
+
+	// 소스 위젯이 InventorySlotWidget인지 확인
+	UInventorySlotWidget* SlotWidget = Cast<UInventorySlotWidget>(CurrentTooltipSourceWidget);
+	if (!SlotWidget)
+	{
+		// 다른 타입의 슬롯 위젯일 수도 있음 (예: BackpackSlotWidget)
+		LOG_Item_WARNING(TEXT("[UpdateCurrentTooltip] 소스 위젯이 InventorySlotWidget이 아님"));
+		return;
+	}
+
+	// 업데이트된 슬롯 데이터 가져오기
+	if (!InventoryComponent)
+	{
+		LOG_Item_WARNING(TEXT("[UpdateCurrentTooltip] InventoryComponent가 없음"));
+		return;
+	}
+
+	// 슬롯 인덱스가 유효한지 확인
+	if (SlotWidget->SlotIndex < 0)
+	{
+		LOG_Item_WARNING(TEXT("[UpdateCurrentTooltip] 유효하지 않은 슬롯 인덱스"));
+		return;
+	}
+
+	// 업데이트된 슬롯 데이터 가져오기
+	FBaseItemSlotData UpdatedSlotData;
+	if (UToolbarInventoryComponent* ToolbarComp = Cast<UToolbarInventoryComponent>(InventoryComponent))
+	{
+		FBaseItemSlotData* SlotDataPtr = ToolbarComp->GetItemDataAtSlot(SlotWidget->SlotIndex);
+		if (SlotDataPtr)
+		{
+			UpdatedSlotData = *SlotDataPtr;
+		}
+		else
+		{
+			LOG_Item_WARNING(TEXT("[UpdateCurrentTooltip] 슬롯 데이터를 가져올 수 없음"));
+			return;
+		}
+	}
+	else
+	{
+		// 기본 인벤토리 컴포넌트 처리
+		if (InventoryComponent->ItemSlots.IsValidIndex(SlotWidget->SlotIndex))
+		{
+			UpdatedSlotData = InventoryComponent->ItemSlots[SlotWidget->SlotIndex];
+		}
+		else
+		{
+			LOG_Item_WARNING(TEXT("[UpdateCurrentTooltip] 슬롯 인덱스가 범위를 벗어남"));
+			return;
+		}
+	}
+
+	// 아이템이 변경되었으면 툴팁 숨기기
+	if (UpdatedSlotData.ItemRowName != CurrentTooltipItemData.ItemRowName)
+	{
+		HideTooltip();
+		return;
+	}
+
+	// 같은 아이템이면 업데이트된 데이터로 툴팁 새로고침
+	RefreshCurrentTooltip();
+}
+
+void UInventoryWidgetBase::RefreshCurrentTooltip()
+{
+	if (!IsTooltipVisible() || !CurrentTooltipSourceWidget)
+	{
+		return;
+	}
+
+	UInventorySlotWidget* SlotWidget = Cast<UInventorySlotWidget>(CurrentTooltipSourceWidget);
+	if (!SlotWidget)
+	{
+		return;
+	}
+
+	// 업데이트된 슬롯 데이터 가져오기
+	FBaseItemSlotData UpdatedSlotData;
+	if (UToolbarInventoryComponent* ToolbarComp = Cast<UToolbarInventoryComponent>(InventoryComponent))
+	{
+		FBaseItemSlotData* SlotDataPtr = ToolbarComp->GetItemDataAtSlot(SlotWidget->SlotIndex);
+		if (SlotDataPtr)
+		{
+			UpdatedSlotData = *SlotDataPtr;
+		}
+		else
+		{
+			return;
+		}
+	}
+	else
+	{
+		if (InventoryComponent->ItemSlots.IsValidIndex(SlotWidget->SlotIndex))
+		{
+			UpdatedSlotData = InventoryComponent->ItemSlots[SlotWidget->SlotIndex];
+		}
+		else
+		{
+			return;
+		}
+	}
+
+	// 아이템 데이터 가져오기
+	if (!ItemDataTable)
+	{
+		return;
+	}
+
+	FItemDataRow* ItemRowData = ItemDataTable->FindRow<FItemDataRow>(UpdatedSlotData.ItemRowName, TEXT("RefreshCurrentTooltip"));
+	if (!ItemRowData)
+	{
+		return;
+	}
+
+	// 툴팁 데이터 업데이트
+	if (SharedTooltipWidget && SharedTooltipWidget->IsInViewport())
+	{
+		SharedTooltipWidget->SetTooltipData(*ItemRowData, UpdatedSlotData);
+		CurrentTooltipItemData = UpdatedSlotData;
+
+		LOG_Item_WARNING(TEXT("[RefreshCurrentTooltip] 툴팁 새로고침: %s (내구도: %.1f)"),
+			*UpdatedSlotData.ItemRowName.ToString(), UpdatedSlotData.Durability);
+	}
+}

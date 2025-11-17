@@ -1,0 +1,212 @@
+#include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "UI/Manager/LCUIManager.h"
+#include "Framework/GameInstance/LCGameInstance.h"
+#include "Framework/GameMode/LCRoomGameMode.h"
+#include "GameFramework/GameUserSettings.h"
+#include "SaveGame/LCLocalPlayerSaveGame.h"
+#include "LCOptionManager.h"
+
+#include "LastCanary.h"
+
+void ULCGameInstanceSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+{
+	Super::Initialize(Collection);
+
+	LCUIManager = NewObject<ULCUIManager>(this, ULCUIManager::StaticClass());
+	ULCGameInstance* GI = Cast<ULCGameInstance>(GetGameInstance());
+	if (GI)
+	{
+		MapDataTable = GI->MapDataTable;
+		ItemDataTable = GI->ItemDataTable;
+		GunDataTable = GI->GunDataTable;
+		MonsterDataTable = GI->MonsterDataTable;
+		BossDataTable = GI->BossDataTable;
+		GI->LoadMapData();
+		GI->LoadItemData();
+		GI->LoadGunData();
+	}
+
+
+#if WITH_EDITOR
+	if (GEngine)
+	{
+		UWorld* World = GetWorld();
+		if (World)
+		{
+			GEngine->Exec(World, TEXT("net.AllowPIESeamlessTravel 1"));
+			UE_LOG(LogTemp, Warning, TEXT("[LCGameInstanceSubsystem] PIE SeamlessTravel enabled."));
+		}
+	}
+#endif
+
+	//세이브 데이터 불러오기
+	LoadSaveData();
+}
+
+ULCUIManager* ULCGameInstanceSubsystem::GetUIManager() const
+{
+	return LCUIManager;
+}
+
+void ULCGameInstanceSubsystem::ChangeLevelByMapName(const FName& MapName)
+{
+	const int32 MapID = FCrc::StrCrc32(*MapName.ToString());
+	// const int32 MapID = GetTypeHash(MapName);
+	ChangeLevelByMapID(MapID);
+}
+
+void ULCGameInstanceSubsystem::ChangeLevelByMapID(int32 MapID)
+{
+	if (MapDataTable == nullptr)
+	{
+		LOG_Frame_WARNING(TEXT("MapDataTable is not assigned."));
+		return;
+	}
+
+	static const FString ContextString(TEXT("MapInfo Context"));
+	TArray<FMapDataRow*> AllMaps;
+	MapDataTable->GetAllRows<FMapDataRow>(ContextString, AllMaps);
+
+	for (FMapDataRow* MapRow : AllMaps)
+	{
+		if (MapRow && MapRow->MapID == MapID)
+		{
+			// UWorld 경로 → ServerTravel용 문자열로 변환
+			const FString AssetPath = MapRow->MapInfo.MapPath.ToSoftObjectPath().ToString(); // "/Game/Maps/MapName.MapName"
+			const FString CleanedPath = FPackageName::ObjectPathToPackageName(AssetPath);   // "/Game/Maps/MapName"
+			const FString TravelURL = FString::Printf(TEXT("%s?listen"), *CleanedPath);
+
+			// SeamlessTravel 활성화
+			if (AGameModeBase* GM = GetWorld()->GetAuthGameMode())
+			{
+				GM->bUseSeamlessTravel = true;
+			}
+
+			LOG_Frame_WARNING(TEXT("Trying to ServerTravel to: %s (MapID: %d)"), *TravelURL, MapID);
+			GetWorld()->ServerTravel(TravelURL, true);
+			return;
+		}
+	}
+
+	LOG_Frame_WARNING(TEXT("Map not found for ID: %d"), MapID);
+}
+
+
+FMapDataRow* ULCGameInstanceSubsystem::GetMapDataByRowName(FName MapRowName) const
+{
+	if (!MapDataTable)
+	{
+		LOG_Item_WARNING(TEXT("[ULCGameInstanceSubsystem::GetItemDataByRowName] ItemDataTable이 없습니다."));
+		return nullptr;
+	}
+
+	return MapDataTable->FindRow<FMapDataRow>(MapRowName, TEXT("GetMapDataByRowName"));
+}
+
+FMapDataRow* ULCGameInstanceSubsystem::GetMapDataByMapID(int32 MapID) const
+{
+	static const FString ContextString(TEXT("MapInfoByMapId"));
+	TArray<FMapDataRow*> AllMaps;
+	MapDataTable->GetAllRows<FMapDataRow>(ContextString, AllMaps);
+
+	for (FMapDataRow* MapRow : AllMaps)
+	{
+		if (MapRow && MapRow->MapID == MapID)
+		{
+			return MapRow;
+		}
+	}
+	return nullptr;
+}
+
+FItemDataRow* ULCGameInstanceSubsystem::GetItemDataByRowName(FName ItemRowName) const
+{
+	if (!ItemDataTable)
+	{
+		LOG_Item_WARNING(TEXT("[ULCGameInstanceSubsystem::GetItemDataByRowName] ItemDataTable이 없습니다."));
+		return nullptr;
+	}
+
+	return ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("GetItemDataByRowName"));
+}
+
+FItemDataRow* ULCGameInstanceSubsystem::GetItemDataByItemID(int32 ItemID) const
+{
+	static const FString ContextString(TEXT("ItemInfoByItemId"));
+	TArray<FItemDataRow*> AllItems;
+	ItemDataTable->GetAllRows<FItemDataRow>(ContextString, AllItems);
+
+	for (FItemDataRow* ItemRow : AllItems)
+	{
+		if (ItemRow && ItemRow->ItemID == ItemID)
+		{
+			return ItemRow;
+		}
+	}
+	return nullptr;
+}
+
+UDataTable* ULCGameInstanceSubsystem::GetMapDataTable() const
+{
+	return MapDataTable;
+}
+
+UDataTable* ULCGameInstanceSubsystem::GetItemDataTable() const
+{
+	return ItemDataTable;
+}
+
+UDataTable* ULCGameInstanceSubsystem::GetGunDataTable() const
+{
+	return GunDataTable;
+}
+
+void ULCGameInstanceSubsystem::LoadSaveData()
+{
+	if (!IsValid(GetUIManager()))
+	{
+		return;
+	}
+
+	if (UGameUserSettings* Settings = GEngine->GetGameUserSettings())
+	{
+		Settings->LoadSettings(true);
+		Settings->ApplySettings(false);	
+	}
+}
+
+void ULCGameInstanceSubsystem::LoadUserSettings()
+{
+	if (!IsValid(LCUIManager))
+	{
+		return;
+	}
+	if (UWorld* World = GetWorld())
+	{
+		//ApplyAudio(); // 볼륨은 바로 적용
+		float SavedMasterVolume = ULCLocalPlayerSaveGame::LoadMasterVolume(World);
+		float SavedBGMVolume = ULCLocalPlayerSaveGame::LoadBGMVolume(World);
+		float SavedEffectVolume = ULCLocalPlayerSaveGame::LoadEffectVolume(World);
+		float SavedVoiceChatVolume = ULCLocalPlayerSaveGame::LoadVoiceChatVolume(World);
+		float SavedMicrophoneVolume = ULCLocalPlayerSaveGame::LoadMicrophoneVolume(World);
+		if (ULCOptionManager* OptionManager = GetGameInstance()->GetSubsystem<ULCOptionManager>())
+		{
+			OptionManager->MasterVolume = SavedMasterVolume;
+			OptionManager->BGMVolume = SavedBGMVolume;
+			OptionManager->EffectVolume = SavedEffectVolume;
+			OptionManager->MyMicVolume = SavedVoiceChatVolume;
+			OptionManager->VoiceVolume = SavedMicrophoneVolume;
+			OptionManager->ApplyAudio(); // 볼륨은 바로 적용
+		}
+	}
+}
+
+UDataTable* ULCGameInstanceSubsystem::GetBossDataTable() const
+{
+	return BossDataTable;
+}
+
+UDataTable* ULCGameInstanceSubsystem::GetMonsterDataTable() const
+{
+	return MonsterDataTable;
+}

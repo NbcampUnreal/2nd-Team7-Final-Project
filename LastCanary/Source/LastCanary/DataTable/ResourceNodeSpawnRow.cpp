@@ -1,0 +1,2 @@
+#include "DataTable/ResourceNodeSpawnRow.h"
+
