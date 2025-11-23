@@ -152,16 +152,29 @@ public:
 
 	virtual void Input_Attack(const FInputActionValue& ActionValue);
 
-	virtual void Input_Emote(const FInputActionValue& ActionValue);
-	
+	virtual void SetupInputComponent() override;
+
+	virtual void Input_EmoteStarted(const FInputActionValue& ActionValue);
+	virtual void Input_EmoteReleased(const FInputActionValue& ActionValue);
+	virtual void Input_EmoteCanceled(const FInputActionValue& ActionValue);
+
 	UFUNCTION()
 	virtual void ToggleShowRoomWidget();
 
 	bool bIsShowRoomUI = false;
 
 	void ApplyInputMappingContext(UInputMappingContext* IMC);
-	
 
-	//void OnUIClicked(); // 클릭 전달받는 함수
-	//void OnUIReleased(); // 클릭 전달받는 함수
+	UFUNCTION()
+	void CloseWheelFromClick();
+
+private:
+	void ShowSelectionWheel_Internal();
+	void ReleaseSelectionWheel_Internal();
+
+	UPROPERTY()
+	bool bIsSelectionWheelOpen = false;
+
+	UPROPERTY()
+	bool bBlockWheelReopenUntilRelease = false;
 };

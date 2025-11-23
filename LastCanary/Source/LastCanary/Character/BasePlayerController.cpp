@@ -1393,10 +1393,10 @@ void ABasePlayerController::Input_Attack(const FInputActionValue& ActionValue)
 
 }
 
-void ABasePlayerController::Input_Emote(const FInputActionValue& ActionValue)
-{
-
-}
+//void ABasePlayerController::Input_Emote(const FInputActionValue& ActionValue)
+//{
+//
+//}
 
 void ABasePlayerController::Server_DroneExit_Implementation()
 {

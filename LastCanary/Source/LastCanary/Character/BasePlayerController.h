@@ -226,7 +226,7 @@ public:
 
 	virtual void Input_Attack(const FInputActionValue& ActionValue) override;
 
-	virtual void Input_Emote(const FInputActionValue& ActionValue) override;
+	//virtual void Input_Emote(const FInputActionValue& ActionValue) override;
 public:
 	UFUNCTION(Server, Reliable)
 	void Server_DroneExit();
