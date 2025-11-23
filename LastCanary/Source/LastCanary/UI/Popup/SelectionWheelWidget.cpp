@@ -1,11 +1,13 @@
 #include "UI/Popup/SelectionWheelWidget.h"
 #include "UI/UIObject/SelectionWheelEntryWidget.h"
+#include "UI/Manager/LCUIManager.h"
 
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "Blueprint/SlateBlueprintLibrary.h"
 
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/PlayerController.h"
+#include "Framework/PlayerController/LCPlayerInputController.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 
@@ -15,7 +17,7 @@ void USelectionWheelWidget::NativeConstruct()
 
 	SetIsEnabled(true);
 	SetVisibility(ESlateVisibility::Visible);
-	bIsFocusable = true;         
+	bIsFocusable = true;
 	BuildWheel();
 }
 
@@ -23,58 +25,69 @@ void USelectionWheelWidget::NativeTick(const FGeometry& MyGeometry, float InDelt
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
 
-	// 최신 레이아웃 강제 갱신
 	ForceLayoutPrepass();
 
-	// WheelCanvas 기준 지오메트리
 	const FGeometry& WheelGeo =
 		(WheelCanvas ? WheelCanvas->GetCachedGeometry() : GetCachedGeometry());
 
-	const FVector2D CenterLocal = WheelGeo.GetLocalSize() * 0.5f;
+	const FVector2D SizeLocal = WheelGeo.GetLocalSize();
 
-	// WheelCanvas 로컬 → Absolute
-	const FVector2D CenterAbs = WheelGeo.LocalToAbsolute(CenterLocal);
+	if (SizeLocal.X <= 1.f || SizeLocal.Y <= 1.f)
+	{
+		return;
+	}
 
-	// Absolute → Self 로컬 (디버그는 이걸로!)
-	const FGeometry& SelfGeo = GetCachedGeometry();
-	WheelCenterLocalInSelf = SelfGeo.AbsoluteToLocal(CenterAbs);
+	const FVector2D CenterLocal = SizeLocal * 0.5f;
 
-	// Local(center) -> Viewport(center)
 	FVector2D CenterPixel, CenterViewport;
 	USlateBlueprintLibrary::LocalToViewport(
-		const_cast<USelectionWheelWidget*>(this),
+		this,
 		WheelGeo,
 		CenterLocal,
 		CenterPixel,
 		CenterViewport
 	);
 
+	WheelCenterPixel = CenterPixel;
 	WheelCenterViewport = CenterViewport;
 
-	// Viewport DPI Scale 캐시
-	const float Scale = UWidgetLayoutLibrary::GetViewportScale(const_cast<USelectionWheelWidget*>(this));
-	ViewportScaleCached = FVector2D(Scale, Scale);
+	if (bPendingWarpToCenter)
+	{
+		if (APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0))
+		{
+			if (WheelCenterPixel.IsNearlyZero(1.f))
+			{
+				int32 SX = 0, SY = 0;
+				PC->GetViewportSize(SX, SY);
+				PC->SetMouseLocation(SX / 2, SY / 2);
+			}
+			else
+			{
+				PC->SetMouseLocation((int32)WheelCenterPixel.X, (int32)WheelCenterPixel.Y);
+			}
+		}
 
-	// 매 프레임 마우스 기반 선택 갱신
+		bPendingWarpToCenter = false;
+	}
+
 	UpdateSelectionFromMouse();
 }
 
 FReply USelectionWheelWidget::NativeOnPreviewMouseButtonDown(
 	const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Wheel Preview Mouse Down!"));
-
 	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
 	{
-		ConfirmSelection();
-		UE_LOG(LogTemp, Log, TEXT("InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton"))
+		if (APlayerController* PC = GetOwningPlayer())
+		{
+			if (ALCPlayerInputController* LCPC = Cast<ALCPlayerInputController>(PC))
+			{
+				LCPC->CloseWheelFromClick();
+				return FReply::Handled();
+			}
+		}
+	}
 
-		return FReply::Handled();
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("InMouseEvent.GetEffectingButton() != EKeys::LeftMouseButton"))
-	}
 	return Super::NativeOnPreviewMouseButtonDown(InGeometry, InMouseEvent);
 }
 
@@ -97,12 +110,18 @@ void USelectionWheelWidget::BuildWheel()
 		USelectionWheelEntryWidget* EntryWidget =
 			CreateWidget<USelectionWheelEntryWidget>(GetWorld(), EntryWidgetClass);
 
-		if (!EntryWidget) continue;
+		if (!EntryWidget)
+		{
+			continue;
+		}
 
 		EntryWidget->EntryData = Entries[Index];
 
 		UCanvasPanelSlot* CanvasSlot = WheelCanvas->AddChildToCanvas(EntryWidget);
-		if (!CanvasSlot) continue;
+		if (!CanvasSlot)
+		{
+			continue;
+		}
 
 		CanvasSlot->SetAnchors(FAnchors(0.5f, 0.5f, 0.5f, 0.5f));
 		CanvasSlot->SetAlignment(FVector2D(0.5f, 0.5f));
@@ -127,10 +146,16 @@ void USelectionWheelWidget::BuildWheel()
 
 void USelectionWheelWidget::UpdateSelectionFromMouse()
 {
-	if (Entries.Num() == 0) return;
+	if (Entries.Num() == 0)
+	{
+		return;
+	}
 
 	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
-	if (!PC) return;
+	if (!PC)
+	{
+		return;
+	}
 
 	// 마우스도 Viewport 기준으로 가져옴
 	FVector2D MousePos = UWidgetLayoutLibrary::GetMousePositionOnViewport(this);
@@ -154,7 +179,10 @@ void USelectionWheelWidget::UpdateSelectionFromMouse()
 
 	float AngleRad = FMath::Atan2(DeltaMath.Y, DeltaMath.X);
 	float AngleDeg = FMath::RadiansToDegrees(AngleRad);
-	if (AngleDeg < 0.f) AngleDeg += 360.f;
+	if (AngleDeg < 0.f)
+	{
+		AngleDeg += 360.f;
+	}
 
 	const float SegmentAngle = 360.f / (float)Entries.Num();
 
@@ -162,8 +190,14 @@ void USelectionWheelWidget::UpdateSelectionFromMouse()
 
 	FromUpClockwise += SegmentAngle * 0.5f;
 
-	if (FromUpClockwise < 0.f) FromUpClockwise += 360.f;
-	if (FromUpClockwise >= 360.f) FromUpClockwise -= 360.f;
+	if (FromUpClockwise < 0.f)
+	{
+		FromUpClockwise += 360.f;
+	}
+	if (FromUpClockwise >= 360.f)
+	{
+		FromUpClockwise -= 360.f;
+	}
 
 	int32 NewIndex = FMath::FloorToInt(FromUpClockwise / SegmentAngle);
 
@@ -214,24 +248,19 @@ void USelectionWheelWidget::OnSelectionChanged_Implementation(int32 NewIndex)
 void USelectionWheelWidget::OnSelectionConfirmed_Implementation(int32 ConfirmedIndex)
 {
 	if (!Entries.IsValidIndex(ConfirmedIndex))
+	{
 		return;
+	}
 
 	const FSelectionWheelEntry& Selected = Entries[ConfirmedIndex];
 
-	UE_LOG(LogTemp, Log, TEXT("Selection Wheel Confirmed: %s"),
-		*Selected.Id.ToString());
+	UE_LOG(LogTemp, Log, TEXT("Selection Wheel Confirmed: %s"), *Selected.Id.ToString());
 
-	// 화면 디버그 메시지(임시)
 	if (GEngine)
 	{
-		const FString Msg = FString::Printf(TEXT("Wheel Confirmed: %s"),
-			*Selected.DisplayName.ToString());
-
-		GEngine->AddOnScreenDebugMessage(
-			-1, 2.0f, FColor::Yellow, Msg);
+		const FString Msg = FString::Printf(TEXT("Wheel Confirmed: %s"), *Selected.DisplayName.ToString());
+		GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, Msg);
 	}
-
-	// TODO: 실제 게임 로직 연결
 }
 
 int32 USelectionWheelWidget::NativePaint(

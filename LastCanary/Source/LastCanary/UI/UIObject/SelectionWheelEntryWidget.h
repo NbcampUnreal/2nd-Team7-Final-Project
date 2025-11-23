@@ -5,6 +5,8 @@
 #include "UI/Popup/SelectionWheelWidget.h"
 #include "SelectionWheelEntryWidget.generated.h"
 
+struct FSelectionWheelEntry;
+
 class UImage;
 class UTextBlock;
 class UBorder;

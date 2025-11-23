@@ -34,6 +34,8 @@ public:
 	virtual FReply NativeOnPreviewMouseButtonDown(
 		const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 
+	void BuildWheel();
+
 	UFUNCTION(BlueprintCallable)
 	void UpdateSelectionFromMouse();
 
@@ -59,8 +61,6 @@ public:
 protected:
 	UPROPERTY()
 	TArray<USelectionWheelEntryWidget*> EntryWidgets;
-
-	void BuildWheel();
 
 	UFUNCTION(BlueprintNativeEvent, Category = "Selection Wheel")
 	void OnSelectionChanged(int32 NewIndex);
@@ -103,4 +103,24 @@ protected:
 public:
 	UPROPERTY(BlueprintReadOnly, Category = "Selection Wheel")
 	bool bWheelOpen = false;
+
+	UFUNCTION(BlueprintCallable)
+	int32 GetCurrentSelection() const { return CurrentIndex; }
+
+	UFUNCTION(BlueprintCallable)
+	FVector2D GetWheelCenterViewport() const { return WheelCenterViewport; }
+
+protected:
+	UPROPERTY()
+	bool bPendingWarpToCenter = false;
+
+	UPROPERTY()
+	FVector2D WheelCenterPixel = FVector2D::ZeroVector;
+
+public:
+	UFUNCTION(BlueprintCallable)
+	void RequestWarpToCenter() { bPendingWarpToCenter = true; }
+
+	UFUNCTION(BlueprintCallable)
+	FVector2D GetWheelCenterPixel() const { return WheelCenterPixel; }
 };

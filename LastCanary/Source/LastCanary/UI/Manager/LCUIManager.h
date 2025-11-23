@@ -36,6 +36,8 @@ class UDesktopWidget;
 class UTaskbarWidget;
 class ULCDesktopWindowManager;
 class UCharacterCustomizationWidget;
+struct FSelectionWheelEntry;
+class USelectionWheelWidget;
 
 //-----------------
 // Enum
@@ -334,4 +336,23 @@ private:
 	//-------------------
 	bool bSessionErrorOccurred = false;
 	FText CachedErrorReson;
+
+public:
+	//-----------------
+	// Selection Wheel
+	//-----------------
+	UPROPERTY(EditAnywhere, Category = "UI|Popup")
+	TSubclassOf<class USelectionWheelWidget> SelectionWheelClass;
+
+	UPROPERTY()
+	USelectionWheelWidget* CachedSelectionWheel = nullptr;
+
+	UFUNCTION()
+	void ShowSelectionWheel();
+
+	UFUNCTION()
+	void HideSelectionWheel();
+
+	UFUNCTION(BlueprintCallable)
+	USelectionWheelWidget* GetSelectionWheel() const { return CachedSelectionWheel; }
 };

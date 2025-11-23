@@ -25,6 +25,7 @@
 #include "UI/Popup/PopupNotice.h"
 #include "UI/Popup/PopupLoading.h"
 #include "UI/Popup/NotePopupWidget.h"
+#include "UI/Popup/SelectionWheelWidget.h"
 
 #include "UI/UIObject/TaskbarWidget.h"
 #include "UI/UIObject/ConfirmPopup.h"
@@ -87,6 +88,7 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			ServerMessageWidgetClass = Settings->FromBPServerMessageWidgetClass;
 			DesktopWidgetClass = Settings->FromBPDesktopWidgetClass;
 			CharacterCustomizationWidgetClass = Settings->FromBPCharacterCustomizationWidgetClass;
+			SelectionWheelClass = Settings->FromBPSelectionWheelWidgetClass;
 
 			CreateAndCacheWidget(CachedTitleMenu, TitleMenuClass);
 			CreateAndCacheWidget(CachedLobbyMenu, LobbyMenuClass);
@@ -108,6 +110,7 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			CreateAndCacheWidget(CachedGameEndWidget, GameEndWidgetClass);
 			CreateAndCacheWidget(CachedServerMessageWidget, ServerMessageWidgetClass);
 			CreateAndCacheWidget(CachedCharacterCustomizationWidget, CharacterCustomizationWidgetClass);
+			CreateAndCacheWidget(CachedSelectionWheel, SelectionWheelClass);
 
 			if (CachedRoomWidget)
 			{
@@ -1024,4 +1027,35 @@ ULCDesktopWindowManager* ULCUIManager::GetDesktopWindowManager() const
 
 	UE_LOG(LogTemp, Warning, TEXT("ULCUIManager::GetDesktopWindowManager - CachedDesktopWidget is null."));
 	return nullptr;
+}
+
+//-----------------
+// Selection Wheel
+//-----------------
+void ULCUIManager::ShowSelectionWheel()
+{
+	if (!OwningPlayer || !OwningPlayer->IsLocalPlayerController()) return;
+
+	if (!CachedSelectionWheel && SelectionWheelClass)
+	{
+		CachedSelectionWheel = CreateWidget<USelectionWheelWidget>(OwningPlayer, SelectionWheelClass);
+	}
+	if (!CachedSelectionWheel) return;
+
+	if (!CachedSelectionWheel->IsInViewport())
+	{
+		CachedSelectionWheel->AddToViewport(50);
+	}
+
+	CachedSelectionWheel->SetVisibility(ESlateVisibility::Visible);
+}
+
+void ULCUIManager::HideSelectionWheel()
+{
+	if (!OwningPlayer) return;
+
+	if (CachedSelectionWheel && CachedSelectionWheel->IsInViewport())
+	{
+		CachedSelectionWheel->RemoveFromParent();
+	}
 }
