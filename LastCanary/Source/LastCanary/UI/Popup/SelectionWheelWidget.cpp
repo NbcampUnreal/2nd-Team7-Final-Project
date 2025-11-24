@@ -76,19 +76,7 @@ void USelectionWheelWidget::NativeTick(const FGeometry& MyGeometry, float InDelt
 FReply USelectionWheelWidget::NativeOnPreviewMouseButtonDown(
 	const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
-	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
-	{
-		if (APlayerController* PC = GetOwningPlayer())
-		{
-			if (ALCPlayerInputController* LCPC = Cast<ALCPlayerInputController>(PC))
-			{
-				LCPC->CloseWheelFromClick();
-				return FReply::Handled();
-			}
-		}
-	}
-
-	return Super::NativeOnPreviewMouseButtonDown(InGeometry, InMouseEvent);
+	return FReply::Unhandled();
 }
 
 void USelectionWheelWidget::BuildWheel()

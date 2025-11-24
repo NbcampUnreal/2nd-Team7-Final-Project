@@ -233,7 +233,7 @@ void ALCPlayerInputController::ReleaseSelectionWheel_Internal()
 		{
 			if (USelectionWheelWidget* Wheel = UI->GetSelectionWheel())
 			{
-				Wheel->ConfirmSelection();   
+				Wheel->ConfirmSelection();
 			}
 
 			UI->HideSelectionWheel();
@@ -265,6 +265,17 @@ void ALCPlayerInputController::SetupInputComponent()
 
 void ALCPlayerInputController::CloseWheelFromClick()
 {
+	if (ALCRoomPlayerController* RoomPC = Cast<ALCRoomPlayerController>(this))
+	{
+		if (ULCUIManager* UI = RoomPC->GetUIManager())
+		{
+			if (UI && UI->GetSelectionWheel() && UI->GetSelectionWheel()->IsInViewport())
+			{
+				return;
+			}
+		}
+	}
+
 	if (!bIsSelectionWheelOpen)
 	{
 		return;

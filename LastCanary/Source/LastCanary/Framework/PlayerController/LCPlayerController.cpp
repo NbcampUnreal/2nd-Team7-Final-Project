@@ -117,7 +117,7 @@ void ALCPlayerController::UpdatePlayerList(const TArray<FSessionPlayerInfo>& Pla
     if (IsValid(LCUIManager))
     {
         LOG_Frame_WARNING(TEXT("LCUIManager Is Not Null!"));
-        URoomWidget* RoomWidget = LCUIManager->GetRoomWidgetInstance();
+        URoomWidget* RoomWidget = LCUIManager->GetRoomWidget();
         RoomWidget->UpdatePlayerLists(PlayerInfos);
 
         GetWorld()->GetTimerManager().ClearTimer(UpdatePlayerListTimerHandle);
