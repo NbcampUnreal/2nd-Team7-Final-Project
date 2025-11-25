@@ -37,6 +37,7 @@ void UDesktopWindowBaseWidget::NativeConstruct()
 	}
 
 	UpdateMaximizeButtonIcon();
+	InitDesktopWindow();
 }
 
 void UDesktopWindowBaseWidget::NativeDestruct()

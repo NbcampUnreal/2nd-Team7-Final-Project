@@ -27,16 +27,22 @@ class UWidgetComponent;
 class UPlayerNameWidget;
 class UCustomizationMeshMap;
 struct FCharacterCustomizationData;
+class UCharacterBaseComponent;
 class UCharacterHealthComponent;
 class UCharacterStaminaComponent;
 class UCharacterAnimationComponent;
-class UCharacterCustomizationComponent;
 class UCharacterInteractionComponent;
 class UCharacterFootstepNoiseComponent;
 class UCharacterCameraControlComponent;
 class UCharacterDisplayComponent;
-class UCharacterNameWidgetComponent;
 class UCharacterAttackComponent;
+class UCameraRecoilComponent;
+class UCharacterInputComponent;
+class UCharacterSpeedControlComponent;
+class UCharacterSoundComponent;
+class UCharacterSanityComponent;
+class UCharacterADSComponent;
+class UCharacterWeaponClippingComponent;
 
 UENUM(BlueprintType)
 enum class EAnimationType : uint8
@@ -52,128 +58,175 @@ class LASTCANARY_API ABaseCharacter : public AAlsCharacter, public IGimmickDebuf
 {
 	GENERATED_BODY()
 
+protected:
+	/*Character Default Settings*/
+	ABaseCharacter();
+	void InitializeComponents();
+	void InitializeDefaultComponents();
+	void InitializeExtraComponents();
+	void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const;
+	virtual void NotifyControllerChanged() override;
+	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	virtual void PossessedBy(AController* NewController) override;
+	
+	void ApplyNetworkSmoothSettings(float InNetUpdateFrequency, float InMinNetUpdateFrequency, float InNetCullDistance, ENetworkSmoothingMode InSmoothingMode, float InDeltaTime);
+public:
+	//* Character State Flag *//
+	//bool bCanMove = false;
+
 	//Character Mesh and Component
 public:
-	/*1인칭 전용 메시 (자신만 보이는)*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	UStaticMeshComponent* OverlayStaticMesh;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* OverlaySkeletalMesh;
-
-	// SpringArm 컴포넌트 (카메라 거리와 회전 보정용)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
-	USpringArmComponent* SpringArm;
+	TObjectPtr<USpringArmComponent> SpringArm;
 
-	// Camera 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
-	UCameraComponent* Camera;
+	TObjectPtr<UCameraComponent> Camera;
 
-	// 캐릭터 인벤토리 컴포넌트
-	UPROPERTY(VisibleAnywhere, Category = "Inventory")
-	UToolbarInventoryComponent* ToolbarInventoryComponent;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	TObjectPtr<UStaticMeshComponent> OverlayStaticMesh;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	TObjectPtr<USkeletalMeshComponent> OverlaySkeletalMesh;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	TObjectPtr<UArrowComponent> ThirdPersonArrow;
 
-	// 관전용 스프링암
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
-	USpringArmComponent* SpectatorSpringArm;
-
-	// 관전용 카메라
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
-	UCameraComponent* SpectatorCamera;
-
-
+	// 캐릭터 인벤토리 컴포넌트
+	UPROPERTY(VisibleAnywhere, Category = "Inventory")
+	TObjectPtr<UToolbarInventoryComponent> ToolbarInventoryComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
-	UCharacterHealthComponent* HealthComponent;
+	TObjectPtr<UCharacterHealthComponent> HealthComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
-	UCharacterStaminaComponent* StaminaComponent;
+	TObjectPtr<UCharacterStaminaComponent> StaminaComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
-	UCharacterAnimationComponent* AnimationComponent;
+	TObjectPtr<UCharacterAnimationComponent> AnimationComponent;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
-	UCharacterCustomizationComponent* CustomizationComponent;
-	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Component")
-	UCharacterInteractionComponent* InteractionComponent;
+	TObjectPtr<UCharacterInteractionComponent> InteractionComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	UCharacterFootstepNoiseComponent* FootstepNoiseComponent;
+	TObjectPtr<UCharacterFootstepNoiseComponent> FootstepNoiseComponent;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	UCharacterCameraControlComponent* CameraControlComponent;
-
-	/*
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	UCharacterDisplayComponent* DisplayComponent;
-	*/
+	TObjectPtr<UCharacterCameraControlComponent> CameraControlComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	UCharacterNameWidgetComponent* NameComponent;
+	TObjectPtr<UCharacterDisplayComponent> DisplayComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	UCharacterAttackComponent* AttackComponent;
+	TObjectPtr<UCharacterAttackComponent> AttackComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UCameraRecoilComponent> RecoilComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UCharacterInputComponent> InputControlComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UCharacterSpeedControlComponent> SpeedControlComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UCharacterSoundComponent> SoundPlayComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UCharacterSanityComponent> SanityComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UCharacterADSComponent> ADSComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UCharacterWeaponClippingComponent> WeaponClippingComponent;
+
+	UPROPERTY()
+	TArray<UCharacterBaseComponent*> ManagedComponents;
+
+	// 컴포넌트 준비 완료 신호
+	void NotifyComponentReady(UCharacterBaseComponent* Component);
+private:
+	UPROPERTY()
+	int32 ComponentsReadyCount = 0;
+
+	UPROPERTY()
+	int32 TotalComponentCount = 0;
+
+	UPROPERTY()
+	bool bAllComponentsReady = false;
+
+	// 준비 완료 후 실행
+	void InitializeCharacter();
+
+
 public:
 	UFUNCTION()
 	virtual float GetCurrentNoiseLevel() const override;
 
-	UPROPERTY(VisibleAnywhere)
-	UPostProcessComponent* CustomPostProcessComponent;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	TObjectPtr<USkeletalMeshComponent> CustomHeadMesh;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	TObjectPtr<USkeletalMeshComponent> CustomGloveMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	TObjectPtr<USkeletalMeshComponent> CustomJacketMesh_OwnerNoSee;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	TObjectPtr<USkeletalMeshComponent> CustomJacketMesh_OwnerSee;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	TObjectPtr<USkeletalMeshComponent> CustomPantsMesh;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	TObjectPtr<USkeletalMeshComponent> CustomBeltsMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	TObjectPtr<USkeletalMeshComponent> CustomHelmetMesh;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	TObjectPtr<USkeletalMeshComponent> CustomArmorMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	TObjectPtr<USkeletalMeshComponent> CustomBootsMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	TObjectPtr<USkeletalMeshComponent> BackpackMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	TObjectPtr<USkeletalMesh> BackpackSkeletalMesh;
+
+public:
+	TObjectPtr<USkeletalMeshComponent> GetHeadMesh() const { return CustomHeadMesh; }
+	TObjectPtr<USkeletalMeshComponent> GetGloveMesh() const { return CustomGloveMesh; }
+	TObjectPtr<USkeletalMeshComponent> GetJacketMesh_OwnerNoSee() const { return CustomJacketMesh_OwnerNoSee; }
+	TObjectPtr<USkeletalMeshComponent> GetJacketMesh_OwnerSee() const { return CustomJacketMesh_OwnerSee; }
+	TObjectPtr<USkeletalMeshComponent> GetPantsMesh() const { return CustomPantsMesh; }
+	TObjectPtr<USkeletalMeshComponent> GetBeltsMesh() const { return CustomBeltsMesh; }
+	TObjectPtr<USkeletalMeshComponent> GetHelmetMesh() const { return CustomHelmetMesh; }
+	TObjectPtr<USkeletalMeshComponent> GetArmorMesh() const { return CustomArmorMesh; }
+	TObjectPtr<USkeletalMeshComponent> GetBootsMesh() const { return CustomBootsMesh; }
+	TObjectPtr<USkeletalMeshComponent> GetBackpackMesh() const { return BackpackMesh; }
+
+	TObjectPtr<USkeletalMesh> GetBackpackSkeletalMesh() const { return BackpackSkeletalMesh; }
+	
+	void SetCharacterPoseSynchronization();
+	
+public:
+	//* Character Customizing *//
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Customization")
-	UCustomizationMeshMap* CharacterMeshMap;
+	TObjectPtr<UCustomizationMeshMap> CharacterMeshMap;
 
-
-
-
-	// DefaultBody => GetMesh()
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* CustomHeadMesh;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* CustomGloveMesh;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* CustomJacketMesh_OwnerNoSee;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* CustomJacketMesh_OwnerSee;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* CustomPantsMesh;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* CustomBeltsMesh;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* CustomHelmetMesh;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* CustomArmorMesh;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* CustomBootsMesh;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* BackpackMesh;
-
-	void ApplyCustomization(const FCharacterCustomizationData CustomizationData);
+	FCharacterCustomizationData CharacterCustomizationData;
+	FCharacterCustomizationData GetCustomizationData() const { return CharacterCustomizationData; }
+	void SetCustomizationData(FCharacterCustomizationData data) { CharacterCustomizationData = data; }
 
 	void SetPartMesh(USkeletalMeshComponent* Component, USkeletalMesh* LoadedMesh);
-
 	void SetPartMaterial(USkeletalMeshComponent* Component, int32 MaterialIndex, UMaterialInterface* Material);
 
-	FCharacterCustomizationData GetCustomizationData();
-	void SetCustomizationData(const FCharacterCustomizationData& CustomizingData);
-
 	UFUNCTION(Server, Reliable)
-	void Server_UpdateCustomizationData();
+	void Server_UpdateCustomizationData();  // 이건 안쓰는듯?
 	void Server_UpdateCustomizationData_Implementation();
 
 	UFUNCTION(Server, Reliable)
@@ -184,12 +237,30 @@ public:
 	void Multicast_SetCustomizationData(const FCharacterCustomizationData& CustomizingData);
 	void Multicast_SetCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData);
 
-	FCharacterCustomizationData CharacterCustomizationData;
+	UFUNCTION(Server, Reliable)
+	void Server_ApplyCustomizationData(const FCharacterCustomizationData& CustomizingData);
+	void Server_ApplyCustomizationData_Implementation(const FCharacterCustomizationData& CustomizingData);
+
+
+
+	void ApplyCustomizationToAllPlayers(const FCharacterCustomizationData CustomizationData);
+
+
+	void ApplyCustomization(const FCharacterCustomizationData CustomizationData);
+
+	void InitializeCustomization();
+	void LoadAndApplyCustomization();
+	void LoadCustomizationSettings();
+	void SaveCustomizationDataToPlayerState(const FCharacterCustomizationData& CustomizingData);
+	bool bIsPlayerStateReady() const;
+
+
+
+public:
+
 
 	bool bPossessedCheck = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMesh* BackpackSkeletalMesh;
 	
 	/** 가방 메시 설정 */
 	void SetBackpackMesh(bool bIsEquipBackpack);
@@ -198,27 +269,6 @@ public:
 	void Multicast_SetBackpackMesh(bool bIsEquipBackpack);
 	void Multicast_SetBackpackMesh_Implementation(bool bIsEquipBackpack);
 	bool Updated = false;
-
-	void SetCharacterPoseSynchronization();
-
-	UPROPERTY(VisibleAnywhere, Category = "Kick")
-	UBoxComponent* KickHitBox;
-	
-	UFUNCTION()
-	void OnKickHitBoxOverlap(UPrimitiveComponent* OverlappedComp,
-		AActor* OtherActor,
-		UPrimitiveComponent* OtherComp,
-		int32 OtherBodyIndex,
-		bool bFromSweep,
-		const FHitResult& SweepResult);
-
-	void StartKickHit();
-	void EndKickHit();
-	
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation|Attack")
-	UAnimMontage* KickOtherPlayer;
-
 
 	UPROPERTY(EditAnywhere, Category = "Brightness")
 	float MinBrightness = 8.0f;
@@ -233,7 +283,6 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Sensitivity ")
 	float ZoomSensitivity = 1.0f;
 
-	float GetBrightness();
 	void SetBrightness(float Value);
 
 	virtual void Tick(float DeltaSeconds);
@@ -243,7 +292,6 @@ public:
 	float WallClipAimOffsetPitch;
 	float MaxWallClipPitch = 90.0f;
 	float CapsuleWallRatio = 0.0f;
-	void UpdateGunWallClipOffset(float DeltaTime);
 	
 	UPROPERTY()
 	float SmoothedWallRatio = 0.0f;
@@ -267,10 +315,6 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	bool bShouldLerpCamera = false;
 
-	void StartAiming();
-
-	void StopAiming();
-
 	UPROPERTY()
 	bool bIsSmoothTransitioning = false;
 	UPROPERTY()
@@ -281,21 +325,7 @@ public:
 	UPROPERTY()
 	float CameraTransitionSpeed = 25.0f;
 
-	//Character Default Settings
-protected:
-	/*Character Default Settings*/
-	ABaseCharacter();
-	void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const;
-	virtual void NotifyControllerChanged() override;
-	virtual void BeginPlay() override;
-	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-	virtual void PossessedBy(AController* NewController) override;
-	
 	void InitializePlayerLocalSettings();
-
-
-	FTimerHandle RetryInitializeNameWidgetHandle;
-	void InitializePlayerNameWidget();
 
 	FTimerHandle RetryInitializeCustomizingHandle;
 	void InitializePlayerCustomizing();
@@ -304,6 +334,7 @@ protected:
 	void Server_ClientLogin();
 	void Server_ClientLogin_Implementation();
 
+public:
 	void CheckPlayerCharacterIsReadyToGameMode();
 	// Camera Settings
 protected:
@@ -316,11 +347,7 @@ protected:
 
 
 	void ResetCameraLocationToDefault();
-	void AttachCameraToRifle();
-	void AttachCameraToCharacter();
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
-	USkeletalMeshComponent* CurrentRifleMesh;
 
 	FTimerHandle MoveTimerHandle;
 	FVector StartLocation;
@@ -328,6 +355,24 @@ protected:
 	FName TargetSocketName = FName("");
 	float InterpSpeed = 15.0f;
 	float SnapTolerance = 1.0f;
+public:
+	AItemBase* GetCurrentItem();
+
+	UFUNCTION(BlueprintCallable)
+	AGunBase* GetCurrentGunItem();
+
+	UFUNCTION(BlueprintCallable)
+	USkeletalMeshComponent* GetCurrentGunItemSkeletalMesh();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bHasGunOnHand = false;
+	UFUNCTION(BlueprintCallable)
+	void SetHasGunOnHand(bool _bhasgun) {bHasGunOnHand = _bhasgun;}
+	UFUNCTION(BlueprintCallable)
+	bool GetHasGunOnHand() {return bHasGunOnHand;}
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
+	USkeletalMeshComponent* CurrentRifleMesh;
 
 	bool bIsFPSCamera = true;
 	bool bDesiredADS = false;
@@ -345,7 +390,11 @@ protected:
 
 	bool bADS = false; // 현재 정조준 상태인가?
 
+public:
 	bool bIsCloseToWall = false;
+	void SetIsCloseToWall(bool _bIsCloseToWall);
+	bool GetIsCloseToWall();
+
 	bool bIsSprinting = false;
 	// ABaseCharacter.h
 
@@ -415,52 +464,14 @@ public:
 	bool EmoteMode = false;
 
 	void SwapHeadMaterialTransparent(bool bUseTransparent);
-public:
 
-	// Header 파일에 추가할 변수들
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
-	float BaseRecoilPitch = 1.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
-	float BaseRecoilYaw = 0.5f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
-	float RecoilMultiplier = 1.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
-	float RecoilRecoverySpeed = 2.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil", meta = (ClampMin = "0.01"))
-	float RecoilRecoveryAmount = 0.4f;
-
-
-	// 현재 연사 상태
-	int32 CurrentShotCount = 0;
-	FVector2D AccumulatedRecoil = FVector2D::ZeroVector;
-	FVector2D TargetRecoil = FVector2D::ZeroVector;
-	FTimerHandle RecoilRecoveryTimer;
-	FTimerHandle ShotResetTimer;
-
-	// 반동 패턴 (선택사항 - CS:GO 스타일)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recoil")
-	TArray<FVector2D> RecoilPattern;
-
-	// 반동
 	void ApplySmoothRecoil(float Vertical, float Horizontal);
-	void ApplySmoothRecoilStep();
-	void ResetShotCounter();
-	bool HasActiveRecoil() const;
-	void ReduceRecoil(float ReductionFactor = 0.5f);
-	void ResetRecoilYaw();
-	void ResetRecoilPitch();
-	void ResetRecoil();
-	FVector2D GetCurrentRecoil() const;
+
 	// Character Input Handle Function
 
 public:
 	/*Function called by the controller*/
 	virtual void Handle_LookMouse(const FInputActionValue& ActionValue, float Sensivity, float ZoomSensivity);
-	virtual void Handle_Look(const FInputActionValue& ActionValue);
 	virtual void Handle_Move(const FInputActionValue& ActionValue);
 	virtual void Handle_Sprint(const FInputActionValue& ActionValue);
 	virtual void Handle_Walk(const FInputActionValue& ActionValue);
@@ -471,6 +482,8 @@ public:
 	virtual void Handle_ViewMode();
 	virtual void Handle_Reload();
 	virtual void Handle_VoiceChatting(const FInputActionValue& ActionValue);
+	virtual void Handle_Attack(const FInputActionValue& ActionValue);
+	virtual void Handle_Emote(const FInputActionValue& ActionValue);
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Voice")
 	void UpdateVoiceChannelBySoectateState();
@@ -487,6 +500,9 @@ public:
 	void EscapeThroughGate();
 
 	//Character State
+
+public:
+	void SetDamageEnabled(bool bEnabled);
 
 public:
 
@@ -596,17 +612,6 @@ public:
 
 	bool bIsPlayingAnimation = false;
 
-	void InteractAfterPlayMontage(AActor* TargetActor);
-	void OnInteractAnimationNotified();
-
-	UFUNCTION(Server, Unreliable)
-	void Server_PlayMontage(UAnimMontage* MontageToPlay, EAnimationType Animtype);
-	void Server_PlayMontage_Implementation(UAnimMontage* MontageToPlay, EAnimationType Animtype);
-
-	UFUNCTION(NetMulticast, Unreliable)
-	void Multicast_PlayMontage(UAnimMontage* MontageToPlay, EAnimationType Animtype);
-	void Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay, EAnimationType Animtype);
-
 	UFUNCTION(Client, Reliable)
 	void Client_SetMiningState(bool NewValue);
 	void Client_SetMiningState_Implementation(bool NewValue);
@@ -626,11 +631,6 @@ public:
 	void Multicast_CancelInteraction_Implementation();
 
 	bool bIsPlayingInteractionMontage = false;
-
-
-
-	void UseItemAfterPlayMontage(AItemBase* EquippedItem);
-	void UseItemAnimationNotified();
 
 	UPROPERTY()
 	UAnimMontage* CurrentUseItemMontage;
@@ -652,10 +652,10 @@ public:
 	void OnReloadFromNotify();
 
 	UFUNCTION()
-	void OnInteractionFromNotify();
+	void OnUseItemFromNotify();
 
 	UFUNCTION()
-	void OnUseItemFromNotify();
+	void HandleFocusChanged(AActor* NewFocus);
 
 	bool bIsPlayingUseItemMontage = false;
 	bool bIsMining = false;
@@ -677,116 +677,20 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interact")
 	AActor* CurrentFocusedActor;
 
-	void TraceInteractableActor();
-
 
 
 	UPROPERTY()
 	AActor* InteractTargetActor;
 	//Player Take Damage
 public:
-	FTimerHandle PanicActionTimerHandle;
-	void StartPanicBehaviorLoop();
-	void StopPanicBehaviorLoop();
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PanicState")
-	float InitialDelay = 5.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PanicState")
-	float RepeatRate = 10.0f; // 2초마다 실행 (조절 가능)
 
 	/*Player Damage, Death*/
 	UFUNCTION(BlueprintCallable)
-	float TakeSpiritDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser);
+	float TakeSanityDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser);
 	
-
-	FTimerHandle SpiritTickDamageHandle;
-
-	UFUNCTION(BlueprintCallable)
-	void TriggerSpiritTickDamage();
-	float SpiritTickDamage = 1.0f;
-	float SpiritDamageTickInterval = 1.0f;
-	void TakeSpiritTickDamage();
-
-	float CalculateTakeSpiritDamage(float DamageAmount);
-	
-	UFUNCTION(BlueprintCallable)
-	float RestoreSpirit(float Amount);
-
-	void EnterPanicState();
-	void ExitPanicState();
-
-
-	UFUNCTION(Client, Reliable)
-	void Client_EnterPanicState();
-	void Client_EnterPanicState_Implementation();
-	
-	UFUNCTION(Client, Reliable)
-	void Client_ExitPanicState();
-	void Client_ExitPanicState_Implementation();
-
-	void PerformRandomPanicAction();
-	FTimerHandle PanicVoiceDurationHandle;
-	void TriggerPanicVoice(float Duration);
-
-	UFUNCTION(BlueprintImplementableEvent)
-	void EnterPanicVoice();
-
-	UFUNCTION(BlueprintImplementableEvent)
-	void ExitPanicVoice();
-
-	UPROPERTY(EditAnywhere,BlueprintReadWrite, Category = "PanicState")
-	USoundBase* ScreamSound;
-	
-	void PlayScreamSound_Local();
-
-	void UseItemUnexpectedly();
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PanicState")
-	USoundBase* SighSound;
-
-	UFUNCTION(BlueprintCallable)
-	void PlaySighSoundForAll(); // 호출 진입점
-
-	UFUNCTION(Server, Reliable)
-	void Server_PlaySighSound();
-	void Server_PlaySighSound_Implementation();
-
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_PlaySighSound();
-	void Multicast_PlaySighSound_Implementation();
-
-
 	// 감도 저장용
 	float MouseSensitivityMultiplier = 1.0f;
-
-	FTimerHandle MouseSensitivityRestoreHandle;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PanicState")
-	float PanicSensitivity = 10.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PanicState")
-	float PanicDuration = 5.0f;
-	
-	void ForceSetMouseSensitivity(float NewSensitivity, float Duration);
-	void RestoreOriginalMouseSensitivity();
-
-
-	FTimerHandle MouseInvertResetTimerHandle;
-
 	float MouseInvertMultiplier = 1.0f;
-	void ForceInvertMouse(bool bEnable);
-	
-	void ForceInvertMouseTemporary(bool bInvert, float Duration);
-	void RestoreMouseInvert();
-
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Damage")
-	USoundBase* OnHitSound;
-
-	UFUNCTION(Client, Reliable)
-	void Client_PlayHitSound();
-	void Client_PlayHitSound_Implementation();
 
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	
@@ -894,25 +798,6 @@ public:
 	UFUNCTION()
 	void HandleStaminaThresholdReached();
 
-	void PlayerIsSprint();
-	/*
-	void ConsumeStamina();
-	void TickStaminaDrain();
-	void StartStaminaDrain();
-	void StopStaminaDrain();
-	void StartStaminaRecovery();
-	void StopStaminaRecovery();
-	void StartStaminaRecoverAfterDelay();
-	void StartStaminaRecoverAfterDelayOnJump();
-	void StopStaminaRecoverAfterDelay();
-	void TickStaminaRecovery();
-	bool HasStamina() const;
-	bool IsStaminaFull() const;
-private:
-	FTimerHandle StaminaDrainHandle;
-	FTimerHandle StaminaRecoveryHandle;
-	FTimerHandle StaminaRecoveryDelayHandle;
-	*/
 	// 인벤토리 아이템 관련 변수 및 함수
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tags")
@@ -998,7 +883,7 @@ public:
 	// 가방 관리 (간소화)
 	//-----------------------------------------------------
 
-private:
+public:
 	/** 현재 가방 메시 활성화 상태 추적 */
 	UPROPERTY(Replicated)
 	bool bBackpackMeshActive = false;
@@ -1037,19 +922,8 @@ public:
 	void Server_InteractWithResourceNode(AResourceNode* TargetNode);
 	void Server_InteractWithResourceNode_Implementation(AResourceNode* TargetNode);
 
-	// 체력 회복 관련 함수
-	FTimerHandle HealingTimerHandle;
-	int32 HealingTicksRemaining = 0;
-	float HealingPerTick = 0.f;
-
 	UFUNCTION()
 	void StartHealing(float TotalHealAmount, float Duration);
-
-	UFUNCTION()
-	void HealStep();
-
-	UFUNCTION()
-	void StopHealing();
 
 	// 디버프 인터페이스 
 	virtual void ApplyMovementDebuff_Implementation(float SlowRate, float Duration) override;
@@ -1107,21 +981,4 @@ public:
 	void Client_SetWalkieTalkieChannelStatus_Implementation(bool bActive);
 
 	virtual void OnRep_PlayerState() override;
-	void UpdateNameWidget(); // 위젯 업데이트용 함수
-	void ApplyNameToWidget();
-	void TurnOffNameWidget(); // 사망 시 네임 위젯 가리는 함수
-	
-	UFUNCTION(Client, Reliable)
-	void Client_TurnOffNameWidget(); // 관전할 때 가리는 함수.
-	void Client_TurnOffNameWidget_Implementation(); 
-
-	UFUNCTION(Server, Reliable)
-	void Server_UpdateNameWidget(); // 서버 위젯 업데이트용 함수
-	void Server_UpdateNameWidget_Implementation(); // 서버 위젯 업데이트용 함수
-
-	/** 머리 위에 표시할 3D 위젯 컴포넌트 */
-	/*
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
-	UWidgetComponent* NameWidgetComponent;
-	*/
 };

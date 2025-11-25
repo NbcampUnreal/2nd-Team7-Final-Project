@@ -30,7 +30,7 @@ public:
 
     /** 현재 발소리의 강도 (AI 감지 범위 등에서 사용) */
     UFUNCTION(BlueprintCallable, Category = "Noise")
-    float GetCurrentNoiseLevel() const;
+    float GetCurrentFootstepNoiseLevel() const;
 
     /** 현재 이동 상태에 따른 소음 타입 (내부 추론용) */
     UFUNCTION(BlueprintCallable, Category = "Noise")

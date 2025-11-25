@@ -1,9 +1,7 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Character.h"
+#include "GameFramework/Character.h" 
 #include "CustomizationCharacter.generated.h"
 
 class UCustomizationMeshMap;
@@ -14,15 +12,12 @@ class LASTCANARY_API ACustomizationCharacter : public ACharacter
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this character's properties
 	ACustomizationCharacter();
 
 protected:
-	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-public:	
-
+public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
 	USkeletalMeshComponent* CustomHeadMesh;
 
@@ -47,10 +42,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
 	USkeletalMeshComponent* CustomBootsMesh;
 
+	/** 캐릭터에 메시/머티리얼 적용 */
 	void ApplyCustomization(const UCustomizationMeshMap* Data);
 
+	/** SkeletalMesh 교체 */
 	void SetPartMesh(USkeletalMeshComponent* Component, USkeletalMesh* LoadedMesh);
 
+	/** Material 교체 */
 	void SetPartMaterial(USkeletalMeshComponent* Component, int32 MaterialIndex, UMaterialInterface* Material);
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Customization")

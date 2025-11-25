@@ -16,15 +16,20 @@ void UCharacterStaminaComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (GetCharacter())
-	{
-		//GetCharacter()->OnJumpStarted.AddDynamic(this, &UCharacterStaminaComponent::HandleJumpStart);
-	}
-
 	bInfiniteStamina = false;
 	bIsExhausted = false;
 	bCanCharacterSprint = true;
 	CurrentStamina = MaxStamina;
+}
+
+void UCharacterStaminaComponent::SetMaxStamina(float _Stamina)
+{
+	MaxStamina = _Stamina;
+}
+
+float UCharacterStaminaComponent::GetMaxStamina()
+{
+	return MaxStamina;
 }
 
 void UCharacterStaminaComponent::SetStamina(float _Stamina)
@@ -58,9 +63,18 @@ void UCharacterStaminaComponent::ConsumeStamina(float Amount)
 {
 	if (CurrentStamina <= 0.0f)
 	{
+		GetBaseCharacter()->StaminaComponent->StopStaminaDrain();
+		GetBaseCharacter()->StaminaComponent->StartStaminaRecoverAfterDelay();
+
 		bIsExhausted = true;
-		StopStaminaRecoverAfterDelay();
+		StopStaminaDrain();
+		StartStaminaRecoverAfterDelay();
+		bCanCharacterSprint = false;
+		GetBaseCharacter()->bIsSprinting = false;
+		GetBaseCharacter()->SetDesiredAiming(true);
+		GetBaseCharacter()->SetDesiredGait(AlsGaitTags::Running);
 		OnStaminaExhausted.Broadcast();
+		return;
 	}
 
 	OnStaminaChanged.Broadcast();
@@ -80,12 +94,19 @@ void UCharacterStaminaComponent::ConsumeStaminaOnJump()
 	}
 	if (CurrentStamina <= 0.0f)
 	{
-		bIsExhausted = true;
-		StopStaminaRecoverAfterDelay();
-		OnStaminaExhausted.Broadcast();
-	}
+		GetBaseCharacter()->StaminaComponent->StopStaminaDrain();
+		GetBaseCharacter()->StaminaComponent->StartStaminaRecoverAfterDelay();
 
-	OnStaminaChanged.Broadcast();
+		bIsExhausted = true;
+		StartStaminaRecoverAfterDelay();
+		bCanCharacterSprint = false;
+		GetBaseCharacter()->bIsSprinting = false;
+		GetBaseCharacter()->SetDesiredAiming(true);
+		GetBaseCharacter()->SetDesiredGait(AlsGaitTags::Running);	
+		StopStaminaDrain();
+		OnStaminaExhausted.Broadcast();
+		return;
+	}
 
 	float Stamina = FMath::Clamp(CurrentStamina - JumpStaminaCost, 0.f, MaxStamina);
 	SetStamina(Stamina);
@@ -161,7 +182,6 @@ void UCharacterStaminaComponent::StartStaminaRecoverAfterDelay()
 	{
 		return;
 	}
-
 	GetWorld()->GetTimerManager().SetTimer(StaminaRecoveryDelayHandle, this, &UCharacterStaminaComponent::StartStaminaRecovery, RecoverDelayTime, false);
 }
 
@@ -187,23 +207,6 @@ bool UCharacterStaminaComponent::IsStaminaFull() const
 
 void UCharacterStaminaComponent::UpdateStaminaUI()
 {
-	// 컴포넌트가 붙은 캐릭터 얻기
-	if (CachedCharacter)
-	{
-		// 그 캐릭터를 소유한 컨트롤러 얻기
-		if (APlayerController* PC = Cast<APlayerController>(CachedCharacter->GetController()))
-		{
-			if (ULCGameInstanceSubsystem* Subsystem = GetWorld()->GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
-			{
-				if (ULCUIManager* UIManager = Subsystem->GetUIManager())
-				{
-					if (UInGameHUD* HUD = UIManager->GetInGameHUD())
-					{
-						float Percent = FMath::Clamp(CurrentStamina / MaxStamina, 0.0f, 1.0f);
-						HUD->UpdateStaminaBar(Percent);
-					}
-				}
-			}
-		}
-	}
+	float Percent = FMath::Clamp(CurrentStamina / MaxStamina, 0.0f, 1.0f);
+	GetInGameHUD()->UpdateStaminaBar(Percent);
 }

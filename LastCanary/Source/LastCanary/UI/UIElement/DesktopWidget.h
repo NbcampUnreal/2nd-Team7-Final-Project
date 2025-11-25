@@ -60,6 +60,9 @@ protected:
 	UButton* ShopIconButton;
 
 	UPROPERTY(meta = (BindWidget))
+	UButton* CharacterCustomizationIconButton;
+
+	UPROPERTY(meta = (BindWidget))
 	UButton* CloseDesktopButton;
 
 	UPROPERTY(meta = (BindWidget))
@@ -84,6 +87,12 @@ private:
 
 	UFUNCTION()
 	void HandleShopAppLaunch();
+
+	UFUNCTION()
+	void OnCharacterCustomizationIconSingleClicked();
+
+	UFUNCTION()
+	void HandleCharacterCustomizationLaunch();
 
 	UFUNCTION()
 	void OnCloseDesktopClicked();

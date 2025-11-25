@@ -6,6 +6,8 @@
 #include "Character/BaseCharacter.h"
 #include "Kismet/GameplayStatics.h" // 꼭 포함 필요
 
+/// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// 삭제 예정 /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// 
+
 void UBaseCharacterAttackNotify::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation)
 {
     AActor* Owner = MeshComp->GetOwner();
@@ -51,7 +53,7 @@ void UBaseCharacterAttackNotify::StartAttack(USkeletalMeshComponent* MeshComp, U
     case ECharacterAttackType::Kick:
         if (Player->HasAuthority())
         {
-            Player->StartKickHit();
+            //Player->StartKickHit();
         }
         break;
     default:
@@ -84,7 +86,7 @@ void UBaseCharacterAttackNotify::EndAttack(USkeletalMeshComponent* MeshComp, UAn
     case ECharacterAttackType::Kick:
         if (Player->HasAuthority())
         {
-            Player->EndKickHit();
+            //Player->EndKickHit();
         }
         break;
     default:

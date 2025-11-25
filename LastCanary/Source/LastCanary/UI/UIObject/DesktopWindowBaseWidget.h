@@ -135,6 +135,7 @@ protected:
 	void StartDragging(const FVector2D& InMouseScreenPos);
 	void UpdateDrag(const FVector2D& InMouseScreenPos);
 	void StopDragging();
+public:
 	bool IsInTitleBar(const FVector2D& ScreenPos) const;
 
 	bool bDragging = false;
@@ -166,7 +167,6 @@ protected:
 	//-----------------
 	// 바인딩된 위젯들
 	//-----------------
-public:
 protected:
 	UPROPERTY(meta = (BindWidget))
 	UHorizontalBox* TitleTextContainer;

@@ -79,6 +79,11 @@ void AResourceNode::Interact_Implementation(APlayerController* Interactor)
 		LOG_Item_WARNING(TEXT("[ResourceNode] 해당 자원은 도구로만 채취 가능합니다."));
 		return;
 	}
+	if (CurrentHarvestCount == 0)
+	{
+		LOG_Item_WARNING(TEXT("[ResourceNode] 모두 파밍함."));
+		return;
+	}
 
 	if (ABaseCharacter* Character = Cast<ABaseCharacter>(Interactor->GetPawn()))
 	{
