@@ -109,6 +109,13 @@ void UCharacterAnimationComponent::PlayEmoteMontage()
 
 void UCharacterAnimationComponent::PlayAttackMontage(UAnimMontage* _AttackMontage)
 {
+	//다른 행동을 하고 있지는 않은지?
+	//재장전이 우선인지, 인터랙션이 우선인지 판단
+	if (GetBaseCharacter()->bIsReloading) // 원래 이렇게 하면 안되는데 임시로
+	{
+		return;
+	}
+
 	PlayMontageByType(_AttackMontage, _AttackMontage, EAnimationMontageType::Attack);
 }
 
@@ -278,11 +285,6 @@ void UCharacterAnimationComponent::SetPlayingMontageState(EAnimationMontageType 
 		break;
 	}
 }
-
-
-
-
-
 
 //이것도 아이템에다가 애니메이션 등록해놓고 받아오기
 void UCharacterAnimationComponent::RefreshOverlayLinkedAnimationLayer(FGameplayTag ItemTag)
