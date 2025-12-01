@@ -41,4 +41,6 @@ public:
 public:
 	void SetSpringArmTargetLength(float Distance);
 	void SetTransparentHeadMesh(bool bIsTransparent);
+	void StartAiming();
+	void StopAiming();
 };

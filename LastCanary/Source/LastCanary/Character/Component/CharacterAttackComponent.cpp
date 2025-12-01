@@ -1,8 +1,15 @@
 #include "Character/Component/CharacterAttackComponent.h"
+#include "Character/BaseCharacter.h"
 #include "Item/ItemBase.h"
 #include "Components/BoxComponent.h"
 #include "GameFramework/Character.h"
 #include "Kismet/GameplayStatics.h"
+#include "Character/Component/CharacterAnimationComponent.h"
+#include "AI/BaseBossMonsterCharacter.h"
+#include "Item/EquipmentItem/EquipmentItemBase.h"
+#include "Item/EquipmentItem/Pickaxe.h"
+
+#include "LastCanary.h"
 
 UCharacterAttackComponent::UCharacterAttackComponent()
 {
@@ -14,12 +21,10 @@ void UCharacterAttackComponent::BeginPlay()
 	Super::BeginPlay();
 	SetupHandHitBox();
 
-	OwnerCharacter = Cast<ACharacter>(GetOwner());
-
-	if (OwnerCharacter)
+	if (GetCharacter())
 	{
-		KickHitBox = NewObject<UBoxComponent>(OwnerCharacter, TEXT("KickHitBox"));
-		KickHitBox->AttachToComponent(OwnerCharacter->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("foot_l"));
+		KickHitBox = NewObject<UBoxComponent>(GetCharacter(), TEXT("KickHitBox"));
+		KickHitBox->AttachToComponent(GetCharacter()->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("foot_l"));
 		KickHitBox->SetBoxExtent(FVector(20, 30, 30));
 		KickHitBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		KickHitBox->SetCollisionObjectType(ECC_WorldDynamic);
@@ -36,14 +41,46 @@ void UCharacterAttackComponent::SetEquippedWeapon(AItemBase* Weapon)
 	EquippedWeapon = Weapon;
 }
 
+void UCharacterAttackComponent::Handle_Attack(EAttackType _AttackType)
+{
+	switch (_AttackType)
+	{
+	case EAttackType::Kick:
+		Handle_Kick();
+		break;
+	case EAttackType::Punch:
+		break;
+	case EAttackType::ItemAttack:
+		Handle_Pickaxe_Attack();
+		break;
+	default:
+		break;
+	}
+}
+
+void UCharacterAttackComponent::Handle_Kick()
+{
+	GetBaseCharacter()->AnimationComponent->PlayAttackMontage(KickMontage);
+}
+
+void UCharacterAttackComponent::Handle_Pickaxe_Attack()
+{
+	if (GetBaseCharacter()->AnimationComponent->GetIsPlayingAttackMontage() == false)
+	{
+		GetBaseCharacter()->AnimationComponent->PlayAttackMontage(PickAxeMontage);
+	}
+}
+
 void UCharacterAttackComponent::SetupHandHitBox()
 {
-	ACharacter* OwnerChar = Cast<ACharacter>(GetOwner());
-	if (!OwnerChar) return;
+	if (!IsValid(GetCharacter()))
+	{
+		return; 
+	}
 
-	HandHitBox = NewObject<UBoxComponent>(OwnerChar, TEXT("HandHitBox"));
+	HandHitBox = NewObject<UBoxComponent>(GetCharacter(), TEXT("HandHitBox"));
 	HandHitBox->RegisterComponent();
-	HandHitBox->AttachToComponent(OwnerChar->GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("Hand_RSocket"));
+	HandHitBox->AttachToComponent(GetCharacter()->GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("Hand_RSocket"));
 	HandHitBox->SetBoxExtent(FVector(10.f, 10.f, 10.f));
 	HandHitBox->SetCollisionProfileName(TEXT("OverlapAll"));
 	HandHitBox->SetGenerateOverlapEvents(true);
@@ -89,27 +126,27 @@ void UCharacterAttackComponent::OnHandHitBoxOverlap(UPrimitiveComponent* Overlap
 
 void UCharacterAttackComponent::PerformKickAttack()
 {
-	if (!GetOwner()->HasAuthority()) return;
+	if (!GetCharacter()->HasAuthority()) return;
 
-	if (!OwnerCharacter) return;
+	if (!GetCharacter()) return;
 
-	const FVector Start = OwnerCharacter->GetActorLocation() + OwnerCharacter->GetActorForwardVector() * 50.f + FVector(0, 0, 50.f);
+	const FVector Start = GetCharacter()->GetActorLocation() + GetCharacter()->GetActorForwardVector() * 50.f + FVector(0, 0, 50.f);
 	const FVector End = Start;
 	const FVector Extent(KickBoxExtent, KickBoxExtent, KickBoxExtent);
 
 	TArray<FHitResult> HitResults;
 	UKismetSystemLibrary::BoxTraceMultiForObjects(
-		GetWorld(), Start, End, Extent, OwnerCharacter->GetActorRotation(),
+		GetWorld(), Start, End, Extent, GetCharacter()->GetActorRotation(),
 		{ UEngineTypes::ConvertToObjectType(ECC_Pawn) },
-		false, { OwnerCharacter },
+		false, { GetCharacter() },
 		EDrawDebugTrace::None, HitResults, true);
 
 	for (const FHitResult& Hit : HitResults)
 	{
 		AActor* Target = Hit.GetActor();
-		if (Target && Target != OwnerCharacter)
+		if (Target && Target != GetCharacter())
 		{
-			FVector Dir = OwnerCharacter->GetActorForwardVector();
+			FVector Dir = GetCharacter()->GetActorForwardVector();
 			Dir.Z = 0.f;
 			Dir.Normalize();
 			ApplyDamageAndEffects(Target, Dir);
@@ -119,16 +156,16 @@ void UCharacterAttackComponent::PerformKickAttack()
 
 void UCharacterAttackComponent::PerformWeaponAttack(UPrimitiveComponent* WeaponCollider)
 {
-	if (!GetOwner()->HasAuthority()) return;
+	if (!GetCharacter()->HasAuthority()) return;
 
 	TArray<AActor*> OverlappingActors;
 	WeaponCollider->GetOverlappingActors(OverlappingActors, ACharacter::StaticClass());
 
 	for (AActor* Target : OverlappingActors)
 	{
-		if (Target && Target != GetOwner())
+		if (Target && Target != GetCharacter())
 		{
-			FVector Dir = GetOwner()->GetActorForwardVector();
+			FVector Dir = GetCharacter()->GetActorForwardVector();
 			Dir.Z = 0.f;
 			Dir.Normalize();
 			ApplyDamageAndEffects(Target, Dir);
@@ -155,6 +192,7 @@ void UCharacterAttackComponent::EnableKickHitBox()
 {
 	if (KickHitBox)
 	{
+		LOG_Char_WARNING(TEXT("충돌 시작"));
 		KickHitBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	}
 }
@@ -163,9 +201,61 @@ void UCharacterAttackComponent::DisableKickHitBox()
 {
 	if (KickHitBox)
 	{
+		LOG_Char_WARNING(TEXT("충돌 해제"));
+
 		KickHitBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
 }
+
+void UCharacterAttackComponent::StartItemAttack()
+{
+	if (GetBaseCharacter()->AnimationComponent)
+	{
+		AItemBase* Item = GetBaseCharacter()->GetCurrentItem();
+		
+		if (!IsValid(Item))
+		{
+			return;
+		}
+
+		AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(Item);
+		if (!EquipmentItem)
+		{
+			return;
+		}
+		if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Tool.Pickaxe")))
+		{
+			APickaxe* axe = Cast<APickaxe>(EquipmentItem);
+			axe->SetAttackCollisionEnabled(true);
+		}
+	}
+}
+
+void UCharacterAttackComponent::EndItemAttack()
+{
+	if (GetBaseCharacter()->AnimationComponent)
+	{
+		GetBaseCharacter()->AnimationComponent->HandleAnimNotify(EAnimationMontageType::Attack);
+		AItemBase* Item = GetBaseCharacter()->GetCurrentItem();
+
+		if (!IsValid(Item))
+		{
+			return;
+		}
+
+		AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(Item);
+		if (!EquipmentItem)
+		{
+			return;
+		}
+		if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Tool.Pickaxe")))
+		{
+			APickaxe* axe = Cast<APickaxe>(EquipmentItem);
+			axe->SetAttackCollisionEnabled(false);
+		}
+	}
+}
+
 
 void UCharacterAttackComponent::SetWeaponHitBox(UPrimitiveComponent* WeaponHitBox)
 {
@@ -186,12 +276,59 @@ void UCharacterAttackComponent::OnKickHitBoxOverlap(UPrimitiveComponent* Overlap
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
 	bool bFromSweep, const FHitResult& SweepResult)
 {
+	
+	// 서버에서만 처리
+	if (!GetBaseCharacter()->HasAuthority())
+	{
+		return;
+	}
+	const FVector Start = GetBaseCharacter()->GetActorLocation() + GetBaseCharacter()->GetActorForwardVector() * 50.f + FVector(0, 0, 50.f);
+	const FVector End = Start; // 박스는 이동하지 않음
+
+	const FVector BoxExtent = FVector(100.f, 100.f, 100.f); // 크기 조절 가능
+	const FRotator Rotation = GetBaseCharacter()->GetActorRotation();
+
+	TArray<FHitResult> HitResults;
+
+	UKismetSystemLibrary::BoxTraceMultiForObjects(
+		GetWorld(),
+		Start,
+		End,
+		BoxExtent,
+		Rotation,
+		{ UEngineTypes::ConvertToObjectType(ECC_Pawn) },
+		false,
+		{ GetBaseCharacter()},
+		EDrawDebugTrace::None,
+		HitResults,
+		true // ignore self
+	);
+
+	for (const FHitResult& Hit : HitResults)
+	{
+		ACharacter* TargetCharacter = Cast<ACharacter>(Hit.GetActor());
+		if (!TargetCharacter || TargetCharacter == GetBaseCharacter()) continue;
+		if (TargetCharacter->IsA<ABaseBossMonsterCharacter>())
+		{
+			continue;
+		}
+
+		// 넉백 처리
+		FVector KnockbackDir = GetBaseCharacter()->GetActorForwardVector();
+		KnockbackDir.Z = 0;
+		KnockbackDir.Normalize();
+
+		TargetCharacter->LaunchCharacter(KnockbackDir * KnockbackStrength + FVector(0, 0, UpwardKnockback), true, true);
+	}
+
+	/*
 	if (!OwnerCharacter || !OwnerCharacter->HasAuthority()) return;
 
 	ACharacter* TargetCharacter = Cast<ACharacter>(OtherActor);
 	if (!TargetCharacter || TargetCharacter == OwnerCharacter) return;
 
 	HandleHit(TargetCharacter);
+	*/
 }
 
 void UCharacterAttackComponent::HandleHit(ACharacter* TargetCharacter)
@@ -199,7 +336,7 @@ void UCharacterAttackComponent::HandleHit(ACharacter* TargetCharacter)
 	if (!TargetCharacter) return;
 
 	// 넉백 처리
-	FVector KnockbackDir = OwnerCharacter->GetActorForwardVector();
+	FVector KnockbackDir = GetCharacter()->GetActorForwardVector();
 	KnockbackDir.Z = 0.f;
 	KnockbackDir.Normalize();
 

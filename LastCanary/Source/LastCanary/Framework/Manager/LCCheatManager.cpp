@@ -628,7 +628,7 @@ void ULCCheatManager::Lumos(float ForcedValue)
 
 	if (ABaseCharacter* Character = Cast<ABaseCharacter>(Pawn))
 	{
-		if (Character->CustomPostProcessComponent == nullptr)
+		if (Character->DisplayComponent == nullptr)
 		{
 			UE_LOG(LogCheat, Warning, TEXT("[치트] CustomPostProcessComponent가 없음"));
 			return;
@@ -647,9 +647,7 @@ void ULCCheatManager::Lumos(float ForcedValue)
 		{
 			float Clamped = FMath::Clamp(ForcedValue, -5.0f, 20.0f);
 
-			Character->CustomPostProcessComponent->Settings.AutoExposureBias = Clamped;
-			Character->CustomPostProcessComponent->Settings.AutoExposureMinBrightness = Clamped - 0.01f;
-			Character->CustomPostProcessComponent->Settings.AutoExposureMaxBrightness = Clamped + 0.01f;
+			Character->SetBrightness(Clamped);
 
 			UE_LOG(LogCheat, Warning, TEXT("[치트] 밝기 강제 설정: %.2f"), Clamped);
 		}

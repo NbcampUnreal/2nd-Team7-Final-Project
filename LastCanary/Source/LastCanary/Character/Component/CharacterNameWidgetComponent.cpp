@@ -5,6 +5,8 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/GameplayStatics.h"
 #include "Character/BasePlayerState.h"
+#include "GameFramework/GameStateBase.h"
+
 #include "LastCanary.h"
 
 UCharacterNameWidgetComponent::UCharacterNameWidgetComponent()
@@ -41,24 +43,13 @@ void UCharacterNameWidgetComponent::TickComponent(float DeltaTime, ELevelTick Ti
 		FRotator YawOnly = FRotator(0.f, LookAtRotation.Yaw, 0.f);
 		WidgetComponent->SetWorldRotation(YawOnly);
 	}
-
-	/*
-	TimeAccumulator += DeltaTime;
-
-	if (TimeAccumulator > 0.1f)
-	{
-		TimeAccumulator = 0.f;
-
-
-	}
-	*/
 }
 
 void UCharacterNameWidgetComponent::InitializeWidget()
 {
-	if (!GetCharacter()) return;
+	if (!GetBaseCharacter()) return;
 	
-	USkeletalMeshComponent* Mesh = GetCharacter()->GetMesh();
+	USkeletalMeshComponent* Mesh = GetBaseCharacter()->GetMesh();
 	if (!Mesh) return;
 
 	if (!WidgetComponent) return;
@@ -100,6 +91,33 @@ void UCharacterNameWidgetComponent::UpdateWidget()
 
 void UCharacterNameWidgetComponent::TurnOffWidget()
 {
+	AGameStateBase* GameState = GetWorld()->GetGameState<AGameStateBase>();
+	if (!GameState)
+	{
+		LOG_Char_WARNING(TEXT("GameState Is Invalid"));
+		return;
+	}
+
+	if (GameState->PlayerArray.Num() <= 0)
+	{
+		return;
+	}
+
+	for (APlayerState* PS : GameState->PlayerArray)
+	{
+		ABasePlayerState* BasePS = Cast<ABasePlayerState>(PS);
+		if (!IsValid(BasePS))
+		{
+			continue;
+		}
+
+		ABaseCharacter* Char = Cast<ABaseCharacter>(BasePS->GetPawn());
+		if (!IsValid(Char))
+		{
+			continue;
+		}
+		//Char->NameComponent->HideNameWidget();
+	}
 }
 
 UUserWidget* UCharacterNameWidgetComponent::GetWidget() const
@@ -142,15 +160,15 @@ void UCharacterNameWidgetComponent::SetCastShadowEnabled(bool bEnable)
 
 void UCharacterNameWidgetComponent::InitializeNameWidget()
 {
-	if (!GetCharacter()) return;
+	if (!GetBaseCharacter()) return;
 
-	APlayerController* PC = Cast<APlayerController>(GetCharacter()->GetInstigatorController());
+	APlayerController* PC = Cast<APlayerController>(GetBaseCharacter()->GetInstigatorController());
 	if (!PC || !PC->IsLocalController())
 	{
 		return;
 	}
 
-	APlayerState* PS = GetCharacter()->GetPlayerState();
+	APlayerState* PS = GetBaseCharacter()->GetPlayerState();
 	if (PS && WidgetComponent)
 	{
 		if (IsValid(GetWidget()))
@@ -158,7 +176,7 @@ void UCharacterNameWidgetComponent::InitializeNameWidget()
 			SetPlayerName(PS->GetPlayerName());
 			
 
-			if (GetCharacter()->IsLocallyControlled())
+			if (GetBaseCharacter()->IsLocallyControlled())
 			{
 				SetWidgetVisibility(false);
 			}
@@ -179,7 +197,7 @@ void UCharacterNameWidgetComponent::InitializeNameWidget()
 		LOG_Char_WARNING(TEXT("타이머 재시도"));
 
 		// 준비 안 된 경우 타이머 재시도
-		if (UWorld* World = GetCharacter()->GetWorld())
+		if (UWorld* World = GetBaseCharacter()->GetWorld())
 		{
 			World->GetTimerManager().SetTimer(
 				RetryInitializeHandle,

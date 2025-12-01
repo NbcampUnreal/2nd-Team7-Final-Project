@@ -36,17 +36,22 @@ void ALCPlayerController::PostSeamlessTravel()
 void ALCPlayerController::BeginPlay()
 {
     Super::BeginPlay();
-
-    if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+    if (IsLocalPlayerController())
     {
-        if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+        if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
         {
-            LCUIManager = UIManager;
-            LCUIManager->InitUIManager(this);
-            LCUIManager->SetPlayerController(this);
-        }
-    }
+            if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+            {
+                LOG_Frame_WARNING(TEXT("UIManager 처리 부분"));
 
+                LCUIManager = UIManager;
+                LCUIManager->InitUIManager(this);
+                LCUIManager->SetPlayerController(this);
+            }
+        }
+
+    }
+    
     // 복구 타이머
     FTimerHandle InventoryRestoreHandle;
     GetWorld()->GetTimerManager().SetTimer(InventoryRestoreHandle, this, &ALCPlayerController::TryRestoreInventory, 0.3f, false);

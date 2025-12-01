@@ -372,11 +372,16 @@ void UCharacterCustomizationWidget::OnSelectGlove()
 }
 void UCharacterCustomizationWidget::OnSelectJacket()
 {
+	LOG_Char_WARNING(TEXT("자켓 버튼 클릭"));
+
 	if (CharacterMeshData == nullptr)
 	{
+		LOG_Char_WARNING(TEXT("데이터 없음"));
 		return;
 	}
+	LOG_Char_WARNING(TEXT("maxindex = %d"), CharacterMeshData->JacketMeshes.Num());
 	int32 Maxindex = CharacterMeshData->JacketMeshes.Num() - 1;
+	LOG_Char_WARNING(TEXT("CurrentJacketIndex= %d"), CurrentJacketIndex);
 	CurrentJacketIndex++;
 	if (CurrentJacketIndex > Maxindex)
 	{
@@ -736,6 +741,8 @@ void UCharacterCustomizationWidget::ApplyCustomizationToCharacter(ACharacter* Ch
 	// PreviewCharacter나 TargetCharacter 모두 지원하게 캐스팅 시도
 	if (ACustomizationCharacter* CustomChar = Cast<ACustomizationCharacter>(Character))
 	{
+		LOG_Char_WARNING(TEXT("캐릭터 메시 데이터 invalid"));
+
 		// Head
 		USkeletalMesh* HeadMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->DefaultHeadMeshes, CurrentFullBodyIndex);
 		SetPartMesh(CustomChar->CustomHeadMesh, HeadMesh);
@@ -761,6 +768,11 @@ void UCharacterCustomizationWidget::ApplyCustomizationToCharacter(ACharacter* Ch
 		USkeletalMesh* BeltsMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->BeltsMeshes, CurrentBeltsIndex);
 		SetPartMesh(CustomChar->CustomBeltsMesh, BeltsMesh);
 		SetPartMaterial(CustomChar->CustomBeltsMesh, 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->BeltsMaterials, CurrentBeltsMaterialIndex));
+
+		//jacket
+		USkeletalMesh* JacketMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->JacketMeshes, CurrentJacketIndex);
+		SetPartMesh(CustomChar->CustomJacketMesh, JacketMesh);
+		SetPartMaterial(CustomChar->CustomJacketMesh, 0, CharacterMeshData->GetMaterialByID(CharacterMeshData->JacketMaterials, CurrentJacketMaterialIndex));
 
 		// Armor
 		USkeletalMesh* ArmorMesh = CharacterMeshData->GetMeshByID(CharacterMeshData->ArmorMeshes, CurrentArmorIndex);
@@ -810,7 +822,9 @@ void UCharacterCustomizationWidget::ApplySetting()
 
 	if (IsValid(MyChar))
 	{
-		ApplyCustomizationToCharacter(MyChar);
+		ABaseCharacter* BaseChar = Cast<ABaseCharacter>(MyChar);
+		BaseChar->ApplyCustomizationToAllPlayers(CurrentSelection);
+		//ApplyCustomizationToCharacter(BaseChar);
 	}
 	else
 	{
