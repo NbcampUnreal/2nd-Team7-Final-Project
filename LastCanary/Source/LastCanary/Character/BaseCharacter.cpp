@@ -1003,6 +1003,10 @@ void ABaseCharacter::Handle_VoiceChatting(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::Handle_Attack(const FInputActionValue& ActionValue)
 {
+	if (ADSComponent)
+	{
+		ADSComponent->SwitchADS(false);
+	}
 	if (AttackComponent)
 	{
 		AttackComponent->Handle_Attack(EAttackType::Kick);
@@ -1248,7 +1252,11 @@ void ABaseCharacter::RequestReload(AGunBase* Gun)
 void ABaseCharacter::StartReload()
 {
 	CancelInteraction();
-	bIsReloading = true;
+	if (ADSComponent)
+	{
+		ADSComponent->SwitchADS(false);
+	}
+	//bIsReloading = true;
 	/*
 	Server_PlayReload();
 	*/
@@ -1623,6 +1631,10 @@ void ABaseCharacter::SetCurrentQuickSlotIndex(int32 NewIndex)
 	CancelUseItem();
 	CancelInteraction();
 	StopReload();
+	if (ADSComponent)
+	{
+		ADSComponent->SwitchADS(false);
+	}
 	Server_SetQuickSlotIndex(NewIndex);
 }
 
@@ -2379,30 +2391,45 @@ void ABaseCharacter::UseItem(AItemBase* Item)
 		}
 	}
 
-	if (ItemGameplayTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
+	if (ItemGameplayTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")) || ItemGameplayTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol")) || ItemGameplayTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Shotgun")))
 	{
+		LOG_Char_WARNING(TEXT("[Aim Check] Rifle tag detected"));
+
 		if (bIsSprinting)
 		{
+			LOG_Char_WARNING(TEXT("[Aim Check] Blocked - Sprinting"));
 			return;
 		}
-		if (bIsReloading)
+
+		if (AnimationComponent->GetIsPlayingGunReloadMontage())
 		{
+			LOG_Char_WARNING(TEXT("[Aim Check] Blocked - Reloading"));
 			return;
 		}
-		//다른 행동 하고 있는지 체크
-		//발차기 중인가?
+
+		// 다른 행동 체크
 		if (AnimationComponent)
 		{
 			if (AnimationComponent->GetIsPlayingAttackMontage())
 			{
+				LOG_Char_WARNING(TEXT("[Aim Check] Blocked - Attack Montage Playing"));
 				return;
 			}
 		}
+		else
+		{
+			LOG_Char_WARNING(TEXT("[Aim Check] Warning - AnimationComponent is null"));
+		}
+
 		if (IsDesiredAiming() == false)
 		{
+			LOG_Char_WARNING(TEXT("[Aim Check] Blocked - IsDesiredAiming() == false"));
 			return;
 		}
+
+		LOG_Char_WARNING(TEXT("[Aim Check] Passed all checks"));
 	}
+
 
 	FItemDataRow Data = Item->ItemData;
 	if (Data.bPlayCharacterAnimation == true)
