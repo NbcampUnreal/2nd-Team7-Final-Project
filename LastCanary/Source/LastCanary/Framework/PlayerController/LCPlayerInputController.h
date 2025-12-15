@@ -151,6 +151,8 @@ public:
 	virtual void Input_DroneExit(const FInputActionValue& ActionValue);
 
 	virtual void Input_Attack(const FInputActionValue& ActionValue);
+	
+	virtual void Input_Emote(const FInputActionValue& ActionValue);
 
 	virtual void SetupInputComponent() override;
 

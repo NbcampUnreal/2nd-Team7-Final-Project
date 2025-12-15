@@ -125,6 +125,7 @@ void ALCPlayerInputController::Input_SelectQuickSlot3(const FInputActionValue& A
 void ALCPlayerInputController::Input_SelectQuickSlot4(const FInputActionValue& ActionValue) {}
 void ALCPlayerInputController::Input_OpenPauseMenu(const FInputActionValue& ActionValue) {}
 void ALCPlayerInputController::Input_DroneExit(const FInputActionValue& ActionValue) {}
+void ALCPlayerInputController::Input_Emote(const FInputActionValue& ActionValue) {}
 void ALCPlayerInputController::Input_Attack(const FInputActionValue& ActionValue) {}
 void ALCPlayerInputController::Input_EmoteStarted(const FInputActionValue& ActionValue)
 {
