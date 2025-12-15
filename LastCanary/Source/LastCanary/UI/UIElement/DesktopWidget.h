@@ -61,6 +61,9 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* CharacterCustomizationIconButton;
+	
+	UPROPERTY(meta = (BindWidget))
+	UButton* TutorialIconButton;
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* CloseDesktopButton;

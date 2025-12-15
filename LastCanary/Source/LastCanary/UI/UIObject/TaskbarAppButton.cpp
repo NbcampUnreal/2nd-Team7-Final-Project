@@ -4,6 +4,8 @@
 #include "Components/Button.h"
 
 #include "UI/UIObject/DesktopWindowBaseWidget.h"
+
+#include "UI/Manager/LCUIManager.h"
 #include "UI/Manager/LCDesktopWindowManager.h"
 
 void UTaskbarAppButton::InitializeAppButton(UTexture2D* InIcon, UUserWidget* InAppWidget)
