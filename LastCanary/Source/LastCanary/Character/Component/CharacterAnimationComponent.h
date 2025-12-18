@@ -49,6 +49,8 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
+	
+
 public:
 	UFUNCTION(BlueprintCallable, Category = "Animation")
 	void PlayMontageByType(UAnimMontage* LocalMontage, UAnimMontage* MulticastMontage, EAnimationMontageType Type);
@@ -76,6 +78,10 @@ private:
 	void Multicast_PlayMontage(UAnimMontage* LocalMontage, UAnimMontage* MulticastMontage, EAnimationMontageType Type);
 	void Multicast_PlayMontage_Implementation(UAnimMontage* LocalMontage, UAnimMontage* MulticastMontage, EAnimationMontageType Type);
 
+	UFUNCTION()
+	void OnMontageEnded(UAnimMontage* Montage, bool bInterrupted);
+
+	void ClearMontageState();
 
 
 public:
@@ -124,6 +130,8 @@ public:
 
 public:  // 각 몽타주 타입별 재생 상태 플래그
 	void SetPlayingMontageState(EAnimationMontageType Type, bool bIsPlaying);
+
+	void ApplyMontageState(EAnimationMontageType Type);
 private:  	
 	bool bIsPlayingInteractionMontage = false;
 	bool bIsPlayingUseItemMontage = false;
@@ -139,9 +147,19 @@ public:
 	bool GetIsPlayingAttackMontage() { return bIsPlayingAttackMontage; }
 	
 
+private:
+	UPROPERTY()
+	EAnimationMontageType CurrentPlayingType = EAnimationMontageType::None;
+	
+	UPROPERTY()
+	bool bMontageLocked = false;
 
 public:
 	void RefreshOverlayLinkedAnimationLayer(FGameplayTag ItemTag);
+
+	bool CanPlayMontage(EAnimationMontageType NewType) const;
+
+	bool CanInterruptCurrentMontage(EAnimationMontageType NewType) const;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	TSubclassOf<UAnimInstance> DefaultAnimationClass;

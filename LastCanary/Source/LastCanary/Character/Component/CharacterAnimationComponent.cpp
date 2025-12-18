@@ -23,28 +23,56 @@ void UCharacterAnimationComponent::BeginPlay()
 
 }
 
-void UCharacterAnimationComponent::PlayMontageByType(UAnimMontage* LocalMontage, UAnimMontage* MulticastMontage, EAnimationMontageType Type)
+void UCharacterAnimationComponent::ApplyMontageState(EAnimationMontageType Type)
 {
-	if (!IsValid(GetBaseCharacter())) return;
-	if (!IsValid(CachedAnimInstance)) return;
+	CurrentPlayingType = Type;
+	bMontageLocked = true;
+	SetPlayingMontageState(Type, true);
+}
 
-	if (GetOwnerRole() < ROLE_Authority) // 로컬에서만 재생하는 버전
+void UCharacterAnimationComponent::PlayMontageByType(
+	UAnimMontage* LocalMontage,
+	UAnimMontage* MulticastMontage,
+	EAnimationMontageType Type)
+{
+	if (!IsValid(GetBaseCharacter()) || !IsValid(CachedAnimInstance))
+		return;
+
+	// 우선 끊을 수 있는지 먼저 체크
+	if (!CanPlayMontage(Type))
 	{
-		LOG_Char_WARNING(TEXT("로컬에서 애니메이션 재생"));
+		if (CanInterruptCurrentMontage(Type))
+		{
+			CancelAllMontage();
+		}
+		else
+		{
+			return;
+		}
+	}
+
+	if (GetOwnerRole() < ROLE_Authority)
+	{
+		// 클라는 예측 재생만
 		if (IsValid(LocalMontage))
 		{
 			CachedAnimInstance->Montage_Play(LocalMontage);
 		}
+
+		// 서버에 요청
 		Server_PlayMontage(LocalMontage, MulticastMontage, Type);
 	}
 	else
-	{		
-		LOG_Char_WARNING(TEXT("서버에서 애니메이션 재생"));
-		Multicast_PlayMontage(LocalMontage, MulticastMontage, Type); // 서버에서 멀티캐스트로 전파
-	}
+	{
+		// 서버에서 상태 확정
+		ApplyMontageState(Type);
 
-	SetPlayingMontageState(Type, true);
+		// 서버 → 모든 클라 동기화
+		Multicast_PlayMontage(LocalMontage, MulticastMontage, Type);
+	}
 }
+
+
 
 void UCharacterAnimationComponent::PlayInteractMontage(AActor* TargetActor)
 {
@@ -118,28 +146,85 @@ void UCharacterAnimationComponent::Server_PlayMontage_Implementation(UAnimMontag
 	Multicast_PlayMontage(LocalMontage, MulticastMontage, Type);
 }
 
-void UCharacterAnimationComponent::Multicast_PlayMontage_Implementation(UAnimMontage* LocalMontage, UAnimMontage* MulticastMontage, EAnimationMontageType Type)
+void UCharacterAnimationComponent::Multicast_PlayMontage_Implementation(
+	UAnimMontage* LocalMontage,
+	UAnimMontage* MulticastMontage,
+	EAnimationMontageType Type)
 {
-	if (!IsValid(CachedAnimInstance)) return;
-
-	AActor* Owner = GetOwner();
-	if (Owner && Owner->GetLocalRole() == ROLE_AutonomousProxy)
-	{
-		CachedAnimInstance->Montage_Play(LocalMontage);
+	if (!IsValid(CachedAnimInstance))
 		return;
+
+	// 여기서 상태 동기화
+	ApplyMontageState(Type);
+
+	UAnimMontage* PlayingMontage = nullptr;
+
+	if (GetOwnerRole() == ROLE_AutonomousProxy)
+	{
+		PlayingMontage = LocalMontage;
+	}
+	else
+	{
+		PlayingMontage = MulticastMontage;
 	}
 
-	if (IsValid(MulticastMontage))
+	if (!PlayingMontage)
+		return;
+
+	CachedAnimInstance->Montage_Play(PlayingMontage);
+
+	// 종료 콜백
+	FOnMontageEnded EndDelegate;
+	EndDelegate.BindUObject(this, &UCharacterAnimationComponent::OnMontageEnded);
+	CachedAnimInstance->Montage_SetEndDelegate(EndDelegate, PlayingMontage);
+}
+
+
+void UCharacterAnimationComponent::OnMontageEnded(
+	UAnimMontage* Montage,
+	bool bInterrupted)
+{
+	if (bInterrupted)
 	{
-		CachedAnimInstance->Montage_Play(MulticastMontage);
+		// 강제 취소 전용 보정
+		LOG_Char_WARNING(TEXT("몽타주 강제 종료 감지"));
+	}
+
+	// 상태 정리
+	bMontageLocked = false;
+
+	// 모든 플래그 정리
+	SetPlayingMontageState(CurrentPlayingType, false);
+	CurrentPlayingType = EAnimationMontageType::None;
+	if (GetOwnerRole() == ROLE_Authority)
+	{
+		ClearMontageState();
 	}
 }
+
+void UCharacterAnimationComponent::ClearMontageState()
+{
+	bMontageLocked = false;
+	SetPlayingMontageState(CurrentPlayingType, false);
+	CurrentPlayingType = EAnimationMontageType::None;
+}
+
 
 void UCharacterAnimationComponent::CancelAllMontage()
 {
-	if (!IsValid(CachedAnimInstance)) return;
+	if (!IsValid(CachedAnimInstance))
+		return;
+
 	CachedAnimInstance->Montage_Stop(0.1f);
+
+	if (GetOwnerRole() == ROLE_Authority)
+	{
+		ClearMontageState();
+	}
 }
+
+
+
 
 void UCharacterAnimationComponent::CancelMontageByType(UAnimMontage* LocalMontageToStop, UAnimMontage* RemoteMontageToStop, EAnimationMontageType Type)
 {
@@ -217,6 +302,12 @@ void UCharacterAnimationComponent::Multicast_CancelMontage_Implementation(UAnimM
 	}
 
 	SetPlayingMontageState(Type, false);
+
+	if (GetOwnerRole() == ROLE_Authority)
+	{
+		ClearMontageState();
+	}
+
 }
 
 void UCharacterAnimationComponent::HandleAnimNotify(EAnimationMontageType Type)
@@ -279,11 +370,6 @@ void UCharacterAnimationComponent::SetPlayingMontageState(EAnimationMontageType 
 	}
 }
 
-
-
-
-
-
 //이것도 아이템에다가 애니메이션 등록해놓고 받아오기
 void UCharacterAnimationComponent::RefreshOverlayLinkedAnimationLayer(FGameplayTag ItemTag)
 {
@@ -342,4 +428,28 @@ void UCharacterAnimationComponent::RefreshOverlayLinkedAnimationLayer(FGameplayT
 	{
 		CharacterMesh()->LinkAnimClassLayers(DefaultAnimationClass);
 	}
+}
+
+
+
+bool UCharacterAnimationComponent::CanPlayMontage(EAnimationMontageType NewType) const
+{
+	if (bMontageLocked)
+		return false;
+
+	if (CurrentPlayingType == EAnimationMontageType::GunReload &&
+		NewType == EAnimationMontageType::Attack)
+		return false;
+
+	return true;
+}
+
+
+bool UCharacterAnimationComponent::CanInterruptCurrentMontage(EAnimationMontageType NewType) const
+{
+	// 예: 회피는 대부분 끊을 수 있게
+	if (NewType == EAnimationMontageType::Etc)
+		return true;
+
+	return false;
 }
