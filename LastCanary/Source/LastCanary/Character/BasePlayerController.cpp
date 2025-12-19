@@ -11,6 +11,7 @@
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Framework/GameInstance/LCGameManager.h"
 #include "Actor/Gimmick/LCBaseGimmick.h"
+#include "UI/Popup/SelectionWheelWidget.h"
 
 #include "Character/PlayerData/PlayerDataTypes.h"
 #include "Character/BaseSpectatorPawn.h"
@@ -42,7 +43,18 @@ void ABasePlayerController::BeginPlay()
 			}
 		}
 	}
-	
+
+	//이게 과연 괜찮은 구조인지는 다시 생각해보기././///./././
+	if (ULCUIManager* UI = GetUIManager())
+	{
+		if (USelectionWheelWidget* Wheel = UI->GetSelectionWheel())
+		{
+			Wheel->OnSelectionConfirmedDelegate.AddDynamic(
+				this,
+				&ABasePlayerController::HandleSelectionConfirmed
+			);
+		}
+	}
 
 	PlayerCameraManager->ViewPitchMin = -80.0f; // 최소 Pitch 각도 (고개 숙이기)
 	PlayerCameraManager->ViewPitchMax = 80.0f;  // 최대 Pitch 각도 (고개 들기)
@@ -666,6 +678,7 @@ void ABasePlayerController::Input_OnViewMode(const FInputActionValue& ActionValu
 
 	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
+		LOG_Char_WARNING(TEXT("view mode 변경 in controller"));
 		PlayerCharacter->Handle_ViewMode();
 	}
 }
@@ -1243,6 +1256,31 @@ void ABasePlayerController::Input_Emote(const FInputActionValue& ActionValue)
 	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
 		PlayerCharacter->Handle_Emote(ActionValue);
+	}
+}
+
+void ABasePlayerController::Input_EmoteStarted(const FInputActionValue& ActionValue)
+{
+	Super::Input_EmoteStarted(ActionValue);
+}
+
+void ABasePlayerController::Input_EmoteReleased(const FInputActionValue& ActionValue)
+{
+	Super::Input_EmoteReleased(ActionValue);
+}
+
+void ABasePlayerController::Input_EmoteCanceled(const FInputActionValue& ActionValue)
+{
+	Super::Input_EmoteCanceled(ActionValue);
+}
+
+void ABasePlayerController::HandleSelectionConfirmed(int32 Index)
+{
+	UE_LOG(LogTemp, Log, TEXT("Controller received selection: %d"), Index);
+
+	if (ABaseCharacter* MyCharacter = Cast<ABaseCharacter>(GetPawn()))
+	{
+		MyCharacter->ApplyWheelSelection(Index);
 	}
 }
 

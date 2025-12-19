@@ -4,6 +4,8 @@
 
 #include "UI/Manager/LCUIManager.h"
 #include "UI/Popup/SelectionWheelWidget.h"
+#include "Character/BasePlayerController.h"
+
 #include "Framework/PlayerController/LCRoomPlayerController.h"
 
 void ALCPlayerInputController::BeginPlay()
@@ -18,7 +20,7 @@ void ALCPlayerInputController::BeginPlay()
 		InputSubsystem->AddMappingContext(InputMappingContext, 0, Options);
 
 	}
-	InitInputComponent();
+	//InitInputComponent(); <-- 캐릭터 코드에서 컨트롤러 빙의시에 호출하니까 다시 호출하지 말 것! / 호출을 또하면 그 만큼 중복해서 눌리는 것과 같으니 유의!
 
 	DefaultMouseCursor = EMouseCursor::Default;
 	// CurrentMouseCursor = EMouseCursor::Default;
@@ -94,7 +96,6 @@ void ALCPlayerInputController::InitInputComponent()
 		EnhancedInput->BindAction(EmoteAction, ETriggerEvent::Started, this, &ALCPlayerInputController::Input_EmoteStarted);
 		EnhancedInput->BindAction(EmoteAction, ETriggerEvent::Completed, this, &ALCPlayerInputController::Input_EmoteReleased);
 		EnhancedInput->BindAction(EmoteAction, ETriggerEvent::Canceled, this, &ALCPlayerInputController::Input_EmoteReleased);
-
 
 		EnhancedInput->BindAction(RoomUIAction, ETriggerEvent::Started, this, &ALCPlayerInputController::ToggleShowRoomWidget);
 	}
@@ -193,7 +194,7 @@ void ALCPlayerInputController::ShowSelectionWheel_Internal()
 
 	UE_LOG(LogTemp, Warning, TEXT("ShowSelectionWheel_Internal: Pressed"));
 
-	if (ALCRoomPlayerController* RoomPC = Cast<ALCRoomPlayerController>(this))
+	if (ABasePlayerController* RoomPC = Cast<ABasePlayerController>(this))
 	{
 		if (ULCUIManager* UI = RoomPC->GetUIManager())
 		{
@@ -228,7 +229,7 @@ void ALCPlayerInputController::ReleaseSelectionWheel_Internal()
 
 	UE_LOG(LogTemp, Warning, TEXT("ReleaseSelectionWheel_Internal: Released"));
 
-	if (ALCRoomPlayerController* RoomPC = Cast<ALCRoomPlayerController>(this))
+	if (ABasePlayerController* RoomPC = Cast<ABasePlayerController>(this))
 	{
 		if (ULCUIManager* UI = RoomPC->GetUIManager())
 		{
@@ -258,8 +259,7 @@ void ALCPlayerInputController::SetupInputComponent()
 		return;
 	}
 
-	EnhancedInput->BindAction(EmoteAction, ETriggerEvent::Started, this, &ALCPlayerInputController::Input_EmoteStarted);
-	EnhancedInput->BindAction(EmoteAction, ETriggerEvent::Completed, this, &ALCPlayerInputController::Input_EmoteReleased);
+
 
 	ApplyInputMappingContext(InputMappingContext);
 }

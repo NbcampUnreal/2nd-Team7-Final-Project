@@ -355,6 +355,15 @@ void ABaseCharacter::PossessedBy(AController* NewController)
 	Super::PossessedBy(NewController);
 }
 
+int32 ABaseCharacter::ApplyWheelSelection(int32 Index)
+{
+	if (AnimationComponent)
+	{
+		AnimationComponent->PlayEmoteMontage(Index);
+	}
+	return Index;
+}
+
 void ABaseCharacter::InitializePlayerLocalSettings()
 {
 	//1. 커스터마이징 데이터 로드 (로컬 환경)
@@ -1356,6 +1365,7 @@ void ABaseCharacter::Handle_ViewMode()
 	}
 	//아래 코드 카메라 컴포넌트 함수로 변경
 	bIsFPSCamera = !(bIsFPSCamera);
+	LOG_Char_WARNING(TEXT("view mode 변경"));
 	SetCameraMode(bIsFPSCamera);
 }
 

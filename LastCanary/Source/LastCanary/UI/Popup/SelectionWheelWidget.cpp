@@ -249,6 +249,8 @@ void USelectionWheelWidget::OnSelectionConfirmed_Implementation(int32 ConfirmedI
 		const FString Msg = FString::Printf(TEXT("Wheel Confirmed: %s"), *Selected.DisplayName.ToString());
 		GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, Msg);
 	}
+
+	OnSelectionConfirmedDelegate.Broadcast(ConfirmedIndex);
 }
 
 int32 USelectionWheelWidget::NativePaint(
