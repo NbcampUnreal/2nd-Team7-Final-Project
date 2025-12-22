@@ -327,6 +327,9 @@ public:
 	UPROPERTY()
 	bool bIsTransitioning = false;
 
+	int32 ApplyWheelSelection(int32 Index);
+
+
 
 #pragma region 초기 캐릭터 세팅
 	void InitializePlayerLocalSettings();

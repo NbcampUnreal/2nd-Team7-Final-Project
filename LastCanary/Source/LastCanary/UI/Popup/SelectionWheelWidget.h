@@ -4,6 +4,10 @@
 #include "UI/LCUserWidgetBase.h"
 #include "SelectionWheelWidget.generated.h"
 
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSelectionConfirmedDelegate, int32, ConfirmedIndex);
+
+
 USTRUCT(BlueprintType)
 struct FSelectionWheelEntry
 {
@@ -123,4 +127,8 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	FVector2D GetWheelCenterPixel() const { return WheelCenterPixel; }
+
+public:
+	UPROPERTY(BlueprintAssignable)
+	FOnSelectionConfirmedDelegate OnSelectionConfirmedDelegate;
 };

@@ -4,6 +4,7 @@
 #include "Actor/Gimmick/LCBaseGimmick.h"
 #include "Character/Component/CharacterInteractionComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "LastCanary/Character/PlayerData/EmoteData.h"
 
 #include "LastCanary.h"
 
@@ -128,11 +129,24 @@ void UCharacterAnimationComponent::PlayGunReloadMontage()
 	PlayMontageByType(Local, Remote, EAnimationMontageType::GunReload);
 }
 
-void UCharacterAnimationComponent::PlayEmoteMontage()
+void UCharacterAnimationComponent::PlayEmoteMontage(int32 index)
 {
-	UAnimMontage* Local = MontageMap.FindRef(EAnimationMontageType::Emote);
-	UAnimMontage* Remote = MontageMap.FindRef(EAnimationMontageType::Emote);
-	PlayMontageByType(Local, Remote, EAnimationMontageType::Emote);
+	UE_LOG(LogTemp, Log, TEXT("[Emote] PlayEmoteMontage called. Index = %d"), index);
+
+	if (!EmoteData || !EmoteData->Emotes.IsValidIndex(index))
+	{
+		return;
+	}
+
+	UAnimMontage* Montage = EmoteData->Emotes[index].Montage;
+	
+	if (!Montage)
+	{
+		return;
+	}
+
+	PlayMontageByType(Montage, Montage, EAnimationMontageType::Emote);
+	
 }
 
 void UCharacterAnimationComponent::PlayAttackMontage(UAnimMontage* _AttackMontage)

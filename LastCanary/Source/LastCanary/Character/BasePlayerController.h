@@ -151,6 +151,15 @@ public:
 	virtual void Input_Attack(const FInputActionValue& ActionValue) override;
 
 	virtual void Input_Emote(const FInputActionValue& ActionValue) override;
+	virtual void Input_EmoteStarted(const FInputActionValue& ActionValue);
+	virtual void Input_EmoteReleased(const FInputActionValue& ActionValue);
+	virtual void Input_EmoteCanceled(const FInputActionValue& ActionValue);
+public:
+	
+	UFUNCTION()
+	void HandleSelectionConfirmed(int32 Index);
+
+
 public:
 	UFUNCTION(Server, Reliable)
 	void Server_DroneExit();

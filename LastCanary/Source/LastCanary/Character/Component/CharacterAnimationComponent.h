@@ -8,7 +8,7 @@
 
 class AItemBase;
 struct FGameplayTag;
-
+class UEmoteDataAsset;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnReloadNotify);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInteractionNotify);
@@ -45,6 +45,11 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Animation")
 	TMap<EAnimationMontageType, UAnimMontage*> MontageMap;
 
+	
+	UPROPERTY(EditDefaultsOnly)
+	UEmoteDataAsset* EmoteData;
+	
+
 	USkeletalMeshComponent* CharacterMesh();
 protected:
 	virtual void BeginPlay() override;
@@ -65,7 +70,7 @@ public:
 	void PlayGunReloadMontage();
 
 	UFUNCTION(BlueprintCallable, Category = "Animation")
-	void PlayEmoteMontage();
+	void PlayEmoteMontage(int32 index);
 
 	UFUNCTION(BlueprintCallable, Category = "Animation")
 	void PlayAttackMontage(UAnimMontage* _AttackMontage);
