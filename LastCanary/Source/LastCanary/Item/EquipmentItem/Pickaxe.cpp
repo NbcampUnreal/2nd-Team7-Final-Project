@@ -137,6 +137,24 @@ void APickaxe::Server_ApplyDamage_Implementation(AActor* TargetActor)
 
 void APickaxe::SetDamageCollisionEnabled(bool bEnabled)
 {
+    DamageAmount = 1.0f;
+    if (DamageCollision)
+    {
+        if (bEnabled)
+        {
+            DamageCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+            DamagedActors.Empty(); // 새로운 공격 시작 시 데미지받은 액터 목록 초기화
+        }
+        else
+        {
+            DamageCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        }
+    }
+}
+
+void APickaxe::SetAttackCollisionEnabled(bool bEnabled)
+{
+    DamageAmount = AttackDamageAmount;
     if (DamageCollision)
     {
         if (bEnabled)

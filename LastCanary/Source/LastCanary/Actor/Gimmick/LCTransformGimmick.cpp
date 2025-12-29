@@ -21,7 +21,6 @@ ALCTransformGimmick::ALCTransformGimmick()
 	, ClientMoveDuration(0.f)
 	, ClientMoveElapsed(0.f)
 	, ServerMoveDuration(0.f)
-	, ServerMoveElapsed(0.f)
 	, RotationAxisEnum(EGimmickRotationAxis::Z)
 	, RotationAngle(45.f)
 	, RotationDuration(1.f)
@@ -44,8 +43,6 @@ ALCTransformGimmick::ALCTransformGimmick()
 	, ServerStartRotation(FQuat::Identity)
 	, ServerTargetRotation(FQuat::Identity)
 	, ServerRotationDuration(0.f)
-	, ServerRotationElapsed(0.f)
-	//, RotationDeltaQuat(FQuat::Identity)
 {
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true;
@@ -61,6 +58,7 @@ void ALCTransformGimmick::BeginPlay()
 	Super::BeginPlay();
 
 	OriginalLocation = GetActorLocation();
+	//LOG_Art(Log, TEXT("[BeginPlay] OriginalLocation: %s"), *OriginalLocation.ToCompactString());
 
 	OriginalRotation = VisualMesh->GetComponentRotation();
 	OriginalRotationQuat = VisualMesh->GetComponentQuat();
@@ -109,7 +107,10 @@ void ALCTransformGimmick::ActivateGimmick_Implementation()
 		bIsReturningServer = bIsMovingServer = bIsReturningRotationServer = bIsRotatingServer = false;
 	}
 
-	if (!ILCGimmickInterface::Execute_CanActivate(this)) return;
+	if (!ILCGimmickInterface::Execute_CanActivate(this))
+	{
+		return;
+	}
 
 	Super::ActivateGimmick_Implementation();
 
@@ -125,20 +126,40 @@ void ALCTransformGimmick::ActivateGimmick_Implementation()
 		const FQuat AltQuat = GetAlternateRotationQuat();
 		const FQuat ToQuat = CurQuat.Equals(OrigQuat, 0.01f) ? AltQuat : OrigQuat;
 
+		LOG_Art(Log, TEXT("[ActivateGimmick] AlternateToggle 진입!"));
+		LOG_Art(Log, TEXT(" 현재 위치: %s | 목표 위치: %s"), *CurLoc.ToCompactString(), *ToLoc.ToCompactString());
+		LOG_Art(Log, TEXT(" 현재 회전: %s | 원본 회전: %s | 대체 회전: %s | 목표 회전: %s"),
+			*CurQuat.Rotator().ToCompactString(),
+			*OrigQuat.Rotator().ToCompactString(),
+			*AltQuat.Rotator().ToCompactString(),
+			*ToQuat.Rotator().ToCompactString());
+
 		if (!CurLoc.Equals(ToLoc, 1.f))
 		{
+			LOG_Art(Log, TEXT(" [ActivateGimmick] 이동 시작 → %s → %s (Duration: %.2f)"), *CurLoc.ToCompactString(), *ToLoc.ToCompactString(), MoveDuration);
 			StartServerMovement(CurLoc, ToLoc, MoveDuration);
 			GetWorldTimerManager().SetTimer(MovementTimerHandle, this, &ALCTransformGimmick::CompleteMovement, MoveDuration, false);
 			Multicast_StartMovement(CurLoc, ToLoc, MoveDuration);
+		}
+		else
+		{
+			LOG_Art(Log, TEXT(" [ActivateGimmick] 이동 생략 (이미 목표 위치와 동일)"));
+
 		}
 
 		if (!CurQuat.Equals(ToQuat, 0.01f))
 		{
 			const bool bIsReturnRotation = ToQuat.Equals(OriginalRotationQuat, 0.01f); 
+			LOG_Art(Log, TEXT(" [ActivateGimmick] 회전 시작 → %s → %s (Duration: %.2f) [복귀: %d]"),
+				*CurQuat.Rotator().ToCompactString(), *ToQuat.Rotator().ToCompactString(), RotationDuration, (int)bIsReturnRotation);
 
 			StartServerRotation(CurQuat, ToQuat, RotationDuration);
 			GetWorldTimerManager().SetTimer(RotationTimerHandle, this, &ALCTransformGimmick::CompleteRotation, RotationDuration, false);
 			Multicast_StartRotation(CurQuat, ToQuat, RotationDuration, bIsReturnRotation);
+		}
+		else
+		{
+			LOG_Art(Log, TEXT(" [ActivateGimmick] 회전 생략 (이미 목표 회전과 동일)"));
 		}
 	}
 	else
@@ -162,7 +183,7 @@ void ALCTransformGimmick::ReturnToInitialState_Implementation()
 {
 	//LOG_Art(Log, TEXT("▶ ReturnToInitialState 진입"));
 
-	if (bIsReturningServer && bIsReturningRotationServer)
+	if (bIsReturningServer || bIsReturningRotationServer)
 	{
 		//LOG_Art(Log, TEXT(" 이미 복귀 중 - ReturnToInitialState 무시"));
 		return;
@@ -197,8 +218,8 @@ void ALCTransformGimmick::ReturnToInitialState_Implementation()
 		////LOG_Art(Log, TEXT("❌ 회전 복귀 조건 불충족 - bIsReturningRotationServer: %d | TotalRotationIndex: %d"),
 		//	bIsReturningRotationServer, TotalRotationIndex);
 	}
+	bActivated = false;
 }
-
 
 FVector ALCTransformGimmick::GetRotationAxisVector(EGimmickRotationAxis AxisEnum) const
 {
@@ -230,6 +251,11 @@ void ALCTransformGimmick::StartMovement()
 	const FVector Delta = MoveVector;
 	TargetLocation = InitialLocation + Delta;
 
+	LOG_Art(Log, TEXT("[StartMovement] InitialLocation: %s | MoveVector: %s | TargetLocation: %s"),
+		*InitialLocation.ToCompactString(),
+		*MoveVector.ToCompactString(),
+		*TargetLocation.ToCompactString());
+
 	bIsMovingServer = true;
 
 	StartServerMovement(InitialLocation, TargetLocation, MoveDuration);
@@ -254,14 +280,14 @@ void ALCTransformGimmick::CompleteMovement()
 {
 	bIsMovingServer = false;
 	SetActorLocation(TargetLocation);
+	LOG_Art(Log, TEXT("[CompleteMovement] TargetLocation: %s, 실제 위치: %s"),
+		*TargetLocation.ToCompactString(),
+		*GetActorLocation().ToCompactString());
 
 	if (!bToggleState && !bUseAlternateToggle)
 	{
-		//LOG_Art(Log, TEXT("▶ 상태 복귀 예약됨 - ReturnToInitialState %.1f초 후"), ReturnDelay);
-
 		GetWorldTimerManager().SetTimer(ReturnMoveTimerHandle, [this]()
 			{
-				//LOG_Art(Log, TEXT("▶ [이동] ReturnToInitialState 람다 호출됨"));
 				this->ReturnToInitialState_Implementation();
 			}, ReturnDelay, false);
 	}
@@ -301,7 +327,6 @@ void ALCTransformGimmick::StartMovementToTarget(const FVector& NewTarget)
 	InitialLocation = GetActorLocation();
 	TargetLocation = NewTarget;
 
-	GetWorldTimerManager().ClearTimer(ServerMoveTimer);
 	GetWorldTimerManager().ClearTimer(MovementTimerHandle);
 
 	bIsMovingServer = true;
@@ -322,50 +347,18 @@ void ALCTransformGimmick::StartMovementToTarget(const FVector& NewTarget)
 
 void ALCTransformGimmick::StartServerMovement(const FVector& From, const FVector& To, float Duration)
 {
-	if (IsValid(this) == false)
-	{
-		return;
-	}
+	SetActorLocation(From);
 
 	InitialLocation = From;
 	TargetLocation = To;
 
-	SetActorLocation(From); // 서버 보정
 	Multicast_StartMovement(From, To, Duration);
 
-	TWeakObjectPtr<ALCTransformGimmick> WeakThis(this);
-
-	GetWorldTimerManager().SetTimer(ServerMoveTimer, [WeakThis]()
-		{
-			if (!WeakThis.IsValid()) return;
-
-			WeakThis->SetActorLocation(WeakThis->TargetLocation);
-			WeakThis->bIsMovingServer = false;
-			WeakThis->bIsReturningServer = false;
-		}, Duration, false);
-
-	bIsMovingServer = true;
+	if (AttachedSyncComponent)
+	{
+		AttachedSyncComponent->BroadcastStartMovement(From, To, Duration);
+	}
 }
-
-//
-//void ALCTransformGimmick::StepServerMovement()
-//{
-//	ServerMoveElapsed += 0.02f;
-//	const float Alpha = FMath::Clamp(ServerMoveElapsed / ServerMoveDuration, 0.f, 1.f);
-//	const FVector NewLoc = FMath::Lerp(InitialLocation, TargetLocation, Alpha);
-//
-//	SetActorLocation(NewLoc);
-//
-//	if (Alpha >= 1.f)
-//	{
-//		GetWorldTimerManager().ClearTimer(ServerMoveTimer);
-//		GetWorldTimerManager().ClearTimer(ReturnMoveTimerHandle);
-//
-//		bIsReturningServer = false;
-//		bIsMovingServer = false;
-//		SetActorLocation(TargetLocation);
-//	}
-//}
 
 void ALCTransformGimmick::Multicast_StartMovement_Implementation(const FVector& From, const FVector& To, float Duration)
 {
@@ -374,11 +367,6 @@ void ALCTransformGimmick::Multicast_StartMovement_Implementation(const FVector& 
 	if (GetNetMode() != NM_DedicatedServer)
 	{
 		StartClientMovement(From, To, Duration);
-		StartClientAttachedMovement(DeltaLocation, Duration);
-	}
-	else
-	{
-		StartServerAttachedMovement(DeltaLocation, Duration);
 	}
 }
 
@@ -411,70 +399,6 @@ void ALCTransformGimmick::StepClientMovement()
 	if (Alpha >= 1.f || FMath::IsNearlyEqual(Alpha, 1.f, 0.01f))
 	{
 		GetWorldTimerManager().ClearTimer(ClientMoveTimer);
-	}
-}
-
-void ALCTransformGimmick::StartServerAttachedMovement(const FVector& DeltaLocation, float Duration)
-{
-	for (AActor* Target : AttachedActors)
-	{
-		if (!IsValid(Target)) continue;
-
-		if (AttachedMovementTimers.Contains(Target))
-		{
-			GetWorld()->GetTimerManager().ClearTimer(AttachedMovementTimers[Target]);
-			AttachedMovementTimers.Remove(Target);
-		}
-
-		const FVector StartLoc = Target->GetActorLocation();
-		const FVector EndLoc = StartLoc + DeltaLocation;
-		TSharedPtr<float> Elapsed = MakeShared<float>(0.f);
-
-		FTimerDelegate Delegate;
-		Delegate.BindLambda([=]()
-			{
-				if (!IsValid(Target)) return;
-				*Elapsed += 0.02f;
-				const float Alpha = FMath::Clamp(*Elapsed / Duration, 0.f, 1.f);
-				Target->SetActorLocation(FMath::Lerp(StartLoc, EndLoc, Alpha));
-			});
-
-		FTimerHandle Handle;
-		GetWorld()->GetTimerManager().SetTimer(Handle, Delegate, 0.02f, true);
-		AttachedMovementTimers.Add(Target, Handle);
-	}
-}
-
-void ALCTransformGimmick::StartClientAttachedMovement(const FVector& DeltaLocation, float Duration)
-{
-	if (HasAuthority()) return;
-
-	for (AActor* Target : AttachedActors)
-	{
-		if (!IsValid(Target)) continue;
-
-		if (AttachedMovementTimers.Contains(Target))
-		{
-			GetWorld()->GetTimerManager().ClearTimer(AttachedMovementTimers[Target]);
-			AttachedMovementTimers.Remove(Target);
-		}
-
-		const FVector StartLoc = Target->GetActorLocation();
-		const FVector EndLoc = StartLoc + DeltaLocation;
-		TSharedPtr<float> Elapsed = MakeShared<float>(0.f);
-
-		FTimerDelegate Delegate;
-		Delegate.BindLambda([=]()
-			{
-				if (!IsValid(Target)) return;
-				*Elapsed += 0.02f;
-				const float Alpha = FMath::Clamp(*Elapsed / Duration, 0.f, 1.f);
-				Target->SetActorLocation(FMath::Lerp(StartLoc, EndLoc, Alpha));
-			});
-
-		FTimerHandle Handle;
-		GetWorld()->GetTimerManager().SetTimer(Handle, Delegate, 0.02f, true);
-		AttachedMovementTimers.Add(Target, Handle);
 	}
 }
 
@@ -536,15 +460,15 @@ void ALCTransformGimmick::CompleteRotation()
 	{
 		VisualMesh->SetWorldRotation(TargetRotation);
 		CurrentRotationQuat = TargetRotation;
+		LOG_Art(Log, TEXT("[CompleteRotation] TargetRotation: %s, 실제 회전: %s"),
+			*TargetRotation.Rotator().ToCompactString(),
+			*VisualMesh->GetComponentRotation().ToCompactString());
 	}
 
 	if (!bToggleState && !bUseAlternateToggle)
 	{
-		//LOG_Art(Log, TEXT("▶ 회전 복귀 예약됨 - ReturnToInitialState %.1f초 후"), ReturnDelay);
-
 		GetWorldTimerManager().SetTimer(ReturnRotationTimerHandle, [this]()
 			{
-				//LOG_Art(Log, TEXT("▶ [회전] ReturnToInitialState 람다 호출됨"));
 				this->ReturnToInitialState_Implementation();
 			}, ReturnDelay, false);
 	}
@@ -569,74 +493,8 @@ void ALCTransformGimmick::StartReturnRotation()
 	//	*TargetRotation.Rotator().ToCompactString());
 
 	Multicast_StartRotation(InitialRotation, TargetRotation, ReturnRotationDuration, true);
+	GetWorldTimerManager().SetTimer(RotationTimerHandle, this, &ALCTransformGimmick::CompleteRotationReturn, ReturnRotationDuration, false);
 }
-
-//void ALCTransformGimmick::StepServerReturnRotation()
-//{
-//	LOG_Art(Log, TEXT("▶ StepServerReturnRotation() 호출됨"));
-//
-//	ServerRotationElapsed += 0.02f;
-//
-//	LOG_Art(Log, TEXT("▶ StepServerReturnRotation 실행 중 - %.2f / %.2f"), ServerRotationElapsed, ServerRotationDuration);
-//
-//	const float Alpha = FMath::Clamp(ServerRotationElapsed / ServerRotationDuration, 0.f, 1.f);
-//	const FQuat StepQuat = FQuat::SlerpFullPath(FQuat::Identity, ReturnRotationDeltaQuat, Alpha);
-//	const FQuat NewQuat = StepQuat * InitialRotation;
-//
-//	VisualMesh->SetWorldRotation(NewQuat);
-//
-//	if (Alpha >= 1.f)
-//	{
-//		GetWorldTimerManager().ClearTimer(ServerRotationTimer);
-//		CompleteRotationReturn();
-//	}
-//}
-
-
-//void ALCTransformGimmick::ReturnToInitialRotation()
-//{
-//	if (bIsRotatingServer || bIsReturningRotationServer)
-//	{
-//		return;
-//	}
-//
-//	bIsReturningRotationServer = true;
-//
-//	InitialRotation = CurrentRotationQuat;
-//
-//	TargetRotation = OriginalRotationQuat;
-//
-//	const FQuat DeltaQuat = TargetRotation * InitialRotation.Inverse();
-//
-//	float AngleRad;
-//	FVector DeltaAxis;
-//	DeltaQuat.ToAxisAndAngle(DeltaAxis, AngleRad);
-//
-//	RotationAngle = FMath::RadiansToDegrees(AngleRad);
-//	RotationCount = 1;
-//
-//	if (FMath::Abs(DeltaAxis.X) > 0.9f)
-//	{
-//		RotationAxisEnum = EGimmickRotationAxis::X;
-//	}
-//	else if (FMath::Abs(DeltaAxis.Y) > 0.9f)
-//	{
-//		RotationAxisEnum = EGimmickRotationAxis::Y;
-//	}
-//	else
-//	{
-//		RotationAxisEnum = EGimmickRotationAxis::Z;
-//	}
-//
-//	StartServerRotation(InitialRotation, TargetRotation, ReturnRotationDuration);
-//
-//	Multicast_StartRotation(InitialRotation, TargetRotation, ReturnRotationDuration);
-//
-//	if (!IsRunningDedicatedServer())
-//	{
-//		StartClientRotation(InitialRotation, TargetRotation, ReturnRotationDuration);
-//	}
-//}
 
 void ALCTransformGimmick::CompleteRotationReturn()
 {
@@ -656,48 +514,18 @@ void ALCTransformGimmick::CompleteRotationReturn()
 
 void ALCTransformGimmick::StartServerRotation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration)
 {
-	if (IsValid(this) == false)
+	VisualMesh->SetWorldRotation(FromQuat);
+
+	InitialRotation = FromQuat;
+	TargetRotation = ToQuat;
+
+    Multicast_StartRotation(FromQuat, ToQuat, Duration, false);
+
+	if (AttachedSyncComponent)
 	{
-		return;
+		AttachedSyncComponent->BroadcastStartRotation(FromQuat, ToQuat, Duration);
 	}
-
-	ServerStartRotation = FromQuat;
-	ServerTargetRotation = ToQuat;
-	ServerRotationDuration = Duration;
-
-	const bool bIsReturnRotation = ToQuat.Equals(OriginalRotationQuat, 0.01f);
-
-	Multicast_StartRotation(FromQuat, ToQuat, Duration, bIsReturnRotation);
-
-	if (GetNetMode() != NM_DedicatedServer)
-	{
-		bIsReturningRotationClient = bIsReturnRotation;
-		StartClientRotation(FromQuat, ToQuat, Duration, bIsReturnRotation); 
-	}
-
-	bIsRotatingServer = true;
 }
-
-//
-//void ALCTransformGimmick::StepServerRotation()
-//{
-//	ServerRotationElapsed += 0.02f;
-//	const float Alpha = FMath::Clamp(ServerRotationElapsed / ServerRotationDuration, 0.f, 1.f);
-//
-//	const FVector Axis = GetRotationAxisVector(RotationAxisEnum);
-//	const float TotalAngleRad = FMath::DegreesToRadians(RotationAngle * RotationCount);
-//	const float StepAngleRad = FMath::Lerp(0.f, TotalAngleRad, Alpha);
-//	const FQuat StepQuat = FQuat(Axis, StepAngleRad);
-//	const FQuat NewQuat = StepQuat * ServerStartRotation;
-//
-//	VisualMesh->SetWorldRotation(NewQuat);
-//
-//	if (Alpha >= 1.f)
-//	{
-//		GetWorldTimerManager().ClearTimer(ServerRotationTimer);
-//		CompleteRotation();
-//	}
-//}
 
 void ALCTransformGimmick::Multicast_StartRotation_Implementation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration, bool bIsReturnRotation)
 {
@@ -706,11 +534,6 @@ void ALCTransformGimmick::Multicast_StartRotation_Implementation(const FQuat& Fr
 		GetWorldTimerManager().ClearTimer(ClientRotationTimer);
 
 		StartClientRotation(FromQuat, ToQuat, Duration, bIsReturnRotation);
-		StartClientAttachedRotation(FromQuat, ToQuat, Duration);
-	}
-	else
-	{
-		StartServerAttachedRotation(FromQuat, ToQuat, Duration);
 	}
 }
 
@@ -741,7 +564,6 @@ void ALCTransformGimmick::StartClientRotation(const FQuat& FromQuat, const FQuat
 	);
 }
 
-
 void ALCTransformGimmick::StepClientRotation()
 {
 	ClientRotationElapsed += 0.02f;
@@ -767,72 +589,6 @@ void ALCTransformGimmick::StepClientRotation()
 	}
 }
 
-void ALCTransformGimmick::StartServerAttachedRotation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration)
-{
-	for (AActor* AttachedActor : AttachedActors)
-	{
-		if (!IsValid(AttachedActor))
-			continue;
-
-		if (AttachedRotationTimers.Contains(AttachedActor))
-		{
-			GetWorldTimerManager().ClearTimer(AttachedRotationTimers[AttachedActor]);
-			AttachedRotationTimers.Remove(AttachedActor);
-		}
-
-		FTimerHandle& Handle = AttachedRotationTimers.FindOrAdd(AttachedActor);
-
-		TWeakObjectPtr<AActor> WeakActor = AttachedActor;
-		float ElapsedTime = 0.f;
-
-		FTimerDelegate Delegate;
-		Delegate.BindLambda([WeakActor, FromQuat, ToQuat, Duration, ElapsedTime]() mutable
-			{
-				if (!WeakActor.IsValid()) return;
-
-				ElapsedTime += 0.02f;
-				const float Alpha = FMath::Clamp(ElapsedTime / Duration, 0.f, 1.f);
-				const FQuat NewQuat = FQuat::SlerpFullPath(FromQuat, ToQuat, Alpha);
-				WeakActor->SetActorRotation(NewQuat);
-			});
-
-		GetWorldTimerManager().SetTimer(Handle, Delegate, 0.02f, true);
-	}
-}
-
-void ALCTransformGimmick::StartClientAttachedRotation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration)
-{
-	for (AActor* AttachedActor : AttachedActors)
-	{
-		if (!IsValid(AttachedActor))
-			continue;
-
-		if (AttachedRotationTimers.Contains(AttachedActor))
-		{
-			GetWorldTimerManager().ClearTimer(AttachedRotationTimers[AttachedActor]);
-			AttachedRotationTimers.Remove(AttachedActor);
-		}
-
-		FTimerHandle& Handle = AttachedRotationTimers.FindOrAdd(AttachedActor);
-
-		TWeakObjectPtr<AActor> WeakActor = AttachedActor;
-		float ElapsedTime = 0.f;
-
-		FTimerDelegate Delegate;
-		Delegate.BindLambda([WeakActor, FromQuat, ToQuat, Duration, ElapsedTime]() mutable
-			{
-				if (!WeakActor.IsValid()) return;
-
-				ElapsedTime += 0.02f;
-				const float Alpha = FMath::Clamp(ElapsedTime / Duration, 0.f, 1.f);
-				const FQuat NewQuat = FQuat::SlerpFullPath(FromQuat, ToQuat, Alpha);
-				WeakActor->SetActorRotation(NewQuat);
-			});
-
-		GetWorldTimerManager().SetTimer(Handle, Delegate, 0.02f, true);
-	}
-}
-
 void ALCTransformGimmick::CacheOriginalRotation()
 {
 	if (!bOriginalRotationCached)
@@ -849,24 +605,12 @@ FQuat ALCTransformGimmick::GetAlternateRotationQuat() const
 {
 	const float TotalAngleRad = FMath::DegreesToRadians(RotationAngle * RotationCount);
 	const FVector Axis = GetRotationAxisVector(RotationAxisEnum);
-	return FQuat(Axis, TotalAngleRad) * OriginalRotationQuat;
+	const FQuat Result = FQuat(Axis, TotalAngleRad) * OriginalRotationQuat;
+
+	LOG_Art(Log, TEXT("[GetAlternateRotationQuat] Axis: %s, Angle: %.2f, 결과 쿼터니언: %s"),
+		*Axis.ToString(), RotationAngle * RotationCount, *Result.Rotator().ToCompactString());
+
+	return Result;
 }
 
 #pragma endregion
-
-void ALCTransformGimmick::EndPlay(const EEndPlayReason::Type EndPlayReason)
-{
-	Super::EndPlay(EndPlayReason);
-
-	for (auto& Pair : AttachedRotationTimers)
-	{
-		GetWorldTimerManager().ClearTimer(Pair.Value);
-	}
-	AttachedRotationTimers.Empty();
-
-	for (auto& Pair : AttachedMovementTimers)
-	{
-		GetWorldTimerManager().ClearTimer(Pair.Value);
-	}
-	AttachedMovementTimers.Empty();
-}

@@ -2,13 +2,11 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "UI/Manager/LCUIManager.h"
 #include "LCUserWidgetBase.generated.h"
 
 /**
  * UIManager에 접근하기 위한 기본 위젯 클래스
  */
-class ULCUIManager;
 UCLASS()
 class LASTCANARY_API ULCUserWidgetBase : public UUserWidget
 {
@@ -18,6 +16,6 @@ public:
 	UFUNCTION(BlueprintCallable)
 	ULCUIManager* ResolveUIManager() const;
 
-	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
-	virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	//virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	//virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 };

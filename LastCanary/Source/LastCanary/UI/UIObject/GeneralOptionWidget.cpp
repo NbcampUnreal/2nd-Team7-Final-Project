@@ -12,6 +12,7 @@
 
 #include "SaveGame/LCLocalPlayerSaveGame.h"
 #include "Character/BasePlayerController.h"
+#include "Character/BaseCharacter.h"
 #include "GameFramework/GameUserSettings.h"
 
 #include "LastCanary.h"
@@ -298,7 +299,8 @@ void UGeneralOptionWidget::OnBrightnessChanged(float Value)
 	{
 		if (ABasePlayerController* MyPC = Cast<ABasePlayerController>(PC))
 		{
-			MyPC->SetBrightness(Value);
+			ABaseCharacter* Char = Cast<ABaseCharacter>(MyPC->GetControlledBaseCharacter());
+			Char->SetBrightness(Value);
 		}
 	}
 }

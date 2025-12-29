@@ -189,10 +189,10 @@ void ALCRotationGimmick::CompleteRotation()
 	bIsRotatingServer = false;
 	VisualMesh->SetWorldRotation(TargetRotation);
 
-	AttachedActors.RemoveAll([this](AActor* Actor)
+	/*AttachedActors.RemoveAll([this](AActor* Actor)
 		{
 			return !DetectionArea->IsOverlappingActor(Actor);
-		});
+		});*/
 
 	if (!bToggleState)
 	{
@@ -241,10 +241,10 @@ void ALCRotationGimmick::CompleteReturn()
 	TargetRotation = OriginalRotation;
 	RotationIndex = 0;
 
-	AttachedActors.RemoveAll([this](AActor* Actor)
+	/*AttachedActors.RemoveAll([this](AActor* Actor)
 		{
 			return !DetectionArea->IsOverlappingActor(Actor);
-		});
+		});*/
 }
 
 
@@ -288,7 +288,7 @@ void ALCRotationGimmick::StepServerRotation()
 
 void ALCRotationGimmick::StartServerAttachedRotation(const FRotator& DeltaRot, float Duration)
 {
-	for (AActor* Target : AttachedActors)
+	/*for (AActor* Target : AttachedActors)
 	{
 		if (!IsValid(Target)) continue;
 
@@ -317,7 +317,7 @@ void ALCRotationGimmick::StartServerAttachedRotation(const FRotator& DeltaRot, f
 		GetWorld()->GetTimerManager().SetTimer(TimerHandle, RotateDelegate, 0.02f, true);
 
 		AttachedRotationTimers.Add(Target, TimerHandle);
-	}
+	}*/
 }
 
 #pragma endregion
@@ -375,7 +375,7 @@ void ALCRotationGimmick::StartClientAttachedRotation(const FRotator& DeltaRot, f
 {
 	if (HasAuthority()) return;
 
-	for (AActor* Target : AttachedActors)
+	/*for (AActor* Target : AttachedActors)
 	{
 		if (!IsValid(Target)) continue;
 
@@ -404,7 +404,7 @@ void ALCRotationGimmick::StartClientAttachedRotation(const FRotator& DeltaRot, f
 		GetWorld()->GetTimerManager().SetTimer(TimerHandle, RotateDelegate, 0.02f, true);
 
 		AttachedRotationTimers.Add(Target, TimerHandle);
-	}
+	}*/
 }
 
 #pragma endregion

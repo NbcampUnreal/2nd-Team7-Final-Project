@@ -287,7 +287,7 @@ void ALCLocationGimmick::StepServerMovement()
 
 void ALCLocationGimmick::StartServerAttachedMovement(const FVector& DeltaLocation, float Duration)
 {
-	for (AActor* Target : AttachedActors)
+	/*for (AActor* Target : AttachedActors)
 	{
 		if (!IsValid(Target)) continue;
 
@@ -316,7 +316,7 @@ void ALCLocationGimmick::StartServerAttachedMovement(const FVector& DeltaLocatio
 		GetWorld()->GetTimerManager().SetTimer(Handle, Delegate, 0.02f, true);
 
 		AttachedMovementTimers.Add(Target, Handle);
-	}
+	}*/
 }
 
 #pragma endregion
@@ -375,7 +375,7 @@ void ALCLocationGimmick::StartClientAttachedMovement(const FVector& DeltaLocatio
 {
 	if (HasAuthority()) return;
 
-	for (AActor* Target : AttachedActors)
+	/*for (AActor* Target : AttachedActors)
 	{
 		if (!IsValid(Target)) continue;
 
@@ -404,7 +404,7 @@ void ALCLocationGimmick::StartClientAttachedMovement(const FVector& DeltaLocatio
 		GetWorld()->GetTimerManager().SetTimer(Handle, Delegate, 0.02f, true);
 
 		AttachedMovementTimers.Add(Target, Handle);
-	}
+	}*/
 }
 
 #pragma endregion

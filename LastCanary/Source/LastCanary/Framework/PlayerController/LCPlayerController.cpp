@@ -36,17 +36,22 @@ void ALCPlayerController::PostSeamlessTravel()
 void ALCPlayerController::BeginPlay()
 {
     Super::BeginPlay();
-
-    if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+    if (IsLocalPlayerController())
     {
-        if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+        if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
         {
-            LCUIManager = UIManager;
-            LCUIManager->InitUIManager(this);
-            LCUIManager->SetPlayerController(this);
-        }
-    }
+            if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+            {
+                LOG_Frame_WARNING(TEXT("UIManager 처리 부분"));
 
+                LCUIManager = UIManager;
+                LCUIManager->InitUIManager(this);
+                LCUIManager->SetPlayerController(this);
+            }
+        }
+
+    }
+    
     // 복구 타이머
     FTimerHandle InventoryRestoreHandle;
     GetWorld()->GetTimerManager().SetTimer(InventoryRestoreHandle, this, &ALCPlayerController::TryRestoreInventory, 0.3f, false);
@@ -117,7 +122,7 @@ void ALCPlayerController::UpdatePlayerList(const TArray<FSessionPlayerInfo>& Pla
     if (IsValid(LCUIManager))
     {
         LOG_Frame_WARNING(TEXT("LCUIManager Is Not Null!"));
-        URoomWidget* RoomWidget = LCUIManager->GetRoomWidgetInstance();
+        URoomWidget* RoomWidget = LCUIManager->GetRoomWidget();
         RoomWidget->UpdatePlayerLists(PlayerInfos);
 
         GetWorld()->GetTimerManager().ClearTimer(UpdatePlayerListTimerHandle);
@@ -225,8 +230,8 @@ void ALCPlayerController::Client_HideHUD_Implementation()
     {
         if (ULCUIManager* UIManager = Subsystem->GetUIManager())
         {
-            UIManager->HideInGameHUD();
-            UIManager->HideSpectatorWidget();
+            UIManager->HideHUD();
+            //UIManager->HideSpectatorWidget();
         }
     }
 }
@@ -307,8 +312,8 @@ void ALCPlayerController::HideUIForCutscene()
     {
         if (ULCUIManager* UIManager = Subsystem->GetUIManager())
         {
-            UIManager->HideInGameHUD();
-            UIManager->HideSpectatorWidget();
+            UIManager->HideHUD();
+            //UIManager->HideSpectatorWidget();
         }
     }
 }
@@ -320,7 +325,8 @@ void ALCPlayerController::ShowUIAfterCutscene()
     {
         if (ULCUIManager* UIManager = Subsystem->GetUIManager())
         {
-            UIManager->ShowInGameHUD();
+            UIManager->SetUIContext(ELCUIContext::InGame);
+            UIManager->ChangeHUD();
         }
     }
 }

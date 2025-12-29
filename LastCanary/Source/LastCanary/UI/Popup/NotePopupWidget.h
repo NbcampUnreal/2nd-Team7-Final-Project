@@ -22,16 +22,18 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* NoteContentTextBlock;
-	UPROPERTY(meta = (BindWidget))
-	UButton* CloseButton;
+	//UPROPERTY(meta = (BindWidget))
+	//UButton* CloseButton;
 	UPROPERTY(meta = (BindWidget))
 	UImage* BackgroundImage;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Note")
 	TArray<UTexture2D*> NoteBackgroundList;
 
-	UFUNCTION()
-	void OnCloseButtonClicked();
+	//UFUNCTION()
+	//void OnCloseButtonClicked();
+
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent);
 
 	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 	

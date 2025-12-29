@@ -50,4 +50,7 @@ public:
 
 	/** 부모 회전 시작 시 동기화 호출 */
 	void BroadcastStartRotation(const FQuat& From, const FQuat& To, float Duration);
+
+	UPROPERTY()
+	TMap<AActor*, FTransform> CachedRelativeTransforms;
 };

@@ -57,41 +57,42 @@ void UPauseMenu::OnResumeButtonClicked()
 	{
 		ELCUIContext CurrentContext = UIManager->GetUIContext();
 		UIManager->HidePauseMenu();
-		
-		switch (CurrentContext)
-		{
-		case ELCUIContext::Title:
-			UIManager->ShowTitleMenu();
-			break;
-		case ELCUIContext::Room:
-			// falls through
-		case ELCUIContext::InGame:
-		{
-			APlayerController* PC = GetOwningPlayer();
-			if (!PC)
-			{
-				return;
-			}
-			ABasePlayerState* MyPS = Cast<ABasePlayerState>(PC->PlayerState);
-			if (!MyPS)
-			{
-				return;
-			}
+		UIManager->ChangeHUD();
+		//switch (CurrentContext)
+		//{
+		//case ELCUIContext::Title:
+		//	UIManager->ShowTitleMenu();
+		//	break;
+		//case ELCUIContext::Room:
+		//	// falls through
+		//case ELCUIContext::InGame:
+		//{
+		//	//APlayerController* PC = GetOwningPlayer();
+		//	//if (!PC)
+		//	//{
+		//	//	return;
+		//	//}
+		//	//ABasePlayerState* MyPS = Cast<ABasePlayerState>(PC->PlayerState);
+		//	//if (!MyPS)
+		//	//{
+		//	//	return;
+		//	//}
 
-			if (MyPS->GetInGameStatus() == EPlayerInGameStatus::Spectating)
-			{
-				UIManager->ShowSpectatorWidget();
-			}
-			else
-			{
-				UIManager->ShowInGameHUD();
-			}
-			break;
-		}
-		default:
-			UIManager->ShowInGameHUD(); 
-			break;
-		}
+		//	//if (MyPS->GetInGameStatus() == EPlayerInGameStatus::Spectating)
+		//	//{
+		//	//	UIManager->ShowHUD();
+		//	//}
+		//	//else
+		//	//{
+		//	//	UIManager->ShowHUD();
+		//	//}
+		//	//break;
+
+		//}
+		//default:
+		//	UIManager->ShowHUD();
+		//	break;
+		//}
 	}
 }
 
