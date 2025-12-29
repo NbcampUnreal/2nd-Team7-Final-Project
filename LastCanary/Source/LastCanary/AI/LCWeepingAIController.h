@@ -41,7 +41,7 @@ private:
 	static constexpr float PlayerCheckInterval = 0.1f;
 
 	/** 플레이어 즉사 범위 (이 거리 이내 + 아무도 안 보고 있으면 즉사) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Combat")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Combat", meta = (AllowPrivateAccess = "true"))
 	float KillRange = 100.0f;
 	
 };
