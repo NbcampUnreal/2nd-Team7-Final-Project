@@ -141,8 +141,12 @@ void ABaseCharacter::InitializeDefaultComponents()
 	SpringArm = UCommonUtility::CreateAndAttachComponent<USpringArmComponent>(this, GetMesh(), TEXT("SpringArm"));
 	TPSCamera = UCommonUtility::CreateAndAttachComponent<UCameraComponent>(this, SpringArm, TEXT("TPSCamera"));
 
-	
+	SpringArm->SetupAttachment(
+		GetMesh(),
+		TEXT("FirstPersonCamera")
+	);
 
+	SpringArm->TargetArmLength = 200.0f;
 
 	// Arrow
 	ThirdPersonArrow = UCommonUtility::CreateAndAttachComponent<UArrowComponent>(this, SpringArm, TEXT("FirstPersonArrow"));
@@ -253,7 +257,8 @@ void ABaseCharacter::BeginPlay()
 	}
 
 	SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
-	
+	SpringArm->TargetArmLength = 400.0f;
+
 	const FTransform MeshToWorld = GetMesh()->GetComponentTransform();
 	const FVector EyeWorld =
 		GetMesh()->GetSocketLocation(TEXT("FirstPersonCamera")); // 또는 EyeSocket
@@ -793,10 +798,7 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 		FRotator TargetRot = GetActorRotation();
 		ViewInfo.Rotation = TargetRot;
 		SpringArm->SetWorldRotation(TargetRot);
-		if (!bIsFPSCamera)
-		{
-			SpringArm->TargetArmLength = 200.0f;
-		}
+
 		StopGunAutoFire();
 		return;
 	}
@@ -1471,15 +1473,20 @@ void ABaseCharacter::SetCameraMode(bool bIsFirstPersonView)
 		EmoteMode = false;
 		CustomHeadMesh->SetOwnerNoSee(true);
 		SwapHeadMaterialTransparent(true);
+		
+		FPSCamera->SetActive(true);
+		TPSCamera->SetActive(false);
 		//SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
-		SpringArm->TargetArmLength = 0.0f;
+		
 	}
 	else
 	{
 		EmoteMode = true;
 		CustomHeadMesh->SetOwnerNoSee(false);
 		SwapHeadMaterialTransparent(false);
-		SpringArm->TargetArmLength = 200.0f;
+		
+		FPSCamera->SetActive(false);
+		TPSCamera->SetActive(true);
 	}
 }
 
@@ -1494,7 +1501,6 @@ void ABaseCharacter::SetCameraEmoteMode(bool bIsFirstPersonView)
 		CustomHeadMesh->SetOwnerNoSee(true);
 		SwapHeadMaterialTransparent(true);
 		//SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
-		SpringArm->TargetArmLength = 0.0f;
 	}
 	else
 	{
@@ -1504,7 +1510,6 @@ void ABaseCharacter::SetCameraEmoteMode(bool bIsFirstPersonView)
 		SpringArm->ProbeSize = 3.0f;
 		CustomHeadMesh->SetOwnerNoSee(false);
 		SwapHeadMaterialTransparent(false);
-		SpringArm->TargetArmLength = 200.0f;
 	}
 }
 
