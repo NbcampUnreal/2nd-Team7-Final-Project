@@ -5,7 +5,7 @@
 
 UBTTask_TempleElite_Search::UBTTask_TempleElite_Search()
 {
-    NodeName = TEXT("TempleGimmick");
+    NodeName = TEXT("SearchGimmick");
 
     bCreateNodeInstance = true;
 }

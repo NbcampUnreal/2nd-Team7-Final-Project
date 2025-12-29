@@ -231,7 +231,6 @@ float ABaseMonsterCharacter::TakeDamage(float DamageAmount, struct FDamageEvent 
 
 	}
 
-
 	return DamageApplied;
 }
 

@@ -2,6 +2,7 @@
 #include "Item/EquipmentItem/GunBase.h"
 #include "AI/BaseAIController.h"
 #include "Character/BaseCharacter.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "BehaviorTree/BlackboardComponent.h"
 
 ACaveNormalMonster::ACaveNormalMonster()
@@ -12,6 +13,8 @@ ACaveNormalMonster::ACaveNormalMonster()
 void ACaveNormalMonster::HandlePerceptionUpdate(AActor* Actor, FAIStimulus Stimulus)
 {
     if (!Actor) return;
+
+    //Super::HandlePerceptionUpdate(Actor, Stimulus);
 
     if (ABaseAIController* AIController = Cast<ABaseAIController>(GetController()))
     {
@@ -37,6 +40,17 @@ void ACaveNormalMonster::HandlePerceptionUpdate(AActor* Actor, FAIStimulus Stimu
                 if (UWorld* World = GetWorld())
                 {
                     World->GetTimerManager().ClearTimer(ForgetTargetTimerHandle);
+                }
+            }
+            else if (Stimulus.Tag.IsEqual(FName("CaveGimmick")))
+            {
+                BlackboardComp->SetValueAsVector(FName("Gimmick"), Stimulus.StimulusLocation);
+
+                AIController->SetSearching();
+
+                if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+                {
+                    Movement->MaxWalkSpeed += 50.0f;
                 }
             }
             else
@@ -75,57 +89,3 @@ void ACaveNormalMonster::ForgetTarget()
     }
 }
 
-//void ACaveNormalMonster::HandlePerceptionUpdate(AActor* Actor, FAIStimulus Stimulus)
-//{
-//	if (!Actor) return;
-//
-//	if (Stimulus.WasSuccessfullySensed())
-//	{
-//		if (Stimulus.Tag.IsEqual(FName("Boss")))
-//		{
-//			UE_LOG(LogTemp, Warning, TEXT("Boss tag - IGNORING"));
-//			return;
-//		}
-//
-//		if (!Stimulus.Tag.IsEqual(FName("CaveMonster")))
-//		{
-//			return;
-//		}
-//	}
-//
-//	if (ABaseAIController* AIController = Cast<ABaseAIController>(GetController()))
-//	{
-//		if (UBlackboardComponent* BlackboardComp = AIController->GetBlackboardComponent())
-//		{
-//			if (Stimulus.WasSuccessfullySensed())
-//			{
-//				if (ABaseCharacter* BaseCharacter = Cast<ABaseCharacter>(Actor))
-//				{
-//					BlackboardComp->SetValueAsObject(FName("TargetActor"), BaseCharacter);
-//				}
-//
-//				else if (AGunBase* GunBase = Cast<AGunBase>(Actor))
-//				{
-//					if (AActor* GunOwner = GunBase->GetOwner())
-//					{
-//						if (ABaseCharacter* GunOwnerCharacter = Cast<ABaseCharacter>(GunOwner))
-//						{
-//							BlackboardComp->SetValueAsObject(FName("TargetActor"), GunOwnerCharacter);
-//						}
-//					}
-//				}
-//			}
-//			else
-//			{
-//				if (!Stimulus.WasSuccessfullySensed())
-//				{
-//					UObject* CurrentTarget = BlackboardComp->GetValueAsObject(FName("TargetActor"));
-//					if (CurrentTarget == Actor)
-//					{
-//						BlackboardComp->ClearValue(FName("TargetActor"));
-//					}
-//				}
-//			}
-//		}
-//	}
-//}
