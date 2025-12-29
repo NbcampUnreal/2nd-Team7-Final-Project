@@ -97,6 +97,15 @@ struct FItemDataRow : public FTableRowBase
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "8. Sound Settings")
     EItemSoundType SoundType = EItemSoundType::Click;
 
+    // [8. 캐릭터 애니메이션 설정]
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "9. Character Animation")
+    bool bPlayCharacterAnimation = false;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "9. Character Animation")
+    UAnimMontage* LocalAnimation = nullptr;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "9. Character Animation")
+    UAnimMontage* RemoteAnimation = nullptr;
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Note")
     bool bIsNoteItem = false;

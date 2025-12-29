@@ -26,7 +26,7 @@ class ALS_API AAlsCharacter : public ACharacter
 
 public:
 
-
+	TWeakObjectPtr<UAlsAnimationInstance> GetAnimationInstance() { return AnimationInstance; }
 	virtual void NotifyNoiseToAI(FVector Velocity);
 	virtual void NotifyNoiseToAI(float LandVelocity);
 	bool bIsMantling = false;

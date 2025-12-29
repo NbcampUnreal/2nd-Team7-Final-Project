@@ -8,6 +8,7 @@
 #include "AIController.h"
 #include "Item/EquipmentItem/GunBase.h"
 #include "Character/BaseCharacter.h"
+#include "Net/UnrealNetwork.h"
 
 ACaveEliteMonster::ACaveEliteMonster()
 {
@@ -40,9 +41,20 @@ void ACaveEliteMonster::PlayGimmickSound()
 	}
 }
 
+void ACaveEliteMonster::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(ACaveEliteMonster, FreezeCount);
+}
+
 void ACaveEliteMonster::FreezeAI()
 {
 	if (GetLocalRole() != ROLE_Authority)
+	{
+		return;
+	}
+
+	if (bIsStressImmune)
 	{
 		return;
 	}
@@ -113,6 +125,12 @@ void ACaveEliteMonster::UnfreezeAI()
 
 	bIsFrozen = false;
 
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		FreezeCount++;
+		CheckForStressMode();
+	}
+
 	if (ABaseAIController* BaseAIController = Cast<ABaseAIController>(GetController()))
 	{
 		if (UAIPerceptionComponent* PerceptionComp = BaseAIController->GetPerceptionComponent())
@@ -165,6 +183,57 @@ void ACaveEliteMonster::CooldownEnd()
 	{
 		World->GetTimerManager().ClearTimer(CooldownTimerHandle);
 	}
+}
+
+void ACaveEliteMonster::CheckForStressMode()
+{
+	if (GetLocalRole() != ROLE_Authority) return;
+
+	if (FreezeCount >= MaxFreezeCountForStress)
+	{
+		FreezeCount = 0;
+
+		bIsStressImmune = true;
+
+		BP_OnStressModeStart();
+
+		//소리, 애니메이션 플레이
+
+		if (UWorld* World = GetWorld())
+		{
+			World->GetTimerManager().SetTimer(
+				StressImmunityTimerHandle,
+				this,
+				&ACaveEliteMonster::EndStressImmunity,
+				StressImmunityTime,
+				false
+			);
+		}
+
+		//UE_LOG(LogTemp, Warning, TEXT("Gimmick Triggered"));
+
+		UAISense_Hearing::ReportNoiseEvent(
+			GetWorld(),
+			GetActorLocation(),
+			3.4f,
+			this,
+			ExplosionNoiseRange,
+			FName("CaveGimmick")
+		);
+	}
+}
+
+void ACaveEliteMonster::EndStressImmunity()
+{
+	bIsStressImmune = false;
+
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(StressImmunityTimerHandle);
+	}
+
+	BP_OnStressModeEnd();
+
 }
 
 void ACaveEliteMonster::HandlePerceptionUpdate(AActor* Actor, FAIStimulus Stimulus)
@@ -234,58 +303,3 @@ void ACaveEliteMonster::ForgetTarget()
 		World->GetTimerManager().ClearTimer(ForgetTargetTimerHandle);
 	}
 }
-
-//void ACaveEliteMonster::HandlePerceptionUpdate(AActor* Actor, FAIStimulus Stimulus)
-//{
-//	if (!Actor) return;
-//
-//	if (Stimulus.WasSuccessfullySensed())
-//	{
-//		if (Stimulus.Tag.IsEqual(FName("Boss")))
-//		{
-//			UE_LOG(LogTemp, Warning, TEXT("Boss tag - IGNORING"));
-//			return;
-//		}
-//
-//		if (!Stimulus.Tag.IsEqual(FName("CaveMonster")))
-//		{
-//			return;
-//		}
-//	}
-//	
-//	if (ABaseAIController* AIController = Cast<ABaseAIController>(GetController()))
-//	{
-//		if (UBlackboardComponent* BlackboardComp = AIController->GetBlackboardComponent())
-//		{
-//			if (Stimulus.WasSuccessfullySensed())
-//			{
-//				if (ABaseCharacter* BaseCharacter = Cast<ABaseCharacter>(Actor))
-//				{
-//					BlackboardComp->SetValueAsObject(FName("TargetActor"), BaseCharacter);
-//				}
-//
-//				else if (AGunBase* GunBase = Cast<AGunBase>(Actor))
-//				{
-//					if (AActor* GunOwner = GunBase->GetOwner())
-//					{
-//						if (ABaseCharacter* GunOwnerCharacter = Cast<ABaseCharacter>(GunOwner))
-//						{
-//							BlackboardComp->SetValueAsObject(FName("TargetActor"), GunOwnerCharacter);
-//						}
-//					}
-//				}
-//			}
-//			else
-//			{
-//				if (!Stimulus.WasSuccessfullySensed())
-//				{
-//					UObject* CurrentTarget = BlackboardComp->GetValueAsObject(FName("TargetActor"));
-//					if (CurrentTarget == Actor)
-//					{
-//						BlackboardComp->ClearValue(FName("TargetActor"));
-//					}
-//				}
-//			}
-//		}
-//	}
-//}

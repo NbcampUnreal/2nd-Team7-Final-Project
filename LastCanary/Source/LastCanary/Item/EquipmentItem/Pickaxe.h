@@ -30,6 +30,10 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
     float DamageAmount = 1.0f;
 
+    // 곡괭이 근접공격 시 데미지 설정
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
+    float AttackDamageAmount = 10.0f;
+
     // 콜리전 활성화 지속 시간
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
     float CollisionActiveDuration = 0.3f;
@@ -63,6 +67,7 @@ private:
     // 콜리전 활성화/비활성화
     void SetDamageCollisionEnabled(bool bEnabled);
 
+
     // 콜리전 자동 비활성화 타이머
     FTimerHandle CollisionTimerHandle;
 
@@ -73,4 +78,8 @@ private:
 
     // 디버그 시각화
     void ShowDebugDamageSphere();
+
+public:
+    // 콜리전 활성화/비활성화 (곡괭이 근접공격)
+    void SetAttackCollisionEnabled(bool bEnabled);
 };

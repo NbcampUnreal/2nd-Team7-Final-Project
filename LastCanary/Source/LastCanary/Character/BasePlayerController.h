@@ -15,28 +15,28 @@ class ABaseSpectatorPawn;
 class ABasePlayerState;
 class ALCBaseGimmick;
 class ABaseSpectatorPawn;
+class UMouseSensitivityComponent;
 
 UCLASS()
 class LASTCANARY_API ABasePlayerController : public ALCPlayerController
 {
 	GENERATED_BODY()
 
+protected:
+	ABasePlayerController();
+	virtual void BeginPlay() override;
+private:
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
+
 public:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UMouseSensitivityComponent> MouseSensitivityComponent;
 
-	//void RequestShowInGameHUD();
-	
-	void LoadMouseSensitivity();
+	TObjectPtr<UMouseSensitivityComponent> GetMouseSensitivityComponent();
+
 	void SetMouseSensitivity(float Sensitivity);
-	
-	void LoadZoomSensitivity();
 	void SetZoomSensitivity(float Sensitivity);
-	
-	void LoadDroneSensitivity();
 	void SetDroneSensitivity(float Sensitivity);
-
-	void LoadBrightness();
-
-	void SetBrightness(float Brightness);
 
 	/*감도 Settings*/
 	float MouseSensivity = 1.0f;
@@ -46,8 +46,6 @@ public:
 	UPROPERTY()
 	float BrightnessSetting = 1.0f;
 
-private:
-	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
 private:
 	APawn* CachedPawn;  // Pawn을 저장할 멤버 변수
 	APawn* CurrentPossessedPawn;
@@ -103,86 +101,10 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void ChangeInputMappingContext(UInputMappingContext* IMC);
 
-	virtual void BeginPlay() override;
 	virtual void InitInputComponent();
-	/*
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
-	TObjectPtr<UInputMappingContext> InputMappingContext;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
-	TObjectPtr<UInputAction> LookMouseAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
-	TObjectPtr<UInputAction> LookAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
-	TObjectPtr<UInputAction> MoveAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
-	TObjectPtr<UInputAction> SprintAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
-	TObjectPtr<UInputAction> WalkAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
-	TObjectPtr<UInputAction> CrouchAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
-	TObjectPtr<UInputAction> JumpAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
-	TObjectPtr<UInputAction> AimAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
-	TObjectPtr<UInputAction> ViewModeAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
-	TObjectPtr<UInputAction> InteractAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
-	TObjectPtr<UInputAction> ItemUseAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
-	TObjectPtr<UInputAction> ThrowItemAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
-	TObjectPtr<UInputAction> RifleReloadAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
-	TObjectPtr<UInputAction> VoiceAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
-	TObjectPtr<UInputAction> ChangeShootingSettingAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
-	TObjectPtr<UInputAction> StrafeAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
-	TObjectPtr<UInputAction> ChangeQuickSlotAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
-	TObjectPtr<UInputAction> SelectQuickSlot1Action;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
-	TObjectPtr<UInputAction> SelectQuickSlot2Action;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
-	TObjectPtr<UInputAction> SelectQuickSlot3Action;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
-	TObjectPtr<UInputAction> SelectQuickSlot4Action;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
-	TObjectPtr<UInputAction> OpenPauseMenuAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Als Character Example", Meta = (DisplayThumbnail = false))
-	TObjectPtr<UInputAction> ExitDroneAction;
-	// ... 필요한 입력들 추가
-	*/
 public:
 	virtual void Input_OnLookMouse(const FInputActionValue& ActionValue) override;
-
-	virtual void Input_OnLook(const FInputActionValue& ActionValue) override;
 
 	virtual void Input_OnMove(const FInputActionValue& ActionValue) override;
 
@@ -226,6 +148,18 @@ public:
 
 	virtual void Input_DroneExit(const FInputActionValue& ActionValue) override;
 
+	virtual void Input_Attack(const FInputActionValue& ActionValue) override;
+
+	virtual void Input_Emote(const FInputActionValue& ActionValue) override;
+	virtual void Input_EmoteStarted(const FInputActionValue& ActionValue);
+	virtual void Input_EmoteReleased(const FInputActionValue& ActionValue);
+	virtual void Input_EmoteCanceled(const FInputActionValue& ActionValue);
+public:
+	
+	UFUNCTION()
+	void HandleSelectionConfirmed(int32 Index);
+
+
 public:
 	UFUNCTION(Server, Reliable)
 	void Server_DroneExit();
@@ -236,8 +170,7 @@ public:
 	void ChangeToPreviousQuickSlot();
 	void SelectQuickSlot(int32 SlotIndex);
 public:
-	// 상호작용 가능한 액터 감지
-	AActor* TraceInteractable(float TraceDistance = 300.f);
+
 
 public:
 	void UpdateQuickSlotUI();
@@ -299,11 +232,6 @@ public:
 	void SetSprintingStateToPlayerState(bool flag);
 
 	void CameraSetOnScope();
-
-public:
-	//총기 발사 세팅(단발 or 점사 or 연사)
-	void SetShootingSetting();
-
 public:
 	void SpawnDrone();
 

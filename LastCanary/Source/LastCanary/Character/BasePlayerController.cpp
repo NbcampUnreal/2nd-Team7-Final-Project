@@ -11,6 +11,7 @@
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Framework/GameInstance/LCGameManager.h"
 #include "Actor/Gimmick/LCBaseGimmick.h"
+#include "UI/Popup/SelectionWheelWidget.h"
 
 #include "Character/PlayerData/PlayerDataTypes.h"
 #include "Character/BaseSpectatorPawn.h"
@@ -19,70 +20,54 @@
 
 #include "SaveGame/LCLocalPlayerSaveGame.h"
 #include "LastCanary.h"
+#include "LC_CameraManager.h"
+
+#include "Settings/Component/MouseSensitivityComponent.h"
+
+ABasePlayerController::ABasePlayerController()
+{
+	MouseSensitivityComponent = CreateDefaultSubobject<UMouseSensitivityComponent>(TEXT("MouseSensitivityComponent"));
+}
 
 void ABasePlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
+	if (IsLocalController())
 	{
-		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+		if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 		{
-			UIManager->ShowInGameHUD();
-		}
-	}
-	
-	/*
-
-	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
-	{
-		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
-		{
-			// UIManager->InitUIManager(this);
-
-			if (GetPawn())
+			if (ULCUIManager* UIManager = Subsystem->GetUIManager())
 			{
-				FTimerHandle HUDTimer;
-				GetWorld()->GetTimerManager().SetTimer(HUDTimer,
-					[this, UIManager]()
-					{
-						UIManager->ShowInGameHUD();
-					},
-					0.5f, false);
+				UIManager->SetUIContext(ELCUIContext::InGame);
+				UIManager->ChangeHUD();
 			}
 		}
 	}
-	*/
-	LoadBrightness();
-	LoadMouseSensitivity();
-	LoadZoomSensitivity();
-	LoadDroneSensitivity();
+
+	//이게 과연 괜찮은 구조인지는 다시 생각해보기././///./././
+	if (ULCUIManager* UI = GetUIManager())
+	{
+		if (USelectionWheelWidget* Wheel = UI->GetSelectionWheel())
+		{
+			Wheel->OnSelectionConfirmedDelegate.AddDynamic(
+				this,
+				&ABasePlayerController::HandleSelectionConfirmed
+			);
+		}
+	}
+
+	PlayerCameraManagerClass = ALC_CameraManager::StaticClass();
 
 	PlayerCameraManager->ViewPitchMin = -80.0f; // 최소 Pitch 각도 (고개 숙이기)
 	PlayerCameraManager->ViewPitchMax = 80.0f;  // 최대 Pitch 각도 (고개 들기)
-}
 
-//void ABasePlayerController::RequestShowInGameHUD()
-//{
-//	LOG_Frame_WARNING(TEXT("=== RequestShowInGameHUD 호출됨 ==="));
-//
-//	if (ULCGameInstanceSubsystem* Subsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
-//	{
-//		if (ULCUIManager* UIManager = Subsystem->GetUIManager())
-//		{
-//			LOG_Frame_WARNING(TEXT("UIManager 유효 → HUD 출력 시도"));
-//			UIManager->ShowInGameHUD();
-//		}
-//		else
-//		{
-//			LOG_Frame_WARNING(TEXT("UIManager가 유효하지 않음"));
-//		}
-//	}
-//	else
-//	{
-//		LOG_Frame_WARNING(TEXT("GameInstanceSubsystem이 유효하지 않음"));
-//	}
-//}
+	if (MouseSensitivityComponent)
+	{
+		//MouseSensitivityComponent->OnSensitivitySettingsChanged.AddDynamic(this, &ABasePlayerController::LoadSensitivity);
+	}
+
+}
 
 void ABasePlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
@@ -90,74 +75,32 @@ void ABasePlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	DOREPLIFETIME(ABasePlayerController, SpawnedPlayerDrone);
 }
 
-void ABasePlayerController::LoadMouseSensitivity()
+TObjectPtr<UMouseSensitivityComponent> ABasePlayerController::GetMouseSensitivityComponent()
 {
-	float LoadedSensitivity = ULCLocalPlayerSaveGame::LoadMouseSensitivity(GetWorld());
-
-	SetMouseSensitivity(LoadedSensitivity);
+	if (!IsValid(MouseSensitivityComponent))
+	{
+		return nullptr;
+	}
+	return MouseSensitivityComponent;
 }
 
 void ABasePlayerController::SetMouseSensitivity(float Sensitivity)
 {
+	GetMouseSensitivityComponent()->SetMouseSensivity(Sensitivity);
 	MouseSensivity = Sensitivity;
-}
-
-void ABasePlayerController::LoadDroneSensitivity()
-{
-	float LoadedSensitivity = ULCLocalPlayerSaveGame::LoadDroneSensitivity(GetWorld());
-
-	SetDroneSensitivity(LoadedSensitivity);
 }
 
 void ABasePlayerController::SetDroneSensitivity(float Sensitivity)
 {
+	GetMouseSensitivityComponent()->SetDroneSensivity(Sensitivity);
 	DroneSensivity = Sensitivity;
-}
-
-void ABasePlayerController::LoadZoomSensitivity()
-{
-	float LoadedSensitivity = ULCLocalPlayerSaveGame::LoadZoomSensitivity(GetWorld());
-
-	SetZoomSensitivity(LoadedSensitivity);
 }
 
 void ABasePlayerController::SetZoomSensitivity(float Sensitivity)
 {
 	ZoomSensivity = Sensitivity;
-	if (!IsValid(CurrentPossessedPawn))
-	{
-		return;
-	}
-	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-	if (!IsValid(PlayerCharacter))
-	{
-		return;
-	}
-	PlayerCharacter->SetZoomSensitivity(ZoomSensivity);
+	GetMouseSensitivityComponent()->SetZoomSensivity(Sensitivity);
 }
-
-void ABasePlayerController::LoadBrightness()
-{
-	float Brightness = ULCLocalPlayerSaveGame::LoadBrightness(GetWorld());
-
-	SetBrightness(Brightness);
-}
-
-void ABasePlayerController::SetBrightness(float Brightness)
-{
-	BrightnessSetting = Brightness;
-	if (!IsValid(CurrentPossessedPawn))
-	{
-		return;
-	}
-	ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-	if (!IsValid(PlayerCharacter))
-	{
-		return;
-	}
-	PlayerCharacter->SetBrightness(Brightness);
-}
-
 
 void ABasePlayerController::SetupInputComponent()
 {
@@ -184,13 +127,11 @@ void ABasePlayerController::OnExitGate()
 
 void ABasePlayerController::Server_OnExitGate_Implementation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Server_OnExitGate_Implementation"));
 	HandleExitGate(); // 서버에서 실행
 }
 
 void ABasePlayerController::HandleExitGate()
 {
-	UE_LOG(LogTemp, Warning, TEXT("HandleExitGate"));
 	if (!IsValid(CurrentPossessedPawn))
 	{
 		return;
@@ -225,7 +166,6 @@ void ABasePlayerController::PlayerExitActivePlayOnDeath()
 
 void ABasePlayerController::PlayerExitActivePlayOnEscapeGate()
 {
-	LOG_Char_WARNING(TEXT("PlayerExitActivePlayOnEscapeGate"));
 	Client_OnPlayerExitActivePlay();
 	APawn* MyPawn = GetPawn();
 	if (IsValid(MyPawn))
@@ -270,7 +210,6 @@ void ABasePlayerController::NotifyAtGameState()
 
 void ABasePlayerController::Client_OnPlayerExitActivePlay_Implementation()
 {
-	LOG_Char_WARNING(TEXT("Client_OnPlayerExitActivePlay_Implementation"));
 	if (!IsValid(CurrentPossessedPawn))
 	{
 		return;
@@ -293,17 +232,14 @@ void ABasePlayerController::Client_OnPlayerExitActivePlay_Implementation()
 	// HUD 숨기고 관전 모드 전환
 	if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
 	{
-		UIManager->HideInGameHUD();
+		UIManager->HideHUD();
 	}
 }
 
 void ABasePlayerController::SpawnSpectatablePawn()
 {
-	LOG_Char_WARNING(TEXT("SpawnSpectatablePawn"));
-
 	if (HasAuthority()) // 서버만 스폰 가능
 	{
-		LOG_Char_WARNING(TEXT("SpawnSpectatablePawn"));
 		FActorSpawnParameters Params;
 		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn; //반드시 생성 무조건 생성
 		Params.Owner = this;
@@ -322,7 +258,8 @@ void ABasePlayerController::SpawnSpectatablePawn()
 			{
 				if (IsLocalController())
 				{
-					UIManager->ShowSpectatorWidget();
+					UIManager->SetUIContext(ELCUIContext::Spectator);
+					UIManager->ChangeHUD();
 				}
 			}
 		}
@@ -348,23 +285,30 @@ void ABasePlayerController::OnRep_SpawnedSpectatorPawn()
 {
 	if (!IsValid(SpawnedSpectatorPawn))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("SpawnedSpectatorPawn is invalid on client!"));
 		return;
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("Client received replicated SpawnedSpectatorPawn: %s"), *SpawnedSpectatorPawn->GetName());
 	CurrentPossessedPawn = SpawnedSpectatorPawn;	
 }
 
 void ABasePlayerController::Client_StartSpectation_Implementation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Spectate Start On Client"));
-	GetWorldTimerManager().SetTimer(SpectatorCheckHandle, this, &ABasePlayerController::CheckCurrentSpectatedCharacterStatus, 0.5f, true);
+	ABasePlayerState* MyPlayerState = GetPlayerState<ABasePlayerState>();
+	if (!IsValid(MyPlayerState))
+	{
+		return;
+	}
+	if (MyPlayerState->CurrentState == EPlayerState::Dead)
+	{
+		//SpawnedSpectatorPawn->SpectateOtherUser(SpanwedPlayerCharacter);
+	}
+	GetWorldTimerManager().SetTimer(SpectatorCheckHandle, this, &ABasePlayerController::CheckCurrentSpectatedCharacterStatus, 3.0f, true, 3.0f);
 	if (ULCGameInstanceSubsystem* GISubsystem = GetGameInstance()->GetSubsystem<ULCGameInstanceSubsystem>())
 	{
 		if (ULCUIManager* UIManager = GISubsystem->GetUIManager())
 		{
-			UIManager->ShowSpectatorWidget();
+			UIManager->SetUIContext(ELCUIContext::Spectator);
+			UIManager->ChangeHUD();
 		}
 	}
 }
@@ -500,12 +444,8 @@ void ABasePlayerController::ClientRestart(APawn* NewPawn)
 {
 	Super::ClientRestart(NewPawn);
 
-	LOG_Frame_WARNING(TEXT("✅ ClientRestart 호출됨: %s"), *GetName());
-
 	if (IsLocalController())
 	{
-		LOG_Frame_WARNING(TEXT("✅ IsLocalController TRUE — 타이머 설정 중"));
-
 		FTimerDelegate TimerDel;
 		FTimerHandle HUDTimerHandle;
 		TimerDel.BindUFunction(this, FName("RequestShowInGameHUD"));
@@ -519,78 +459,14 @@ void ABasePlayerController::ClientRestart(APawn* NewPawn)
 	}
 	else
 	{
-		LOG_Frame_WARNING(TEXT("❌ IsLocalController가 FALSE임"));
+		LOG_Frame_WARNING(TEXT("IsLocalController가 FALSE임"));
 	}
 }
 
 void ABasePlayerController::InitInputComponent()
 {
 	Super::InitInputComponent();
-	/*
-	EnhancedInput = Cast<UEnhancedInputComponent>(InputComponent);
 
-	if (!IsValid(EnhancedInput))
-	{
-		return;
-	}
-
-	if (IsValid(EnhancedInput))
-	{
-		EnhancedInput->BindAction(LookMouseAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnLookMouse);
-		EnhancedInput->BindAction(LookMouseAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnLookMouse);
-
-		EnhancedInput->BindAction(LookAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnLook);
-		EnhancedInput->BindAction(LookAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnLook);
-
-		EnhancedInput->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnMove);
-		EnhancedInput->BindAction(MoveAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnMove);
-
-		EnhancedInput->BindAction(SprintAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnSprint);
-		EnhancedInput->BindAction(SprintAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnSprint);
-
-		EnhancedInput->BindAction(WalkAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnWalk);
-		EnhancedInput->BindAction(WalkAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnWalk);
-
-		EnhancedInput->BindAction(CrouchAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnCrouch);
-		EnhancedInput->BindAction(CrouchAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnCrouch);
-
-		EnhancedInput->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnJump);
-		EnhancedInput->BindAction(JumpAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnJump);
-
-		EnhancedInput->BindAction(AimAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnAim);
-		EnhancedInput->BindAction(AimAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnAim);
-
-		EnhancedInput->BindAction(ViewModeAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnViewMode);
-
-		EnhancedInput->BindAction(InteractAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnInteract);
-		EnhancedInput->BindAction(InteractAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnInteract);
-
-		EnhancedInput->BindAction(StrafeAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnStrafe);
-
-		EnhancedInput->BindAction(ItemUseAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OnItemUse);
-		EnhancedInput->BindAction(ItemUseAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_OnItemUse);
-
-		EnhancedInput->BindAction(ThrowItemAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_OnItemThrow);
-
-		EnhancedInput->BindAction(RifleReloadAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_Reload);
-
-		EnhancedInput->BindAction(VoiceAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_VoiceChat);
-		EnhancedInput->BindAction(VoiceAction, ETriggerEvent::Canceled, this, &ABasePlayerController::Input_VoiceChat);
-
-		EnhancedInput->BindAction(ChangeShootingSettingAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_ChangeShootingSetting);
-		
-		EnhancedInput->BindAction(ChangeQuickSlotAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_ChangeQuickSlot);
-
-		EnhancedInput->BindAction(SelectQuickSlot1Action, ETriggerEvent::Started, this, &ABasePlayerController::Input_SelectQuickSlot1);
-		EnhancedInput->BindAction(SelectQuickSlot2Action, ETriggerEvent::Started, this, &ABasePlayerController::Input_SelectQuickSlot2);
-		EnhancedInput->BindAction(SelectQuickSlot3Action, ETriggerEvent::Started, this, &ABasePlayerController::Input_SelectQuickSlot3);
-		EnhancedInput->BindAction(SelectQuickSlot4Action, ETriggerEvent::Started, this, &ABasePlayerController::Input_SelectQuickSlot4);
-
-		EnhancedInput->BindAction(OpenPauseMenuAction, ETriggerEvent::Triggered, this, &ABasePlayerController::Input_OpenPauseMenu);
-		
-		EnhancedInput->BindAction(ExitDroneAction, ETriggerEvent::Started, this, &ABasePlayerController::Input_DroneExit);
-	}
-	*/
 	//ApplyInputMappingContext(InputMappingContext);
 }
 
@@ -606,7 +482,7 @@ void ABasePlayerController::Input_OnLookMouse(const FInputActionValue& ActionVal
 		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
 		if (IsValid(PlayerCharacter))
 		{
-			PlayerCharacter->Handle_LookMouse(ActionValue, MouseSensivity, ZoomSensivity);  // ABaseCharacter에 맞는 LookMouse 호출
+			PlayerCharacter->Handle_LookMouse(ActionValue, MouseSensitivityComponent->GetMouseSensivity(), MouseSensitivityComponent->GetZoomSensivity());  // ABaseCharacter에 맞는 LookMouse 호출
 		}
 	}
 	if (CurrentPossessedPawn->IsA<ABaseDrone>())
@@ -614,7 +490,7 @@ void ABasePlayerController::Input_OnLookMouse(const FInputActionValue& ActionVal
 		ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn);
 		if (IsValid(Drone))
 		{
-			Drone->Input_Look(ActionValue, DroneSensivity);
+			Drone->Input_Look(ActionValue, MouseSensitivityComponent->GetDroneSensivity());
 		}
 	}
 	if (CurrentPossessedPawn->IsA<ABaseSpectatorPawn>())
@@ -622,28 +498,9 @@ void ABasePlayerController::Input_OnLookMouse(const FInputActionValue& ActionVal
 		ABaseSpectatorPawn* Spectator = Cast<ABaseSpectatorPawn>(CurrentPossessedPawn);
 		if (IsValid(Spectator))
 		{
-			Spectator->Handle_LookMouse(ActionValue, MouseSensivity);
+			Spectator->Handle_LookMouse(ActionValue, MouseSensitivityComponent->GetMouseSensivity());
 		}
 	}
-}
-
-void ABasePlayerController::Input_OnLook(const FInputActionValue& ActionValue)
-{
-	/*   필요가 없는 기능
-	if (!IsValid(CurrentPossessedPawn))
-	{
-		return;
-	}
-	// APawn 타입에 맞는 처리를 실행
-	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
-	{
-		ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn);
-		if (IsValid(PlayerCharacter))
-		{
-			PlayerCharacter->Handle_Look(ActionValue);
-		}
-	}
-	*/  
 }
 
 void ABasePlayerController::Input_OnMove(const FInputActionValue& ActionValue)
@@ -656,13 +513,11 @@ void ABasePlayerController::Input_OnMove(const FInputActionValue& ActionValue)
 
 	if (!IsValid(CurrentPossessedPawn))
 	{
-		//UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_OnMove"));
 		return;
 	}
 
 	if (MyPlayerState->InGameState != EPlayerInGameStatus::Alive)
 	{
-		//UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is Spectating"));
 		const auto Value{ ActionValue.Get<FVector2D>() };
 		if (Value.X != 0.0f)
 		{
@@ -687,8 +542,6 @@ void ABasePlayerController::Input_OnMove(const FInputActionValue& ActionValue)
 		return;
 	}
 
-
-	
 
 	// APawn 타입에 맞는 처리를 실행
 	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
@@ -724,10 +577,6 @@ void ABasePlayerController::Input_OnMove(const FInputActionValue& ActionValue)
 			bIsSpectatingButtonClicked = false;
 		}
 		return;
-	}
-	else
-	{
-		//UE_LOG(LogTemp, Warning, TEXT("Unknown pawn type in Input_OnMove: %s"), *CurrentPossessedPawn->GetName());
 	}
 }
 
@@ -790,7 +639,6 @@ void ABasePlayerController::Input_OnJump(const FInputActionValue& ActionValue)
 {
 	if (!IsValid(CurrentPossessedPawn))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_OnJump"));
 		return;
 	}
 	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
@@ -834,13 +682,9 @@ void ABasePlayerController::Input_OnViewMode(const FInputActionValue& ActionValu
 
 	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
+		LOG_Char_WARNING(TEXT("view mode 변경 in controller"));
 		PlayerCharacter->Handle_ViewMode();
 	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is not an ABaseCharacter: %s"), *CurrentPossessedPawn->GetName());
-	}
-
 }
 
 
@@ -850,39 +694,6 @@ void ABasePlayerController::Input_OnInteract(const FInputActionValue& ActionValu
 	{
 		return;
 	}
-
-	if (CurrentPossessedPawn->IsA<ABaseDrone>())
-	{
-		ABaseDrone* Drone = Cast<ABaseDrone>(CurrentPossessedPawn);
-		if (!IsValid(Drone))
-		{
-			return;
-		}
-
-		// 이미 아이템을 들고 있으면 상호작용 무시
-		if (Drone->HasItem())
-		{
-			return;
-		}
-
-		// 드론 주변의 아이템 검색
-		AActor* HitActor = TraceInteractable(1000.0f);
-		if (AItemBase* Item = Cast<AItemBase>(HitActor))
-		{
-			// 아이템 픽업
-			Drone->Server_PickupItem(Item);
-		}
-
-		return;
-	}
-
-	AActor* HitActor = TraceInteractable(1000.0f);
-	if (!HitActor)
-	{
-		LOG_Char_WARNING(TEXT("No interactable actor found in trace."));
-		return;
-	}
-
 	if (CurrentPossessedPawn->IsA<ABaseCharacter>())
 	{
 		if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
@@ -901,6 +712,7 @@ void ABasePlayerController::Input_OnInteract(const FInputActionValue& ActionValu
 	{
 		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is not an ABaseCharacter: %s"), *CurrentPossessedPawn->GetName());
 	}
+	
 }
 
 
@@ -908,19 +720,12 @@ void ABasePlayerController::Input_Reload(const FInputActionValue& ActionValue)
 {
 	if (!IsValid(CurrentPossessedPawn))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is invalid in Input_Reload"));
 		return;
 	}
 
 	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
 	{
 		PlayerCharacter->Handle_Reload();
-	}
-	else
-	{
-#if WITH_EDITOR
-		UE_LOG(LogTemp, Warning, TEXT("CurrentPossessedPawn is not an ABaseCharacter: %s"), *CurrentPossessedPawn->GetName());
-#endif
 	}
 }
 
@@ -1212,14 +1017,6 @@ void ABasePlayerController::Input_ChangeShootingSetting(const FInputActionValue&
 	}
 }
 
-void ABasePlayerController::SetShootingSetting()
-{
-	//TODO: 총기 클래스 들어오면 이게 눌렸을 때 총기의 Fire Setting 변화시키는 기능 추가
-	// 현재 들고 있는 아이템이 총기 클래스라면
-	// FireSetting 다음거로 변경
-	// 총기의 속성을 변화시키는 방향이 맞아보임
-}
-
 void ABasePlayerController::Input_ChangeQuickSlot(const FInputActionValue& ActionValue)
 {
 	// 휠의 Y 방향만 사용 (위: +1, 아래: -1)
@@ -1346,33 +1143,6 @@ void ABasePlayerController::Input_OpenPauseMenu(const FInputActionValue& ActionV
 	}
 }
 
-//To DO...
-/*
-	시점에 따른 Line Trace 시점 - 종점 컨트롤
-*/
-AActor* ABasePlayerController::TraceInteractable(float TraceDistance)
-{
-	FVector ViewLocation;
-	FRotator ViewRotation;
-	GetPlayerViewPoint(ViewLocation, ViewRotation);
-
-	FVector Start = ViewLocation;
-	FVector End = Start + (ViewRotation.Vector() * TraceDistance);
-
-	FHitResult Hit;
-	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(GetPawn());
-
-	bool bHit = GetWorld()->LineTraceSingleByChannel(
-		Hit, Start, End, ECC_GameTraceChannel1, Params);
-
-	// 디버그용
-#if WITH_EDITOR
-	//DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 1.0f);
-#endif
-	return bHit ? Hit.GetActor() : nullptr;
-}
-
 bool ABasePlayerController::IsPossessingBaseCharacter() const
 {
 	APawn* ControlledPawn = GetPawn();
@@ -1459,9 +1229,62 @@ void ABasePlayerController::Input_DroneExit(const FInputActionValue& ActionValue
 	{
 		if (IsLocalController())
 		{
-			UIManager->HideDroneHUD();
-			UIManager->ShowInGameHUD();
+			UIManager->SetUIContext(ELCUIContext::InGame);
+			UIManager->ChangeHUD();
+			//UIManager->HideDroneHUD();
+			//UIManager->ShowInGameHUD();
 		}
+	}
+}
+
+void ABasePlayerController::Input_Attack(const FInputActionValue& ActionValue)
+{
+	if (!IsValid(CurrentPossessedPawn))
+	{
+		return;
+	}
+
+	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
+	{
+		PlayerCharacter->Handle_Attack(ActionValue);
+	}
+}
+
+void ABasePlayerController::Input_Emote(const FInputActionValue& ActionValue)
+{
+	if (!IsValid(CurrentPossessedPawn))
+	{
+		return;
+	}
+
+	if (ABaseCharacter* PlayerCharacter = Cast<ABaseCharacter>(CurrentPossessedPawn))
+	{
+		PlayerCharacter->Handle_Emote(ActionValue);
+	}
+}
+
+void ABasePlayerController::Input_EmoteStarted(const FInputActionValue& ActionValue)
+{
+	Super::Input_EmoteStarted(ActionValue);
+}
+
+void ABasePlayerController::Input_EmoteReleased(const FInputActionValue& ActionValue)
+{
+	Super::Input_EmoteReleased(ActionValue);
+}
+
+void ABasePlayerController::Input_EmoteCanceled(const FInputActionValue& ActionValue)
+{
+	Super::Input_EmoteCanceled(ActionValue);
+}
+
+void ABasePlayerController::HandleSelectionConfirmed(int32 Index)
+{
+	UE_LOG(LogTemp, Log, TEXT("Controller received selection: %d"), Index);
+
+	if (ABaseCharacter* MyCharacter = Cast<ABaseCharacter>(GetPawn()))
+	{
+		MyCharacter->ApplyWheelSelection(Index);
 	}
 }
 
@@ -1583,8 +1406,9 @@ void ABasePlayerController::PossessOnDrone()
 	{
 		if (IsLocalController())
 		{
-			UIManager->HideInGameHUD();
-			UIManager->ShowDroneHUD();
+			UIManager->SetUIContext(ELCUIContext::DroneHUD);
+			UIManager->ChangeHUD();
+			//UIManager->ShowDroneHUD();
 		}
 	}
 }

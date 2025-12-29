@@ -1,6 +1,9 @@
 #include "UI/Manager/LCUIManager.h"
 #include "UI/Manager/LCUIManagerSettings.h"
 
+// =========================================================
+// UI Elements
+// =========================================================
 #include "UI/UIElement/TitleMenu.h"
 #include "UI/UIElement/LobbyMenu.h"
 #include "UI/UIElement/OptionWidget.h"
@@ -18,22 +21,45 @@
 #include "UI/UIElement/GameOverWidget.h"
 #include "UI/UIElement/GameEndWidget.h"
 #include "UI/UIElement/ServerMessageWidget.h"
+#include "UI/UIElement/DesktopWidget.h"
+#include "UI/UIElement/CharacterCustomizationWidget.h"
 
+// =========================================================
+// UI Popups
+// =========================================================
 #include "UI/Popup/PopupCreateSession.h"
 #include "UI/Popup/PopupNotice.h"
 #include "UI/Popup/PopupLoading.h"
 #include "UI/Popup/NotePopupWidget.h"
+#include "UI/Popup/SelectionWheelWidget.h"
 
+// =========================================================
+// UI Objects / Managers
+// =========================================================
+#include "UI/UIObject/TaskbarWidget.h"
 #include "UI/UIObject/ConfirmPopup.h"
+#include "UI/Manager/LCDesktopWindowManager.h"
 
+// =========================================================
+// Framework / Gameplay
+// =========================================================
 #include "Framework/PlayerController/LCRoomPlayerController.h"
 #include "Framework/GameInstance/LCGameInstance.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "Components/WidgetComponent.h"
 #include "Character/BaseSpectatorPawn.h"
+#include "Character/BaseCharacter.h"
+
+// =========================================================
+// Project
+// =========================================================
 #include "LastCanary.h"
 
+
+// =========================================================
+// Constructor & Init
+// =========================================================
 ULCUIManager::ULCUIManager()
 {
 	CurrentWidget = nullptr;
@@ -41,17 +67,20 @@ ULCUIManager::ULCUIManager()
 
 void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 {
+	// 0) OwningPlayer 세팅
 	if (OwningPlayer == nullptr)
 	{
 		OwningPlayer = PlayerController;
 	}
 
+	// 1) 로컬 플레이어 체크
 	if (!PlayerController || !PlayerController->IsLocalPlayerController())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[InitUIManager] %s 는 로컬 컨트롤러가 아님"), *GetNameSafe(PlayerController));
+		LOG_Frame_WARNING(TEXT("[InitUIManager] %s 는 로컬 컨트롤러가 아님"), *GetNameSafe(PlayerController));
 		return;
 	}
 
+	// 2) Settings 로부터 Class 주입
 	if (const ULCGameInstance* GI = Cast<ULCGameInstance>(PlayerController->GetGameInstance()))
 	{
 		if (const ULCUIManagerSettings* Settings = GI->GetUIManagerSettings())
@@ -60,12 +89,12 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			LobbyMenuClass = Settings->FromBPLobbyMenuClass;
 			OptionWidgetClass = Settings->FromBPOptionWidgetClass;
 			PauseMenuClass = Settings->FromBPPauseMenuClass;
-			InGameHUDWidgetClass = Settings->FromBPInGameHUDClass;
+			InGameHUDClass = Settings->FromBPInGameHUDClass;
 			ShopWidgetClass = Settings->FromBPShopWidgetClass;
 			InventoryMainWidgetClass = Settings->FromBPInventoryMainUIClass;
 			CreateSessionClass = Settings->FromBPCreateSessionWidgetClass;
-			PopUpNoticeClass = Settings->FromBPPopupNoticeClass;
-			PopUpLoadingClass = Settings->FromBPPopupLoadingClass;
+			PopupNoticeClass = Settings->FromBPPopupNoticeClass;
+			PopupLoadingClass = Settings->FromBPPopupLoadingClass;
 			LoadingLevelClass = Settings->FromBPLoadingLevelClass;
 			ConfirmPopupClass = Settings->FromBPConfirmPopupClass;
 			ChecklistWidgetClass = Settings->FromBPChecklistWidgetClass;
@@ -78,91 +107,70 @@ void ULCUIManager::InitUIManager(APlayerController* PlayerController)
 			GameOverWidgetClass = Settings->FromBPGameOverWidgetClass;
 			GameEndWidgetClass = Settings->FromBPGameEndWidgetClass;
 			ServerMessageWidgetClass = Settings->FromBPServerMessageWidgetClass;
+			DesktopWidgetClass = Settings->FromBPDesktopWidgetClass;
+			CharacterCustomizationWidgetClass = Settings->FromBPCharacterCustomizationWidgetClass;
+			SelectionWheelClass = Settings->FromBPSelectionWheelWidgetClass;
 
-			if ((CachedTitleMenu == nullptr) && TitleMenuClass)
+			// 3) 위젯 캐싱(생성)
+			CreateAndCacheWidget(CachedTitleMenu, TitleMenuClass);
+			CreateAndCacheWidget(CachedLobbyMenu, LobbyMenuClass);
+			CreateAndCacheWidget(CachedOptionWidget, OptionWidgetClass);
+			CreateAndCacheWidget(CachedPauseMenu, PauseMenuClass);
+			CreateAndCacheWidget(CachedInGameHUD, InGameHUDClass);
+			CreateAndCacheWidget(CachedShopWidget, ShopWidgetClass);
+			CreateAndCacheWidget(CachedPopupLoading, PopupLoadingClass);
+			CreateAndCacheWidget(CachedPopupNotice, PopupNoticeClass);
+			CreateAndCacheWidget(CachedLoadingLevel, LoadingLevelClass);
+			CreateAndCacheWidget(CachedInventoryMainWidget, InventoryMainWidgetClass);
+			CreateAndCacheWidget(CachedChecklistWidget, ChecklistWidgetClass);
+			CreateAndCacheWidget(CachedResultMenu, ResultMenuClass);
+			CreateAndCacheWidget(CachedRoomWidget, RoomWidgetClass);
+			CreateAndCacheWidget(CachedNotePopupWidget, NotePopupWidgetClass);
+			CreateAndCacheWidget(CachedDroneHUD, DroneHUDClass);
+			CreateAndCacheWidget(CachedSpectatorWidget, SpectatorWidgetClass);
+			CreateAndCacheWidget(CachedGameOverWidget, GameOverWidgetClass);
+			CreateAndCacheWidget(CachedGameEndWidget, GameEndWidgetClass);
+			CreateAndCacheWidget(CachedServerMessageWidget, ServerMessageWidgetClass);
+			CreateAndCacheWidget(CachedCharacterCustomizationWidget, CharacterCustomizationWidgetClass);
+			CreateAndCacheWidget(CachedSelectionWheel, SelectionWheelClass);
+
+			// 4) 초기 세팅
+			if (CachedRoomWidget)
 			{
-				CachedTitleMenu = CreateWidget<UTitleMenu>(PlayerController, TitleMenuClass);
-			}
-			if ((CachedLobbyMenu == nullptr) && LobbyMenuClass)
-			{
-				CachedLobbyMenu = CreateWidget<ULobbyMenu>(PlayerController, LobbyMenuClass);
-			}
-			if ((CachedOptionWidget == nullptr) && OptionWidgetClass)
-			{
-				CachedOptionWidget = CreateWidget<UOptionWidget>(PlayerController, OptionWidgetClass);
-			}
-			if ((CachedPauseMenu == nullptr) && PauseMenuClass)
-			{
-				CachedPauseMenu = CreateWidget<UPauseMenu>(PlayerController, PauseMenuClass);
-			}
-			if ((CachedInGameHUD == nullptr) && InGameHUDWidgetClass)
-			{
-				CachedInGameHUD = CreateWidget<UInGameHUD>(PlayerController, InGameHUDWidgetClass);
-			}
-			if ((CachedShopWidget == nullptr) && ShopWidgetClass)
-			{
-				CachedShopWidget = CreateWidget<UShopWidget>(PlayerController, ShopWidgetClass);
-			}
-			if ((CachedPopupLoading == nullptr) && PopUpLoadingClass)
-			{
-				CachedPopupLoading = CreateWidget<UPopupLoading>(PlayerController, PopUpLoadingClass);
-			}
-			if ((CachedPopupNotice == nullptr) && PopUpNoticeClass)
-			{
-				CachedPopupNotice = CreateWidget<UPopupNotice>(PlayerController, PopUpNoticeClass);
-			}
-			if ((CachedLoadingLevel == nullptr) && LoadingLevelClass)
-			{
-				CachedLoadingLevel = CreateWidget<ULoadingLevel>(PlayerController, LoadingLevelClass);
-			}
-			if ((CachedInventoryMainWidget == nullptr) && InventoryMainWidgetClass)
-			{
-				CachedInventoryMainWidget = CreateWidget<UInventoryMainWidget>(PlayerController, InventoryMainWidgetClass);
-			}
-			if ((CachedChecklistWidget == nullptr) && ChecklistWidgetClass)
-			{
-				CachedChecklistWidget = CreateWidget<UChecklistWidget>(PlayerController, ChecklistWidgetClass);
-			}
-			if ((CachedResultMenu == nullptr) && ResultMenuClass)
-			{
-				CachedResultMenu = CreateWidget<UResultMenu>(PlayerController, ResultMenuClass);
-			}
-			if ((CachedRoomWidget == nullptr) && RoomWidgetClass)
-			{
-				CachedRoomWidget = CreateWidget<URoomWidget>(PlayerController, RoomWidgetClass);
 				CachedRoomWidget->CreatePlayerSlots();
 			}
-			if ((CachedNotePopupWidget == nullptr) && NotePopupWidgetClass)
+			if (CachedServerMessageWidget)
 			{
-				CachedNotePopupWidget = CreateWidget<UNotePopupWidget>(PlayerController, NotePopupWidgetClass);
-			}
-			if ((CachedDroneHUD == nullptr) && DroneHUDClass)
-			{
-				CachedDroneHUD = CreateWidget<UDroneHUD>(PlayerController, DroneHUDClass);
-			}
-			if ((CachedSpectatorWidget == nullptr) && SpectatorWidgetClass)
-			{
-				CachedSpectatorWidget = CreateWidget<USpectatorWidget>(PlayerController, SpectatorWidgetClass);
-			}
-			if ((CachedGameOverWidget == nullptr) && GameOverWidgetClass)
-			{
-				CachedGameOverWidget = CreateWidget<UGameOverWidget>(PlayerController, GameOverWidgetClass);
-			}
-			if ((CachedGameEndWidget == nullptr) && GameEndWidgetClass)
-			{
-				CachedGameEndWidget = CreateWidget<UGameEndWidget>(PlayerController, GameEndWidgetClass);
-			}
-			if ((CachedServerMessageWidget == nullptr) && ServerMessageWidgetClass)
-			{
-				CachedServerMessageWidget = CreateWidget<UServerMessageWidget>(PlayerController, ServerMessageWidgetClass);
 				CachedServerMessageWidget->AddToViewport();
+			}
+
+			// 5) Desktop 관련 특수 초기화
+			if ((CachedDesktopWidget == nullptr) && DesktopWidgetClass)
+			{
+				CachedDesktopWidget = CreateWidget<UDesktopWidget>(PlayerController, DesktopWidgetClass);
+				if (!CachedDesktopWidget)
+				{
+					LOG_Frame_WARNING(TEXT("Failed to create DesktopWidget"));
+				}
+				DesktopWindowManager = NewObject<ULCDesktopWindowManager>(this);
+				if (!DesktopWindowManager)
+				{
+					LOG_Frame_WARNING(TEXT("Failed to create DesktopWindowManager"));
+				}
+				else
+				{
+					DesktopWindowManager->SetDesktopWidget(CachedDesktopWidget);
+					CachedDesktopWidget->SetWindowManager(DesktopWindowManager);
+					LOG_Frame_WARNING(TEXT("DesktopWidget successfully set to DesktopWindowManager"));
+				}
 			}
 		}
 	}
 
+	// 6) 세션 에러 표시 복구
 	if (bSessionErrorOccurred)
 	{
-		ShowPopupNotice(CachedErrorReson);
+		ShowPopupNotice(CachedErrorReason);
 		bSessionErrorOccurred = false;
 	}
 }
@@ -173,10 +181,15 @@ void ULCUIManager::SetPlayerController(APlayerController* PlayerController)
 	{
 		return;
 	}
-	UE_LOG(LogTemp, Warning, TEXT("ULCUIManager::SetPlayerController - PlayerController: %s"), PlayerController ? *PlayerController->GetName() : TEXT("nullptr"));
+	UE_LOG(LogTemp, Warning, TEXT("ULCUIManager::SetPlayerController - PlayerController: %s"),
+		PlayerController ? *PlayerController->GetName() : TEXT("nullptr"));
 	OwningPlayer = PlayerController;
 }
 
+
+// =========================================================
+// High-level UI Flow
+// =========================================================
 void ULCUIManager::ShowTitleMenu()
 {
 	if (OwningPlayer == nullptr)
@@ -191,11 +204,7 @@ void ULCUIManager::ShowTitleMenu()
 
 void ULCUIManager::ShowLobbyMenu()
 {
-	if (OwningPlayer == nullptr)
-	{
-		return;
-	}
-	if (OwningPlayer->IsLocalPlayerController() == false)
+	if (OwningPlayer == nullptr || OwningPlayer->IsLocalPlayerController() == false)
 	{
 		return;
 	}
@@ -204,55 +213,77 @@ void ULCUIManager::ShowLobbyMenu()
 	SetInputModeUIOnly(CurrentWidget);
 }
 
-void ULCUIManager::ShowRoomListMenu()
+void ULCUIManager::ChangeHUD()
 {
-	if (OwningPlayer == nullptr)
-	{
-		return;
-	}
-	if (OwningPlayer->IsLocalPlayerController() == false)
+	if (OwningPlayer == nullptr || !OwningPlayer->IsLocalPlayerController())
 	{
 		return;
 	}
 
-	LOG_Frame_WARNING(TEXT("ShowRoomListMenu"));
+	HideHUD();
+
+	switch (CurrentContext)
+	{
+	case ELCUIContext::DroneHUD:
+		SwitchToWidget(CachedDroneHUD);
+		break;
+
+	case ELCUIContext::Spectator:
+		SwitchToWidget(CachedSpectatorWidget);
+		break;
+
+	default:
+		LOG_Frame_ERROR(TEXT("ChangeHUD: Invalid context %d"), (int32)CurrentContext);
+		SwitchToWidget(CachedInGameHUD);
+		ShowInventoryMainWidget();
+		break;
+	}
+	SetInputModeGameOnly();
 }
 
+void ULCUIManager::HideHUD()
+{
+	if (OwningPlayer == nullptr || !OwningPlayer->IsLocalPlayerController())
+	{
+		return;
+	}
+
+	if (CachedDroneHUD && CachedDroneHUD->IsInViewport())
+	{
+		CachedDroneHUD->RemoveFromParent();
+	}
+
+	if (CachedSpectatorWidget && CachedSpectatorWidget->IsInViewport())
+	{
+		CachedSpectatorWidget->RemoveFromParent();
+	}
+
+	if (CachedInGameHUD && CachedInGameHUD->IsInViewport())
+	{
+		CachedInGameHUD->RemoveFromParent();
+		HideInventoryMainWidget();
+	}
+}
+
+
+// =========================================================
+// Option
+// =========================================================
 void ULCUIManager::ShowOptionWidget()
 {
-	if (OwningPlayer == nullptr)
+	if (OwningPlayer == nullptr || OwningPlayer->IsLocalPlayerController() == false)
 	{
 		return;
 	}
-	if (OwningPlayer->IsLocalPlayerController() == false)
-	{
-		return;
-	}
+
 	if (IsValid(CachedOptionWidget) == false)
 	{
 		CachedOptionWidget = CreateWidget<UOptionWidget>(GetWorld(), OptionWidgetClass);
 	}
 
-	switch (CurrentContext)
+	if (CachedOptionWidget->IsInViewport() == false)
 	{
-	case ELCUIContext::Title:
-		if (CachedOptionWidget->IsInViewport() == false)
-		{
-			CachedOptionWidget->AddToViewport(5);
-		}
-		SetInputModeUIOnly(CachedOptionWidget);
-		break;
-	case ELCUIContext::Room:
-		// falls through
-	case ELCUIContext::InGame:
-		HideInGameHUD();
-		SwitchToWidget(CachedOptionWidget);
-		SetInputModeUIOnly(CachedOptionWidget);
-		break;
-	default:
-		SwitchToWidget(CachedOptionWidget);
-		SetInputModeUIOnly(CachedOptionWidget);
-		break;
+		CachedOptionWidget->AddToViewport(5);
 	}
 }
 
@@ -262,6 +293,7 @@ void ULCUIManager::HideOptionWidget()
 	{
 		return;
 	}
+
 	if (CachedOptionWidget && CachedOptionWidget->IsInViewport())
 	{
 		CachedOptionWidget->RemoveFromParent();
@@ -272,25 +304,20 @@ void ULCUIManager::HideOptionWidget()
 	case ELCUIContext::Title:
 		ShowTitleMenu();
 		break;
-	case ELCUIContext::Room:
-		// falls through
-	case ELCUIContext::InGame:
-		ShowPauseMenu();
-		break;
+
 	default:
-		ShowInGameHUD();
+		ChangeHUD();
 		break;
 	}
 }
 
+
+// =========================================================
+// Pause Menu
+// =========================================================
 void ULCUIManager::ShowPauseMenu()
 {
-	if (OwningPlayer == nullptr)
-	{
-		
-		return;
-	}
-	if (OwningPlayer->IsLocalPlayerController() == false)
+	if (OwningPlayer == nullptr || OwningPlayer->IsLocalPlayerController() == false)
 	{
 		return;
 	}
@@ -299,7 +326,7 @@ void ULCUIManager::ShowPauseMenu()
 		return;
 	}
 
-	HideInGameHUD();
+	HideHUD();
 	SwitchToWidget(CachedPauseMenu);
 	SetInputModeUIOnly(CachedPauseMenu);
 }
@@ -310,24 +337,12 @@ void ULCUIManager::HidePauseMenu()
 	{
 		return;
 	}
-
 	if (IsValid(CachedPauseMenu) && CachedPauseMenu->IsInViewport())
 	{
 		CachedPauseMenu->RemoveFromParent();
 	}
 
-	if (ABasePlayerController* LCPC = Cast<ABasePlayerController>(OwningPlayer))
-	{
-		if (APawn* Pawn = LCPC->GetMyPawn())
-		{
-			if (Pawn->IsA<ABaseSpectatorPawn>())
-			{
-				SetInputModeGameOnly();
-				return;
-			}
-		}
-	}
-	ShowInGameHUD();
+	ChangeHUD();
 }
 
 bool ULCUIManager::IsPauseMenuOpen() const
@@ -335,18 +350,19 @@ bool ULCUIManager::IsPauseMenuOpen() const
 	return CachedPauseMenu && CachedPauseMenu->IsInViewport();
 }
 
+
+// =========================================================
+// Confirm Popup
+// =========================================================
 void ULCUIManager::ShowConfirmPopup(TFunction<void()> OnConfirm, const FText& Message)
 {
-	if (OwningPlayer == nullptr)
-	{
-		return;
-	}
-	if (OwningPlayer->IsLocalPlayerController() == false)
+	if (OwningPlayer == nullptr || OwningPlayer->IsLocalPlayerController() == false)
 	{
 		return;
 	}
 
 	LOG_Frame_WARNING(TEXT("ShowConfirmPopup"));
+
 	if (ConfirmPopupClass == nullptr)
 	{
 		return;
@@ -360,68 +376,89 @@ void ULCUIManager::ShowConfirmPopup(TFunction<void()> OnConfirm, const FText& Me
 	}
 }
 
-void ULCUIManager::ShowShopPopup(int Gold)
+
+// =========================================================
+// Shop
+// =========================================================
+void ULCUIManager::HideShopPopup()
 {
-	if (OwningPlayer == nullptr)
+	if (CachedShopWidget && CachedShopWidget->IsInViewport())
 	{
-		return;
-	}
-	if (OwningPlayer->IsLocalPlayerController() == false)
-	{
-		return;
-	}
-	if (LastShopInteractor && LastShopInteractor->GetShopWidgetComponent())
-	{
-		LastShopInteractor->GetShopWidgetComponent()->SetVisibility(false);
+		CachedShopWidget->RemoveFromParent();
 	}
 
-	SwitchToWidget(CachedShopWidget);
+	ShowDesktop();
+	ChangeHUD();
+}
+
+UShopWidget* ULCUIManager::ShowShopWidget(int32 Gold)
+{
+	if (!ShopWidgetClass)
+	{
+		return nullptr;
+	}
+	if (OwningPlayer == nullptr || OwningPlayer->IsLocalPlayerController() == false)
+	{
+		return nullptr;
+	}
+
+	if (CachedShopWidget)
+	{
+		if (ULCDesktopWindowManager* WindowManager = GetDesktopWindowManager())
+		{
+			WindowManager->OpenWindow(CachedShopWidget);
+		}
+	}
+	else
+	{
+		CachedShopWidget = CreateWidget<UShopWidget>(OwningPlayer, ShopWidgetClass);
+		if (!CachedShopWidget)
+		{
+			return nullptr;
+		}
+		if (ULCDesktopWindowManager* WindowManager = GetDesktopWindowManager())
+		{
+			WindowManager->OpenWindow(CachedShopWidget);
+		}
+
+		if (UTaskbarWidget* Taskbar = GetTaskbarWidget())
+		{
+			Taskbar->AddAppButtonFor(CachedShopWidget);
+		}
+	}
+
+	HideHUD();
 	CachedShopWidget->SetGold(Gold);
-	HideInventoryMainWidget();
 
 	if (APawn* Pawn = OwningPlayer->GetPawn())
 	{
 		Pawn->DisableInput(OwningPlayer);
 	}
 	SetInputModeUIOnly(CachedShopWidget);
+
+	return CachedShopWidget;
 }
 
-void ULCUIManager::HideShopPopup()
+void ULCUIManager::SetLastShopInteractor(AShopInteractor* Interactor)
 {
-	if (OwningPlayer == nullptr)
-	{
-		return;
-	}
-	if (OwningPlayer->IsLocalPlayerController() == false)
-	{
-		return;
-	}
-	if (LastShopInteractor && LastShopInteractor->GetShopWidgetComponent())
-	{
-		LastShopInteractor->GetShopWidgetComponent()->SetVisibility(true);
-	}
-
-	SwitchToWidget(CachedInGameHUD);
-	ShowInventoryMainWidget();
-	SetInputModeGameOnly();
-
-	if (OwningPlayer)
-	{
-		LOG_Frame_WARNING(TEXT("OwningPlayer Exist %s"), *OwningPlayer->GetActorNameOrLabel());
-		if (APawn* Pawn = OwningPlayer->GetPawn())
-		{
-			LOG_Frame_WARNING(TEXT("Pawn Exist : %s"), *Pawn->GetActorNameOrLabel());
-
-			Pawn->EnableInput(OwningPlayer);
-		}
-		OwningPlayer->SetViewTargetWithBlend(OwningPlayer->GetPawn(), 1.0f);
-	}
-	else
-	{
-		LOG_Frame_WARNING(TEXT("OwningPlayer is nullptr"));
-	}
+	LastShopInteractor = Interactor;
 }
 
+ULCDesktopWindowManager* ULCUIManager::GetDesktopWindowManager() const
+{
+	if (CachedDesktopWidget)
+	{
+		return CachedDesktopWidget->GetWindowManager();
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("ULCUIManager::GetDesktopWindowManager - CachedDesktopWidget is null."));
+	return nullptr;
+}
+
+
+// =========================================================
+// Create Session
+// =========================================================
 void ULCUIManager::ShowCreateSession()
 {
 	if (CreateSessionClass)
@@ -431,6 +468,10 @@ void ULCUIManager::ShowCreateSession()
 	}
 }
 
+
+// =========================================================
+// Inventory
+// =========================================================
 void ULCUIManager::ToggleInventory()
 {
 	if (!CachedInventoryMainWidget)
@@ -465,6 +506,30 @@ void ULCUIManager::ToggleInventory()
 	}
 }
 
+void ULCUIManager::ShowInventoryMainWidget()
+{
+	if (CachedInventoryMainWidget)
+	{
+		if (!CachedInventoryMainWidget->IsInViewport())
+		{
+			CachedInventoryMainWidget->AddToViewport(1);
+		}
+		CachedInventoryMainWidget->ShowToolbarOnly();
+	}
+}
+
+void ULCUIManager::HideInventoryMainWidget()
+{
+	if (CachedInventoryMainWidget && CachedInventoryMainWidget->IsInViewport())
+	{
+		CachedInventoryMainWidget->RemoveFromParent();
+	}
+}
+
+
+// =========================================================
+// Checklist
+// =========================================================
 void ULCUIManager::ShowChecklistWidget()
 {
 	if (OwningPlayer == nullptr)
@@ -479,9 +544,8 @@ void ULCUIManager::ShowChecklistWidget()
 
 	UE_LOG(LogTemp, Warning, TEXT("ShowChecklistWidget: OwningPlayer = %s"), *OwningPlayer->GetName());
 
+	HideHUD();
 	SwitchToWidget(CachedChecklistWidget);
-	HideInventoryMainWidget();
-	HideSpectatorWidget();
 	SetInputModeUIOnly(CachedChecklistWidget);
 }
 
@@ -499,14 +563,17 @@ void ULCUIManager::ShowNewChecklistWidget(UDataTable* CheckListTable)
 
 	UE_LOG(LogTemp, Warning, TEXT("ShowChecklistWidget: OwningPlayer = %s"), *OwningPlayer->GetName());
 
+	HideHUD();
 	SwitchToWidget(CachedChecklistWidget);
-	HideInventoryMainWidget();
-	HideSpectatorWidget();
 	SetInputModeUIOnly(CachedChecklistWidget);
 
 	CachedChecklistWidget->InitWithCheckListTable(CheckListTable);
 }
 
+
+// =========================================================
+// Result
+// =========================================================
 UResultMenu* ULCUIManager::ShowResultMenu()
 {
 	if (!CachedResultMenu && ResultMenuClass)
@@ -539,17 +606,22 @@ UResultWidget* ULCUIManager::ShowResultWidget()
 	return CachedResultWidget;
 }
 
+
+// =========================================================
+// Room
+// =========================================================
 void ULCUIManager::ShowRoomWidget()
 {
 	if (OwningPlayer == nullptr || OwningPlayer->IsLocalPlayerController() == false)
 	{
 		return;
 	}
+
 	if (CachedRoomWidget)
 	{
+		HideHUD();
 		SwitchToWidget(CachedRoomWidget);
-		HideInventoryMainWidget();
-		SetInputModeGameAndUI();
+		SetInputModeUIOnly(CachedRoomWidget);
 	}
 }
 
@@ -560,22 +632,7 @@ void ULCUIManager::HideRoomWidget()
 		if (CachedRoomWidget->IsInViewport())
 		{
 			CachedRoomWidget->RemoveFromParent();
-			if (ABasePlayerController* LCPC = Cast<ABasePlayerController>(OwningPlayer))
-			{
-				if (APawn* Pawn = LCPC->GetMyPawn())
-				{
-					if (Pawn->IsA<ABaseSpectatorPawn>())
-					{
-						SwitchToWidget(CachedSpectatorWidget);
-					}
-					else
-					{
-						SwitchToWidget(CachedInGameHUD);
-						ShowInventoryMainWidget();
-					}
-					SetInputModeGameOnly();
-				}
-			}
+			ChangeHUD();
 		}
 	}
 	else
@@ -584,93 +641,35 @@ void ULCUIManager::HideRoomWidget()
 	}
 }
 
-void ULCUIManager::ShowDroneHUD()
-{
-	if (CachedDroneHUD)
-	{
-		if (!CachedDroneHUD->IsInViewport())
-		{
-			CachedDroneHUD->AddToViewport(1);
-		}
-	}
-	else
-	{
-		LOG_Frame_ERROR(TEXT("ShowDroneHUD: CachedDroneHUD is nullptr"));
-	}
-}
 
-void ULCUIManager::HideDroneHUD()
-{
-	if (CachedDroneHUD)
-	{
-		if (CachedDroneHUD->IsInViewport())
-		{
-			CachedDroneHUD->RemoveFromParent();
-		}
-	}
-	else
-	{
-		LOG_Frame_ERROR(TEXT("HideDroneHUD: CachedDroneHUD is nullptr"));
-	}
-}
-
-void ULCUIManager::ShowSpectatorWidget()
-{
-	if (CachedSpectatorWidget)
-	{
-		if (!CachedSpectatorWidget->IsInViewport())
-		{
-			CachedSpectatorWidget->AddToViewport(1);
-			SetInputModeGameOnly();
-		}
-	}
-	else
-	{
-		LOG_Frame_ERROR(TEXT("ShowSpectatorWidget: CachedSpectatorWidget is nullptr"));
-	}
-}
-
-void ULCUIManager::HideSpectatorWidget()
-{
-	if (CachedSpectatorWidget)
-	{
-		if (CachedSpectatorWidget->IsInViewport())
-		{
-			CachedSpectatorWidget->RemoveFromParent();
-		}
-	}
-	else
-	{
-		LOG_Frame_ERROR(TEXT("HideSpectatorWidget: CachedSpectatorWidget is nullptr"));
-	}
-}
-
+// =========================================================
+// Game Over / End
+// =========================================================
 void ULCUIManager::ShowGameOverWidget()
 {
-	if (!OwningPlayer || !OwningPlayer->IsLocalPlayerController()) return;
+	if (!OwningPlayer || !OwningPlayer->IsLocalPlayerController())
+	{
+		return;
+	}
 
-	// 1. 모든 위젯 제거
 	if (CurrentWidget && CurrentWidget->IsInViewport())
 	{
 		CurrentWidget->RemoveFromParent();
 	}
-	HideInventoryMainWidget();
+
+	HideHUD();
 	HidePauseMenu();
 	HideRoomWidget();
-	HideDroneHUD();
-	HideSpectatorWidget();
 	HideNotePopup();
 	HidePopUpNotice();
 	HidePopUpLoading();
 	HideLoadingLevel();
 
-	// 2. GameOverWidget 표시
 	if (CachedGameOverWidget)
 	{
-		CachedGameOverWidget->AddToViewport(999); // 가장 위
+		CachedGameOverWidget->AddToViewport(999);
 	}
 
-	// 3. 입력 모드 설정
 	SetInputModeUIOnly(CachedGameOverWidget);
 }
 
@@ -697,7 +696,7 @@ void ULCUIManager::ShowGameEndWidget()
 	}
 }
 
-void ULCUIManager::ShowHideEndWidget()
+void ULCUIManager::ToggleGameEndWidget()
 {
 	if (CachedGameEndWidget && CachedGameEndWidget->IsInViewport())
 	{
@@ -705,6 +704,10 @@ void ULCUIManager::ShowHideEndWidget()
 	}
 }
 
+
+// =========================================================
+// Server Message
+// =========================================================
 void ULCUIManager::AddServerMessage(const FString& Message)
 {
 	if (CachedServerMessageWidget)
@@ -712,12 +715,121 @@ void ULCUIManager::AddServerMessage(const FString& Message)
 		if (!CachedServerMessageWidget->IsInViewport())
 		{
 			CachedServerMessageWidget->AddToViewport();
-			//CachedServerMessageWidget->AddMessage(Message);
 		}
 		CachedServerMessageWidget->AddMessage(Message);
 	}
 }
 
+
+// =========================================================
+// Desktop
+// =========================================================
+void ULCUIManager::ShowDesktop()
+{
+	if (OwningPlayer == nullptr || OwningPlayer->IsLocalPlayerController() == false)
+	{
+		return;
+	}
+
+	if (LastShopInteractor && LastShopInteractor->GetDesktopWidgetComponent())
+	{
+		LastShopInteractor->GetDesktopWidgetComponent()->SetVisibility(false);
+	}
+
+	SwitchToWidget(CachedDesktopWidget);
+	HideInventoryMainWidget();
+
+	if (UDesktopWidget* Desktop = Cast<UDesktopWidget>(CachedDesktopWidget))
+	{
+		Desktop->PowerOn();
+	}
+
+	if (APawn* Pawn = OwningPlayer->GetPawn())
+	{
+		Pawn->DisableInput(OwningPlayer);
+	}
+	SetInputModeUIOnly(CachedDesktopWidget);
+}
+
+void ULCUIManager::HideDesktop()
+{
+	LOG_Frame_ERROR(TEXT("PC 가리기"));
+
+	if (OwningPlayer == nullptr)
+	{
+		return;
+	}
+	if (OwningPlayer->IsLocalPlayerController() == false)
+	{
+		return;
+	}
+
+	if (LastShopInteractor && LastShopInteractor->GetDesktopWidgetComponent())
+	{
+		LastShopInteractor->GetDesktopWidgetComponent()->SetVisibility(true);
+	}
+
+	SwitchToWidget(CachedInGameHUD);
+	ShowInventoryMainWidget();
+	SetInputModeGameOnly();
+
+	if (OwningPlayer)
+	{
+		LOG_Frame_WARNING(TEXT("OwningPlayer Exist %s"), *OwningPlayer->GetActorNameOrLabel());
+		if (APawn* Pawn = OwningPlayer->GetPawn())
+		{
+			LOG_Frame_WARNING(TEXT("Pawn Exist : %s"), *Pawn->GetActorNameOrLabel());
+			Pawn->EnableInput(OwningPlayer);
+		}
+		OwningPlayer->SetViewTargetWithBlend(OwningPlayer->GetPawn(), 0.5f);
+	}
+	else
+	{
+		LOG_Frame_WARNING(TEXT("OwningPlayer is nullptr"));
+	}
+}
+
+
+// =========================================================
+// Character Customization
+// =========================================================
+UCharacterCustomizationWidget* ULCUIManager::ShowCharacterCustomizationWidget()
+{
+	UCharacterCustomizationWidget* Widget = GetCharacterCustomizationWidget();
+	if (Widget == nullptr)
+	{
+		return nullptr;
+	}
+
+	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+	if (PC && PC->IsValidLowLevel())
+	{
+		ABaseCharacter* MyCharacter = Cast<ABaseCharacter>(PC->GetPawn());
+		if (MyCharacter && MyCharacter->IsValidLowLevel())
+		{
+			Widget->SetTargetCharacter(MyCharacter);
+		}
+		else
+		{
+			LOG_Frame_WARNING(TEXT("ShowCharacterCustomizationWidget: Invalid MyCharacter"));
+		}
+	}
+
+	if (ULCDesktopWindowManager* WM = GetDesktopWindowManager())
+	{
+		WM->OpenWindow(Widget);
+	}
+	else
+	{
+		LOG_Frame_WARNING(TEXT("ShowCharacterCustomizationWidget: No WindowManager"));
+	}
+	return Widget;
+}
+
+
+// =========================================================
+// Popups / Loading / Notice
+// =========================================================
 void ULCUIManager::ShowPopUpLoading()
 {
 	if (CachedPopupLoading)
@@ -754,11 +866,7 @@ void ULCUIManager::HidePopUpNotice()
 
 void ULCUIManager::ShowLoadingLevel()
 {
-	if (OwningPlayer == nullptr)
-	{
-		return;
-	}
-	if (OwningPlayer->IsLocalPlayerController() == false)
+	if (OwningPlayer == nullptr || OwningPlayer->IsLocalPlayerController() == false)
 	{
 		return;
 	}
@@ -766,11 +874,6 @@ void ULCUIManager::ShowLoadingLevel()
 	if (CachedLoadingLevel)
 	{
 		CachedLoadingLevel->AddToViewport(10);
-
-		//if (!CachedLoadingLevel->IsRooted())
-		//{
-		//	CachedLoadingLevel->AddToRoot();// GC 방지
-		//}
 
 		FTimerHandle ForceHideHandle;
 		GetWorld()->GetTimerManager().SetTimer(ForceHideHandle, [this]()
@@ -797,18 +900,16 @@ void ULCUIManager::HideLoadingLevel()
 		{
 			CachedLoadingLevel->RemoveFromParent();
 		}
-
-		/*if (CachedLoadingLevel->IsRooted())
-		{
-			CachedLoadingLevel->RemoveFromRoot();
-		}*/
-
-		// nullptr 처리 누락되면 GC 시 에러 발생
 		CachedLoadingLevel = nullptr;
 	}
 }
 
-void ULCUIManager::ShowNotePopup(const FText& NoteText, const TArray<TSoftObjectPtr<UTexture2D>>& CandidateImages, int32 SelectedIndex)
+
+// =========================================================
+// Note Popup
+// =========================================================
+void ULCUIManager::ShowNotePopup(const FText& NoteText,
+	const TArray<TSoftObjectPtr<UTexture2D>>& CandidateImages, int32 SelectedIndex)
 {
 	if (NotePopupWidgetClass == nullptr)
 	{
@@ -831,7 +932,7 @@ void ULCUIManager::ShowNotePopup(const FText& NoteText, const TArray<TSoftObject
 	}
 
 	CachedNotePopupWidget->ShowNoteContent(NoteText, CandidateImages, SelectedIndex);
-	SetInputModeGameAndUI();
+	SetInputModeUIOnly(CachedNotePopupWidget);
 }
 
 void ULCUIManager::HideNotePopup()
@@ -840,59 +941,18 @@ void ULCUIManager::HideNotePopup()
 	{
 		CachedNotePopupWidget->RemoveFromParent();
 	}
-
-	SetInputModeGameOnly();
+	ChangeHUD();
 }
 
-void ULCUIManager::ShowInGameHUD()
-{
-	if (OwningPlayer == nullptr || OwningPlayer->IsLocalPlayerController() == false)
-	{
-		return;
-	}
 
-	SwitchToWidget(CachedInGameHUD);
-	SetInputModeGameOnly();
-	ShowInventoryMainWidget();
-}
-
-void ULCUIManager::HideInGameHUD()
-{
-	if (OwningPlayer == nullptr || OwningPlayer->IsLocalPlayerController() == false)
-	{
-		return;
-	}
-	if (CachedInGameHUD && CachedInGameHUD->IsInViewport())
-	{
-		CachedInGameHUD->RemoveFromParent();
-	}
-	HideInventoryMainWidget();
-}
-
-void ULCUIManager::ShowInventoryMainWidget()
-{
-	if (CachedInventoryMainWidget)
-	{
-		if (!CachedInventoryMainWidget->IsInViewport())
-		{
-			CachedInventoryMainWidget->AddToViewport(1);
-		}
-		CachedInventoryMainWidget->ShowToolbarOnly();
-	}
-}
-
-void ULCUIManager::HideInventoryMainWidget()
-{
-	if (CachedInventoryMainWidget && CachedInventoryMainWidget->IsInViewport())
-	{
-		CachedInventoryMainWidget->RemoveFromParent();
-	}
-}
-
+// =========================================================
+// Widget Switching
+// =========================================================
 void ULCUIManager::SwitchToWidget(UUserWidget* NewWidget)
 {
 	if (NewWidget == nullptr)
 	{
+		LOG_Frame_WARNING(TEXT("SwitchToWidget : NewWidget == nullptr."));
 		return;
 	}
 
@@ -900,22 +960,21 @@ void ULCUIManager::SwitchToWidget(UUserWidget* NewWidget)
 	{
 		if (CurrentWidget->IsInViewport())
 		{
+			LOG_Frame_WARNING(TEXT("SwitchToWidget : CurrentWidget->RemoveFromParent."));
 			CurrentWidget->RemoveFromParent();
 		}
 	}
 
-	if (NewWidget->IsInViewport() == false)
-	{
-		NewWidget->AddToViewport();
-	}
-	else
-	{
-		NewWidget->SetVisibility(ESlateVisibility::Visible);
-	}
+	NewWidget->AddToViewport();
+	NewWidget->SetVisibility(ESlateVisibility::Visible);
 
 	CurrentWidget = NewWidget;
 }
 
+
+// =========================================================
+// Input Mode
+// =========================================================
 void ULCUIManager::SetInputModeUIOnly(UUserWidget* FocusWidget)
 {
 	if (OwningPlayer)
@@ -963,11 +1022,6 @@ void ULCUIManager::SetInputModeGameAndUI()
 	}
 }
 
-void ULCUIManager::SetLastShopInteractor(AShopInteractor* Interactor)
-{
-	LastShopInteractor = Interactor;
-}
-
 void ULCUIManager::UpdateInputModeByContext()
 {
 	if (OwningPlayer == nullptr)
@@ -982,17 +1036,19 @@ void ULCUIManager::UpdateInputModeByContext()
 		SetInputModeUIOnly(CachedTitleMenu);
 		break;
 	case ELCUIContext::Room:
-		SetInputModeGameOnly();
-		break;
+		// fallthrough
 	case ELCUIContext::InGame:
-		SetInputModeGameOnly();
-		break;
+		// fallthrough
 	default:
 		SetInputModeGameOnly();
 		break;
 	}
 }
 
+
+// =========================================================
+// Context / Error Handling
+// =========================================================
 void ULCUIManager::SetUIContext(ELCUIContext NewContext)
 {
 	CurrentContext = NewContext;
@@ -1006,5 +1062,65 @@ const ELCUIContext ULCUIManager::GetUIContext() const
 void ULCUIManager::SetSessionErrorState(const FText& Reason)
 {
 	bSessionErrorOccurred = true;
-	CachedErrorReson = Reason;
+	CachedErrorReason = Reason;
+}
+
+
+// =========================================================
+// Taskbar Getter
+// =========================================================
+UTaskbarWidget* ULCUIManager::GetTaskbarWidget() const
+{
+	if (CachedDesktopWidget)
+	{
+		UTaskbarWidget* Taskbar = CachedDesktopWidget->GetTaskbarWidget();
+		if (Taskbar)
+		{
+			LOG_Frame_WARNING(TEXT("GetTaskbarWidget() returned: %s"), *Taskbar->GetClass()->GetName());
+			return Taskbar;
+		}
+	}
+	LOG_Frame_WARNING(TEXT("GetTaskbarWidget() failed: Taskbar is nullptr"));
+	return nullptr;
+}
+
+
+// =========================================================
+// Selection Wheel
+// =========================================================
+void ULCUIManager::ShowSelectionWheel()
+{
+	if (!OwningPlayer || !OwningPlayer->IsLocalPlayerController())
+	{
+		return;
+	}
+
+	if (!CachedSelectionWheel && SelectionWheelClass)
+	{
+		CachedSelectionWheel = CreateWidget<USelectionWheelWidget>(OwningPlayer, SelectionWheelClass);
+	}
+	if (!CachedSelectionWheel)
+	{
+		return;
+	}
+
+	if (!CachedSelectionWheel->IsInViewport())
+	{
+		CachedSelectionWheel->AddToViewport(50);
+	}
+
+	CachedSelectionWheel->SetVisibility(ESlateVisibility::Visible);
+}
+
+void ULCUIManager::HideSelectionWheel()
+{
+	if (!OwningPlayer) 
+	{
+		return;
+	}
+
+	if (CachedSelectionWheel && CachedSelectionWheel->IsInViewport())
+	{
+		CachedSelectionWheel->RemoveFromParent();
+	}
 }

@@ -106,7 +106,7 @@ protected:
     float TailStrikeDamage = 10.f;
 
     UPROPERTY(EditAnywhere, Category = "Gumiho|TailStrike")
-    float TailStrikeCooldown = 10.f;
+    float TailStrikeCooldown = 8.f;
 
     FTimerHandle TailStrikeTimerHandle;
     void ExecuteTailStrike();
@@ -123,7 +123,7 @@ protected:
     float SpiritSpikeDamage = 15.f;
 
     UPROPERTY(EditAnywhere, Category = "Gumiho|Abilities", meta = (ClampMin = "0.0"))
-    float SpiritSpikeCooldown = 15.f;
+    float SpiritSpikeCooldown = 4.f;
 
     // 실제 실행 함수
     void ExecuteSpiritSpike(AActor* Target);
@@ -140,7 +140,7 @@ protected:
     int32 FoxfireCount = 5;
 
     UPROPERTY(EditAnywhere, Category = "Gumiho|Foxfire")
-    float FoxfireInterval = 15.f;
+    float FoxfireInterval = 10.f;
 
     FTimerHandle FoxfireTimerHandle;
     void ExecuteFoxfireVolley();
@@ -151,11 +151,11 @@ protected:
 
     // ── Illusion Swap ──
     UPROPERTY(EditAnywhere, Category = "Gumiho|Illusion")
-    float IllusionSwapInterval = 25.f;
+    float IllusionSwapInterval = 10.f;
 
     /** Swap할 플레이어를 찾을 반경 */
     UPROPERTY(EditAnywhere, Category = "Illusion|Swap")
-    float IllusionSwapRadius = 800.f;
+    float IllusionSwapRadius = 1000.f;
 
     FTimerHandle SwapTimerHandle;
     void PerformIllusionSwap();
@@ -186,7 +186,7 @@ protected:
     void ExecuteNineTailBurst();
     /** Rage 임계치(<= 이하) 도달 시 1회 사용 */
     UPROPERTY(EditAnywhere, Category = "Gumiho|Abilities", meta = (ClampMin = "0.0", ClampMax = "100.0"))
-    float NineTailBurstRageThreshold = 0.8f;  // RagePercent 기준
+    float NineTailBurstRageThreshold = 80.f;
 
     /** Nine-Tail Burst 전 범위 데미지 값 */
     UPROPERTY(EditAnywhere, Category = "Gumiho|Combat")

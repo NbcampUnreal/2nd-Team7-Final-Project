@@ -199,22 +199,6 @@ public:
 	/** 클라이언트 보간 이동 실행 */
 	void StepClientMovement();
 
-	/** 감지된 액터 클라이언트 회전 보간 */
-	void StartClientAttachedRotation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration);
-
-	/** 감지된 액터 서버 회전 보간 */
-	void StartServerAttachedRotation(const FQuat& FromQuat, const FQuat& ToQuat, float Duration);
-
-	/** 감지된 액터 이동 보간 (서버 전용) */
-	void StartServerAttachedMovement(const FVector& DeltaLocation, float Duration);
-
-	/** 감지된 액터 이동 보간 (클라이언트 전용) */
-	void StartClientAttachedMovement(const FVector& DeltaLocation, float Duration);
-
-	/** 이동 타이머 캐시 */
-	UPROPERTY()
-	TMap<AActor*, FTimerHandle> AttachedMovementTimers;
-
 	/** 멀티캐스트 이동 시작 */
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_StartMovement(const FVector& From, const FVector& To, float Duration);
@@ -233,16 +217,10 @@ public:
 	/** 회전 복귀 시작 */
 	void StartReturnRotation();
 
-	/** 회전 복귀 보간 단계 (서버) */
-	//void StepServerReturnRotation();
-
-	/** 복귀 회전 시작 */
-	//void ReturnToInitialRotation();
-
 	/** 복귀 회전 완료 */
 	void CompleteRotationReturn();
 
-	FQuat ReturnRotationDeltaQuat; // 되감기용 쿼터니언
+	FQuat ReturnRotationDeltaQuat;
 
 	/** 회전 축 Enum → 방향 벡터로 변환 */
 	FVector GetRotationAxisVector(EGimmickRotationAxis AxisEnum) const;
@@ -283,8 +261,6 @@ public:
 	/** 부착된 액터 동기화용 컴포넌트 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Sync")
 	UAttachedSyncComponent* AttachedSyncComponent;
-
-	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 #pragma endregion
 };

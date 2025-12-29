@@ -2,6 +2,12 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 
+#include "UI/Manager/LCUIManager.h"
+#include "UI/Popup/SelectionWheelWidget.h"
+#include "Character/BasePlayerController.h"
+
+#include "Framework/PlayerController/LCRoomPlayerController.h"
+
 void ALCPlayerInputController::BeginPlay()
 {
 	Super::BeginPlay();
@@ -14,8 +20,7 @@ void ALCPlayerInputController::BeginPlay()
 		InputSubsystem->AddMappingContext(InputMappingContext, 0, Options);
 
 	}
-	//InitInputComponent();
-
+	//InitInputComponent(); <-- 캐릭터 코드에서 컨트롤러 빙의시에 호출하니까 다시 호출하지 말 것! / 호출을 또하면 그 만큼 중복해서 눌리는 것과 같으니 유의!
 
 	DefaultMouseCursor = EMouseCursor::Default;
 	// CurrentMouseCursor = EMouseCursor::Default;
@@ -86,36 +91,62 @@ void ALCPlayerInputController::InitInputComponent()
 
 		EnhancedInput->BindAction(ExitDroneAction, ETriggerEvent::Started, this, &ALCPlayerInputController::Input_DroneExit);
 
+		EnhancedInput->BindAction(AttackAction, ETriggerEvent::Started, this, &ALCPlayerInputController::Input_Attack);
+
+		EnhancedInput->BindAction(EmoteAction, ETriggerEvent::Started, this, &ALCPlayerInputController::Input_EmoteStarted);
+		EnhancedInput->BindAction(EmoteAction, ETriggerEvent::Completed, this, &ALCPlayerInputController::Input_EmoteReleased);
+		EnhancedInput->BindAction(EmoteAction, ETriggerEvent::Canceled, this, &ALCPlayerInputController::Input_EmoteReleased);
+
 		EnhancedInput->BindAction(RoomUIAction, ETriggerEvent::Started, this, &ALCPlayerInputController::ToggleShowRoomWidget);
 	}
 
 	ApplyInputMappingContext(InputMappingContext);
 }
 
-void ALCPlayerInputController::Input_OnLookMouse(const FInputActionValue& ActionValue) { }
-void ALCPlayerInputController::Input_OnLook(const FInputActionValue& ActionValue) { }
-void ALCPlayerInputController::Input_OnMove(const FInputActionValue& ActionValue) { }
-void ALCPlayerInputController::Input_OnSprint(const FInputActionValue& ActionValue) { }
-void ALCPlayerInputController::Input_OnWalk(const FInputActionValue& ActionValue) { }
-void ALCPlayerInputController::Input_OnCrouch(const FInputActionValue& ActionValue) { }
-void ALCPlayerInputController::Input_OnJump(const FInputActionValue& ActionValue) { }
-void ALCPlayerInputController::Input_OnAim(const FInputActionValue& ActionValue) { }
-void ALCPlayerInputController::Input_OnViewMode(const FInputActionValue& ActionValue) { }
-void ALCPlayerInputController::Input_OnInteract(const FInputActionValue& ActionValue) { }
-void ALCPlayerInputController::Input_OnStrafe(const FInputActionValue& ActionValue) { }
-void ALCPlayerInputController::Input_OnItemUse(const FInputActionValue& ActionValue) { }
-void ALCPlayerInputController::Input_OnItemThrow(const FInputActionValue& ActionValue) { }
-void ALCPlayerInputController::Input_VoiceChat(const FInputActionValue& ActionValue) { }
-void ALCPlayerInputController::Input_ChangeShootingSetting(const FInputActionValue& ActionValue) { }
-void ALCPlayerInputController::Input_Reload(const FInputActionValue& ActionValue) { }
-void ALCPlayerInputController::Input_ChangeQuickSlot(const FInputActionValue& ActionValue) { }
-void ALCPlayerInputController::Input_SelectQuickSlot1(const FInputActionValue& ActionValue) { }
-void ALCPlayerInputController::Input_SelectQuickSlot2(const FInputActionValue& ActionValue) { }
-void ALCPlayerInputController::Input_SelectQuickSlot3(const FInputActionValue& ActionValue) { }
-void ALCPlayerInputController::Input_SelectQuickSlot4(const FInputActionValue& ActionValue) { }
-void ALCPlayerInputController::Input_OpenPauseMenu(const FInputActionValue& ActionValue) { }
-void ALCPlayerInputController::Input_DroneExit(const FInputActionValue& ActionValue){ }
-void ALCPlayerInputController::ToggleShowRoomWidget(){ }
+void ALCPlayerInputController::Input_OnLookMouse(const FInputActionValue& ActionValue) {}
+void ALCPlayerInputController::Input_OnLook(const FInputActionValue& ActionValue) {}
+void ALCPlayerInputController::Input_OnMove(const FInputActionValue& ActionValue) {}
+void ALCPlayerInputController::Input_OnSprint(const FInputActionValue& ActionValue) {}
+void ALCPlayerInputController::Input_OnWalk(const FInputActionValue& ActionValue) {}
+void ALCPlayerInputController::Input_OnCrouch(const FInputActionValue& ActionValue) {}
+void ALCPlayerInputController::Input_OnJump(const FInputActionValue& ActionValue) {}
+void ALCPlayerInputController::Input_OnAim(const FInputActionValue& ActionValue) {}
+void ALCPlayerInputController::Input_OnViewMode(const FInputActionValue& ActionValue) {}
+void ALCPlayerInputController::Input_OnInteract(const FInputActionValue& ActionValue) {}
+void ALCPlayerInputController::Input_OnStrafe(const FInputActionValue& ActionValue) {}
+void ALCPlayerInputController::Input_OnItemUse(const FInputActionValue& ActionValue) {}
+void ALCPlayerInputController::Input_OnItemThrow(const FInputActionValue& ActionValue) {}
+void ALCPlayerInputController::Input_VoiceChat(const FInputActionValue& ActionValue) {}
+void ALCPlayerInputController::Input_ChangeShootingSetting(const FInputActionValue& ActionValue) {}
+void ALCPlayerInputController::Input_Reload(const FInputActionValue& ActionValue) {}
+void ALCPlayerInputController::Input_ChangeQuickSlot(const FInputActionValue& ActionValue) {}
+void ALCPlayerInputController::Input_SelectQuickSlot1(const FInputActionValue& ActionValue) {}
+void ALCPlayerInputController::Input_SelectQuickSlot2(const FInputActionValue& ActionValue) {}
+void ALCPlayerInputController::Input_SelectQuickSlot3(const FInputActionValue& ActionValue) {}
+void ALCPlayerInputController::Input_SelectQuickSlot4(const FInputActionValue& ActionValue) {}
+void ALCPlayerInputController::Input_OpenPauseMenu(const FInputActionValue& ActionValue) {}
+void ALCPlayerInputController::Input_DroneExit(const FInputActionValue& ActionValue) {}
+void ALCPlayerInputController::Input_Emote(const FInputActionValue& ActionValue) {}
+void ALCPlayerInputController::Input_Attack(const FInputActionValue& ActionValue) {}
+void ALCPlayerInputController::Input_EmoteStarted(const FInputActionValue& ActionValue)
+{
+	UE_LOG(LogTemp, Warning, TEXT("Input_EmoteStarted"));
+	ShowSelectionWheel_Internal();
+}
+
+void ALCPlayerInputController::Input_EmoteReleased(const FInputActionValue& ActionValue)
+{
+	bBlockWheelReopenUntilRelease = false;
+
+	ReleaseSelectionWheel_Internal();
+}
+
+void ALCPlayerInputController::Input_EmoteCanceled(const FInputActionValue& ActionValue)
+{
+	ReleaseSelectionWheel_Internal();
+}
+
+void ALCPlayerInputController::ToggleShowRoomWidget() {}
 
 void ALCPlayerInputController::ApplyInputMappingContext(UInputMappingContext* IMC)
 {
@@ -132,17 +163,126 @@ void ALCPlayerInputController::ApplyInputMappingContext(UInputMappingContext* IM
 		}
 	}
 }
+//
+//void ALCPlayerInputController::OnUIClicked()
+//{
+//	UE_LOG(LogTemp, Warning, TEXT("컨트롤러에서 좌클릭 로직 실행됨"));
+//	// CurrentMouseCursor = EMouseCursor::Custom;
+//	
+//	// 여기서 게임 상태 변경, 사운드 재생 등 원하는 처리 가능
+//}
+//
+//void ALCPlayerInputController::OnUIReleased()
+//{
+//	UE_LOG(LogTemp, Warning, TEXT("컨트롤러에서 좌클릭 떼는 로직 실행됨"));
+//	// CurrentMouseCursor = EMouseCursor::Default;
+//}
 
-void ALCPlayerInputController::OnUIClicked()
+void ALCPlayerInputController::ShowSelectionWheel_Internal()
 {
-	UE_LOG(LogTemp, Warning, TEXT("컨트롤러에서 좌클릭 로직 실행됨"));
-	// CurrentMouseCursor = EMouseCursor::Custom;
-	
-	// 여기서 게임 상태 변경, 사운드 재생 등 원하는 처리 가능
+	if (bBlockWheelReopenUntilRelease)
+	{
+		return;
+	}
+
+	if (bIsSelectionWheelOpen)
+	{
+		return;
+	}
+
+	bIsSelectionWheelOpen = true;
+
+	UE_LOG(LogTemp, Warning, TEXT("ShowSelectionWheel_Internal: Pressed"));
+
+	if (ABasePlayerController* RoomPC = Cast<ABasePlayerController>(this))
+	{
+		if (ULCUIManager* UI = RoomPC->GetUIManager())
+		{
+			UI->ShowSelectionWheel();
+
+			if (USelectionWheelWidget* Wheel = UI->GetSelectionWheel())
+			{
+				Wheel->RequestWarpToCenter();
+			}
+		}
+	}
+
+	SetIgnoreMoveInput(true);
+	SetIgnoreLookInput(true);
+
+	bShowMouseCursor = true;
+	FInputModeGameAndUI Mode;
+	Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	Mode.SetHideCursorDuringCapture(false);
+	SetInputMode(Mode);
+
+	// 1차 안전 중앙 워프
+	int32 SX = 0, SY = 0;
+	GetViewportSize(SX, SY);
+	SetMouseLocation(SX / 2, SY / 2);
 }
 
-void ALCPlayerInputController::OnUIReleased()
+void ALCPlayerInputController::ReleaseSelectionWheel_Internal()
 {
-	UE_LOG(LogTemp, Warning, TEXT("컨트롤러에서 좌클릭 떼는 로직 실행됨"));
-	// CurrentMouseCursor = EMouseCursor::Default;
+	if (!bIsSelectionWheelOpen) return;
+	bIsSelectionWheelOpen = false;
+
+	UE_LOG(LogTemp, Warning, TEXT("ReleaseSelectionWheel_Internal: Released"));
+
+	if (ABasePlayerController* RoomPC = Cast<ABasePlayerController>(this))
+	{
+		if (ULCUIManager* UI = RoomPC->GetUIManager())
+		{
+			if (USelectionWheelWidget* Wheel = UI->GetSelectionWheel())
+			{
+				Wheel->ConfirmSelection();
+			}
+
+			UI->HideSelectionWheel();
+		}
+	}
+
+	SetIgnoreMoveInput(false);
+	SetIgnoreLookInput(false);
+
+	bShowMouseCursor = false;
+	SetInputMode(FInputModeGameOnly());
+}
+
+void ALCPlayerInputController::SetupInputComponent()
+{
+	Super::SetupInputComponent();
+
+	EnhancedInput = Cast<UEnhancedInputComponent>(InputComponent);
+	if (!EnhancedInput)
+	{
+		return;
+	}
+
+
+
+	ApplyInputMappingContext(InputMappingContext);
+}
+
+void ALCPlayerInputController::CloseWheelFromClick()
+{
+	if (ALCRoomPlayerController* RoomPC = Cast<ALCRoomPlayerController>(this))
+	{
+		if (ULCUIManager* UI = RoomPC->GetUIManager())
+		{
+			if (UI && UI->GetSelectionWheel() && UI->GetSelectionWheel()->IsInViewport())
+			{
+				return;
+			}
+		}
+	}
+
+	if (!bIsSelectionWheelOpen)
+	{
+		return;
+	}
+
+	bBlockWheelReopenUntilRelease = true;
+
+	ReleaseSelectionWheel_Internal();
 }

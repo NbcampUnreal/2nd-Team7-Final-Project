@@ -4,19 +4,13 @@
 #include "GameFramework/Actor.h"
 #include "Interface/LCGimmickInterface.h"
 #include "Interface/InteractableInterface.h"
-#include "Components/BoxComponent.h"
-#include "Sound/SoundBase.h"
 #include "DataType/GimmickActivationType.h"
 #include "Actor/Gimmick/Component/DebuffDamageComponent.h"
 #include "LCBaseGimmick.generated.h"
 
-UENUM(BlueprintType)
-enum class EGimmickTriggerSource : uint8
-{
-	None			UMETA(DisplayName = "None"),
-	Overlap			UMETA(DisplayName = "Overlap Trigger"),
-	Interaction		UMETA(DisplayName = "Interact Trigger")
-};
+class USoundBase;
+class UBoxComponent;
+
 
 UCLASS(Abstract)
 class LASTCANARY_API ALCBaseGimmick : public AActor, public ILCGimmickInterface, public IInteractableInterface
@@ -28,6 +22,7 @@ public:
 
 public:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	/** ===== 시각 및 사운드 설정 ===== */
 
@@ -43,27 +38,31 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cutscene")
 	class ACameraActor* CutsceneCamera;
 
+	/** 카메라까지 가는 시간 (0이면 순간이동) */
 	UPROPERTY(EditAnywhere, Category = "Cutscene")
-	float CameraBlendTime = 0.0f;
+	float CameraBlendTime;
 
+	/** 컷신 실행 시간 */
 	UPROPERTY(EditAnywhere, Category = "Cutscene")
-	float CutsceneDuration = 3.0f;
+	float CutsceneDuration;
 
 	/** 컷신 활성화 여부 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cutscene")
-	bool bEnableCutscene = false;
+	bool bEnableCutscene;
 
 	/** 모든 플레이어에게 컷신 보여줄지 여부 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cutscene")
-	bool bCutsceneForAllPlayers = true; 
+	bool bCutsceneForAllPlayers; 
 
 	/** 모든 플레이어에게 컷신 시작 */
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_StartCutscene();
+	void Multicast_StartCutscene_Implementation();
 
 	/** 특정 플레이어에게만 컷신 시작 */
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_StartCutsceneForSpecificPlayer(APlayerController* PC);
+	void Multicast_StartCutsceneForSpecificPlayer_Implementation(APlayerController* PC);
 
 	/** 컷신 중인지 확인 */
 	UFUNCTION(BlueprintCallable, Category = "Cutscene")
@@ -93,19 +92,42 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Target")
 	TArray<AActor*> LinkedTargets;
 
+	/** ===== 캐릭터 상호작용 애니메이션 설정 ===== */
+
+	/** 기믹에 상호작용 하는 캐릭터의 애니메이션 제어 여부 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick|CharacterAnimation")
+	bool bPlayCharacterAnimation = false;
+
+	/** 기믹에 상호작용 하는 캐릭터가 취할 애니메이션 (자신에게만) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|CharacterAnimation")
+	UAnimMontage* LocalAnimation;
+
+	/** 기믹에 상호작용 하는 캐릭터가 취할 애니메이션 (타인에게만) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|CharacterAnimation")
+	UAnimMontage* RemoteAnimation;
+
 	/** ===== 작동 방식 설정 ===== */
 
-	/** 기믹 작동 방식 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Activation")
+	/** 기믹 작동 방식 (자식 클래스가 고유 조건 처리 시 이 옵션은 비활성화됩니다) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Activation",
+		meta = (EditCondition = "bEnableBaseActivationType"))
 	EGimmickActivationType ActivationType;
 
-	/** 자동 반복 작동용 함수 */
-	UFUNCTION()
-	virtual void ActivateLoopedGimmick(); 
+	/** BaseGimmick ActivationType 옵션 활성화 여부 */
+	UPROPERTY(EditDefaultsOnly, Category = "Gimmick|Activation")
+	bool bEnableBaseActivationType;
 
-	/** 자동 반복용 타이머 */
-	FTimerHandle LoopedTimerHandle;
+protected:
+	/** ActivateOnStep 타입 처리 */
+	void HandleActivateOnStep();
 
+	/** ActivateWhileStepping 타입 처리 */
+	void HandleActivateWhileStepping();
+
+	/** ActivateAfterDelay 타입 처리 */
+	void HandleActivateAfterDelay();
+
+public:
 	/** ==== 오버랩 방식 ==== */
 
 	/** 오버랩 기반 기믹 작동용 트리거 */
@@ -145,48 +167,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Activation")
 	float ActivationDelay;
 
-	/** ==== 기타 특정 조건 방식 ==== */
-
-	/** 조건형 기믹 활성 여부 판단용 함수 */
-	UFUNCTION(BlueprintNativeEvent, Category = "Gimmick|Condition")
-	bool IsConditionMet() const;
-	virtual bool IsConditionMet_Implementation() const;
-
-	/** 조건 검사 후 조건 충족 시 Activate */
-	UFUNCTION()
-	void CheckConditionAndActivate();
-
-	/** 조건 체크 주기 */
-	UPROPERTY(EditDefaultsOnly, Category = "Gimmick|Condition")
-	float ConditionCheckInterval;
-
-	/** 조건 체크 타이머 */
-	FTimerHandle ConditionCheckTimer;
-
-	/** ==== 감지 영역 ==== */
-
-	// 감지 기능 활성화 여부
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Detection")
-	bool bEnableActorDetection;
-
-	/** 감지 영역 컴포넌트  */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gimmick|Detection")
-	UBoxComponent* DetectionArea;
-
-	/** 감지된 액터들 (회전/이동 대상) */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gimmick|Detection")
-	TArray<AActor*> AttachedActors;
-
-	/** 감지 영역 진입 이벤트 */
-	UFUNCTION()
-	virtual void OnActorEnter(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
-
-	/** 감지 영역 이탈 이벤트 */
-	UFUNCTION()
-	virtual void OnActorExit(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
-
 	/** ===== 쿨타임 설정 ===== */
 
 	/** 현재 활성화된 상태 여부 */
@@ -215,16 +195,21 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Interaction")
 	bool bCallReturnToInitialStateInsteadOfActivate;
 
-	/** ===== 컷신 관련 Private 멤버 변수들 ===== */
+	/** 지정한 지연 시간 후 ReturnToInitialState 호출 */
+	//void ScheduleReturn(float Delay);
+
+	/** 상태 복귀 타이머 */
+	FTimerHandle ReturnTimerHandle;
+
 private:
 	/** 컷신 재생 중인지 여부 */
-	bool bIsPlayingCutscene = false;
+	bool bIsPlayingCutscene;
 
 	/** 플레이어 입력이 비활성화되었는지 여부 */
-	bool bPlayerInputDisabled = false;
+	bool bPlayerInputDisabled;
 
 	/** 원래 뷰 타겟 (컷신 종료 시 복원용) */
-	AActor* OriginalViewTarget = nullptr;
+	AActor* OriginalViewTarget;
 
 	/** 컷신 타이머 */
 	FTimerHandle CutsceneTimer;
@@ -259,7 +244,7 @@ public:
 	/** 즉시 복귀 활성화 */
 	virtual void ReturnToInitialState_Implementation() override;
 
-	// ===== 파괴 관련 =====
+	/** ===== 함정 파괴 관련 ===== */
 
 	/** 총기에 의해 파괴될 수 있는지 여부 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Damage")
@@ -269,17 +254,21 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Damage", meta = (EditCondition = "bDestructibleByGun"))
 	float DestructibleHealth;
 
-	/** 현재 남은 체력 (Replicated) */
+	/** 현재 남은 체력 */
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Gimmick|Damage")
 	float CurrentHealth;
 
-	/** 총기 피격 처리 (TakeDamage 오버라이드) */
+	/** 총기 피격 처리 */
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 
 	/** 총기에 의해 파괴되었을 때 호출 (이펙트 확장용) */
 	UFUNCTION(BlueprintNativeEvent, Category = "Gimmick|Damage")
 	void OnDestroyedByBullet();
 	virtual void OnDestroyedByBullet_Implementation();
+
+	/** 파괴 사운드 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Sound")
+	USoundBase* DestroySound;
 
 	/** ===== 네트워크 함수 ===== */
 
@@ -293,17 +282,7 @@ public:
 	void Multicast_PlaySound();
 	void Multicast_PlaySound_Implementation();
 
-	/** 파괴 사운드 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gimmick|Sound")
-	USoundBase* DestroySound;
-
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_PlayDestroySound();
 	void Multicast_PlayDestroySound_Implementation();
-
-public:
-	FORCEINLINE const TArray<AActor*>& GetAttachedActors() const { return AttachedActors; }
-
-	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-
 };

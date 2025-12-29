@@ -96,6 +96,11 @@ void AResourceNode::Interact_Implementation(APlayerController* Interactor)
 			return;
 		}
 	}
+	if (CurrentHarvestCount == 0)
+	{
+		LOG_Item_WARNING(TEXT("[ResourceNode] 모두 파밍함."));
+		return;
+	}
 
 	HarvestResource(Interactor);
 }

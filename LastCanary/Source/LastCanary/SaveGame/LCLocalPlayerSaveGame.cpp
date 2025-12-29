@@ -1,6 +1,6 @@
 #include "SaveGame/LCLocalPlayerSaveGame.h"
-#include "Engine/LocalPlayer.h" // ULocalPlayer 관련
-#include "Kismet/GameplayStatics.h"    // 경우에 따라 사용 가능
+#include "Engine/LocalPlayer.h"
+#include "Kismet/GameplayStatics.h"
 #include "LastCanary.h"
 
 

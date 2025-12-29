@@ -22,6 +22,7 @@
 ALS_DEFINE_PRIVATE_MEMBER_ACCESSOR(AlsGetAnimationCurvesAccessor, &FAnimInstanceProxy::GetAnimationCurves,
                                    const TMap<FName, float>& (FAnimInstanceProxy::*)(EAnimCurveType) const)
 
+
 void UAlsAnimationInstance::NativeInitializeAnimation()
 {
 	Super::NativeInitializeAnimation();
@@ -154,6 +155,9 @@ void UAlsAnimationInstance::NativeUpdateAnimation(const float DeltaTime)
 	{
 		MarkTeleported();
 	}
+
+	if (!TryGetPawnOwner()) return;
+
 }
 
 void UAlsAnimationInstance::NativeThreadSafeUpdateAnimation(const float DeltaTime)
@@ -363,6 +367,23 @@ void UAlsAnimationInstance::RefreshViewOnGameThread()
 
 void UAlsAnimationInstance::RefreshView(const float DeltaTime)
 {
+	/*
+	if (!LocomotionAction.IsValid())
+	{
+		ViewState.YawAngle = FMath::UnwindDegrees(UE_REAL_TO_FLOAT(ViewState.Rotation.Yaw - LocomotionState.Rotation.Yaw));
+		ViewState.PitchAngle = FMath::UnwindDegrees(UE_REAL_TO_FLOAT(ViewState.Rotation.Pitch - LocomotionState.Rotation.Pitch));
+
+		ViewState.PitchAmount = 0.5f - ViewState.PitchAngle / 180.0f;
+	}
+
+	const auto ViewAmount{ 1.0f - GetCurveValueClamped01(UAlsConstants::ViewBlockCurveName()) };
+	const auto AimingAmount{ GetCurveValueClamped01(UAlsConstants::AllowAimingCurveName()) };
+
+	ViewState.LookAmount = ViewAmount * (1.0f - AimingAmount);
+
+	RefreshSpine(ViewAmount * AimingAmount, DeltaTime);
+	*/
+	
 	if (!LocomotionAction.IsValid())
 	{
 		ViewState.YawAngle = FMath::UnwindDegrees(UE_REAL_TO_FLOAT(ViewState.Rotation.Yaw - LocomotionState.Rotation.Yaw));
@@ -379,6 +400,7 @@ void UAlsAnimationInstance::RefreshView(const float DeltaTime)
 	RefreshSpine(ViewAmount * 1, DeltaTime);
 
 	//RefreshSpine(ViewAmount * AimingAmount, DeltaTime);
+	
 }
 
 bool UAlsAnimationInstance::IsSpineRotationAllowed()

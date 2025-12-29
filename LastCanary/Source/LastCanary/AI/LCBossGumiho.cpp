@@ -94,9 +94,8 @@ void ALCBossGumiho::UpdateRage(float DeltaSeconds)
 	}
 
 	// Nine-Tail Burst
-	if (HasAuthority() && !bHasUsedNineTail && Rage >= NineTailBurstRageThreshold)
+	if (!bHasUsedNineTail && Rage >= NineTailBurstRageThreshold)
 	{
-		bHasUsedNineTail = true;
 		ExecuteNineTailBurst();
 	}
 }
@@ -444,7 +443,12 @@ void ALCBossGumiho::PerformIllusionSwap()
 	int32 PlyIdx = FMath::RandRange(0, ValidPlayers.Num() - 1);
 	APawn* TargetPlayer = ValidPlayers.IsValidIndex(PlyIdx) ? ValidPlayers[PlyIdx] : nullptr;
 	if (!IsValid(TargetPlayer))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Gumiho] Swapped Illusion실패 [%s] with Player[%s]"),
+			*Ill->GetName(), *TargetPlayer->GetName());
 		return;
+	}
+		
 
 	// (5) 위치 스왑
 	const FVector IllLoc = Ill->GetActorLocation();
@@ -572,7 +576,7 @@ void ALCBossGumiho::ExecuteCharmGaze()
 void ALCBossGumiho::ExecuteNineTailBurst()
 {
 	// 0) 서버 권한 및 Rage 조건 검사
-	if (!HasAuthority() || bHasUsedNineTail || Rage >= NineTailBurstRageThreshold)
+	if (!HasAuthority() || bHasUsedNineTail || Rage < NineTailBurstRageThreshold)
 		return;
 
 	UWorld* World = GetWorld();
@@ -793,7 +797,6 @@ bool ALCBossGumiho::RequestAttack(float TargetDistance)
 	const bool bHasTarget = IsValid(Target);
 
 	const float Now = GetWorld()->GetTimeSeconds();
-	FTimerManager& TM = GetWorld()->GetTimerManager();
 
 	struct FEntry { float Weight, Range; TFunction<void()> Action; };
 	TArray<FEntry> Entries;
@@ -805,6 +808,7 @@ bool ALCBossGumiho::RequestAttack(float TargetDistance)
 			1.f,
 			/*Range=*/FLT_MAX,
 			[this, Now]() {
+			UE_LOG(LogTemp, Warning, TEXT("[Gumiho] 선택된 공격 → FoxfireVolley"));
 				LastFoxfireTime = Now;
 				ExecuteFoxfireVolley();
 			}
@@ -818,6 +822,7 @@ bool ALCBossGumiho::RequestAttack(float TargetDistance)
 			2.f,
 			TailStrikeRadius,  // 사거리 정보만 기록
 			[this, Now]() {
+			UE_LOG(LogTemp, Warning, TEXT("[Gumiho] 선택된 공격 → TailStrike"));
 				LastTailStrikeTime = Now;
 				ExecuteTailStrike();
 			}
@@ -831,6 +836,7 @@ bool ALCBossGumiho::RequestAttack(float TargetDistance)
 			2.f,
 			/*Range=*/FLT_MAX,
 			[this, Now]() {
+			UE_LOG(LogTemp, Warning, TEXT("[Gumiho] 선택된 공격 → IllusionSwap"));
 				LastIllusionSwapTime = Now;
 				PerformIllusionSwap();
 			}
@@ -845,7 +851,7 @@ bool ALCBossGumiho::RequestAttack(float TargetDistance)
 			SpiritSpikeRadius,
 			[this, Now, Target]()
 			{
-			UE_LOG(LogTemp, Warning, TEXT("[Lich] 선택된 공격 → SoulAbsorb"));
+			UE_LOG(LogTemp, Warning, TEXT("[Gumiho] 선택된 공격 → SpiritSpike"));
 				LastSpiritSpikeTime = Now;
 				ExecuteSpiritSpike(Target);
 			}

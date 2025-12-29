@@ -3,11 +3,10 @@
 #include "LastCanary.h"
 #include "SaveGame/LCLocalPlayerSaveGame.h"
 
-// Sets default values
 ACustomizationCharacter::ACustomizationCharacter()
 {
- 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+
 	CustomHeadMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomHeadMesh"));
 	CustomHeadMesh->SetupAttachment(GetMesh());
 	CustomHeadMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
@@ -39,9 +38,13 @@ ACustomizationCharacter::ACustomizationCharacter()
 	CustomBootsMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CustomBootsMesh"));
 	CustomBootsMesh->SetupAttachment(GetMesh());
 	CustomBootsMesh->SetLeaderPoseComponent(GetMesh()); // GetMesh()는 전체 메시
+
+	if (CustomJacketMesh)
+	{
+		CustomJacketMesh->SetLeaderPoseComponent(GetMesh());
+	}
 }
 
-// Called when the game starts or when spawned
 void ACustomizationCharacter::BeginPlay()
 {
 	Super::BeginPlay();
@@ -135,7 +138,6 @@ void ACustomizationCharacter::ApplyCustomization(const UCustomizationMeshMap* Ch
 	//플래그
 	SetPartMaterial(CustomHelmetMesh, 1, FlagMat);
 	SetPartMaterial(CustomArmorMesh, 0, FlagMat);
-
 }
 
 void ACustomizationCharacter::SetPartMesh(USkeletalMeshComponent* Component, USkeletalMesh* LoadedMesh)
