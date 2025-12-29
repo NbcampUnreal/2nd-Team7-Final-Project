@@ -79,7 +79,7 @@ ABaseCharacter::ABaseCharacter()
 	InitializeComponents();
 
 	// 캐릭터 클래스의 생성자 함수 내부 
-	FieldOfView = Camera->FieldOfView;
+	FieldOfView = FPSCamera->FieldOfView;
 
 	ItemSpawner = CreateDefaultSubobject<UItemSpawnerComponent>(TEXT("ItemSpawner"));
 
@@ -89,6 +89,9 @@ ABaseCharacter::ABaseCharacter()
 	BackpackMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	ToolbarInventoryComponent = CreateDefaultSubobject<UToolbarInventoryComponent>(TEXT("ToolbarInventoryComponent"));
+
+	BaseEyeHeight = 64.f;
+	CrouchedEyeHeight = 40.f;
 }
 
 void ABaseCharacter::InitializeComponents()
@@ -117,13 +120,34 @@ void ABaseCharacter::InitializeDefaultComponents()
 	OverlaySkeletalMesh = UCommonUtility::CreateAndAttachComponent<USkeletalMeshComponent>(this, GetMesh(), TEXT("OverlaySkeletalMesh"));
 	OverlaySkeletalMesh->SetupAttachment(GetMesh(), TEXT("Rifle")); // 특수 경우 따로
 
+	CameraRoot = CreateDefaultSubobject<USceneComponent>(TEXT("CameraRoot"));
+	CameraRoot->SetupAttachment(
+		GetMesh(),
+		TEXT("FirstPersonCamera")
+	);
+
+	FPSCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FPSCamera"));
+	FPSCamera->SetupAttachment(CameraRoot);
+
+	CameraRoot->SetRelativeLocation(FVector::ZeroVector);
+	CameraRoot->SetRelativeRotation(FRotator::ZeroRotator);
+
+	FPSCamera->bUsePawnControlRotation = true;
+
+
+
+
 	// Camera, SpringArm
 	SpringArm = UCommonUtility::CreateAndAttachComponent<USpringArmComponent>(this, GetMesh(), TEXT("SpringArm"));
-	Camera = UCommonUtility::CreateAndAttachComponent<UCameraComponent>(this, SpringArm, TEXT("Camera"));
+	TPSCamera = UCommonUtility::CreateAndAttachComponent<UCameraComponent>(this, SpringArm, TEXT("TPSCamera"));
+
+	
+
+
 	// Arrow
 	ThirdPersonArrow = UCommonUtility::CreateAndAttachComponent<UArrowComponent>(this, SpringArm, TEXT("FirstPersonArrow"));
 
-	Camera->SetRelativeRotation(FRotator::ZeroRotator);
+	TPSCamera->SetRelativeRotation(FRotator::ZeroRotator);
 }
 
 
@@ -229,6 +253,13 @@ void ABaseCharacter::BeginPlay()
 	}
 
 	SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+	
+	const FTransform MeshToWorld = GetMesh()->GetComponentTransform();
+	const FVector EyeWorld =
+		GetMesh()->GetSocketLocation(TEXT("FirstPersonCamera")); // 또는 EyeSocket
+	// Capsule 기준 로컬 오프셋으로 변환
+	EyeOffsetLocal =
+		GetActorTransform().InverseTransformPosition(EyeWorld);
 }
 
 void ABaseCharacter::NotifyComponentReady(UCharacterBaseComponent* Component)
@@ -677,6 +708,76 @@ void ABaseCharacter::NotifyControllerChanged()
 	Super::NotifyControllerChanged();
 }
 
+
+void ABaseCharacter::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	SetDesiredAiming(true);
+}
+// BaseCharacter.cpp
+FVector ABaseCharacter::GetPawnViewLocation() const
+{
+	// ACharacter 기본 구현 사용 + 미세 보정만 가능
+	return Super::GetPawnViewLocation();
+}
+
+FVector ABaseCharacter::GetDesiredCameraOffset() const
+{
+	FVector Offset = EyeOffsetLocal;
+
+	if (bIsCrouched)
+	{
+		Offset.Z -= 20.f;
+	}
+
+	if (ADSComponent && ADSComponent->bIsADS)
+	{
+		Offset += FVector(2.f, 0.f, -1.f);
+	}
+
+	return Offset;
+}
+
+bool ABaseCharacter::IsADS() const
+{
+	if (ADSComponent)
+	{
+		return ADSComponent->bIsADS;
+	}
+	return false;
+}
+
+FTransform ABaseCharacter::GetADSCameraTransform() const
+{
+	const USkeletalMeshComponent* MeshComp = GetMesh();
+	if (!MeshComp)
+	{
+		return FTransform::Identity;
+	}
+
+	USkeletalMeshComponent* GunMesh = GetCurrentGunItemSkeletalMesh();
+	if (!GunMesh || !GunMesh->DoesSocketExist(TEXT("ADS")))
+	{
+		return FTransform::Identity;
+	}
+
+	// 헤드 기준 회전
+	const FTransform HeadTransform =
+		MeshComp->GetSocketTransform(TEXT("FirstPersonCamera"), RTS_World);
+
+	// 스코프 기준 위치
+	const FTransform ScopeTransform =
+		GunMesh->GetSocketTransform(TEXT("ADS"), RTS_World);
+
+	FVector FinalLocation = ScopeTransform.GetLocation();
+	FRotator FinalRotation = HeadTransform.Rotator();
+
+	return FTransform(FinalRotation, FinalLocation);
+}
+
+
+
 void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo)
 {
 	Super::CalcCamera(DeltaTime, ViewInfo);
@@ -725,13 +826,13 @@ void ABaseCharacter::ResetCameraLocationToDefault()
 	bIsTransitioning = false;
 }
 
-AItemBase* ABaseCharacter::GetCurrentItem()
+AItemBase* ABaseCharacter::GetCurrentItem() const
 {
 	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
 	return EquippedItem;
 }
 
-AGunBase* ABaseCharacter::GetCurrentGunItem()
+AGunBase* ABaseCharacter::GetCurrentGunItem() const
 {
 	if (IsValid(GetCurrentItem()))
 	{
@@ -741,7 +842,7 @@ AGunBase* ABaseCharacter::GetCurrentGunItem()
 	return nullptr;
 }
 
-USkeletalMeshComponent* ABaseCharacter::GetCurrentGunItemSkeletalMesh()
+USkeletalMeshComponent* ABaseCharacter::GetCurrentGunItemSkeletalMesh() const
 {
 	if (IsValid(GetCurrentGunItem()))
 	{
@@ -832,12 +933,6 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 	*/
 }
 
-void ABaseCharacter::Tick(float DeltaSeconds)
-{
-	Super::Tick(DeltaSeconds);
-
-	SetDesiredAiming(true);
-}// 전환이 완료되었는지 확인하는 유틸리티 함수 (선택사항)
 
 void ABaseCharacter::SetIsCloseToWall(bool _bIsCloseToWall)
 {
