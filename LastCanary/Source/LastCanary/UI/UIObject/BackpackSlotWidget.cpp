@@ -82,54 +82,6 @@ void UBackpackSlotWidget::NativeOnDragDetected(const FGeometry& InGeometry, cons
     OutOperation = DragOp;
 }
 
-FReply UBackpackSlotWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
-{
-    UE_LOG(LogTemp, Warning, TEXT("[BackpackSlotWidget] MouseButtonDown - Button: %s, HasAuthority: %s"),
-        *InMouseEvent.GetEffectingButton().ToString(),
-        GetOwningPlayer() && GetOwningPlayer()->HasAuthority() ? TEXT("True") : TEXT("False"));
-
-    // 좌클릭이고 노트 아이템인 경우
-    if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
-    {
-        // 노트 아이템인지 확인
-        if (IsNoteItem())
-        {
-            UE_LOG(LogTemp, Warning, TEXT("[BackpackSlotWidget] 노트 아이템 클릭 감지 - SlotIndex: %d"), BackpackSlotIndex);
-            HandleNoteItemClick();
-            return FReply::Handled();
-        }
-    }
-
-    // 기본 드래그 앤 드롭 처리
-    return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
-}
-
-void UBackpackSlotWidget::HandleNoteItemClick()
-{
-    UE_LOG(LogTemp, Warning, TEXT("[BackpackSlotWidget] HandleNoteItemClick 시작"));
-
-    if (!InventoryComponent)
-    {
-        UE_LOG(LogTemp, Error, TEXT("[BackpackSlotWidget] InventoryComponent가 null입니다"));
-        return;
-    }
-
-    UE_LOG(LogTemp, Warning, TEXT("[BackpackSlotWidget] Server RPC 호출 시도 - SlotIndex: %d"), BackpackSlotIndex);
-    InventoryComponent->Server_UseNoteItemFromBackpack(BackpackSlotIndex);
-}
-
-bool UBackpackSlotWidget::IsNoteItem() const
-{
-    if (!ItemDataTable || ItemData.ItemRowName.IsNone())
-    {
-        return false;
-    }
-
-    const FItemDataRow* ItemRowData = ItemDataTable->FindRow<FItemDataRow>(ItemData.ItemRowName, TEXT("IsNoteItem"));
-
-    return ItemRowData && ItemRowData->bIsNoteItem;
-}
-
 UInventoryMainWidget* UBackpackSlotWidget::GetInventoryMainWidget() const
 {
     // 1. 직접적인 부모에서 찾기

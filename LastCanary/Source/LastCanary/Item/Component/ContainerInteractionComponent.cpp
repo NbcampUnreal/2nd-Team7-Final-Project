@@ -3,6 +3,7 @@
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "Item/ItemContainer.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
+#include "UI/Manager/LCUIManager.h"
 #include "UI/UIElement/InventoryMainWidget.h"
 #include "GameFramework/PlayerController.h"
 #include "LastCanary.h"

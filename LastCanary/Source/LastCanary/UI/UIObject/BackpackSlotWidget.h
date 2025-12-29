@@ -9,8 +9,8 @@ class UToolbarInventoryComponent;
 UCLASS()
 class LASTCANARY_API UBackpackSlotWidget : public UInventorySlotWidget
 {
-	GENERATED_BODY()
-	
+    GENERATED_BODY()
+
 public:
     /** 가방 내 슬롯 인덱스 (툴바 슬롯 인덱스와 구분) */
     UPROPERTY(BlueprintReadOnly, Category = "Backpack")
@@ -22,15 +22,6 @@ protected:
 
     /** 드래그 시작 처리 오버라이드 */
     virtual void NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation) override;
-
-    /** 마우스 클릭 이벤트 오버라이드 */
-    virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
-
-    /** 노트 아이템 사용 처리 */
-    UFUNCTION()
-    void HandleNoteItemClick();
-
-    bool IsNoteItem() const;
 
 private:
     /** InventoryMainWidget에 접근하기 위한 헬퍼 함수 */

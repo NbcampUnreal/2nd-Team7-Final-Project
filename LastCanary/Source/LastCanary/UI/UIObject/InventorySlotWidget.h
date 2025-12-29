@@ -4,7 +4,7 @@
 #include "UI/LCUserWidgetBase.h"
 #include "UI/UIObject/ItemTooltipWidget.h"
 #include "DataType/BaseItemSlotData.h"
-#include "Inventory/ToolbarInventoryComponent.h"
+#include "Inventory/InventoryComponentBase.h"
 #include "InventorySlotWidget.generated.h"
 
 /**
@@ -27,9 +27,6 @@ public:
     UPROPERTY(meta = (BindWidget))
     class UBorder* SlotBorder;
 
-    UPROPERTY(meta = (BindWidget))
-    class UTextBlock* QuantityText;
-
     //-----------------------------------------------------
     // 슬롯 데이터
     //-----------------------------------------------------
@@ -48,7 +45,7 @@ public:
 
     /** 연결된 인벤토리 컴포넌트 참조 */
     UPROPERTY(BlueprintReadOnly, Category = "Inventory|Data")
-    UToolbarInventoryComponent* InventoryComponent;
+    UInventoryComponentBase* InventoryComponent;
 
     UPROPERTY(EditDefaultsOnly, Category = "Inventory|Border")
     UTexture2D* EmptyBorderTexture;
@@ -68,13 +65,6 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory|Default")
     FName DefaultItemRowName = FName("Default");
 
-    UFUNCTION(BlueprintPure, Category = "Inventory|Utility")
-    bool IsCollectibleItem() const;
-
-    /** 소모품인지 확인 */
-    UFUNCTION(BlueprintPure, Category = "Inventory|Utility")
-    bool IsConsumableItem() const;
-
     //-----------------------------------------------------
     // 데이터 설정 함수
     //-----------------------------------------------------
@@ -85,7 +75,7 @@ public:
 
     /** 연결된 인벤토리 컴포넌트 설정 */
     UFUNCTION(BlueprintCallable, Category = "Inventory|Setup")
-    void SetInventoryComponent(UToolbarInventoryComponent* InInventoryComponent);
+    void SetInventoryComponent(UInventoryComponentBase* InInventoryComponent);
 
     //-----------------------------------------------------
     // UI 업데이트 및 상호작용
@@ -142,10 +132,6 @@ private:
     /** 보더 색상 업데이트 */
     void UpdateBorderImage();
 
-    /** 수량 텍스트 업데이트 */
-    UFUNCTION(BlueprintCallable, Category = "Inventory|UI")
-    void UpdateQuantityText();
-    
     // TODO : 추후 구현 예정인 블루프린트 이벤트 (현재 미사용)
     /*
     UFUNCTION(BlueprintImplementableEvent, Category = "Inventory|Events")
