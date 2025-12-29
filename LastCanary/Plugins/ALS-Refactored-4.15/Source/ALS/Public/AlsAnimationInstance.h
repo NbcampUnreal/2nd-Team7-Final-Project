@@ -88,8 +88,6 @@ public:
 	UPROPERTY(BlueprintReadWrite, Category = "IK")
 	FTransform GunItemSocket;
 
-	void UpdateADSHandIK(float DeltaTime);
-
 	// MyAnimInstance.h
 	UPROPERTY(BlueprintReadWrite, Category = "IK")
 	FVector AimPoint;

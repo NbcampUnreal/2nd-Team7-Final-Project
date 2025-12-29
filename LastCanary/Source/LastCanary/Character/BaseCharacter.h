@@ -73,6 +73,23 @@ protected:
 	virtual void NotifyControllerChanged() override;
 	
 	void ApplyNetworkSmoothSettings(float InNetUpdateFrequency, float InMinNetUpdateFrequency, float InNetCullDistance, ENetworkSmoothingMode InSmoothingMode, float InDeltaTime);
+	
+	
+	
+protected:
+	UPROPERTY(VisibleAnywhere, Category = "Camera")
+	FVector EyeOffsetLocal;
+	// BaseCharacter.h
+
+public:
+	virtual FVector GetPawnViewLocation() const override;
+	FVector GetDesiredCameraOffset() const;
+
+	bool IsADS() const;
+
+	FTransform GetADSCameraTransform() const;
+
+
 public:
 	//* Character State Flag *//
 	//bool bCanMove = false;
@@ -80,11 +97,20 @@ public:
 	//Character Mesh and Component
 #pragma region 컴포넌트
 public:
+
+	//* 3인칭 카메라 (개발용) *//
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	TObjectPtr<USpringArmComponent> SpringArm;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
-	TObjectPtr<UCameraComponent> Camera;
+	TObjectPtr<UCameraComponent> TPSCamera;
+
+	//* 1인칭 카메라 *// //메인
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+	TObjectPtr<USceneComponent> CameraRoot;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+	TObjectPtr<UCameraComponent> FPSCamera;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMesh")
 	TObjectPtr<UStaticMeshComponent> OverlayStaticMesh;
@@ -355,13 +381,13 @@ protected:
 	void ResetCameraLocationToDefault();
 
 public:
-	AItemBase* GetCurrentItem();
+	AItemBase* GetCurrentItem() const;
 
 	UFUNCTION(BlueprintCallable)
-	AGunBase* GetCurrentGunItem();
+	AGunBase* GetCurrentGunItem() const;
 
 	UFUNCTION(BlueprintCallable)
-	USkeletalMeshComponent* GetCurrentGunItemSkeletalMesh();
+	USkeletalMeshComponent* GetCurrentGunItemSkeletalMesh() const;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bHasGunOnHand = false;

@@ -22,15 +22,6 @@
 ALS_DEFINE_PRIVATE_MEMBER_ACCESSOR(AlsGetAnimationCurvesAccessor, &FAnimInstanceProxy::GetAnimationCurves,
                                    const TMap<FName, float>& (FAnimInstanceProxy::*)(EAnimCurveType) const)
 
-void UAlsAnimationInstance::UpdateADSHandIK(float DeltaTime)
-{
-	if (!IsAiming) return;
-
-	if (!TryGetPawnOwner()) return;
-
-	RightHandIKTargetLocation = AimPoint + RightHandIKTargetLocationOffset;
-	LeftHandIKTargetLocation = AimPoint;
-}
 
 void UAlsAnimationInstance::NativeInitializeAnimation()
 {
@@ -167,7 +158,6 @@ void UAlsAnimationInstance::NativeUpdateAnimation(const float DeltaTime)
 
 	if (!TryGetPawnOwner()) return;
 
-	UpdateADSHandIK(DeltaTime);
 }
 
 void UAlsAnimationInstance::NativeThreadSafeUpdateAnimation(const float DeltaTime)

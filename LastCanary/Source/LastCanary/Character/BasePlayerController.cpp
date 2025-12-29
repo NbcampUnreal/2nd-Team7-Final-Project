@@ -20,6 +20,7 @@
 
 #include "SaveGame/LCLocalPlayerSaveGame.h"
 #include "LastCanary.h"
+#include "LC_CameraManager.h"
 
 #include "Settings/Component/MouseSensitivityComponent.h"
 
@@ -56,6 +57,8 @@ void ABasePlayerController::BeginPlay()
 		}
 	}
 
+	PlayerCameraManagerClass = ALC_CameraManager::StaticClass();
+
 	PlayerCameraManager->ViewPitchMin = -80.0f; // 최소 Pitch 각도 (고개 숙이기)
 	PlayerCameraManager->ViewPitchMax = 80.0f;  // 최대 Pitch 각도 (고개 들기)
 
@@ -63,6 +66,7 @@ void ABasePlayerController::BeginPlay()
 	{
 		//MouseSensitivityComponent->OnSensitivitySettingsChanged.AddDynamic(this, &ABasePlayerController::LoadSensitivity);
 	}
+
 }
 
 void ABasePlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
