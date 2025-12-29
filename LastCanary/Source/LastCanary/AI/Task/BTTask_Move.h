@@ -1,11 +1,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "BehaviorTree/Tasks/BTTask_MoveTo.h"
+//#include "BehaviorTree/Tasks/BTTask_MoveTo.h"
+#include "BehaviorTree/BTTaskNode.h"
 #include "BTTask_Move.generated.h"
 
 UCLASS()
-class LASTCANARY_API UBTTask_Move : public UBTTask_MoveTo
+class LASTCANARY_API UBTTask_Move : public UBTTaskNode //UBTTask_MoveTo
 {
     GENERATED_BODY()
 
@@ -23,6 +24,7 @@ protected:
     void CheckMoveStatus(UBehaviorTreeComponent* OwnerComp);
 
     void CleanupTimer(UBehaviorTreeComponent* OwnerComp);
+
 private:
     UPROPERTY(EditAnywhere)
     float SoundTimer = 2.5f;
