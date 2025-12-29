@@ -27,6 +27,8 @@ class UWidgetComponent;
 class UPlayerNameWidget;
 class UCustomizationMeshMap;
 struct FCharacterCustomizationData;
+class UWeaponStatsComponent;
+class ATrainingConsole;
 
 UENUM(BlueprintType)
 enum class EAnimationType : uint8
@@ -1083,4 +1085,18 @@ public:
 	/** 머리 위에 표시할 3D 위젯 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
 	UWidgetComponent* NameWidgetComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
+	UWeaponStatsComponent* WeaponStatsComponent;
+
+	/** 서버에서 범용 상호작용 처리 */
+	UFUNCTION(Server, Reliable)
+	void ServerInteractWithActor(AActor* InteractableActor);
+	void ServerInteractWithActor_Implementation(AActor* InteractableActor);
+
+	/** 훈련 콘솔과 액션 포함 상호작용 */
+	// 범용 함수로 해결해보려 했는데 실패했습니다.
+	UFUNCTION(Server, Reliable)
+	void ServerInteractWithConsole(ATrainingConsole* Console, uint8 Action);
+	void ServerInteractWithConsole_Implementation(ATrainingConsole* Console, uint8 Action);
 };

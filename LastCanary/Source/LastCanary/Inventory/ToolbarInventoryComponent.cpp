@@ -419,7 +419,7 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
     if (AItemBase* EquippedItem = GetCurrentEquippedItem())
     {
         EquippedItem->bIsEquipped = true;
-        EquippedItem->SetCustomDepth(false);
+        //EquippedItem->SetCustomDepth(false);
     }
 
     if (CachedOwnerCharacter) CachedOwnerCharacter->SetEquipped(true);
@@ -696,7 +696,7 @@ void UToolbarInventoryComponent::SetupEquippedItem(UChildActorComponent* ItemCom
     // 상위 콜리전 설정이라서 개별 설정을 하더라도 해당 설정을 우선함
     // EquippedItem->SetActorEnableCollision(false);
 
-    EquippedItem->SetCustomDepth(false);
+    //EquippedItem->SetCustomDepth(false);
 
     if (UStaticMeshComponent* StaticMesh = EquippedItem->FindComponentByClass<UStaticMeshComponent>())
     {
@@ -1160,6 +1160,18 @@ void UToolbarInventoryComponent::Client_HideBackpackUI_Implementation()
     {
         UIController->HideBackpackUI();
     }
+}
+
+int32 UToolbarInventoryComponent::FindEmptySlot() const
+{
+    for (int32 i = 0; i < ItemSlots.Num(); ++i)
+    {
+        if (ItemSlots[i].ItemRowName == FName("Default") || !ItemSlots[i].bIsValid || ItemSlots[i].Quantity <= 0)
+        {
+            return i;
+        }
+    }
+    return -1;
 }
 
 bool UToolbarInventoryComponent::RemoveItemFromBackpack(int32 BackpackSlotIndex, int32 Quantity)

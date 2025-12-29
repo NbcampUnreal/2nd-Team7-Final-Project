@@ -1,4 +1,5 @@
 #include "Item/Component/DamageReceiverComponent.h"
+#include "Actor/TrainingRoom/StaticTrainingDummy.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameplayTagAssetInterface.h"
@@ -42,6 +43,15 @@ void UDamageReceiverComponent::BeginPlay()
         {
             AddGameplayTag(MaterialTag);
         }
+    }
+
+    // 기본 헤드샷 본 이름 설정 (설정되지 않았을 경우)
+    if (HeadshotBoneNames.Num() == 0)
+    {
+        HeadshotBoneNames.Add(FName("Head"));
+        HeadshotBoneNames.Add(FName("head"));
+        HeadshotBoneNames.Add(FName("Head_joint"));
+        HeadshotBoneNames.Add(FName("head_joint"));
     }
 
     // 오너 액터의 데미지 시스템과 연결
@@ -142,29 +152,54 @@ float UDamageReceiverComponent::HandleDamage(float DamageAmount, const FDamageEv
 
     if (CurrentHealth <= 0.0f)
     {
-        return 0.0f; // 이미 죽음
+        return 0.0f;
     }
-
-    // 실제 데미지 적용 전 로그
-    LOG_Item_WARNING(TEXT("[DamageReceiver] %s 데미지 받음: %.1f (현재 체력: %.1f/%.1f)"),
-        *GetOwner()->GetName(), DamageAmount, CurrentHealth, MaxHealth);
-
-    // 실제 데미지 적용
-    float OldHealth = CurrentHealth;
-    CurrentHealth = FMath::Max(0.0f, CurrentHealth - DamageAmount);
-    float ActualDamage = OldHealth - CurrentHealth;
-
-    // 데미지 적용 후 상세 로그
-    LOG_Item_WARNING(TEXT("[DamageReceiver] %s 체력 변화: %.1f → %.1f (데미지: %.1f)"),
-        *GetOwner()->GetName(), OldHealth, CurrentHealth, ActualDamage);
 
     // 히트 결과 정보 추출
     FHitResult HitInfo;
+    bool bIsHeadshot = false;
+
     if (DamageEvent.GetTypeID() == FPointDamageEvent::ClassID)
     {
         const FPointDamageEvent* PointDamage = static_cast<const FPointDamageEvent*>(&DamageEvent);
         HitInfo = PointDamage->HitInfo;
+
+        // StaticTrainingDummy인 경우 위치 기반 배율 계산
+        AStaticTrainingDummy* StaticDummy = Cast<AStaticTrainingDummy>(GetOwner());
+        if (StaticDummy)
+        {
+            FString MarkerLabel;
+            FLinearColor ZoneColor;
+            float FinalScore = StaticDummy->CalculateFinalScore(HitInfo.ImpactPoint, DamageAmount, MarkerLabel, ZoneColor);
+
+            // 배율 계산 (최종점수 / 원본데미지)
+            DamageMultiplier = FinalScore / DamageAmount;
+
+            LOG_Item_WARNING(TEXT("[DamageReceiver] StaticDummy 피격 | 마커: %s | 원본 데미지: %.1f | 배율: %.2fx | 최종 데미지: %.1f"),
+                *MarkerLabel, DamageAmount, DamageMultiplier, FinalScore);
+        }
+        // 헤드샷 판정 (스켈레탈 메시)
+        else if (HitInfo.BoneName != NAME_None)
+        {
+            for (const FName& HeadshotBone : HeadshotBoneNames)
+            {
+                if (HitInfo.BoneName == HeadshotBone ||
+                    HitInfo.BoneName.ToString().Contains(HeadshotBone.ToString()))
+                {
+                    bIsHeadshot = true;
+                    DamageMultiplier = HeadshotMultiplier;
+                    break;
+                }
+            }
+        }
     }
+
+    float FinalDamage = DamageAmount * DamageMultiplier;
+
+    // 실제 데미지 적용
+    float OldHealth = CurrentHealth;
+    CurrentHealth = FMath::Max(0.0f, CurrentHealth - FinalDamage);
+    float ActualDamage = OldHealth - CurrentHealth;
 
     // 델리게이트 호출
     OnDamageReceived.Broadcast(GetOwner(), ActualDamage, HitInfo, DamageCauser);
@@ -172,19 +207,14 @@ float UDamageReceiverComponent::HandleDamage(float DamageAmount, const FDamageEv
     // 체력 소진 확인
     if (CurrentHealth <= 0.0f)
     {
-        LOG_Item_WARNING(TEXT("[DamageReceiver] %s 체력 소진! 파괴 처리 시작"), *GetOwner()->GetName());
         HandleHealthDepleted();
     }
 
-    return ActualDamage;
+    return FinalDamage;
 }
 
 void UDamageReceiverComponent::HandleHealthDepleted()
 {
-    LOG_Item_WARNING(TEXT("[DamageReceiver] 체력 소진 처리: %s (파괴 설정: %s)"),
-        *GetOwner()->GetName(),
-        bDestroyOnHealthDepleted ? TEXT("ON") : TEXT("OFF"));
-
     // 델리게이트 호출
     OnHealthDepleted.Broadcast(GetOwner());
 
@@ -195,7 +225,6 @@ void UDamageReceiverComponent::HandleHealthDepleted()
         {
             LOG_Item_WARNING(TEXT("[DamageReceiver] %s 지연 파괴 예약: %.1f초 후"),
                 *GetOwner()->GetName(), DestructionDelay);
-            // 지연 후 파괴
             GetWorld()->GetTimerManager().SetTimer(
                 DestructionTimerHandle,
                 this,
@@ -207,7 +236,6 @@ void UDamageReceiverComponent::HandleHealthDepleted()
         else
         {
             LOG_Item_WARNING(TEXT("[DamageReceiver] %s 즉시 파괴 실행"), *GetOwner()->GetName());
-            // 즉시 파괴
             ExecuteDestruction();
         }
     }

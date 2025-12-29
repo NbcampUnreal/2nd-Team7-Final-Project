@@ -26,6 +26,9 @@
 #include "Item/EquipmentItem/EquipmentItemBase.h"
 #include "Item/EquipmentItem/BackpackItem.h"
 #include "Item/EquipmentItem/WalkieTalkie.h"
+#include "Item/Component/WeaponStatsComponent.h"
+#include "Actor/TrainingRoom/TrainingConsole.h"
+#include "Actor/TrainingRoom/TrainingRoomManager.h"
 #include "UI/Manager/LCUIManager.h"
 #include "LastCanary.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -178,6 +181,7 @@ ABaseCharacter::ABaseCharacter()
 	KickHitBox->SetCollisionResponseToAllChannels(ECR_Ignore);
 	KickHitBox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 
+	WeaponStatsComponent = CreateDefaultSubobject<UWeaponStatsComponent>(TEXT("WeaponStatsComponent"));
 }
 
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
@@ -2088,32 +2092,65 @@ void ABaseCharacter::Handle_Interact(const FInputActionValue& ActionValue)
 		return;
 	}
 
-	if (CurrentFocusedActor->Implements<UInteractableInterface>())
+	if (!CurrentFocusedActor->GetClass()->ImplementsInterface(UInteractableInterface::StaticClass()))
 	{
-		AActor* actor = CurrentFocusedActor;
-		if (!IsValid(actor))
-		{
-			return;
-		}
-		APlayerController* PC = Cast<APlayerController>(GetController());
-		if (PC)
-		{
-			//CancelInteraction();
-			//IInteractableInterface::Execute_Interact(CurrentFocusedActor, PC);
-			LOG_Char_WARNING(TEXT("Handle_Interact: Called Interact on %s"), *actor->GetName());
-			InteractAfterPlayMontage(actor);
-		}
-	}
-
-	// 테스트를 위한 임시 코드
-	if (AItemContainer* Container = Cast<AItemContainer>(CurrentFocusedActor))
-	{
-		if (ContainerInteractionComponent)
-		{
-			ContainerInteractionComponent->Server_InteractWithContainer(Container);
-		}
 		return;
 	}
+
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!PC)
+	{
+		return;
+	}
+
+	CancelInteraction();
+
+	// 서버에서는 상호작용이 안되는 문제 때문에 추가한 부분
+	// 현재 InteractAfterPlayMontage와 중복되어 실행되는 문제 존재하기 때문에 근본적인 해결책 필요
+	if (HasAuthority())
+	{
+		IInteractableInterface::Execute_Interact(CurrentFocusedActor, PC);
+	}
+	else
+	{
+		ServerInteractWithActor(CurrentFocusedActor);
+	}
+	//// 임시로 중복안되게 한 부분(해결 시 제거 필요)
+	//if (CurrentFocusedActor->IsA<ATrainingConsole>())
+	//{
+	//	return;
+	//}
+
+	LOG_Char_WARNING(TEXT("Handle_Interact: Called Interact on %s"), *CurrentFocusedActor->GetName());
+
+	InteractAfterPlayMontage(CurrentFocusedActor);
+
+	//if (CurrentFocusedActor->Implements<UInteractableInterface>())
+	//{
+	//	AActor* actor = CurrentFocusedActor;
+	//	if (!IsValid(actor))
+	//	{
+	//		return;
+	//	}
+	//	APlayerController* PC = Cast<APlayerController>(GetController());
+	//	if (PC)
+	//	{
+	//		//CancelInteraction();
+	//		//IInteractableInterface::Execute_Interact(CurrentFocusedActor, PC);
+	//		LOG_Char_WARNING(TEXT("Handle_Interact: Called Interact on %s"), *actor->GetName());
+	//		InteractAfterPlayMontage(actor);
+	//	}
+	//}
+
+	//// 테스트를 위한 임시 코드
+	//if (AItemContainer* Container = Cast<AItemContainer>(CurrentFocusedActor))
+	//{
+	//	if (ContainerInteractionComponent)
+	//	{
+	//		ContainerInteractionComponent->Server_InteractWithContainer(Container);
+	//	}
+	//	return;
+	//}
 }
 
 void ABaseCharacter::InteractAfterPlayMontage(AActor* TargetActor)
@@ -4222,6 +4259,64 @@ void ABaseCharacter::UpdateNameWidget()
 void ABaseCharacter::Server_UpdateNameWidget_Implementation()
 {
 	ApplyNameToWidget();
+}
+
+void ABaseCharacter::ServerInteractWithActor_Implementation(AActor* InteractableActor)
+{
+	if (!InteractableActor)
+	{
+		return;
+	}
+
+	// Authority 체크 (서버에서만 실행)
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	// IInteractableInterface 구현 여부 확인
+	if (!InteractableActor->GetClass()->ImplementsInterface(UInteractableInterface::StaticClass()))
+	{
+		return;
+	}
+
+	// PlayerController 가져오기
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!PC)
+	{
+		return;
+	}
+
+	// 서버에서 Interact 실행
+	IInteractableInterface::Execute_Interact(InteractableActor, PC);
+
+	LOG_Char_WARNING(TEXT("ServerInteractWithActor: %s interacted with %s"),
+		*GetName(), *InteractableActor->GetName());
+}
+
+void ABaseCharacter::ServerInteractWithConsole_Implementation(ATrainingConsole* Console, uint8 Action)
+{
+	if (!Console)
+	{
+		LOG_Char_WARNING(TEXT("[BaseCharacter] ServerInteractWithConsole: Console이 NULL"));
+		return;
+	}
+
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!PC)
+	{
+		LOG_Char_WARNING(TEXT("[BaseCharacter] ServerInteractWithConsole: PlayerController가 NULL"));
+		return;
+	}
+
+	LOG_Char_WARNING(TEXT("[BaseCharacter] ServerInteractWithConsole: Action %d로 Console 상호작용 - Console: %s, PC: %s"),
+		Action, *Console->GetName(), *PC->GetName());
+
+	// 서버에서 PendingAction 설정
+	Console->PendingAction = Action;
+
+	// Interact 호출
+	IInteractableInterface::Execute_Interact(Console, PC);
 }
 
 void ABaseCharacter::ApplyNameToWidget()

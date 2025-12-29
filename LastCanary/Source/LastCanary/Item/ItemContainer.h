@@ -22,11 +22,23 @@ struct FContainerItemData
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Container")
     float Durability = 100.0f;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Container")
+    int32 CurrentAmmo = -1;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Container")
+    int32 FireMode = 0;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Container")
+    bool bWasAutoFiring = false;
+
     FContainerItemData()
     {
         ItemRowName = FName("Default");
         Quantity = 0;
         Durability = 100.0f;
+        CurrentAmmo = -1;
+        FireMode = 0;
+        bWasAutoFiring = false;
     }
 
     bool IsValid() const
@@ -37,6 +49,8 @@ struct FContainerItemData
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnContainerOpened, APlayerController*, Interactor);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnContainerClosed, APlayerController*, Interactor);
+
+struct FBaseItemSlotData;
 
 UCLASS()
 class LASTCANARY_API AItemContainer : public AActor, public IInteractableInterface
@@ -129,7 +143,7 @@ public:
 public:
     /** 컨테이너에 아이템 추가 */
     UFUNCTION(BlueprintCallable, Category = "Container|Operations")
-    bool TryAddItemToContainer(FName ItemRowName, int32 Quantity, int32 SlotIndex = -1);
+    bool TryAddItemToContainer(const FContainerItemData& ItemData, int32 SlotIndex = -1);
 
     /** 컨테이너에서 아이템 제거 */
     UFUNCTION(BlueprintCallable, Category = "Container|Operations")
@@ -166,6 +180,10 @@ public:
 
     void UpdateContainerUI();
 
+    UFUNCTION(Client, Reliable)
+    void Client_ShowContainerUI(APlayerController* Player);
+    void Client_ShowContainerUI_Implementation(APlayerController* Player);
+
     //-----------------------------------------------------
     // 이벤트 델리게이트
     //-----------------------------------------------------
@@ -199,4 +217,12 @@ protected:
 
     /** 상호작용 박스 크기 설정 */
     void SetupInteractionSphere();
+
+
+    // TODO : 데이터 변환 헬퍼 함수는 아이템의 데이터가 추가되거나 제거될 시 문제가 발생할 확률이 높으니 인터페이스나 컴포넌트로 통일하여 부착하는게 더 좋을것 같음
+    // FBaseItemSlotData를 FContainerItemData로 변환
+    FContainerItemData ConvertToContainerData(const FBaseItemSlotData& SlotData, int32 Quantity) const;
+
+    // FContainerItemData를 FBaseItemSlotData로 변환
+    void ApplyContainerDataToSlot(FBaseItemSlotData& OutSlotData, const FContainerItemData& ContainerData) const;
 };

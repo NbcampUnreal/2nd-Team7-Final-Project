@@ -60,10 +60,6 @@ public:
     UFUNCTION(BlueprintPure, Category = "Mesh")
     USkeletalMeshComponent* GetSkeletalMeshComponent() const;
 
-    /** CustomDepth 렌더링 활성화/비활성화 */
-    UFUNCTION(BlueprintCallable, Category = "Item|Rendering")
-    void SetCustomDepth(bool bEnabled);
-
 protected:
     /** 메시 타입 설정 및 적용 */
     void SetupMeshComponents();
@@ -72,7 +68,7 @@ protected:
     void SetMeshComponentActive(UPrimitiveComponent* ActiveComponent, UPrimitiveComponent* InactiveComponent);
 
     /** 스캐너 효과 적용을 위한 스텐실 설정 */
-    void SetStencilForAllMeshes(bool bEnabled = true, int32 StencilValue = 3);
+    void EnableStencilForAllMeshes(int32 StencilValue);
 
 
     //-----------------------------------------------------
@@ -96,7 +92,7 @@ public:
     //-----------------------------------------------------
 
     /** 아이템이 장착되어 있는지 여부 */
-    UPROPERTY(ReplicatedUsing = OnRepIsEquipped, BlueprintReadWrite, Category = "Item|State")
+    UPROPERTY(Replicated, BlueprintReadWrite, Category = "Item|State")
     bool bIsEquipped;
 
     /** 현재 아이템이 사용 중인지 여부 */
@@ -118,10 +114,6 @@ public:
     /** Durability가 복제될 때 호출되는 함수 */
     UFUNCTION()
     virtual void OnRepDurability();
-
-    /** bIsEquipped가 복제될 때 호출되는 함수 */
-    UFUNCTION()
-    virtual void OnRepIsEquipped();
 
     /** 아이템 사용 상태 설정 */
     UFUNCTION(BlueprintCallable, Category = "Item|Usage")
@@ -263,55 +255,55 @@ protected:
     void HandleToggleSound();
     void HandleHoldSoundStart();
 
-//    //-----------------------------------------------------
-//    // 하이라이트 시스템
-//    //-----------------------------------------------------
-//
-//    /** 하이라이트 머티리얼 인스턴스(개별 적용 용도) */
-//    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Highlight")
-//    UMaterialInterface* HighlightMaterial;
-//
-//    /** 하이라이트 상호작용 범위 */
-//    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Highlight")
-//    float HighlightRadius = 200.0f;
-//
-//    /** 현재 하이라이트 상태 */
-//    UPROPERTY(BlueprintReadOnly, Category = "Highlight")
-//    bool bIsHighlighted = false;
-//
-//    /** 하이라이트 기능 활성화 여부 */
-//    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Highlight")
-//    bool bEnableHighlight = true;
-//
-//    //-----------------------------------------------------
-//    // 하이라이트 함수들
-//    //-----------------------------------------------------
-//protected:
-//    /** 오버랩 이벤트 함수들 */
-//    UFUNCTION()
-//    void OnHighlightSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent,
-//        AActor* OtherActor,
-//        UPrimitiveComponent* OtherComp,
-//        int32 OtherBodyIndex,
-//        bool bFromSweep,
-//        const FHitResult& SweepResult);
-//
-//    UFUNCTION()
-//    void OnHighlightSphereEndOverlap(UPrimitiveComponent* OverlappedComponent,
-//        AActor* OtherActor,
-//        UPrimitiveComponent* OtherComp,
-//        int32 OtherBodyIndex);
-//
-//    /** 하이라이트 효과 적용/해제 함수 */
-//    void ApplyHighlight();
-//    void RemoveHighlight();
-//
-//    /** 하이라이트 시스템 초기화 */
-//    void SetupHighlightSystem();
-//
-//    /** 하이라이트 시스템 정리 */
-//    void CleanupHighlightSystem();
-//
-//    /** 전역 하이라이트 머티리얼 가져오기 */
-//    UMaterialInterface* GetDefaultHighlightMaterial() const;
+    //-----------------------------------------------------
+    // 하이라이트 시스템
+    //-----------------------------------------------------
+
+    /** 하이라이트 머티리얼 인스턴스(개별 적용 용도) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Highlight")
+    UMaterialInterface* HighlightMaterial;
+
+    /** 하이라이트 상호작용 범위 */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Highlight")
+    float HighlightRadius = 200.0f;
+
+    /** 현재 하이라이트 상태 */
+    UPROPERTY(BlueprintReadOnly, Category = "Highlight")
+    bool bIsHighlighted = false;
+
+    /** 하이라이트 기능 활성화 여부 */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Highlight")
+    bool bEnableHighlight = true;
+
+    //-----------------------------------------------------
+    // 하이라이트 함수들
+    //-----------------------------------------------------
+protected:
+    /** 오버랩 이벤트 함수들 */
+    UFUNCTION()
+    void OnHighlightSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent,
+        AActor* OtherActor,
+        UPrimitiveComponent* OtherComp,
+        int32 OtherBodyIndex,
+        bool bFromSweep,
+        const FHitResult& SweepResult);
+
+    UFUNCTION()
+    void OnHighlightSphereEndOverlap(UPrimitiveComponent* OverlappedComponent,
+        AActor* OtherActor,
+        UPrimitiveComponent* OtherComp,
+        int32 OtherBodyIndex);
+
+    /** 하이라이트 효과 적용/해제 함수 */
+    void ApplyHighlight();
+    void RemoveHighlight();
+
+    /** 하이라이트 시스템 초기화 */
+    void SetupHighlightSystem();
+
+    /** 하이라이트 시스템 정리 */
+    void CleanupHighlightSystem();
+
+    /** 전역 하이라이트 머티리얼 가져오기 */
+    UMaterialInterface* GetDefaultHighlightMaterial() const;
 };

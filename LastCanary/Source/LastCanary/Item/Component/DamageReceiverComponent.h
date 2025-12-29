@@ -41,6 +41,8 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Health", meta = (EditCondition = "bDestroyOnHealthDepleted"))
     float DestructionDelay = 0.0f;
 
+    float DamageMultiplier = 1.0f;
+
     //-----------------------------------------------------
     // 게임플레이 태그 설정
     //-----------------------------------------------------
@@ -146,4 +148,17 @@ public:
     /** 데미지 처리 함수 (오너 액터의 TakeDamage에서 호출) */
     UFUNCTION(BlueprintCallable, Category = "Damage")
     float HandleDamage(float DamageAmount, const FDamageEvent& DamageEvent, AController* EventInstigator, AActor* DamageCauser);
+
+    //-----------------------------------------------------
+    // 헤드샷 설정
+    //-----------------------------------------------------
+
+public:
+    /** 헤드샷 데미지 배율 */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Damage", meta = (ClampMin = "1.0", ClampMax = "10.0"))
+    float HeadshotMultiplier = 2.0f;
+
+    /** 헤드샷으로 인식할 본 이름들 */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Damage")
+    TArray<FName> HeadshotBoneNames;
 };

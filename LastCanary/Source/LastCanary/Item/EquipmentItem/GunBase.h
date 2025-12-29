@@ -8,15 +8,11 @@
 #include "Sound/SoundBase.h"
 #include "GunBase.generated.h"
 
-/**
- * 총기 기본 클래스
- * 라인트레이스 기반 발사 시스템과 탄약 관리를 구현합니다.
- */
-
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAnimationComplete, UAnimMontage*, CompletedMontage);
 
 class UShellEjectionComponent;
 class ALCBaseGimmick;
+class UWeaponStatsComponent;
 
 UCLASS()
 class LASTCANARY_API AGunBase : public AEquipmentItemBase
@@ -502,4 +498,15 @@ protected:
 
     /** 스포트라이트 초기 설정 */
     void InitializeSpotlight();
+
+    //-----------------------------------------------------
+    // 총기 사용 데이터
+    //-----------------------------------------------------
+
+    /** 캐시된 WeaponStatsComponent */
+    UPROPERTY()
+    UWeaponStatsComponent* CachedWeaponStatsComp = nullptr;
+
+    /** WeaponStatsComponent 가져오기 */
+    UWeaponStatsComponent* GetWeaponStatsComponent();
 };

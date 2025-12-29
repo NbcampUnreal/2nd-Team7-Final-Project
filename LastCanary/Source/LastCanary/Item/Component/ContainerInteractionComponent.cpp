@@ -323,47 +323,22 @@ bool UContainerInteractionComponent::ValidateContainerInteraction(AItemContainer
 
 bool UContainerInteractionComponent::ValidateItemTransfer(AItemContainer* Container, int32 SourceSlot, int32 TargetSlot, int32 Quantity, bool bToContainer) const
 {
-    if (!ValidateContainerInteraction(Container))
+    if (!Container)
     {
+        LOG_Item_WARNING(TEXT("[ValidateItemTransfer] Container가 null"));
         return false;
     }
 
-    if (!ValidateItemMove(SourceSlot, TargetSlot, Quantity))
+    if (!CachedInventoryComponent)
     {
-        LOG_Item_WARNING(TEXT("[ValidateItemTransfer] 기본 아이템 이동 검증 실패"));
+        LOG_Item_WARNING(TEXT("[ValidateItemTransfer] 인벤토리 컴포넌트가 null"));
         return false;
     }
 
-    // 추가 검증 로직
-    if (bToContainer)
+    if (Quantity <= 0)
     {
-        // 플레이어 → 컨테이너
-        if (!CachedInventoryComponent->ItemSlots.IsValidIndex(SourceSlot))
-        {
-            LOG_Item_WARNING(TEXT("[ValidateItemTransfer] 플레이어 슬롯 인덱스가 유효하지 않음: %d"), SourceSlot);
-            return false;
-        }
-
-        if (TargetSlot >= Container->GetMaxSlots())
-        {
-            LOG_Item_WARNING(TEXT("[ValidateItemTransfer] 컨테이너 슬롯 인덱스가 유효하지 않음: %d"), TargetSlot);
-            return false;
-        }
-    }
-    else
-    {
-        // 컨테이너 → 플레이어
-        if (SourceSlot >= Container->GetMaxSlots())
-        {
-            LOG_Item_WARNING(TEXT("[ValidateItemTransfer] 컨테이너 슬롯 인덱스가 유효하지 않음: %d"), SourceSlot);
-            return false;
-        }
-
-        if (!CachedInventoryComponent->ItemSlots.IsValidIndex(TargetSlot))
-        {
-            LOG_Item_WARNING(TEXT("[ValidateItemTransfer] 플레이어 슬롯 인덱스가 유효하지 않음: %d"), TargetSlot);
-            return false;
-        }
+        LOG_Item_WARNING(TEXT("[ValidateItemTransfer] 수량이 0 이하: %d"), Quantity);
+        return false;
     }
 
     return true;

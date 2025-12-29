@@ -2,6 +2,7 @@
 #include "Item/Component/ContainerInteractionComponent.h"
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "Character/BaseCharacter.h"
+#include "DataType/BaseItemSlotData.h"
 #include "UI/Manager/LCUIManager.h"
 #include "UI/UIElement/InventoryMainWidget.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
@@ -56,15 +57,14 @@ void AItemContainer::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 
 void AItemContainer::Interact_Implementation(APlayerController* Interactor)
 {
-    if (!Interactor || !HasAuthority())
+    if (!Interactor)
     {
         return;
     }
 
-    Server_OpenContainer(Interactor);
-
-    LOG_Item_WARNING(TEXT("[ItemContainer] 플레이어가 상호작용 범위를 벗어남: %s"),
-        *Interactor->GetName());
+    OnContainerOpened.Broadcast(Interactor);
+    Client_ShowContainerUI(Interactor);
+    LOG_Item_WARNING(TEXT("[ItemContainer] 컨테이너 열림: %s"), *Interactor->GetName());
 }
 
 FString AItemContainer::GetInteractMessage_Implementation() const
@@ -120,14 +120,14 @@ void AItemContainer::InitializeContainer()
     }
 }
 
-bool AItemContainer::TryAddItemToContainer(FName ItemRowName, int32 Quantity, int32 SlotIndex)
+bool AItemContainer::TryAddItemToContainer(const FContainerItemData& ItemData, int32 SlotIndex)
 {
     if (!HasAuthority())
     {
         return false;
     }
 
-    if (ItemRowName == FName("Default") || Quantity <= 0)
+    if (ItemData.ItemRowName == FName("Default") || ItemData.Quantity <= 0)
     {
         return false;
     }
@@ -139,40 +139,21 @@ bool AItemContainer::TryAddItemToContainer(FName ItemRowName, int32 Quantity, in
 
         if (!Slot.IsValid())
         {
-            Slot.ItemRowName = ItemRowName;
-            Slot.Quantity = Quantity;
-            Slot.Durability = 100.0f;
+            Slot = ItemData;
             return true;
         }
-        else if (Slot.ItemRowName == ItemRowName)
+        else if (Slot.ItemRowName == ItemData.ItemRowName)
         {
-            Slot.Quantity += Quantity;
+            Slot.Quantity += ItemData.Quantity;
             return true;
         }
     }
 
-    // 빈 슬롯이나 스택 가능한 슬롯 찾기
-    int32 TargetSlot = FindStackableSlot(ItemRowName);
-    if (TargetSlot == -1)
-    {
-        TargetSlot = FindEmptySlot();
-    }
-
+    // 빈 슬롯 탐색
+    int32 TargetSlot = FindEmptySlot();
     if (TargetSlot != -1)
     {
-        FContainerItemData& Slot = ContainerItems[TargetSlot];
-
-        if (!Slot.IsValid())
-        {
-            Slot.ItemRowName = ItemRowName;
-            Slot.Quantity = Quantity;
-            Slot.Durability = 100.0f;
-        }
-        else
-        {
-            Slot.Quantity += Quantity;
-        }
-
+        ContainerItems[TargetSlot] = ItemData;
         return true;
     }
 
@@ -230,13 +211,30 @@ void AItemContainer::Server_MoveItemToContainer_Implementation(APlayerController
     {
         return;
     }
-
-    // 컨테이너에 아이템 추가 시도
-    if (TryAddItemToContainer(PlayerSlot.ItemRowName, Quantity, ContainerSlotIndex))
+    
+    // 장착된 아이템인 경우 먼저 장착 해제
+    if (PlayerSlot.bIsEquipped)
     {
-        // 플레이어 인벤토리에서 아이템 제거
-        PlayerSlot.Quantity -= Quantity;
+        // 현재 장착 슬롯이 이동하려는 슬롯인지 확인
+        int32 CurrentEquippedSlot = PlayerInventory->GetCurrentEquippedSlotIndex();
+        if (CurrentEquippedSlot == PlayerSlotIndex)
+        {
+            // 장착 해제
+            PlayerInventory->UnequipCurrentItem();
 
+            LOG_Item_WARNING(TEXT("[ItemContainer] 장착된 아이템 해제: %s"),
+                *PlayerSlot.ItemRowName.ToString());
+        }
+
+        // 장착 플래그 초기화
+        PlayerSlot.bIsEquipped = false;
+    }
+
+    FContainerItemData ItemToAdd = ConvertToContainerData(PlayerSlot, Quantity);
+
+    if (TryAddItemToContainer(ItemToAdd, ContainerSlotIndex))
+    {
+        PlayerSlot.Quantity -= Quantity;
         if (PlayerSlot.Quantity <= 0)
         {
             PlayerInventory->SetSlotToDefault(PlayerSlotIndex);
@@ -244,14 +242,7 @@ void AItemContainer::Server_MoveItemToContainer_Implementation(APlayerController
 
         PlayerInventory->UpdateWeight();
         PlayerInventory->OnInventoryUpdated.Broadcast();
-
-        if (HasAuthority())
-        {
-            UpdateContainerUI();
-        }
-
-        LOG_Item_WARNING(TEXT("[ItemContainer] 플레이어 -> 컨테이너 이동 성공: %s x%d"),
-            *PlayerSlot.ItemRowName.ToString(), Quantity);
+        UpdateContainerUI();
     }
 }
 
@@ -281,25 +272,30 @@ void AItemContainer::Server_MoveItemToPlayer_Implementation(APlayerController* P
         return;
     }
 
-    // 플레이어 인벤토리에 아이템 추가 시도
-    if (PlayerInventory->TryAddItemSlot(ContainerSlot.ItemRowName, Quantity))
+    // 빈 슬롯 찾기
+    int32 TargetSlot = PlayerInventory->FindEmptySlot();
+    if (TargetSlot == -1)
     {
-        // 컨테이너에서 아이템 제거
-        ContainerSlot.Quantity -= Quantity;
-
-        if (ContainerSlot.Quantity <= 0)
-        {
-            ContainerSlot = FContainerItemData();
-        }
-
-        if (HasAuthority())
-        {
-            UpdateContainerUI();
-        }
-
-        LOG_Item_WARNING(TEXT("[ItemContainer] 컨테이너 -> 플레이어 이동 성공: %s x%d"),
-            *ContainerSlot.ItemRowName.ToString(), Quantity);
+        return;
     }
+
+    // 구조체 정보를 슬롯에 적용
+    FBaseItemSlotData NewSlot;
+    ApplyContainerDataToSlot(NewSlot, ContainerSlot);
+    NewSlot.Quantity = Quantity;  // 이동할 수량만큼만
+
+    PlayerInventory->ItemSlots[TargetSlot] = NewSlot;
+
+    // 컨테이너에서 제거
+    ContainerSlot.Quantity -= Quantity;
+    if (ContainerSlot.Quantity <= 0)
+    {
+        ContainerSlot = FContainerItemData();
+    }
+
+    PlayerInventory->UpdateWeight();
+    PlayerInventory->OnInventoryUpdated.Broadcast();
+    UpdateContainerUI();
 }
 
 void AItemContainer::Server_OpenContainer_Implementation(APlayerController* Player)
@@ -344,6 +340,33 @@ void AItemContainer::UpdateContainerUI()
                             MainWidget->ShowContainerUI(this, ContainerItems);
                             LOG_Item_WARNING(TEXT("[ItemContainer] 컨테이너 UI 업데이트"));
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void AItemContainer::Client_ShowContainerUI_Implementation(APlayerController* Player)
+{
+    if (!Player || !Player->IsLocalController())
+    {
+        return;
+    }
+
+    // 클라이언트에서 UI 표시
+    if (UWorld* World = GetWorld())
+    {
+        if (UGameInstance* GI = World->GetGameInstance())
+        {
+            if (ULCGameInstanceSubsystem* Subsystem = GI->GetSubsystem<ULCGameInstanceSubsystem>())
+            {
+                if (ULCUIManager* UIManager = Subsystem->GetUIManager())
+                {
+                    if (UInventoryMainWidget* MainWidget = UIManager->GetInventoryMainWidget())
+                    {
+                        MainWidget->ShowContainerUI(this, ContainerItems);
+                        LOG_Item_WARNING(TEXT("[ItemContainer] 클라이언트 UI 열림"));
                     }
                 }
             }
@@ -407,4 +430,27 @@ void AItemContainer::SetupInteractionSphere()
 
         LOG_Item_WARNING(TEXT("[ItemContainer] 상호작용 박스 크기 설정: %.1f"), InteractionDistance);
     }
+}
+
+FContainerItemData AItemContainer::ConvertToContainerData(const FBaseItemSlotData& SlotData, int32 Quantity) const
+{
+    FContainerItemData Result;
+    Result.ItemRowName = SlotData.ItemRowName;
+    Result.Quantity = Quantity;
+    Result.Durability = SlotData.Durability;
+    Result.CurrentAmmo = SlotData.CurrentAmmo;
+    Result.FireMode = SlotData.FireMode;
+    Result.bWasAutoFiring = SlotData.bWasAutoFiring;
+    return Result;
+}
+
+void AItemContainer::ApplyContainerDataToSlot(FBaseItemSlotData& OutSlotData, const FContainerItemData& ContainerData) const
+{
+    OutSlotData.ItemRowName = ContainerData.ItemRowName;
+    OutSlotData.Quantity = ContainerData.Quantity;
+    OutSlotData.Durability = ContainerData.Durability;
+    OutSlotData.CurrentAmmo = ContainerData.CurrentAmmo;
+    OutSlotData.FireMode = ContainerData.FireMode;
+    OutSlotData.bWasAutoFiring = ContainerData.bWasAutoFiring;
+    OutSlotData.bIsValid = ContainerData.IsValid();
 }

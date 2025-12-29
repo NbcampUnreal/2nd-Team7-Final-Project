@@ -271,4 +271,8 @@ public:
     UFUNCTION(Client, Reliable, Category = "Backpack UI")
     void Client_HideBackpackUI();
     void Client_HideBackpackUI_Implementation();
+
+    /** 빈 슬롯 인덱스 찾기 */
+    UFUNCTION(BlueprintPure, Category = "Inventory")
+    int32 FindEmptySlot() const;
 };

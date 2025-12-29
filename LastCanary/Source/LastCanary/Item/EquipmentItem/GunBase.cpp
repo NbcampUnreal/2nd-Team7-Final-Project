@@ -2,6 +2,7 @@
 #include "Item/ItemBase.h"
 #include "Item/ShellEjectionComponent.h"
 #include "Item/Component/DamageReceiverComponent.h"
+#include "Item/Component/WeaponStatsComponent.h"
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "Inventory/InventoryUIController.h"
 #include "Perception/AISenseConfig_Hearing.h"
@@ -240,6 +241,15 @@ void AGunBase::HandleFire()
         "CaveMonster"
     );
 
+    // 발사 기록
+    UWeaponStatsComponent* StatsComp = GetWeaponStatsComponent();
+    FGameplayTag WeaponTag = ItemData.ItemType;
+
+    if (StatsComp && WeaponTag.IsValid())
+    {
+        StatsComp->RecordShot(WeaponTag);
+    }
+
     // 최근 히트 결과 초기화
     RecentHits.Empty();
 
@@ -315,7 +325,9 @@ void AGunBase::ProcessHit(const FHitResult& HitResult, const FVector& StartLocat
     AActor* HitActor = HitResult.GetActor();
 
     if (!IsValid(HitActor) || HitActor == this || HitActor == GetOwner())
+    {
         return;
+    }
 
     // 기믹 파괴 로직
     if (ALCBaseGimmick* Gimmick = Cast<ALCBaseGimmick>(HitActor))
@@ -330,36 +342,51 @@ void AGunBase::ProcessHit(const FHitResult& HitResult, const FVector& StartLocat
         }
     }
 
+    UWeaponStatsComponent* StatsComp = GetWeaponStatsComponent();
+    FGameplayTag WeaponTag = ItemData.ItemType;
+
+    IGameplayTagAssetInterface* TagInterface = Cast<IGameplayTagAssetInterface>(HitActor);
+    bool bIsValidTarget = false;
+
+    if (TagInterface)
+    {
+        static const FGameplayTag EnemyTag = FGameplayTag::RequestGameplayTag(TEXT("Character.Enemy"));
+        static const FGameplayTag TrainingDummyTag = FGameplayTag::RequestGameplayTag(TEXT("Training.Dummy"));
+
+        bIsValidTarget = TagInterface->HasMatchingGameplayTag(EnemyTag) ||
+            TagInterface->HasMatchingGameplayTag(TrainingDummyTag);
+    }
+
     if (UDamageReceiverComponent* DamageReceiver = HitActor->FindComponentByClass<UDamageReceiverComponent>())
     {
-        float AppliedDamage = BaseDamage;
-        LOG_Item_WARNING(TEXT("ProcessHit: DamageReceiverComponent 발견 - %.1f 데미지 적용: %s"),
-            AppliedDamage, *HitActor->GetName());
+        FPointDamageEvent DamageEvent(BaseDamage, HitResult, (HitResult.ImpactPoint - StartLocation).GetSafeNormal(), nullptr);
 
-        FPointDamageEvent DamageEvent(AppliedDamage, HitResult, (HitResult.ImpactPoint - StartLocation).GetSafeNormal(), nullptr);
-        float ActualDamage = DamageReceiver->HandleDamage(AppliedDamage, DamageEvent, GetInstigatorController(), this);
-        LOG_Item_WARNING(TEXT("ProcessHit: HandleDamage 직접 호출 → 실제 데미지: %.1f"), ActualDamage);
+        float ActualDamage = DamageReceiver->HandleDamage(BaseDamage, DamageEvent, GetInstigatorController(), this);
 
-        // 피격 사운드는 컴포넌트에서 처리
+        if (bIsValidTarget && StatsComp && WeaponTag.IsValid())
+        {
+            bool bWasKill = (DamageReceiver->GetCurrentHealth() <= 0.0f);
+            StatsComp->RecordHit(WeaponTag, ActualDamage, bWasKill);
+
+            LOG_Item_WARNING(TEXT("ProcessHit: RecordHit - 데미지: %.1f, Kill: %s, Target: %s"),
+                ActualDamage, bWasKill ? TEXT("Yes") : TEXT("No"), *HitActor->GetName());
+        }
+        else
+        {
+            LOG_Item_WARNING(TEXT("ProcessHit: 유효하지 않은 타겟 - 명중 기록 안 함: %s"), *HitActor->GetName());
+        }
+
+        // 피격 사운드
         USoundBase* ImpactSoundToPlay = GetImpactSoundForComponent(DamageReceiver);
         Multicast_PlayImpactSoundAtLocation(ImpactSoundToPlay, HitResult.ImpactPoint);
         return;
     }
 
-    //  적 공격 로직
-    static const FGameplayTag EnemyTag = FGameplayTag::RequestGameplayTag(TEXT("Character.Enemy"));
-    IGameplayTagAssetInterface* TagInterface = Cast<IGameplayTagAssetInterface>(HitActor);
-    if (TagInterface && TagInterface->HasMatchingGameplayTag(EnemyTag))
+    if (bIsValidTarget)
     {
-        float AppliedDamage = BaseDamage;
-        LOG_Item_WARNING(TEXT("ProcessHit: Applying %.1f damage to enemy %s"), AppliedDamage, *HitActor->GetName());
-
-        FPointDamageEvent DamageEvent(AppliedDamage, HitResult, (HitResult.ImpactPoint - StartLocation).GetSafeNormal(), nullptr);
-        HitActor->TakeDamage(AppliedDamage, DamageEvent, GetInstigatorController(), this);
-    }
-    else
-    {
-        LOG_Item_WARNING(TEXT("ProcessHit: Hit non-enemy actor %s. No damage applied"), *HitActor->GetName());
+        FPointDamageEvent DamageEvent(BaseDamage, HitResult,
+            (HitResult.ImpactPoint - StartLocation).GetSafeNormal(), nullptr);
+        HitActor->TakeDamage(BaseDamage, DamageEvent, GetInstigatorController(), this);
     }
 
     USoundBase* ImpactSoundToPlay = GetImpactSoundForTarget(HitActor);
@@ -1488,4 +1515,24 @@ void AGunBase::InitializeSpotlight()
     // 설정 적용
     ApplySpotlightSettings();
     SpotlightComponent->SetHiddenInGame(!bIsSpotlightActive);
+}
+
+UWeaponStatsComponent* AGunBase::GetWeaponStatsComponent()
+{
+    if (!CachedWeaponStatsComp)
+    {
+        if (AActor* OwnerActor = GetOwner())
+        {
+            CachedWeaponStatsComp = OwnerActor->FindComponentByClass<UWeaponStatsComponent>();
+            if (CachedWeaponStatsComp)
+            {
+                LOG_Item_WARNING(TEXT("[GunBase] WeaponStatsComponent 캐싱 완료"));
+            }
+            else
+            {
+                LOG_Item_WARNING(TEXT("[GunBase] 오너에게 WeaponStatsComponent가 없음"));
+            }
+        }
+    }
+    return CachedWeaponStatsComp;
 }
