@@ -85,6 +85,7 @@ private:
 
     /** 아이템에 기본 설정 적용 */
     void ApplyItemSettings(AItemBase* Item, FName ItemRowName, int32 Quantity, float Durability);
+    void ApplyItemSettings(AItemBase* Item, const FBaseItemSlotData& SlotData);
 
     /** 물리 시뮬레이션 활성화 */
     void EnablePhysicsSimulation(AItemBase* Item);

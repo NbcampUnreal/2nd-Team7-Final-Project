@@ -4,6 +4,7 @@
 #include "Inventory/InventoryConfig.h"
 #include "Inventory/InventoryDropSystem.h"
 #include "Item/ItemSpawnerComponent.h"
+#include "Item/NoteItem.h"
 #include "DataTable/ItemDataRow.h"
 #include "LastCanary.h"
 
@@ -291,6 +292,82 @@ bool UBackpackManager::UpdateBackpackSlots(const TArray<FBackpackSlotData>& NewS
     OwnerInventory->ItemSlots[CurrentBackpackSlotIndex].BackpackSlots = NewSlots;
     OwnerInventory->OnInventoryUpdated.Broadcast();
     return true;
+}
+
+bool UBackpackManager::UseNoteItem(int32 BackpackSlotIndex)
+{
+    UE_LOG(LogTemp, Warning, TEXT("[BackpackManager] UseNoteItemFromBackpack 시작 - SlotIndex: %d"), BackpackSlotIndex);
+
+    if (!ValidateBackpackSlot(BackpackSlotIndex))
+    {
+        UE_LOG(LogTemp, Error, TEXT("[BackpackManager] 백팩 슬롯 검증 실패 - SlotIndex: %d"), BackpackSlotIndex);
+        return false;
+    }
+
+    const FBaseItemSlotData& BackpackOwnerSlot = OwnerInventory->ItemSlots[CurrentBackpackSlotIndex];
+    const FBackpackSlotData& BackpackSlot = BackpackOwnerSlot.BackpackSlots[BackpackSlotIndex];
+
+    UE_LOG(LogTemp, Warning, TEXT("[BackpackManager] 아이템 확인 - ItemRowName: %s"), *BackpackSlot.ItemRowName.ToString());
+
+    if (!IsNoteItem(BackpackSlot.ItemRowName))
+    {
+        UE_LOG(LogTemp, Error, TEXT("[BackpackManager] 노트 아이템이 아님 - ItemRowName: %s"), *BackpackSlot.ItemRowName.ToString());
+        return false;
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("[BackpackManager] 노트 아이템 생성 및 사용 시작"));
+    CreateAndUseNoteItem(BackpackSlot.ItemRowName);
+    return true;
+}
+
+bool UBackpackManager::IsNoteItem(FName ItemRowName) const
+{
+    if (!OwnerInventory || !OwnerInventory->ItemDataTable)
+    {
+        return false;
+    }
+
+    const FItemDataRow* ItemData = OwnerInventory->ItemDataTable->FindRow<FItemDataRow>(
+        ItemRowName, TEXT("BackpackManager::IsNoteItem"));
+
+    return ItemData && ItemData->bIsNoteItem;
+}
+
+void UBackpackManager::CreateAndUseNoteItem(FName ItemRowName)
+{
+    UE_LOG(LogTemp, Warning, TEXT("[BackpackManager] CreateAndUseNoteItem 시작 - ItemRowName: %s"), *ItemRowName.ToString());
+
+    if (!OwnerInventory || !OwnerInventory->ItemDataTable)
+    {
+        UE_LOG(LogTemp, Error, TEXT("[BackpackManager] ItemDataTable이 없습니다"));
+        return;
+    }
+
+    const FItemDataRow* ItemData = OwnerInventory->ItemDataTable->FindRow<FItemDataRow>(
+        ItemRowName, TEXT("CreateAndUseNoteItem"));
+    if (!ItemData || !ItemData->ItemActorClass)
+    {
+        UE_LOG(LogTemp, Error, TEXT("[BackpackManager] 아이템 데이터 또는 액터 클래스가 없습니다: %s"), *ItemRowName.ToString());
+        return;
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("[BackpackManager] 노트 아이템 액터 생성 시도"));
+    ANoteItem* TempNoteItem = OwnerInventory->GetWorld()->SpawnActor<ANoteItem>(ItemData->ItemActorClass);
+    if (TempNoteItem)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[BackpackManager] 노트 아이템 액터 생성 성공"));
+        TempNoteItem->ItemRowName = ItemRowName;
+        TempNoteItem->SetOwner(OwnerInventory->GetOwner());
+        TempNoteItem->SetInstigator(Cast<APawn>(OwnerInventory->GetOwner()));
+        TempNoteItem->ApplyItemDataFromTable();
+        TempNoteItem->UseItem();
+        TempNoteItem->Destroy();
+        UE_LOG(LogTemp, Warning, TEXT("[BackpackManager] 노트 아이템 사용 완료"));
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("[BackpackManager] 노트 아이템 액터 생성 실패"));
+    }
 }
 
 bool UBackpackManager::MoveToolbarItemToBackpack(int32 ToolbarIndex, int32 BackpackIndex)

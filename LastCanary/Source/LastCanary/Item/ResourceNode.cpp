@@ -76,8 +76,25 @@ void AResourceNode::Interact_Implementation(APlayerController* Interactor)
 {
 	if (bRequireTool)
 	{
-		LOG_Item_WARNING(TEXT("[ResourceNode] 해당 자원은 도구로만 채취 가능합니다."));
-		return;
+		ABaseCharacter* Character = Cast<ABaseCharacter>(Interactor->GetPawn());
+		if (!Character)
+		{
+			return;
+		}
+
+		if (AItemBase* Equipped = Character->GetToolbarInventoryComponent()->GetCurrentEquippedItem())
+		{
+			if (!Equipped->ItemData.ItemType.MatchesTag(RequiredToolTag))
+			{
+				LOG_Item_WARNING(TEXT("[ResourceNode] 올바른 도구가 필요합니다."));
+				return;
+			}
+		}
+		else
+		{
+			LOG_Item_WARNING(TEXT("[ResourceNode] 도구를 장착해야 합니다."));
+			return;
+		}
 	}
 	if (CurrentHarvestCount == 0)
 	{
@@ -85,10 +102,7 @@ void AResourceNode::Interact_Implementation(APlayerController* Interactor)
 		return;
 	}
 
-	if (ABaseCharacter* Character = Cast<ABaseCharacter>(Interactor->GetPawn()))
-	{
-		Character->Server_InteractWithResourceNode(this);
-	}
+	HarvestResource(Interactor);
 }
 
 void AResourceNode::Server_RequestInteract_Implementation(APlayerController* Interactor)

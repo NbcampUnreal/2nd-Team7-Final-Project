@@ -167,6 +167,9 @@ struct FGunDataRow : public FTableRowBase
     FName ScopeSocketName = TEXT("Scope");
 
     // 탄창 관련 추가
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Ammo")
+    int32 MagazineCapacity = 30;
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gun|Magazine")
     bool bHasMagazine = true;
 

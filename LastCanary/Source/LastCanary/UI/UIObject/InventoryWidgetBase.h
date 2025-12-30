@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "UI/LCUserWidgetBase.h"
 #include "UI/UIObject/InventorySlotWidget.h"
-#include "Inventory/InventoryComponentBase.h"
+#include "Inventory/ToolbarInventoryComponent.h"
 #include "InventoryWidgetBase.generated.h"
 
 UCLASS(Abstract)
@@ -15,7 +15,7 @@ class LASTCANARY_API UInventoryWidgetBase : public ULCUserWidgetBase
 	
 public:
     UPROPERTY(BlueprintReadWrite, Category = "Inventory")
-    UInventoryComponentBase* InventoryComponent;
+    UToolbarInventoryComponent* InventoryComponent;
 
     /** 각 위젯에서 사용할 슬롯 위젯 클래스 (블루프린트에서 설정) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Widget Classes")
@@ -60,7 +60,7 @@ public:
     void OnInventoryChanged();
 
     UFUNCTION(BlueprintCallable)
-    void SetInventoryComponent(UInventoryComponentBase * NewInventoryComponent);
+    void SetInventoryComponent(UToolbarInventoryComponent* NewInventoryComponent);
 
     UInventoryComponentBase* GetInventoryComponent() const;
 

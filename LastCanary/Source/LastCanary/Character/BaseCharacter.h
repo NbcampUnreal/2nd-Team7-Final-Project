@@ -18,6 +18,7 @@ class USpringArmComponent;
 class UCameraComponent;
 class AItemBase;
 class UToolbarInventoryComponent;
+class UContainerInteractionComponent;
 struct FBaseItemSlotData;
 struct FBackpackSlotData;
 class UItemSpawnerComponent;
@@ -27,6 +28,8 @@ class UWidgetComponent;
 class UPlayerNameWidget;
 class UCustomizationMeshMap;
 struct FCharacterCustomizationData;
+class UWeaponStatsComponent;
+class ATrainingConsole;
 class UCharacterBaseComponent;
 class UCharacterHealthComponent;
 class UCharacterStaminaComponent;
@@ -784,6 +787,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	UToolbarInventoryComponent* GetToolbarInventoryComponent() const;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UContainerInteractionComponent* ContainerInteractionComponent;
+
 private:
 	UPROPERTY(Replicated)
 	FGameplayTagContainer EquippedTags;
@@ -949,4 +955,18 @@ public:
 	void Client_SetWalkieTalkieChannelStatus_Implementation(bool bActive);
 
 	virtual void OnRep_PlayerState() override;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats")
+	UWeaponStatsComponent* WeaponStatsComponent;
+
+	/** 서버에서 범용 상호작용 처리 */
+	UFUNCTION(Server, Reliable)
+	void ServerInteractWithActor(AActor* InteractableActor);
+	void ServerInteractWithActor_Implementation(AActor* InteractableActor);
+
+	/** 훈련 콘솔과 액션 포함 상호작용 */
+	// 범용 함수로 해결해보려 했는데 실패했습니다.
+	UFUNCTION(Server, Reliable)
+	void ServerInteractWithConsole(ATrainingConsole* Console, uint8 Action);
+	void ServerInteractWithConsole_Implementation(ATrainingConsole* Console, uint8 Action);
 };

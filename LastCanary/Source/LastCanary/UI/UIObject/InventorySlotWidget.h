@@ -131,7 +131,7 @@ public:
 private:
     /** 보더 색상 업데이트 */
     void UpdateBorderImage();
-    
+
     // TODO : 추후 구현 예정인 블루프린트 이벤트 (현재 미사용)
     /*
     UFUNCTION(BlueprintImplementableEvent, Category = "Inventory|Events")
