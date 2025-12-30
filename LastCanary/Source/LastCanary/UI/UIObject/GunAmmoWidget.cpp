@@ -2,6 +2,7 @@
 #include "Components/TextBlock.h"
 #include "Components/ProgressBar.h"
 #include "Components/Border.h"
+#include "Inventory/ToolbarInventoryComponent.h"
 #include "Item/EquipmentItem/GunBase.h"
 #include "LastCanary.h"
 
@@ -56,7 +57,7 @@ void UGunAmmoWidget::UpdateFireModeDisplay(EFireMode CurrentMode, const TArray<E
     LOG_Item_WARNING(TEXT("[UpdateFireModeDisplay] 발사 모드 UI 업데이트 완료 - 현재: %d"), (int32)CurrentMode);
 }
 
-void UGunAmmoWidget::UpdateAmmoDisplay(int32 CurrentAmmo, int32 MaxAmmo)
+void UGunAmmoWidget::UpdateAmmoDisplay(int32 CurrentAmmo, int32 TotalAmmo, int32 MagazineCapacity)
 {
     if (!CurrentAmmoText || !MaxAmmoText)
     {
@@ -64,26 +65,81 @@ void UGunAmmoWidget::UpdateAmmoDisplay(int32 CurrentAmmo, int32 MaxAmmo)
     }
 
     CurrentAmmoText->SetText(FText::AsNumber(CurrentAmmo));
-    MaxAmmoText->SetText(FText::AsNumber(MaxAmmo));
+    MaxAmmoText->SetText(FText::AsNumber(TotalAmmo));
 
-    if (AmmoProgressBar && MaxAmmo > 0)
+    if (AmmoProgressBar && MagazineCapacity > 0)
     {
-        const float AmmoRatio = static_cast<float>(CurrentAmmo) / static_cast<float>(MaxAmmo);
-        AmmoProgressBar->SetPercent(AmmoRatio);
+        float Ratio = float(CurrentAmmo) / float(MagazineCapacity);
+        AmmoProgressBar->SetPercent(FMath::Clamp(Ratio, 0.0f, 1.0f));
     }
 
-    LOG_Item_WARNING(TEXT("[UpdateAmmoDisplay] 탄약 UI 업데이트: %d/%d"), CurrentAmmo, MaxAmmo);
+    LOG_Item_WARNING(TEXT("[UpdateAmmoDisplay] 탄약 UI 업데이트: %d/%d"), CurrentAmmo, TotalAmmo);
 }
 
-void UGunAmmoWidget::ShowAmmoUI(int32 CurrentAmmo, int32 MaxAmmo, EFireMode CurrentMode, const TArray<EFireMode>& AvailableModes)
+void UGunAmmoWidget::ShowAmmoUI(int32 CurrentAmmo, int32 TotalAmmo, int32 MagazineCapacity, EFireMode CurrentMode, const TArray<EFireMode>& AvailableModes)
 {
-    UpdateAmmoDisplay(CurrentAmmo, MaxAmmo);
+    UpdateAmmoDisplay(CurrentAmmo, TotalAmmo, MagazineCapacity);
     
     if (CurrentMode != EFireMode::None)
     {
         UpdateFireModeDisplay(CurrentMode, AvailableModes);
     }
 
+    SetVisibility(ESlateVisibility::Visible);
+}
+
+void UGunAmmoWidget::UpdateAmmoUI()
+{
+    LOG_Item_WARNING(TEXT("[UpdateAmmoUI] 함수 시작"));
+
+    APlayerController* PC = GetOwningPlayer();
+    if (!PC || !PC->GetPawn())
+    {
+        LOG_Item_WARNING(TEXT("[UpdateAmmoUI] PlayerController를 찾을 수 없음"));
+        SetVisibility(ESlateVisibility::Hidden);
+        return;
+    }
+
+    // 현재 장착된 총기가 있는지 확인
+    UToolbarInventoryComponent* ToolbarComp = PC->GetPawn()->FindComponentByClass<UToolbarInventoryComponent>();
+    if (!ToolbarComp)
+    {
+        LOG_Item_WARNING(TEXT("[UpdateAmmoUI] ToolbarComponent를 찾을 수 없음"));
+        SetVisibility(ESlateVisibility::Hidden);
+        return;
+    }
+
+    // 현재 장착된 아이템 확인
+    AItemBase* CurrentEquippedItem = ToolbarComp->GetCurrentEquippedItem();
+    if (!CurrentEquippedItem)
+    {
+        LOG_Item_WARNING(TEXT("[UpdateAmmoUI] 장착된 아이템 없음"));
+        SetVisibility(ESlateVisibility::Hidden);
+        return;
+    }
+
+    // 총기인지 확인
+    AGunBase* CurrentGun = Cast<AGunBase>(CurrentEquippedItem);
+    if (!CurrentGun)
+    {
+        LOG_Item_WARNING(TEXT("[UpdateAmmoUI] 장착된 아이템이 총기가 아님"));
+        SetVisibility(ESlateVisibility::Hidden);
+        return;
+    }
+
+    // 직접 총기에서 데이터 가져오기
+    int32 CurrentAmmo = CurrentGun->GetCurrentAmmo();
+    int32 TotalAmmo = CurrentGun->GetReserveAmmo();
+    int32 MagazineCapacity = CurrentGun->GetMagazineCapacity();
+    EFireMode CurrentMode = CurrentGun->GetCurrentFireMode();
+    TArray<EFireMode> AvailableModes = CurrentGun->GetAvailableFireModes();
+    
+    LOG_Item_WARNING(TEXT("[UpdateAmmoUI] 탄약 정보: %d/%d (용량: %d)"),
+        CurrentAmmo, TotalAmmo, MagazineCapacity);
+
+    // UI 업데이트
+    UpdateAmmoDisplay(CurrentAmmo, TotalAmmo, MagazineCapacity);
+    UpdateFireModeDisplay(CurrentMode, AvailableModes);
     SetVisibility(ESlateVisibility::Visible);
 }
 

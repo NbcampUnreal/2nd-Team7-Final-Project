@@ -33,9 +33,11 @@ public:
 	UFUNCTION()
 	void ForgetTarget();
 
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick|Combat")
-	float MaxFreezeTime = 5.0f;
+	float MaxFreezeTime = 3.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Gimmick|Combat")
 	float FreezeCooldown = 7.f;
@@ -52,6 +54,31 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Animation")
 	UAnimMontage* AIGimmick;
 
+	UPROPERTY(VisibleAnywhere, Replicated, BlueprintReadOnly, Category = "Gimmick|Stress")
+	int32 FreezeCount = 0;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Gimmick|Stress")
+	int32 MaxFreezeCountForStress = 1;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Gimmick|Stress")
+	float ExplosionNoiseRange = 5000.0f;
+
+	void CheckForStressMode();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gimmick|Stress")
+	float StressImmunityTime = 10.0f;
+
+	bool bIsStressImmune = false;
+
+	FTimerHandle StressImmunityTimerHandle;
+
+	void EndStressImmunity();
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "AI|Stress")
+	void BP_OnStressModeStart();
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "AI|Stress")
+	void BP_OnStressModeEnd();
 private:
 	FTimerHandle CooldownTimerHandle;
 	FTimerHandle FreezeTimerHandle;

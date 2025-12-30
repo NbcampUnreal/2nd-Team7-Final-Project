@@ -52,5 +52,6 @@ public:
     void SetGunItemSocketTransform();
 
     FVector GetAimTargetLocation(float Distance);
+
     
 };

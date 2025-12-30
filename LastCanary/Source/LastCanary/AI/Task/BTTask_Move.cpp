@@ -5,6 +5,7 @@
 #include "AIController.h"
 #include "GameFramework/Character.h"
 #include "Navigation/PathFollowingComponent.h"
+#include "NavigationSystem.h" // UNavigationSystemV1을 위해 추가
 
 UBTTask_Move::UBTTask_Move()
 {
@@ -47,12 +48,7 @@ EBTNodeResult::Type UBTTask_Move::ExecuteTask(UBehaviorTreeComponent& OwnerComp,
 		ABaseAIController* BaseAIController = Cast<ABaseAIController>(AIController);
 		if (BaseAIController)
 		{
-			int32 CurrentState = BlackboardComp->GetValueAsInt("State");
-			if (CurrentState != 4)
-			{
-				AIController->StopMovement();
-				BaseAIController->SetPatrolling();
-			}
+			AIController->StopMovement();
 		}
 		return EBTNodeResult::Failed;
 	}
@@ -89,11 +85,11 @@ EBTNodeResult::Type UBTTask_Move::ExecuteTask(UBehaviorTreeComponent& OwnerComp,
 			}
 		}
 	},
-		0.1f,
+		0.1f, // 0.1초마다 체크
 		true
 	);
 
-	return EBTNodeResult::InProgress;
+	return EBTNodeResult::InProgress; // 비동기 작업이므로 InProgress 반환
 }
 
 void UBTTask_Move::CheckMoveStatus(UBehaviorTreeComponent* OwnerComp)
@@ -117,7 +113,7 @@ void UBTTask_Move::CheckMoveStatus(UBehaviorTreeComponent* OwnerComp)
 	}
 
 	// 주기적으로 사운드 재생
-	float CurrentTime = GetWorld()->GetTimeSeconds();
+	float CurrentTime = World->GetTimeSeconds();
 	float* LastSoundTime = LastSoundTimeMap.Find(OwnerComp);
 	if (LastSoundTime && CurrentTime - *LastSoundTime >= SoundTimer)
 	{
@@ -131,48 +127,77 @@ void UBTTask_Move::CheckMoveStatus(UBehaviorTreeComponent* OwnerComp)
 	AActor* TargetActor = Cast<AActor>(BlackboardComp->GetValueAsObject("TargetActor"));
 	if (!TargetActor)
 	{
-		ABaseAIController* BaseAIController = Cast<ABaseAIController>(AIController);
-		if (BaseAIController)
-		{
-			int32 CurrentState = BlackboardComp->GetValueAsInt("State");
-			if (CurrentState != 4)
-			{
-				AIController->StopMovement();
-				BaseAIController->SetPatrolling();
-			}
-		}
-
+		// 타겟이 없어지면 태스크 실패
+		AIController->StopMovement(); // 혹시 이동 중이었다면 멈춤
 		CleanupTimer(OwnerComp);
 		FinishLatentTask(*OwnerComp, EBTNodeResult::Failed);
 		return;
 	}
 
-	// 이동중인가?
+	APawn* ControlledPawn = AIController->GetPawn();
+	if (!ControlledPawn)
+	{
+		CleanupTimer(OwnerComp);
+		FinishLatentTask(*OwnerComp, EBTNodeResult::Failed);
+		return;
+	}
+
+	// 목표와 AI 사이의 거리를 계산합니다.
+	float DistanceToTarget = FVector::Distance(ControlledPawn->GetActorLocation(), TargetActor->GetActorLocation());
+
+	if (DistanceToTarget <= MyAcceptableRadius + 70.0f) // 70f는 여유 거리
+	{
+		FVector DirectionToTarget = (TargetActor->GetActorLocation() - ControlledPawn->GetActorLocation()).GetSafeNormal();
+		FRotator TargetRotation = DirectionToTarget.Rotation();
+		ControlledPawn->SetActorRotation(TargetRotation);
+
+		ABaseAIController* BaseAIController = Cast<ABaseAIController>(OwnerComp->GetAIOwner());
+		if (BaseAIController)
+		{
+			BaseAIController->SetAttacking();
+		}
+
+		CleanupTimer(OwnerComp);
+		FinishLatentTask(*OwnerComp, EBTNodeResult::Succeeded);
+		return;
+	}
+
 	EPathFollowingStatus::Type MoveStatus = AIController->GetMoveStatus();
 	if (MoveStatus == EPathFollowingStatus::Idle)
 	{
-		// 다시 추적
-		AIController->MoveToActor(TargetActor, MyAcceptableRadius);
-	}
+		EPathFollowingRequestResult::Type MoveResult = AIController->MoveToActor(TargetActor, MyAcceptableRadius);
 
-	APawn* ControlledPawn = AIController->GetPawn();
-	if (ControlledPawn)
-	{
-		float DistanceToTarget = FVector::Distance(ControlledPawn->GetActorLocation(), TargetActor->GetActorLocation());
-		if (DistanceToTarget <= MyAcceptableRadius + 70)
+		if (MoveResult == EPathFollowingRequestResult::Failed)
 		{
-			FVector DirectionToTarget = (TargetActor->GetActorLocation() - ControlledPawn->GetActorLocation()).GetSafeNormal();
-			FRotator TargetRotation = DirectionToTarget.Rotation();
-			ControlledPawn->SetActorRotation(TargetRotation);
+			FNavLocation ProjectedNavLocation;
 
-			ABaseAIController* BaseAIController = Cast<ABaseAIController>(OwnerComp->GetAIOwner());
-			if (BaseAIController)
+			if (UNavigationSystemV1* NavSystem = FNavigationSystem::GetCurrent<UNavigationSystemV1>(World))
 			{
-				BaseAIController->SetAttacking();
+				if (NavSystem->ProjectPointToNavigation(
+					TargetActor->GetActorLocation(),       
+					ProjectedNavLocation,                   
+					FVector(1000.f, 1000.f, 1000.f),       
+					&AIController->GetNavAgentPropertiesRef(), 
+					nullptr
+				))
+				{
+					AIController->MoveToLocation(ProjectedNavLocation.Location, MyAcceptableRadius);
+				}
+				else
+				{
+					AIController->StopMovement();
+					CleanupTimer(OwnerComp);
+					FinishLatentTask(*OwnerComp, EBTNodeResult::Failed);
+					return;
+				}
 			}
-
-			CleanupTimer(OwnerComp);
-			FinishLatentTask(*OwnerComp, EBTNodeResult::Succeeded);
+			else // NavSystem 자체를 찾지 못한 경우
+			{
+				AIController->StopMovement();
+				CleanupTimer(OwnerComp);
+				FinishLatentTask(*OwnerComp, EBTNodeResult::Failed);
+				return;
+			}
 		}
 	}
 }
@@ -180,7 +205,6 @@ void UBTTask_Move::CheckMoveStatus(UBehaviorTreeComponent* OwnerComp)
 void UBTTask_Move::OnTaskFinished(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, EBTNodeResult::Type TaskResult)
 {
 	CleanupTimer(&OwnerComp);
-
 	Super::OnTaskFinished(OwnerComp, NodeMemory, TaskResult);
 }
 

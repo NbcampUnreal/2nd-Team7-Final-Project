@@ -1,6 +1,5 @@
 #include "UI/UIObject/InventoryWidgetBase.h"
 #include "Inventory/InventoryComponentBase.h"
-#include "Inventory/ToolbarInventoryComponent.h"
 #include "Framework/GameInstance/LCGameInstanceSubsystem.h"
 #include "LastCanary.h"
 
@@ -60,7 +59,7 @@ void UInventoryWidgetBase::OnInventoryChanged()
 }
 
 
-void UInventoryWidgetBase::SetInventoryComponent(UInventoryComponentBase* NewInventoryComponent)
+void UInventoryWidgetBase::SetInventoryComponent(UToolbarInventoryComponent* NewInventoryComponent)
 {
 	if (InventoryComponent)
 	{

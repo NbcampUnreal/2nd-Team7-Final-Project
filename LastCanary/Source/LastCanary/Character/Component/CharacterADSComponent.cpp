@@ -81,7 +81,7 @@ void UCharacterADSComponent::Set_ADS_Weight(float _ADS_Weight)
     ADS_Weight = FMath::Clamp(_ADS_Weight, 0.0f, 1.0f);
     ALSAnimInstance->AimAlpha = ADS_Weight;
     
-    GetBaseCharacter()->Camera->FieldOfView = 90.0f - ADS_Weight * GetADS_CameraFieldOfView(GetGun());
+    GetBaseCharacter()->FPSCamera->FieldOfView = 90.0f - ADS_Weight * GetADS_CameraFieldOfView(GetGun());
 }
 
 AGunBase* UCharacterADSComponent::GetGun()
@@ -190,8 +190,8 @@ void UCharacterADSComponent::SetADSMode(float _ADS_Weight)
     FTransform ScopeTransform = GunMesh->GetSocketTransform("ADS", RTS_World);
 
     // --- 위치 보간 ---
-    FVector CameraLocation = GetBaseCharacter()->Camera->GetComponentLocation();
-    FVector CameraForward = GetBaseCharacter()->Camera->GetForwardVector();
+    FVector CameraLocation = GetBaseCharacter()->FPSCamera->GetComponentLocation();
+    FVector CameraForward = GetBaseCharacter()->FPSCamera->GetForwardVector();
 
     FVector ADSLocation = CameraLocation + CameraForward * GetADS_Distance(GetGun())
         - (ScopeTransform.GetLocation() - GunMesh->GetComponentLocation());
@@ -294,7 +294,7 @@ void UCharacterADSComponent::CalculateAimSocket()
 
 void UCharacterADSComponent::CalculateAimPoint()
 {
-    FTransform Camera_Transform = GetBaseCharacter()->Camera->GetComponentTransform();
+    FTransform Camera_Transform = GetBaseCharacter()->FPSCamera->GetComponentTransform();
     FTransform ik_hand_root_Transform = GetBaseCharacter()->GetMesh()->GetSocketTransform(TEXT("ik_hand_root"), ERelativeTransformSpace::RTS_World);
     FTransform t = Camera_Transform.GetRelativeTransform(ik_hand_root_Transform);
 
@@ -318,7 +318,7 @@ void UCharacterADSComponent::SetGunItemSocketTransform()
 
 FVector UCharacterADSComponent::GetAimTargetLocation(float Distance)
 {
-    if (!IsValid(GetBaseCharacter()->Camera))
+    if (!IsValid(GetBaseCharacter()->FPSCamera))
     {
         return FVector::ZeroVector;
     }
@@ -329,11 +329,32 @@ FVector UCharacterADSComponent::GetAimTargetLocation(float Distance)
         return FVector::ZeroVector;
     }
 
+    /*
     FVector CameraLocation = GetBaseCharacter()->Camera->GetComponentLocation();
     FVector CameraForward = GetBaseCharacter()->Camera->GetForwardVector();
 
     FVector AimPoint = CameraLocation + CameraForward * Distance;
     ALSAnimInstance->SetAimPoint(AimPoint);
+    */
+
+    APlayerController* PC = GetBaseCharacter()->GetController<APlayerController>();
+    if (!PC)
+    {
+        FVector::ZeroVector;
+    }
+
+    APlayerCameraManager* PCM = PC->PlayerCameraManager;
+    if (!PCM)
+    {
+        return FVector::ZeroVector;
+    }
+
+    const FVector CameraLocation = PCM->GetCameraLocation();
+    const FVector CameraForward = PCM->GetActorForwardVector();
+
+    const FVector AimPoint = CameraLocation + CameraForward * Distance;
+    ALSAnimInstance->SetAimPoint(AimPoint);
+
 
     if (IsValid(GetGun()))
     {
@@ -351,3 +372,4 @@ FVector UCharacterADSComponent::GetAimTargetLocation(float Distance)
     
     return AimPoint;
 }
+

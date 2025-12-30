@@ -160,7 +160,7 @@ void UDesktopWidget::ResetAllAppButtonHighlights()
 }
 
 //-----------------
-// 상점 실행 처리
+// 어플들 실행 처리
 //-----------------
 void UDesktopWidget::HandleShopAppLaunch()
 {

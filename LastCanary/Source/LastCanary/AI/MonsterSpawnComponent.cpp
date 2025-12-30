@@ -262,7 +262,7 @@ void UMonsterSpawnComponent::SpawnMonsters()
             for (TActorIterator<ABaseCharacter> ActorItr(GetWorld()); ActorItr; ++ActorItr)
             {
                 ABaseCharacter* Player = *ActorItr;
-                if (IsValid(Player) && Player->IsPlayerControlled())
+                if (IsValid(Player))// && Player->IsPlayerControlled())
                 {
                     float DistToPlayer = FVector::Dist2D(SpawnLocation, Player->GetActorLocation());
                     if (DistToPlayer < AvoidSpawnRadius)

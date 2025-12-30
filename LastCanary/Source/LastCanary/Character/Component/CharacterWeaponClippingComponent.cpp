@@ -66,8 +66,8 @@ void UCharacterWeaponClippingComponent::UpdateGunWallClipOffset()
 
 	FHitResult HitResult;
 
-	FVector TraceStart = GetBaseCharacter()->Camera->GetComponentLocation();
-	FVector TraceEnd = TraceStart + GetBaseCharacter()->Camera->GetForwardVector() * 150.0f;
+	FVector TraceStart = GetBaseCharacter()->FPSCamera->GetComponentLocation();
+	FVector TraceEnd = TraceStart + GetBaseCharacter()->FPSCamera->GetForwardVector() * 150.0f;
 	ETraceTypeQuery TraceType = UEngineTypes::ConvertToTraceType(ECC_Visibility);
 	TArray<AActor*> IgnoreActors = { GetBaseCharacter(), GetGun() };
 

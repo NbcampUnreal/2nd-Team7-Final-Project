@@ -1,0 +1,119 @@
+#include "AI/Task/BTTask_CallCaveMonster.h"
+#include "AI/BaseAIController.h"
+#include "BehaviorTree/BlackboardComponent.h"
+#include "AIController.h"
+
+UBTTask_CallCaveMonster::UBTTask_CallCaveMonster()
+{
+	NodeName = TEXT("CallCaveMonster");
+	bCreateNodeInstance = true;
+}
+
+EBTNodeResult::Type UBTTask_CallCaveMonster::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
+{
+	AAIController* AIController = OwnerComp.GetAIOwner();
+	UBlackboardComponent* BlackboardComp = OwnerComp.GetBlackboardComponent();
+
+	if (!AIController || !BlackboardComp)
+	{
+		return EBTNodeResult::Failed;
+	}
+
+	FVector BoxVector = BlackboardComp->GetValueAsVector("Gimmick");
+	if (BoxVector == FVector::ZeroVector)
+	{
+		return EBTNodeResult::Failed;
+	}
+
+	AIController->MoveToLocation(BoxVector - 100.f, 100.0f);
+
+	CachedOwnerComp = &OwnerComp;
+
+	if (UWorld* World = AIController->GetWorld())
+	{
+		World->GetTimerManager().SetTimer(
+			CheckTimerHandle,
+			this,
+			&UBTTask_CallCaveMonster::CheckArrival,
+			0.3f,
+			true
+		);
+	}
+
+	return EBTNodeResult::InProgress;
+}
+
+void UBTTask_CallCaveMonster::CheckArrival()
+{
+	if (!CachedOwnerComp)
+	{
+		return;
+	}
+
+	AAIController* AIController = CachedOwnerComp->GetAIOwner();
+	UBlackboardComponent* BlackboardComp = CachedOwnerComp->GetBlackboardComponent();
+
+	if (!AIController || !BlackboardComp)
+	{
+		StopTimer();
+		FinishLatentTask(*CachedOwnerComp, EBTNodeResult::Failed);
+		return;
+	}
+
+	//이동 중 타겟 발견
+	AActor* TargetActor = Cast<AActor>(BlackboardComp->GetValueAsObject("TargetActor"));
+	if (TargetActor)
+	{
+		ABaseAIController* BaseAIController = Cast<ABaseAIController>(AIController);
+		if (BaseAIController)
+		{
+			StopTimer();
+
+			AIController->StopMovement();
+
+			BaseAIController->SetChasing(TargetActor);
+
+			FinishLatentTask(*CachedOwnerComp, EBTNodeResult::Succeeded);
+			return;
+		}
+	}
+
+	APawn* ControlledPawn = AIController->GetPawn();
+	FVector BoxVector = BlackboardComp->GetValueAsVector("Gimmick");
+
+	if (!ControlledPawn || BoxVector == FVector::ZeroVector)
+	{
+		StopTimer();
+		FinishLatentTask(*CachedOwnerComp, EBTNodeResult::Failed);
+		return;
+	}
+
+	//도착 확인
+	float Distance = FVector::Distance(ControlledPawn->GetActorLocation(), BoxVector);
+	if (Distance <= 300.0f)
+	{
+		BlackboardComp->ClearValue("Gimmick");
+
+		if (ABaseAIController* BaseAIController = Cast<ABaseAIController>(AIController))
+		{
+			BaseAIController->SetPatrolling();
+		}
+
+		StopTimer();
+		FinishLatentTask(*CachedOwnerComp, EBTNodeResult::Succeeded);
+	}
+}
+
+void UBTTask_CallCaveMonster::StopTimer()
+{
+	if (CachedOwnerComp)
+	{
+		if (AAIController* AIController = CachedOwnerComp->GetAIOwner())
+		{
+			if (UWorld* World = AIController->GetWorld())
+			{
+				World->GetTimerManager().ClearTimer(CheckTimerHandle);
+			}
+		}
+	}
+}

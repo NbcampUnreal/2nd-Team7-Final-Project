@@ -53,7 +53,7 @@ protected:
     float SpawnCooldown = 15.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Spawner", meta = (ClampMin = "0"))
-    float AvoidSpawnRadius = 200.f;
+    float AvoidSpawnRadius = 500.f; //player avoid basic radius  200.f -> 500.f change
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Spawner")
     bool bAutoStart = false;

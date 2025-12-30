@@ -45,10 +45,13 @@ public:
     void UpdateFireModeDisplay(EFireMode CurrentMode, const TArray<EFireMode>& AvailableModes);
 
     UFUNCTION(BlueprintCallable)
-    void UpdateAmmoDisplay(int32 CurrentAmmo, int32 MaxAmmo);
+    void UpdateAmmoDisplay(int32 CurrentAmmo, int32 TotalAmmo, int32 MagazineCapacity);
 
     UFUNCTION(BlueprintCallable)
-    void ShowAmmoUI(int32 CurrentAmmo, int32 MaxAmmo, EFireMode CurrentMode, const TArray<EFireMode>& AvailableModes);
+    void ShowAmmoUI(int32 CurrentAmmo, int32 TotalAmmo, int32 MagazineCapacity, EFireMode CurrentMode, const TArray<EFireMode>& AvailableModes);
+
+    UFUNCTION(BlueprintCallable)
+    void UpdateAmmoUI();
 
     UFUNCTION(BlueprintCallable)
     void HideAmmoUI();
@@ -63,6 +66,12 @@ protected:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fire Mode Colors")
     FLinearColor UnavailableModeColor = FLinearColor(0.3f, 0.0f, 0.0f, 1.0f);
+
+    UPROPERTY()
+    FTimerHandle RetryTimerHandle;
+
+    int32 RetryCount = 0;
+    static const int32 MaxRetryCount = 3;
 
 private:
     void SetBorderColor(UBorder* Border, const FLinearColor& Color);

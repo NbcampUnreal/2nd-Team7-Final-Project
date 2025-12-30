@@ -20,6 +20,9 @@ struct FBaseItemSlotData
     float Durability = 0.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    int32 CurrentAmmo = 0;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
     bool bIsEquipped = false;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)

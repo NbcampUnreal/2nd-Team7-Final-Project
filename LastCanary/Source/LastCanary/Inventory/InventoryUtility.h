@@ -27,6 +27,8 @@ public:
 
     static bool IsCollectibleItem(const FItemDataRow* ItemData);
 
+    static bool IsConsumableItem(const FItemDataRow* ItemData);
+
     UFUNCTION(BlueprintPure, Category = "Inventory Utility|Validation")
     static bool IsWalkieTalkieItem(FName ItemRowName, const UDataTable* ItemDataTable);
 

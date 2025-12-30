@@ -18,6 +18,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Inventory/ToolbarInventoryComponent.h"
+#include "Item/Component/ContainerInteractionComponent.h"
 #include "Item/ItemBase.h"
 #include "Item/ItemSpawnerComponent.h"
 #include "Item/ResourceNode.h"
@@ -25,6 +26,9 @@
 #include "Item/EquipmentItem/EquipmentItemBase.h"
 #include "Item/EquipmentItem/BackpackItem.h"
 #include "Item/EquipmentItem/WalkieTalkie.h"
+#include "Item/Component/WeaponStatsComponent.h"
+#include "Actor/TrainingRoom/TrainingConsole.h"
+#include "Actor/TrainingRoom/TrainingRoomManager.h"
 #include "UI/Manager/LCUIManager.h"
 #include "LastCanary.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -79,7 +83,7 @@ ABaseCharacter::ABaseCharacter()
 	InitializeComponents();
 
 	// 캐릭터 클래스의 생성자 함수 내부 
-	FieldOfView = Camera->FieldOfView;
+	FieldOfView = FPSCamera->FieldOfView;
 
 	ItemSpawner = CreateDefaultSubobject<UItemSpawnerComponent>(TEXT("ItemSpawner"));
 
@@ -89,6 +93,10 @@ ABaseCharacter::ABaseCharacter()
 	BackpackMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	ToolbarInventoryComponent = CreateDefaultSubobject<UToolbarInventoryComponent>(TEXT("ToolbarInventoryComponent"));
+	ContainerInteractionComponent = CreateDefaultSubobject<UContainerInteractionComponent>(TEXT("ContainerInteractionComponent"));
+
+	BaseEyeHeight = 64.f;
+	CrouchedEyeHeight = 40.f;
 }
 
 void ABaseCharacter::InitializeComponents()
@@ -117,13 +125,38 @@ void ABaseCharacter::InitializeDefaultComponents()
 	OverlaySkeletalMesh = UCommonUtility::CreateAndAttachComponent<USkeletalMeshComponent>(this, GetMesh(), TEXT("OverlaySkeletalMesh"));
 	OverlaySkeletalMesh->SetupAttachment(GetMesh(), TEXT("Rifle")); // 특수 경우 따로
 
+	CameraRoot = CreateDefaultSubobject<USceneComponent>(TEXT("CameraRoot"));
+	CameraRoot->SetupAttachment(
+		GetMesh(),
+		TEXT("FirstPersonCamera")
+	);
+
+	FPSCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FPSCamera"));
+	FPSCamera->SetupAttachment(CameraRoot);
+
+	CameraRoot->SetRelativeLocation(FVector::ZeroVector);
+	CameraRoot->SetRelativeRotation(FRotator::ZeroRotator);
+
+	FPSCamera->bUsePawnControlRotation = true;
+
+	WeaponStatsComponent = CreateDefaultSubobject<UWeaponStatsComponent>(TEXT("WeaponStatsComponent"));
+
+
 	// Camera, SpringArm
 	SpringArm = UCommonUtility::CreateAndAttachComponent<USpringArmComponent>(this, GetMesh(), TEXT("SpringArm"));
-	Camera = UCommonUtility::CreateAndAttachComponent<UCameraComponent>(this, SpringArm, TEXT("Camera"));
+	TPSCamera = UCommonUtility::CreateAndAttachComponent<UCameraComponent>(this, SpringArm, TEXT("TPSCamera"));
+
+	SpringArm->SetupAttachment(
+		GetMesh(),
+		TEXT("FirstPersonCamera")
+	);
+
+	SpringArm->TargetArmLength = 200.0f;
+
 	// Arrow
 	ThirdPersonArrow = UCommonUtility::CreateAndAttachComponent<UArrowComponent>(this, SpringArm, TEXT("FirstPersonArrow"));
 
-	Camera->SetRelativeRotation(FRotator::ZeroRotator);
+	TPSCamera->SetRelativeRotation(FRotator::ZeroRotator);
 }
 
 
@@ -138,7 +171,6 @@ void ABaseCharacter::InitializeExtraComponents()
 	DisplayComponent = UCommonUtility::CreateAndRegisterComponent<UCharacterDisplayComponent>(this, TEXT("DisplayComponent"), ManagedComponents);
 	AttackComponent = UCommonUtility::CreateAndRegisterComponent<UCharacterAttackComponent>(this, TEXT("AttackComponent"), ManagedComponents);
 	RecoilComponent = UCommonUtility::CreateAndRegisterComponent<UCameraRecoilComponent>(this, TEXT("RecoilComponent"), ManagedComponents);
-	InputControlComponent = UCommonUtility::CreateAndRegisterComponent<UCharacterInputComponent>(this, TEXT("InputControlComponent"), ManagedComponents);
 	SpeedControlComponent = UCommonUtility::CreateAndRegisterComponent<UCharacterSpeedControlComponent>(this, TEXT("SpeedControlComponent"), ManagedComponents);
 	SoundPlayComponent = UCommonUtility::CreateAndRegisterComponent<UCharacterSoundComponent>(this, TEXT("SoundPlayComponent"), ManagedComponents);
 	SanityComponent = UCommonUtility::CreateAndRegisterComponent<UCharacterSanityComponent>(this, TEXT("SanityComponent"), ManagedComponents);
@@ -230,6 +262,14 @@ void ABaseCharacter::BeginPlay()
 	}
 
 	SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+	SpringArm->TargetArmLength = 400.0f;
+
+	const FTransform MeshToWorld = GetMesh()->GetComponentTransform();
+	const FVector EyeWorld =
+		GetMesh()->GetSocketLocation(TEXT("FirstPersonCamera")); // 또는 EyeSocket
+	// Capsule 기준 로컬 오프셋으로 변환
+	EyeOffsetLocal =
+		GetActorTransform().InverseTransformPosition(EyeWorld);
 }
 
 void ABaseCharacter::NotifyComponentReady(UCharacterBaseComponent* Component)
@@ -354,6 +394,15 @@ void ABaseCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void ABaseCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
+}
+
+int32 ABaseCharacter::ApplyWheelSelection(int32 Index)
+{
+	if (AnimationComponent)
+	{
+		AnimationComponent->PlayEmoteMontage(Index);
+	}
+	return Index;
 }
 
 void ABaseCharacter::InitializePlayerLocalSettings()
@@ -622,9 +671,6 @@ void ABaseCharacter::SetBrightness(float Value)
 {
 	float Normalized = FMath::Clamp(Value, 0.0f, 1.0f);
 
-	// 로그 스케일 매핑 (예: log10 스케일)
-	float BrightnessValue = MinBrightness * FMath::Pow((MaxBrightness / MinBrightness), Normalized);
-
 	if (IsValid(DisplayComponent))
 	{
 		DisplayComponent->ApplyBrightness(Normalized);
@@ -672,6 +718,76 @@ void ABaseCharacter::NotifyControllerChanged()
 	Super::NotifyControllerChanged();
 }
 
+
+void ABaseCharacter::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	SetDesiredAiming(true);
+}
+// BaseCharacter.cpp
+FVector ABaseCharacter::GetPawnViewLocation() const
+{
+	// ACharacter 기본 구현 사용 + 미세 보정만 가능
+	return Super::GetPawnViewLocation();
+}
+
+FVector ABaseCharacter::GetDesiredCameraOffset() const
+{
+	FVector Offset = EyeOffsetLocal;
+
+	if (bIsCrouched)
+	{
+		Offset.Z -= 20.f;
+	}
+
+	if (ADSComponent && ADSComponent->bIsADS)
+	{
+		Offset += FVector(2.f, 0.f, -1.f);
+	}
+
+	return Offset;
+}
+
+bool ABaseCharacter::IsADS() const
+{
+	if (ADSComponent)
+	{
+		return ADSComponent->bIsADS;
+	}
+	return false;
+}
+
+FTransform ABaseCharacter::GetADSCameraTransform() const
+{
+	const USkeletalMeshComponent* MeshComp = GetMesh();
+	if (!MeshComp)
+	{
+		return FTransform::Identity;
+	}
+
+	USkeletalMeshComponent* GunMesh = GetCurrentGunItemSkeletalMesh();
+	if (!GunMesh || !GunMesh->DoesSocketExist(TEXT("ADS")))
+	{
+		return FTransform::Identity;
+	}
+
+	// 헤드 기준 회전
+	const FTransform HeadTransform =
+		MeshComp->GetSocketTransform(TEXT("FirstPersonCamera"), RTS_World);
+
+	// 스코프 기준 위치
+	const FTransform ScopeTransform =
+		GunMesh->GetSocketTransform(TEXT("ADS"), RTS_World);
+
+	FVector FinalLocation = ScopeTransform.GetLocation();
+	FRotator FinalRotation = HeadTransform.Rotator();
+
+	return FTransform(FinalRotation, FinalLocation);
+}
+
+
+
 void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInfo)
 {
 	Super::CalcCamera(DeltaTime, ViewInfo);
@@ -687,10 +803,7 @@ void ABaseCharacter::CalcCamera(const float DeltaTime, FMinimalViewInfo& ViewInf
 		FRotator TargetRot = GetActorRotation();
 		ViewInfo.Rotation = TargetRot;
 		SpringArm->SetWorldRotation(TargetRot);
-		if (!bIsFPSCamera)
-		{
-			SpringArm->TargetArmLength = 200.0f;
-		}
+
 		StopGunAutoFire();
 		return;
 	}
@@ -720,13 +833,13 @@ void ABaseCharacter::ResetCameraLocationToDefault()
 	bIsTransitioning = false;
 }
 
-AItemBase* ABaseCharacter::GetCurrentItem()
+AItemBase* ABaseCharacter::GetCurrentItem() const
 {
 	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
 	return EquippedItem;
 }
 
-AGunBase* ABaseCharacter::GetCurrentGunItem()
+AGunBase* ABaseCharacter::GetCurrentGunItem() const
 {
 	if (IsValid(GetCurrentItem()))
 	{
@@ -736,7 +849,7 @@ AGunBase* ABaseCharacter::GetCurrentGunItem()
 	return nullptr;
 }
 
-USkeletalMeshComponent* ABaseCharacter::GetCurrentGunItemSkeletalMesh()
+USkeletalMeshComponent* ABaseCharacter::GetCurrentGunItemSkeletalMesh() const
 {
 	if (IsValid(GetCurrentGunItem()))
 	{
@@ -749,18 +862,84 @@ USkeletalMeshComponent* ABaseCharacter::GetCurrentGunItemSkeletalMesh()
 
 void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 {
-	if (InputControlComponent)
+	if (!CheckCondition_Aim())
 	{
-		InputControlComponent->Handle_Aim(ActionValue);
+		return;
 	}
+
+	AItemBase* EquippedItem = ToolbarInventoryComponent->GetCurrentEquippedItem();
+	if (!EquippedItem)
+	{
+		return;
+	}
+
+	AEquipmentItemBase* EquipmentItem = Cast<AEquipmentItemBase>(EquippedItem);
+	if (!EquipmentItem)
+	{
+		return;
+	}
+	if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Tool.Pickaxe")))
+	{
+		//곡괭이를 들면 근접공격
+		if (AttackComponent)
+		{
+			if (ActionValue.Get<float>() > 0.5f)
+			{
+				AttackComponent->Handle_Attack(EAttackType::ItemAttack);
+			}
+			return;
+		}
+	}
+
+
+
+	//총을 들면 우클릭
+
+
+	if (bIsSprinting || bIsReloading || bIsClose || bIsMantling)
+	{
+		CameraControlComponent->StopAiming();
+		return;
+	}
+	AGunBase* Gun = Cast<AGunBase>(EquipmentItem);
+	if (!IsValid(Gun))
+	{
+		return;
+	}
+	if (Gun)
+	{
+		USkeletalMeshComponent* RifleMesh = Gun->GetSkeletalMeshComponent();
+		CurrentRifleMesh = RifleMesh;
+
+
+		if (ActionValue.Get<float>() > 0.5f && bIsCloseToWall == false)
+		{
+			if (ADSComponent)
+			{
+				ADSComponent->SwitchADS(true);
+			}
+		}
+		else
+		{
+			if (ADSComponent)
+			{
+				ADSComponent->SwitchADS(false);
+			}
+		}
+
+	}
+	/*
+	if(EquipmentItem)
+	if (EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle"))
+		|| EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol"))
+		|| EquipmentItem->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Shotgun")))
+	{
+		AGunBase* RifleItem = Cast<AGunBase>(EquippedItem);
+
+	}
+	*/
 }
 
-void ABaseCharacter::Tick(float DeltaSeconds)
-{
-	Super::Tick(DeltaSeconds);
-
-	SetDesiredAiming(true);
-}// 전환이 완료되었는지 확인하는 유틸리티 함수 (선택사항)
 
 void ABaseCharacter::SetIsCloseToWall(bool _bIsCloseToWall)
 {
@@ -855,9 +1034,22 @@ void ABaseCharacter::MakeNoiseSoundToBoss(float Force)
 
 void ABaseCharacter::Handle_LookMouse(const FInputActionValue& ActionValue, float Sensivity, float ZoomSensivity)
 {
-	if (InputControlComponent)
+	if (!CheckCondition_LookMouse())
 	{
-		InputControlComponent->Handle_LookMouse(ActionValue, Sensivity, ZoomSensivity, bIsAiming, MouseSensitivityMultiplier, MouseInvertMultiplier);
+		return;
+	}
+
+	const FVector2f Value{ ActionValue.Get<FVector2D>() };
+
+	if (bIsAiming)
+	{
+		AddControllerYawInput(Value.X * ZoomSensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
+		AddControllerPitchInput(Value.Y * ZoomSensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
+	}
+	else
+	{
+		AddControllerYawInput(Value.X * Sensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
+		AddControllerPitchInput(Value.Y * Sensivity * MouseSensitivityMultiplier * MouseInvertMultiplier);
 	}
 }
 
@@ -922,6 +1114,10 @@ void ABaseCharacter::Handle_VoiceChatting(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::Handle_Attack(const FInputActionValue& ActionValue)
 {
+	if (ADSComponent)
+	{
+		ADSComponent->SwitchADS(false);
+	}
 	if (AttackComponent)
 	{
 		AttackComponent->Handle_Attack(EAttackType::Kick);
@@ -938,41 +1134,144 @@ void ABaseCharacter::Handle_Emote(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::Handle_Move(const FInputActionValue& ActionValue)
 {
-	if (InputControlComponent)
+	if (!CheckCondition_Move())
 	{
-		InputControlComponent->Handle_Move(ActionValue);
+		return;
 	}
+
+	const auto Value{ UAlsVector::ClampMagnitude012D(ActionValue.Get<FVector2D>()) };
+
+	CancelInteraction();
+	FrontInput = Value.Y;
+	const auto ForwardDirection{ UAlsVector::AngleToDirectionXY(UE_REAL_TO_FLOAT(GetViewState().Rotation.Yaw)) };
+	const auto RightDirection{ UAlsVector::PerpendicularCounterClockwiseXY(ForwardDirection) };
+
+	AddMovementInput(ForwardDirection * Value.Y + RightDirection * Value.X);
 }
 
 void ABaseCharacter::Handle_Sprint(const FInputActionValue& ActionValue)
 {
-	if (InputControlComponent)
+	if (!CheckCondition_Sprint())
 	{
-		InputControlComponent->Handle_Sprint(ActionValue);
+		return;
 	}
+	if (!IsValid(StaminaComponent))
+	{
+		return;
+	}
+
+	const float Value = ActionValue.Get<float>();
+
+	if (CheckHardLandState())
+	{
+		bIsSprinting = false;
+		SetDesiredGait(AlsGaitTags::Running);
+		StaminaComponent->StopStaminaDrain();
+		StaminaComponent->StartStaminaRecoverAfterDelay();
+		return;
+	}
+
+	StopGunAutoFire(); // 총 연사상태면 해제하기
+
+	if (Value < 0.5f) //입력이 떼지는 거면 어차피 뛰는 거 아님..
+	{
+		bIsSprinting = false;
+		SetDesiredGait(AlsGaitTags::Running);
+		StaminaComponent->StopStaminaDrain();
+		StaminaComponent->StartStaminaRecoverAfterDelay();
+		return;
+	}
+
+	if (StaminaComponent->bIsExhausted) //만약 지친 상태라면 불가
+	{
+		return;
+	}
+	//달리기 시작하면서 스테미나 소모 시작
+	StaminaComponent->StartStaminaDrain();
+	StaminaComponent->StopStaminaRecovery();
+	StaminaComponent->StopStaminaRecoverAfterDelay();
 }
 
 void ABaseCharacter::Handle_Walk(const FInputActionValue& ActionValue)
 {
-	if (InputControlComponent)
+	if (!CheckCondition_Walk())
 	{
-		InputControlComponent->Handle_Walk(ActionValue);
+		return;
+	}
+
+	const float Value = ActionValue.Get<float>();
+
+	if (Value > 0.5f)
+	{
+		SetDesiredGait(AlsGaitTags::Walking);
+	}
+	else
+	{
+		SetDesiredGait(AlsGaitTags::Running);
 	}
 }
 
 void ABaseCharacter::Handle_Crouch(const FInputActionValue& ActionValue)
 {
-	if (InputControlComponent)
+	if (!CheckCondition_Crouch())
 	{
-		InputControlComponent->Handle_Crouch(ActionValue);
+		return;
+	}
+
+	CancelInteraction();
+
+	const float Value = ActionValue.Get<float>();
+	if (Value > 0.5f)
+	{
+		SetDesiredStance(AlsStanceTags::Crouching);
+	}
+	else
+	{
+		SetDesiredStance(AlsStanceTags::Standing);
 	}
 }
 
 void ABaseCharacter::Handle_Jump(const FInputActionValue& ActionValue)
 {
-	if (InputControlComponent)
+	if (!CheckCondition_Jump())
 	{
-		InputControlComponent->Handle_Jump(ActionValue);
+		return;
+	}
+
+	const float Value = ActionValue.Get<float>();
+
+	CancelInteraction();
+
+	if (Value > 0.5f)
+	{
+		if (StopRagdolling())
+		{
+			return;
+		}
+		if (StartMantlingGrounded())
+		{
+			SetDesiredAiming(false);
+			//GetCharacter()->SpringArm->AttachToComponent(GetCharacter()->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
+			return;
+		}
+		if (GetStance() == AlsStanceTags::Crouching)
+		{
+			SetDesiredStance(AlsStanceTags::Standing);
+			return;
+		}
+		if (StaminaComponent->CanJump())
+		{
+			Jump();
+			if (!CanJump())
+			{
+				return;
+			}
+			StaminaComponent->ConsumeStaminaOnJump();
+		}
+	}
+	else
+	{
+		StopJumping();
 	}
 }
 
@@ -1064,14 +1363,18 @@ void ABaseCharacter::RequestReload(AGunBase* Gun)
 void ABaseCharacter::StartReload()
 {
 	CancelInteraction();
+	if (ADSComponent)
+	{
+		ADSComponent->SwitchADS(false);
+	}
+	//bIsReloading = true;
 	/*
-	bIsReloading = true;
 	Server_PlayReload();
 	*/
 	AnimationComponent->PlayGunReloadMontage();
 }
 
-
+//////////////////////////////////////애니메이션 사이에 노티파이 클래스로 집어넣어야됨//////////////////////////////////
 void ABaseCharacter::Server_PlayReload_Implementation()
 {
 	Multicast_PlayReload();
@@ -1109,6 +1412,11 @@ void ABaseCharacter::Multicast_PlayReload_Implementation()
 	Gun->Multicast_PlayReloadSound_Implementation();
 	Gun->DropMagazine();
 }
+//////////////////////////////////////애니메이션 사이에 노티파이 클래스로 집어넣어야됨//////////////////////////////////
+
+
+
+
 
 void ABaseCharacter::GunReloadAnimationNotified()
 {
@@ -1153,10 +1461,14 @@ void ABaseCharacter::Multicast_StopReload_Implementation()
 
 void ABaseCharacter::Handle_ViewMode()
 {
-	if (InputControlComponent)
+	if (!CheckCondition_ViewMode())
 	{
-		InputControlComponent->Handle_ViewMode();
+		return;
 	}
+	//아래 코드 카메라 컴포넌트 함수로 변경
+	bIsFPSCamera = !(bIsFPSCamera);
+	LOG_Char_WARNING(TEXT("view mode 변경"));
+	SetCameraMode(bIsFPSCamera);
 }
 
 void ABaseCharacter::SetCameraMode(bool bIsFirstPersonView)
@@ -1166,15 +1478,20 @@ void ABaseCharacter::SetCameraMode(bool bIsFirstPersonView)
 		EmoteMode = false;
 		CustomHeadMesh->SetOwnerNoSee(true);
 		SwapHeadMaterialTransparent(true);
+		
+		FPSCamera->SetActive(true);
+		TPSCamera->SetActive(false);
 		//SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
-		SpringArm->TargetArmLength = 0.0f;
+		
 	}
 	else
 	{
 		EmoteMode = true;
 		CustomHeadMesh->SetOwnerNoSee(false);
 		SwapHeadMaterialTransparent(false);
-		SpringArm->TargetArmLength = 200.0f;
+		
+		FPSCamera->SetActive(false);
+		TPSCamera->SetActive(true);
 	}
 }
 
@@ -1189,7 +1506,6 @@ void ABaseCharacter::SetCameraEmoteMode(bool bIsFirstPersonView)
 		CustomHeadMesh->SetOwnerNoSee(true);
 		SwapHeadMaterialTransparent(true);
 		//SpringArm->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FirstPersonCamera"));
-		SpringArm->TargetArmLength = 0.0f;
 	}
 	else
 	{
@@ -1199,7 +1515,6 @@ void ABaseCharacter::SetCameraEmoteMode(bool bIsFirstPersonView)
 		SpringArm->ProbeSize = 3.0f;
 		CustomHeadMesh->SetOwnerNoSee(false);
 		SwapHeadMaterialTransparent(false);
-		SpringArm->TargetArmLength = 200.0f;
 	}
 }
 
@@ -1234,9 +1549,99 @@ void ABaseCharacter::SwapHeadMaterialTransparent(bool bUseTransparent)
 
 void ABaseCharacter::Handle_Interact(const FInputActionValue& ActionValue)
 {
-	if (InputControlComponent)
+	if (!CheckCondition_Interact())
 	{
-		InputControlComponent->Handle_Interact(ActionValue);
+		return;
+	}
+
+	if (InteractionComponent->CurrentFocusedActor->Implements<UInteractableInterface>())
+	{
+//		return;
+//	}
+//
+//	LOG_Char_WARNING(TEXT("Interacted with: %s"), *CurrentFocusedActor->GetName());
+//
+//	if (bIsPlayingInteractionMontage)
+//	{
+//		return;
+//	}
+//
+//	if (!CurrentFocusedActor->GetClass()->ImplementsInterface(UInteractableInterface::StaticClass()))
+//	{
+//		return;
+//	}
+//
+//	APlayerController* PC = Cast<APlayerController>(GetController());
+//	if (!PC)
+//	{
+//		return;
+//	}
+//
+//	CancelInteraction();
+//
+//	// 서버에서는 상호작용이 안되는 문제 때문에 추가한 부분
+//	// 현재 InteractAfterPlayMontage와 중복되어 실행되는 문제 존재하기 때문에 근본적인 해결책 필요
+//	if (HasAuthority())
+//	{
+//		IInteractableInterface::Execute_Interact(CurrentFocusedActor, PC);
+//	}
+//	else
+//	{
+//		ServerInteractWithActor(CurrentFocusedActor);
+//	}
+//	//// 임시로 중복안되게 한 부분(해결 시 제거 필요)
+//	//if (CurrentFocusedActor->IsA<ATrainingConsole>())
+//	//{
+//	//	return;
+//	//}
+//
+//	LOG_Char_WARNING(TEXT("Handle_Interact: Called Interact on %s"), *CurrentFocusedActor->GetName());
+//
+//	InteractAfterPlayMontage(CurrentFocusedActor);
+//
+//	//if (CurrentFocusedActor->Implements<UInteractableInterface>())
+//	//{
+//	//	AActor* actor = CurrentFocusedActor;
+//	//	if (!IsValid(actor))
+//	//	{
+//	//		return;
+//	//	}
+//	//	APlayerController* PC = Cast<APlayerController>(GetController());
+//	//	if (PC)
+//	//	{
+//	//		//CancelInteraction();
+//	//		//IInteractableInterface::Execute_Interact(CurrentFocusedActor, PC);
+//	//		LOG_Char_WARNING(TEXT("Handle_Interact: Called Interact on %s"), *actor->GetName());
+//	//		InteractAfterPlayMontage(actor);
+//	//	}
+//	//}
+//
+//	//// 테스트를 위한 임시 코드
+//	//if (AItemContainer* Container = Cast<AItemContainer>(CurrentFocusedActor))
+//	//{
+//	//	if (ContainerInteractionComponent)
+//	//	{
+//	//		ContainerInteractionComponent->Server_InteractWithContainer(Container);
+//	//	}
+//	//	return;
+//	//}
+//}
+		AActor* actor = InteractionComponent->CurrentFocusedActor;
+		if (!IsValid(actor))
+		{
+			return;
+		}
+
+		if (GetController())
+		{
+			//CancelInteraction();
+			//IInteractableInterface::Execute_Interact(CurrentFocusedActor, PC);
+			LOG_Char_WARNING(TEXT("Handle_Interact: Called Interact on %s"), *actor->GetName());
+			//GetCharacter()->InteractAfterPlayMontage(actor);
+			//GetCharacter()->AnimationComponent->PlayInteractMontage(actor);
+
+			InteractionComponent->Handle_Interact();
+		}
 	}
 }
 
@@ -1411,6 +1816,10 @@ void ABaseCharacter::SetCurrentQuickSlotIndex(int32 NewIndex)
 	CancelUseItem();
 	CancelInteraction();
 	StopReload();
+	if (ADSComponent)
+	{
+		ADSComponent->SwitchADS(false);
+	}
 	Server_SetQuickSlotIndex(NewIndex);
 }
 
@@ -2167,17 +2576,45 @@ void ABaseCharacter::UseItem(AItemBase* Item)
 		}
 	}
 
-	if (ItemGameplayTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
+	if (ItemGameplayTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")) || ItemGameplayTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol")) || ItemGameplayTag == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Shotgun")))
 	{
+		LOG_Char_WARNING(TEXT("[Aim Check] Rifle tag detected"));
+
 		if (bIsSprinting)
 		{
+			LOG_Char_WARNING(TEXT("[Aim Check] Blocked - Sprinting"));
 			return;
 		}
+
+		if (AnimationComponent->GetIsPlayingGunReloadMontage())
+		{
+			LOG_Char_WARNING(TEXT("[Aim Check] Blocked - Reloading"));
+			return;
+		}
+
+		// 다른 행동 체크
+		if (AnimationComponent)
+		{
+			if (AnimationComponent->GetIsPlayingAttackMontage())
+			{
+				LOG_Char_WARNING(TEXT("[Aim Check] Blocked - Attack Montage Playing"));
+				return;
+			}
+		}
+		else
+		{
+			LOG_Char_WARNING(TEXT("[Aim Check] Warning - AnimationComponent is null"));
+		}
+
 		if (IsDesiredAiming() == false)
 		{
+			LOG_Char_WARNING(TEXT("[Aim Check] Blocked - IsDesiredAiming() == false"));
 			return;
 		}
+
+		LOG_Char_WARNING(TEXT("[Aim Check] Passed all checks"));
 	}
+
 
 	FItemDataRow Data = Item->ItemData;
 	if (Data.bPlayCharacterAnimation == true)
@@ -2597,4 +3034,257 @@ void ABaseCharacter::OnRep_PlayerState()
 		ApplyCustomization(PS->GetCustomizationData());
 		
 	}
+}
+
+bool ABaseCharacter::CheckCondition_LookMouse()
+{
+	if (!Check_DefaultCondition())
+	{
+		return false;
+	}
+	if (bIsPlayingInteractionMontage)
+	{
+		return false;
+	}
+	if (GetLocomotionAction() == AlsLocomotionActionTags::Mantling)
+	{
+		return false;
+	}
+
+	return true;
+}
+
+bool ABaseCharacter::CheckCondition_Move()
+{
+	if (!Check_DefaultCondition())
+	{
+		return false;
+	}
+	if (CheckHardLandState())
+	{
+		return false;
+	}
+	return true;
+}
+
+void ABaseCharacter::ServerInteractWithActor_Implementation(AActor* InteractableActor)
+{
+	if (!InteractableActor)
+	{
+		return;
+	}
+
+	// Authority 체크 (서버에서만 실행)
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	// IInteractableInterface 구현 여부 확인
+	if (!InteractableActor->GetClass()->ImplementsInterface(UInteractableInterface::StaticClass()))
+	{
+		return;
+	}
+
+	// PlayerController 가져오기
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!PC)
+	{
+		return;
+	}
+
+	// 서버에서 Interact 실행
+	IInteractableInterface::Execute_Interact(InteractableActor, PC);
+
+	LOG_Char_WARNING(TEXT("ServerInteractWithActor: %s interacted with %s"),
+		*GetName(), *InteractableActor->GetName());
+}
+
+void ABaseCharacter::ServerInteractWithConsole_Implementation(ATrainingConsole* Console, uint8 Action)
+{
+	if (!Console)
+	{
+		LOG_Char_WARNING(TEXT("[BaseCharacter] ServerInteractWithConsole: Console이 NULL"));
+		return;
+	}
+
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!PC)
+	{
+		LOG_Char_WARNING(TEXT("[BaseCharacter] ServerInteractWithConsole: PlayerController가 NULL"));
+		return;
+	}
+
+	LOG_Char_WARNING(TEXT("[BaseCharacter] ServerInteractWithConsole: Action %d로 Console 상호작용 - Console: %s, PC: %s"),
+		Action, *Console->GetName(), *PC->GetName());
+
+	// 서버에서 PendingAction 설정
+	Console->PendingAction = Action;
+
+	// Interact 호출
+	IInteractableInterface::Execute_Interact(Console, PC);
+}
+
+bool ABaseCharacter::CheckCondition_Sprint()
+{
+	if (!Check_DefaultCondition())
+	{
+		return false;
+	}
+	return true;
+}
+
+bool ABaseCharacter::CheckCondition_Walk()
+{
+	if (!Check_DefaultCondition())
+	{
+		return false;
+	}
+	if (CheckHardLandState())
+	{
+		return false;
+	}
+	return true;
+}
+
+bool ABaseCharacter::CheckCondition_Crouch()
+{
+	if (!Check_DefaultCondition())
+	{
+		return false;
+	}
+
+	if (CheckHardLandState())
+	{
+		return false;
+	}
+
+	return true;
+}
+
+bool ABaseCharacter::CheckCondition_Jump()
+{
+	if (!Check_DefaultCondition())
+	{
+		return false;
+	}
+	if (CheckHardLandState())
+	{
+		return false;
+	}
+	return true;
+}
+
+bool ABaseCharacter::CheckCondition_Aim()
+{
+	if (!Check_DefaultCondition())
+	{
+		return false;
+	}
+	if (CheckHardLandState())
+	{
+		return false;
+	}
+	return true;
+}
+
+bool ABaseCharacter::CheckCondition_Interact()
+{
+	if (!Check_DefaultCondition())
+	{
+		return false;
+	}
+	if (!InteractionComponent->CurrentFocusedActor)
+	{
+		return false;
+	}
+
+	LOG_Char_WARNING(TEXT("Interacted with: %s"), *InteractionComponent->CurrentFocusedActor->GetName());
+
+	if (bIsPlayingInteractionMontage)
+	{
+		return false;
+	}
+
+	return true;
+}
+
+bool ABaseCharacter::CheckCondition_ViewMode()
+{
+	if (!Check_DefaultCondition())
+	{
+		return false;
+	}
+
+	return true;
+}
+
+bool ABaseCharacter::CheckCondition_Reload()
+{
+	if (!Check_DefaultCondition())
+	{
+		return false;
+	}
+	if (bIsReloading)
+	{
+		return false;
+	}
+	if (bIsUsingItem)
+	{
+		return false;
+	}
+	return true;
+}
+
+bool ABaseCharacter::CheckCondition_VoiceChatting()
+{
+	if (!Check_DefaultCondition())
+	{
+		return false;
+	}
+	return true;
+}
+
+bool ABaseCharacter::Check_PlayerController()
+{
+	if (!GetController())
+	{
+		return false;
+	}
+	return true;
+}
+
+bool ABaseCharacter::Check_PlayerState()
+{
+	if (CheckPlayerCurrentState() == EPlayerInGameStatus::Spectating || CheckPlayerCurrentState() == EPlayerInGameStatus::None)
+	{
+		return false;
+	}
+	return true;
+}
+
+bool ABaseCharacter::Check_InputEnabled()
+{
+	if (!IsInputEnabled())
+	{
+		return false;
+	}
+	return true;
+}
+
+bool ABaseCharacter::Check_DefaultCondition()
+{
+	if (!Check_PlayerController())
+	{
+		return false;
+	}
+	if (!Check_PlayerState())
+	{
+		return false;
+	}
+	if (!Check_InputEnabled())
+	{
+		return false;
+	}
+	return true;
 }

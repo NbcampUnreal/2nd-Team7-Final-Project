@@ -9,8 +9,8 @@ class UToolbarInventoryComponent;
 UCLASS()
 class LASTCANARY_API UBackpackSlotWidget : public UInventorySlotWidget
 {
-	GENERATED_BODY()
-	
+    GENERATED_BODY()
+
 public:
     /** 가방 내 슬롯 인덱스 (툴바 슬롯 인덱스와 구분) */
     UPROPERTY(BlueprintReadOnly, Category = "Backpack")
