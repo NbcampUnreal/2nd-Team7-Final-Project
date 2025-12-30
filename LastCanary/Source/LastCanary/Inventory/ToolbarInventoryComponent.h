@@ -34,7 +34,7 @@ public:
     UChildActorComponent* EquippedItemComponent;
 
     /** 현재 장착된 슬롯 인덱스 */
-    UPROPERTY(Replicated)
+    UPROPERTY(ReplicatedUsing = OnRep_CurrentEquippedSlotIndex)
     int32 CurrentEquippedSlotIndex;
 
     /** 특정 메시에 아이템 설정 */
@@ -154,6 +154,12 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Backpack")
     bool RemoveItemFromBackpack(int32 BackpackSlotIndex, int32 Quantity);
 
+    /** 가방에서 노트 아이템 사용 */
+    UFUNCTION(Server, Reliable, 
+        Category = "Backpack|Items")
+    void Server_UseNoteItemFromBackpack(int32 BackpackSlotIndex);
+    void Server_UseNoteItemFromBackpack_Implementation(int32 BackpackSlotIndex);
+
     //-----------------------------------------------------
     // 백팩 드래그 & 드롭
     //-----------------------------------------------------
@@ -200,15 +206,18 @@ public:
     void MulticastUpdateItemText_Implementation(const FText& ItemName);
 
     /** 장착한 총기의 탄환 수를 UI로 전달하는 함수 */
-    UFUNCTION(NetMulticast, Reliable, Category = "Gun UI")
-    void MulticastSetGunAmmoUIVisibility(bool bVisible, int32 CurrentAmmo, int32 MaxAmmo, EFireMode CurrentFireMode, const TArray<EFireMode>& AvailableFireModes);
-    void MulticastSetGunAmmoUIVisibility_Implementation(bool bVisible, int32 CurrentAmmo, int32 MaxAmmo, EFireMode CurrentFireMode, const TArray<EFireMode>& AvailableFireModes);
+    UFUNCTION(Client, Reliable, Category = "Gun UI")
+    void ClientSetGunAmmoUIVisibility();
+    void ClientSetGunAmmoUIVisibility_Implementation();
 
 
 protected:
     /** 장착된 아이템 상태 변경 시 호출되는 핸들러 */
     UFUNCTION()
     void OnEquippedItemStateChanged();
+
+    UFUNCTION()
+    void OnRep_CurrentEquippedSlotIndex();
 
     //-----------------------------------------------------
     // 내부 구현 및 헬퍼
@@ -235,6 +244,9 @@ protected:
     /** 아이템 습득 및 드랍 시 플레이어 스테이트와 동기화 */
     void SyncInventoryToPlayerState();
 
+    /** 동기화 시  */
+    void ProcessSyncItem(const FName& ItemRowName, int32 Quantity, TMap<FName, int32>& ResourceMap, TArray<int32>& ExploreItems);
+
     /** 가방메시 비가시화 RPC함수 */
     UFUNCTION(NetMulticast, Reliable)
     void Multicast_SetBackpackVisibility(bool bVisible);
@@ -259,4 +271,8 @@ public:
     UFUNCTION(Client, Reliable, Category = "Backpack UI")
     void Client_HideBackpackUI();
     void Client_HideBackpackUI_Implementation();
+
+    /** 빈 슬롯 인덱스 찾기 */
+    UFUNCTION(BlueprintPure, Category = "Inventory")
+    int32 FindEmptySlot() const;
 };

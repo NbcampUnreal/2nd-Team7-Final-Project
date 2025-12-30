@@ -31,7 +31,54 @@ AItemBase* UItemSpawnerComponent::CreateItem(FName ItemRowName, const FVector& S
 
 AItemBase* UItemSpawnerComponent::CreateItemFromData(const FBaseItemSlotData& SourceItemData, const FVector& SpawnLocation)
 {
-    return CreateItemWithCustomData(SourceItemData.ItemRowName, SpawnLocation, SourceItemData.Quantity, SourceItemData.Durability);
+    // 권한 확인 (서버에서만 실행)
+    if (!GetOwner() || !GetOwner()->HasAuthority())
+    {
+        LOG_Item_WARNING(TEXT("[ItemSpawnerComponent::CreateItemFromData] Authority가 없습니다."));
+        return nullptr;
+    }
+
+    if (SourceItemData.ItemRowName.IsNone())
+    {
+        LOG_Item_WARNING(TEXT("[ItemSpawnerComponent::CreateItemFromData] ItemRowName이 None입니다."));
+        return nullptr;
+    }
+
+    ULCGameInstanceSubsystem* GameSubsystem = GetGameSubsystem();
+    if (!GameSubsystem)
+    {
+        LOG_Item_WARNING(TEXT("[ItemSpawnerComponent::CreateItemFromData] GameInstanceSubsystem이 없습니다."));
+        return nullptr;
+    }
+
+    FItemDataRow* ItemData = GameSubsystem->GetItemDataByRowName(SourceItemData.ItemRowName);
+    if (!ItemData || !ItemData->ItemActorClass)
+    {
+        LOG_Item_WARNING(TEXT("[ItemSpawnerComponent::CreateItemFromData] ItemData 또는 ItemActorClass가 없습니다: %s"),
+            *SourceItemData.ItemRowName.ToString());
+        return nullptr;
+    }
+
+    FActorSpawnParameters SpawnParams;
+    SpawnParams.Owner = nullptr;
+    SpawnParams.Instigator = Cast<APawn>(GetOwner());
+    SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+    // 아이템 액터 스폰
+    AItemBase* SpawnedItem = GetWorld()->SpawnActor<AItemBase>(
+        ItemData->ItemActorClass,
+        SpawnLocation,
+        FRotator::ZeroRotator,
+        SpawnParams
+    );
+
+    if (SpawnedItem)
+    {
+        ApplyItemSettings(SpawnedItem, SourceItemData);
+        EnablePhysicsSimulation(SpawnedItem);
+    }
+
+    return SpawnedItem;
 }
 
 AItemBase* UItemSpawnerComponent::CreateItemWithCustomData(FName ItemRowName, const FVector& SpawnLocation, int32 Quantity, float Durability)
@@ -251,6 +298,37 @@ void UItemSpawnerComponent::ApplyItemSettings(AItemBase* Item, FName ItemRowName
         Gun->ApplyGunDataFromDataTable();
         Gun->ApplyAttachmentsFromDataTable();
     }
+
+    // 네트워크 업데이트
+    Item->ForceNetUpdate();
+}
+
+void UItemSpawnerComponent::ApplyItemSettings(AItemBase* Item, const FBaseItemSlotData& SlotData)
+{
+    if (!Item)
+        return;
+
+    // 기본 속성 설정
+    Item->ItemRowName = SlotData.ItemRowName;
+    Item->Quantity = SlotData.Quantity;
+    Item->bIsEquipped = false;
+
+    // 데이터 테이블 적용
+    Item->ApplyItemDataFromTable();
+
+    // 총기인 경우 총기 데이터 적용 (CurrentAmmo는 이미 설정되었으므로 초기화되지 않음)
+    if (AGunBase* Gun = Cast<AGunBase>(Item))
+    {
+        // 총기 전용 복원 로직
+        Gun->CurrentAmmo = SlotData.CurrentAmmo;
+        Gun->CurrentFireMode = static_cast<EFireMode>(SlotData.FireMode);
+        Gun->bIsAutoFiring = SlotData.bWasAutoFiring;
+
+        Gun->ApplyGunDataFromDataTable();
+        Gun->ApplyAttachmentsFromDataTable();
+    }
+
+    Item->Durability = FMath::Clamp(SlotData.Durability, 0.0f, Item->MaxDurability);
 
     // 네트워크 업데이트
     Item->ForceNetUpdate();

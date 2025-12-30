@@ -1,10 +1,12 @@
 #include "UI/UIElement/InventoryMainWidget.h"
 #include "UI/UIElement/ToolbarInventoryWidget.h"
 #include "UI/UIElement/BackpackInventoryWidget.h"
+#include "UI/UIElement/ItemContainerWidget.h"
 #include "UI/UIObject/InventorySlotWidget.h"
 #include "UI/UIObject/ItemDropQuantityWidget.h"
 #include "UI/UIObject/BackpackSlotWidget.h"
 #include "UI/UIObject/GunAmmoWidget.h"
+#include "UI/UIObject/ItemContainerSlotWidget.h"
 #include "Inventory/ToolbarInventoryComponent.h"
 #include "Character/BaseCharacter.h"
 #include "DataType/BaseItemSlotData.h"
@@ -24,6 +26,11 @@ void UInventoryMainWidget::NativeConstruct()
 	ShowToolbarOnly();
 
 	RestoreGunAmmoUIState();
+
+	if (ContainerWidget)
+	{
+		ContainerWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
 }
 
 bool UInventoryMainWidget::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
@@ -40,6 +47,20 @@ bool UInventoryMainWidget::NativeOnDrop(const FGeometry& InGeometry, const FDrag
 		SourceWidget->ItemData.ItemRowName == FName("Default"))
 	{
 		return false;
+	}
+
+	if (UItemContainerSlotWidget* ContainerSlotWidget = Cast<UItemContainerSlotWidget>(SourceWidget))
+	{
+		// 컨테이너 아이템 드롭 처리
+		if (ContainerSlotWidget->ItemData.Quantity <= 1)
+		{
+			HandleDropOutsideSlots(SourceWidget, 1);
+		}
+		else
+		{
+			ShowItemDropQuantityWidget(SourceWidget);
+		}
+		return true;
 	}
 
 	// 개수에 따라 처리 분기
@@ -98,7 +119,13 @@ void UInventoryMainWidget::ShowToolbarOnly()
 		BackpackWidget->SetVisibility(ESlateVisibility::Collapsed);
 	}
 
+	if (ContainerWidget)
+	{
+		ContainerWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+
 	bBackpackInventoryOpen = false;
+	bContainerUIOpen = false;
 }
 
 void UInventoryMainWidget::ToggleBackpackInventory()
@@ -118,6 +145,16 @@ void UInventoryMainWidget::ToggleBackpackInventory()
 		BackpackWidget->SetVisibility(ESlateVisibility::Collapsed);
 		bBackpackInventoryOpen = false;
 		LOG_Item_WARNING(TEXT("[ToggleBackpackInventory] 가방 인벤토리 닫기 (드롭 위젯 포함)"));
+
+		if (!bContainerUIOpen)
+		{
+			if (APlayerController* PC = GetOwningPlayer())
+			{
+				FInputModeGameOnly InputMode;
+				PC->SetInputMode(InputMode);
+				PC->SetShowMouseCursor(false);
+			}
+		}
 	}
 	else
 	{
@@ -127,6 +164,15 @@ void UInventoryMainWidget::ToggleBackpackInventory()
 		BackpackWidget->RefreshInventoryUI();
 		bBackpackInventoryOpen = true;
 		LOG_Item_WARNING(TEXT("[ToggleBackpackInventory] 가방 인벤토리 열기"));
+
+		if (APlayerController* PC = GetOwningPlayer())
+		{
+			FInputModeGameAndUI InputMode;
+			InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+			InputMode.SetHideCursorDuringCapture(false);
+			PC->SetInputMode(InputMode);
+			PC->SetShowMouseCursor(true);
+		}
 	}
 }
 
@@ -233,6 +279,21 @@ void UInventoryMainWidget::HandleDropOutsideSlots(UInventorySlotWidget* SourceWi
 		return;
 	}
 
+	if (UItemContainerSlotWidget* ContainerSlotWidget = Cast<UItemContainerSlotWidget>(SourceWidget))
+	{
+		if (CurrentOpenContainer)
+		{
+			// 컨테이너에서 아이템 드롭 (아이템 버리기)
+			bool bSuccess = CurrentOpenContainer->TryRemoveItemFromContainer(
+				ContainerSlotWidget->ContainerSlotIndex,
+				Quantity
+			);
+			LOG_Item_WARNING(TEXT("[HandleDropOutsideSlots] 컨테이너 아이템 드롭: %s"),
+				bSuccess ? TEXT("성공") : TEXT("실패"));
+		}
+		return;
+	}
+
 	// 백팩 슬롯인지 확인
 	if (UBackpackSlotWidget* CurrentBackpackWidget = Cast<UBackpackSlotWidget>(SourceWidget))
 	{
@@ -284,6 +345,79 @@ bool UInventoryMainWidget::IsDragInProgress() const
 	return false;
 }
 
+void UInventoryMainWidget::ShowContainerUI(AItemContainer* Container, const TArray<FContainerItemData>& ContainerItems)
+{
+	if (!Container || !ContainerWidget)
+	{
+		LOG_Item_WARNING(TEXT("[ShowContainerUI] Container 또는 ContainerWidget이 null"));
+		return;
+	}
+
+	// 현재 열린 컨테이너가 있으면 먼저 닫기
+	if (bContainerUIOpen && CurrentOpenContainer)
+	{
+		HideContainerUI();
+	}
+
+	// 컨테이너 UI 설정 및 표시
+	ContainerWidget->SetupContainerWidget(Container, ContainerItems);
+	ContainerWidget->SetVisibility(ESlateVisibility::Visible);
+
+	CurrentOpenContainer = Container;
+	bContainerUIOpen = true;
+
+	// 입력 모드를 UI 모드로 변경
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		FInputModeGameAndUI InputMode;
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		InputMode.SetHideCursorDuringCapture(false);
+		PC->SetInputMode(InputMode);
+		PC->SetShowMouseCursor(true);
+	}
+
+	LOG_Item_WARNING(TEXT("[ShowContainerUI] 컨테이너 UI 표시: %s"), *Container->GetContainerName().ToString());
+}
+
+void UInventoryMainWidget::HideContainerUI()
+{
+	LOG_Item_WARNING(TEXT("[HideContainerUI] 호출됨, ContainerWidget: %s"),
+		ContainerWidget ? TEXT("Valid") : TEXT("Null"));
+
+	if (!ContainerWidget)
+	{
+		LOG_Item_WARNING(TEXT("[HideContainerUI] ContainerWidget이 null이어서 리턴"));
+		return;
+	}
+
+	// 드래그 작업 취소
+	CancelCurrentDragOperation();
+
+	// 컨테이너 UI 숨김
+	ContainerWidget->SetVisibility(ESlateVisibility::Collapsed);
+
+	bContainerUIOpen = false;
+	CurrentOpenContainer = nullptr;
+
+	// 다른 UI가 열려있지 않으면 게임 모드로 복귀
+	if (!bBackpackInventoryOpen)
+	{
+		if (APlayerController* PC = GetOwningPlayer())
+		{
+			FInputModeGameOnly InputMode;
+			PC->SetInputMode(InputMode);
+			PC->SetShowMouseCursor(false);
+		}
+	}
+
+	LOG_Item_WARNING(TEXT("[HideContainerUI] 컨테이너 UI 숨김"));
+}
+
+bool UInventoryMainWidget::IsContainerUIOpen() const
+{
+	return bContainerUIOpen;
+}
+
 UToolbarInventoryWidget* UInventoryMainWidget::GetToolbarWidget()
 {
 	return ToolbarWidget;
@@ -326,7 +460,7 @@ void UInventoryMainWidget::RefreshInventory()
 	}
 }
 
-void UInventoryMainWidget::SetGunAmmoUIVisibility(bool bVisible, int32 CurrentAmmo, int32 MaxAmmo, EFireMode CurrentFireMode, const TArray<EFireMode>& AvailableFireModes)
+void UInventoryMainWidget::SetGunAmmoUIVisibility()
 {
 	if (!GunAmmoWidget)
 	{
@@ -334,16 +468,7 @@ void UInventoryMainWidget::SetGunAmmoUIVisibility(bool bVisible, int32 CurrentAm
 		return;
 	}
 
-	if (bVisible && MaxAmmo > 0)
-	{
-		GunAmmoWidget->ShowAmmoUI(CurrentAmmo, MaxAmmo, CurrentFireMode, AvailableFireModes);
-		LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] 탄환 UI 표시: %d/%d, 발사모드: %d"), CurrentAmmo, MaxAmmo, (int32)CurrentFireMode);
-	}
-	else
-	{
-		GunAmmoWidget->HideAmmoUI();
-		LOG_Item_WARNING(TEXT("[SetGunAmmoUIVisibility] 탄환 UI 숨김"));
-	}
+	GunAmmoWidget->UpdateAmmoUI();
 }
 
 void UInventoryMainWidget::InitializeGunAmmoUI()
@@ -388,7 +513,7 @@ void UInventoryMainWidget::RestoreGunAmmoUIState()
 
 	if (GunAmmoWidget && MaxAmmo > 0)
 	{
-		GunAmmoWidget->ShowAmmoUI(CurrentAmmo, MaxAmmo, EquippedGun->CurrentFireMode, EquippedGun->AvailableFireModes);
+		GunAmmoWidget->ShowAmmoUI(CurrentAmmo, MaxAmmo, EquippedGun->MagazineCapacity, EquippedGun->CurrentFireMode, EquippedGun->AvailableFireModes);
 		LOG_Item_WARNING(TEXT("[RestoreGunAmmoUIState] 총기 UI 복원 완료: %d/%d"), CurrentAmmo, MaxAmmo);
 	}
 }

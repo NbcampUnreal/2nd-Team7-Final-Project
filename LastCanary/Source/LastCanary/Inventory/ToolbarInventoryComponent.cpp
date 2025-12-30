@@ -100,35 +100,23 @@ bool UToolbarInventoryComponent::TryAddItemSlot(FName ItemRowName, int32 Amount)
 
     for (FBaseItemSlotData& Slot : ItemSlots)
     {
-        if (UInventoryUtility::CanStackItems(Slot, ItemRowName, ItemData))
+        if (UInventoryUtility::IsDefaultItem(Slot.ItemRowName) && RemainAmount > 0)
         {
-            int32 Addable = UInventoryUtility::AddToStack(Slot, RemainAmount, ItemData->MaxStack);
+            int32 Addable = FMath::Min(RemainAmount, ItemData->MaxStack);
+
+            Slot.ItemRowName = ItemRowName;
+            Slot.Quantity = Addable;
+            Slot.Durability = 100.0f;  // TODO : 임시용으로 100으로 설정해둠 반드시 고쳐야함
+            Slot.bIsValid = true;
+            Slot.bIsEquipped = false;
+
             RemainAmount -= Addable;
 
             if (RemainAmount <= 0)
             {
-                UpdateWeight();
-                UpdateWalkieTalkieChannelStatus();
-                UpdateBackpackMeshStatus();
-                OnInventoryUpdated.Broadcast();
-                return true;
+                break;
             }
         }
-    }
-
-    while (RemainAmount > 0 && ItemSlots.Num() < MaxSlots)
-    {
-        int32 Addable = FMath::Min(RemainAmount, ItemData->MaxStack);
-
-        FBaseItemSlotData NewSlot;
-        NewSlot.ItemRowName = ItemRowName;
-        NewSlot.Quantity = Addable;
-        NewSlot.Durability = 0.0f;
-        NewSlot.bIsValid = true;
-        NewSlot.bIsEquipped = false;
-
-        ItemSlots.Add(NewSlot);
-        RemainAmount -= Addable;
     }
 
     if (RemainAmount == 0)
@@ -141,7 +129,7 @@ bool UToolbarInventoryComponent::TryAddItemSlot(FName ItemRowName, int32 Amount)
     }
     else
     {
-        LOG_Item_WARNING(TEXT("[TryAddItemSlot] 인벤토리 공간이 부족합니다."));
+        LOG_Item_WARNING(TEXT("[TryAddItemSlot] 인벤토리 공간이 부족합니다. (남은 수량: %d)"), RemainAmount);
         return false;
     }
 }
@@ -169,7 +157,7 @@ bool UToolbarInventoryComponent::TryDecreaseItem(FName ItemRowName, int32 Amount
 
             if (ItemSlots[i].Quantity <= 0)
             {
-                ItemSlots.RemoveAt(i);
+                TryRemoveItemAtSlot(i);
             }
 
             UpdateWeight();
@@ -236,7 +224,7 @@ bool UToolbarInventoryComponent::TryRemoveItemAtSlot(int32 SlotIndex)
         return false;
     }
 
-    UInventoryUtility::SetSlotToDefault(ItemSlots[SlotIndex], GetInventoryConfig());
+    SetSlotToDefault(SlotIndex);
 
     SyncInventoryToPlayerState();
     UpdateWalkieTalkieChannelStatus();
@@ -307,7 +295,7 @@ void UToolbarInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProp
 {
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
     DOREPLIFETIME(UToolbarInventoryComponent, ItemSlots);
-    DOREPLIFETIME(UToolbarInventoryComponent, CurrentEquippedSlotIndex);
+    DOREPLIFETIME_CONDITION_NOTIFY(UToolbarInventoryComponent, CurrentEquippedSlotIndex, COND_None, REPNOTIFY_Always);
 }
 
 void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
@@ -427,6 +415,13 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
     // 공통 마무리
     ItemSlots[SlotIndex].bIsEquipped = true;
     CurrentEquippedSlotIndex = SlotIndex;
+
+    if (AItemBase* EquippedItem = GetCurrentEquippedItem())
+    {
+        EquippedItem->bIsEquipped = true;
+        //EquippedItem->SetCustomDepth(false);
+    }
+
     if (CachedOwnerCharacter) CachedOwnerCharacter->SetEquipped(true);
 
     if (AGunBase* Gun = Cast<AGunBase>(EquippedItemComponent->GetChildActor()))
@@ -435,9 +430,7 @@ void UToolbarInventoryComponent::EquipItemAtSlot(int32 SlotIndex)
 
         if (UIController)
         {
-            int32 CurrentAmmo = FMath::RoundToInt(Gun->Durability);
-            int32 MaxAmmo = FMath::RoundToInt(Gun->MaxDurability);
-            MulticastSetGunAmmoUIVisibility(true, CurrentAmmo, MaxAmmo, Gun->CurrentFireMode, Gun->AvailableFireModes);
+            ClientSetGunAmmoUIVisibility();
         }
     }
 
@@ -491,7 +484,7 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
             if (UIController)
             {
                 TArray<EFireMode> EmptyModes;
-                MulticastSetGunAmmoUIVisibility(false, 0, 0, EFireMode::None, EmptyModes);
+                ClientSetGunAmmoUIVisibility();
             }
         }
 
@@ -543,6 +536,11 @@ void UToolbarInventoryComponent::UnequipCurrentItem()
     CurrentEquippedSlotIndex = -1;
     bool bHasOtherEquipment = HasOtherEquippedItems();
     if (CachedOwnerCharacter) CachedOwnerCharacter->SetEquipped(bHasOtherEquipment);
+    
+    if (UIController)
+    {
+        ClientSetGunAmmoUIVisibility();
+    }
 
     OnInventoryUpdated.Broadcast();
 }
@@ -630,6 +628,7 @@ void UToolbarInventoryComponent::SyncGunStateToSlot()
 
         // 내구도 동기화
         SlotData.Durability = Gun->Durability;
+        SlotData.CurrentAmmo = Gun->CurrentAmmo;
         // 총기 상태 동기화 
         SlotData.FireMode = static_cast<int32>(Gun->CurrentFireMode);
         SlotData.bWasAutoFiring = Gun->bIsAutoFiring;
@@ -647,6 +646,7 @@ void UToolbarInventoryComponent::RestoreGunStateFromSlot(AGunBase* Gun, const FB
 
     // 총기 상태 복원
     Gun->Durability = SlotData.Durability;
+    Gun->CurrentAmmo = SlotData.CurrentAmmo;
     Gun->CurrentFireMode = static_cast<EFireMode>(SlotData.FireMode);
 }
 
@@ -695,6 +695,8 @@ void UToolbarInventoryComponent::SetupEquippedItem(UChildActorComponent* ItemCom
     EquippedItem->Durability = SlotData->Durability;
     // 상위 콜리전 설정이라서 개별 설정을 하더라도 해당 설정을 우선함
     // EquippedItem->SetActorEnableCollision(false);
+
+    //EquippedItem->SetCustomDepth(false);
 
     if (UStaticMeshComponent* StaticMesh = EquippedItem->FindComponentByClass<UStaticMeshComponent>())
     {
@@ -820,6 +822,37 @@ bool UToolbarInventoryComponent::TryStoreItem(AItemBase* ItemActor)
         return false;
     }
 
+    // 소모품 태그 확인
+    static const FGameplayTag ConsumableTag = FGameplayTag::RequestGameplayTag(TEXT("ItemType.Consumable"));
+    bool bIsConsumable = ItemData->ItemType.MatchesTag(ConsumableTag);
+
+    if (bIsConsumable)
+    {
+        for (int32 i = 0; i < ItemSlots.Num(); ++i)
+        {
+            if (UInventoryUtility::CanStackItems(ItemSlots[i], ItemActor->ItemRowName, ItemData))
+            {
+                int32 Addable = UInventoryUtility::AddToStack(ItemSlots[i], ItemActor->Quantity, ItemData->MaxStack);
+                if (Addable > 0)
+                {
+                    // 스택 성공
+                    OnInventoryUpdated.Broadcast();
+                    if (GetOwner()->HasAuthority() && ItemActor)
+                    {
+                        ItemActor->Destroy();
+                    }
+                    UpdateWeight();
+                    UpdateWalkieTalkieChannelStatus();
+                    UpdateBackpackMeshStatus();
+
+                    LOG_Item_WARNING(TEXT("[TryStoreItem] 소모품 스택 성공: %s (추가: %d개)"),
+                        *ItemActor->ItemRowName.ToString(), Addable);
+                    return true;
+                }
+            }
+        }
+    }
+
     // 빈 슬롯 찾기
     int32 EmptySlotIndex = -1;
     for (int32 i = 0; i < ItemSlots.Num(); ++i)
@@ -872,6 +905,8 @@ bool UToolbarInventoryComponent::TryStoreItem(AItemBase* ItemActor)
     // 총기 상태 저장
     if (AGunBase* Gun = Cast<AGunBase>(ItemActor))
     {
+        NewSlot.Durability = Gun->Durability;
+        NewSlot.CurrentAmmo = Gun->CurrentAmmo;
         NewSlot.FireMode = static_cast<int32>(Gun->CurrentFireMode);
         NewSlot.bWasAutoFiring = Gun->bIsAutoFiring;
     }
@@ -1127,6 +1162,18 @@ void UToolbarInventoryComponent::Client_HideBackpackUI_Implementation()
     }
 }
 
+int32 UToolbarInventoryComponent::FindEmptySlot() const
+{
+    for (int32 i = 0; i < ItemSlots.Num(); ++i)
+    {
+        if (ItemSlots[i].ItemRowName == FName("Default") || !ItemSlots[i].bIsValid || ItemSlots[i].Quantity <= 0)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
 bool UToolbarInventoryComponent::RemoveItemFromBackpack(int32 BackpackSlotIndex, int32 Quantity)
 {
     if (CurrentEquippedSlotIndex >= 0 && ItemSlots.IsValidIndex(CurrentEquippedSlotIndex))
@@ -1151,6 +1198,23 @@ bool UToolbarInventoryComponent::RemoveItemFromBackpack(int32 BackpackSlotIndex,
         }
     }
     return false;
+}
+
+void UToolbarInventoryComponent::Server_UseNoteItemFromBackpack_Implementation(int32 BackpackSlotIndex)
+{
+    UE_LOG(LogTemp, Warning, TEXT("[ToolbarInventoryComponent] Server_UseNoteItemFromBackpack_Implementation 시작 - SlotIndex: %d, HasAuthority: %s"),
+        BackpackSlotIndex, GetOwner() && GetOwner()->HasAuthority() ? TEXT("True") : TEXT("False"));
+
+    if (!BackpackManager)
+    {
+        UE_LOG(LogTemp, Error, TEXT("[ToolbarInventoryComponent] BackpackManager가 null입니다"));
+        return;
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("[ToolbarInventoryComponent] BackpackManager에 노트 아이템 사용 요청"));
+    bool bSuccess = BackpackManager->UseNoteItem(BackpackSlotIndex);
+
+    UE_LOG(LogTemp, Warning, TEXT("[ToolbarInventoryComponent] 노트 아이템 사용 결과: %s"), bSuccess ? TEXT("Success") : TEXT("Failed"));
 }
 
 bool UToolbarInventoryComponent::HasBackpackEquipped() const
@@ -1181,87 +1245,71 @@ TArray<int32> UToolbarInventoryComponent::GetAllBackpackItemIDs() const
 
 void UToolbarInventoryComponent::SyncInventoryToPlayerState()
 {
-    if (IsOwnerCharacterValid())
+    if (!IsOwnerCharacterValid())
     {
-        if (ABasePlayerState* PS = CachedOwnerCharacter->GetPlayerState<ABasePlayerState>())
+        LOG_Item_WARNING(TEXT("[SyncInventoryToPlayerState] 유효하지 않은 캐릭터입니다."));
+        return;
+    }
+
+    ABasePlayerState* PS = CachedOwnerCharacter->GetPlayerState<ABasePlayerState>();
+    if (!PS)
+    {
+        LOG_Item_WARNING(TEXT("[SyncInventoryToPlayerState] PlayerState가 유효하지 않습니다."));
+        return;
+    }
+
+    PS->AquiredItemIDs = GetInventoryItemIDs();
+
+    // [디버그 로그] 현재 PS의 AquiredItemIDs를 이름으로 출력
+    FString DebugList;
+    for (int32 SavedItemID : PS->AquiredItemIDs)
+    {
+        FName RowName = GetItemRowNameFromID(SavedItemID);
+        DebugList += RowName.ToString() + TEXT(", ");
+    }
+    LOG_Item_WARNING(TEXT("[Sync] PS에 저장된 아이템 목록: %s"), *DebugList);
+
+
+    // TO DO : 여기 아래부분 싹다 리팩토링 해야함
+    TMap<FName, int32> CollectedResource;
+    TArray<int32> ExploreItemIDs;
+
+    // 통합 아이템 처리
+    for (const FBaseItemSlotData& SlotData : ItemSlots)
+    {
+        ProcessSyncItem(SlotData.ItemRowName, SlotData.Quantity, CollectedResource, ExploreItemIDs);
+
+        // 백팩 처리
+        if (SlotData.bIsBackpack)
         {
-            PS->AquiredItemIDs = GetInventoryItemIDs();
-
-            // [디버그 로그] 현재 PS의 AquiredItemIDs를 이름으로 출력
-            FString DebugList;
-            for (int32 SavedItemID : PS->AquiredItemIDs)
+            for (const FBackpackSlotData& BackpackSlot : SlotData.BackpackSlots)
             {
-                FName RowName = GetItemRowNameFromID(SavedItemID);
-                DebugList += RowName.ToString() + TEXT(", ");
+                ProcessSyncItem(BackpackSlot.ItemRowName, BackpackSlot.Quantity, CollectedResource, ExploreItemIDs);
             }
-            LOG_Item_WARNING(TEXT("[Sync] PS에 저장된 아이템 목록: %s"), *DebugList);
-
-
-            // TO DO : 여기 아래부분 싹다 리팩토링 해야함
-            TMap<FName, int32> CollectedResource;
-            TArray<int32> ExploreItemIDs;
-            for (int32 i = 0; i < ItemSlots.Num(); ++i)
-            {
-                const FBaseItemSlotData& SlotData = ItemSlots[i];
-
-                if (SlotData.bIsBackpack)
-                {
-                    for (const FBackpackSlotData& BackpackSlot : SlotData.BackpackSlots)
-                    {
-                        // 빈 아이템 제외 (Default 등)
-                        if (!IsDefaultItem(BackpackSlot.ItemRowName) && BackpackSlot.Quantity > 0)
-                        {
-                            const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(BackpackSlot.ItemRowName, TEXT("GetItemIDFromRowName"));
-                            if (!ItemData->bIsResourceItem)
-                            {
-                                if (ItemData->bIsNoteItem)
-                                {
-                                    ExploreItemIDs.Add(ItemData->ItemID);
-                                }
-
-                                continue;
-                            }
-
-                            if (CollectedResource.Contains(BackpackSlot.ItemRowName))
-                            {
-                                CollectedResource[BackpackSlot.ItemRowName]++;
-                            }
-                            else
-                            {
-                                CollectedResource.Add(BackpackSlot.ItemRowName, BackpackSlot.Quantity);
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(SlotData.ItemRowName, TEXT("GetItemIDFromRowName"));
-
-                    if (!ItemData->bIsResourceItem)
-                    {
-                        if (ItemData->bIsNoteItem)
-                        {
-                            ExploreItemIDs.Add(ItemData->ItemID);
-                        }
-
-                        continue;
-                    }
-
-                    if (CollectedResource.Contains(SlotData.ItemRowName))
-                    {
-                        CollectedResource[SlotData.ItemRowName]++;
-                    }
-                    else
-                    {
-                        CollectedResource.Add(SlotData.ItemRowName, SlotData.Quantity);
-                    }
-                }
-                //int32 ItemID = GetItemIDFromRowName(SlotData.ItemRowName);
-            }
-
-            PS->CollectedResourceMap = CollectedResource;
-            PS->CollectedExploreItemArray = ExploreItemIDs;
         }
+    }
+
+    // PlayerState 업데이트
+    PS->CollectedResourceMap = CollectedResource;
+    PS->CollectedExploreItemArray = ExploreItemIDs;
+}
+
+void UToolbarInventoryComponent::ProcessSyncItem(const FName& ItemRowName, int32 Quantity, TMap<FName, int32>& ResourceMap, TArray<int32>& ExploreItems)
+{
+    const FItemDataRow* ItemData = ItemDataTable->FindRow<FItemDataRow>(ItemRowName, TEXT("ProcessItemForSync"));
+    if (!ItemData)
+    {
+        LOG_Item_WARNING(TEXT("[ProcessSyncItem] ItemData가 null"));
+        return;
+    }
+
+    if (ItemData->bIsNoteItem)
+    {
+        ExploreItems.Add(ItemData->ItemID);
+    }
+    else if (ItemData->bIsResourceItem)
+    {
+        ResourceMap.FindOrAdd(ItemRowName) += Quantity;
     }
 }
 
@@ -1383,21 +1431,49 @@ void UToolbarInventoryComponent::MulticastUpdateItemText_Implementation(const FT
     }
 }
 
-void UToolbarInventoryComponent::MulticastSetGunAmmoUIVisibility_Implementation(bool bVisible, int32 CurrentAmmo, int32 MaxAmmo, EFireMode CurrentFireMode, const TArray<EFireMode>& AvailableFireModes)
+void UToolbarInventoryComponent::ClientSetGunAmmoUIVisibility_Implementation()
 {
     if (UIController)
     {
-        UIController->SetGunAmmoUIVisibility(bVisible, CurrentAmmo, MaxAmmo, CurrentFireMode, AvailableFireModes);
+        UIController->SetGunAmmoUIVisibility();
+        LOG_Item_WARNING(TEXT("[ClientSetGunAmmoUIVisibility] UIController 호출 완료"));
     }
     else
     {
-        LOG_Item_WARNING(TEXT("[MulticastSetGunAmmoUIVisibility] 실패: UIController가 null"));
+        LOG_Item_WARNING(TEXT("[ClientSetGunAmmoUIVisibility] 실패: UIController가 null"));
     }
 }
 
 void UToolbarInventoryComponent::OnEquippedItemStateChanged()
 {
     SyncEquippedItemDurabilityToSlot();
+}
+
+void UToolbarInventoryComponent::OnRep_CurrentEquippedSlotIndex()
+{
+    // 장착 상태 변경 시 UI 업데이트
+    if (CurrentEquippedSlotIndex >= 0 && ItemSlots.IsValidIndex(CurrentEquippedSlotIndex))
+    {
+        AItemBase* EquippedItem = GetCurrentEquippedItem();
+        if (AGunBase* Gun = Cast<AGunBase>(EquippedItem))
+        {
+            // 총기가 장착되었을 때 UI 업데이트
+            if (UIController)
+            {
+                UIController->SetGunAmmoUIVisibility();
+                LOG_Item_WARNING(TEXT("[OnRep_CurrentEquippedSlotIndex] 총기 장착 감지 - UI 업데이트"));
+            }
+        }
+    }
+    else
+    {
+        // 장착 해제 시 UI 숨김
+        if (UIController)
+        {
+            UIController->SetGunAmmoUIVisibility();
+            LOG_Item_WARNING(TEXT("[OnRep_CurrentEquippedSlotIndex] 장착 해제 감지 - UI 숨김"));
+        }
+    }
 }
 
 bool UToolbarInventoryComponent::TrySwapBackpackSlots(int32 FromBackpackIndex, int32 ToBackpackIndex)

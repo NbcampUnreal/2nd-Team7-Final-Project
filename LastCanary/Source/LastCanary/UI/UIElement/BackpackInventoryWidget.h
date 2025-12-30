@@ -13,11 +13,11 @@ class UButton;
 UCLASS()
 class LASTCANARY_API UBackpackInventoryWidget : public UInventoryWidgetBase
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
 public:
-	UPROPERTY(meta = (BindWidget))
-	UGridPanel* BackpackSlotPanel;
+    UPROPERTY(meta = (BindWidget))
+    UGridPanel* BackpackSlotPanel;
     UPROPERTY(meta = (BindWidget))
     UTextBlock* WeightText;
     UPROPERTY(meta = (BindWidget))
@@ -32,7 +32,7 @@ public:
     void RefreshInventoryUI() override;
 
 protected:
-    virtual void NativeConstruct() override;    
+    virtual void NativeConstruct() override;
     virtual void NativeDestruct() override;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Layout")

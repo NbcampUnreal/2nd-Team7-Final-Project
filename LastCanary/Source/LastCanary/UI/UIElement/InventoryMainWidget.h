@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "UI/LCUserWidgetBase.h"
+#include "Item/ItemContainer.h"
 #include "DataType/BackpackSlotData.h"
 #include "DataTable/GunDataRow.h"
 #include "InventoryMainWidget.generated.h"
@@ -12,6 +13,7 @@ class UBackpackInventoryWidget;
 class UItemDropQuantityWidget;
 class UInventorySlotWidget;
 class UGunAmmoWidget;
+class UItemContainerWidget;
 class AGunBase;
 class UTextBlock;
 struct FBaseItemSlotData;
@@ -27,6 +29,9 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UBackpackInventoryWidget* BackpackWidget;
+
+	UPROPERTY(meta = (BindWidget))
+	UItemContainerWidget* ContainerWidget;
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* SlotItemText;
@@ -66,6 +71,15 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Inventory|Drag")
 	bool IsDragInProgress() const;
 
+	UFUNCTION(BlueprintCallable)
+	void ShowContainerUI(AItemContainer* Container, const TArray<FContainerItemData>& ContainerItems);
+
+	UFUNCTION(BlueprintCallable)
+	void HideContainerUI();
+
+	UFUNCTION(BlueprintCallable)
+	bool IsContainerUIOpen() const;
+
 	UToolbarInventoryWidget* GetToolbarWidget();
 	UBackpackInventoryWidget* GetBackpackWidget();
 
@@ -77,6 +91,9 @@ protected:
 
 	UPROPERTY()
 	UItemDropQuantityWidget* CurrentDropQuantityWidget;
+
+	UPROPERTY()
+	UItemContainerWidget* CurrentContainerWidget;
 
 private:
 	bool bBackpackInventoryOpen = false;
@@ -98,6 +115,11 @@ private:
 	UPROPERTY()
 	UInventorySlotWidget* PendingDropSourceWidget;
 
+	bool bContainerUIOpen = false;
+
+	UPROPERTY()
+	AItemContainer* CurrentOpenContainer;
+
 public:
 	void RefreshInventory();
 
@@ -105,7 +127,7 @@ public:
 	UGunAmmoWidget* GunAmmoWidget;
 
 	UFUNCTION(BlueprintCallable, Category = "UI|Gun")
-	void SetGunAmmoUIVisibility(bool bVisible, int32 CurrentAmmo, int32 MaxAmmo, EFireMode CurrentFireMode, const TArray<EFireMode>& AvailableFireModes);
+	void SetGunAmmoUIVisibility();
 
 private:
 	void InitializeGunAmmoUI();

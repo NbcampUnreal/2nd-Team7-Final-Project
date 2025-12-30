@@ -64,10 +64,21 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Backpack Manager|Items")
     bool UpdateBackpackSlots(const TArray<FBackpackSlotData>& NewSlots);
 
+    /** 가방에서 노트 아이템 사용 */
+    UFUNCTION(BlueprintCallable, Category = "Backpack Manager|Items")
+    bool UseNoteItem(int32 BackpackSlotIndex);
+
+private:
+    /** 노트 아이템인지 확인 */
+    bool IsNoteItem(FName ItemRowName) const;
+
+    /** 임시 노트 아이템 생성 및 사용 */
+    void CreateAndUseNoteItem(FName ItemRowName);
+
     //-----------------------------------------------------
     // 드래그 & 드롭
     //-----------------------------------------------------
-
+public:
     /** 툴바 아이템을 가방으로 이동 */
     UFUNCTION(BlueprintCallable, Category = "Backpack Manager|DragDrop")
     bool MoveToolbarItemToBackpack(int32 ToolbarIndex, int32 BackpackIndex);
