@@ -364,22 +364,22 @@ void UCharacterInputComponent::Handle_Aim(const FInputActionValue& ActionValue)
 		USkeletalMeshComponent* RifleMesh = Gun->GetSkeletalMeshComponent();
 		GetBaseCharacter()->CurrentRifleMesh = RifleMesh;
 		
-		
+		/*
 		if (ActionValue.Get<float>() > 0.5f && GetBaseCharacter()->bIsCloseToWall == false)
 		{
 			if (GetBaseCharacter()->ADSComponent)
 			{
-				GetBaseCharacter()->ADSComponent->SwitchADS(true);
+				//GetBaseCharacter()->ADSComponent->SwitchADS(true);
 			}
 		}
 		else
 		{
 			if (GetBaseCharacter()->ADSComponent)
 			{
-				GetBaseCharacter()->ADSComponent->SwitchADS(false);
+				//GetBaseCharacter()->ADSComponent->SwitchADS(false);
 			}
 		}
-		
+		*/
 	}
 	/*
 	if(EquipmentItem)

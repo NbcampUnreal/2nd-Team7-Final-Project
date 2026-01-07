@@ -126,7 +126,7 @@ void UCharacterWeaponClippingComponent::UpdateGunWallClipOffset()
 		if (FMath::Abs(WallClipAimOffsetPitch) > 0.5f)
 		{
 			GetBaseCharacter()->SetIsCloseToWall(true);
-			GetBaseCharacter()->ADSComponent->SwitchADS(false);
+			GetBaseCharacter()->SwitchADS(false);
 		}
 		else
 		{

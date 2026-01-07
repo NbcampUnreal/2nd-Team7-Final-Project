@@ -63,7 +63,7 @@ void UCameraRecoilComponent::HandleRecoilFloat(float Value)
 		return;
 	}
 
-	if (GetBaseCharacter()->ADSComponent->bIsADS) //조준 상태인가?
+	if (GetBaseCharacter()->bIsADS) //조준 상태인가?
 	{
 		GetBaseCharacter()->AddControllerPitchInput(Value * ADSRecoilMultiplier * GunRecoilMultiplier);
 	}

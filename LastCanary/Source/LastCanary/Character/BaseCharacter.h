@@ -44,7 +44,6 @@ class UCharacterInputComponent;
 class UCharacterSpeedControlComponent;
 class UCharacterSoundComponent;
 class UCharacterSanityComponent;
-class UCharacterADSComponent;
 class UCharacterWeaponClippingComponent;
 
 UENUM(BlueprintType)
@@ -88,10 +87,25 @@ public:
 	virtual FVector GetPawnViewLocation() const override;
 	FVector GetDesiredCameraOffset() const;
 
+	bool bIsADS = false;
 	bool IsADS() const;
+	void SwitchADS(bool _bIsADS);
+
+	void Set_ADS_Weight(float _ADS_Weight);
+	float GetADS_CameraFieldOfView(AGunBase* gun);
+
+	float ADS_Weight = 0.0f;
+
+	FORCEINLINE float Get_ADS_Weight() const { return ADS_Weight; }
 
 	FTransform GetADSCameraTransform() const;
 
+	FTimerHandle ADSWeightTimerHandle;
+
+	UPROPERTY(EditDefaultsOnly, Category = "ADS")
+	float ADSInterpSpeed = 5.0f; // 값이 클수록 빠름
+
+	void UpdateADSWeight();
 
 public:
 	//* Character State Flag *//
@@ -163,9 +177,6 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UCharacterSanityComponent> SanityComponent;
-	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	TObjectPtr<UCharacterADSComponent> ADSComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UCharacterWeaponClippingComponent> WeaponClippingComponent;
@@ -358,7 +369,7 @@ public:
 
 	int32 ApplyWheelSelection(int32 Index);
 
-
+	
 
 #pragma region 초기 캐릭터 세팅
 	void InitializePlayerLocalSettings();

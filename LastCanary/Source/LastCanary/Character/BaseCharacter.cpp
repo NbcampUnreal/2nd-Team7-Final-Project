@@ -67,7 +67,6 @@
 #include "Character/Component/CharacterSpeedControlComponent.h"
 #include "Character/Component/CharacterSoundComponent.h"
 #include "Character/Component/CharacterSanityComponent.h"
-#include "Character/Component/CharacterADSComponent.h"
 #include "Character/Component/CharacterWeaponClippingComponent.h"
 
 
@@ -174,7 +173,6 @@ void ABaseCharacter::InitializeExtraComponents()
 	SpeedControlComponent = UCommonUtility::CreateAndRegisterComponent<UCharacterSpeedControlComponent>(this, TEXT("SpeedControlComponent"), ManagedComponents);
 	SoundPlayComponent = UCommonUtility::CreateAndRegisterComponent<UCharacterSoundComponent>(this, TEXT("SoundPlayComponent"), ManagedComponents);
 	SanityComponent = UCommonUtility::CreateAndRegisterComponent<UCharacterSanityComponent>(this, TEXT("SanityComponent"), ManagedComponents);
-	ADSComponent = UCommonUtility::CreateAndRegisterComponent<UCharacterADSComponent>(this, TEXT("ADSComponent"), ManagedComponents);
 	WeaponClippingComponent = UCommonUtility::CreateAndRegisterComponent<UCharacterWeaponClippingComponent>(this, TEXT("WeaponClippingComponent"), ManagedComponents);
 
 	TotalComponentCount = ManagedComponents.Num();
@@ -741,7 +739,7 @@ FVector ABaseCharacter::GetDesiredCameraOffset() const
 		Offset.Z -= 20.f;
 	}
 
-	if (ADSComponent && ADSComponent->bIsADS)
+	if (bIsADS)
 	{
 		Offset += FVector(2.f, 0.f, -1.f);
 	}
@@ -751,11 +749,7 @@ FVector ABaseCharacter::GetDesiredCameraOffset() const
 
 bool ABaseCharacter::IsADS() const
 {
-	if (ADSComponent)
-	{
-		return ADSComponent->bIsADS;
-	}
-	return false;
+	return bIsADS;
 }
 
 FTransform ABaseCharacter::GetADSCameraTransform() const
@@ -898,7 +892,11 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 
 	if (bIsSprinting || bIsReloading || bIsClose || bIsMantling)
 	{
-		CameraControlComponent->StopAiming();
+		if (bIsAiming)
+		{
+			bIsAiming = false;
+			bIsTransitioning = true;
+		}
 		return;
 	}
 	AGunBase* Gun = Cast<AGunBase>(EquipmentItem);
@@ -914,17 +912,11 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 
 		if (ActionValue.Get<float>() > 0.5f && bIsCloseToWall == false)
 		{
-			if (ADSComponent)
-			{
-				ADSComponent->SwitchADS(true);
-			}
+			SwitchADS(true);
 		}
 		else
 		{
-			if (ADSComponent)
-			{
-				ADSComponent->SwitchADS(false);
-			}
+			SwitchADS(false);
 		}
 
 	}
@@ -938,6 +930,104 @@ void ABaseCharacter::Handle_Aim(const FInputActionValue& ActionValue)
 
 	}
 	*/
+}
+
+void ABaseCharacter::SwitchADS(bool _bIsADS)
+{
+	bIsADS = _bIsADS;
+	UE_LOG(LogTemp, Warning, TEXT("SwitchADS Called: %s"), _bIsADS ? TEXT("TRUE") : TEXT("FALSE"));
+	if (UAlsAnimationInstance* ALSAnimInstance =
+		Cast<UAlsAnimationInstance>(GetMesh()->GetAnimInstance()))
+	{
+		ALSAnimInstance->IsAiming = bIsADS;
+	}
+
+	// 기존 타이머 정리
+	GetWorldTimerManager().ClearTimer(ADSWeightTimerHandle);
+
+	// Tick 간격 타이머 시작 (프레임 기반)
+	GetWorldTimerManager().SetTimer(
+		ADSWeightTimerHandle,
+		this,
+		&ABaseCharacter::UpdateADSWeight,
+		0.016f,   // 매 프레임
+		true
+	);
+
+}
+
+void ABaseCharacter::UpdateADSWeight()
+{
+	UE_LOG(LogTemp, Warning,
+		TEXT("UpdateADSWeight Tick | Current: %.3f | Target: %.3f"),
+		ADS_Weight,
+		bIsADS ? 1.0f : 0.0f
+	);
+	const float TargetWeight = bIsADS ? 1.0f : 0.0f;
+
+	// DeltaTime 기반 보간
+	const float DeltaTime = GetWorld()->GetDeltaSeconds();
+	const float NewWeight = FMath::FInterpTo(
+		ADS_Weight,
+		TargetWeight,
+		DeltaTime,
+		ADSInterpSpeed
+	);
+
+	Set_ADS_Weight(NewWeight);
+
+	// 목표값 도달 시 타이머 종료
+	if (FMath::IsNearlyEqual(NewWeight, TargetWeight, 0.01f))
+	{
+		Set_ADS_Weight(TargetWeight);
+		GetWorldTimerManager().ClearTimer(ADSWeightTimerHandle);
+	}
+}
+
+
+void ABaseCharacter::Set_ADS_Weight(float _ADS_Weight)
+{
+	UAlsAnimationInstance* ALSAnimInstance = Cast<UAlsAnimationInstance>(GetMesh()->GetAnimInstance());
+	if (!IsValid(ALSAnimInstance))
+	{
+		UE_LOG(LogTemp, Error, TEXT("ALSAnimInstance INVALID"));
+		return;
+	}
+	const float PrevWeight = ADS_Weight;
+	ADS_Weight = FMath::Clamp(_ADS_Weight, 0.0f, 1.0f);
+
+	UE_LOG(LogTemp, Warning,
+		TEXT("Set_ADS_Weight: %.3f -> %.3f | FOV: %.2f"),
+		PrevWeight,
+		ADS_Weight,
+		90.0f - ADS_Weight * GetADS_CameraFieldOfView(GetCurrentGunItem())
+	);
+
+	FPSCamera->FieldOfView = 90.0f - ADS_Weight * GetADS_CameraFieldOfView(GetCurrentGunItem());
+}
+
+
+float ABaseCharacter::GetADS_CameraFieldOfView(AGunBase* gun)
+{
+	if (!IsValid(gun))
+	{
+		return 30.0f;
+	}
+
+	if (gun->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Rifle")))
+	{
+		return 50.0f;
+	}
+	else if (gun->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Pistol")))
+	{
+		return 30.0f;
+	}
+	else if (gun->ItemData.ItemType == FGameplayTag::RequestGameplayTag(TEXT("ItemType.Equipment.Shotgun")))
+	{
+		return 40.0f;
+	}
+
+	return 10.0f;
 }
 
 
@@ -1114,10 +1204,8 @@ void ABaseCharacter::Handle_VoiceChatting(const FInputActionValue& ActionValue)
 
 void ABaseCharacter::Handle_Attack(const FInputActionValue& ActionValue)
 {
-	if (ADSComponent)
-	{
-		ADSComponent->SwitchADS(false);
-	}
+	SwitchADS(false);
+	
 	if (AttackComponent)
 	{
 		AttackComponent->Handle_Attack(EAttackType::Kick);
@@ -1363,10 +1451,8 @@ void ABaseCharacter::RequestReload(AGunBase* Gun)
 void ABaseCharacter::StartReload()
 {
 	CancelInteraction();
-	if (ADSComponent)
-	{
-		ADSComponent->SwitchADS(false);
-	}
+	SwitchADS(false);
+	
 	//bIsReloading = true;
 	/*
 	Server_PlayReload();
@@ -1816,10 +1902,8 @@ void ABaseCharacter::SetCurrentQuickSlotIndex(int32 NewIndex)
 	CancelUseItem();
 	CancelInteraction();
 	StopReload();
-	if (ADSComponent)
-	{
-		ADSComponent->SwitchADS(false);
-	}
+	SwitchADS(false);
+	
 	Server_SetQuickSlotIndex(NewIndex);
 }
 

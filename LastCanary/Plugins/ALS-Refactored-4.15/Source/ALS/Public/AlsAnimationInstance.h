@@ -34,8 +34,6 @@ class ALS_API UAlsAnimationInstance : public UAnimInstance
 
 	friend UAlsLinkedAnimationInstance;
 public:
-	UFUNCTION(BlueprintImplementableEvent)
-	void UpdateIKTransform();
 
 	UPROPERTY(BlueprintReadWrite, Category = "IK")
 	bool IsAiming = false;
@@ -50,65 +48,7 @@ public:
 	FRotator WallClipAimOffsetRotation = FRotator();
 
 	UPROPERTY(BlueprintReadWrite, Category = "IK")
-	FVector AimSocketLocation;
-
-	UPROPERTY(BlueprintReadWrite, Category = "IK")
-	FRotator AimSocketRotation;
-
-	UPROPERTY(BlueprintReadWrite, Category = "IK")
-	FVector AimPointLocation;
-
-	UPROPERTY(BlueprintReadWrite, Category = "IK")
-	FRotator AimPointRotation;
-
-	UPROPERTY(BlueprintReadWrite, Category = "IK")
 	float AimAlpha = 0.0f;
-
-	UPROPERTY(BlueprintReadWrite, Category = "IK")
-	FVector LeftHandVBLocation;
-
-	UPROPERTY(BlueprintReadWrite, Category = "IK")
-	FVector RightHandVBLocation;
-
-	UFUNCTION(BlueprintCallable)
-	void SetLeftHandVBLocation(FVector _location) { LeftHandVBLocation = _location; }
-
-	UFUNCTION(BlueprintCallable)
-	void SetRightHandVBLocation(FVector _location) { RightHandVBLocation = _location; }
-
-	UPROPERTY(BlueprintReadWrite, Category = "IK")
-	FVector RightHandLocation;
-
-	UPROPERTY(BlueprintReadWrite, Category = "IK")
-	FVector RightHandLocationToScope;
-
-	UPROPERTY(BlueprintReadWrite, Category = "IK")
-	FRotator RightHandRotationToScope;
-
-	UPROPERTY(BlueprintReadWrite, Category = "IK")
-	FTransform GunItemSocket;
-
-	// MyAnimInstance.h
-	UPROPERTY(BlueprintReadWrite, Category = "IK")
-	FVector AimPoint;
-
-	UPROPERTY(BlueprintReadWrite, Category = "IK")
-	FVector RightHandIKTargetLocation;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "IK")
-	FVector RightHandIKTargetLocationOffset;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "IK")
-	FRotator RightHandIKTargetRotationOffset;
-
-	UPROPERTY(BlueprintReadWrite, Category = "IK")
-	FVector LeftHandIKTargetLocation;
-
-	UFUNCTION(BlueprintCallable)
-	void SetAimPoint(FVector InAimPoint) { AimPoint = InAimPoint; }
-
-
-
 
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")

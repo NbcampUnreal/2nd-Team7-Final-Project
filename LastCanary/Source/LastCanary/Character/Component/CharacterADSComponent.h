@@ -23,7 +23,6 @@ public:
     UAlsAnimationInstance* GetALSAnimInstance();
 
     bool bIsADS = false;
-    void SwitchADS(bool _bIsADS);
 
     float ADS_Weight = 0.0f;
     
@@ -31,27 +30,8 @@ public:
     void Set_ADS_Weight(float _ADS_Weight);
 
     AGunBase* GetGun();
-    USkeletalMeshComponent* GetGunSkeletalMesh();
-    FName GetADSSocketName(AGunBase* gun);
-    float GetADS_Distance(AGunBase* gun);
     float GetADS_CameraFieldOfView(AGunBase* gun);
 
     float ADS_InterpSpeed = 3.0f;
     float ADS_Distance = 5.0f;
-
-
-    void SetADSMode(float _ADS_Weight);
-
-    void SetLeftHandIK();
-    void SetRightHandIK();
-    void SetikHandgunLocation();
-
-    void CalculateAimSocket();
-    void CalculateAimPoint();
-    
-    void SetGunItemSocketTransform();
-
-    FVector GetAimTargetLocation(float Distance);
-
-    
 };
