@@ -49,16 +49,14 @@ void AWarderBaseMonster::HandlePerceptionUpdate(AActor* Actor, FAIStimulus Stimu
                     World->GetTimerManager().ClearTimer(ForgetTargetTimerHandle);
                 }
             }
-            else if (Stimulus.Tag.IsEqual(FName("Box")))
+            else if (Stimulus.Tag.IsEqual(FName("WarderSearch")))
             {
-                if (AResourceNode* ResourceNode = Cast<AResourceNode>(Actor))
+                BlackboardComp->SetValueAsVector(FName("WarderSearch"), Stimulus.StimulusLocation);
+                AIController->SetSearching();
+                if (UCharacterMovementComponent* Movement = GetCharacterMovement())
                 {
-                    BlackboardComp->SetValueAsVector(FName("BoxVector"), Stimulus.StimulusLocation);
-                    AIController->SetSearching();
-                    if (UCharacterMovementComponent* Movement = GetCharacterMovement())
-                    {
-                        Movement->MaxWalkSpeed += 50.0f;
-                    }
+                    Movement->MaxWalkSpeed += 50.0f;
+                    UE_LOG(LogTemp, Error, TEXT("MaxWalkSpeed: %f"), Movement->MaxWalkSpeed);
                 }
             }
             else
@@ -99,5 +97,9 @@ void AWarderBaseMonster::ForgetTarget()
 
 void AWarderBaseMonster::WarderGimmick()
 {
-
+    if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+    {
+        Movement->MaxWalkSpeed += 50.0f;
+        UE_LOG(LogTemp, Error, TEXT("MaxWalkSpeed: %f"), Movement->MaxWalkSpeed);
+    }
 }

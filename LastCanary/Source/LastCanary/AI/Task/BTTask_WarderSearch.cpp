@@ -2,7 +2,6 @@
 #include "AI/BaseAIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "AIController.h"
-//#include "TimerManager.h"
 
 UBTTask_WarderSearch::UBTTask_WarderSearch()
 {
@@ -61,7 +60,6 @@ void UBTTask_WarderSearch::CheckArrival()
 		return;
 	}
 
-	// 이동 중 타겟 발견 시 추격으로 전환
 	AActor* TargetActor = Cast<AActor>(BlackboardComp->GetValueAsObject("TargetActor"));
 	if (TargetActor)
 	{
@@ -89,7 +87,6 @@ void UBTTask_WarderSearch::CheckArrival()
 		return;
 	}
 
-	// 도착 확인
 	float Distance = FVector::Distance(ControlledPawn->GetActorLocation(), BoxVector);
 	if (Distance <= 300.0f)
 	{
